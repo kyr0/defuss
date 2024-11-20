@@ -1,0 +1,10 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { App } from "../components/App";
+---
+
+<Layout title="Welcome to Astro.">
+	<div id="app">
+		<App client:only="defuss" />
+	</div>
+</Layout>

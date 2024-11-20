@@ -1,0 +1,55 @@
+<h1 align="center">
+
+<img src="public/defuss_mascott.png" width="100px" />
+
+`defuss`
+
+<sup align="center">
+
+`Vite` + `TypeScript` + `defuss` Starter Kit
+
+</sup>
+
+</h1>
+
+With this template, you can jumpstart your next `Vite` + `defuss` project!
+
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/kyr0/defuss/tree/main/examples/with-vite-ts)
+[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/kyr0/defuss/tree/main/examples/with-vite-ts)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kyr0/defuss?devcontainer_path=.devcontainer/with-vite-ts/devcontainer.json)
+
+> 👩‍💻 **Seasoned developer?** Delete this file. Have fun!
+
+![just-the-basics](public/preview.png)
+
+### ✨ It's amazing!
+![tiny](public/build_result.png)
+
+## 🚀 Project Structure
+
+Inside of your Vite project, you'll see the following relevant folders and files:
+
+```text
+/
+├── src/counter.tsx
+├── src/main.tsx
+├── index.html
+├── tsconfig.json
+├── package.json
+```
+
+## 🧞 Commands
+
+All commands are run from the root of the project, from a terminal:
+
+| Command       | Action                                                                                                                                                                                                                           |
+| :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`    | Run in dev mode and check your custom renderer                                                    |
+| `npm run build` | Build for production  |
+| `npm run preview` | Build for production, then preview |
+
+---
+
+<img src="public/defuss_comic.png" />
+
+<caption><i><b>Come visit us on defuss island!</b></i></caption>

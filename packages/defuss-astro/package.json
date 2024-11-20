@@ -1,0 +1,82 @@
+{
+  "name": "defuss-astro",
+  "version": "1.0.3",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "description": "Defuss Integration for Astro.",
+  "keywords": [
+    "jsx",
+    "render",
+    "ssr",
+    "isomorphic",
+    "astro"
+  ],
+  "repository": {
+    "url": "git+https://github.com/kyr0/defuss.git",
+    "type": "git"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "pretest": "pnpm run build",
+    "prebuild": "pnpm run clean",
+    "build": "pkgroll --sourcemap",
+    "postbuild": "tsx ./scripts/finalize-build.ts"
+  },
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    },
+    "./client": {
+      "require": {
+        "types": "./dist/client.d.cts",
+        "default": "./dist/client.cjs"
+      },
+      "import": {
+        "types": "./dist/client.d.mts",
+        "default": "./dist/client.mjs"
+      }
+    },
+    "./server": {
+      "require": {
+        "types": "./dist/server.d.cts",
+        "default": "./dist/server.cjs"
+      },
+      "import": {
+        "types": "./dist/server.d.mts",
+        "default": "./dist/server.mjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "pkgroll": "^2.5.1",
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.2"
+  },
+  "engines": {
+    "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
+  },
+  "dependencies": {
+    "defuss": "workspace:*",
+    "defuss-vite": "workspace:*",
+    "astro": "^4.16.13",
+    "vite": "^5.4.11"
+  }
+}

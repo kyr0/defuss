@@ -1,0 +1,20 @@
+{
+  "name": "@example/with-astro-ts",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "clean": "rm -rf ./dist && rm -rf ./.astro && rm -rf ./node_modules/.vite",
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/node": "^8.3.4",
+    "astro": "^4.16.13",
+    "defuss": "workspace:*",
+    "defuss-astro": "workspace:*"
+  }
+}
