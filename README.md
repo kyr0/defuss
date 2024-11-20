@@ -39,7 +39,7 @@ How does `defuss` work?
 
 </h3>
 
-`defuss` is a tiny, modern web framework that is designed to be <u>extremly</u> simple and puristic. *Learn more about the motivation [here]().*
+`defuss` is a tiny, modern web framework that is designed to be <u>extremly</u> simple and puristic. *Learn more about the motivation [here](https://github.com/kyr0/defuss?tab=readme-ov-file#the-defuss-story).*
 
 - You are in full control: There is **no** implicit **reactivity**. 
 - No hidden surprises: Every Component is rendered **once**.
@@ -106,9 +106,6 @@ export function Counter({ label }: CounterProps) {
 Using defuss in an existing `Astro` or `Vite` project
 
 </h3>
-
-For beginners and junior developers, it's best to use our `defuss` + Astro template [here](), because this just works out-of-the-box. 
-
 If you want to integrate `defuss` in an existing `Astro` or `Vite` project, you need to install `defuss` manually:
 
 ```bash
@@ -116,9 +113,9 @@ If you want to integrate `defuss` in an existing `Astro` or `Vite` project, you 
 shell > npm install defuss
 ```
 
-- To install `defuss`' `Astro` integration manually, head over [here](../defuss-astro/README.md).
+- To install `defuss`' `Astro` integration manually, head over [here](packages/defuss-astro/README.md).
 
-- To install `defuss`' `Vite` plugin manually, head over [here](../defuss-vite/README.md).
+- To install `defuss`' `Vite` plugin manually, head over [here](packages/defuss-vite/README.md).
 
 <h2 align="center">
 
