@@ -28,12 +28,16 @@ You're just one step away from checking out one of `defuss` simple example proje
 
 ### Create a new `defuss` + `Astro` project:
 
+> **[‼️]** Make sure [`git`](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) is installed on your computer!
+
 ```bash
 npx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-astro-ts
 ```
 This will download **only** the code from the `with-astro-ts` subdirectory into the _(new)_ folder local folder.
 
 ### Create a new `defuss` + `Vite` project:
+
+> **[‼️]** Make sure [`git`](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) is installed on your computer!
 
 ```bash
 npx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-vite-ts
