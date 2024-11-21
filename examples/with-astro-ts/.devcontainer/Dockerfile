@@ -1,3 +1,3 @@
 FROM node:18-bullseye
  
-RUN npm i -g pnpm
+RUN npm i -g pnpm astro
