@@ -1,0 +1,7 @@
+{
+  "title": "Vite with TypeScript and defuss",
+  "description": "Vite together with TypeScript and defuss on CodeSandbox",
+  "iconUrl": "raw.githubusercontent.com/kyr0/defuss/main/examples/with-vite-ts/.codesandbox/icon.png",
+  "tags": ["starter", "vite", "typescript", "defuss"],
+  "published": true
+}

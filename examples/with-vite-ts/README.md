@@ -1,6 +1,6 @@
 <h1 align="center">
 
-<img src="public/defuss_mascott.png" width="100px" />
+<img src="./public/defuss_mascott.png" width="100px" />
 
 `defuss`
 
@@ -20,10 +20,10 @@ With this template, you can jumpstart your next `Vite` + `defuss` project!
 
 > 👩‍💻 **Seasoned developer?** Delete this file. Have fun!
 
-![just-the-basics](public/preview.png)
+![just-the-basics](./public/preview.png)
 
 ### ✨ It's amazing!
-![tiny](public/build_result.png)
+![tiny](./public/build_result.png)
 
 ## 🚀 Project Structure
 
@@ -44,12 +44,12 @@ All commands are run from the root of the project, from a terminal:
 
 | Command       | Action                                                                                                                                                                                                                           |
 | :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`    | Run in dev mode and check your custom renderer                                                    |
-| `npm run build` | Build for production  |
-| `npm run preview` | Build for production, then preview |
+| `pnpm run dev`    | Run in dev mode and check your custom renderer                                                    |
+| `pnpm run build` | Build for production  |
+| `pnpm run preview` | Build for production, then preview |
 
 ---
 
-<img src="public/defuss_comic.png" />
+<img src="./public/defuss_comic.png" />
 
-<caption><i><b>Come visit us on defuss island!</b></i></caption>
+<caption><i><b>Come visit us on <code>defuss</code> Island!</b></i></caption>
