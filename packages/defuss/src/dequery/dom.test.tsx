@@ -4,7 +4,7 @@ import { jsx, renderIsomorphic } from "../render/isomorph.js";
 import { $ } from "./query.js";
 
 describe('General DOM manipulation', () => {
-  it('can update children of a SpringType-created DOM element', () => {
+  it('can update children of a defuss-created DOM element', () => {
     const el = renderIsomorphic(<div>Check</div>, undefined, globalThis as Globals) as Element;
     $(el).html(<div>Check2</div>);
     expect(el.childNodes[0].textContent).toEqual('Check2');

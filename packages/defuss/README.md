@@ -98,7 +98,7 @@ As `defuss/render` only renders **once** _(and therefore is static)_, we need an
 
 <h2 align="center">API docs</h2>
 
-This is how using `st-query` looks like:
+This is how using `defuss/dequery` looks like:
 
 ```tsx
 import { $, type Ref, jsx, type Props } from "defuss";

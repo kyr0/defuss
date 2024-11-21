@@ -34,8 +34,11 @@ You're just two steps away from success:
 #### 1. Install `defuss-vite`:
 
 ```bash
+# install a decent package manager
+npm i -g pnpm@^9.13.2
+
 # from your project root folder, add defuss-vite to the devDependencies
-shell > npm install --save-dev defuss-vite
+npm install --save-dev defuss-vite
 ```
 
 #### 2. Add `defuss-vite` to your config:

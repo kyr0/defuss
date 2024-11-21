@@ -109,8 +109,11 @@ Using defuss in an existing `Astro` or `Vite` project
 If you'd like to integrate `defuss` in an existing `Astro` or `Vite` project, you need to install `defuss` manually:
 
 ```bash
+# install a decent package manager
+npm i -g pnpm@^9.13.2
+
 # install the defuss library (in your projects root folder)
-shell > npm install defuss
+pnpm install defuss
 ```
 
 - To install `defuss`' `Astro` integration manually, head over [here](packages/defuss-astro/README.md).
