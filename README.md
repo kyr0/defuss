@@ -17,9 +17,9 @@ Simplify & Succeed
 
 No time for long introductions? Here is the best way to learn `defuss`:
 
-1. **Play** with `defuss`' [./examples](examples/) *(~5min)*
-2. Create **your own** `defuss` + [`Astro`](examples/with-astro-ts) or [`Vite`](examples/with-vite-ts) project *(~5min - 20min)*
-3. Read **The `defuss` Book** _(see below)_ && become a `defuss` expert *(~1h - 3h)*
+1. **Play** with `defuss`' [./examples](examples/) *(~1min)*
+2. [`create-defuss`](packages/create-defuss) **your own** `defuss` + [`Astro`](examples/with-astro-ts) / [`Vite`](examples/with-vite-ts) project  *(~3min - 20min)*
+3. Read **The `defuss` Book** _(see below)_ && become a `defuss` expert *(~3h)*
 4. Understand the **whole codebase** in [./packages](packages/) and become a **`defuss` core developer** *(~24h - 3d)*
 5. Build your **dream product** and **succeed**! *(very soon)*
 
@@ -27,11 +27,11 @@ No time for long introductions? Here is the best way to learn `defuss`:
 
 `defuss` in one picture
 
+<img src="assets/defuss_comic.png" width="400px" />
+
+<caption><i><b>Come visit us on <code>defuss</code> Island!</b></i></caption>
+
 </h3>
-
-<img src="assets/defuss_comic.png" />
-
-<caption><i><b>Come visit us on defuss island!</b></i></caption>
 
 <h3 align="center">
 
