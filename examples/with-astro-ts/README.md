@@ -52,6 +52,22 @@ There's nothing special about `src/components/`, but that's where we like to put
 
 Any static assets, like images, can be placed in the `public/` directory.
 
+## 🛠️ Setup
+
+### 1. Get a decent package manager
+
+We recommend using `pnpm` as a package manager. It's fast, mature and handles monorepos well. If you haven't installed `pnpm` yet:
+
+```bash
+npm i -g pnpm@^9.13.2
+```
+
+### 2. Install the projects dependencies
+
+```bash
+pnpm i --frozen
+```
+
 ## 🧞 Commands
 
 All commands are run from the root of the project, from a terminal:
