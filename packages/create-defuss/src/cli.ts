@@ -21,7 +21,7 @@ const main = async () => {
 
   // assign the first argument to repoUrl and the second to destFolder, defaulting to "." (current directory) if not provided
   const repoUrl = args[0];
-  const destFolder = args[1] || ".";
+  const destFolder = args[1];
 
   // call the performSparseCheckout function with the provided arguments
   performSparseCheckout(repoUrl, destFolder);
