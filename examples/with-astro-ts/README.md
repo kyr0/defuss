@@ -21,7 +21,7 @@
 ![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/preview.png)
 
 ### ✨ It's amazing!
-![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/preview.png)
+![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/build_result.png)
 
 ## 🚀 Project Structure
 
