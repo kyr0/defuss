@@ -18,16 +18,10 @@ Simplify & Succeed
 No time for long introductions? Here is the best way to learn `defuss`:
 
 1. **Play** with `defuss`' [./examples](examples/) *(~1min)*
-2. [`create-defuss`](packages/create-defuss) **your own** `defuss` + [`Astro`](examples/with-astro-ts) / [`Vite`](examples/with-vite-ts) project  *(~3min - 20min)*
+2. [`create-defuss`](https://github.com/kyr0/defuss/tree/main/packages/create-defuss#-getting-started) **your own** `defuss` + `Astro` or `Vite` project  *(~3min)*
 3. Read **The `defuss` Book** _(see below)_ && become a `defuss` expert *(~3h)*
-4. Understand the **whole codebase** in [./packages](packages/) and become a **`defuss` core developer** *(~24h - 3d)*
+4. Work through the **complete codebase** in [./packages](packages/) and become a **`defuss` core developer** *(~24h - 3d)*
 5. Build your **dream product** and **succeed**! *(very soon)*
-
-<h3 align="center">
-
-`defuss` in one picture
-
-</h3>
 
 <p align="center">
 

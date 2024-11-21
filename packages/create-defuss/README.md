@@ -6,13 +6,13 @@
 
 <sup align="center">
 
-Project Creator
+Project Scaffolder
 
 </sup>
 
 </h1>
 
-> `create-defuss` is a simple, lightweight CLI tool that enables Git sparse checkouts for subdirectories of GitHub repositories. Originally created to help jump-start projects using **defuss templates**, it can be used for any Git repository.
+> `create-defuss` is a simple, lightweight CLI tool and Node.js library that enables Git sparse checkouts for subdirectories of GitHub repositories. Originally created to help jump-start projects using **defuss templates**, it can be used for any Git repository.
 
 **💡 Did you know?** With just one command, you can checkout a specific subdirectory from a GitHub repository without cloning the entire project.
 
@@ -24,26 +24,28 @@ Project Creator
 
 </h3>
 
-You're just one step away from checking out specific subdirectories:
+You're just one step away from checking out one of `defuss` simple example projects:
 
-### Use the `create-defuss` CLI:
-
-To checkout a subdirectory from a repository, run the following command:
+### Create a new `defuss` + `Astro` project:
 
 ```bash
-npx create-defuss <repository-url> [destination-folder]
+npx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-astro-ts
 ```
+This will download **only** the code from the `with-astro-ts` subdirectory into the _(new)_ folder local folder.
 
-Replace `<repository-url>` with the URL to the GitHub subdirectory you want to checkout (e.g., `https://github.com/user/repo/tree/branch/path`).
-Optionally, specify a `[destination-folder]` to customize where the files will be checked out.
-
-#### Example
+### Create a new `defuss` + `Vite` project:
 
 ```bash
-npx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-astro-ts ./my-new-project
+npx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-vite-ts
 ```
+This will download **only** the code from the `with-vite-ts` subdirectory into the _(new)_ folder local folder.
 
-This will download **only** the code from the `with-astro-ts` subdirectory into the _(new)_ folder `my-new-project`. 
+#### Downloading into a custom local folder
+
+```bash
+npx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-vite-ts ./my-custom-defuss-project
+```
+This will download **only** the code from the `with-vite-ts` subdirectory into the _(new)_ folder local folder `my-custom-defuss-project`.
 
 <h3 align="center">
 
