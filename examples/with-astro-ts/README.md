@@ -1,6 +1,6 @@
 <h1 align="center">
 
-<img src="public/defuss_mascott.png" width="100px" />
+<img src="./public/defuss_mascott.png" width="100px" />
 
 `defuss`
 
@@ -18,10 +18,10 @@
 
 > 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
 
-![just-the-basics](public/preview.png)
+![just-the-basics](./public/preview.png)
 
 ### ✨ It's amazing!
-![tiny](public/build_result.png)
+![tiny](./public/build_result.png)
 
 ## 🚀 Project Structure
 

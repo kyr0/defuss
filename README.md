@@ -106,7 +106,7 @@ export function Counter({ label }: CounterProps) {
 Using defuss in an existing `Astro` or `Vite` project
 
 </h3>
-If you want to integrate `defuss` in an existing `Astro` or `Vite` project, you need to install `defuss` manually:
+If you'd like to integrate `defuss` in an existing `Astro` or `Vite` project, you need to install `defuss` manually:
 
 ```bash
 # install the defuss library (in your projects root folder)
@@ -125,20 +125,58 @@ The `defuss` Story
 
 <h3 align="center">
 
-Complexity is the devil! 👿 *(The Rant!)*
+Complexity is the devil! 👿 *(The Rant!, 5 Mins.)*
 
 </h3>
 
-Modern web engineering has spiraled into a maze of complexity. With endless layers of "magic sauce" in today’s frameworks, constantly shifting APIs, and a black hole of dependencies, the cyclomatic complexity of most projects is downright terrifying.
+Modern web engineering has spiraled into a maze of complexity. Endless layers of abstraction in today’s frameworks, ever-shifting APIs, and an explosion of dependencies have turned many projects into unmanageable beasts. The [cyclomatic complexity](https://en.wikipedia.org/wiki/Cyclomatic_complexity) of contemporary codebases is often staggering, leaving developers grappling with chaos more often than clarity.
 
-They never fail to "amaze" with yet another breaking change, regression, or API deprecation. Just moments ago you still thought everything was fine — but *surprise*, *surprise!* Someone updated a dependency — because... *reasons*. And now, everything on your side is broken. Plan for another sprint dedicated to fixing the backlash! Dear friends, *enough is enough*. 
+Because modern projects often depend on a myriad of third-party software components, they never fail to "amaze" with yet another breaking change or regression. Just when you think everything is stable — *surprise!* — some dependency update causes your carefully orchestrated logic to collapse. 
 
-But it doesn't stop there. You take a deep breath, open your browser, and discover that the reactive state has imploded into a corrupt, untraceable mess. No matter how many logs you dig through or breakpoints you hit, you’re stuck in a maze of chaos because... *event sourcing*.
+And it doesn't stop there. You take a deep breath, open your browser, start debugging, only to discover that, for example, the reactive state has decided to implode and become a corrupt, untraceable mess. No matter how many steps you dig into history, you’re stuck in chaos because someone once thought that *immutability* and *event sourcing* is key, while another believed in *reactivity* as the new holy grail of software engineering. In combination however, a complexity hell is the result.
 
-If that still feels manageable, brace yourself: a mayhem of pattern absurdity awaits. Behold the gospel of: `write(only(monads(because(everything(else(is(evil)))))));`. Suddenly, every solution demands an academic paper to decipher, and every function reads like it was crafted by a secret society of coders obsessed with arcane, masochistic rituals disguised as "best practices."
+Breaking changes, regressions, and bizarre bugs are now part of our daily lives as programmers. Popular new patterns, paradigms and libraries, while valuable in the right context, are frequently added without nuance, creating problems they were meant to solve. You suddenly find yourself writing code to tame third-party software behaviour, a linter, or any ideologic code quality metric instead of working on and shipping features of your product.
 
-When did we stop to write simple, ideomatic code? Code that does one step at a time. It's actually not that hard, once one stops building products by stacking reactive, sand-castles. I'm not denying that the promises of total reactivity, pure functional programming, and perfect object-oriented modelling were exciting. But `Promise.all()` has rejected in practice. 
+But it doesn't stop with a blackhole of dependencies. When you're searching the web for "best practices", you're faced with the gospel of pattern orthodoxy: "Loops are bad, use recursion!", "Mutation is the root of all evil.", "No global state ever!". The result? Codebases that are hardly readable and waste resources.
 
+You might also encounter ideological extremes, such as rigid object-oriented dogma. Here, inheritance hierarchies stretch five levels deep, layered with abstract classes, interfaces, and non-inheritable private methods. Making any change feels like untangling a web spun by a particularly vengeful spider.
+
+On the flip side, some codebases adhere strictly to functional programming principles: `write(only(monads(because(everything(else(is(evil())))))))`
+While these approaches might sharpen your memory as you juggle return values across long, sometimes recursive call stacks, they are far from optimal.
+
+And beware of those who prioritize cleverness over clarity — they’ll craft intricate, "genius-level" (or so they think) solutions in 20 lines instead of 200. But two months later, even they won’t be able to explain or defend their own code.
+
+Elegant code doesn’t need to swear loyalty to any single paradigm. In fact, true elegance often arises from thoughtfully blending paradigms:
+
+- Use **functional programming** for mathematical algorithms or data transformations.
+- Rely on **object-oriented design** to define robust data types and to encapsulate behavior.
+- Adopt **procedural programming** for linear workflows or straightforward control flow.
+- Opt for **recursion** in tree traversal, but stick to **loops** for simple list iterations.
+- Copy memory when serialization or history tracking is required, but don’t shy away from **in-memory mutation** for performance-critical tasks.
+
+The problem isn’t the tools, frameworks or patterns themselves; it’s the blind application of these ideas without understanding their implications. Complexity creeps in when we fail to assess whether a particular approach is the right fit for the job.
+
+Bad code isn’t the result of choosing the “wrong” paradigm. It’s the result of misunderstanding the paradigm — or even worse, the problem you’re trying to solve. No pattern or methodology can save you if you don’t understand your own code.
+
+The path to better software lies in simplifying, not complicating. Write less code. Strip away unnecessary abstraction. When you’ve reduced your solution to its essence, document the *why* behind each line. This clarity brings maintainability and ensures the code remains accessible to future developers — including yourself.
+
+The philosophy I promote here is what I call **neo-pragmatic design**:
+
+- **Neo**: Inspired by foundational principles of simplicity and clarity, championed by pioneers like Dennis Ritchie (co-creator of C and Unix).
+- **Pragmatic**: Focused on delivering solutions that meet requirements without unnecessary overhead.
+- **Design**: Prioritizing thoughtful, intentional decisions over hasty implementations.
+
+This philosophy is not about rejecting modern frameworks, libraries, or paradigms. It’s about using them deliberately, understanding their trade-offs, and avoiding over-engineering. It’s about crafting solutions tailored to the problem, not the latest trends. Last but not least, it's about mastering the craft of software engineering, instead of playing copy & paste from Stack Overflow or ChatGPT.
+
+Dependencies deserve particular scrutiny. While external libraries can save time, they also bring risks: update fatigue, security vulnerabilities, bloat, and the potential to derail your entire project. Often, the functionality you need amounts to just 5% of what a library provides. In such cases, writing your own solution is often simpler, faster, and more sustainable. However, it’s crucial to first read and understand the code of the libraries. While this might seem like a lot of work to the modern programmer, it’s actually an investment in your skills and expertise.
+
+Neo-pragmatic design emerged from my own hard-earned lessons. Painful experiences with overly complex codebases taught me the value of simplicity. This understanding drove me to create a library like `defuss` — an efficient, minimalist framework designed to solve real problems without unnecessary complexity.
+
+To my fellow developers: stop building sandcastles of abstraction that crumble under scrutiny. Stop writing glue-code that merely ties together third-party solutions. Instead, embrace simplicity. Understand your craft. Write code that you can explain, defend, and maintain. 
+
+The modern development ecosystem offers extraordinary tools, but they are not solutions in themselves. They are only as good as the understanding with which they’re applied. Let’s prioritize clarity, efficiency, and practicality in our work — and create software that truly stands the test of time. 
+
+In the end, this is *real* programming, and only *real programming* is *real fun*.
 
 <h3 align="center"> 
 

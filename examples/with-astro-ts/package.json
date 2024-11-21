@@ -16,5 +16,6 @@
     "astro": "^4.16.13",
     "defuss": "workspace:*",
     "defuss-astro": "workspace:*"
-  }
+  },
+  "packageManager": "npm@10.9.0"
 }
