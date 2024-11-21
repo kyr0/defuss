@@ -24,6 +24,22 @@ With this template, you can jumpstart your next `Vite` + `defuss` project!
 ### ✨ It's amazing!
 ![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-vite-ts/public/build_result.png)
 
+## 🛠️ Setup
+
+### 1. Get a decent package manager
+
+We recommend using `pnpm` as a package manager. It's fast, mature and handles monorepos well. If you haven't installed `pnpm` yet:
+
+```bash
+npm i -g pnpm@^9.13.2
+```
+
+### 2. Install the projects dependencies
+
+```bash
+pnpm i --frozen
+```
+
 ## 🚀 Project Structure
 
 Inside of your Vite project, you'll see the following relevant folders and files:

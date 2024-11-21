@@ -23,16 +23,15 @@ importers:
 
   examples/with-astro-ts:
     dependencies:
-      defuss:
-        specifier: ^1.0.3
-        version: 1.0.3
-    devDependencies:
       '@astrojs/node':
         specifier: ^8.3.4
         version: 8.3.4(astro@4.16.13(@types/node@22.9.0)(rollup@4.27.2)(typescript@5.6.3))
       astro:
-        specifier: ^4.16.13
+        specifier: ^4.16.12
         version: 4.16.13(@types/node@22.9.0)(rollup@4.27.2)(typescript@5.6.3)
+      defuss:
+        specifier: ^1.0.3
+        version: 1.0.3
       defuss-astro:
         specifier: ^1.0.3
         version: 1.0.3(@types/node@22.9.0)(rollup@4.27.2)(typescript@5.6.3)
@@ -42,22 +41,21 @@ importers:
 
   examples/with-vite-ts:
     dependencies:
-      defuss:
-        specifier: ^1.0.3
-        version: 1.0.3
-    devDependencies:
       '@astrojs/node':
         specifier: ^8.3.4
         version: 8.3.4(astro@4.16.13(@types/node@22.9.0)(rollup@4.27.2)(typescript@5.6.3))
-      astro:
-        specifier: ^4.16.13
-        version: 4.16.13(@types/node@22.9.0)(rollup@4.27.2)(typescript@5.6.3)
+      defuss:
+        specifier: ^1.0.3
+        version: 1.0.3
       defuss-astro:
         specifier: ^1.0.3
         version: 1.0.3(@types/node@22.9.0)(rollup@4.27.2)(typescript@5.6.3)
       pnpm:
         specifier: ^9.13.2
         version: 9.14.2
+      vite:
+        specifier: ^5.4.11
+        version: 5.4.11(@types/node@22.9.0)
 
   packages/defuss:
     dependencies:
