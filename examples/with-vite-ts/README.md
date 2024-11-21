@@ -1,6 +1,6 @@
 <h1 align="center">
 
-<img src="./public/defuss_mascott.png" width="100px" />
+<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-vite-ts/public/defuss_mascott.png" width="100px" />
 
 `defuss`
 
@@ -20,10 +20,10 @@ With this template, you can jumpstart your next `Vite` + `defuss` project!
 
 > 👩‍💻 **Seasoned developer?** Delete this file. Have fun!
 
-![just-the-basics](./public/preview.png)
+![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-vite-ts/public/preview.png)
 
 ### ✨ It's amazing!
-![tiny](./public/build_result.png)
+![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-vite-ts/public/build_result.png)
 
 ## 🚀 Project Structure
 
@@ -50,6 +50,6 @@ All commands are run from the root of the project, from a terminal:
 
 ---
 
-<img src="./public/defuss_comic.png" />
+<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-vite-ts/public/defuss_comic.png" />
 
 <caption><i><b>Come visit us on <code>defuss</code> Island!</b></i></caption>

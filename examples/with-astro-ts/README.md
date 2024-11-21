@@ -1,6 +1,6 @@
 <h1 align="center">
 
-<img src="./public/defuss_mascott.png" width="100px" />
+<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/defuss_mascott.png" width="100px" />
 
 `defuss`
 
@@ -18,10 +18,10 @@
 
 > 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
 
-![just-the-basics](./public/preview.png)
+![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/preview.png)
 
 ### ✨ It's amazing!
-![tiny](./public/build_result.png)
+![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/preview.png)
 
 ## 🚀 Project Structure
 
@@ -72,6 +72,6 @@ Feel free to check [our documentation](https://docs.astro.build) or jump into ou
 
 ---
 
-<img src="./public/defuss_comic.png" />
+<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/defuss_comic.png" />
 
 <caption><i><b>Come visit us on <code>defuss</code> Island!</b></i></caption>
