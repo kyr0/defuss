@@ -27,11 +27,13 @@ No time for long introductions? Here is the best way to learn `defuss`:
 
 `defuss` in one picture
 
-<img src="assets/defuss_comic.png" width="400px" />
-
-<caption><i><b>Come visit us on <code>defuss</code> Island!</b></i></caption>
-
 </h3>
+
+<center>
+  <img src="assets/defuss_comic.png" width="400px" />
+
+  <caption><i><b>Come visit us on <code>defuss</code> Island!</b></i></caption>
+</center>
 
 <h3 align="center">
 
