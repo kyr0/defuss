@@ -9,11 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "defuss": "^1.0.3"
-  },
-  "devDependencies": {
+    "defuss": "^1.0.3",
     "@astrojs/node": "^8.3.4",
-    "astro": "^4.16.12",
+    "vite": "^5.4.11",
     "defuss-astro": "^1.0.3",
     "pnpm": "^9.13.2"
   },
