@@ -215,15 +215,15 @@ Should I try `defuss`? 🤔
 
 </h3>
 
-It will take you just a few minutes, and you'll potentially learn something new! So..., _**why not?**_
+It will only take you a few minutes, and you might learn something new! So, _**why not give it a try?**_
 
-I actually hope that you’ll enjoy building your next project with `defuss`! Of course you should start building a small spare-time project, before you jump in an enterprise project built on `defuss` head-first.
+I hope you’ll enjoy building your next project with **defuss**! Start small with a spare-time project before diving head-first into an enterprise-level project built on defuss.
 
-You might write a few extra lines of code, because `defuss` intentionally lacks reactivity. But on the other hand, you’ll always know exactly *what’s* happening, *where* it’s happening, and *why* it’s happening.
+For state synchonization you might write a few extra lines of code since defuss intentionally lacks reactivity. But in return, you’ll always know exactly **what’s happening, where it’s happening, and why it’s happening.**
 
-Many frameworks and libraries **won't** work with `defuss`! In the philosophy of `defuss`, that's a good thing! Read the code of your favourite library/framework, learn how it works and re-build it yourself. You'll have **fun**, it will be **exactly what you need**, you will **master** your code, and you'll become a better engineer doing so.
+Many frameworks and libraries that depend on a specific frontend framework won't work with defuss — and that’s by design! In the philosophy of `defuss`, this is a feature, not a bug. Read the code of your favorite library or framework, learn how it works, and rebuild it yourself. You’ll enjoy the process, craft exactly what you need, gain mastery over your code, and become a better engineer in the process.
 
-Worried about **stability**? Relax. There’s not much that can go wrong with `defuss`, because there’s simply not much *code* in `defuss` to begin with. `defuss` is just a thin, opinionated layer of abstraction. If something breaks, it's so tiny, simple and well-documented, that you can **fix it yourself** _(or with the help of AI, if you're still learing how to code!)_.
+Worried about **stability**? Relax. There’s not much that can go wrong with `defuss` because there’s not much *code* in `defuss` to begin with. It’s a thin, opinionated layer of abstraction. If something breaks, it’s so tiny, simple, and well-documented that you can fix it yourself — or with the help of AI, if you’re still learning how to code!
 
 - Professor Defuss
 
