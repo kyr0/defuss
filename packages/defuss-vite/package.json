@@ -42,7 +42,8 @@
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
   "files": [
-    "dist"
+    "dist",
+    "assets"
   ],
   "devDependencies": {
     "pkgroll": "^2.5.1",

@@ -63,7 +63,7 @@
   "types": "./dist/index.d.cts",
   "files": [
     "dist",
-    "coverage_report.png"
+    "assets"
   ],
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.5",

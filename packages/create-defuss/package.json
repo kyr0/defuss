@@ -1,0 +1,52 @@
+{
+  "name": "create-defuss",
+  "version": "1.0.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "description": "Checks out git projects from sub-directories. Originally for jump-starting defuss projects from templates.",
+  "keywords": [
+    "git",
+    "sparse-checkout",
+    "template",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kyr0/defuss.git"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "pretest": "pnpm run build",
+    "prebuild": "pnpm run clean",
+    "build": "pkgroll --minify --sourcemap"
+  },
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.mjs",
+      "require": "./dist/cli.cjs"
+    }
+  },
+  "bin": {
+    "create-defuss": "./dist/cli.mjs"
+  },
+  "main": "./dist/cli.cjs",
+  "module": "./dist/cli.mjs",
+  "types": "./dist/cli.d.ts",
+  "files": [
+    "dist",
+    "assets"
+  ],
+  "devDependencies": {
+    "pkgroll": "^2.5.1",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=18.17.1"
+  }
+}
