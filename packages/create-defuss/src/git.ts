@@ -41,6 +41,10 @@ export const performSparseCheckout = (repoUrl: string, destFolder?: string, scmH
     console.log("Initializing a new git repository...");
     execSync("git init", { cwd: targetPath, stdio: "inherit" });
 
+    console.log("🎉 All done! Your new project has been set up!");
+
+    console.log(`\nTo get started, run the following commands:\n\n  cd ${resolvedDestFolder}\n`);
+
   } catch (err) {
     console.error("Error during sparse checkout:", (err as Error).message);
     process.exit(1);
