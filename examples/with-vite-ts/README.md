@@ -15,7 +15,6 @@
 With this template, you can jumpstart your next `Vite` + `defuss` project!
 
 [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/kyr0/defuss/tree/main/examples/with-vite-ts)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/kyr0/defuss/tree/main/examples/with-vite-ts)
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kyr0/defuss?devcontainer_path=.devcontainer/with-vite-ts/devcontainer.json)
 
 > 👩‍💻 **Seasoned developer?** Delete this file. Have fun!
