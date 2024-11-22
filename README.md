@@ -295,13 +295,14 @@ _- Work in progress -_
 
 #### 3. Let's play `defuss`!
 
-##### 3.1 Your `defuss` portfolio website
-##### 3.2 PWA: Your portfolio becomes a digital VCard
-##### 3.3 Need for Speed: Service Workers edition
-##### 3.4 `defuss` Music: A synthesizer with Audio Worklets 
-##### 3.5 Building `defuss/devtools` as a browser extension
-##### 3.6 DOOM runs on `defuss`! Integrating WebAssembly modules
-##### 3.7 TauriSweeper: A MineSweeper-clone built with `Tauri` + `defuss`
+##### 3.1 A simple "Hello, defuss" with Vite
+##### 3.2 Your `defuss` portfolio website with Astro
+##### 3.3 PWA: Your portfolio becomes a digital VCard
+##### 3.4 Need for Speed: Service Workers edition
+##### 3.5 `defuss` Music: A synthesizer with Audio Worklets 
+##### 3.6 Building `defuss/devtools` as a browser extension
+##### 3.7 DOOM runs on `defuss`! Integrating WebAssembly modules
+##### 3.8 TauriSweeper: A MineSweeper-clone built with `Tauri` + `defuss`
 
 ### 0. Introduction
 
