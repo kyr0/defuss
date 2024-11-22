@@ -239,7 +239,7 @@ Worried about **stability**? Relax. There’s not much that can go wrong with `d
   </td>
   <td>
 
-      Hello, hello, I'm Professor Defuss! Hmm-ya, yes, yes, I can be a bit fussy at times, but don't sratch your head! I'll teach you how defuss actually works - and to write simple, elegant code... errm - defussed code! Because, as my dear uncle Einstein used to say: "Everything should be made as simple as possible, but not simpler!"
+  Hello, hello, I'm Professor Defuss! Hmm-ya, yes, yes, I can be a bit fussy at times, but don't sratch your head! I'll teach you how defuss actually works - aaand to write simple, elegant code... errm - defuss'ed code! Because, as my dear uncle Einstein used to say: "Everything should be made as simple as possible, but not simpler!"
 
   </td>
   </tr>
