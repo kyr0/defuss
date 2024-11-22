@@ -4,13 +4,13 @@ import defussPlugin from 'defuss-vite';
 
 const getRenderer = (development: boolean): AstroRenderer => ({
     name: 'defuss',
-    clientEntrypoint: 'defuss-astro/client',
-    serverEntrypoint: 'defuss-astro/server',
+    clientEntrypoint: 'defuss-astro/client.js',
+    serverEntrypoint: 'defuss-astro/server.js',
 })
 
 export const getContainerRenderer = (): ContainerRenderer => ({
     name: 'defuss',
-    serverEntrypoint: 'defuss-astro/server',
+    serverEntrypoint: 'defuss-astro/server.js',
 })
 
 export default function ({ include, exclude }: Options = {}): AstroIntegration {
@@ -22,7 +22,7 @@ export default function ({ include, exclude }: Options = {}): AstroIntegration {
 				updateConfig({
 					vite: {
                         optimizeDeps: {
-                            include: ['defuss-astro/client', 'defuss-astro/server'],
+                            include: ['defuss-astro/client.js', 'defuss-astro/server.js'],
                         },
                         plugins: [defussPlugin()],
                     },

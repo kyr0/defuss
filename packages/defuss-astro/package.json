@@ -1,6 +1,6 @@
 {
   "name": "defuss-astro",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -38,7 +38,7 @@
         "default": "./dist/index.mjs"
       }
     },
-    "./client": {
+    "./client.js": {
       "require": {
         "types": "./dist/client.d.cts",
         "default": "./dist/client.cjs"
@@ -48,7 +48,7 @@
         "default": "./dist/client.mjs"
       }
     },
-    "./server": {
+    "./server.js": {
       "require": {
         "types": "./dist/server.d.cts",
         "default": "./dist/server.cjs"

@@ -2,7 +2,9 @@
 
 <img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/defuss_mascott.png" width="100px" />
 
-`defuss`
+<p align="center">
+  <code>defuss</code>
+</p>
 
 <sup align="center">
 

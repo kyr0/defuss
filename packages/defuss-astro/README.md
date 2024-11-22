@@ -2,7 +2,9 @@
 
 <img src="assets/defuss_mascott.png" width="100px" />
 
-`defuss`
+<p align="center">
+  <code>defuss</code>
+</p>
 
 <sup align="center">
 
