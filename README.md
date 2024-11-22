@@ -295,7 +295,7 @@ _- Work in progress -_
 
 #### 3. Let's play `defuss`!
 
-##### 3.1 A simple "Hello, defuss" with Vite
+##### 3.1 A simple "Hello, Professor Defuss!" with Vite
 ##### 3.2 Your `defuss` portfolio website with Astro
 ##### 3.3 PWA: Your portfolio becomes a digital VCard
 ##### 3.4 Need for Speed: Service Workers edition
