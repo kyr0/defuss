@@ -48,7 +48,7 @@ Would you have thought that one can squeeze this into only ~320 lines of readabl
 - ✅ Extremely simple, fast, memory-efficient, and isomorphic implementation.
 - ✅ Comes with an API of just three functions: `jsx`, `render`, `renderToString`. 
 - ✅ Works with `Vite`, `Astro` and vanilla JavaScript projects.
-- ✅ It's tiny! Written in ~320 LoC. ~`2 KiB` all-in (gzip).
+- ✅ It's tiny! Written in ~320 LoC. ~`2 KiB` all-in (client, gzip).
 - ✅ Tree-shakable and side-effect free.
 - ✅ Written in modern TypeScript.
 - ✅ 100% Unit Test coverage.
@@ -76,6 +76,69 @@ Therefore, the browser can either:
 ---
 ---
 
+
+<h3 align="center">
+
+`defuss/cache` 
+
+</h3>
+
+Using `localStorage` and `sessionStorage` for caching might seem straightforward, but there are several challenges to consider. Modern browsers have private modes with security and quota limitations, which can lead to errors when attempting to write data. Additionally, in server-side rendering (SSR) environments, these APIs are unavailable, necessitating a fallback mechanism.
+
+All of these challenges can be addressed in just a few lines of clear and well-documented code.
+
+#### Features:
+
+- ✅ Write to storage using simple key/value API
+- ✅ Middleware function API allows to hook what is read and written
+- ✅ Isomorphic, works in-browser and in Node.js
+- ✅ Supports `localStorage`
+- ✅ Supports `sessionStorage`
+- ✅ Supports in-memory as an automatic fallback
+- ✅ Exposes the backend API reference of each storage provider for low-level API access
+- ✅ Tree-shakable, side-effect free
+- ✅ First class TypeScript support
+- ✅ Zero dependencies
+- ✅ 100% Unit Test coverage
+
+<img src="assets/defuss_cache_coverage_report.png"  />
+
+#### How to use `defuss/cache`?
+
+```ts
+import { cache } from 'defuss'
+
+const demoCache = cache('memory') // alternatives: 'local' | 'session' | 
+
+// store a value
+demoCache.set('abc', 123)
+
+// read a previously stored value, if not existing, return the default (0)
+const valueStored = demoCache.get('abc', 0)
+
+// remove a single value
+demoCache.remove('abc')
+
+// delete all values
+demoCache.removeAll()
+```
+
+#### How does the `defuss/cache` work?
+
+The `defuss/cache` module provides a unified API for caching across different environments, using `localStorage`, `sessionStorage`, and in-memory storage. 
+
+- **What**: It offers a simple key/value API for storage operations, supports middleware for custom read/write logic, and provides a fallback to in-memory storage when `localStorage` or `sessionStorage` are unavailable.
+  
+- **Why**: This design ensures compatibility in both browser and server-side environments, addressing limitations like private mode restrictions and SSR unavailability of web storage APIs.
+
+- **Where**: 
+  - In the browser, it uses `localStorage` and `sessionStorage` through the [`WebStorageProvider`](./src/cache/client/index.ts) class.
+  - On the server, it defaults to in-memory storage, ensuring that caching is always possible regardless of the environment, as seen in the [`server/index.ts`](./src/cache/server/index.ts).
+  - The logic for determining the storage provider is encapsulated in the [`getPersistenceProvider`](./src/cache/client/index.ts) function, which selects the appropriate storage mechanism based on the runtime context.
+
+---
+---
+
 <h3 align="center">
 
 `defuss/dequery`
@@ -92,7 +155,7 @@ As `defuss/render` only renders **once** _(and therefore is static)_, we need an
 - ✅ Can render HTML and VDOM
 - ✅ Caches results in property `.el` 
 - ✅ Supports the most important jQuery methods
-- ✅ It's tiny! Only ~175 LoC. ~`500 byte` all-in (gzip).
+- ✅ It's tiny! Only ~175 LoC
 - ✅ Zero dependencies
 - ✅ First class TypeScript support
 - ✅ Unit Test coverage almost 100%
