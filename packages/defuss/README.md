@@ -108,7 +108,7 @@ All of these challenges can be addressed in just a few lines of clear and well-d
 ```ts
 import { cache } from 'defuss'
 
-const demoCache = cache('memory') // alternatives: 'local' | 'session' | 
+const demoCache = cache('memory') // alternatives: 'local' | 'session' | 'memory'
 
 // store a value
 demoCache.set('abc', 123)
@@ -125,7 +125,7 @@ demoCache.removeAll()
 
 #### How does the `defuss/cache` work?
 
-The `defuss/cache` module provides a unified API for caching across different environments, using `localStorage`, `sessionStorage`, and in-memory storage. 
+The `defuss/cache` module provides a isomorphic (aka. "runs everywhere") API for caching across different JavaScript runtime environments, using `localStorage`, `sessionStorage`, and in-memory storage. 
 
 - **What**: It offers a simple key/value API for storage operations, supports middleware for custom read/write logic, and provides a fallback to in-memory storage when `localStorage` or `sessionStorage` are unavailable.
   
