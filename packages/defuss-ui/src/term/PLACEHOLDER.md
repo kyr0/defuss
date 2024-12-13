@@ -1,0 +1,1 @@
+Terminal specific component, based on https://xtermjs.org/
