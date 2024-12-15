@@ -6,17 +6,22 @@ import { StaticHtml } from './render.js';
 
 const slotName = (str: string) => str.trim().replace(/[-_]([a-z])/g, (_, w) => w.toUpperCase());
 
-// TODO: is a differential update possible?
-
 async function check(
 	this: RendererContext,
 	Component: any,
 	props: Record<string, any>,
 	children: any,
 ) {
+	
 	if (typeof Component !== 'function') return false;
-
-	console.log('server check', this);
+	if (Component.name === 'QwikComponent') return false;
+	// Svelte component renders fine by Solid as an empty string. The only way to detect
+	// if this isn't a Solid but Svelte component is to unfortunately copy the check
+	// implementation of the Svelte renderer.
+	if (Component.toString().includes('$$payload')) return false;
+	// Preact forwarded-ref components can be functions, which we do not support
+	if (typeof Component === 'function' && Component.$$typeof === Symbol.for('react.forward_ref'))
+		return false;
 
 	return true; // always (re-)render for now (TODO: implement proper check)
 }
@@ -29,20 +34,23 @@ async function renderToStaticMarkup(
 	metadata: AstroComponentMetadata | undefined,
 ) {
 
-	console.log('server render', this);
-
-	// we use "classic" runtime, so we need to set the global jsx function
-	// otherwise it would need to be imported in every component
-	(globalThis as any).jsx = jsx;
+	const needsHydrate = metadata?.astroStaticSlot ? !!metadata.hydrate : true;
+	const tagName = needsHydrate ? 'astro-slot' : 'astro-static-slot';
 
 	const slots: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(slotted)) {
 		const name = slotName(key);
-		slots[name] = StaticHtml(value);
+		slots[name] = StaticHtml(`<${tagName} name="${name}">${value}</${tagName}>`);
 	}
 
+	// Note: create newProps to avoid mutating `props` before they are serialized
 	// traverse the props object and create a new object with the same values
-	const componentProps: Props = { ...props };
+	const componentProps: Props = {
+		...props,
+		...slots,
+		// In Solid SSR mode, `ssr` creates the expected structure for `children`.
+		children: children != null ? StaticHtml(`<${tagName}>${children}</${tagName}>`) : children
+	};
 
 	// children is a special prop that contains the children of the component
 	if (children) {
@@ -50,7 +58,7 @@ async function renderToStaticMarkup(
 	}
 
 	// turn the component AST into an actual DOM element and attach it to the element passed in
-	const dom: HTMLElement = render(Component(componentProps)) as HTMLElement;
+	let roots: HTMLElement|Array<HTMLElement> = render(Component(componentProps)) as HTMLElement;
 
 	const attrs = {};
 	
@@ -61,8 +69,14 @@ async function renderToStaticMarkup(
 		}
 	}
 
-	const html = renderToString(dom);
+	if (!Array.isArray(roots)) {
+		roots = [roots];
+	}
 
+	let html = '';
+	for (const el of roots) {
+		html += renderToString(el);
+	}
 	return { attrs, html };
 }
 
@@ -71,6 +85,15 @@ const renderer: NamedSSRLoadedRendererValue = {
 	check,
 	renderToStaticMarkup,
 	supportsAstroStaticSlot: true,
+	/*
+	renderHydrationScript: () => {
+		console.log('renderHydrationScript');
+		return `<script>
+	const scriptEl = document.currentScript;
+	(console.log("hydrating", scriptEl))
+</script>`;
+	},
+	*/
 };
 
 export default renderer;

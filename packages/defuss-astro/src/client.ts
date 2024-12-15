@@ -1,8 +1,5 @@
-import { type Props, render } from 'defuss/client'
-import { jsx } from 'defuss'
+import { hydrate, type Props, render} from 'defuss/client'
 import { StaticHtml } from './render.js';
-
-// TODO: is a differential update possible?
 
 export default (element: HTMLElement) =>
 	async (
@@ -12,20 +9,21 @@ export default (element: HTMLElement) =>
 		{ client }: Record<string, string>,
 	) => {
 
-		console.log('client render', client);
-		
+		const isHydrate = element.hasAttribute('ssr') && (client === 'visible' || client === 'idle' || client === 'load'|| client === 'media')
+
 		if (!element.hasAttribute('ssr')) return;
-
-		// we use "classic" runtime, so we need to set the global jsx function
-		// otherwise it would need to be imported in every component
-		(globalThis as any).jsx = jsx;
-
+		
+		// <slot> mechanics
 		Object.entries(slotted).forEach(([key, value]) => {
 			props[key] = StaticHtml(value);
 		});
 
 		// traverse the props object and create a new object with the same values
-		const componentProps: Props = { ...props };
+		const componentProps: Props = { 
+			...props,
+			// set hydration key to the component name by default, if not already set
+			key: props.key || Component.name 
+		};
 
 		// children is a special prop that contains the children of the component
 		if (children) {
@@ -43,20 +41,62 @@ export default (element: HTMLElement) =>
 			componentProps.children = children;
 		}
 
-		// turn the component AST into an actual DOM element and attach it to the element passed in
-		const dom: HTMLElement = render(Component(componentProps), element) as HTMLElement;
+		if (isHydrate) {
 
-		// set all props as top level attributes
-		for (const [key, value] of Object.entries(props)) {
-			if (key !== 'children') {
-				dom.setAttribute(key, value);
+			//console.log('hydrate! name', Component.name, Component, 'props', props, 'slotted', slotted, 'children', children, 'client', client);
+
+			// just call the function tree, but do not render; 
+			// implementing hydration is atomic and the responsibility of each respective component
+			let roots = Component(componentProps)
+
+			if (!Array.isArray(roots)) {
+				roots = [roots];
 			}
+
+			//console.log("roots", roots)
+			//console.log("vs. existing childNodes", Array.from(element.childNodes))
+
+			hydrate(roots, Array.from(element.childNodes));
+
+		} else {
+
+			// remove suspense element
+			element.innerHTML = '';
+
+			//console.log('client:only', Component, 'props', props, 'slotted', slotted, 'children', children, 'client', client);
+
+			// turn the component AST into an actual DOM element and attach it to the element passed in
+			// the Array<> case is, when a component uses a Fragment (<></<>) as the top-level child (root of sub-tree)
+			let roots: HTMLElement|Array<HTMLElement> = render(Component(componentProps), element) as HTMLElement;
+
+			if (!Array.isArray(roots)) {
+				roots = [roots];
+			}
+
+			const attrs = {};
+			
+			// set all props as top level attributes
+			for (const [key, value] of Object.entries(props)) {
+				if (key !== 'children') {
+					(attrs as Record<string, unknown>)[key] = value;
+				}
+			}
+
+			Object.entries(attrs).forEach(([key, value]) => {
+				element.setAttribute(key, String(value)); // set each attribute on the root element
+			});
+
+			element.addEventListener('astro:unmount', () => {
+				// remove each root from its parent
+				roots.forEach(root => {
+					if (root.parentNode) {
+						root.parentNode.removeChild(root);
+					}
+				});
+			}, { once: true });
 		}
 
 		element.addEventListener('astro:unmount', () => {
-			// remove the rendered component from the DOM
-			if (dom.parentNode) {
-				dom.parentNode.removeChild(dom);
-			}
-    }, { once: true });
+			element.innerHTML = ''; // scrub the element subtree
+		}, { once: true });
 	};

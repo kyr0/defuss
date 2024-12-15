@@ -18,4 +18,5 @@ export interface Dequery {
   toggleClass(className: string): Dequery;
   on(eventName: string, handler: EventListener): Dequery;
   off(eventName: string, handler: EventListener): Dequery;
+  append(content: string | Element | DocumentFragment | Element[]): Dequery;
 }

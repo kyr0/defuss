@@ -1,5 +1,5 @@
 import type { Dequery } from '../dequery/types.js'
-import type { VNodeChild, VNodeChildren, VNode, VNodeType, Ref, VNodeAttributes, DomAbstractionImpl, Globals } from './types.js'
+import type { VNodeChild, VNodeChildren, VNode, VNodeType, Ref, VNodeAttributes, DomAbstractionImpl, Globals, RefUpdateFn } from './types.js'
 
 const CLASS_ATTRIBUTE_NAME = 'class'
 const XLINK_ATTRIBUTE_NAME = 'xlink'
@@ -22,51 +22,67 @@ const isJSXComment = (node: VNode): boolean =>
 const filterComments = (children: Array<VNode> | Array<VNodeChild>) =>
   children.filter((child: VNodeChild) => !isJSXComment(child as VNode))
 
-const onUpdateFn = function (this: Ref, callback: Function) {
-  this.update = callback as any
+export function createRef<T extends Node | Element | Text | null = null, D = unknown>(refUpdateFn?: RefUpdateFn<D>): Ref<T, D> {
+  const ref: Ref<T, D> = { 
+    $subscriberFns: [],
+    current: null as T,
+    update: (state: D) => {
+      ref.$subscriberFns.forEach(fn => fn(state));
+    },
+    subscribe: (refUpdateFn: RefUpdateFn<D>) => {
+      ref.$subscriberFns.push(refUpdateFn);
+      // unsubscribe function
+      return () => {
+        const index = ref.$subscriberFns.indexOf(refUpdateFn);
+        if (index !== -1) {
+          ref.$subscriberFns.splice(index, 1);
+        }
+      }
+    },
+  }
+
+  if (typeof refUpdateFn === 'function') {
+    ref.subscribe(refUpdateFn);
+  }
+  return ref;
 }
 
 export const jsx = (
-  // if it is a function, it is a component
   type: VNodeType | Function | any,
   attributes: (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>) | null,
-  ...children: Array<VNodeChildren> | VNodeChildren
 ): Array<VNode> | VNode => {
+
+  // clone attributes as well
+  attributes = { ...attributes }
+
+  // extract children from attributes and ensure it's always an array
+  let children: Array<VNodeChild> = (attributes?.children ? [].concat(attributes.children) : []).filter(Boolean);
+  delete attributes?.children;
+
   children = filterComments(
     // Implementation to flatten virtual node children structures like:
     // [<p>1</p>, [<p>2</p>,<p>3</p>]] to: [<p>1</p>,<p>2</p>,<p>3</p>]
     ([] as Array<VNodeChildren>).concat.apply([], children as any) as Array<VNodeChildren>,
   )
 
-  // clone attributes as well
-  attributes = { ...attributes }
-
   // effectively unwrap by directly returning the children
   if (type === 'fragment') {
-    return filterComments(children) as Array<VNode>
+    return filterComments(children) as Array<VNode>;
   }
 
   // it's a component, divide and conquer children
   if (typeof type === 'function') {
-    if (attributes.ref) {
-      // references an onUpdate assignment function to be called inside of the functional component
-      // to register an "update" function that can be called from the outside (ref.current.update(state?))
-      ;(attributes.ref as Ref)!.onUpdate = onUpdateFn.bind(attributes.ref as Ref) as any
-    }
-
     return type({
       children,
       ...attributes,
     })
   }
 
-  // @ts-ignore as type allows for Function here, but internally we wouldn't
-  // want to deal with Function, only "string". However, in this method it is indeed possible
   return {
     type,
-    attributes: attributes as any,
+    attributes,
     children,
-  }
+  };
 }
 
 export const getRenderer = (document: Document): DomAbstractionImpl => {
@@ -104,17 +120,18 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       }
 
       if (virtualNode.attributes) {
-        // dangerouslySetInnerHTML={{ __html: '<... />' }}
-        if ('dangerouslySetInnerHTML' in virtualNode.attributes) {
-          newEl.innerHTML = virtualNode.attributes.dangerouslySetInnerHTML?.__html
-          delete virtualNode.attributes.dangerouslySetInnerHTML 
-        }
         renderer.setAttributes(virtualNode.attributes, newEl as Element)
+
+        // Apply dangerouslySetInnerHTML if provided
+        if (virtualNode.attributes.dangerouslySetInnerHTML) {
+          newEl.innerHTML = virtualNode.attributes.dangerouslySetInnerHTML.__html;
+        }
       }
 
       if (virtualNode.children) {
         renderer.createChildElements(virtualNode.children, newEl as Element)
       }
+
 
       if (parentDomElement) {
         parentDomElement.appendChild(newEl)
@@ -161,35 +178,40 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
     setAttribute: (name: string, value: any, domElement: Element) => {
       // attributes not set (undefined) are ignored; use null value to reset an attributes state
       if (typeof value === 'undefined') return
+      if (name === 'dangerouslySetInnerHTML') return;
 
       // save ref as { current: DOMElement } in ref object
       // allows for ref={someRef}
       if (name === REF_ATTRIBUTE_NAME && typeof value !== 'function') {
         value.current = domElement
-      } else if (name === REF_ATTRIBUTE_NAME && typeof value === 'function') {
+      }/* else if (name === REF_ATTRIBUTE_NAME && typeof value === 'function') {
         // allow for functional ref's like: render(<div ref={(el) => console.log('got el', el)} />)
         value(domElement)
-      }
+      }*/
 
       if (name.startsWith('on') && typeof value === 'function') {
+
         let eventName = name.substring(2).toLowerCase()
         const capturePos = eventName.indexOf('capture')
         const doCapture = capturePos > -1
 
         if (eventName === 'mount') {
-          ;(domElement as any).$onMount = value
+          ;(domElement as any).$onMount = value // lifecycle hook
         }
 
         // onClickCapture={...} support
         if (doCapture) {
           eventName = eventName.substring(0, capturePos)
+
+          // mark this event as a capture event to be registered correctly in hydration phase
+          //domElement.setAttribute(`data-defuss-capture-${eventName}`, "true")
         }
         domElement.addEventListener(eventName, value, doCapture)
         return
       }
 
       // transforms className="..." -> class="..."
-      // allows for React TSX to work seamlessly
+      // allows for React JSX to work seamlessly
       if (name === 'className') {
         name = CLASS_ATTRIBUTE_NAME
       }
@@ -249,4 +271,19 @@ export const renderIsomorphic = (
   return getRenderer(globals.window.document).createElementOrElements(virtualNode, parentEl)
 }
 
+// --- JSX standard (necessary exports for jsx-runtime)
 export const Fragment = (props: VNode) => props.children
+export const jsxs = jsx
+export const jsxDEV = jsx
+
+export default {
+  jsx,
+  Fragment,
+  renderIsomorphic,
+  getRenderer,
+
+  // implementing the full standard
+  // https://github.com/reactjs/rfcs/blob/createlement-rfc/text/0000-create-element-changes.md
+  jsxs,
+  jsxDEV,
+};

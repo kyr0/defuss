@@ -1,5 +1,6 @@
 // we need a few imports from the library (TypeScript-only)
-import { type Props, type Ref, $, jsx } from "defuss"
+import { type Props, $ } from "defuss"
+import { createRef } from '../../../packages/defuss/src/render/isomorph';
 
 // When using TypeScript, interfaces come in handy
 // They help with good error messages!
@@ -15,7 +16,7 @@ export function Counter({ label }: CounterProps) {
 
   // References the DOM element once it becomes visible.
   // When it's gone, the reference is gone. Easy? Yeah.
-  const ref: Ref = {}
+  const ref = createRef();
 
   // A vanilla JavaScript variable. No magic here!
   let clickCounter = 0

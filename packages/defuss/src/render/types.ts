@@ -134,19 +134,20 @@ export interface KeyFrameProperties {
   '100%'?: Partial<CSSProperties>
 }
 
-export type UpdateFn = (state?: any) => void
+export type RefUpdateFn<D> = (state: D) => void
 
-export interface Ref {
-  current?: any
-  update?: UpdateFn
-  onUpdate?: (updateFn: UpdateFn) => void
+export interface Ref<T = null | Node | Element | Text, D = unknown> {
+  $subscriberFns: RefUpdateFn<D>[]
+  current: T,
+  update: RefUpdateFn<D>
+  subscribe: (refUpdateFn: RefUpdateFn<D>) => /* unsubscribe function */ () => void
 }
 
-export type VRef = (el: Element) => void
+//export type VRef = (el: Element) => void
 
 export interface VAttributes {
   // typing; detect ref
-  ref?: Ref | VRef
+  ref?: Ref //| VRef
 
   // array-local unique key to identify element items in a NodeList
   key?: string
@@ -673,7 +674,7 @@ declare global {
 
     export interface DOMAttributes extends VAttributes, DOMAttributeEventHandlersLowerCase {
       // defuss custom attributes
-      ref?: Ref | VRef | undefined
+      ref?: Ref /*| VRef*/
 
       // defuss custom events
       onMount?: Function
@@ -1019,7 +1020,7 @@ declare global {
     }
 
     export interface HTMLAttributes extends HTMLAttributesLowerCase, DOMAttributes {
-      ref?: Ref | VRef | undefined
+      ref?: Ref // | VRef
 
       dangerouslySetInnerHTML?: {
         __html: string
@@ -1352,6 +1353,9 @@ export interface Props {
 
   // allow for forwardRef
   ref?: Ref
+
+  // array-local unique key to identify element items in a NodeList
+  key?: string
 }
 
 export type RenderNodeInput = VNode | string | undefined

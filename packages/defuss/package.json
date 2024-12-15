@@ -1,6 +1,6 @@
 {
   "name": "defuss",
-  "version": "1.1.0",
+  "version": "1.3.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -55,6 +55,26 @@
       "import": {
         "types": "./dist/render/client.d.ts",
         "default": "./dist/render/client.mjs"
+      }
+    },
+    "./jsx-runtime": {
+      "require": {
+        "types": "./dist/render/index.d.ts",
+        "default": "./dist/render/index.cjs"
+      },
+      "import": {
+        "types": "./dist/render/index.d.ts",
+        "default": "./dist/render/index.mjs"
+      }
+    },
+    "./jsx-dev-runtime": {
+      "require": {
+        "types": "./dist/render/index.d.ts",
+        "default": "./dist/render/index.cjs"
+      },
+      "import": {
+        "types": "./dist/render/index.d.ts",
+        "default": "./dist/render/index.mjs"
       }
     }
   },

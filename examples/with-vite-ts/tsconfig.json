@@ -20,9 +20,8 @@
     "noFallthroughCasesInSwitch": true,
 
     /* defuss JSX */
-    "jsx": "react",
-    "jsxFactory": "jsx",
-    "jsxFragmentFactory": "Fragment",
+    "jsx": "react-jsx",
+    "jsxImportSource": "defuss"
   },
   "include": ["src"]
 }

@@ -5,8 +5,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "types": ["vitest/globals"],
-    "jsx": "react",
-    "jsxFactory": "jsx",
-    "jsxFragmentFactory": "Fragment"
+    "jsx": "react-jsx",
+    "jsxImportSource": "defuss"
   }
 }

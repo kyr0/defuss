@@ -51,6 +51,8 @@ export default function defussVitePlugin({
         config() {
             return {
                 esbuild: {
+                    // we want Vite to handle JSX transformations
+                    jsxImportSource: "defuss",
                     jsxFactory: 'jsx',
                     jsxFragment: 'Fragment',
                 },
@@ -104,10 +106,25 @@ export default function defussVitePlugin({
                     ...babelOptions.plugins,
                     [
                         "@babel/plugin-transform-react-jsx",
+
+                        /** Options
+                         * 
+                            filter?: (node: t.Node, pass: PluginPass) => boolean;
+                            importSource?: string;
+                            pragma?: string;
+                            pragmaFrag?: string;
+                            pure?: string;
+                            runtime?: "automatic" | "classic";
+                            throwIfNamespace?: boolean;
+                            useBuiltIns: boolean;
+                            useSpread?: boolean;
+                         */
                         {
-                            runtime: 'classic',
-                            pragma: 'jsx',
-                            throwIfNamespace: false, // Bypass namespace tag error
+                            runtime: "automatic",   // Automatically imports jsx from "defuss"
+                            importSource: "defuss", // Automatically imports jsx from "defuss"
+                            //pragma: "jsx",          // Use jsx() for all JSX, including fragments
+                            //pragmaFrag: "jsx",      // Use jsx() for fragments as well
+                            throwIfNamespace: false // Bypass namespace tag error
                         },
                     ],
                 ],

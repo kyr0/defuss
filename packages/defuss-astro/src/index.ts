@@ -13,7 +13,7 @@ export const getContainerRenderer = (): ContainerRenderer => ({
     serverEntrypoint: 'defuss-astro/server.js',
 })
 
-export default function ({ include, exclude }: Options = {}): AstroIntegration {
+export default function ({ include, exclude, devtools }: Options = {}): AstroIntegration {
 	return {
 		name: 'defuss',
 		hooks: {
@@ -21,12 +21,17 @@ export default function ({ include, exclude }: Options = {}): AstroIntegration {
 				addRenderer(getRenderer(command === 'dev'));
 				updateConfig({
 					vite: {
-                        optimizeDeps: {
-                            include: ['defuss-astro/client.js', 'defuss-astro/server.js'],
-                        },
-                        plugins: [defussPlugin()],
-                    },
+						optimizeDeps: {
+							include: ['defuss-astro/client.js', 'defuss-astro/server.js'],
+						},
+						plugins: [defussPlugin()],
+					},
 				});
+
+				/**
+				 * if (command === 'dev' && devtools) {
+					injectScript('page', 'import "preact/debug";');
+				}*/
 			},
 		},
 	};

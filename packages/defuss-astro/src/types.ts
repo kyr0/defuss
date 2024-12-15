@@ -8,6 +8,5 @@ export type RendererContext = {
 export type ArrayObjectMapping = [string, number | string][];
 
 export interface Options extends Pick<DefussVitePluginOptions, "exclude" | "include"> {
-	compat?: boolean;
 	devtools?: boolean;
 }

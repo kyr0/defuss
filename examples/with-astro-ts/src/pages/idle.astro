@@ -2,12 +2,15 @@
 import Layout from "../layouts/Layout.astro";
 import { App } from "../components/App";
 
+export const prerender = false;
+
+// server state, to be hydrated on the client
 const random = Math.round(Math.random() * 100);
 ---
 
 <Layout title="Welcome to Astro.">
 	<div class="app">
-		<App client:load clickCount={random}>
+		<App client:idle clickCount={random}>
 			<div slot="fallback">Loading...</div>
 		</App>
 		&nbsp; Random SSR: {random} &nbsp;

@@ -74,3 +74,22 @@ export const on = (target: Element | Window, impl: Dequery) => (eventName: strin
   target.addEventListener(eventName, handler);
   return impl;
 };
+
+export const append = (el: Element, impl: Dequery) => {
+  return (content: string | Element | DocumentFragment | Array<Element>) => {
+    if (typeof content === 'string') {
+      el.insertAdjacentHTML('beforeend', content);
+    } else if (content instanceof Element) {
+      el.appendChild(content);
+    } else if (content instanceof DocumentFragment) {
+      el.appendChild(content);
+    } else if (Array.isArray(content)) {
+      content.forEach((child) => {
+        if (child instanceof Element) {
+          el.appendChild(child);
+        }
+      });
+    }
+    return impl;
+  };
+};
