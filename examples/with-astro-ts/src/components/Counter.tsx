@@ -1,5 +1,6 @@
 // we need a few imports from the library (TypeScript-only)
 import { type Props, $, createRef } from "defuss"
+import "./Counter.css"
 
 // When using TypeScript, interfaces come in handy
 // They help with good error messages!
@@ -56,7 +57,7 @@ export function Counter({ label, ref, clickCount }: CounterProps) {
   // At runtime, the virtual DOM is rendered and displayed in the browser.
   // It usually is pre-rendered (SSR) on server-side and hydrated in the browser.
   return (
-    <button type="button" ref={buttonRef} onClick={onUpdateLabel} onMount={onMount} onMouseDownCapture={onMouseDownCapture}>
+    <button class="Counter" type="button" ref={buttonRef} onClick={onUpdateLabel} onMount={onMount} onMouseDownCapture={onMouseDownCapture}>
       {/* This label is rendered *once*. It will never change reactively! */}
       {/* Only with *explicit* code, will the content of this <button> change. */}
       {renderLabel(clickCount, label)}

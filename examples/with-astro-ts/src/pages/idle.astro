@@ -8,11 +8,11 @@ export const prerender = false;
 const random = Math.round(Math.random() * 100);
 ---
 
-<Layout title="Welcome to Astro.">
-	<div class="app">
-		<App client:idle clickCount={random}>
-			<div slot="fallback">Loading...</div>
-		</App>
-		&nbsp; Random SSR: {random} &nbsp;
-	</div>
+<Layout title="Welcome to Astro + defuss client:idle">
+	<App client:idle clickCount={random}>
+		<div slot="fallback">Loading...</div>
+	</App>
+	<p>
+		- Random SSR: {random} -
+	</p>
 </Layout>

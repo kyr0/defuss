@@ -1,4 +1,8 @@
 ---
+import { ClientRouter } from "astro:transitions";
+
+import "defuss-reset";
+import "defuss-windy";
 import "./Layout.css";
 
 interface Props {
@@ -7,15 +11,27 @@ interface Props {
 ---
 
 <!doctype html>
-<html lang="en">
+<html class="dark" lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" type="image/png" href="/defuss_mascott.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="keywords"
+			content="Astro, TypeScript, defuss, web development, modern web, frontend"
+		/>
+		<meta
+			name="description"
+			content="Explore the integration of Astro, TypeScript, and defuss for modern web development."
+		/>
 		<title>{Astro.props.title}</title>
+
+		<ClientRouter />
 	</head>
 
-	<body>
-		<slot />
+	<body class="flex items-center h-screen bg-background text-foreground">
+		<div class="mx-auto text-center" style="max-width: 1280px">
+			<slot />
+		</div>
 	</body>
 </html>

@@ -1,4 +1,4 @@
-type Listener<T> = (newValue: T, oldValue?: T, changedKey?: string) => void;
+export type Listener<T> = (newValue: T, oldValue?: T, changedKey?: string) => void;
 
 export interface Store<T> {
   value: T;

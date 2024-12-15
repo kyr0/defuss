@@ -9,7 +9,8 @@ export default (element: HTMLElement) =>
 		{ client }: Record<string, string>,
 	) => {
 
-		const isHydrate = element.hasAttribute('ssr') && (client === 'visible' || client === 'idle' || client === 'load'|| client === 'media')
+		const isHydrate = element.hasAttribute('ssr') && 
+											(client === 'visible' || client === 'idle' || client === 'load'|| client === 'media')
 
 		if (!element.hasAttribute('ssr')) return;
 		

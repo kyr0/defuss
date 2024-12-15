@@ -1,0 +1,16 @@
+.Logo {
+  height: 8rem;
+  width: 8rem;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.Logo:hover {
+  filter: drop-shadow(0 0 3em var(--color-secondary));
+}
+
+.Card {
+  padding: 2em;
+}
+  
