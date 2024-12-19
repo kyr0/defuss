@@ -1,0 +1,3 @@
+- implement custom Promise chain for quasi-asnychonous operation, but keep it simple
+- implement transparent, atomic client/server cache synchronization
+- look into https://github.com/unjs/unstorage/tree/main/src/drivers for drivers

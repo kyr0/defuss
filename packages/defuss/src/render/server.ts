@@ -1,7 +1,8 @@
-import { parseHTML } from 'linkedom'
+import * as HappyDom from 'happy-dom'
 import { renderIsomorphic } from './isomorph.js'
 import type { RenderInput, RenderResult, Globals } from './types.js'
 import type { Dequery } from '../dequery/types.js'
+import serializeHtml from 'w3c-xmlserializer'
 
 export interface RenderOptions {
   /** choose an arbitrary server-side DOM / Document implementation; this library defaults to 'linkedom'; default: undefined */
@@ -20,7 +21,7 @@ export const render = <T extends RenderInput>(
   const document = getDocument(options.createRoot, browserGlobals)
 
   if (!parentDomElement) {
-    parentDomElement = createRoot(document)
+    parentDomElement = document.documentElement
   }
   return renderIsomorphic(virtualNode, parentDomElement, browserGlobals) as any
 }
@@ -31,7 +32,9 @@ export const createRoot = (document: Document): Element => {
   return document.documentElement
 }
 
-export const getBrowserGlobals = (initialHtml?: string): Globals => parseHTML(initialHtml || '')
+export const getBrowserGlobals = (initialHtml = '<!DOCTYPE html>'): Globals => {
+  return new HappyDom.Window({ url: "http://localhost/" }) as unknown as (Window & typeof globalThis)
+}
 
 export const getDocument = (shouldCreateRoot = false, browserGlobals?: Globals): Document => {
   const document = (browserGlobals || getBrowserGlobals()).document
@@ -42,6 +45,6 @@ export const getDocument = (shouldCreateRoot = false, browserGlobals?: Globals):
   return document
 }
 
-export const renderToString = (el: Node) => el.toString()
+export const renderToString = (el: Node) => serializeHtml(el).replaceAll(' xmlns="http://www.w3.org/1999/xhtml"', '')
 
 export * from './index.js'

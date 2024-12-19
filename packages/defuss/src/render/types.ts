@@ -151,6 +151,7 @@ export interface VAttributes {
 
   // array-local unique key to identify element items in a NodeList
   key?: string
+
 }
 
 export interface VNodeAttributes extends VAttributes {
@@ -161,6 +162,8 @@ export interface VNode<A = VNodeAttributes> {
   type: VNodeType
   attributes: A
   children?: VNodeChildren
+  // reference to the function holding the code
+  $$type?: VNodeType
 }
 
 
@@ -193,9 +196,9 @@ export interface DomAbstractionImpl {
 
   createChildElements(virtualChildren: VNodeChildren, parentDomElement?: Element): Array<Element | Text | undefined>
 
-  setAttribute(name: string, value: any, parentDomElement: Element, forceNative?: boolean): void
+  setAttribute(name: string, value: any, parentDomElement: Element, attributes: VNodeAttributes): void
 
-  setAttributes(attributes: any, parentDomElement: Element, forceNative?: boolean): void
+  setAttributes(attributes: VNode<VNodeAttributes>, parentDomElement: Element): void
 }
 
 declare global {
@@ -476,12 +479,14 @@ declare global {
     export type WheelEventHandler = EventHandler<WheelEvent>
     export type AnimationEventHandler = EventHandler<AnimationEvent>
     export type TransitionEventHandler = EventHandler<TransitionEvent>
+    export type ProgressEventHandler = EventHandler<ProgressEvent>
     export type GenericEventHandler = EventHandler<Event>
     export type PointerEventHandler = EventHandler<PointerEvent>
 
     export interface DOMAttributeEventHandlersLowerCase {
-      // defuss custom events
+      // defuss custom elment lifecycle events
       onmount?: Function
+      onunmount?: Function
 
       // Image Events
       onload?: GenericEventHandler
@@ -558,8 +563,8 @@ declare global {
       onplaycapture?: GenericEventHandler
       onplaying?: GenericEventHandler
       onplayingcapture?: GenericEventHandler
-      onprogress?: GenericEventHandler
-      onprogresscapture?: GenericEventHandler
+      onprogress?: ProgressEventHandler
+      onprogresscapture?: ProgressEventHandler
       onratechange?: GenericEventHandler
       onratechangecapture?: GenericEventHandler
       onseeked?: GenericEventHandler
@@ -676,8 +681,9 @@ declare global {
       // defuss custom attributes
       ref?: Ref /*| VRef*/
 
-      // defuss custom events
+      // defuss custom element lifecycle events
       onMount?: Function
+      onUnmount?: Function
 
       // Image Events
       onLoad?: GenericEventHandler
@@ -1356,6 +1362,9 @@ export interface Props {
 
   // array-local unique key to identify element items in a NodeList
   key?: string
+
+  // optional callback handler for errors (can be implemented inside of the component)
+  onError?: (cb: (error: unknown) => void) => void
 }
 
 export type RenderNodeInput = VNode | string | undefined

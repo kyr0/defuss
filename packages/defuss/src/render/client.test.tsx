@@ -9,8 +9,8 @@ customElements.define(
   'my-paragraph', 
   class extends HTMLElement {
     constructor() {
-      super()
-
+      super() 
+ 
       const template = render(<p>Foo</p>) as Element
 
       this.attachShadow({ mode: 'open' }).appendChild(template.cloneNode(true))

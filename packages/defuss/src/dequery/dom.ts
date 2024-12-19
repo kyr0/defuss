@@ -44,6 +44,7 @@ export const text = (el: Element, impl: Dequery) => (text: string) => {
 };
 
 export const remove = (el: Element, impl: Dequery) => () => {
+  console.log('remove', el);
   if (el.parentNode) el.parentNode.removeChild(el);
   return impl;
 };

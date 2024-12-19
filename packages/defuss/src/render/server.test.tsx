@@ -8,11 +8,11 @@ import type { RenderInput, RenderResult, Props, VNode } from './server.js'
 import { getRenderer, createRef } from './isomorph.js'
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
-
+ 
 const getBrowserGlobalsWithCustomElementRegistered = () => {
   const browserGlobals = getBrowserGlobals()
   const { HTMLElement, customElements } = browserGlobals
-
+ 
   customElements.define(
     'my-paragraph',
     class extends HTMLElement {
@@ -37,6 +37,8 @@ describe('server render', () => {
         <body></body>
       </html>,
     ) as Element
+
+
 
     expect(render).toBeDefined()
     expect(el.nodeName).toEqual('HTML')
@@ -186,16 +188,16 @@ describe('VirtualDOM', () => {
   })
 
   it('can render to document.body', () => {
-    const divRef = createRef<HTMLElement>();
-    expect((render(<div ref={divRef} />) as Element).nodeName).toEqual('DIV')
+    const divRef = createRef<HTMLDivElement>();
+    expect((render(<div ref={divRef} id="foo"/>) as Element).nodeName).toEqual('DIV')
     expect(divRef.current.nodeName).toEqual('DIV')
-    expect(divRef.current.parentNode!.childNodes[0]).toEqual(divRef.current)
+    expect(divRef.current.parentElement?.querySelector('#foo')).toEqual(divRef.current)
   })
 
   it('can render text to document.body', () => {
-    const document: Document = getDocument(true)
-    expect((render('Mesg', document.documentElement) as Element).nodeName).toEqual('#text')
-    expect(document.documentElement.textContent).toEqual('Mesg')
+    const node = render('Mesg') as Element
+    expect((node).nodeName).toEqual('#text')
+    expect(node.ownerDocument.documentElement.textContent).toEqual('Mesg')
   })
 
   it('can render Text', () => {
@@ -229,14 +231,14 @@ describe('VirtualDOM', () => {
           </svg>,
         ) as Element
       ).nodeName,
-    ).toEqual('SVG')
+    ).toEqual('svg')
   })
 
   it('can render SVG elements to string', () => {
     expect(
       renderToString(
         render(
-          <svg
+          <svg 
             className="star__svg"
             xmlns="http://www.w3.org/2000/svg"
             xmlnsXlink="http://www.w3.org/1999/xlink"
@@ -253,7 +255,7 @@ describe('VirtualDOM', () => {
         ) as Node,
       ), 
     ).toEqual(
-      '<svg viewBox="0 0 32 32" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" class="star__svg"><path class="star__svg__path" /><rect height="32" width="32" fill="none" /><use xlink:title="zurück zum Wiki-Artikel" xlink:href="//wiki.selfhtml.org/wiki/SVG/Elemente/Verweise"><text y="60" x="140">zurück zum Wiki-Artikel (mit XLink:href)</text></use></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" class="star__svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32 32"><path class="star__svg__path"/><rect fill="none" width="32" height="32"/><use xlink:href="//wiki.selfhtml.org/wiki/SVG/Elemente/Verweise" xlink:title="zurück zum Wiki-Artikel"><text x="140" y="60">zurück zum Wiki-Artikel (mit XLink:href)</text></use></svg>',
     ) 
   })
 
@@ -273,10 +275,10 @@ describe('VirtualDOM', () => {
         ) as Node,
       ),
     ).toEqual(
-      '<svg viewBox="0 0 32 32" class="star__svg"><path class="star__svg__path" /><rect height="32" width="32" fill="none" /><use xlink:title="zurück zum Wiki-Artikel" xlink:href="//wiki.selfhtml.org/wiki/SVG/Elemente/Verweise"><text y="60" x="140">zurück zum Wiki-Artikel (mit XLink:href)</text></use></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" class="star__svg" viewBox="0 0 32 32"><path class="star__svg__path"/><rect fill="none" width="32" height="32"/><use xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="//wiki.selfhtml.org/wiki/SVG/Elemente/Verweise" ns1:title="zurück zum Wiki-Artikel"><text x="140" y="60">zurück zum Wiki-Artikel (mit XLink:href)</text></use></svg>',
     )
   }) 
-
+ 
   it('can render undefined values', () => {
     expect((render(undefined) as Text).nodeName).toEqual('#text')
   })
@@ -666,7 +668,7 @@ describe('getRenderer', () => {
       const newEl = renderer.createElement(virtualNode, parentDomElement) as Element
 
       expect(newEl).toBeDefined()
-      expect(newEl.tagName).toEqual('SVG')
+      expect(newEl.tagName).toEqual('svg')
     })
 
     it('should create a new SVGElement when the parent DOM element has the SVG namespace', () => {
@@ -676,7 +678,7 @@ describe('getRenderer', () => {
       const newEl = renderer.createElement(virtualNode, parentDomElement) as Element
 
       expect(newEl).toBeDefined()
-      expect(newEl.tagName).toEqual('CIRCLE')
+      expect(newEl.tagName).toEqual('circle')
     })
 
     it('should append the new element to the parent DOM element', () => {

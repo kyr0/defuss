@@ -1,6 +1,8 @@
-// we need a few imports from the library (TypeScript-only)
-import { type Props, $, createRef } from "defuss"
 import "./Counter.css"
+
+// we need a few imports from the library (TypeScript-only)
+import { type Props, $, createRef, onError, onMount, onUnmount, dequery } from "defuss"
+
 
 // When using TypeScript, interfaces come in handy
 // They help with good error messages!
@@ -21,7 +23,23 @@ const renderLabel = (clickCount: number, defaultLabel: string) => {
 // No reactivity means *zero* complexity!
 export function Counter({ label, ref, clickCount }: CounterProps) {
 
-  console.log("[Counter] Creating VDOM", ref)
+  onError((err) => {
+
+    console.log("[Counter] Error boundary caught an error", err)
+    $(buttonRef).html(<strong>Sorry, an error happened!</strong>);
+  
+  }, Counter);
+
+  onMount(async(el: HTMLElement) => {
+    console.log("[Counter] onMount NEW", !!el, !!ref.current)
+  }, Counter);
+
+  onUnmount((el: HTMLElement) => {
+    console.log("[Counter] onUnmount Component NEW", !!el, !!ref.current)
+  }, Counter);
+
+
+  console.log("[Counter] Creating VDOM", !!ref)
 
   // References the DOM element once it becomes visible.
   // When it's gone, the reference is gone. Easy? Yeah.
@@ -43,13 +61,23 @@ export function Counter({ label, ref, clickCount }: CounterProps) {
 
     // inform the parent component about the click counter update
     ref.update(clickCount)
+
+    dequery(buttonRef).tap((el) => {
+      console.log("[Counter11] Clicked on button", el)
+    }).remove();
+
+    //throw new Error("asd")
   }
 
-  const onMount = () => {
-    console.log("[Counter] onMount", buttonRef)
+  const whenMounted = () => {
+    console.log("[Counter] onMount")
   }
 
-  const onMouseDownCapture = (evt: PointerEvent) => {
+  const whenUnmounted = () => {
+    console.log("[Counter] onUnmount button")
+  }
+
+  const whenMouseDownCapture = (evt: PointerEvent) => {
     console.log("[Counter] Mouse down capture", evt)
   }
 
@@ -57,7 +85,11 @@ export function Counter({ label, ref, clickCount }: CounterProps) {
   // At runtime, the virtual DOM is rendered and displayed in the browser.
   // It usually is pre-rendered (SSR) on server-side and hydrated in the browser.
   return (
-    <button class="Counter" type="button" ref={buttonRef} onClick={onUpdateLabel} onMount={onMount} onMouseDownCapture={onMouseDownCapture}>
+    <button class="Counter" type="button" 
+      ref={buttonRef} onClick={onUpdateLabel} 
+      onUnmount={whenUnmounted} onMount={whenMounted} 
+      onMouseDownCapture={whenMouseDownCapture}
+    >
       {/* This label is rendered *once*. It will never change reactively! */}
       {/* Only with *explicit* code, will the content of this <button> change. */}
       {renderLabel(clickCount, label)}

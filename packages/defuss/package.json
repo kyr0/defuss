@@ -18,7 +18,7 @@
     "type": "git"
   },
   "scripts": {
-    "clean": "rm -rf ./dist && rm -rf ./coverage",
+    "clean": "rm -rf ./dist && rm -rf ./coverage && rm -rf ./node_modules/.pnpm && rm -rf ./node_modules/.vite",
     "pretest": "pnpm run build",
     "test": "vitest --coverage ./src/**/*.test.ts",
     "prebuild": "pnpm run clean",
@@ -94,7 +94,10 @@
     "vitest": "^2.1.5"
   },
   "dependencies": {
+    "@types/w3c-xmlserializer": "^2.0.4",
+    "@types/jsdom": "^21.1.7",
     "csstype": "^3.1.3",
-    "linkedom": "^0.18.5"
+    "happy-dom": "^15.11.7",
+    "w3c-xmlserializer": "^5.0.0"
   }
 }

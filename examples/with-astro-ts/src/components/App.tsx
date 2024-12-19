@@ -1,8 +1,10 @@
-import { createRef, type Props } from 'defuss'
+import { $, createRef, onError, onUnmount, type Props } from 'defuss'
 import typescriptLogo from '../img/typescript.svg'
 import { Counter } from './Counter.tsx'
 import { AstroLogo } from './icon/AstroLogo.tsx';
+
 import'./App.css'
+import { Img } from 'defuss-ui';
 
 export interface AppProps extends Props {
 
@@ -12,12 +14,34 @@ export interface AppProps extends Props {
 
 export function App({ clickCount = 0 }: AppProps) {
 
+  onError((err: unknown) => {
+    console.error('[App] Error boundary caught an error', err)
+  }, App)
+
+  const resizeHandler = () => {
+    console.log('[App] window resized')
+  }
+
+  onUnmount(() => {
+    console.log('[App found out!] Counter unmounted')
+  }, Counter)
+
+  window.addEventListener('resize', resizeHandler);
+
+  //document.body.style.backgroundColor = '#cc0000'
+
   // Ref's are powerful in defuss, they can communicate state up to the parent component
   const counterRef = createRef<HTMLDivElement, number>()
 
   // subscribe to the counterRef's controlled state (can be arbitrary data)
-  counterRef.subscribe((value: number) => {
+  const unsubscribe = counterRef.subscribe((value: number) => {
     console.log(`[App] Counter value has updated: ${value}`)
+
+    if (value === 100) {
+      // remove the counter component when the counter reaches 100
+      $(counterRef).remove()
+      unsubscribe();
+    }
   });
 
   return (
@@ -27,7 +51,7 @@ export function App({ clickCount = 0 }: AppProps) {
         <AstroLogo class="Logo" />
       </a>
       <a href="https://www.github.com/kyr0/defuss" target="_blank" rel="noreferrer" aria-label="defuss Website">
-        <img src="/defuss_logo.webp" class="Logo" alt="defuss logo" />
+        <Img src="/defuss_logo.webp" class="Logo" alt="defuss logo" />
       </a>
       <a href="https://www.typescriptlang.org/" target="_blank" rel="noreferrer" aria-label="TypeScript Language Website">
         <img src={typescriptLogo.src} class="Logo" alt="TypeScript logo" />
@@ -41,5 +65,5 @@ export function App({ clickCount = 0 }: AppProps) {
         Click on the Astro, TypeScript and defuss logos to learn more.
       </p>
     </>
-  )
+  );
 }

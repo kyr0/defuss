@@ -15,6 +15,6 @@ export default defineConfig({
 
   // the node adapter allows for server-side rendering and preview mode
   adapter: node({
-    mode: 'standalone'
-  })
+    mode: 'standalone',
+  }),
 });

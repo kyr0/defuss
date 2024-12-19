@@ -1,4 +1,5 @@
 import type { Dequery } from '../dequery/types.js'
+import { createErrorBoundaryCallback, notifyErrorOccurred, notifyMounted, notifyOnUnmount, notifyUnmounted, onElementUnmount, onUnmount } from './lifecycle.js'
 import type { VNodeChild, VNodeChildren, VNode, VNodeType, Ref, VNodeAttributes, DomAbstractionImpl, Globals, RefUpdateFn } from './types.js'
 
 const CLASS_ATTRIBUTE_NAME = 'class'
@@ -72,10 +73,26 @@ export const jsx = (
 
   // it's a component, divide and conquer children
   if (typeof type === 'function') {
-    return type({
-      children,
-      ...attributes,
-    })
+
+    try {
+      const vdom = type({
+        children,
+        ...attributes,
+      })
+
+      // save the function reference for error tracking (error boundary scoping)
+      vdom.$$type = type
+
+      return vdom;
+    } catch (error) {
+
+      if (typeof error === "string") {
+				error = `[JsxError] in ${type.name}: ${error}`;
+			} else if (error instanceof Error) {
+				error.message = `[JsxError] in ${type.name}: ${error.message}`;
+			}
+      notifyErrorOccurred(error, type)
+    }
   }
 
   return {
@@ -110,7 +127,11 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
     createElement: (virtualNode: VNode, parentDomElement?: Element | Document): Element | undefined => {
       let newEl: Element
 
-      if (
+      // VDOM has obviously not resolved, probably an Error occurred while generating the VDOM (in JSX runtime)
+      if (typeof virtualNode.type === 'function') {
+        newEl = document.createElement('div')
+        newEl.innerHTML = `<strong>FATAL ERROR: ${virtualNode.type._error}</strong>`
+      } else if (
         virtualNode.type.toUpperCase() === 'SVG' ||
         (parentDomElement && renderer.hasSvgNamespace(parentDomElement, virtualNode.type.toUpperCase()))
       ) {
@@ -119,8 +140,8 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         newEl = document.createElement(virtualNode.type as string)
       }
 
-      if (virtualNode.attributes) {
-        renderer.setAttributes(virtualNode.attributes, newEl as Element)
+      if (virtualNode.attributes) {        
+        renderer.setAttributes(virtualNode, newEl as Element)
 
         // Apply dangerouslySetInnerHTML if provided
         if (virtualNode.attributes.dangerouslySetInnerHTML) {
@@ -132,13 +153,31 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         renderer.createChildElements(virtualNode.children, newEl as Element)
       }
 
-
       if (parentDomElement) {
         parentDomElement.appendChild(newEl)
+
+        // --- element lifecycle --
 
         // check for a lifecycle "onMount" hook and call it
         if (typeof (newEl as any).$onMount === 'function') {
           ;(newEl as any).$onMount!()
+          // remove the hook after it's been called
+          ;(newEl as any).$onMount = null; 
+        }
+
+        // optionally check for a element lifecycle "onUnmount" and hook it up
+        if (typeof (newEl as any).$onUnmount === 'function') {
+          // register the unmount observer (MutationObserver)
+          onElementUnmount(newEl as HTMLElement, (newEl as any).$onUnmount!)
+        }
+
+        // --- components lifecycle ---
+        if (typeof virtualNode.$$type === 'function') {
+          // register the unmount observer (MutationObserver)
+          notifyOnUnmount(newEl as HTMLElement, virtualNode.$$type)
+
+          // notify the component that it has been mounted
+          notifyMounted(newEl as HTMLElement, virtualNode.$$type)
         }
       }
       return newEl as Element
@@ -175,7 +214,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       return children
     },
 
-    setAttribute: (name: string, value: any, domElement: Element) => {
+    setAttribute: (name: string, value: any, domElement: Element, virtualNode: VNode<VNodeAttributes>) => {
       // attributes not set (undefined) are ignored; use null value to reset an attributes state
       if (typeof value === 'undefined') return
       if (name === 'dangerouslySetInnerHTML') return;
@@ -184,10 +223,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       // allows for ref={someRef}
       if (name === REF_ATTRIBUTE_NAME && typeof value !== 'function') {
         value.current = domElement
-      }/* else if (name === REF_ATTRIBUTE_NAME && typeof value === 'function') {
-        // allow for functional ref's like: render(<div ref={(el) => console.log('got el', el)} />)
-        value(domElement)
-      }*/
+      }
 
       if (name.startsWith('on') && typeof value === 'function') {
 
@@ -199,14 +235,15 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
           ;(domElement as any).$onMount = value // lifecycle hook
         }
 
+        if (eventName === 'unmount') {
+          ;(domElement as any).$onUnmount = value // lifecycle hook
+        }
+
         // onClickCapture={...} support
         if (doCapture) {
           eventName = eventName.substring(0, capturePos)
-
-          // mark this event as a capture event to be registered correctly in hydration phase
-          //domElement.setAttribute(`data-defuss-capture-${eventName}`, "true")
         }
-        domElement.addEventListener(eventName, value, doCapture)
+        domElement.addEventListener(eventName, createErrorBoundaryCallback(value, virtualNode.$$type).bind(domElement), doCapture)
         return
       }
 
@@ -247,10 +284,10 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       }
     },
 
-    setAttributes: (attributes: VNodeAttributes, domElement: Element) => {
-      const attrNames = Object.keys(attributes)
+    setAttributes: (virtualNode: VNode<VNodeAttributes>, domElement: Element) => {
+      const attrNames = Object.keys(virtualNode.attributes)
       for (let i = 0; i < attrNames.length; i++) {
-        renderer.setAttribute(attrNames[i], attributes[attrNames[i]], domElement)
+        renderer.setAttribute(attrNames[i], virtualNode.attributes[attrNames[i]], domElement, virtualNode)
       }
     },
   }
@@ -264,11 +301,14 @@ export const renderIsomorphic = (
 ): Array<Element | Text | undefined> | Element | Text | undefined => {
 
   const parentEl = (parentDomElement as Dequery).el as Element || parentDomElement
+  let renderResult: Array<Element | Text | undefined> | Element | Text | undefined
 
   if (typeof virtualNode === 'string') {
-    return getRenderer(globals.window.document).createTextNode(virtualNode, parentEl)
+    renderResult = getRenderer(globals.window.document).createTextNode(virtualNode, parentEl)
+  } else {
+    renderResult = getRenderer(globals.window.document).createElementOrElements(virtualNode, parentEl)
   }
-  return getRenderer(globals.window.document).createElementOrElements(virtualNode, parentEl)
+  return renderResult;
 }
 
 // --- JSX standard (necessary exports for jsx-runtime)

@@ -1,7 +1,7 @@
 import type { AstroComponentMetadata, NamedSSRLoadedRendererValue } from 'astro';
 import type { RendererContext } from './types.js';
-import { renderToString, render } from 'defuss/server'
-import { type Props, jsx } from 'defuss'
+import { renderToString, render, getBrowserGlobals, getDocument } from 'defuss/server'
+import type { Props, RenderInput } from 'defuss'
 import { StaticHtml } from './render.js';
 
 const slotName = (str: string) => str.trim().replace(/[-_]([a-z])/g, (_, w) => w.toUpperCase());
@@ -9,8 +9,8 @@ const slotName = (str: string) => str.trim().replace(/[-_]([a-z])/g, (_, w) => w
 async function check(
 	this: RendererContext,
 	Component: any,
-	props: Record<string, any>,
-	children: any,
+	_props: Record<string, any>,
+	_children: any,
 ) {
 	
 	if (typeof Component !== 'function') return false;
@@ -25,6 +25,7 @@ async function check(
 
 	return true; // always (re-)render for now (TODO: implement proper check)
 }
+
 
 async function renderToStaticMarkup(
 	this: RendererContext,
@@ -57,10 +58,53 @@ async function renderToStaticMarkup(
 		componentProps.children = children;
 	}
 
-	// turn the component AST into an actual DOM element and attach it to the element passed in
-	let roots: HTMLElement|Array<HTMLElement> = render(Component(componentProps)) as HTMLElement;
+	let errorBoundaryCallback: ((err: unknown) => void) | undefined;
+
+	componentProps.onError = (cb: (err: unknown) => void) => {
+		errorBoundaryCallback = cb
+	}
+
+	let vdom: RenderInput;
+
+	const browserGlobals = getBrowserGlobals();
+	const document = getDocument(false, browserGlobals)
+	browserGlobals.document = document;
+
+  // declare window and document as globals on server-side
+	// this allows for a fantastic developer experience
+	// as the global objects are available at JSX runtime
+	for (const key of Object.keys(browserGlobals)) {
+		if (typeof (globalThis as Record<string, unknown>)[key] === "undefined") {
+			// this intentionally pollutes the global space
+			(globalThis as Record<string, unknown>)[key] = browserGlobals[key as any];
+		}
+	}
+
+	try {
+		vdom = Component(componentProps)
+	} catch (error) {
+		if (typeof errorBoundaryCallback === "function") {
+
+			if (typeof error === "string") {
+				error = `[JsxError] in ${Component.name}: ${error}`;
+			} else if (error instanceof Error) {
+				error.message = `[JsxError] in ${Component.name}: ${error.message}`;
+			}
+			errorBoundaryCallback(error)
+		} else {
+			throw error;
+		}
+	}
+
+	let roots: HTMLElement|Array<HTMLElement>;
+	let html = '';
 
 	const attrs = {};
+
+	// turn the component AST into an actual DOM element and attach it to the element passed in
+	roots = render(vdom, document.documentElement, { 
+		browserGlobals
+	}) as HTMLElement;
 	
 	// set all props as top level attributes
 	for (const [key, value] of Object.entries(props)) {
@@ -73,7 +117,6 @@ async function renderToStaticMarkup(
 		roots = [roots];
 	}
 
-	let html = '';
 	for (const el of roots) {
 		html += renderToString(el);
 	}
@@ -85,15 +128,6 @@ const renderer: NamedSSRLoadedRendererValue = {
 	check,
 	renderToStaticMarkup,
 	supportsAstroStaticSlot: true,
-	/*
-	renderHydrationScript: () => {
-		console.log('renderHydrationScript');
-		return `<script>
-	const scriptEl = document.currentScript;
-	(console.log("hydrating", scriptEl))
-</script>`;
-	},
-	*/
 };
 
 export default renderer;
