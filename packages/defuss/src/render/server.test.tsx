@@ -3,9 +3,10 @@ import {
   renderToString,
   getDocument,
   getBrowserGlobals,
-} from './server.js'
-import type { RenderInput, RenderResult, Props, VNode } from './server.js'
-import { getRenderer, createRef } from './isomorph.js'
+  createRef,
+} from '@/render/server.js'
+import type { RenderInput, RenderResult, Props, VNode } from '@/render/server.js'
+import { getRenderer } from '@/render/isomorph.js'
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
  

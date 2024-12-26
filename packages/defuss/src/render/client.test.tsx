@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
-import { render, renderToString } from './client.js'
-import type { Ref, Props, VNode } from './client.js'
-import { getRenderer, createRef } from './isomorph.js'
- 
+import { createRef, getRenderer, render, renderToString } from '@/render/client.js'
+import type { Props, VNode } from '@/render/client.js'
+
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
 
 customElements.define( 

@@ -21,22 +21,25 @@ const renderLabel = (clickCount: number, defaultLabel: string) => {
 
 // Component functions are called once! 
 // No reactivity means *zero* complexity!
-export function Counter({ label, ref, clickCount }: CounterProps) {
+export function Counter({ label, ref, clickCount, key }: CounterProps) {
 
+  console.log("[Counter] calling onError", key)
   onError((err) => {
 
     console.log("[Counter] Error boundary caught an error", err)
     $(buttonRef).html(<strong>Sorry, an error happened!</strong>);
-  
-  }, Counter);
 
+  }, key);
+
+  console.log("[Counter] calling onMount", key)
   onMount(async(el: HTMLElement) => {
-    console.log("[Counter] onMount NEW", !!el, !!ref.current)
-  }, Counter);
+    console.log("[Counter] in onMount NEW", !!el, !!ref.current)
+  }, key);
 
+  console.log("[Counter] calling onUnmount", key)
   onUnmount((el: HTMLElement) => {
-    console.log("[Counter] onUnmount Component NEW", !!el, !!ref.current)
-  }, Counter);
+    console.log("[Counter] in onUnmount Component NEW", !!el, !!ref.current)
+  }, key);
 
 
   console.log("[Counter] Creating VDOM", !!ref)
@@ -62,23 +65,25 @@ export function Counter({ label, ref, clickCount }: CounterProps) {
     // inform the parent component about the click counter update
     ref.update(clickCount)
 
-    dequery(buttonRef).tap((el) => {
-      console.log("[Counter11] Clicked on button", el)
-    }).remove();
+    if (clickCount === 100) {
 
-    //throw new Error("asd")
+      dequery(buttonRef).tap((el) => {
+        console.log("[Counter11] Clicked on button, intentionally removed!", el)
+        throw new Error("asd")
+      }).remove();
+    }
   }
 
   const whenMounted = () => {
-    console.log("[Counter] onMount")
+    console.log("[Counter] in whenMounted")
   }
 
   const whenUnmounted = () => {
-    console.log("[Counter] onUnmount button")
+    console.log("[Counter] in whenUnmounted")
   }
 
   const whenMouseDownCapture = (evt: PointerEvent) => {
-    console.log("[Counter] Mouse down capture", evt)
+    console.log("[Counter] in whenMouseDownCapture: Mouse down capture", evt)
   }
 
   // Already when your code builds, this JSX is turned into a virtual DOM.

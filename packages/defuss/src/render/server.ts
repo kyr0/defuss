@@ -1,7 +1,7 @@
 import * as HappyDom from 'happy-dom'
-import { renderIsomorphic } from './isomorph.js'
-import type { RenderInput, RenderResult, Globals } from './types.js'
-import type { Dequery } from '../dequery/types.js'
+import { renderIsomorphic } from '@/render/isomorph.js'
+import type { RenderInput, RenderResult, Globals } from '@/render/types.js'
+import type { Dequery } from '@/dequery/types.js'
 import serializeHtml from 'w3c-xmlserializer'
 
 export interface RenderOptions {

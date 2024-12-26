@@ -27,7 +27,7 @@ export const Img = ({
 	class: _class = "",
 	style = {},
 	format = "webp",
-	astroAssetsPath = "_image",
+	astroAssetsPath = "_defuss/image",
 }: ImgProps) => {
 
 	const placeholderWidth = Math.round(width / 7);
@@ -121,7 +121,7 @@ export const Img = ({
 			src={transformedSrc}
 			style={{
 				filter: "blur(40px)",
-				transition: "0.5s filter linear",
+				transition: "0.125s filter linear",
 				...style,
 			}}
 			width={width}

@@ -22,7 +22,7 @@
     "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
     "pretest": "pnpm run build",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll --sourcemap",
+    "build": "pkgroll",
     "postbuild": "tsx ./scripts/finalize-build.ts"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
@@ -57,7 +57,12 @@
         "types": "./dist/server.d.mts",
         "default": "./dist/server.mjs"
       }
+    },
+    "./image-endpoint.js": {
+      "types": "./dist/image-endpoint.d.mts",
+      "default": "./dist/image-endpoint.mjs"
     }
+  
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -75,13 +80,14 @@
   },
   "dependencies": {
     "defuss": "workspace:*",
-    "defuss-vite": "^1.0.6",
+    "defuss-vite": "workspace:*",
     "astro": "^5.0.5",
     "vite": "^6.0.3",
     "fast-glob": "^3.3.2",
     "svgo": "^3.3.2",
-    "lightningimg-node": "^0.3.0",
-    "purgecss": "^7.0.2"
+    "lightningimg-node": "^0.3.3",
+    "purgecss": "^7.0.2",
+    "file-type": "^19.6.0"
   },
   "peerDependencies": {
     "@minify-html/node": "^0.15.0"

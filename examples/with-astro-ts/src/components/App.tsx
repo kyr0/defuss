@@ -44,6 +44,11 @@ export function App({ clickCount = 0 }: AppProps) {
     }
   });
 
+
+  const c =  <Counter ref={counterRef} label="Don’t. You. Dare. 1 👀" clickCount={clickCount} key="counter-1" />
+
+  console.log("c", c)
+
   return (
     // fragments work
     <>
@@ -51,7 +56,7 @@ export function App({ clickCount = 0 }: AppProps) {
         <AstroLogo class="Logo" />
       </a>
       <a href="https://www.github.com/kyr0/defuss" target="_blank" rel="noreferrer" aria-label="defuss Website">
-        <Img src="/defuss_logo.webp" class="Logo" alt="defuss logo" />
+        <Img src="/defuss_logo.png" class="Logo" alt="defuss logo" />
       </a>
       <a href="https://www.typescriptlang.org/" target="_blank" rel="noreferrer" aria-label="TypeScript Language Website">
         <img src={typescriptLogo.src} class="Logo" alt="TypeScript logo" />
@@ -59,7 +64,10 @@ export function App({ clickCount = 0 }: AppProps) {
       <h1>Astro + defuss + TypeScript</h1>
       {/* you can use React-like className if you prefer */}
       <div className="Card">
-        <Counter ref={counterRef} label="Don’t. You. Dare. 👀" clickCount={clickCount} />
+        {c}
+        <br />
+        <br />
+        <Counter ref={counterRef} label="Don’t. You. Dare. 2 👀" clickCount={clickCount} key="counter-2" />
       </div>
       <p>
         Click on the Astro, TypeScript and defuss logos to learn more.

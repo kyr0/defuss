@@ -1,2 +1,2 @@
-export * from "./fetch.js"
+export * from "@/net/fetch.js"
 

@@ -1,5 +1,6 @@
-import type { CSSProperties, Ref, RenderInput, Globals } from "defuss/jsx-runtime";
-import { renderIsomorphic } from "../render/index.js";
+
+import { updateDomWithVdom } from "@/common/dom.js";
+import { isRef, renderIsomorphic, type CSSProperties, type Globals, type Ref, type RenderInput } from "../render/index.js";
 
 export type NodeType = Node | Text | Element | Document | DocumentFragment;
 
@@ -24,7 +25,7 @@ export const defaultConfig: DequeryOptions = {
 };
 
 export const dequery = (
-  selectorRefOrEl: Element | Ref<Node | Element | Text, unknown> | string,
+  selectorRefOrEl: Element | Ref<Node | Element | Text, any> | string,
   options: DequeryOptions = defaultConfig
 ): DequeryApi => {
 
@@ -44,10 +45,6 @@ export const dequery = (
   }
   return api;
 };
-
-// Helper type guard to determine if the object is a Ref
-const isRef = (obj: any): obj is Ref<Element> =>
-  obj && typeof obj === "object" && "current" in obj;
 
 
 class DequeryApi {
@@ -172,14 +169,26 @@ class DequeryApi {
 
   jsx(newJsxPartialDom: RenderInput): DequeryApi {
     this.elements.forEach((el) => {
+
+      updateDomWithVdom(elementGuard(el), newJsxPartialDom, globalThis as Globals);
+      
+      /*
       elementGuard(el).innerHTML = "";
-      el.appendChild(
-        renderIsomorphic(
-          newJsxPartialDom,
-          elementGuard(el),
-          globalThis as Globals
-        ) as Node
-      );
+
+      let nodes = renderIsomorphic(
+        newJsxPartialDom,
+        elementGuard(el),
+        globalThis as Globals
+      ) as Array<Node> 
+
+      if (!Array.isArray(nodes)) {
+        nodes = [nodes];
+      }
+
+      nodes.forEach((node) => {
+        el.appendChild(node)
+      });
+      */
     });
     return this;
   }

@@ -136,9 +136,10 @@ export interface KeyFrameProperties {
 
 export type RefUpdateFn<D> = (state: D) => void
 
-export interface Ref<T = null | Node | Element | Text, D = unknown> {
+export interface Ref<T = null | Node | Element | Text, D = any> {
   $subscriberFns: RefUpdateFn<D>[]
   current: T,
+  state?: D,
   update: RefUpdateFn<D>
   subscribe: (refUpdateFn: RefUpdateFn<D>) => /* unsubscribe function */ () => void
 }
@@ -156,6 +157,7 @@ export interface VAttributes {
 
 export interface VNodeAttributes extends VAttributes {
   [attributeName: string]: any
+  key?: string
 }
 
 export interface VNode<A = VNodeAttributes> {
@@ -169,7 +171,7 @@ export interface VNode<A = VNodeAttributes> {
 
 // string as in "div" creates an HTMLElement in the renderer
 // function as in functional component is called to return a VDOM object
-export type VNodeType = string | any
+export type VNodeType = string | Function | any
 export type VNodeKey = string | number | any
 export type VNodeRefObject<T> = { current?: T | null }
 export type VNodeRefCallback<T> = (instance: T | null) => void
@@ -874,9 +876,12 @@ declare global {
       onTransitionEndCapture?: TransitionEventHandler
     }
 
-    export interface HTMLAttributesLowerCase {
+    export interface HTMLAttributesLowerCase { 
+      
+      ref?: Ref // | VRef
 
-      dangerouslysetinnerhTML?: {
+      $$asynctype?: Function;
+      dangerouslysetinnerhtml?: {
         __html: string
       }
 
@@ -1028,6 +1033,7 @@ declare global {
     export interface HTMLAttributes extends HTMLAttributesLowerCase, DOMAttributes {
       ref?: Ref // | VRef
 
+      $$asyncType?: Function;
       dangerouslySetInnerHTML?: {
         __html: string
       }

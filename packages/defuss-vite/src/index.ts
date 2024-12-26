@@ -12,6 +12,23 @@ function parseId(url: string) {
 
 const babelCwd = fileURLToPath(new URL('../', import.meta.url));
 
+export interface ExistingRawSourceMap {
+    file?: string;
+    mappings: string;
+    names: string[];
+    sourceRoot?: string;
+    sources: string[];
+    sourcesContent?: string[];
+    version: number;
+    x_google_ignoreList?: number[];
+  }
+
+export type MaybeSourceMap = 
+  | ExistingRawSourceMap
+  | string
+  | null
+  | { mappings: '' };
+
 // makes sure that the JSX pragma is set to `tsx` and the JSX fragment pragma is set to `Fragment`
 // so that JSX is correctly transpiled and tsx() is called to construct the virtual DOM call tree (functional AST)
 export default function defussVitePlugin({
@@ -76,7 +93,11 @@ export default function defussVitePlugin({
         async transform(code, url) {
             const { id } = parseId(url);
 
-            if (!shouldTransform(id)) return;
+            if (!shouldTransform(id)) {
+                return null;
+            }    
+
+            const prevSourceMap = this.getCombinedSourcemap?.();
 
             const parserPlugins: ParserPlugin[] = [
                 ...baseParserOptions,
@@ -98,9 +119,11 @@ export default function defussVitePlugin({
                     allowAwaitOutsideFunction: true,
                     plugins: parserPlugins,
                 },
+                retainLines: true,
                 generatorOpts: {
                     ...babelOptions.generatorOpts,
                     decoratorsBeforeExport: true,
+                   // sourceFileName: id, // so that the .map file references the real filename
                 },
                 plugins: [
                     ...babelOptions.plugins,
@@ -129,14 +152,14 @@ export default function defussVitePlugin({
                     ],
                 ],
                 sourceMaps: true,
-                inputSourceMap: false as any,
+                inputSourceMap: prevSourceMap || null,
             });
 
-            if (!result) return;
+            if (!result) return null;
 
             return {
                 code: result.code || code,
-                map: result.map,
+                map: prevSourceMap//result.map,
             };
         },
     };

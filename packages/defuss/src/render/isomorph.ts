@@ -1,6 +1,6 @@
-import type { Dequery } from '../dequery/types.js'
-import { createErrorBoundaryCallback, notifyErrorOccurred, notifyMounted, notifyOnUnmount, notifyUnmounted, onElementUnmount, onUnmount } from './lifecycle.js'
-import type { VNodeChild, VNodeChildren, VNode, VNodeType, Ref, VNodeAttributes, DomAbstractionImpl, Globals, RefUpdateFn } from './types.js'
+import type { Dequery } from '@/dequery/types.js'
+import { createErrorBoundaryCallback, notifyErrorOccurred, notifyMounted, notifyOnUnmount, onElementUnmount } from '@/render/lifecycle.js'
+import type { VNodeChild, VNodeChildren, VNode, VNodeType, VNodeAttributes, DomAbstractionImpl, Globals } from '@/render/types.js'
 
 const CLASS_ATTRIBUTE_NAME = 'class'
 const XLINK_ATTRIBUTE_NAME = 'xlink'
@@ -23,38 +23,15 @@ const isJSXComment = (node: VNode): boolean =>
 const filterComments = (children: Array<VNode> | Array<VNodeChild>) =>
   children.filter((child: VNodeChild) => !isJSXComment(child as VNode))
 
-export function createRef<T extends Node | Element | Text | null = null, D = unknown>(refUpdateFn?: RefUpdateFn<D>): Ref<T, D> {
-  const ref: Ref<T, D> = { 
-    $subscriberFns: [],
-    current: null as T,
-    update: (state: D) => {
-      ref.$subscriberFns.forEach(fn => fn(state));
-    },
-    subscribe: (refUpdateFn: RefUpdateFn<D>) => {
-      ref.$subscriberFns.push(refUpdateFn);
-      // unsubscribe function
-      return () => {
-        const index = ref.$subscriberFns.indexOf(refUpdateFn);
-        if (index !== -1) {
-          ref.$subscriberFns.splice(index, 1);
-        }
-      }
-    },
-  }
-
-  if (typeof refUpdateFn === 'function') {
-    ref.subscribe(refUpdateFn);
-  }
-  return ref;
-}
 
 export const jsx = (
   type: VNodeType | Function | any,
   attributes: (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>) | null,
+  key?: string,
 ): Array<VNode> | VNode => {
 
   // clone attributes as well
-  attributes = { ...attributes }
+  attributes = { ...attributes, key /* key passed for instance-based lifecycle event listener registration */ }
 
   // extract children from attributes and ensure it's always an array
   let children: Array<VNodeChild> = (attributes?.children ? [].concat(attributes.children) : []).filter(Boolean);
@@ -72,17 +49,25 @@ export const jsx = (
   }
 
   // it's a component, divide and conquer children
-  if (typeof type === 'function') {
+  // in case of async functions, we just pass them through
+  if (typeof type === 'function' && type.constructor.name !== 'AsyncFunction') {
 
     try {
-      const vdom = type({
+
+      const vdom: VNode = type({
         children,
         ...attributes,
       })
 
-      // save the function reference for error tracking (error boundary scoping)
-      vdom.$$type = type
+      // store the function reference for error tracking (error boundary scoping)
+      if (vdom && typeof type === 'function') {
+        vdom.$$type = type
+      }
 
+      // ensure to store the key for instance-based lifecycle event listener registration
+      if (vdom?.attributes && typeof key === "string") {
+        vdom.attributes.key = key
+      }
       return vdom;
     } catch (error) {
 
@@ -91,6 +76,13 @@ export const jsx = (
 			} else if (error instanceof Error) {
 				error.message = `[JsxError] in ${type.name}: ${error.message}`;
 			}
+
+      // specific, instance-bound error handling
+      if (key) {
+        notifyErrorOccurred(error, key)
+      }
+
+      // global error handling
       notifyErrorOccurred(error, type)
     }
   }
@@ -127,10 +119,17 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
     createElement: (virtualNode: VNode, parentDomElement?: Element | Document): Element | undefined => {
       let newEl: Element
 
-      // VDOM has obviously not resolved, probably an Error occurred while generating the VDOM (in JSX runtime)
-      if (typeof virtualNode.type === 'function') {
+      // if a synchronous function is still a function, VDOM has obviously not resolved, probably an 
+      // Error occurred while generating the VDOM (in JSX runtime)
+      if (
+        virtualNode.constructor.name === 'AsyncFunction'
+      ) {
         newEl = document.createElement('div')
-        newEl.innerHTML = `<strong>FATAL ERROR: ${virtualNode.type._error}</strong>`
+        // @ts-ignore: assigning the async function reference for CSR debugging purposes
+        newEl.$$asyncType = virtualNode
+      } else if (typeof virtualNode.type === 'function') {
+        newEl = document.createElement('div')
+        ;(newEl as HTMLElement).innerText = `FATAL ERROR: ${virtualNode.type._error}`
       } else if (
         virtualNode.type.toUpperCase() === 'SVG' ||
         (parentDomElement && renderer.hasSvgNamespace(parentDomElement, virtualNode.type.toUpperCase()))
@@ -145,6 +144,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
         // Apply dangerouslySetInnerHTML if provided
         if (virtualNode.attributes.dangerouslySetInnerHTML) {
+          // TODO: FIX me
           newEl.innerHTML = virtualNode.attributes.dangerouslySetInnerHTML.__html;
         }
       }
@@ -171,13 +171,28 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
           onElementUnmount(newEl as HTMLElement, (newEl as any).$onUnmount!)
         }
 
+        // --- components lifecycle, instance or global index based ---
+
         // --- components lifecycle ---
-        if (typeof virtualNode.$$type === 'function') {
+
+        if (virtualNode.attributes.key) {
+          console.log("lifecycleListenerIndex (hydrate) instance-bound", virtualNode.attributes.key)
+          
+          // notify mounted
+          notifyMounted(newEl as HTMLElement, virtualNode.attributes.key)
+
+          // register the unmount observer (MutationObserver)
+          notifyOnUnmount(newEl as HTMLElement, virtualNode.attributes.key)
+        }
+
+        if (virtualNode.$$type) {
+          console.log("lifecycleListenerIndex (hydrate) global", virtualNode.$$type)
+          
+          // notify mounted
+          notifyMounted(newEl as HTMLElement, virtualNode.$$type)
+
           // register the unmount observer (MutationObserver)
           notifyOnUnmount(newEl as HTMLElement, virtualNode.$$type)
-
-          // notify the component that it has been mounted
-          notifyMounted(newEl as HTMLElement, virtualNode.$$type)
         }
       }
       return newEl as Element
@@ -216,8 +231,9 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
     setAttribute: (name: string, value: any, domElement: Element, virtualNode: VNode<VNodeAttributes>) => {
       // attributes not set (undefined) are ignored; use null value to reset an attributes state
-      if (typeof value === 'undefined') return
-      if (name === 'dangerouslySetInnerHTML') return;
+      if (typeof value === 'undefined') return // if not set, ignore
+      if (name === 'dangerouslySetInnerHTML') return; // special case, handled elsewhere
+      if (name === 'key') return; // ignore key attribute (internal use only)
 
       // save ref as { current: DOMElement } in ref object
       // allows for ref={someRef}
@@ -243,7 +259,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         if (doCapture) {
           eventName = eventName.substring(0, capturePos)
         }
-        domElement.addEventListener(eventName, createErrorBoundaryCallback(value, virtualNode.$$type).bind(domElement), doCapture)
+        domElement.addEventListener(eventName, createErrorBoundaryCallback(value, virtualNode.$$type, virtualNode.attributes.key).bind(domElement), doCapture)
         return
       }
 

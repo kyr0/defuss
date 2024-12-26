@@ -1,4 +1,4 @@
-import type { Props, VNodeChild } from "defuss/jsx-runtime";
+import type { Props, VNodeChild } from "@/render/types.js";
 import { type Replacements, i18n } from "./i18n.js";
 
 export interface TransProps extends Props { 

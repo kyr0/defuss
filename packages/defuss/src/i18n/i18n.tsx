@@ -1,5 +1,5 @@
-import type { VNode } from 'defuss/jsx-runtime';
-import { createStore, type Store } from '../store/index.js';
+import type { VNode } from '@/render/types.js';
+import { createStore, type Store } from '@/store/index.js';
 
 export type TranslationObject = { [key: string]: string|VNode|TranslationObject };
 export type Translations = { [language: string]: TranslationObject };

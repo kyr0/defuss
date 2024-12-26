@@ -1,7 +1,7 @@
-import type { Dequery } from '../dequery/types.js'
-import { renderIsomorphic } from './isomorph.js'
-import { createErrorBoundaryCallback, notifyMounted, notifyOnUnmount, notifyUnmounted, onElementUnmount, onUnmount } from './lifecycle.js'
-import type { RenderInput, RenderResult, VNode } from './types.js'
+import type { Dequery } from '@/dequery/types.js'
+import { renderIsomorphic } from '@/render/isomorph.js'
+import { createErrorBoundaryCallback, notifyMounted, notifyOnUnmount, onElementUnmount } from '@/render/lifecycle.js'
+import type { RenderInput, RenderResult, VNode } from '@/render/types.js'
 
 export const render = <T extends RenderInput>(
   virtualNode: T,
@@ -53,7 +53,6 @@ export const hydrate = (
     // update ref.current if ref is provided
     if (vnode.attributes.ref) {
       vnode.attributes.ref.current = element;
-      console.log('hydrating ref', vnode.attributes.ref, element)
     }
 
     // attach event listeners
@@ -72,7 +71,7 @@ export const hydrate = (
 
         element.addEventListener(
           eventName,
-          createErrorBoundaryCallback(vnode.attributes[key], vnode.$$type).bind(element),
+          createErrorBoundaryCallback(vnode.attributes[key], vnode.$$type, vnode.attributes.key).bind(element),
           capture
         );
       }
@@ -88,14 +87,26 @@ export const hydrate = (
     if (vnode.attributes.onUnmount) {
       onElementUnmount(element, vnode.attributes.onUnmount)
     }
-
     // --- component lifecycle ---
-    if (typeof vnode.$$type === 'function') {
+
+    if (vnode.attributes.key) {
+      console.log("lifecycleListenerIndex (hydrate) instance-bound", vnode.attributes.key)
+      
+      // notify mounted
+      notifyMounted(element as HTMLElement, vnode.attributes.key)
+
       // register the unmount observer (MutationObserver)
-      notifyOnUnmount(element as HTMLElement, vnode.$$type)
+      notifyOnUnmount(element as HTMLElement, vnode.attributes.key)
+    }
+
+    if (vnode.$$type) {
+      console.log("lifecycleListenerIndex (hydrate) global", vnode.$$type)
       
       // notify mounted
       notifyMounted(element as HTMLElement, vnode.$$type)
+
+      // register the unmount observer (MutationObserver)
+      notifyOnUnmount(element as HTMLElement, vnode.$$type)
     }
 
     // recursively hydrate children
@@ -115,6 +126,5 @@ export const hydrate = (
     );
   }
 };
-
 
 export * from './index.js'

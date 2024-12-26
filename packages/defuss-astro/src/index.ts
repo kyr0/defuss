@@ -72,8 +72,15 @@ export default function ({ include, exclude, devtools }: Options = {}): AstroInt
 	return {
 		name: 'defuss',
 		hooks: {
-			'astro:config:setup': ({ config, addRenderer, updateConfig, command, injectScript,  }) => {
+			'astro:config:setup': ({ config, addRenderer, updateConfig, command, injectScript, injectRoute }) => {
 				
+				// add /_defuss/image route 
+				injectRoute({
+					pattern: '/_defuss/image',
+					prerender: false,
+					entrypoint: 'defuss-astro/image-endpoint.js',
+				});
+
 				const publicDirPath = fileURLToPath(config.publicDir)
 
 				// enable Astro's HTML compression
