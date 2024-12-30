@@ -62,6 +62,7 @@ export default (element: HTMLElement) =>
 		} else {
 
 			// remove suspense element
+			// TODO: fix me!
 			element.innerHTML = '';
 
 			//console.log('client:only', Component, 'props', props, 'slotted', slotted, 'children', children, 'client', client);
@@ -84,6 +85,25 @@ export default (element: HTMLElement) =>
 			}
 
 			Object.entries(attrs).forEach(([key, value]) => {
+
+				// TODO: re-use setAttribute() logic from isomorph.js!
+
+				// attributes not set (undefined) are ignored; use null value to reset an attributes state
+				if (typeof value === 'undefined') return // if not set, ignore
+
+				// TODO: use DANGROUSLY_SET_INNER_HTML_ATTRIBUTE here
+				if (key === 'dangerouslySetInnerHTML') return; // special case, handled elsewhere
+
+				// TODO: use KEY_ATTRIBUTE here
+				if (key === '$$key') return; // ignore component key attribute (internal use only)
+
+				// TODO: use REF_ATTRIBUTE here
+				if (key === "ref" && typeof value === 'object') {
+					// @ts-ignore
+					value.current = element // update ref
+					return; // but do not render the ref as a string [object Object] into the DOM
+				}
+
 				element.setAttribute(key, String(value)); // set each attribute on the root element
 			});
 

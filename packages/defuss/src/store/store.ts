@@ -4,9 +4,9 @@ import { getByPath, setByPath } from '@/common/index.js';
 export type Listener<T> = (newValue: T, oldValue?: T, changedKey?: string) => void;
 
 export interface Store<T> {
-  value: T; // axpose the current value for type compliance
-  get: (path?: string) => any;
-  set: (pathOrValue: string | any, value?: any) => void;
+  value: T;
+  get: <D=T>(path?: string) => D;
+  set: <D=T>(pathOrValue: string | D, value?: D) => void;
   subscribe: (listener: Listener<T>) => () => void;
 }
 
@@ -32,13 +32,13 @@ export const createStore = <T>(initialValue: T): Store<T> => {
       const oldValue = value;
 
       if (newValue === undefined) {
-        // Replace entire store value
+        // replace entire store value
         if (oldValue !== pathOrValue) {
           value = pathOrValue;
           notify(oldValue);
         }
       } else {
-        // Update a specific path
+        // update a specific path
         const updatedValue = setByPath(value, pathOrValue, newValue);
         if (oldValue !== updatedValue) {
           value = updatedValue;
@@ -49,7 +49,6 @@ export const createStore = <T>(initialValue: T): Store<T> => {
 
     subscribe(listener) {
       listeners.push(listener);
-      listener(value); // immediate notification
       return () => {
         const index = listeners.indexOf(listener);
         if (index >= 0) listeners.splice(index, 1);

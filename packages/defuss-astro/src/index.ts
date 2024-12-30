@@ -10,7 +10,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { logMessage } from './log.js';
 import { PurgeCSS } from 'purgecss'
 import { existsSync } from 'node:fs';
-import { processDirectoryDestructive } from "lightningimg-node"
+import { createRequire } from "node:module";
+export const nodeRequire = createRequire(import.meta.url);
+const { processDirectoryDestructive } = nodeRequire("lightningimg-node");
 
 const getRenderer = (development: boolean): AstroRenderer => ({
     name: 'defuss',
@@ -72,7 +74,7 @@ export default function ({ include, exclude, devtools }: Options = {}): AstroInt
 	return {
 		name: 'defuss',
 		hooks: {
-			'astro:config:setup': ({ config, addRenderer, updateConfig, command, injectScript, injectRoute }) => {
+			'astro:config:setup': async({ config, addRenderer, updateConfig, command, injectScript, injectRoute }) => {
 				
 				// add /_defuss/image route 
 				injectRoute({
@@ -85,6 +87,7 @@ export default function ({ include, exclude, devtools }: Options = {}): AstroInt
 
 				// enable Astro's HTML compression
 				config.compressHTML = true 
+				// TODO: check: https://swc.rs/docs/usage/html
 
 				// use CSS classes for scoped styles
 				config.scopedStyleStrategy = 'class' 
@@ -96,6 +99,7 @@ export default function ({ include, exclude, devtools }: Options = {}): AstroInt
 				// use lightningcss for CSS minification
 				config.vite.build!.cssMinify = 'lightningcss' 
 
+
 				// convert non-webp images in public dir to webp
 				processDirectoryDestructive(publicDirPath, false)
 
@@ -104,7 +108,10 @@ export default function ({ include, exclude, devtools }: Options = {}): AstroInt
 				updateConfig({
 					vite: {
 						optimizeDeps: {
-							include: ['defuss-astro/client.js', 'defuss-astro/server.js'],
+							include: ['defuss-astro/client.js', 'defuss-astro/server.js']
+						},
+						ssr: {
+							noExternal: ["lightningimg-node"],
 						},
 						plugins: [defussPlugin()],
 					},

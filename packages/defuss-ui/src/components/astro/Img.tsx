@@ -32,8 +32,7 @@ export const Img = ({
 
 	const placeholderWidth = Math.round(width / 7);
 	const placeholderHeight = Math.round(height / 7);
-
-	const imgRef = createRef<HTMLImageElement>();
+	const imgRef = createRef<null, HTMLImageElement>();
 
 	const getTransformOptionsPath = ({
 		src,

@@ -2,9 +2,9 @@ import { $, createRef, onError, onUnmount, type Props } from 'defuss'
 import typescriptLogo from '../img/typescript.svg'
 import { Counter } from './Counter.tsx'
 import { AstroLogo } from './icon/AstroLogo.tsx';
+import { Img } from 'defuss-ui';
 
 import'./App.css'
-import { Img } from 'defuss-ui';
 
 export interface AppProps extends Props {
 
@@ -31,7 +31,7 @@ export function App({ clickCount = 0 }: AppProps) {
   //document.body.style.backgroundColor = '#cc0000'
 
   // Ref's are powerful in defuss, they can communicate state up to the parent component
-  const counterRef = createRef<HTMLDivElement, number>()
+  const counterRef = createRef<number>()
 
   // subscribe to the counterRef's controlled state (can be arbitrary data)
   const unsubscribe = counterRef.subscribe((value: number) => {
@@ -43,7 +43,6 @@ export function App({ clickCount = 0 }: AppProps) {
       unsubscribe();
     }
   });
-
 
   const c =  <Counter ref={counterRef} label="Don’t. You. Dare. 1 👀" clickCount={clickCount} key="counter-1" />
 

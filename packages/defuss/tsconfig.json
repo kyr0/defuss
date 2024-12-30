@@ -7,6 +7,7 @@
     "types": ["vitest/globals"],
     "jsx": "react-jsx",
     "jsxImportSource": "defuss",
+    "sourceMap": true,
     "paths": {
       "@/*": ["./src/*"]
     }

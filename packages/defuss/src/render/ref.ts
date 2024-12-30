@@ -1,27 +1,28 @@
 import type { Ref, RefUpdateFn } from '@/render/types.js';
+import { createStore } from '@/store/store.js';
 
 export const isRef = (obj: any): obj is Ref<Element> =>
   obj && typeof obj === "object" && "current" in obj;
 
-export function createRef<T extends Node | Element | Text | null = null, D = any>(refUpdateFn?: RefUpdateFn<D>, defaultState?: D): Ref<T, D> {
-  const ref: Ref<T, D> = { 
-    $subscriberFns: [],
-    current: null as T,
-    state: defaultState,
-    update: (state: D) => {
-      ref.state = state;
-      ref.$subscriberFns.forEach(fn => fn(state));
+export function createRef<ST = any, NT extends Node | Element | Text | null = HTMLElement>(refUpdateFn?: RefUpdateFn<ST>, defaultState?: ST): Ref<NT, ST> {
+
+  const stateStore = createStore<ST>(defaultState as ST);
+
+  console.log('stateStore', stateStore);
+
+  const ref: Ref<NT, ST> = { 
+    current: null as NT,
+    store: stateStore,
+    get state() {
+      return stateStore.value;
     },
-    subscribe: (refUpdateFn: RefUpdateFn<D>) => {
-      ref.$subscriberFns.push(refUpdateFn);
-      // unsubscribe function
-      return () => {
-        const index = ref.$subscriberFns.indexOf(refUpdateFn);
-        if (index !== -1) {
-          ref.$subscriberFns.splice(index, 1);
-        }
-      }
+    set state(value: ST) {
+      stateStore.set(value);
     },
+    update: (state: ST) => {
+      stateStore.set(state);
+    },
+    subscribe: (refUpdateFn: RefUpdateFn<ST>) => stateStore.subscribe(refUpdateFn),
   }
 
   if (typeof refUpdateFn === 'function') {

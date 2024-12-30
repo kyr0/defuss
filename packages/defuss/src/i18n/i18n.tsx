@@ -14,7 +14,7 @@ export interface I18nStore {
   subscribe: (onLanguageChange: OnLanguageChangeListener) => void;
 }
 
-  // example of placeholders: {name}, {age}, {city}
+// example of placeholders: {name}, {age}, {city}
 const VARIABLE_REGEX = /{([^}]*)}/g;
 
 const interpolate = (template: string, replacements: Replacements): string =>
@@ -25,7 +25,7 @@ export const createI18n = (): I18nStore => {
   let language = 'en';
 
   const getTranslation = (key: string): string => {
-    const translation = translationsStore.get(`${language}.${key}`);
+    const translation = translationsStore.get<string>(`${language}.${key}`);
     return translation || key;
   };
   const onLanguageChangeCallbacks: Array<OnLanguageChangeListener> = [];
@@ -54,7 +54,7 @@ export const createI18n = (): I18nStore => {
 
     load(newLanguage: string, namespaceTranslations: TranslationObject) {
       translationsStore.set(newLanguage, {
-        ...translationsStore.get(newLanguage),
+        ...translationsStore.get<TranslationObject>(newLanguage),
         ...namespaceTranslations,
       });
     },

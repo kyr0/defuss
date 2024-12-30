@@ -1,8 +1,11 @@
+import type { Store } from '@/store/store.js'
 import type * as CSS from 'csstype'
 
 export type * as CSS from 'csstype'
 
 export type Globals = Window & typeof globalThis
+
+
 
 export interface CSSProperties extends CSS.Properties<string | number> {
   /**
@@ -136,19 +139,19 @@ export interface KeyFrameProperties {
 
 export type RefUpdateFn<D> = (state: D) => void
 
-export interface Ref<T = null | Node | Element | Text, D = any> {
-  $subscriberFns: RefUpdateFn<D>[]
-  current: T,
-  state?: D,
-  update: RefUpdateFn<D>
-  subscribe: (refUpdateFn: RefUpdateFn<D>) => /* unsubscribe function */ () => void
+export interface Ref<NT = null | Node | Element | Text, ST = any> {
+  current: NT,
+  store?: Store<ST>,
+  state?: ST,
+  update: RefUpdateFn<ST>
+  subscribe: (refUpdateFn: RefUpdateFn<ST>) => /* unsubscribe function */ () => void
 }
 
 //export type VRef = (el: Element) => void
 
 export interface VAttributes {
   // typing; detect ref
-  ref?: Ref //| VRef
+  ref?: Ref
 
   // array-local unique key to identify element items in a NodeList
   key?: string

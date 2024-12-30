@@ -1,4 +1,3 @@
-
 import { updateDomWithVdom } from "@/common/dom.js";
 import { isRef, renderIsomorphic, type CSSProperties, type Globals, type Ref, type RenderInput } from "../render/index.js";
 
@@ -13,7 +12,14 @@ export interface FormKeyValues {
 
 const elementGuard = <T = HTMLElement>(el: NodeType): T => {
   if (el instanceof HTMLElement) return el as T;
-  throw new Error(`Expected an Element, but found: ${el.nodeName}`);
+
+  let message = "Expected an HTMLElement, but found: ";
+  if (el?.nodeName) {
+    message += el.nodeName
+  } else {
+    message += el
+  }
+  throw new Error(message);
 };
 
 export interface DequeryOptions {
@@ -41,11 +47,12 @@ export const dequery = (
   } else if (isRef(selectorRefOrEl)) {
     api.elements = [selectorRefOrEl.current];
   } else if ((selectorRefOrEl as Node).nodeType === Node.ELEMENT_NODE) {
-    api.elements = [elementGuard(selectorRefOrEl as Node)];
+    api.elements = [selectorRefOrEl as Node];
   }
+  // throws if there is no element found
+  elementGuard(api.elements[0])
   return api;
 };
-
 
 class DequeryApi {
 
@@ -159,6 +166,8 @@ class DequeryApi {
   }
 
   html(newInnerHtml?: string): DequeryApi {
+
+    // TODO: would be nive if we could console.warn here only in dev mode!
     if (newInnerHtml) {
       this.elements.forEach((el) => {
         elementGuard(el).innerHTML = newInnerHtml;

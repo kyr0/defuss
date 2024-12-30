@@ -1,16 +1,12 @@
 import { createFilter } from "@rollup/pluginutils";
-import type { ParserPlugin, ParserOptions } from "@babel/parser";
 import type { Plugin, ResolvedConfig } from "vite";
-import { transformAsync } from "@babel/core";
-import { fileURLToPath } from "node:url";
-import type { DefussBabelOptions, DefussVitePluginOptions } from './types.js';
+import { transform } from "@swc/core";
+import type { DefussVitePluginOptions } from './types.js';
 
 // Allows to ignore query parameters, as in Vue SFC virtual modules.
 function parseId(url: string) {
 	return { id: url.split("?", 2)[0] };
 }
-
-const babelCwd = fileURLToPath(new URL('../', import.meta.url));
 
 export interface ExistingRawSourceMap {
     file?: string;
@@ -34,31 +30,8 @@ export type MaybeSourceMap =
 export default function defussVitePlugin({
     include,
     exclude,
-    babel,
 }: DefussVitePluginOptions = {}): Plugin[] {
-    const baseParserOptions = ["importMeta", "explicitResourceManagement", "topLevelAwait"];
     let config: ResolvedConfig;
-
-    if (!babel) {
-        babel = {};
-    }
-
-    if (!babel.cwd) {
-        babel.cwd = babelCwd;
-    }
-
-    const babelOptions: DefussBabelOptions = {
-        babelrc: false,
-        configFile: false,
-        ...babel,
-        plugins: babel?.plugins || [],
-        presets: babel?.presets || [],
-        overrides: babel?.overrides || [],
-        parserOpts: {
-            ...(babel?.parserOpts || {}),
-            plugins: (babel?.parserOpts?.plugins || []) as Extract<ParserOptions["plugins"], any[]>,
-        },
-    };
 
     const shouldTransform = createFilter(include || [/\.[cm]?[tj]sx?$/], exclude || [/node_modules/]);
 
@@ -98,68 +71,41 @@ export default function defussVitePlugin({
             }    
 
             const prevSourceMap = this.getCombinedSourcemap?.();
+            const inputSourceMap = prevSourceMap ? JSON.stringify({ code, map: prevSourceMap}) : undefined;
 
-            const parserPlugins: ParserPlugin[] = [
-                ...baseParserOptions,
-                "classProperties",
-                "classPrivateProperties",
-                "classPrivateMethods",
-                !id.endsWith(".ts") && "jsx",
-                /\.tsx?$/.test(id) && "typescript",
-            ].filter(Boolean) as ParserPlugin[];
-
-            const result = await transformAsync(code, {
-                ...babelOptions,
-                ast: true,
-                root: config.root,
-                filename: id,
-                parserOpts: {
-                    ...babelOptions.parserOpts,
-                    sourceType: "module",
-                    allowAwaitOutsideFunction: true,
-                    plugins: parserPlugins,
+            const result = await transform(code, {
+                jsc: {
+                    "parser": {
+                        "syntax": "typescript",
+                        "tsx": true,
+                        "dynamicImport": true,
+                        "decorators": true,
+                    },
+                    "transform": {
+                        "react": {
+                            "development": true,
+                            "useBuiltins": false,
+                            "throwIfNamespace": false,
+                            "pragma": "jsx",
+                            "pragmaFrag": "Fragment",
+                            "runtime": "automatic",
+                            "importSource": "defuss"
+                        }
+                    },
+                    "target": "es2024"
                 },
-                retainLines: true,
-                generatorOpts: {
-                    ...babelOptions.generatorOpts,
-                    decoratorsBeforeExport: true,
-                   // sourceFileName: id, // so that the .map file references the real filename
-                },
-                plugins: [
-                    ...babelOptions.plugins,
-                    [
-                        "@babel/plugin-transform-react-jsx",
-
-                        /** Options
-                         * 
-                            filter?: (node: t.Node, pass: PluginPass) => boolean;
-                            importSource?: string;
-                            pragma?: string;
-                            pragmaFrag?: string;
-                            pure?: string;
-                            runtime?: "automatic" | "classic";
-                            throwIfNamespace?: boolean;
-                            useBuiltIns: boolean;
-                            useSpread?: boolean;
-                         */
-                        {
-                            runtime: "automatic",   // Automatically imports jsx from "defuss"
-                            importSource: "defuss", // Automatically imports jsx from "defuss"
-                            //pragma: "jsx",          // Use jsx() for all JSX, including fragments
-                            //pragmaFrag: "jsx",      // Use jsx() for fragments as well
-                            throwIfNamespace: false // Bypass namespace tag error
-                        },
-                    ],
-                ],
                 sourceMaps: true,
-                inputSourceMap: prevSourceMap || null,
+                sourceFileName: id,
+                filename: id,
+                sourceRoot: config.root,
+                inputSourceMap
             });
 
             if (!result) return null;
 
             return {
                 code: result.code || code,
-                map: prevSourceMap//result.map,
+                map: result.map,
             };
         },
     };

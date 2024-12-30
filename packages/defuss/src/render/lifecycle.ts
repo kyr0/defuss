@@ -6,6 +6,8 @@
  *   in an event listener registered in a component using either lifecycle or on* DOM events)
  */
 
+import type { VAttributes, VNode, VNodeAttributes } from "../render/index.js";
+
 
 // either a component function reference or a component key can identify a lifecycle listener 
 export type LifecycleListenerIndex = Function | string | null | undefined;
@@ -15,6 +17,25 @@ export interface LifecycleFunction<T> extends Function {
   // either a key to a DOM element/component or the component function reference
   __cmpIdx?: LifecycleListenerIndex; 
 }
+
+
+export function getLifecycleCmpIndexes(vnode: VNode<VNodeAttributes>): Array<string|Function> {
+
+  const cmpLifecycleIndexes: Array<string|Function> = [];
+
+  // @ts-ignore
+  if (vnode?.attributes?.$$key) {
+    cmpLifecycleIndexes.push(vnode?.attributes?.$$key)
+  } 
+
+    // @ts-ignore
+  if (vnode?.$$type) {
+    cmpLifecycleIndexes.push(vnode?.$$type)
+  }
+  return cmpLifecycleIndexes;
+}
+
+// TODO: refactor -- mustn't be an object
 
 // stores the lifecycle callbacks for each component function
 export const lifecycleCallbacks = {
@@ -44,16 +65,6 @@ Array<LifecycleFunction<T>> => {
   return [];
 }
 
-export const getLifecycleIndex = (cmpFn: Function, key?: string) => {
-  if (typeof key === "string") {
-    return key;
-  } 
-  if (typeof cmpFn === "function" ) {
-    return cmpFn;
-  }
-  return null;
-}
-
 // --- onError ---
 
 export const formatInteractionError = (error: unknown, caller: Function) => {
@@ -80,6 +91,8 @@ export const createErrorBoundaryCallback = (fn: Function, caller: Function, key?
       // in order to catch async errors however, we need to implement .catch()
       return result.catch((error) => {
  
+        console.error("createErrorBoundaryCallback - async!", error, key, caller)
+
         // specific, instance-bound error listeners
         if (key) {
           notifyErrorOccurred(formatInteractionError(error, caller), key);
@@ -92,8 +105,10 @@ export const createErrorBoundaryCallback = (fn: Function, caller: Function, key?
 
     // event handlers expect a return value; it has an impact on how the DOM behaves regarding its default behaviour
     // (e.g. event.preventDefault() in case a falsy scalar value is returned)
-    return result; 
+    return result; // returns sync callback return value
   } catch (error) {
+
+    console.error("createErrorBoundaryCallback - sync!", error, key, caller)
 
     // specific, instance-bound error listeners
     if (key) {
@@ -122,10 +137,23 @@ export const notifyErrorOccurred = (error: unknown, index: LifecycleListenerInde
       cb.__cmpIdx._error = error;
     }
 
-    // TODO: dereference "key"/string case and assign _error
-
     // calling the error boundary callback passed in by the developer
-    cb(error)
+    try {
+      cb(error)
+    } catch (error) {
+      console.error('Fatal error! Error happend while running the components onError() callback!', cb)
+      console.error('Original error:', error)
+    }
+  }
+}
+
+export const notifyAllErrorCallbacks = (error: unknown, vnode: VNode<VAttributes>) => {
+  // catching all render phase errors and invoke a potentially registered
+  // component onError() callback
+  const cmpIdx = getLifecycleCmpIndexes(vnode)
+
+  for (const index of cmpIdx) {
+    notifyErrorOccurred(error, index);
   }
 }
 

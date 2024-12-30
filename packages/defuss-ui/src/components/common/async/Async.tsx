@@ -4,7 +4,7 @@ import type { ComponentProps } from "../types.js";
 
 export type AsyncState = 'loading' | 'loaded' | 'error'
 
-export interface AsyncStateRef extends Ref<HTMLDivElement> { 
+export interface AsyncStateRef extends Ref<HTMLElement> { 
   /** The state of the async content */
   state?: AsyncState;
 
@@ -38,7 +38,7 @@ export const Async = ({
 
   let childrenToRender: VNodeChildren | undefined = children;
 
-  const containerRef: AsyncStateRef = createRef<HTMLDivElement, AsyncState>(function onSuspenseUpdate(state: AsyncState) {
+  const containerRef: AsyncStateRef = createRef<AsyncState>(function onSuspenseUpdate(state: AsyncState) {
 
     if (!containerRef.current) {
       if (inDevMode) {
@@ -61,8 +61,9 @@ export const Async = ({
     } else if (state === 'loaded') {
       dequery(containerRef.current).addClass(loadedClassName || "suspense-loaded");
 
-      console.log("We render!", childrenToRender);
+      console.log("[Async render] start")
       dequery(containerRef).jsx(childrenToRender as RenderInput);
+      console.log("[Async render] finished")
     }
   }, "loading");
 
@@ -107,7 +108,11 @@ export const Async = ({
 
       promisedVdom.$$type = (vnode as VNode).type;
 
+      // mapping key to $$key so that it can be passed down
+      // to children (for error boundaries to capture the whole DOM element sub-tree)
+      // but still not collide with the key, which can differ in children of the sub-tree
       if ((vnode as VNode).attributes?.key) {
+        // TODO: unify behaviour across all variants
         promisedVdom.$$key = (vnode as VNode).attributes.key
       }
       // yield the Promise objects
@@ -136,7 +141,7 @@ export const Async = ({
 
           // ensure to store the key for instance-based lifecycle event listener registration
           if (result.vnode && result.promise && result.vnode.attributes && typeof result.promise.$$key === "string") {
-            result.vnode.attributes.key = result.promise.$$key
+            result.vnode.attributes.$$key = result.promise.$$key
           }
           return result.vnode;
         });
@@ -170,5 +175,5 @@ export const Async = ({
   }
 }
 
-// React compatibility alias for hoomans ;)
+// React-mimicing alias
 export const Suspense = Async;

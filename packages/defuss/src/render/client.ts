@@ -16,6 +16,7 @@ export const hydrate = (
   debug?: boolean
 ) => {
   let elementIndex = 0;
+  console.log("[hydration] start")
 
   for (const node of nodes) {
     if (typeof node === 'string' || node === null) {
@@ -59,6 +60,7 @@ export const hydrate = (
     for (const key of Object.keys(vnode.attributes)) {
       if (key === 'ref') continue; // don't override ref.current with [object Object] again
 
+      // TODO: refactor: this maybe can be unified with isomorph render logic
       if (key.startsWith('on') && typeof vnode.attributes[key] === 'function') {
         let eventName = key.substring(2).toLowerCase();
         let capture = false;
@@ -69,9 +71,11 @@ export const hydrate = (
           eventName = eventName.replace(/capture$/, '');
         }
 
+        console.log("createErrorBoundaryCallback()! hydrate", eventName, vnode.attributes[key], element, vnode)
+
         element.addEventListener(
           eventName,
-          createErrorBoundaryCallback(vnode.attributes[key], vnode.$$type, vnode.attributes.key).bind(element),
+          createErrorBoundaryCallback(vnode.attributes[key], vnode.$$type, vnode.attributes.$$key).bind(element),
           capture
         );
       }
@@ -79,27 +83,29 @@ export const hydrate = (
 
     // --- element lifecycle ---
 
+    // TODO: this should be refactored to re-use logic in lifecycle.js!
+
     // call onMount if provided
-    if (vnode.attributes.onMount) {
+    if (vnode?.attributes?.onMount) {
       vnode.attributes.onMount(element);
     }
 
-    if (vnode.attributes.onUnmount) {
+    if (vnode?.attributes?.onUnmount) {
       onElementUnmount(element, vnode.attributes.onUnmount)
     }
     // --- component lifecycle ---
 
-    if (vnode.attributes.key) {
-      console.log("lifecycleListenerIndex (hydrate) instance-bound", vnode.attributes.key)
+    if (vnode?.attributes?.$$key) {
+      console.log("lifecycleListenerIndex (hydrate) instance-bound", vnode.attributes.$$key)
       
       // notify mounted
-      notifyMounted(element as HTMLElement, vnode.attributes.key)
+      notifyMounted(element as HTMLElement, vnode.attributes.$$key)
 
       // register the unmount observer (MutationObserver)
-      notifyOnUnmount(element as HTMLElement, vnode.attributes.key)
+      notifyOnUnmount(element as HTMLElement, vnode.attributes.$$key)
     }
 
-    if (vnode.$$type) {
+    if (vnode?.$$type) {
       console.log("lifecycleListenerIndex (hydrate) global", vnode.$$type)
       
       // notify mounted
@@ -110,7 +116,7 @@ export const hydrate = (
     }
 
     // recursively hydrate children
-    if (vnode.children && vnode.children.length > 0) {
+    if (vnode?.children && vnode?.children?.length > 0) {
       hydrate(
         vnode.children as Array<VNode | string | null>,
         Array.from(element.childNodes)
@@ -125,6 +131,7 @@ export const hydrate = (
       '[defuss] Hydration warning: There are more DOM elements than VNodes.'
     );
   }
+  console.log("[hydration] finished")
 };
 
 export * from './index.js'

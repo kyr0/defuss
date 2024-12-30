@@ -1,6 +1,6 @@
 import type { AstroComponentMetadata, NamedSSRLoadedRendererValue } from 'astro';
 import type { RendererContext } from './types.js';
-import { renderToString, render, getBrowserGlobals, getDocument } from 'defuss/server'
+import { renderToString, render, getBrowserGlobals, getDocument, createInPlaceErrorMessageVNode } from 'defuss/server'
 import type { Props, RenderInput } from 'defuss'
 import { StaticHtml } from './render.js';
 
@@ -25,7 +25,6 @@ async function check(
 
 	return true; // always (re-)render for now (TODO: implement proper check)
 }
-
 
 async function renderToStaticMarkup(
 	this: RendererContext,
@@ -58,12 +57,6 @@ async function renderToStaticMarkup(
 		componentProps.children = children;
 	}
 
-	let errorBoundaryCallback: ((err: unknown) => void) | undefined;
-
-	componentProps.onError = (cb: (err: unknown) => void) => {
-		errorBoundaryCallback = cb
-	}
-
 	let vdom: RenderInput;
 
 	const browserGlobals = getBrowserGlobals();
@@ -83,17 +76,16 @@ async function renderToStaticMarkup(
 	try {
 		vdom = Component(componentProps)
 	} catch (error) {
-		if (typeof errorBoundaryCallback === "function") {
 
-			if (typeof error === "string") {
-				error = `[JsxError] in ${Component.name}: ${error}`;
-			} else if (error instanceof Error) {
-				error.message = `[JsxError] in ${Component.name}: ${error.message}`;
-			}
-			errorBoundaryCallback(error)
-		} else {
-			throw error;
-		}
+		// when an error occurs here, it cannot be catched in the JSX
+		// tree down the road, because the compnent function that was executing
+		// was the top-level component function. Therefore, no inner error boundary
+		// handling is feasible: onError is not guaranteed to have already been called.
+		// In consequence, we have to report this error in the next-best way possible.
+		vdom = createInPlaceErrorMessageVNode(error)
+
+		console.error("FATAL ERROR in top-level component JSX (SSR)", vdom.$$type||vdom)
+		console.error("Original error", error)
 	}
 
 	let roots: HTMLElement|Array<HTMLElement>;

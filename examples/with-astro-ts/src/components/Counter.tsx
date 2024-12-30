@@ -1,8 +1,7 @@
 import "./Counter.css"
 
 // we need a few imports from the library (TypeScript-only)
-import { type Props, $, createRef, onError, onMount, onUnmount, dequery } from "defuss"
-
+import { type Props, createRef, onError, onMount, onUnmount, dequery } from "defuss"
 
 // When using TypeScript, interfaces come in handy
 // They help with good error messages!
@@ -25,10 +24,8 @@ export function Counter({ label, ref, clickCount, key }: CounterProps) {
 
   console.log("[Counter] calling onError", key)
   onError((err) => {
-
     console.log("[Counter] Error boundary caught an error", err)
-    $(buttonRef).html(<strong>Sorry, an error happened!</strong>);
-
+    dequery(buttonRef).jsx(<strong>Sorry, an error happened!</strong>);
   }, key);
 
   console.log("[Counter] calling onMount", key)
@@ -40,7 +37,6 @@ export function Counter({ label, ref, clickCount, key }: CounterProps) {
   onUnmount((el: HTMLElement) => {
     console.log("[Counter] in onUnmount Component NEW", !!el, !!ref.current)
   }, key);
-
 
   console.log("[Counter] Creating VDOM", !!ref)
 
@@ -57,11 +53,14 @@ export function Counter({ label, ref, clickCount, key }: CounterProps) {
 
     console.log("[Counter] onUpdateLabel: Native mouse event", evt)
 
-    // Changes the innerText of the <button> element.
-    // You could also do: buttonRef.current.innerText = `...`
-    // but dequery works like jQuery and is much simpler!
-    $(buttonRef).text(renderLabel(clickCount, label))
-
+    try {
+      // Changes the innerText of the <button> element.
+      // You could also do: buttonRef.current.innerText = `...`
+      // but dequery works like jQuery and is much simpler!
+      dequery(buttonRef).text(renderLabel(clickCount, label))
+    } catch (err) {
+      console.log("[Counter] Error in onUpdateLabel", err)
+    }
     // inform the parent component about the click counter update
     ref.update(clickCount)
 
@@ -74,14 +73,6 @@ export function Counter({ label, ref, clickCount, key }: CounterProps) {
     }
   }
 
-  const whenMounted = () => {
-    console.log("[Counter] in whenMounted")
-  }
-
-  const whenUnmounted = () => {
-    console.log("[Counter] in whenUnmounted")
-  }
-
   const whenMouseDownCapture = (evt: PointerEvent) => {
     console.log("[Counter] in whenMouseDownCapture: Mouse down capture", evt)
   }
@@ -91,8 +82,8 @@ export function Counter({ label, ref, clickCount, key }: CounterProps) {
   // It usually is pre-rendered (SSR) on server-side and hydrated in the browser.
   return (
     <button class="Counter" type="button" 
-      ref={buttonRef} onClick={onUpdateLabel} 
-      onUnmount={whenUnmounted} onMount={whenMounted} 
+      ref={buttonRef}
+      onClick={onUpdateLabel} 
       onMouseDownCapture={whenMouseDownCapture}
     >
       {/* This label is rendered *once*. It will never change reactively! */}
