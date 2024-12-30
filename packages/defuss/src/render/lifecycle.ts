@@ -24,8 +24,8 @@ export function getLifecycleCmpIndexes(vnode: VNode<VNodeAttributes>): Array<str
   const cmpLifecycleIndexes: Array<string|Function> = [];
 
   // @ts-ignore
-  if (vnode?.attributes?.$$key) {
-    cmpLifecycleIndexes.push(vnode?.attributes?.$$key)
+  if (vnode?.$$key) {
+    cmpLifecycleIndexes.push(vnode?.$$key)
   } 
 
     // @ts-ignore

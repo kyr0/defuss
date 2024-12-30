@@ -232,7 +232,7 @@ function createDomFromChild(child: ValidChild, globals: Globals): Node | Node[] 
   }
 
   // @ts-ignore:
-  console.log("createDomFromChild! key?", child?.attributes?.$$key)
+  console.log("createDomFromChild! key?", child?.$$key)
 
   // else it's a VNode, create without parent as we don't know where it goes yet
   // therefore, we need to handle the onMount lifecycle event later too
@@ -381,7 +381,7 @@ export function updateDomWithVdom(
         // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
         if (newDom?.$$vdom) {
            // @ts-ignore:
-          console.log("appendChild2! key?", newDom?.$$vdom?.attributes?.$$key)
+          console.log("appendChild2! key?", newDom?.$$vdom?.$$key)
           
           // @ts-ignore
           const lifecycleCmpIndexes = getLifecycleCmpIndexes(newDom.$$vdom);

@@ -167,8 +167,13 @@ export interface VNode<A = VNodeAttributes> {
   type: VNodeType
   attributes: A
   children?: VNodeChildren
+  
   // reference to the function holding the code
   $$type?: VNodeType
+
+  // reference to the key of the component controlling the VNode
+  // (the component that it belongs to; for error boundary management)
+  $$key?: string
 }
 
 

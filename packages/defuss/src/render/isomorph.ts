@@ -73,13 +73,13 @@ export const jsx = (
       }
 
       // ensure to store the key for instance-based lifecycle event listener registration
-      
+
       // mapping key to $$key so that it can be passed down
       // to children (for error boundaries to capture the whole DOM element sub-tree)
       // but still not collide with the key, which can differ in children of the sub-tree
       if (vdom?.attributes && typeof key === "string") {
-        // TODO: Unify behaviour across all variants (vdom.$$key vs vdom.attributes.$$key)
-        vdom.attributes.$$key = key
+        // TODO: Unify behaviour across all variants (vdom.$$key vs vdom.$$key)
+        vdom.$$key = key
       }
       return vdom;
     } catch (error) {
@@ -133,14 +133,14 @@ export const handleLifecycleEventsForOnMount = (newEl: HTMLElement, virtualNode:
 
   // --- components lifecycle ---
 
-  if (virtualNode?.attributes?.$$key) {
-    console.log("lifecycleListenerIndex (hydrate) instance-bound", virtualNode.attributes.$$key)
+  if (virtualNode?.$$key) {
+    console.log("lifecycleListenerIndex (hydrate) instance-bound", virtualNode.$$key)
     
     // notify mounted
-    notifyMounted(newEl as HTMLElement, virtualNode.attributes.$$key)
+    notifyMounted(newEl as HTMLElement, virtualNode.$$key)
 
     // register the unmount observer (MutationObserver)
-    notifyOnUnmount(newEl as HTMLElement, virtualNode.attributes.$$key)
+    notifyOnUnmount(newEl as HTMLElement, virtualNode.$$key)
   }
 
   if (virtualNode?.$$type) {
@@ -296,7 +296,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         console.log("createErrorBoundaryCallback()!", eventName, value, domElement, virtualNode)
 
         domElement.addEventListener(eventName, createErrorBoundaryCallback(
-          value, virtualNode.$$type, virtualNode.attributes?.$$key
+          value, virtualNode.$$type, virtualNode?.$$key
         ).bind(domElement), doCapture)
 
         return

@@ -141,7 +141,7 @@ export const Async = ({
 
           // ensure to store the key for instance-based lifecycle event listener registration
           if (result.vnode && result.promise && result.vnode.attributes && typeof result.promise.$$key === "string") {
-            result.vnode.attributes.$$key = result.promise.$$key
+            result.vnode.$$key = result.promise.$$key
           }
           return result.vnode;
         });

@@ -75,7 +75,7 @@ export const hydrate = (
 
         element.addEventListener(
           eventName,
-          createErrorBoundaryCallback(vnode.attributes[key], vnode.$$type, vnode.attributes.$$key).bind(element),
+          createErrorBoundaryCallback(vnode.attributes[key], vnode.$$type, vnode.$$key).bind(element),
           capture
         );
       }
@@ -95,14 +95,14 @@ export const hydrate = (
     }
     // --- component lifecycle ---
 
-    if (vnode?.attributes?.$$key) {
-      console.log("lifecycleListenerIndex (hydrate) instance-bound", vnode.attributes.$$key)
+    if (vnode?.$$key) {
+      console.log("lifecycleListenerIndex (hydrate) instance-bound", vnode.$$key)
       
       // notify mounted
-      notifyMounted(element as HTMLElement, vnode.attributes.$$key)
+      notifyMounted(element as HTMLElement, vnode.$$key)
 
       // register the unmount observer (MutationObserver)
-      notifyOnUnmount(element as HTMLElement, vnode.attributes.$$key)
+      notifyOnUnmount(element as HTMLElement, vnode.$$key)
     }
 
     if (vnode?.$$type) {
