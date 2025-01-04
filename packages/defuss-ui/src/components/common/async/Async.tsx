@@ -107,6 +107,7 @@ export const Async = ({
       const promisedVdom = (vnode as VNode).type(props);
 
       promisedVdom.$$type = (vnode as VNode).type;
+      promisedVdom.$$cmp = true; // mark as component
 
       // mapping key to $$key so that it can be passed down
       // to children (for error boundaries to capture the whole DOM element sub-tree)

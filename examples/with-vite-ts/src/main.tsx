@@ -3,22 +3,33 @@ import './style.css'
 import typescriptLogo from './typescript.svg'
 import viteLogo from '/vite.svg'
 import { Counter } from './counter.js'
-import { $, onError } from 'defuss' 
+import { $, onError, onMount } from 'defuss' 
 import { render } from 'defuss/client' 
 import { Async } from 'defuss-ui'
 
 function App() {
 
   onError((err) => {
-      
+    // TODO: missing call!
     console.log("[App] Error boundary caught an error", err)
   
   }, App);
-  
+
+
+  onMount((el) => {
+    console.log("[App] in onMount App", el)
+  }, App)
+
+  const onLinkClick = (e: MouseEvent) => {
+    e.preventDefault()
+    alert('You clicked a link!')
+    throw new Error('I am an error!')
+  }
+
   return (
     // fragments work
     <>
-      <a href="https://vite.dev" target="_blank" rel="noreferrer">
+      <a href="https://vite.dev" target="_blank" rel="noreferrer" onClick={onLinkClick}>
         {/* class works */}
         <img src={viteLogo} class="logo" alt="Vite logo" />
       </a>  

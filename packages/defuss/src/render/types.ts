@@ -167,13 +167,16 @@ export interface VNode<A = VNodeAttributes> {
   type: VNodeType
   attributes: A
   children?: VNodeChildren
-  
+
   // reference to the function holding the code
   $$type?: VNodeType
 
   // reference to the key of the component controlling the VNode
   // (the component that it belongs to; for error boundary management)
   $$key?: string
+
+  // flag to mark as component in tree
+  $$cmp?: boolean
 }
 
 
@@ -493,7 +496,8 @@ declare global {
     export type GenericEventHandler = EventHandler<Event>
     export type PointerEventHandler = EventHandler<PointerEvent>
 
-    export interface DOMAttributeEventHandlersLowerCase {
+    export interface DOMAttributeEventHandlersLowerCase {     
+
       // defuss custom elment lifecycle events
       onmount?: Function
       onunmount?: Function
@@ -695,6 +699,9 @@ declare global {
       onMount?: Function
       onUnmount?: Function
 
+      // component function reference
+      $$vdom?: Function
+
       // Image Events
       onLoad?: GenericEventHandler
       onLoadCapture?: GenericEventHandler
@@ -888,7 +895,9 @@ declare global {
       
       ref?: Ref // | VRef
 
-      $$asynctype?: Function;
+      // component function reference
+      $$vdom?: Function
+
       dangerouslysetinnerhtml?: {
         __html: string
       }
@@ -1041,7 +1050,9 @@ declare global {
     export interface HTMLAttributes extends HTMLAttributesLowerCase, DOMAttributes {
       ref?: Ref // | VRef
 
-      $$asyncType?: Function;
+      // component function reference
+      $$vdom?: Function;
+
       dangerouslySetInnerHTML?: {
         __html: string
       }

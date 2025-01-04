@@ -8,7 +8,6 @@
 
 import type { VAttributes, VNode, VNodeAttributes } from "../render/index.js";
 
-
 // either a component function reference or a component key can identify a lifecycle listener 
 export type LifecycleListenerIndex = Function | string | null | undefined;
 
@@ -17,7 +16,6 @@ export interface LifecycleFunction<T> extends Function {
   // either a key to a DOM element/component or the component function reference
   __cmpIdx?: LifecycleListenerIndex; 
 }
-
 
 export function getLifecycleCmpIndexes(vnode: VNode<VNodeAttributes>): Array<string|Function> {
 
@@ -108,7 +106,7 @@ export const createErrorBoundaryCallback = (fn: Function, caller: Function, key?
     return result; // returns sync callback return value
   } catch (error) {
 
-    console.error("createErrorBoundaryCallback - sync!", error, key, caller)
+    console.error("createErrorBoundaryCallback - sync!", error, 'key', key, 'caller', caller)
 
     // specific, instance-bound error listeners
     if (key) {

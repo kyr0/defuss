@@ -1,5 +1,5 @@
 // we need a few imports from the library (TypeScript-only)
-import { type Props, createRef, dequery, onError, onMount, onUnmount } from "defuss"
+import { type Props, createRef, dequery, isComponentRoot, onError, onMount, onUnmount } from "defuss"
 import { Async, type AsyncState } from "defuss-ui"
 
 // When using TypeScript, interfaces come in handy
@@ -10,19 +10,29 @@ export interface CounterProps extends Props {
   label: string;
 }
 
-// TODO: switch type arguments -> DataStateType DST, then NodeType NT
-const asyncRef = createRef<AsyncState>((newState) => {
-  console.log("[Counter] Suspense state changed to", newState);
-});
-
 // renders 1 sec after initial render
 // and 500ms after the last <Async /> render (<Counter />)
-export async function Later() {
+export async function Later({ key }: Props) {
 
   await new Promise((resolve) => setTimeout(resolve, 500))
-  
+
+  const btnRef = createRef()
+
+  onError((err) => {
+    console.log("[Later] !!!Error boundary caught an error", err)
+    dequery(btnRef).jsx(<strong>Sorry, an error happened! Later</strong>);
+  }, key)
+
+
+  const didClick = () => {
+    console.log("later click")
+    throw new Error("Later click error")
+  }
+
   return (
-    <div>Very much later</div>
+    <button type="button" onUnmount={() => {
+      console.log("[Later] in onUnmount Later", key)
+    }} ref={btnRef} onClick={didClick}>Very much later</button>
   )
 }
 
@@ -36,6 +46,7 @@ export async function Counter({ label, key }: CounterProps) {
   // References the DOM element once it becomes visible.
   // They are also used to carry state. This way, a parent component can sync its state with a child component.
   const countButtonRef = createRef<number>();
+  const containerRef = createRef()  
 
   console.log("[Counter] calling onError", key)
 
@@ -45,12 +56,14 @@ export async function Counter({ label, key }: CounterProps) {
   }, key)
 
   onUnmount(() => {
-    // TODO: test!
+    // TODO: missing a call! re-implement unmount using checking $$vdom on replace/remove?
     console.log("[Counter] in onUnmount Counter", key)
   }, key)
 
-  onMount(() => {
-    console.log("[Counter] in onMount Counter", key)
+  onMount((el) => {
+    if (isComponentRoot(el)) {
+      console.log("[Counter] in onMount Counter", key, el)
+    }
   }, key)
 
   // A vanilla JavaScript variable. No magic here!
@@ -76,6 +89,14 @@ export async function Counter({ label, key }: CounterProps) {
     // sync to external state
     countButtonRef.update(clickCounter)
 
+    // re-render the <Later /> component
+    dequery(containerRef).jsx(
+      <Async ref={containerRef} fallback={<div>Loading later...</div>}>
+        <div>Async content</div>
+        <Later key={`laterBtn-${key}`} />
+      </Async>
+    )
+
     if (clickCounter === 3) {
       console.error("I am an error!")
       throw new Error("I am an error")
@@ -92,10 +113,12 @@ export async function Counter({ label, key }: CounterProps) {
         {/* Only with *explicit* code, will the content of this <button> change. */}
         {label}
       </button>
-      <Async ref={asyncRef} fallback={<div>Loading later...</div>}>
-        <div>Async content</div>
-        <Later />
-      </Async>
+      <div ref={containerRef}>
+        <Async fallback={<div>Loading later...</div>}>
+          <div>Async content</div>
+          <Later key={`laterBtn-${key}`} />
+        </Async>
+      </div>
     </div>
   )
 }

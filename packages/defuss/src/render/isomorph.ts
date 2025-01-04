@@ -1,6 +1,7 @@
 import type { Dequery } from '@/dequery/types.js'
 import { createErrorBoundaryCallback, notifyAllErrorCallbacks, notifyErrorOccurred, notifyMounted, notifyOnUnmount, onElementUnmount } from '@/render/lifecycle.js'
 import type { VNodeChild, VNodeChildren, VNode, VNodeType, VNodeAttributes, DomAbstractionImpl, Globals } from '@/render/types.js'
+import { cmpMap } from '@/common/dom.js'
 
 const CLASS_ATTRIBUTE_NAME = 'class'
 const XLINK_ATTRIBUTE_NAME = 'xlink'
@@ -29,17 +30,54 @@ export const createInPlaceErrorMessageVNode = (error: unknown) => ({
   children: [`FATAL ERROR: ${(error as Error)?.message||error}`]
 }) 
 
+export function attachParentAttrs(vnode: VNode | undefined | string | Array<VNode | undefined | string> | VNodeChildren, type: Function, key?: string) {
+  // if array, recurse over each item
+  if (Array.isArray(vnode)) {
+    for (const child of vnode) {
+      // @ts-ignore: $$type and $$key are internal properties tracking childrens parent component association
+      // if a child has a $$type or $$key set, it means that a new boundary begins here (e.g. new component used)
+      // therefore we need to assign this boundary to all children of this child
+      // if however, the child has no $$type or $$key set, we try to assign the parent's $$type and $$key
+      attachParentAttrs(child as VNode, child?.$$type || type, child?.$$key || key);
+    }
+    return;
+  }
+
+  // if it’s a VNode object, set $$type and $$key on its attributes
+  if (vnode && typeof vnode === 'object' && (type || key)) {
+
+    if (vnode.$$type) {
+      type = vnode.$$type; // new component in sub-tree found
+    } else if (type) {
+      vnode.$$type = type;
+    }
+
+    if (vnode.$$key) {
+      key = vnode.$$key; // new component key index found in sub-tree
+    } else if (key){
+      vnode.$$key = key;
+    }
+
+    if (vnode.children) {
+      attachParentAttrs(vnode.children, type, key);
+    }
+  }
+}
+
+
 export const jsx = (
   type: VNodeType | Function | any,
   attributes: (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>) | null,
-  key?: string,
-  allChildrenAreStatic?: boolean,
-  sourceInfo?: string,
-  selfReference?: any,
+  key?: string
 ): Array<VNode> | VNode => {
 
   // clone attributes as well
-  attributes = { ...attributes, key /* key passed for instance-based lifecycle event listener registration */ }
+  attributes = { ...attributes }
+
+  if (typeof key !== "undefined") {
+     /* key passed for instance-based lifecycle event listener registration */
+    attributes.key = key;
+  }
 
   // extract children from attributes and ensure it's always an array
   let children: Array<VNodeChild> = (attributes?.children ? [].concat(attributes.children) : []).filter(Boolean);
@@ -62,25 +100,31 @@ export const jsx = (
     
     try {
 
+      // TODO: map $$type and $$key onto children to let them know 
+      // who their parent component is, that is controlling them.
+      // This is relevant for error boundary management and onError() reporting.
+
       const vdom: VNode = type({
         children,
         ...attributes,
       })
 
       // store the function reference for error tracking (error boundary scoping)
-      if (vdom && typeof type === 'function') {
+      if (vdom) {
         vdom.$$type = type
-      }
+        vdom.$$cmp = true // mark as component
 
-      // ensure to store the key for instance-based lifecycle event listener registration
+        // ensure to store the key for instance-based lifecycle event listener registration
 
-      // mapping key to $$key so that it can be passed down
-      // to children (for error boundaries to capture the whole DOM element sub-tree)
-      // but still not collide with the key, which can differ in children of the sub-tree
-      if (vdom?.attributes && typeof key === "string") {
-        // TODO: Unify behaviour across all variants (vdom.$$key vs vdom.$$key)
-        vdom.$$key = key
+        // mapping key to $$key so that it can be passed down
+        // to children (for error boundaries to capture the whole DOM element sub-tree)
+        // but still not collide with the key, which can differ in children of the sub-tree
+        if (typeof key === "string") {
+          // TODO: Unify behaviour across all variants (vdom.$$key vs vdom.$$key)
+          vdom.$$key = key
+        }
       }
+      
       return vdom;
     } catch (error) {
 
@@ -102,6 +146,11 @@ export const jsx = (
       return createInPlaceErrorMessageVNode(error)
     }
   }
+
+  // TODO: when the vnode is not a component, but a child that has children
+  // then vnode might have $$type and $$key on it,
+  // and this musst be carried over to it's children
+  // for error boundary management
 
   return {
     type,
@@ -186,10 +235,14 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
           virtualNode.constructor.name === 'AsyncFunction'
         ) {
           newEl = document.createElement('div')
-          // @ts-ignore: assigning the async function reference for CSR debugging purposes
-          newEl.$$asyncType = virtualNode
+          cmpMap.set(newEl, virtualNode);
+          // @ts-ignore: assigning the async component function reference for CSR debugging purposes
+          newEl.$$vdom = virtualNode
         } else if (typeof virtualNode.type === 'function') {
           newEl = document.createElement('div')
+          cmpMap.set(newEl, virtualNode);
+          // @ts-ignore: assigning the component function reference for CSR debugging purposes
+          newEl.$$vdom = virtualNode
           ;(newEl as HTMLElement).innerText = `FATAL ERROR: ${virtualNode.type._error}`
         } else if ( // SVG support
           virtualNode.type.toUpperCase() === 'SVG' ||
@@ -356,7 +409,10 @@ export const renderIsomorphic = (
   globals: Globals,
 ): Array<Element | Text | undefined> | Element | Text | undefined => {
 
-  console.log("[render] start")
+  // @ts-ignore: $$type and $$key are internal properties tracking childrens parent component association
+  attachParentAttrs(virtualNode as VNode, virtualNode?.$$type, virtualNode?.$$key);
+
+  console.log("[render] start", virtualNode)
   const parentEl = (parentDomElement as Dequery).el as Element || parentDomElement
   let renderResult: Array<Element | Text | undefined> | Element | Text | undefined
 
