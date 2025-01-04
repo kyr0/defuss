@@ -1,6 +1,5 @@
-import type { Dequery } from '@/dequery/types.js'
-import { renderIsomorphic } from '@/render/isomorph.js'
-import { createErrorBoundaryCallback, notifyMounted, notifyOnUnmount, onElementUnmount } from '@/render/lifecycle.js'
+import type { Dequery } from '@/dequery/dequery.js';
+import { observeUnmount, renderIsomorphic } from '@/render/isomorph.js'
 import type { RenderInput, RenderResult, VNode } from '@/render/types.js'
 
 export const render = <T extends RenderInput>(
@@ -15,8 +14,7 @@ export const hydrate = (
   parentElements: Array<HTMLElement | Text | Node>,
   debug?: boolean
 ) => {
-  let elementIndex = 0;
-  console.log("[hydration] start")
+  let elementIndex = 0
 
   for (const node of nodes) {
     if (typeof node === 'string' || node === null) {
@@ -26,11 +24,11 @@ export const hydrate = (
         parentElements[elementIndex].nodeType !== Node.ELEMENT_NODE &&
         parentElements[elementIndex].nodeType !== Node.TEXT_NODE
       ) {
-        elementIndex++;
+        elementIndex++
       }
       // optionally, you can add validation here to match text content if necessary
-      elementIndex++;
-      continue;
+      elementIndex++
+      continue
     }
 
     // find the next relevant DOM element
@@ -38,7 +36,7 @@ export const hydrate = (
       elementIndex < parentElements.length &&
       parentElements[elementIndex].nodeType !== Node.ELEMENT_NODE
     ) {
-      elementIndex++;
+      elementIndex++
     }
 
     if ((elementIndex >= parentElements.length) && debug) {
@@ -48,12 +46,12 @@ export const hydrate = (
       break;
     }
 
-    const vnode = node as VNode;
-    const element = parentElements[elementIndex] as HTMLElement;
+    const vnode = node as VNode
+    const element = parentElements[elementIndex] as HTMLElement
 
     // update ref.current if ref is provided
     if (vnode.attributes.ref) {
-      vnode.attributes.ref.current = element;
+      vnode.attributes.ref.current = element
     }
 
     // attach event listeners
@@ -71,11 +69,9 @@ export const hydrate = (
           eventName = eventName.replace(/capture$/, '');
         }
 
-        console.log("createErrorBoundaryCallback()! hydrate", eventName, vnode.attributes[key], element, vnode)
-
         element.addEventListener(
           eventName,
-          createErrorBoundaryCallback(vnode.attributes[key], vnode.$$type, vnode.$$key).bind(element),
+          vnode.attributes[key],
           capture
         );
       }
@@ -91,28 +87,7 @@ export const hydrate = (
     }
 
     if (vnode?.attributes?.onUnmount) {
-      onElementUnmount(element, vnode.attributes.onUnmount)
-    }
-    // --- component lifecycle ---
-
-    if (vnode?.$$key) {
-      console.log("lifecycleListenerIndex (hydrate) instance-bound", vnode.$$key)
-      
-      // notify mounted
-      notifyMounted(element as HTMLElement, vnode.$$key)
-
-      // register the unmount observer (MutationObserver)
-      notifyOnUnmount(element as HTMLElement, vnode.$$key)
-    }
-
-    if (vnode?.$$type) {
-      console.log("lifecycleListenerIndex (hydrate) global", vnode.$$type)
-      
-      // notify mounted
-      notifyMounted(element as HTMLElement, vnode.$$type)
-
-      // register the unmount observer (MutationObserver)
-      notifyOnUnmount(element as HTMLElement, vnode.$$type)
+      observeUnmount(element, vnode.attributes.onUnmount);
     }
 
     // recursively hydrate children
@@ -131,7 +106,6 @@ export const hydrate = (
       '[defuss] Hydration warning: There are more DOM elements than VNodes.'
     );
   }
-  console.log("[hydration] finished")
 };
 
 export * from './index.js'

@@ -7,9 +7,7 @@ export const isRef = (obj: any): obj is Ref<Element> =>
 export function createRef<ST = any, NT extends Node | Element | Text | null = HTMLElement>(refUpdateFn?: RefUpdateFn<ST>, defaultState?: ST): Ref<NT, ST> {
 
   const stateStore = createStore<ST>(defaultState as ST);
-
-  console.log('stateStore', stateStore);
-
+  
   const ref: Ref<NT, ST> = { 
     current: null as NT,
     store: stateStore,

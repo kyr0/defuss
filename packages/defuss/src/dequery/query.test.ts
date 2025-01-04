@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { $ } from "./query.js";
+import { $ } from "./dequery.js";
 
 describe('$', () => {
   it('is defined', () => {
@@ -16,7 +16,7 @@ describe('$', () => {
     expect($(document.body).hasClass).toBeInstanceOf(Function);
     expect($(document.body).removeClass).toBeInstanceOf(Function);
     expect($(document.body).toggleClass).toBeInstanceOf(Function);
-    expect($(document.body).replaceWith).toBeInstanceOf(Function);
+    expect($(document.body).replaceWithJsx).toBeInstanceOf(Function);
     expect($(document.body).on).toBeInstanceOf(Function);
     expect($(document.body).off).toBeInstanceOf(Function);
   });

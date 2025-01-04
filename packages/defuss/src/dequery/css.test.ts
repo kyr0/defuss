@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { $ } from "./query.js";
+import { $ } from "./dequery.js";
 
 describe('CSS class manipulation', () => {
   it('can toggle a CSS class', () => {

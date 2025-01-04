@@ -1,5 +1,5 @@
 import type { Props, Ref, RenderInput, VNode, VNodeChildren } from "defuss/jsx-runtime"
-import { createRef, dequery, isRef, onError, inDevMode } from "defuss";
+import { createRef, $, isRef, inDevMode } from "defuss";
 import type { ComponentProps } from "../types.js";
 
 export type AsyncState = 'loading' | 'loaded' | 'error'
@@ -32,38 +32,50 @@ export interface AsyncProps extends Props, ComponentProps {
   errorClassName?: string;
 }
 
+// TODO: Move to defuss itself
 export const Async = ({ 
-  fallback, ref, children, class: _class, className, id, loadingClassName, loadedClassName, errorClassName
+  fallback, ref, children, class: _class, className, id, loadingClassName, loadedClassName, errorClassName, onError
 }: AsyncProps) => {
 
   let childrenToRender: VNodeChildren | undefined = children;
 
   const containerRef: AsyncStateRef = createRef<AsyncState>(function onSuspenseUpdate(state: AsyncState) {
 
-    if (!containerRef.current) {
-      if (inDevMode) {
-        console.warn("Suspense container is not mounted yet, but a state update demands a render. State is:", state);
+    try {
+
+      if (!containerRef.current) {
+        if (inDevMode) {
+          console.warn("Suspense container is not mounted yet, but a state update demands a render. State is:", state);
+        }
+        return;
       }
-      return;
-    }
 
-    // to allow for beautiful CSS state transitions
-    dequery(containerRef.current).removeClass(loadingClassName || "suspense-loading");
-    dequery(containerRef.current).removeClass(loadedClassName || "suspense-loaded");
-    dequery(containerRef.current).removeClass(errorClassName || "suspense-error");
+      // to allow for beautiful CSS state transitions
+      $(containerRef.current).removeClass(loadingClassName || "suspense-loading");
+      $(containerRef.current).removeClass(loadedClassName || "suspense-loaded");
+      $(containerRef.current).removeClass(errorClassName || "suspense-error");
 
-    if (!children || state === 'error') {
-      dequery(containerRef.current).addClass(errorClassName || "suspense-error");
-      dequery(containerRef).jsx(<div>Loading error!</div>);
-    } else if (state === 'loading') {
-      dequery(containerRef.current).addClass(loadingClassName || "suspense-loading");
-      dequery(containerRef).jsx(fallback);
-    } else if (state === 'loaded') {
-      dequery(containerRef.current).addClass(loadedClassName || "suspense-loaded");
+      if (!children || state === 'error') {
+        $(containerRef.current).addClass(errorClassName || "suspense-error");
+        $(containerRef).jsx(<div>Loading error!</div>);
+      } else if (state === 'loading') {
+        $(containerRef.current).addClass(loadingClassName || "suspense-loading");
+        $(containerRef).jsx(fallback);
+      } else if (state === 'loaded') {
+        $(containerRef.current).addClass(loadedClassName || "suspense-loaded");
 
-      console.log("[Async render] start")
-      dequery(containerRef).jsx(childrenToRender as RenderInput);
-      console.log("[Async render] finished")
+        console.log("[Async render] start")
+        $(containerRef).jsx(childrenToRender as RenderInput);
+        console.log("[Async render] finished")
+      }
+    } catch (error) {
+      containerRef.update("error");
+      containerRef.error = error;
+
+      if (typeof onError === 'function') {
+        // pass the error up to the parent component
+        onError(error);
+      }
     }
   }, "loading");
 
@@ -87,41 +99,33 @@ export const Async = ({
     isInitial = false; // render any outer scope updates from now on
   }
 
-  // to catch internal errors
-  onError((error) => {
-    containerRef.update("error");
-    containerRef.error = error;
-  }, Async);
-
   // resolve async children
   const promisedChildren = (children || []).map((vnode) => {
 
-    if (!vnode || (vnode && !(vnode as VNode).type)) {
-      return Promise.resolve(''); // becomes a Text node
-    }
-
-     // <Async><SomeAsyncComponent /></Async>
-    if ((vnode as VNode).type.constructor.name === 'AsyncFunction') {
-      // construct the props object
-      const props = { ...(vnode as VNode).attributes, children: (vnode as VNode).children };
-      const promisedVdom = (vnode as VNode).type(props);
-
-      promisedVdom.$$type = (vnode as VNode).type;
-      promisedVdom.$$cmp = true; // mark as component
-
-      // mapping key to $$key so that it can be passed down
-      // to children (for error boundaries to capture the whole DOM element sub-tree)
-      // but still not collide with the key, which can differ in children of the sub-tree
-      if ((vnode as VNode).attributes?.key) {
-        // TODO: unify behaviour across all variants
-        promisedVdom.$$key = (vnode as VNode).attributes.key
+    try {
+      if (!vnode || (vnode && !(vnode as VNode).type)) {
+        return Promise.resolve(''); // becomes a Text node
       }
-      // yield the Promise objects
-      return promisedVdom;
-    }
 
-    // all the other synchronous cases
-    return Promise.resolve(vnode);
+      // <Async><SomeAsyncComponent /></Async>
+      if ((vnode as VNode).type.constructor.name === 'AsyncFunction') {
+        // construct the props object
+        const props = { ...(vnode as VNode).attributes, children: (vnode as VNode).children };
+        // yield the Promise objects
+        return (vnode as VNode).type(props);
+      }
+
+      // all the other synchronous cases
+      return Promise.resolve(vnode);
+    } catch (error) {
+      containerRef.update("error");
+      containerRef.error = error;
+
+      if (typeof onError === 'function') {
+        // pass the error up to the parent component
+        onError(error);
+      }
+    }
   })
 
   const onMount = () => {
@@ -130,42 +134,26 @@ export const Async = ({
 
       containerRef.update("loading");
 
-      Promise.all(promisedChildren.map((promise) => 
-        promise.then((vnode: VNode) => ({ vnode, promise }))
-      )).then((correlatedResults) => {
+      Promise.all(promisedChildren)
+        .then((awaitedVnodes) => {
+          childrenToRender = awaitedVnodes.flatMap((vnode: VNode) =>
+            vnode?.type === 'Fragment' ? vnode.children : vnode
+          );
+          containerRef.update("loaded");
+        })
+        .catch((error) => {
+          containerRef.update("error");
+          containerRef.error = error;
 
-        childrenToRender = correlatedResults.map(result => {
-          // store the function reference for error tracking (error boundary scoping
-          if (result.vnode && result.promise && typeof result.promise.$$type === 'function') {
-            result.vnode.$$type = result.promise.$$type
+          if (inDevMode) {
+            console.error("SuspenseLoadingError", error);
           }
+          $(containerRef).jsx(`SuspenseLoadingError: ${error}`);
 
-          // ensure to store the key for instance-based lifecycle event listener registration
-          if (result.vnode && result.promise && result.vnode.attributes && typeof result.promise.$$key === "string") {
-            result.vnode.$$key = result.promise.$$key
+          if (typeof onError === 'function') {
+            onError(error);
           }
-          return result.vnode;
         });
-
-        console.log("childrenToRender", childrenToRender)
-        childrenToRender = childrenToRender.flatMap((vnode: any) => {
-          if (vnode?.type === 'Fragment') {
-            return vnode.children;
-          }
-          return vnode;
-        });
-        containerRef.update("loaded");
-
-      }).catch((error) => {
-
-        containerRef.update("error");
-        containerRef.error = error;
-        
-        if (inDevMode) { // only in development mode
-          console.error("SuspenseLoadingError", error);
-        }
-        dequery(containerRef).jsx(`SuspenseLoadingError: ${error}`);
-      });
     }
   }
 

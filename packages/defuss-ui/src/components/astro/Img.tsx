@@ -15,6 +15,7 @@ export interface ImgProps extends Props {
 	quality?: number;
 }
 
+// TODO: move to defuss-astro
 export const Img = ({
 	id,
 	src,

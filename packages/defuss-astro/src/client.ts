@@ -94,9 +94,6 @@ export default (element: HTMLElement) =>
 				// TODO: use DANGROUSLY_SET_INNER_HTML_ATTRIBUTE here
 				if (key === 'dangerouslySetInnerHTML') return; // special case, handled elsewhere
 
-				// TODO: use KEY_ATTRIBUTE here
-				if (key === '$$key') return; // ignore component key attribute (internal use only)
-
 				// TODO: use REF_ATTRIBUTE here
 				if (key === "ref" && typeof value === 'object') {
 					// @ts-ignore

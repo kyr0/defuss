@@ -1,6 +1,6 @@
 // we need a few imports from the library (TypeScript-only)
-import { type Props, createRef, dequery, isComponentRoot, onError, onMount, onUnmount } from "defuss"
-import { Async, type AsyncState } from "defuss-ui"
+import { type Props, createRef, $ } from "defuss"
+import { Async } from "defuss-ui"
 
 // When using TypeScript, interfaces come in handy
 // They help with good error messages!
@@ -12,33 +12,31 @@ export interface CounterProps extends Props {
 
 // renders 1 sec after initial render
 // and 500ms after the last <Async /> render (<Counter />)
-export async function Later({ key }: Props) {
+export async function Later() {
 
   await new Promise((resolve) => setTimeout(resolve, 500))
 
   const btnRef = createRef()
 
-  onError((err) => {
-    console.log("[Later] !!!Error boundary caught an error", err)
-    dequery(btnRef).jsx(<strong>Sorry, an error happened! Later</strong>);
-  }, key)
-
-
   const didClick = () => {
-    console.log("later click")
-    throw new Error("Later click error")
+    try {
+      console.log("later click")
+      throw new Error("Later click error")
+    } catch(e) {
+      $(btnRef).jsx(<strong>Sorry, an error happened!</strong>);
+    }
   }
 
   return (
     <button type="button" onUnmount={() => {
-      console.log("[Later] in onUnmount Later", key)
+      console.log("[Later] in onUnmount Later")
     }} ref={btnRef} onClick={didClick}>Very much later</button>
   )
 }
 
 // all Component functions are called once! 
 // No reactivity means *zero* complexity!
-export async function Counter({ label, key }: CounterProps) {
+export async function Counter({ label }: CounterProps) {
 
   // delays rendering by 500ms as the Promise resolves after the timeout
   await new Promise((resolve) => setTimeout(resolve, 500))
@@ -46,25 +44,13 @@ export async function Counter({ label, key }: CounterProps) {
   // References the DOM element once it becomes visible.
   // They are also used to carry state. This way, a parent component can sync its state with a child component.
   const countButtonRef = createRef<number>();
-  const containerRef = createRef()  
+  const containerRef = createRef() 
+  
 
-  console.log("[Counter] calling onError", key)
-
-  onError((err) => {
-    console.log("[Counter] Error boundary caught an error", err)
-    dequery(countButtonRef).jsx(<strong>Sorry, an error happened!</strong>);
-  }, key)
-
-  onUnmount(() => {
-    // TODO: missing a call! re-implement unmount using checking $$vdom on replace/remove?
-    console.log("[Counter] in onUnmount Counter", key)
-  }, key)
-
-  onMount((el) => {
-    if (isComponentRoot(el)) {
-      console.log("[Counter] in onMount Counter", key, el)
-    }
-  }, key)
+  const handleError = (e: unknown) => {
+    console.error("Counter error", e)
+    $(countButtonRef).jsx(<strong>Sorry, an error happened!</strong>);
+  }
 
   // A vanilla JavaScript variable. No magic here!
   let clickCounter = 0
@@ -72,51 +58,63 @@ export async function Counter({ label, key }: CounterProps) {
   // A native event handler. Called when the user clicks on the button.
   // Receives the native DOMs MouseEvent. No magic here either!
   const updateLabel = (evt: MouseEvent) => {
+    try {
 
-    // just increment the counter variable on click. Easy? Yeah.
-    clickCounter++;
+      // just increment the counter variable on click. Easy? Yeah.
+      clickCounter++;
 
-    console.log("updateLabel: Native mouse event", evt)
+      console.log("updateLabel: Native mouse event", evt)
 
-    // Changes the innerText of the <button> element.
-    // You could also do: buttonRef.current.innerText = `...`
-    // but dequery works like jQuery and is much simpler!
-    dequery(countButtonRef).text(`Count is: ${clickCounter}`)
+      // Changes the innerText of the <button> element.
+      // You could also do: buttonRef.current.innerText = `...`
+      // but dequery works like jQuery and is much simpler!
+      $(countButtonRef).text(`Count is: ${clickCounter}`)
 
-    console.log("updateLabel: Button text updated", clickCounter)
-    //asyncRef.update("loaded")
+      console.log("updateLabel: Button text updated", clickCounter)
+      //asyncRef.update("loaded")
 
-    // sync to external state
-    countButtonRef.update(clickCounter)
+      // sync to external state
+      countButtonRef.update(clickCounter)
 
-    // re-render the <Later /> component
-    dequery(containerRef).jsx(
-      <Async ref={containerRef} fallback={<div>Loading later...</div>}>
-        <div>Async content</div>
-        <Later key={`laterBtn-${key}`} />
-      </Async>
-    )
+      // re-render the <Later /> component
+      $(containerRef).jsx(
+        <Async ref={containerRef} fallback={<div>Loading later...</div>}>
+          <div>Async content</div>
+          <Later />
+        </Async>
+      )
 
-    if (clickCounter === 3) {
-      console.error("I am an error!")
-      throw new Error("I am an error")
+      if (clickCounter === 3) {
+        console.error("I am an error!")
+        throw new Error("I am an error")
+      }
+    } catch(e) {
+      handleError(e)
     }
+  }
+
+  const handleMount = () => {
+    console.log("Counter mounted")
+  }
+
+  const handleUnmount = () => {
+    console.log("Counter unmounted")
   }
 
   // Already when your code builds, this JSX is turned into a virtual DOM.
   // At runtime, the virtual DOM is rendered and displayed in the browser.
   // It usually is pre-rendered (SSR) on server-side and hydrated in the browser.
   return (
-    <div class="counter-root">
+    <div class="counter-root" onMount={handleMount} onUnmount={handleUnmount}>
       <button type="button" ref={countButtonRef} onClick={updateLabel}>
         {/* This label is rendered *once*. It will never change reactively! */}
         {/* Only with *explicit* code, will the content of this <button> change. */}
         {label}
       </button>
       <div ref={containerRef}>
-        <Async fallback={<div>Loading later...</div>}>
+        <Async onError={handleError} fallback={<div>Loading later...</div>}>
           <div>Async content</div>
-          <Later key={`laterBtn-${key}`} />
+          <Later />
         </Async>
       </div>
     </div>

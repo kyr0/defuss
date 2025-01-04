@@ -1,4 +1,3 @@
-// store.ts
 import { getByPath, setByPath } from '@/common/index.js';
 
 export type Listener<T> = (newValue: T, oldValue?: T, changedKey?: string) => void;

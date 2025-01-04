@@ -1,7 +1,7 @@
 import "./Counter.css"
 
 // we need a few imports from the library (TypeScript-only)
-import { type Props, createRef, onError, onMount, onUnmount, dequery } from "defuss"
+import { type Props, createRef, $ } from "defuss"
 
 // When using TypeScript, interfaces come in handy
 // They help with good error messages!
@@ -20,25 +20,7 @@ const renderLabel = (clickCount: number, defaultLabel: string) => {
 
 // Component functions are called once! 
 // No reactivity means *zero* complexity!
-export function Counter({ label, ref, clickCount, key }: CounterProps) {
-
-  console.log("[Counter] calling onError", key)
-  onError((err) => {
-    console.log("[Counter] Error boundary caught an error", err)
-    dequery(buttonRef).jsx(<strong>Sorry, an error happened!</strong>);
-  }, key);
-
-  console.log("[Counter] calling onMount", key)
-  onMount(async(el: HTMLElement) => {
-    console.log("[Counter] in onMount NEW", !!el, !!ref.current)
-  }, key);
-
-  console.log("[Counter] calling onUnmount", key)
-  onUnmount((el: HTMLElement) => {
-    console.log("[Counter] in onUnmount Component NEW", !!el, !!ref.current)
-  }, key);
-
-  console.log("[Counter] Creating VDOM", !!ref)
+export function Counter({ label, ref, clickCount }: CounterProps) {
 
   // References the DOM element once it becomes visible.
   // When it's gone, the reference is gone. Easy? Yeah.
@@ -50,6 +32,7 @@ export function Counter({ label, ref, clickCount, key }: CounterProps) {
 
     // just increment the counter variable on click. Easy? Yeah.
     clickCount++;
+    ref.update(clickCount) // update the parent component's state
 
     console.log("[Counter] onUpdateLabel: Native mouse event", evt)
 
@@ -57,19 +40,20 @@ export function Counter({ label, ref, clickCount, key }: CounterProps) {
       // Changes the innerText of the <button> element.
       // You could also do: buttonRef.current.innerText = `...`
       // but dequery works like jQuery and is much simpler!
-      dequery(buttonRef).text(renderLabel(clickCount, label))
+      $(buttonRef).text(renderLabel(clickCount, label))
     } catch (err) {
       console.log("[Counter] Error in onUpdateLabel", err)
     }
-    // inform the parent component about the click counter update
-    ref.update(clickCount)
 
     if (clickCount === 100) {
 
-      dequery(buttonRef).tap((el) => {
+      $(buttonRef).tap((el) => {
         console.log("[Counter11] Clicked on button, intentionally removed!", el)
-        throw new Error("asd")
-      }).remove();
+        $(buttonRef).jsx(<strong>Maximum count reached.</strong>);
+
+        ref.update(0); // update the parent component's state
+        clickCount = 0; // reset the local state
+      });
     }
   }
 
@@ -85,6 +69,8 @@ export function Counter({ label, ref, clickCount, key }: CounterProps) {
       ref={buttonRef}
       onClick={onUpdateLabel} 
       onMouseDownCapture={whenMouseDownCapture}
+      onMount={(el: Element) => console.log("[Counter] Mounted", el)}
+      onUnmount={(el: Element) => console.log("[Counter] Unmounted", el)}
     >
       {/* This label is rendered *once*. It will never change reactively! */}
       {/* Only with *explicit* code, will the content of this <button> change. */}

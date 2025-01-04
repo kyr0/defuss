@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import type { Globals, Ref } from "../render/index.js";
-import { jsx, renderIsomorphic } from "../render/isomorph.js";
-import { $ } from "./query.js";
+import { createRef, type Globals, type Ref } from "../render/index.js";
+import { renderIsomorphic } from "../render/isomorph.js";
+import { $ } from "./dequery.js";
 
 describe('General DOM manipulation', () => {
   it('can update children of a defuss-created DOM element', () => {
@@ -27,26 +27,26 @@ describe('General DOM manipulation', () => {
   });
 
   it('can get an input value', () => {
-    const inputRef: Ref = {};
+    const inputRef: Ref = createRef();
     renderIsomorphic(<input ref={inputRef} value="123" />, document.body, globalThis as Globals) as Element;
     expect($(inputRef.current!).val()).toEqual('123');
   });
 
   it('can set an input value', () => {
-    const inputRef: Ref = {};
+    const inputRef: Ref = createRef();
     renderIsomorphic(<input ref={inputRef} value="123" />, document.body, globalThis as Globals) as Element;
     $(inputRef.current!).val('345');
     expect($(inputRef.current!).val()).toEqual('345');
   });
 
   it('can get a checkbox checked value', () => {
-    const inputRef: Ref = {};
+    const inputRef: Ref = createRef();
     renderIsomorphic(<input ref={inputRef} type="checkbox" checked />, document.body, globalThis as Globals) as Element;
     expect($(inputRef.current!).val()).toEqual(true);
   });
 
   it('can set a checkbox checked value', () => {
-    const inputRef: Ref = {};
+    const inputRef: Ref = createRef();
     renderIsomorphic(<input ref={inputRef} type="checkbox" />, document.body, globalThis as Globals) as Element;
     $(inputRef.current!).val(true);
     expect($(inputRef.current!).val()).toEqual(true);
@@ -55,7 +55,7 @@ describe('General DOM manipulation', () => {
   it('can replace an element with another', () => {
     const divRef: any = {};
     renderIsomorphic(<div ref={divRef}>Check</div>, document.body, globalThis as Globals) as Element;
-    divRef.current = $(divRef.current).replaceWith(<input tabIndex="-2" />);
+    divRef.current = $(divRef.current).replaceWithJsx(<input tabIndex="-2" />);
     expect($(divRef.current).attr('tabIndex')).toEqual('-2');
   });
 

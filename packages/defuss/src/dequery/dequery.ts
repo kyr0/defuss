@@ -1,4 +1,4 @@
-import { updateDomWithVdom } from "@/common/dom.js";
+import { updateDom, updateDomWithVdom } from "@/common/dom.js";
 import { isRef, renderIsomorphic, type CSSProperties, type Globals, type Ref, type RenderInput } from "../render/index.js";
 
 export type NodeType = Node | Text | Element | Document | DocumentFragment;
@@ -31,16 +31,16 @@ export const defaultConfig: DequeryOptions = {
 };
 
 export const dequery = (
-  selectorRefOrEl: Element | Ref<Node | Element | Text, any> | string,
+  selectorRefOrEl: Node | Element | Text | Ref<Node | Element | Text, any> | string,
   options: DequeryOptions = defaultConfig
-): DequeryApi => {
+): Dequery => {
 
   if (!selectorRefOrEl) {
     console.error("dequery: selector, ref, or element is required. Got nothing.");
     throw new Error("dequery: selector, ref, or element is required. Got nothing.");
   }
 
-  const api = new DequeryApi({ ...defaultConfig, ...options });
+  const api = new Dequery({ ...defaultConfig, ...options });
 
   if (typeof selectorRefOrEl === "string") {
     api.query(selectorRefOrEl);
@@ -50,11 +50,11 @@ export const dequery = (
     api.elements = [selectorRefOrEl as Node];
   }
   // throws if there is no element found
-  elementGuard(api.elements[0])
+  elementGuard(api.el)
   return api;
 };
 
-class DequeryApi {
+export class Dequery {
 
   constructor(
     public options: DequeryOptions = defaultConfig, 
@@ -64,81 +64,85 @@ class DequeryApi {
     this.elements = []; // elements found in the most recent operation
   }
 
+  get el() {
+    return this.elements[0];
+  }
+
   // --- Traversal ---
 
-  tap(cb: (el: NodeType|Array<NodeType>) => void): DequeryApi {
+  tap(cb: (el: NodeType|Array<NodeType>) => void): Dequery {
     cb(this.elements);
     return this;
   }
 
-  query(selector: string): DequeryApi {
+  query(selector: string): Dequery {
     console.log('querying', selector);
     this.elements = Array.from(document.querySelectorAll(selector));
     return this;
   }
 
-  first(): DequeryApi {
-    this.elements = [this.elements[0]];
+  first(): Dequery {
+    this.elements = [this.el];
     return this;
   }
 
-  last(): DequeryApi {
+  last(): Dequery {
     const els = this.elements;
     this.elements = [els[els.length - 1]];
     return this;
   }
 
-  next(): DequeryApi {
+  next(): Dequery {
     this.elements = this.elements
       .map((el) => elementGuard(el).nextElementSibling)
       .filter(Boolean) as Array<Element>;
     return this;
   }
 
-  eq(idx: number): DequeryApi {
+  eq(idx: number): Dequery {
     this.elements = [this.elements[idx]];
     return this;
   }
 
-  prev(): DequeryApi {
+  prev(): Dequery {
     this.elements = this.elements
       .map((el) => elementGuard(el).previousElementSibling)
       .filter(Boolean) as Array<Element>;
     return this;
   }
 
-  each(cb: (el: NodeType, idx: number) => void): DequeryApi {
+  each(cb: (el: NodeType, idx: number) => void): Dequery {
     this.elements.forEach(cb);
     return this;
   }
 
-  find(selector: string): DequeryApi {
+  find(selector: string): Dequery {
     this.elements = this.elements.flatMap((el) =>
       Array.from(elementGuard(el).querySelectorAll(selector))
     );
     return this;
   }
 
-  parent(): DequeryApi {
+  parent(): Dequery {
     this.elements = this.elements
       .map((el) => el.parentElement)
       .filter(Boolean) as Array<Element>;
     return this;
   }
 
-  children(): DequeryApi {
+  children(): Dequery {
     this.elements = this.elements.flatMap((el) => Array.from(elementGuard(el).children));
     return this;
   }
 
-  closest(selector: string): DequeryApi {
+  closest(selector: string): Dequery {
     this.elements = this.elements
       .map((el) => elementGuard(el).closest(selector))
       .filter(Boolean) as Array<Element>;
     return this;
   }
 
-  filter(selector: string): DequeryApi {
+  filter(selector: string): Dequery {
     this.elements = this.elements.filter((el) => elementGuard(el).matches(selector));
     return this;
   }
@@ -146,63 +150,44 @@ class DequeryApi {
   // --- Attributes ---
 
   attr(name: string): string | null;
-  attr(name: string, value: string): DequeryApi;
-  attr(name: string, value?: string): DequeryApi | string | null {
+  attr(name: string, value: string): Dequery;
+  attr(name: string, value?: string): Dequery | string | null {
     if (value !== undefined) {
       this.elements.forEach((el) => elementGuard(el).setAttribute(name, value));
       return this;
     }
     // retrieve the attribute value from the first element
-    return elementGuard(this.elements[0])?.getAttribute(name) ?? null;
+    return elementGuard(this.el)?.getAttribute(name) ?? null;
   }
 
   // --- Mutations ---
 
-  empty(): DequeryApi {
+  empty(): Dequery {
     this.elements.forEach((el) => {
       elementGuard(el).innerHTML = "";
     });
     return this;
   }
 
-  html(newInnerHtml?: string): DequeryApi {
-
-    // TODO: would be nive if we could console.warn here only in dev mode!
+  html(newInnerHtml?: string): Dequery {
     if (newInnerHtml) {
       this.elements.forEach((el) => {
-        elementGuard(el).innerHTML = newInnerHtml;
+        // partial update HTML sub-tree with new HTML (using DOMParser)
+        updateDom(elementGuard(el), newInnerHtml);
       });
     }
     return this;
   }
 
-  jsx(newJsxPartialDom: RenderInput): DequeryApi {
+  jsx(newJsxPartialDom: RenderInput): Dequery {
     this.elements.forEach((el) => {
-
+      // partially update the DOM with new JSX (using renderIsomorphic) 
       updateDomWithVdom(elementGuard(el), newJsxPartialDom, globalThis as Globals);
-      
-      /*
-      elementGuard(el).innerHTML = "";
-
-      let nodes = renderIsomorphic(
-        newJsxPartialDom,
-        elementGuard(el),
-        globalThis as Globals
-      ) as Array<Node> 
-
-      if (!Array.isArray(nodes)) {
-        nodes = [nodes];
-      }
-
-      nodes.forEach((node) => {
-        el.appendChild(node)
-      });
-      */
     });
     return this;
   }
 
-  text(text?: string): DequeryApi {
+  text(text?: string): Dequery {
     if (text) {
       this.elements.forEach((el) => {
         elementGuard(el).textContent = text;
@@ -211,12 +196,12 @@ class DequeryApi {
     return this;
   }
 
-  remove(): DequeryApi {
+  remove(): Dequery {
     this.elements.forEach((el) => elementGuard(el).remove());
     return this;
   }
 
-  replaceWithJsx(vdomOrNode: RenderInput | NodeType): DequeryApi {
+  replaceWithJsx(vdomOrNode: RenderInput | NodeType): Dequery {
     this.elements.forEach((el) => {
       const newEl =
         vdomOrNode instanceof Node
@@ -231,7 +216,7 @@ class DequeryApi {
     return this;
   }
 
-  append(content: string | NodeType): DequeryApi {
+  append(content: string | NodeType): Dequery {
     this.elements.forEach((el) => {
       if (typeof content === "string") {
         elementGuard(el).innerHTML += content;
@@ -244,14 +229,14 @@ class DequeryApi {
 
   // --- Events ---
 
-  on(eventName: string, handler: EventListener): DequeryApi {
+  on(eventName: string, handler: EventListener): Dequery {
     this.elements.forEach((el) =>
       el.addEventListener(eventName, handler)
     );
     return this;
   }
 
-  off(eventName: string, handler: EventListener): DequeryApi {
+  off(eventName: string, handler: EventListener): Dequery {
     this.elements.forEach((el) =>
       el.removeEventListener(eventName, handler)
     );
@@ -261,12 +246,12 @@ class DequeryApi {
   // --- CSS ---
   
   css(cssProps: string): string | undefined;
-  css(cssProps: CSSProperties): DequeryApi;
-  css(cssProps: string, value: string): DequeryApi;
-  css(cssProps: CSSProperties | string, value?: string): DequeryApi | string | undefined {
+  css(cssProps: CSSProperties): Dequery;
+  css(cssProps: string, value: string): Dequery;
+  css(cssProps: CSSProperties | string, value?: string): Dequery | string | undefined {
     if (!value && typeof cssProps === "string") {
       // get a single CSS property value
-      return elementGuard(this.elements[0])?.style.getPropertyValue(cssProps);
+      return elementGuard(this.el)?.style.getPropertyValue(cssProps);
     } else if (!value && typeof cssProps === "object") {
       // set multiple CSS properties
       this.elements.forEach((el) => {
@@ -288,30 +273,30 @@ class DequeryApi {
     return this;
   }
 
-  addClass(className: Array<string> | string): DequeryApi {
+  addClass(className: Array<string> | string): Dequery {
     const classes = Array.isArray(className) ? className : [className];
     this.elements.forEach((el) => elementGuard(el).classList.add(...classes));
     return this;
   }
 
-  removeClass(className: Array<string> | string): DequeryApi {
+  removeClass(className: Array<string> | string): Dequery {
     const classes = Array.isArray(className) ? className : [className];
     this.elements.forEach((el) => elementGuard(el).classList.remove(...classes));
     return this;
   }
 
-  hasClass(className: string): DequeryApi {
+  hasClass(className: string): Dequery {
     const hasAll = this.elements.every((el) => elementGuard(el).classList.contains(className));
     console.log(`Has class "${className}":`, hasAll);
     return this;
   }
 
-  toggleClass(className: string): DequeryApi {
+  toggleClass(className: string): Dequery {
     this.elements.forEach((el) => elementGuard(el).classList.toggle(className));
     return this;
   }
 
-  animateClass(className: string, duration: number): DequeryApi {
+  animateClass(className: string, duration: number): Dequery {
     this.elements.forEach((el) => {
       elementGuard(el).classList.add(className);
       setTimeout(() => elementGuard(el).classList.remove(className), duration);
@@ -321,25 +306,25 @@ class DequeryApi {
 
   // --- Interaction Simulation ---
 
-  click(): DequeryApi {
+  click(): Dequery {
     this.elements.forEach((el) => elementGuard(el).click());
     return this;
   }
 
-  focus(): DequeryApi {
+  focus(): Dequery {
     this.elements.forEach((el) => elementGuard(el).focus());
     return this;
   }
 
-  blur(): DequeryApi {
+  blur(): Dequery {
     this.elements.forEach((el) => elementGuard(el).blur());
     return this;
   }
 
   // --- Data extraction ---
-  val(value: string | boolean): DequeryApi;
+  val(value: string | boolean): Dequery;
   val(): string | undefined;
-  val(value?: string | boolean): DequeryApi | string | undefined {
+  val(value?: string | boolean): Dequery | string | undefined {
     if (typeof value !== 'undefined') {
       this.elements.forEach((el) => {
         if (el instanceof HTMLInputElement) {
@@ -348,7 +333,7 @@ class DequeryApi {
       });
       return this;
     } else {
-      return elementGuard<HTMLInputElement>(this.elements[0])?.value;
+      return elementGuard<HTMLInputElement>(this.el)?.value;
     }
   }
 
@@ -356,42 +341,35 @@ class DequeryApi {
     return this.elements.map(cb) as Array<T>;
   }
 
-  get(idx?: number): DequeryApi {
-    if (typeof idx !== "undefined") {
-      this.elements = [this.elements[idx]];
-    }
-    return this;
-  }
-
-  prop<K extends keyof HTMLElement>(name: K, value: HTMLElement[K]): DequeryApi;
+  prop<K extends keyof HTMLElement>(name: K, value: HTMLElement[K]): Dequery;
   prop<K extends keyof HTMLElement>(name: K): HTMLElement[K];
-  prop<K extends keyof HTMLElement>(name: K, value?: HTMLElement[K]): DequeryApi | HTMLElement[K] {
+  prop<K extends keyof HTMLElement>(name: K, value?: HTMLElement[K]): Dequery | HTMLElement[K] {
     if (typeof value !== "undefined") {
       this.elements.forEach((el) => {
         elementGuard(el)[name] = value;
       });
       return this;
     }
-    return elementGuard(this.elements[0])[name];
+    return elementGuard(this.el)[name];
   }
 
   data(name: string): string | undefined;
-  data(name: string, value: string): DequeryApi;
-  data(name: string, value?: string): DequeryApi | string | undefined {
+  data(name: string, value: string): Dequery;
+  data(name: string, value?: string): Dequery | string | undefined {
     if (typeof value !== "undefined") {
       this.elements.forEach((el) => {
         elementGuard(el).dataset[name] = value;
       });
       return this;
     }
-    return elementGuard(this.elements[0])?.dataset[name];
+    return elementGuard(this.el)?.dataset[name];
   }
 
   // --- Form management ---
   
   form(): FormKeyValues;
-  form(formData: FormKeyValues): DequeryApi;
-  form(formData?: FormKeyValues): DequeryApi | FormKeyValues {
+  form(formData: FormKeyValues): Dequery;
+  form(formData?: FormKeyValues): Dequery | FormKeyValues {
     if (formData) {
       Object.entries(formData).forEach(([key, value]) => {
         this.elements.forEach((el) => {
@@ -412,3 +390,6 @@ class DequeryApi {
     return formFields;
   }
 }
+
+// for query-like syntax
+export const $ = dequery;

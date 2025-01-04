@@ -3,27 +3,20 @@ import './style.css'
 import typescriptLogo from './typescript.svg'
 import viteLogo from '/vite.svg'
 import { Counter } from './counter.js'
-import { $, onError, onMount } from 'defuss' 
+import { $ } from 'defuss' 
 import { render } from 'defuss/client' 
 import { Async } from 'defuss-ui'
 
 function App() {
 
-  onError((err) => {
-    // TODO: missing call!
-    console.log("[App] Error boundary caught an error", err)
-  
-  }, App);
-
-
-  onMount((el) => {
-    console.log("[App] in onMount App", el)
-  }, App)
-
   const onLinkClick = (e: MouseEvent) => {
-    e.preventDefault()
-    alert('You clicked a link!')
-    throw new Error('I am an error!')
+    try {
+      e.preventDefault()
+      alert('You clicked a link!')
+      throw new Error('I am an error!')
+    } catch(e) {
+      console.error('An error happened:', e)
+    }
   }
 
   return (
@@ -44,9 +37,9 @@ function App() {
       <h1>Vite + defuss + TypeScript</h1>
       <div class="card">
         <Async fallback={<div>Loading...</div>}>
-          <Counter label="Don’t. You. Dare. 👀" key="1" />
+          <Counter label="Don’t. You. Dare. 👀" />
           <div>Noch irgendwas synchrones dazwischen</div>
-          <Counter label="2x Don’t. You. Dare. 👀" key="2" />
+          <Counter label="2x Don’t. You. Dare. 👀" />
         </Async>
       </div>
       <p class="read-the-docs">

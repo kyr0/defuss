@@ -84,7 +84,7 @@ async function renderToStaticMarkup(
 		// In consequence, we have to report this error in the next-best way possible.
 		vdom = createInPlaceErrorMessageVNode(error)
 
-		console.error("FATAL ERROR in top-level component JSX (SSR)", vdom.$$type||vdom)
+		console.error("FATAL ERROR in top-level component JSX (SSR)", vdom)
 		console.error("Original error", error)
 	}
 

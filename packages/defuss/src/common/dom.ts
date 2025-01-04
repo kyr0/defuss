@@ -1,6 +1,5 @@
 import type { Globals, RenderInput, VNode, VNodeAttributes, VNodeChild } from "defuss/jsx-runtime";
-import { attachParentAttrs, getRenderer, handleLifecycleEventsForOnMount } from "../render/isomorph.js";
-import { notifyMounted, getLifecycleCmpIndexes } from "../render/lifecycle.js";
+import { getRenderer, handleLifecycleEventsForOnMount } from "../render/isomorph.js";
 
 /**
  * Compares two DOM nodes for equality with performance optimizations.
@@ -225,16 +224,8 @@ function createDomFromChild(child: ValidChild, globals: Globals): Node | Node[] 
 
   if (child == null) return undefined;
   if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
-    const node = globals.window.document.createTextNode(String(child));
-
-    cmpMap.set(node, child);
-    // @ts-ignore: attach VDOM to be able to access it in lifecycle event processing later
-    node.$$vdom = child; // attach VDOM for future diffing
-    return node;
+    return globals.window.document.createTextNode(String(child));
   }
-
-  // @ts-ignore:
-  console.log("createDomFromChild! key?", child?.$$key)
 
   // else it's a VNode, create without parent as we don't know where it goes yet
   // therefore, we need to handle the onMount lifecycle event later too
@@ -242,17 +233,9 @@ function createDomFromChild(child: ValidChild, globals: Globals): Node | Node[] 
 
   if (renderResult && !Array.isArray(renderResult)) {
     renderResult = [renderResult];
-
-    for (const el of renderResult) {
-      cmpMap.set(el, child);
-      // @ts-ignore: attach VDOM to be able to access it in lifecycle event processing later
-      el.$$vdom = child; // attach VDOM for future diffing
-    }
   }
   return renderResult;
 }
-
-export const cmpMap = new WeakMap<Node, VNodeChild>();
 
 /********************************************************
  * 5) Main partial-update function (index-by-index approach)
@@ -263,8 +246,7 @@ export function updateDomWithVdom(
   globals: Globals
 ) {
 
-  // @ts-ignore: $$type and $$key are internal properties tracking childrens parent component association
-  attachParentAttrs(newVDOM as VNode, newVDOM?.$$type, newVDOM?.$$key);
+  console.log('updateDomWithVdom', newVDOM, parentElement)
   
   // A) Convert newVDOM => array of "valid" children
   let newChildren: ValidChild[] = [];
@@ -292,8 +274,6 @@ export function updateDomWithVdom(
   // C) Snapshot old children
   const oldNodes = Array.from(parentElement.childNodes);
 
-  // TODO: refactor the event lifecycle handling to a separate function
-
   // D) Walk up to max length
   const maxLen = Math.max(oldNodes.length, newDomArray.length);
   for (let i = 0; i < maxLen; i++) {
@@ -315,17 +295,8 @@ export function updateDomWithVdom(
           const first = newDom[0];
           parentElement.replaceChild(first, oldNode);
           
-          // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
-          if (cmpMap.has(first)) {  //if (first?.$$vdom) {
-            console.log("first replaceChild")
-            
-            // @ts-ignore
-            const $onMountListeners = getLifecycleCmpIndexes(first.$$vdom);
-
-            console.log("$onMountListeners", $onMountListeners)
-            // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
-            //handleLifecycleEventsForOnMount(first as HTMLElement, first.$$vdom);
-            handleLifecycleEventsForOnMount(first as HTMLElement, cmpMap.get(first) as VNode);
+          if (typeof first !== "undefined") {
+            handleLifecycleEventsForOnMount(first as HTMLElement);
           }
 
           // Insert the rest
@@ -333,17 +304,9 @@ export function updateDomWithVdom(
             if (newDom[k]) {
               parentElement.insertBefore(newDom[k]!, first.nextSibling);
 
-              // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
-              //if (newDom[k].$$vdom) {
-              if (cmpMap.has(newDom[k])) { 
+              if (typeof newDom[k] !== "undefined") { 
                 console.log("inserBefore!")
-                
-                // @ts-ignore
-                const $onMountListeners = getLifecycleCmpIndexes(newDom[k].$$vdom);
-    
-                console.log("$onMountListeners", $onMountListeners)
-                // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
-                handleLifecycleEventsForOnMount(newDom[k] as HTMLElement, newDom[k].$$vdom);
+                handleLifecycleEventsForOnMount(newDom[k] as HTMLElement);
               }
             }
           }
@@ -358,19 +321,7 @@ export function updateDomWithVdom(
           // replace
           parentElement.replaceChild(newDom, oldNode);
 
-          // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
-          //if (newDom?.$$vdom) {
-          if (cmpMap.has(newDom)) {
-            console.log("replaceChild!")
-            
-            // @ts-ignore
-            const $onMountListeners = getLifecycleCmpIndexes(newDom.$$vdom);
-
-            console.log("$onMountListeners", $onMountListeners)
-            // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
-            //handleLifecycleEventsForOnMount(newDom as HTMLElement, newDom.$$vdom);
-            handleLifecycleEventsForOnMount(newDom as HTMLElement, cmpMap.get(newDom));
-          }
+          handleLifecycleEventsForOnMount(newDom as HTMLElement);
         }
       }
     } else if (!oldNode && newDom !== undefined) {
@@ -378,44 +329,16 @@ export function updateDomWithVdom(
       if (Array.isArray(newDom)) {
         newDom.forEach((newNode) => {
           const wasAdded = newNode && parentElement.appendChild(newNode);
-          // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
-          //if (wasAdded && newNode?.$$vdom) {
-          if (wasAdded && cmpMap.has(newNode)) {
-            console.log("appendChild!")
-            
-            // @ts-ignore
-            const $onMountListeners = getLifecycleCmpIndexes(newNode.$$vdom);
 
-            console.log("$onMountListeners", $onMountListeners)
-            // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
-            //handleLifecycleEventsForOnMount(newNode as HTMLElement, newNode.$$vdom);
-            handleLifecycleEventsForOnMount(newNode as HTMLElement, cmpMap.get(newNode));
+          if (wasAdded) {
+            handleLifecycleEventsForOnMount(newNode as HTMLElement)
           }
           return wasAdded;
         });
       } else if (newDom) {
         parentElement.appendChild(newDom);
 
-        // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
-        //if (newDom?.$$vdom) {
-        const vnode = cmpMap.get(newDom);
-        if (vnode) {
-           // @ts-ignore:
-          console.log("appendChild2! key?", newDom?.$$vdom?.$$key)
-          
-          // @ts-ignore
-          //const lifecycleCmpIndexes = getLifecycleCmpIndexes(newDom.$$vdom);
-          const lifecycleCmpIndexes = getLifecycleCmpIndexes(vnode);
-
-          console.log("lifecycleCmpIndexes", lifecycleCmpIndexes)
-          // @ts-ignore: $$vdom has been attached to the node in createDomFromChild()
-          //handleLifecycleEventsForOnMount(newDom as HTMLElement, newDom.$$vdom);
-          handleLifecycleEventsForOnMount(newDom as HTMLElement, vnode);
-
-          for (const index of lifecycleCmpIndexes) {
-            notifyMounted(newDom as HTMLElement, index);
-          }
-        }
+        handleLifecycleEventsForOnMount(newDom as HTMLElement);
       }
     } else if (oldNode && newDom === undefined) {
       // we have leftover old => remove
@@ -450,15 +373,4 @@ export function replaceDomWithVdom(parentElement: Element, newVDOM: RenderInput,
   } else if (newDom) {
     parentElement.appendChild(newDom);
   }
-}
-
-export const isComponentRoot = (node: Node): boolean => {
-  const vnode = cmpMap.get(node);
-  return typeof node === "object" && 
-    // @ts-ignore: $$vdom is assigned to every VDOM-rendered node
-    //(node as HTMLElement).$$vdom && 
-    vnode &&
-    // @ts-ignore: $$cmp marks a component root in a VDOM sub-tree
-    //(node as HTMLElement).$$vdom.$$cmp === true;
-    vnode.$$cmp;
 }

@@ -167,16 +167,6 @@ export interface VNode<A = VNodeAttributes> {
   type: VNodeType
   attributes: A
   children?: VNodeChildren
-
-  // reference to the function holding the code
-  $$type?: VNodeType
-
-  // reference to the key of the component controlling the VNode
-  // (the component that it belongs to; for error boundary management)
-  $$key?: string
-
-  // flag to mark as component in tree
-  $$cmp?: boolean
 }
 
 
@@ -699,9 +689,6 @@ declare global {
       onMount?: Function
       onUnmount?: Function
 
-      // component function reference
-      $$vdom?: Function
-
       // Image Events
       onLoad?: GenericEventHandler
       onLoadCapture?: GenericEventHandler
@@ -895,9 +882,6 @@ declare global {
       
       ref?: Ref // | VRef
 
-      // component function reference
-      $$vdom?: Function
-
       dangerouslysetinnerhtml?: {
         __html: string
       }
@@ -1049,9 +1033,6 @@ declare global {
 
     export interface HTMLAttributes extends HTMLAttributesLowerCase, DOMAttributes {
       ref?: Ref // | VRef
-
-      // component function reference
-      $$vdom?: Function;
 
       dangerouslySetInnerHTML?: {
         __html: string
@@ -1388,8 +1369,8 @@ export interface Props {
   // array-local unique key to identify element items in a NodeList
   key?: string
 
-  // optional callback handler for errors (can be implemented inside of the component)
-  onError?: (cb: (error: unknown) => void) => void
+  // optional callback handler for errors (can be called inside of the component, to pass errors up to the parent)
+  onError?: (error: unknown) => void
 }
 
 export type RenderNodeInput = VNode | string | undefined

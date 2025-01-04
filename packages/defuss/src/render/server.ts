@@ -1,8 +1,8 @@
 import * as HappyDom from 'happy-dom'
 import { renderIsomorphic } from '@/render/isomorph.js'
 import type { RenderInput, RenderResult, Globals } from '@/render/types.js'
-import type { Dequery } from '@/dequery/types.js'
 import serializeHtml from 'w3c-xmlserializer'
+import type { Dequery } from '@/dequery/dequery.js'
 
 export interface RenderOptions {
   /** choose an arbitrary server-side DOM / Document implementation; this library defaults to 'linkedom'; default: undefined */
