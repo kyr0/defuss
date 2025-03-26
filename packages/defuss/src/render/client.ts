@@ -50,16 +50,16 @@ export const hydrate = (
     const element = parentElements[elementIndex] as HTMLElement
 
     // update ref.current if ref is provided
-    if (vnode.attributes.ref) {
-      vnode.attributes.ref.current = element
+    if (vnode.attributes!.ref) {
+      vnode.attributes!.ref.current = element
     }
 
     // attach event listeners
-    for (const key of Object.keys(vnode.attributes)) {
+    for (const key of Object.keys(vnode.attributes!)) {
       if (key === 'ref') continue; // don't override ref.current with [object Object] again
 
       // TODO: refactor: this maybe can be unified with isomorph render logic
-      if (key.startsWith('on') && typeof vnode.attributes[key] === 'function') {
+      if (key.startsWith('on') && typeof vnode.attributes![key] === 'function') {
         let eventName = key.substring(2).toLowerCase();
         let capture = false;
 
@@ -71,7 +71,7 @@ export const hydrate = (
 
         element.addEventListener(
           eventName,
-          vnode.attributes[key],
+          vnode.attributes![key],
           capture
         );
       }

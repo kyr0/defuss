@@ -24,10 +24,6 @@ export const createI18n = (): I18nStore => {
   const translationsStore: Store<Translations> = createStore({});
   let language = 'en';
 
-  const getTranslation = (key: string): string => {
-    const translation = translationsStore.get<string>(`${language}.${key}`);
-    return translation || key;
-  };
   const onLanguageChangeCallbacks: Array<OnLanguageChangeListener> = [];
 
   return {
@@ -42,7 +38,8 @@ export const createI18n = (): I18nStore => {
     // const translatedString = t('greeting', { name: 'John', age: '30' }, 'common');
     // this would replace placeholders {name} and {age} in the translation string with 'John' and '30' respectively.
     t(path: string, replacements: Record<string, string> = {}) {
-      const template = getTranslation(path);
+
+      const template = translationsStore.get<string>(`${language}.${path}`) || path
 
       // VDOM (VNode)
       if (typeof template !== 'string') {
@@ -68,7 +65,6 @@ export const createI18n = (): I18nStore => {
     }
   };
 };
-
 
 // export singleton
 export const i18n = createI18n();

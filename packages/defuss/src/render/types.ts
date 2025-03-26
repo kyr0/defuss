@@ -164,8 +164,8 @@ export interface VNodeAttributes extends VAttributes {
 }
 
 export interface VNode<A = VNodeAttributes> {
-  type: VNodeType
-  attributes: A
+  type?: VNodeType
+  attributes?: A
   children?: VNodeChildren
 }
 
@@ -215,19 +215,19 @@ declare global {
       accumulate?: 'none' | 'sum'
       additive?: 'replace' | 'sum'
       alignmentBaseline?:
-        | 'auto'
-        | 'baseline'
-        | 'before-edge'
-        | 'text-before-edge'
-        | 'middle'
-        | 'central'
-        | 'after-edge'
-        | 'text-after-edge'
-        | 'ideographic'
-        | 'alphabetic'
-        | 'hanging'
-        | 'mathematical'
-        | 'inherit'
+      | 'auto'
+      | 'baseline'
+      | 'before-edge'
+      | 'text-before-edge'
+      | 'middle'
+      | 'central'
+      | 'after-edge'
+      | 'text-after-edge'
+      | 'ideographic'
+      | 'alphabetic'
+      | 'hanging'
+      | 'mathematical'
+      | 'inherit'
       allowReorder?: 'no' | 'yes'
       alphabetic?: number | string
       amplitude?: number | string
@@ -486,7 +486,7 @@ declare global {
     export type GenericEventHandler = EventHandler<Event>
     export type PointerEventHandler = EventHandler<PointerEvent>
 
-    export interface DOMAttributeEventHandlersLowerCase {     
+    export interface DOMAttributeEventHandlersLowerCase {
 
       // defuss custom elment lifecycle events
       onmount?: Function
@@ -878,8 +878,8 @@ declare global {
       onTransitionEndCapture?: TransitionEventHandler
     }
 
-    export interface HTMLAttributesLowerCase { 
-      
+    export interface HTMLAttributesLowerCase {
+
       ref?: Ref // | VRef
 
       dangerouslysetinnerhtml?: {
@@ -1302,9 +1302,9 @@ declare global {
       ul: HTMLAttributes
       var: HTMLAttributes
       video: HTMLAttributes &
-        Partial<{
-          autoplay: boolean
-        }>
+      Partial<{
+        autoplay: boolean
+      }>
       wbr: HTMLAttributes
 
       // SVG

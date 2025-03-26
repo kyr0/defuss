@@ -25,8 +25,8 @@ const filterComments = (children: Array<VNode> | Array<VNodeChild>) =>
 export const createInPlaceErrorMessageVNode = (error: unknown) => ({
   type: 'p',
   attributes: {},
-  children: [`FATAL ERROR: ${(error as Error)?.message||error}`]
-}) 
+  children: [`FATAL ERROR: ${(error as Error)?.message || error}`]
+})
 
 export const jsx = (
   type: VNodeType | Function | any,
@@ -38,7 +38,7 @@ export const jsx = (
   attributes = { ...attributes }
 
   if (typeof key !== "undefined") {
-     /* key passed for instance-based lifecycle event listener registration */
+    /* key passed for instance-based lifecycle event listener registration */
     attributes.key = key;
   }
 
@@ -60,7 +60,7 @@ export const jsx = (
   // it's a component, divide and conquer children
   // in case of async functions, we just pass them through
   if (typeof type === 'function' && type.constructor.name !== 'AsyncFunction') {
-    
+
     try {
       return type({
         children,
@@ -69,10 +69,10 @@ export const jsx = (
     } catch (error) {
 
       if (typeof error === "string") {
-				error = `[JsxError] in ${type.name}: ${error}`;
-			} else if (error instanceof Error) {
-				error.message = `[JsxError] in ${type.name}: ${error.message}`;
-			}
+        error = `[JsxError] in ${type.name}: ${error}`;
+      } else if (error instanceof Error) {
+        error.message = `[JsxError] in ${type.name}: ${error.message}`;
+      }
 
       // render the error in place
       return createInPlaceErrorMessageVNode(error)
@@ -119,9 +119,9 @@ export const handleLifecycleEventsForOnMount = (newEl: HTMLElement) => {
 
   // check for a lifecycle "onMount" hook and call it
   if (typeof (newEl as any)?.$onMount === 'function') {
-    ;(newEl as any).$onMount!()
-    // remove the hook after it's been called
-    ;(newEl as any).$onMount = null; 
+    ; (newEl as any).$onMount!()
+      // remove the hook after it's been called
+      ; (newEl as any).$onMount = null;
   }
 
   // optionally check for a element lifecycle "onUnmount" and hook it up
@@ -154,7 +154,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
     },
 
     createElement: (virtualNode: VNode, parentDomElement?: Element | Document): Element | undefined => {
-      let newEl: Element|undefined = undefined;
+      let newEl: Element | undefined = undefined;
 
       try {
         // if a synchronous function is still a function, VDOM has obviously not resolved, probably an 
@@ -165,7 +165,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
           newEl = document.createElement('div')
         } else if (typeof virtualNode.type === 'function') {
           newEl = document.createElement('div')
-          ;(newEl as HTMLElement).innerText = `FATAL ERROR: ${virtualNode.type._error}`
+            ; (newEl as HTMLElement).innerText = `FATAL ERROR: ${virtualNode.type._error}`
         } else if ( // SVG support
           virtualNode.type.toUpperCase() === 'SVG' ||
           (parentDomElement && renderer.hasSvgNamespace(parentDomElement, virtualNode.type.toUpperCase()))
@@ -175,7 +175,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
           newEl = document.createElement(virtualNode.type as string)
         }
 
-        if (virtualNode.attributes) {        
+        if (virtualNode.attributes) {
           renderer.setAttributes(virtualNode, newEl as Element)
 
           // Apply dangerouslySetInnerHTML if provided
@@ -252,11 +252,11 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         const doCapture = capturePos > -1
 
         if (eventName === 'mount') {
-          ;(domElement as any).$onMount = value // DOM event lifecycle hook
+          ; (domElement as any).$onMount = value // DOM event lifecycle hook
         }
 
         if (eventName === 'unmount') {
-          ;(domElement as any).$onUnmount = value // DOM event lifecycle hook
+          ; (domElement as any).$onUnmount = value // DOM event lifecycle hook
         }
 
         // onClickCapture={...} support
@@ -294,11 +294,11 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
         // allows for style={{ margin: 10 }} etc.
         for (let i = 0; i < propNames.length; i++) {
-          ;(domElement as HTMLElement).style[propNames[i] as any] = value[propNames[i]]
+          ; (domElement as HTMLElement).style[propNames[i] as any] = value[propNames[i]]
         }
       } else if (typeof value === 'boolean') {
         // for cases like <button checked={false} />
-        ;(domElement as any)[name] = value
+        ; (domElement as any)[name] = value
       } else {
         // for any other case
         domElement.setAttribute(name, value)
@@ -306,9 +306,9 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
     },
 
     setAttributes: (virtualNode: VNode<VNodeAttributes>, domElement: Element) => {
-      const attrNames = Object.keys(virtualNode.attributes)
+      const attrNames = Object.keys(virtualNode.attributes!)
       for (let i = 0; i < attrNames.length; i++) {
-        renderer.setAttribute(attrNames[i], virtualNode.attributes[attrNames[i]], domElement, virtualNode)
+        renderer.setAttribute(attrNames[i], virtualNode.attributes![attrNames[i]], domElement, virtualNode)
       }
     },
   }
@@ -342,7 +342,7 @@ export const jsxDEV = (
   allChildrenAreStatic?: boolean,
   sourceInfo?: string,
   selfReference?: any,
-): Array<VNode> | VNode => { 
+): Array<VNode> | VNode => {
   let renderResult: Array<VNode> | VNode;
   try {
     renderResult = jsx(type, attributes, key);

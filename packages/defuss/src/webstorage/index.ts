@@ -4,7 +4,7 @@ import { getPersistenceProvider as getPersistenceProviderServer } from './server
 import { isServer } from './runtime.js'
 
 /** returns the persistence provider (isomorphic) */
-export const cache = <T>(
+export const webstorage = <T>(
   provider: PersistenceProvider = 'local',
   options?: PersistenceProviderOptions,
 ): PersistenceProviderImpl<T> => {
