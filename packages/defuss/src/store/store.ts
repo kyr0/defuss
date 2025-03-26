@@ -1,11 +1,11 @@
-import { getByPath, setByPath } from '@/common/index.js';
+import { getByPath, setByPath } from '../common/index.js';
 
 export type Listener<T> = (newValue: T, oldValue?: T, changedKey?: string) => void;
 
 export interface Store<T> {
   value: T;
-  get: <D=T>(path?: string) => D;
-  set: <D=T>(pathOrValue: string | D, value?: D) => void;
+  get: <D = T>(path?: string) => D;
+  set: <D = T>(pathOrValue: string | D, value?: D) => void;
   subscribe: (listener: Listener<T>) => () => void;
 }
 
@@ -20,7 +20,7 @@ export const createStore = <T>(initialValue: T): Store<T> => {
   return {
     // allow reading value but prevent external mutation
     get value() {
-      return value; 
+      return value;
     },
 
     get(path?: string) {

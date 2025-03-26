@@ -1,4 +1,4 @@
-import { updateDom, updateDomWithVdom } from "@/common/dom.js";
+import { updateDom, updateDomWithVdom } from "../common/dom.js";
 import { isRef, renderIsomorphic, type CSSProperties, type Globals, type Ref, type RenderInput } from "../render/index.js";
 
 export type NodeType = Node | Text | Element | Document | DocumentFragment;
@@ -30,9 +30,11 @@ export const defaultConfig: DequeryOptions = {
   maxWaitMs: 1000,
 };
 
+export type ElementCreationOptions = JSX.HTMLAttributesLowerCase & JSX.HTMLAttributesLowerCase & { innerHTML?: string, textContent?: string };
+
 export const dequery = (
   selectorRefOrEl: Node | Element | Text | Ref<Node | Element | Text, any> | string,
-  options: DequeryOptions = defaultConfig
+  options: DequeryOptions | ElementCreationOptions = defaultConfig
 ): Dequery => {
 
   if (!selectorRefOrEl) {
@@ -43,7 +45,31 @@ export const dequery = (
   const api = new Dequery({ ...defaultConfig, ...options });
 
   if (typeof selectorRefOrEl === "string") {
-    api.query(selectorRefOrEl);
+    const elementCreationRegex = /^<(\w+)>$/; // regex to match element creation syntax like <div>
+    const matchesCreateElementSyntax = selectorRefOrEl.match(elementCreationRegex);
+
+    if (matchesCreateElementSyntax) {
+      // create a new element if the string matches the element creation syntax
+      const newElement = document.createElement(matchesCreateElementSyntax[1]);
+      const { innerHTML, textContent, ...attributes } = options as ElementCreationOptions;
+
+      // set attributes
+      Object.entries(attributes).forEach(([key, value]) => {
+        newElement.setAttribute(key, String(value));
+      });
+
+      // set innerHTML or textContent if provided
+      if (innerHTML) {
+        newElement.innerHTML = innerHTML;
+      } else if (textContent) {
+        newElement.textContent = textContent;
+      }
+
+      api.elements = [newElement];
+    } else {
+      // otherwise, treat it as a query selector
+      api.query(selectorRefOrEl);
+    }
   } else if (isRef(selectorRefOrEl)) {
     api.elements = [selectorRefOrEl.current];
   } else if ((selectorRefOrEl as Node).nodeType === Node.ELEMENT_NODE) {
@@ -57,7 +83,7 @@ export const dequery = (
 export class Dequery {
 
   constructor(
-    public options: DequeryOptions = defaultConfig, 
+    public options: DequeryOptions = defaultConfig,
     public elements: Array<NodeType> = []
   ) {
     this.options = { ...defaultConfig, ...options }; // merge default options with user options
@@ -70,7 +96,7 @@ export class Dequery {
 
   // --- Traversal ---
 
-  tap(cb: (el: NodeType|Array<NodeType>) => void): Dequery {
+  tap(cb: (el: NodeType | Array<NodeType>) => void): Dequery {
     cb(this.elements);
     return this;
   }
@@ -207,19 +233,23 @@ export class Dequery {
         vdomOrNode instanceof Node
           ? vdomOrNode
           : (renderIsomorphic(
-              vdomOrNode,
-              elementGuard(el),
-              globalThis as Globals
-            ) as Node);
+            vdomOrNode,
+            elementGuard(el),
+            globalThis as Globals
+          ) as Node);
       el.parentNode?.replaceChild(newEl.cloneNode(true), el);
     });
     return this;
   }
 
-  append(content: string | NodeType): Dequery {
+  append(content: string | NodeType | Dequery): Dequery {
     this.elements.forEach((el) => {
       if (typeof content === "string") {
         elementGuard(el).innerHTML += content;
+      } else if (content instanceof Dequery) {
+        content.elements.forEach((childEl) => {
+          el.appendChild(elementGuard(childEl));
+        });
       } else {
         el.appendChild(content);
       }
@@ -244,7 +274,7 @@ export class Dequery {
   }
 
   // --- CSS ---
-  
+
   css(cssProps: string): string | undefined;
   css(cssProps: CSSProperties): Dequery;
   css(cssProps: string, value: string): Dequery;
@@ -285,10 +315,8 @@ export class Dequery {
     return this;
   }
 
-  hasClass(className: string): Dequery {
-    const hasAll = this.elements.every((el) => elementGuard(el).classList.contains(className));
-    console.log(`Has class "${className}":`, hasAll);
-    return this;
+  hasClass(className: string): boolean {
+    return this.elements.every((el) => elementGuard(el).classList.contains(className));
   }
 
   toggleClass(className: string): Dequery {
@@ -366,7 +394,7 @@ export class Dequery {
   }
 
   // --- Form management ---
-  
+
   form(): FormKeyValues;
   form(formData: FormKeyValues): Dequery;
   form(formData?: FormKeyValues): Dequery | FormKeyValues {

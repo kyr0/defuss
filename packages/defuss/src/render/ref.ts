@@ -1,5 +1,5 @@
-import type { Ref, RefUpdateFn } from '@/render/types.js';
-import { createStore } from '@/store/store.js';
+import type { Ref, RefUpdateFn } from '../render/types.js';
+import { createStore } from '../store/store.js';
 
 export const isRef = (obj: any): obj is Ref<Element> =>
   obj && typeof obj === "object" && "current" in obj;
@@ -7,8 +7,8 @@ export const isRef = (obj: any): obj is Ref<Element> =>
 export function createRef<ST = any, NT extends Node | Element | Text | null = HTMLElement>(refUpdateFn?: RefUpdateFn<ST>, defaultState?: ST): Ref<NT, ST> {
 
   const stateStore = createStore<ST>(defaultState as ST);
-  
-  const ref: Ref<NT, ST> = { 
+
+  const ref: Ref<NT, ST> = {
     current: null as NT,
     store: stateStore,
     get state() {
