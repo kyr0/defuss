@@ -243,6 +243,10 @@ export class Dequery {
   }
 
   append(content: string | NodeType | Dequery): Dequery {
+    if (typeof content === "undefined" || content === null) {
+      return this;
+    }
+
     this.elements.forEach((el) => {
       if (typeof content === "string") {
         elementGuard(el).innerHTML += content;

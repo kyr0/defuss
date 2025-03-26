@@ -65,4 +65,42 @@ describe('Element creation test', () => {
     expect((div.elements[0] as HTMLElement).tagName).toBe('DIV'); // check that the element is a <div>
     expect((div.elements[0] as HTMLElement).textContent).toBe('Hello World'); // check for the correct text content
   });
+
+  it('can append a <span> element to a <div> element', () => {
+    const div = $('<div>', { text: 'Parent' });
+    const span = $('<span>', { text: 'Child' });
+
+    div.append(span);
+
+    expect(div).toBeInstanceOf(Dequery); // check that div is an instance of Dequery
+    expect((div.elements[0] as HTMLElement).tagName).toBe('DIV'); // check that the element is a <div>
+    expect((div.elements[0] as HTMLElement).textContent).toContain('Parent'); // check for the correct text content in div
+    expect((div.elements[0] as HTMLElement).querySelector('span')).not.toBeNull(); // check that a <span> is appended
+    expect((div.elements[0] as HTMLElement).querySelector('span')?.textContent).toBe('Child'); // check for the correct text content in span
+  });
+
+  it('does not append when the parameter is null', () => {
+    const div = $('<div>', { text: 'Parent' });
+
+    const x = div.append(null);
+    expect(x).toBe(div); // check that x equals div
+
+    expect(div).toBeInstanceOf(Dequery); // check that div is an instance of Dequery
+    expect((div.elements[0] as HTMLElement).tagName).toBe('DIV'); // check that the element is a <div>
+    expect((div.elements[0] as HTMLElement).textContent).toBe('Parent'); // check that the text content remains unchanged
+    expect((div.elements[0] as HTMLElement).children.length).toBe(0); // check that no children are appended
+  });
+
+  it('does not append when the parameter is undefined', () => {
+    const div = $('<div>', { text: 'Parent' });
+
+    const x = div.append(undefined);
+
+    expect(x).toBe(div); // check that x equals div
+
+    expect(div).toBeInstanceOf(Dequery); // check that div is an instance of Dequery
+    expect((div.elements[0] as HTMLElement).tagName).toBe('DIV'); // check that the element is a <div>
+    expect((div.elements[0] as HTMLElement).textContent).toBe('Parent'); // check that the text content remains unchanged
+    expect((div.elements[0] as HTMLElement).children.length).toBe(0); // check that no children are appended
+  });
 });
