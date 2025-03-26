@@ -26,11 +26,11 @@ describe('Element creation test', () => {
     expect((input.elements[0] as HTMLInputElement).placeholder).toBe('Enter text'); // check for the correct placeholder
   });
 
-  it('can create a <button> element with inner HTML', () => {
-    const button = $('<button>', { innerHTML: 'Click me' });
+  it('can create a <button> element with html content', () => {
+    const button = $('<button>', { html: 'Click me' });
     expect(button).toBeInstanceOf(Dequery); // check that button is an instance of Dequery
     expect((button.elements[0] as HTMLButtonElement).tagName).toBe('BUTTON'); // check that the element is a <button>
-    expect((button.elements[0] as HTMLButtonElement).innerHTML).toBe('Click me'); // check for the correct inner HTML
+    expect((button.elements[0] as HTMLButtonElement).innerHTML).toBe('Click me'); // check for the correct html content
   });
 
   it('can create a <p> element with multiple attributes', () => {
@@ -43,7 +43,7 @@ describe('Element creation test', () => {
   });
 
   it('can add a click event listener to a <button> element', () => {
-    const button = $('<button>', { innerHTML: 'Click me' });
+    const button = $('<button>', { html: 'Click me' });
     let clicked = false;
     button.on('click', () => { clicked = true; });
     (button.elements[0] as HTMLButtonElement).click();
@@ -60,7 +60,7 @@ describe('Element creation test', () => {
   });
 
   it('can create a <div> element with text content', () => {
-    const div = $('<div>', { textContent: 'Hello World' });
+    const div = $('<div>', { text: 'Hello World' });
     expect(div).toBeInstanceOf(Dequery); // check that div is an instance of Dequery
     expect((div.elements[0] as HTMLElement).tagName).toBe('DIV'); // check that the element is a <div>
     expect((div.elements[0] as HTMLElement).textContent).toBe('Hello World'); // check for the correct text content

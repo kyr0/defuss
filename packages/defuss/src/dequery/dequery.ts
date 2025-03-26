@@ -30,7 +30,7 @@ export const defaultConfig: DequeryOptions = {
   maxWaitMs: 1000,
 };
 
-export type ElementCreationOptions = JSX.HTMLAttributesLowerCase & JSX.HTMLAttributesLowerCase & { innerHTML?: string, textContent?: string };
+export type ElementCreationOptions = JSX.HTMLAttributesLowerCase & JSX.HTMLAttributesLowerCase & { html?: string, text?: string };
 
 export const dequery = (
   selectorRefOrEl: Node | Element | Text | Ref<Node | Element | Text, any> | string,
@@ -51,7 +51,7 @@ export const dequery = (
     if (matchesCreateElementSyntax) {
       // create a new element if the string matches the element creation syntax
       const newElement = document.createElement(matchesCreateElementSyntax[1]);
-      const { innerHTML, textContent, ...attributes } = options as ElementCreationOptions;
+      const { text, html, ...attributes } = options as ElementCreationOptions;
 
       // set attributes
       Object.entries(attributes).forEach(([key, value]) => {
@@ -59,10 +59,10 @@ export const dequery = (
       });
 
       // set innerHTML or textContent if provided
-      if (innerHTML) {
-        newElement.innerHTML = innerHTML;
-      } else if (textContent) {
-        newElement.textContent = textContent;
+      if (html) {
+        newElement.innerHTML = html;
+      } else if (text) {
+        newElement.textContent = text;
       }
 
       api.elements = [newElement];
