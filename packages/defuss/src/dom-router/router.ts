@@ -44,8 +44,6 @@ export interface TokenizedPath {
 
 export type RouteHandler = (request: RouteRequest) => void;
 
-export const DEFUSS_ROUTE_CHANGE_EVENT_NAME = 'defuss-route-change';
-
 export const tokenizePath = (path: string): TokenizedPath => {
   const paramNameRegexp = /:([^\/\.\\]+)/g;
   const groups: RouteMatchGroups = {};
@@ -149,31 +147,19 @@ export const setupRouter = (config: RouterConfig = {
         document.location.href = newPath;
       } else if (strategy === 'slot-refresh') {
         // show new path in the address bar
-        windowImpl!.history.pushState({}, '', newPath);
+        if (typeof windowImpl !== 'undefined') {
+          windowImpl!.history.pushState({}, '', newPath);
+        }
 
         for (const listener of api.listeners) {
           listener(newPath, oldPath);
         }
-      } else {
-        windowImpl!.dispatchEvent(new Event(DEFUSS_ROUTE_CHANGE_EVENT_NAME));
       }
     },
     getRoutes() {
       return routeRegistrations;
     },
   };
-
-  const listenForRouteChanges = () => {
-    windowImpl!.addEventListener(DEFUSS_ROUTE_CHANGE_EVENT_NAME, () => {
-      console.log('path change', windowImpl!.document.location.pathname);
-      const routeMatches = api.match(windowImpl!.document.location.pathname);
-      console.log('TODO?! routeMatches', routeMatches);
-    });
-  };
-
-  // Begin listening for route changes immediately.
-  listenForRouteChanges();
-
   return api as Router;
 };
 
