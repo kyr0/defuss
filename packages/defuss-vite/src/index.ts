@@ -1,11 +1,11 @@
 import { createFilter } from "@rollup/pluginutils";
-import type { Plugin, ResolvedConfig } from "vite";
+import type { Plugin, PluginOption, ResolvedConfig } from "vite";
 import { transform } from "@swc/core";
 import type { DefussVitePluginOptions } from './types.js';
 
 // Allows to ignore query parameters, as in Vue SFC virtual modules.
 function parseId(url: string) {
-	return { id: url.split("?", 2)[0] };
+    return { id: url.split("?", 2)[0] };
 }
 
 export interface ExistingRawSourceMap {
@@ -17,20 +17,20 @@ export interface ExistingRawSourceMap {
     sourcesContent?: string[];
     version: number;
     x_google_ignoreList?: number[];
-  }
+}
 
-export type MaybeSourceMap = 
-  | ExistingRawSourceMap
-  | string
-  | null
-  | { mappings: '' };
+export type MaybeSourceMap =
+    | ExistingRawSourceMap
+    | string
+    | null
+    | { mappings: '' };
 
 // makes sure that the JSX pragma is set to `tsx` and the JSX fragment pragma is set to `Fragment`
 // so that JSX is correctly transpiled and tsx() is called to construct the virtual DOM call tree (functional AST)
 export default function defussVitePlugin({
     include,
     exclude,
-}: DefussVitePluginOptions = {}): Plugin[] {
+}: DefussVitePluginOptions = {}): PluginOption {
     let config: ResolvedConfig;
 
     const shouldTransform = createFilter(include || [/\.[cm]?[tj]sx?$/], exclude || [/node_modules/]);
@@ -56,7 +56,7 @@ export default function defussVitePlugin({
                     // LinkeDOM (used by defuss/render) imports perf_hooks 
                     // which is actually just an empty placeholder package, 
                     // therefore, we externalize it
-                    external: ['perf_hooks'] 
+                    external: ['perf_hooks']
                 },
             };
         },
@@ -68,10 +68,10 @@ export default function defussVitePlugin({
 
             if (!shouldTransform(id)) {
                 return null;
-            }    
+            }
 
             const prevSourceMap = this.getCombinedSourcemap?.();
-            const inputSourceMap = prevSourceMap ? JSON.stringify({ code, map: prevSourceMap}) : undefined;
+            const inputSourceMap = prevSourceMap ? JSON.stringify({ code, map: prevSourceMap }) : undefined;
 
             const result = await transform(code, {
                 jsc: {
@@ -109,7 +109,7 @@ export default function defussVitePlugin({
             };
         },
     };
-    return [jsxPlugin];
+    return jsxPlugin as PluginOption;
 }
 
 export * from './types.js';
