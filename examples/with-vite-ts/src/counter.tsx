@@ -23,7 +23,7 @@ export async function Later() {
       console.log("later click")
       throw new Error("Later click error")
     } catch(e) {
-      $(btnRef).jsx(<strong>Sorry, an error happened!</strong>);
+      $(btnRef).update(<strong>Catching async errors works!</strong>);
     }
   }
 
@@ -36,7 +36,7 @@ export async function Later() {
 
 // all Component functions are called once! 
 // No reactivity means *zero* complexity!
-export async function Counter({ label }: CounterProps) {
+export async function AsyncCounter({ label }: CounterProps) {
 
   // delays rendering by 500ms as the Promise resolves after the timeout
   await new Promise((resolve) => setTimeout(resolve, 500))
@@ -49,7 +49,7 @@ export async function Counter({ label }: CounterProps) {
 
   const handleError = (e: unknown) => {
     console.error("Counter error", e)
-    $(countButtonRef).jsx(<strong>Sorry, an error happened!</strong>);
+    $(countButtonRef).update(<strong>Catching sync error works!</strong>);
   }
 
   // A vanilla JavaScript variable. No magic here!
@@ -68,7 +68,7 @@ export async function Counter({ label }: CounterProps) {
       // Changes the innerText of the <button> element.
       // You could also do: buttonRef.current.innerText = `...`
       // but dequery works like jQuery and is much simpler!
-      $(countButtonRef).text(`Count is: ${clickCounter}`)
+      $(countButtonRef).update(`Count is: ${clickCounter}`)
 
       console.log("updateLabel: Button text updated", clickCounter)
       //asyncRef.update("loaded")
@@ -77,7 +77,7 @@ export async function Counter({ label }: CounterProps) {
       countButtonRef.update(clickCounter)
 
       // re-render the <Later /> component
-      $(containerRef).jsx(
+      $(containerRef).update(
         <Async ref={containerRef} fallback={<div>Loading later...</div>}>
           <div>Async content</div>
           <Later />
@@ -85,8 +85,8 @@ export async function Counter({ label }: CounterProps) {
       )
 
       if (clickCounter === 3) {
-        console.error("I am an error!")
-        throw new Error("I am an error")
+        console.error("Catching sync errors works!")
+        throw new Error("Catching sync errors works!")
       }
     } catch(e) {
       handleError(e)

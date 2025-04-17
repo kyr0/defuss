@@ -1,6 +1,5 @@
 ---
-import "defuss-reset";
-import "defuss-windy";
+import "squeezy"; // Import the Squeezy CSS framework
 import "./Layout.css";
 
 interface Props {
@@ -25,8 +24,8 @@ interface Props {
 		<title>{Astro.props.title}</title>
 	</head>
 
-	<body class="flex items-center h-screen bg-background text-foreground">
-		<div class="mx-auto text-center" style="max-width: 1280px">
+	<body class="vbox justify-center">
+		<div class="hbox text-center" style="max-width: 1280px">
 			<slot />
 		</div>
 	</body>

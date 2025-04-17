@@ -34,7 +34,7 @@ export function Counter({ label, ref, clickCount }: CounterProps) {
     clickCount++;
     ref.update(clickCount) // update the parent component's state
 
-    console.log("[Counter] onUpdateLabel: Native mouse event", evt)
+    console.log("[Counter] onUpdateLabel: Native mouse event", evt, "clickCount", clickCount)
 
     try {
       // Changes the innerText of the <button> element.
@@ -48,8 +48,7 @@ export function Counter({ label, ref, clickCount }: CounterProps) {
     if (clickCount === 100) {
 
       $(buttonRef).tap((el) => {
-        console.log("[Counter11] Clicked on button, intentionally removed!", el)
-        $(buttonRef).jsx(<strong>Maximum count reached.</strong>);
+        $(buttonRef).update(<strong>Maximum count reached.</strong>);
 
         ref.update(0); // update the parent component's state
         clickCount = 0; // reset the local state
