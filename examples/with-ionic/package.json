@@ -1,0 +1,25 @@
+{
+  "name": "@example/with-vite-ts",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf ./node_modules/.vite",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "defuss": "workspace:*",
+    "@astrojs/node": "^8.3.4",
+    "vite": "^6.0.3",
+    "defuss-vite": "workspace:*",
+    "defuss-ui": "workspace:*",
+    "@ionic/core": "^8.5.3",
+    "@ionic/react": "^8.5.3",
+    "lightningcss": "^1.28.2",
+    "browserslist": "^4.24.3",
+    "ionicons": "^7.4.0"
+  },
+  "packageManager": "pnpm@9.13.2"
+}
