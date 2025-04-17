@@ -1,6 +1,6 @@
 {
   "name": "defuss-astro",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -59,10 +59,9 @@
       }
     },
     "./image-endpoint.js": {
-      "types": "./dist/image-endpoint.d.mts",
-      "default": "./dist/image-endpoint.mjs"
+      "types": "./dist/endpoint/image-endpoint.d.mts",
+      "default": "./dist/endpoint/image-endpoint.mjs"
     }
-  
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

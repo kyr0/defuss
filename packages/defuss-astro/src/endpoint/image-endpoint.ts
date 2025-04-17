@@ -17,7 +17,7 @@ export const GET: APIRoute = async ({ url }) => {
     }
     const imgHrefAbsolute = `${url.protocol}//${url.host}${imgHrefRelative}`;
 
-    console.log('GET /_defuss/image', { imgHrefAbsolute });
+    console.log('GET /_defuss/image (transforming: ', imgHrefAbsolute, ')');
 
     const response = await fetch(imgHrefAbsolute);
     if (!response.ok) {

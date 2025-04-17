@@ -118,3 +118,6 @@ export default (element: HTMLElement) =>
 			element.innerHTML = ''; // scrub the element subtree
 		}, { once: true });
 	};
+
+	// components
+	export * from "./component/index.js"
