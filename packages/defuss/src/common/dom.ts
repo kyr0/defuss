@@ -246,8 +246,8 @@ export function updateDomWithVdom(
   globals: Globals
 ) {
 
-  console.log('updateDomWithVdom', newVDOM, parentElement)
-  
+  //console.log('updateDomWithVdom', newVDOM, parentElement)
+
   // A) Convert newVDOM => array of "valid" children
   let newChildren: ValidChild[] = [];
   if (Array.isArray(newVDOM)) {
@@ -263,7 +263,7 @@ export function updateDomWithVdom(
     if (child !== undefined) newChildren = [child];
   }
 
-  console.log("new children to render!", newChildren)
+  //console.log("new children to render!", newChildren)
 
   // B) Generate brand-new DOM for each new child in an array
   //    We'll compare them 1:1 with the old nodes.
@@ -294,7 +294,7 @@ export function updateDomWithVdom(
           // We might keep the first node and replace oldNode
           const first = newDom[0];
           parentElement.replaceChild(first, oldNode);
-          
+
           if (typeof first !== "undefined") {
             handleLifecycleEventsForOnMount(first as HTMLElement);
           }
@@ -304,7 +304,7 @@ export function updateDomWithVdom(
             if (newDom[k]) {
               parentElement.insertBefore(newDom[k]!, first.nextSibling);
 
-              if (typeof newDom[k] !== "undefined") { 
+              if (typeof newDom[k] !== "undefined") {
                 console.log("inserBefore!")
                 handleLifecycleEventsForOnMount(newDom[k] as HTMLElement);
               }

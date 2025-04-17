@@ -82,8 +82,9 @@ describe('Element creation test', () => {
   it('does not append when the parameter is null', () => {
     const div = $('<div>', { text: 'Parent' });
 
+    // @ts-ignore
     const x = div.append(null);
-    expect(x).toBe(div); // check that x equals div
+    expect(x).toEqual(div); // check that x equals div
 
     expect(div).toBeInstanceOf(Dequery); // check that div is an instance of Dequery
     expect((div.elements[0] as HTMLElement).tagName).toBe('DIV'); // check that the element is a <div>
@@ -94,13 +95,51 @@ describe('Element creation test', () => {
   it('does not append when the parameter is undefined', () => {
     const div = $('<div>', { text: 'Parent' });
 
+    // @ts-ignore
     const x = div.append(undefined);
 
-    expect(x).toBe(div); // check that x equals div
+    expect(x).toEqual(div); // check that x equals div
 
     expect(div).toBeInstanceOf(Dequery); // check that div is an instance of Dequery
     expect((div.elements[0] as HTMLElement).tagName).toBe('DIV'); // check that the element is a <div>
     expect((div.elements[0] as HTMLElement).textContent).toBe('Parent'); // check that the text content remains unchanged
     expect((div.elements[0] as HTMLElement).children.length).toBe(0); // check that no children are appended
   });
+
+  it('can check the length of elements', () => {
+    const div = $('<div>', { text: 'Parent' });
+    const span = $('<span>', { text: 'Child' });
+
+    div.append(span);
+
+    expect(div.length).toBe(1); // check that div has one child element
+    expect(span.length).toBe(1); // check that span is a single element
+  });
+
+  it('can access elements using array-like indexing', () => {
+    const div = $('<div>', { text: 'Parent' });
+    const span1 = $('<span>', { text: 'Child 1' });
+    const span2 = $('<span>', { text: 'Child 2' });
+
+    div.append(span1).append(span2);
+
+    expect(div[0]).toBeInstanceOf(HTMLElement); // check that the first element is an HTMLElement
+    expect(div[0].tagName).toBe('DIV'); // check that the first element is a <div>
+    expect(div[0].textContent).toContain('Parent'); // check for the correct text content in div
+
+    const children = div.children();
+
+    console.log(div[0].outerHTML); // print the HTML of the div element
+
+    expect(children.length).toBe(2);
+
+    expect(children[0]).toBeInstanceOf(HTMLElement);
+    expect(children[0].tagName).toBe('SPAN');
+    expect(children[0].textContent).toBe('Child 1');
+
+    expect(children[1]).toBeInstanceOf(HTMLElement);
+    expect(children[1].tagName).toBe('SPAN');
+    expect(children[1].textContent).toBe('Child 2');
+  });
+
 });

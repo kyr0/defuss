@@ -1,7 +1,7 @@
 import { updateDom, updateDomWithVdom } from "../common/dom.js";
 import { isRef, renderIsomorphic, type CSSProperties, type Globals, type Ref, type RenderInput } from "../render/index.js";
 
-export type NodeType = Node | Text | Element | Document | DocumentFragment;
+export type NodeType = Node | Text | Element | Document | DocumentFragment | HTMLElement | SVGElement;
 
 export type FormFieldValue = string | Date | File | boolean | number;
 
@@ -19,7 +19,8 @@ const elementGuard = <T = HTMLElement>(el: NodeType): T => {
   } else {
     message += el
   }
-  throw new Error(message);
+  console.warn(message);
+  return el as T;
 };
 
 export interface DequeryOptions {
@@ -33,7 +34,7 @@ export const defaultConfig: DequeryOptions = {
 export type ElementCreationOptions = JSX.HTMLAttributesLowerCase & JSX.HTMLAttributesLowerCase & { html?: string, text?: string };
 
 export const dequery = (
-  selectorRefOrEl: Node | Element | Text | Ref<Node | Element | Text, any> | string,
+  selectorRefOrEl: Node | Element | Text | Ref<Node | Element | Text, any> | string | null | undefined,
   options: DequeryOptions | ElementCreationOptions = defaultConfig
 ): Dequery => {
 
@@ -75,12 +76,17 @@ export const dequery = (
   } else if ((selectorRefOrEl as Node).nodeType === Node.ELEMENT_NODE) {
     api.elements = [selectorRefOrEl as Node];
   }
-  // throws if there is no element found
+  // warns if element is not found
   elementGuard(api.el)
   return api;
 };
 
-export class Dequery {
+interface DequeryArrayLike {
+  [index: number]: NodeType;
+}
+
+export class Dequery implements DequeryArrayLike {
+  [index: number]: HTMLElement & SVGElement; // Proxy-based array-like access
 
   constructor(
     public options: DequeryOptions = defaultConfig,
@@ -88,6 +94,26 @@ export class Dequery {
   ) {
     this.options = { ...defaultConfig, ...options }; // merge default options with user options
     this.elements = []; // elements found in the most recent operation
+
+    // Create a proxy to allow array-like access and proper "this" binding
+    const proxy = new Proxy(this, {
+      get(target, prop) {
+        if (typeof prop === 'string' && !Number.isNaN(Number(prop))) {
+          return target.elements[Number(prop)] as NodeType;
+        }
+        const value = (target as any)[prop];
+        if (typeof value === 'function') {
+          // biome-ignore lint/complexity/useArrowFunction: <explanation>
+          return function (...args: any[]) {
+            // Bind method calls to the proxy so that "this" remains the proxy
+            return value.apply(proxy, args);
+          };
+        }
+        return value;
+      }
+    });
+    // biome-ignore lint/correctness/noConstructorReturn: <explanation>
+    return proxy;
   }
 
   get el() {
@@ -107,6 +133,10 @@ export class Dequery {
     return this;
   }
 
+  get length(): number {
+    return this.elements.length;
+  }
+
   first(): Dequery {
     this.elements = [this.el];
     return this;
@@ -124,6 +154,25 @@ export class Dequery {
       .filter(Boolean) as Array<Element>;
     return this;
   }
+
+  /*
+  [Symbol.iterator](): IterableIterator<Dequery> {
+    let index = 0;
+    const elements = this.elements;
+
+    return {
+      next(): IteratorResult<Dequery> {
+        if (index < elements.length) {
+          return { value: $(elements[index++]), done: false };
+        }
+        return { value: $(`#_nonexisting${Date.now()}`), done: true };
+      },
+      [Symbol.iterator]() {
+        return this;
+      }
+    };
+  }
+  */
 
   eq(idx: number): Dequery {
     this.elements = [this.elements[idx]];
@@ -222,6 +271,20 @@ export class Dequery {
     return this;
   }
 
+  update(textOrHtmlOrJsx: string | RenderInput): Dequery {
+    if (typeof textOrHtmlOrJsx === "string") {
+      const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(textOrHtmlOrJsx);
+      if (hasHtmlTags) {
+        this.html(textOrHtmlOrJsx);
+      } else {
+        this.text(textOrHtmlOrJsx);
+      }
+    } else {
+      this.jsx(textOrHtmlOrJsx);
+    }
+    return this;
+  }
+
   remove(): Dequery {
     this.elements.forEach((el) => elementGuard(el).remove());
     return this;
@@ -243,22 +306,34 @@ export class Dequery {
   }
 
   append(content: string | NodeType | Dequery): Dequery {
-    if (typeof content === "undefined" || content === null) {
+    if (content == null) {
       return this;
     }
 
-    this.elements.forEach((el) => {
+    // Use a static copy of the elements so that mutations don’t affect the iteration
+    const targets = this.elements.slice();
+    targets.forEach((el) => {
       if (typeof content === "string") {
-        elementGuard(el).innerHTML += content;
+        (el as HTMLElement).innerHTML += content;
       } else if (content instanceof Dequery) {
-        content.elements.forEach((childEl) => {
-          el.appendChild(elementGuard(childEl));
+        // Append each element from the content. If appending to multiple targets,
+        // clone for all but the first.
+        content.elements.forEach((childEl, index) => {
+          const nodeToAppend =
+            targets.length > 1 && index > 0
+              ? childEl.cloneNode(true)
+              : childEl;
+          el.appendChild(nodeToAppend);
         });
       } else {
         el.appendChild(content);
       }
     });
     return this;
+  }
+
+  toArray(): Array<NodeType> {
+    return [...this.elements];
   }
 
   // --- Events ---
@@ -338,18 +413,11 @@ export class Dequery {
 
   // --- Interaction Simulation ---
 
-  click(): Dequery {
-    this.elements.forEach((el) => elementGuard(el).click());
-    return this;
-  }
-
-  focus(): Dequery {
-    this.elements.forEach((el) => elementGuard(el).focus());
-    return this;
-  }
-
-  blur(): Dequery {
-    this.elements.forEach((el) => elementGuard(el).blur());
+  trigger(eventType: string): Dequery {
+    this.elements.forEach((el) => {
+      const event = new Event(eventType, { bubbles: true, cancelable: true });
+      elementGuard(el).dispatchEvent(event);
+    });
     return this;
   }
 
