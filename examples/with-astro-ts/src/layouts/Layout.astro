@@ -4,7 +4,10 @@ import "./Layout.css";
 
 interface Props {
 	title: string;
+	marginTop?: string;
 }
+
+const { marginTop } = Astro.props as Props;
 ---
 
 <!doctype html>
@@ -24,9 +27,20 @@ interface Props {
 		<title>{Astro.props.title}</title>
 	</head>
 
-	<body class="vbox justify-center">
-		<div class="hbox text-center" style="max-width: 1280px">
-			<slot />
+	<body>
+		{
+			typeof marginTop !== "undefined" ? (
+				<div class="vbox justify-center">
+					Please scroll down to load/hydrate/run the interactive JS.
+				</div>
+			) : (
+				""
+			)
+		}
+		<div class="vbox justify-center" style={`margin-top: ${marginTop}`}>
+			<div class="hbox text-center" style="max-width: 1280px;">
+				<slot />
+			</div>
 		</div>
 	</body>
 </html>

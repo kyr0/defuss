@@ -7,7 +7,9 @@ export const prerender = false;
 const random = Math.round(Math.random() * 100);
 ---
 
-<Layout title="Welcome to Astro + defuss client:media">
+<Layout
+	title="Welcome to Astro + defuss client:media (make it small to hydrate/run JS)"
+>
 	<App client:media="(max-width: 50em)" clickCount={random}>
 		<div slot="fallback">Loading...</div>
 	</App>

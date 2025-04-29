@@ -1,5 +1,5 @@
 import type EditorJS from '@editorjs/editorjs'; 
-import { Async, createRef, a$, type Ref } from 'defuss'
+import { Async, createRef, $, type Ref } from 'defuss'
 import type { Notebook, NotebookFileEntry } from '../models/Notebook.js';
 import { Editor } from './Editor.js';
 
@@ -46,7 +46,7 @@ export function Notebooks({ tocRef, onNotebookLinkClick }: NotebookListProps) {
     <aside class="hbox px-xs absolute z-10 h-full toc" ref={tocRef}>
       <h5 class="p-none py-xs">
         Notebooks
-        <button type="button" class="btn" onClick={() => a$(listRef).update(<InnerList />)}>🔄</button>
+        <button type="button" class="btn" onClick={() => $(listRef).update(<InnerList />)}>🔄</button>
       </h5>
       <ol ref={listRef}>
         <InnerList />
@@ -126,9 +126,9 @@ export function App() {
     tocDisplayState = !tocDisplayState
 
     if (tocDisplayState) {
-      a$(tocRef).removeClass('hidden')
+      $(tocRef).removeClass('hidden')
     } else {
-      a$(tocRef).addClass('hidden')
+      $(tocRef).addClass('hidden')
     }
   }
 
@@ -136,7 +136,7 @@ export function App() {
     console.log('toggling read only and edit mode')
     readOnly = !readOnly
 
-    a$(saveBtnRef).toggleClass('hidden')
+    $(saveBtnRef).toggleClass('hidden')
 
     editor.readOnly.toggle(readOnly);
   }

@@ -7,7 +7,10 @@ export const prerender = false;
 const random = Math.round(Math.random() * 100);
 ---
 
-<Layout title="Welcome to Astro + defuss client:visible">
+<Layout
+	title="Welcome to Astro + defuss client:visible (scroll down to hydrate/run JS)"
+	marginTop="200rem"
+>
 	<App client:visible clickCount={random}>
 		<div slot="fallback">Loading...</div>
 	</App>

@@ -1,5 +1,5 @@
-import type { Dequery, aDequery } from '@/dequery/index.js'
-import { isADequery } from '../dequery/index.js'
+import type { Dequery } from '@/dequery/index.js'
+import { isDequery } from '../dequery/index.js'
 import type { VNodeChild, VNodeChildren, VNode, VNodeType, VNodeAttributes, DomAbstractionImpl, Globals } from '@/render/types.js'
 
 const CLASS_ATTRIBUTE_NAME = 'class'
@@ -330,19 +330,20 @@ export const renderIsomorphicSync = (
   parentDomElement: ParentElementInput,
   globals: Globals,
 ): SyncRenderResult => {
-
-  const parentEl = (parentDomElement as Dequery).el as Element || parentDomElement
+  if (isDequery(parentDomElement)) {
+    parentDomElement = (parentDomElement as Dequery).getFirstElement() as Element || parentDomElement
+  }
   let renderResult: SyncRenderResult;
 
   if (typeof virtualNode === 'string') {
-    renderResult = getRenderer(globals.window.document).createTextNode(virtualNode, parentEl)
+    renderResult = getRenderer(globals.window.document).createTextNode(virtualNode, parentDomElement)
   } else {
-    renderResult = getRenderer(globals.window.document).createElementOrElements(virtualNode, parentEl)
+    renderResult = getRenderer(globals.window.document).createElementOrElements(virtualNode, parentDomElement)
   }
   return renderResult;
 }
 
-export type ParentElementInputAsync = ParentElementInput | aDequery | Promise<ParentElementInput | aDequery>;
+export type ParentElementInputAsync = ParentElementInput | Dequery | Promise<ParentElementInput | Dequery>;
 
 export const renderIsomorphicAsync = async (
   virtualNode: SyncRenderInput | Promise<SyncRenderInput>,
@@ -351,12 +352,12 @@ export const renderIsomorphicAsync = async (
 ): Promise<SyncRenderResult> => {
 
   if (parentDomElement instanceof Promise) {
-    parentDomElement = (await parentDomElement) as ParentElementInput | aDequery
+    parentDomElement = (await parentDomElement) as ParentElementInput | Dequery
   }
 
-  if (isADequery(parentDomElement)) {
+  if (isDequery(parentDomElement)) {
     // awaits the dequery chain to resolve or fail, then renders the VDOM
-    parentDomElement = (await (parentDomElement as aDequery).toArray())[0] as Element
+    parentDomElement = (await (parentDomElement as Dequery).toArray())[0] as Element
   }
 
   if (virtualNode instanceof Promise) {

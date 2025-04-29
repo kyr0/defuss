@@ -1,7 +1,7 @@
 import type { Props, VNodeChild } from "@/render/types.js";
 import { createRef, type Ref } from "@/render/client.js";
 import { Router } from "./router.js";
-import { $ } from '@/dequery/index.js';
+import { $, type NodeType } from '@/dequery/index.js';
 
 export const RouterSlotId = "router-slot";
 
@@ -31,14 +31,14 @@ export interface RouterSlotProps extends Props {
 export const RouterSlot = ({ router = Router, children, RouterOutlet, ...attributes }: RouterSlotProps): VNodeChild => {
  
   const { tag, ...attributesWithoutTag } = attributes;
-  const ref: Ref = createRef();
+  const ref: Ref<NodeType> = createRef();
 
   // by using this component, we automatically switch to slot-refresh strategy
   router.strategy = 'slot-refresh';
 
   router.onRouteChange(() => {
     //console.log("<RouterSlot> RouterSlot.onRouteChange", newPath, oldPath, ref.current);
-    $(ref.current!).update(RouterOutlet());
+    $(ref).update(RouterOutlet());
   });
 
   if (document.getElementById(RouterSlotId)) {

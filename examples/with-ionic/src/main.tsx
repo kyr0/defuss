@@ -1,6 +1,5 @@
 import "./styles.js"
-
-import { a$, Route, Redirect, RouterSlot } from 'defuss' 
+import { $, Route, Redirect, RouterSlot } from 'defuss' 
 import { render } from 'defuss/client'
 import { Page } from './pages/Page.js'
 import { Menu } from './components/Menu.js'
@@ -36,4 +35,4 @@ function App() {
   )
 }
 // initial render
-render(<App />, a$('body'))
+render(<App />, $('body'))

@@ -1,100 +1,74 @@
 import { updateDom, updateDomWithVdom } from "../common/dom.js";
-import { isRef, renderIsomorphicSync, type CSSProperties, type Globals, type Ref, type RenderInput } from "../render/index.js";
+import { isJSX, isRef, renderIsomorphicSync, type AllHTMLElements, type CSSProperties, type Globals, type Ref, type RenderInput } from "../render/index.js";
 
+// --- Types & Helpers ---
 export type NodeType = Node | Text | Element | Document | DocumentFragment | HTMLElement | SVGElement;
-
 export type FormFieldValue = string | Date | File | boolean | number;
-
-export interface FormKeyValues {
-  // key or path (object path x.y.z) to form field value
-  [keyOrPath: string]: FormFieldValue;
-}
+export interface FormKeyValues { [keyOrPath: string]: FormFieldValue; }
 
 const elementGuard = <T = HTMLElement>(el: NodeType): T => {
   if (el instanceof HTMLElement) return el as T;
-
-  let message = "Expected an HTMLElement, but found: ";
-  if (el?.nodeName) {
-    message += el.nodeName
-  } else {
-    message += el
-  }
-  console.warn(message);
+  console.warn("Expected HTMLElement, but found:", el?.nodeName ?? el);
   return el as T;
 };
 
 export interface DequeryOptions {
-  maxWaitMs: number;
+  maxWaitMs?: number;
+  timeout?: number;
+  delay?: number;
+  initialEl?: NodeType;
+  state?: any;
+  verbose?: boolean;
+  onTimeGuardError?: (ms: number, call: Call) => void;
 }
 
-export const defaultConfig: DequeryOptions = {
+export const adefaultConfig: DequeryOptions = {
   maxWaitMs: 1000,
+  timeout: 5000,
+  delay: 0,
+  verbose: false,
+  onTimeGuardError: () => { }
 };
 
 export type ElementCreationOptions = JSX.HTMLAttributesLowerCase & JSX.HTMLAttributesLowerCase & { html?: string, text?: string };
 
-export const dequery = (
-  selectorRefOrEl: Node | Element | Text | Ref<Node | Element | Text, any> | string | null | undefined,
-  options: DequeryOptions | ElementCreationOptions = defaultConfig
-): Dequery => {
-
-  if (!selectorRefOrEl) {
-    console.error("dequery: selector, ref, or element is required. Got nothing.");
-    throw new Error("dequery: selector, ref, or element is required. Got nothing.");
+// --- Core Async Call & Chain ---
+class Call {
+  name: string;
+  fn: Function;
+  args: any[];
+  constructor(fn: Function, ...args: any[]) {
+    this.name = fn.name;
+    this.fn = fn;
+    this.args = args;
   }
-
-  const api = new Dequery({ ...defaultConfig, ...options });
-
-  if (typeof selectorRefOrEl === "string") {
-    const elementCreationRegex = /^<(\w+)>$/; // regex to match element creation syntax like <div>
-    const matchesCreateElementSyntax = selectorRefOrEl.match(elementCreationRegex);
-
-    if (matchesCreateElementSyntax) {
-      // create a new element if the string matches the element creation syntax
-      const newElement = document.createElement(matchesCreateElementSyntax[1]);
-      const { text, html, ...attributes } = options as ElementCreationOptions;
-
-      // set attributes
-      Object.entries(attributes).forEach(([key, value]) => {
-        newElement.setAttribute(key, String(value));
-      });
-
-      // set innerHTML or textContent if provided
-      if (html) {
-        newElement.innerHTML = html;
-      } else if (text) {
-        newElement.textContent = text;
-      }
-
-      api.elements = [newElement];
-    } else {
-      // otherwise, treat it as a query selector
-      api.query(selectorRefOrEl);
-    }
-  } else if (isRef(selectorRefOrEl)) {
-    api.elements = [selectorRefOrEl.current];
-  } else if ((selectorRefOrEl as Node).nodeType === Node.ELEMENT_NODE) {
-    api.elements = [selectorRefOrEl as Node];
-  }
-  // warns if element is not found
-  elementGuard(api.el)
-  return api;
-};
+}
 
 interface DequeryArrayLike {
   [index: number]: NodeType;
-  length: number;
 }
 
-export class Dequery implements DequeryArrayLike {
-  [index: number]: HTMLElement & SVGElement; // Proxy-based array-like access
+class CallChainImpl implements DequeryArrayLike {
+  [index: number]: NodeType;
 
-  constructor(
-    public options: DequeryOptions = defaultConfig,
-    public elements: Array<NodeType> = []
-  ) {
-    this.options = { ...defaultConfig, ...options }; // merge default options with user options
-    this.elements = []; // elements found in the most recent operation
+  options: DequeryOptions;
+  callStack: Array<Call>;
+  chainStack: Array<Array<Call>>;
+  elements: Array<NodeType>;
+  prevElements: Array<NodeType>;
+  stoppedWithError: boolean;
+  lastResult: any;
+  isResolved: boolean;
+
+  constructor(options: DequeryOptions = {}, isResolved = false) {
+    this.options = { ...adefaultConfig, ...options };
+    this.callStack = [];
+    this.chainStack = [];
+    this.elements = options.initialEl ? [options.initialEl] : [];
+    this.prevElements = [];
+    this.stoppedWithError = false;
+    this.lastResult = null;
+    this.isResolved = isResolved;
 
     // Create a proxy to allow array-like access and proper "this" binding
     const proxy = new Proxy(this, {
@@ -107,7 +81,7 @@ export class Dequery implements DequeryArrayLike {
           // biome-ignore lint/complexity/useArrowFunction: <explanation>
           return function (...args: any[]) {
             // Bind method calls to the proxy so that "this" remains the proxy
-            return value.apply(proxy, args);
+            return value.apply(proxy, args)
           };
         }
         return value;
@@ -117,19 +91,107 @@ export class Dequery implements DequeryArrayLike {
     return proxy;
   }
 
-  get el() {
+  // --- Internal ---
+  resetElements() {
+    this.prevElements = [...this.elements];
+    this.elements = this.options.initialEl ? [this.options.initialEl] : [];
+  }
+  getFirstElement() {
     return this.elements[0];
   }
 
-  // --- Traversal ---
+  createSubChain(clone = true) {
+    if (clone) {
+      const newChain = new DequeryChain({ ...this.options, initialEl: this.getFirstElement() }, true);
+      newChain.elements = this.elements
+      newChain.prevElements = this.prevElements
+      newChain.callStack = this.callStack
+      newChain.chainStack = this.chainStack
+      newChain.stoppedWithError = this.stoppedWithError;
+      newChain.lastResult = this.lastResult;
+      return newChain;
+    } else {
+      return new DequeryChain({ ...this.options, initialEl: this.getFirstElement() }, true);
+    }
+  }
 
-  tap(cb: (el: NodeType | Array<NodeType>) => void): Dequery {
-    cb(this.elements);
+  // --- Initialization ---
+  __init(selectorHtmlRefOrElementRef: string | NodeType | Ref<NodeType, any> | RenderInput,
+    options: DequeryOptions | ElementCreationOptions
+  ) {
+    if (!selectorHtmlRefOrElementRef) throw new Error('dequery: selector/ref/element required');
+    if (typeof selectorHtmlRefOrElementRef === 'string') {
+      if (selectorHtmlRefOrElementRef.indexOf('<') === 0) {
+        this.elements = renderHTML(selectorHtmlRefOrElementRef)
+
+        const { text, html, ...attributes } = options as ElementCreationOptions;
+
+        if (typeof this.elements[0] !== "undefined" && this.elements[0] instanceof Element) {
+          // set attributes
+          Object.entries(attributes).forEach(([key, value]) => {
+            (this.elements[0] as Element).setAttribute(key, String(value));
+          });
+
+          // set innerHTML or textContent if provided
+          if (html) {
+            this.elements[0].innerHTML = html;
+          } else if (text) {
+            this.elements[0].textContent = text;
+          }
+        }
+        return this.createSubChain();
+      } else {
+        return this.query(selectorHtmlRefOrElementRef);
+      }
+    } else if (isRef(selectorHtmlRefOrElementRef)) {
+      return this.ref(selectorHtmlRefOrElementRef);
+    } else if ((selectorHtmlRefOrElementRef as Node).nodeType) {
+      this.elements = [selectorHtmlRefOrElementRef as NodeType];
+      return this.createSubChain();
+    } else if (isJSX(selectorHtmlRefOrElementRef)) {
+      const renderResult = renderIsomorphicSync(selectorHtmlRefOrElementRef as RenderInput, undefined, globalThis as Globals);
+      this.elements = (typeof renderResult !== "undefined" ? Array.isArray(renderResult) ? renderResult : [renderResult] : []) as NodeType[];
+      return this.createSubChain();
+    }
+    throw new Error('Unsupported selectorOrEl type');
+  }
+
+  // --- Traversal ---
+  debug(cb: (el: NodeType | Array<NodeType>) => void) {
+    this.callStack.push(new Call(function debug(this: CallChainImpl) {
+      cb(this.elements);
+      return this.createSubChain(true);
+    }));
     return this;
   }
 
-  query(selector: string): Dequery {
-    this.elements = Array.from(document.querySelectorAll(selector));
+  ref(ref: Ref<NodeType>) {
+    this.callStack.push(new Call(async function ref(this: CallChainImpl, refObj: Ref<NodeType>) {
+      await waitForRefWithPolling(refObj, this.options.maxWaitMs!);
+      if (refObj.current) {
+        this.elements = [elementGuard(refObj.current)];
+      } else {
+        throw new Error('Ref is null or undefined');
+      }
+      return this.createSubChain();
+    }, ref));
+    return this;
+  }
+
+  query(selector: string) {
+    // @ts-ignore
+    this.callStack.push(new Call(async function query(this: CallChainImpl, sel: string) {
+      await waitForSelectorWithPolling(sel, this.options.maxWaitMs!);
+      this.elements = Array.from(document.querySelectorAll(sel));
+      return this.createSubChain();
+    }, selector));
+    return this;
+  }
+
+  all() {
+    this.callStack.push(new Call(function all(this: CallChainImpl) {
+      return this.elements.map(el => new DequeryChain({ ...this.options, initialEl: el }, true));
+    }));
     return this;
   }
 
@@ -137,361 +199,546 @@ export class Dequery implements DequeryArrayLike {
     return this.elements.length;
   }
 
-  first(): Dequery {
-    this.elements = [this.el];
+  first() {
+    this.callStack.push(new Call(function first(this: CallChainImpl) {
+      this.elements = [this.elements[0]];
+      return this.createSubChain();
+    }));
     return this;
   }
 
-  last(): Dequery {
-    const els = this.elements;
-    this.elements = [els[els.length - 1]];
+  last() {
+    this.callStack.push(new Call(function last(this: CallChainImpl) {
+      const els = this.elements;
+      this.elements = [els[els.length - 1]];
+      return this.createSubChain();
+    }));
     return this;
   }
 
-  next(): Dequery {
-    this.elements = this.elements
-      .map((el) => elementGuard(el).nextElementSibling)
-      .filter(Boolean) as Array<Element>;
+  next() {
+    this.callStack.push(new Call(function next(this: CallChainImpl) {
+      this.elements = this.elements.map(el => elementGuard(el).nextElementSibling!).filter(Boolean);
+      return this.createSubChain();
+    }));
     return this;
   }
 
-  /*
-  [Symbol.iterator](): IterableIterator<Dequery> {
-    let index = 0;
-    const elements = this.elements;
-
-    return {
-      next(): IteratorResult<Dequery> {
-        if (index < elements.length) {
-          return { value: $(elements[index++]), done: false };
-        }
-        return { value: $(`#_nonexisting${Date.now()}`), done: true };
-      },
-      [Symbol.iterator]() {
-        return this;
-      }
-    };
-  }
-  */
-
-  eq(idx: number): Dequery {
-    this.elements = [this.elements[idx]];
+  prev() {
+    this.callStack.push(new Call(function prev(this: CallChainImpl) {
+      this.elements = this.elements.map(el => elementGuard(el).previousElementSibling!).filter(Boolean);
+      return this.createSubChain();
+    }));
     return this;
   }
 
-  prev(): Dequery {
-    this.elements = this.elements
-      .map((el) => elementGuard(el).previousElementSibling)
-      .filter(Boolean) as Array<Element>;
+  find(selector: string) {
+    this.callStack.push(new Call(function find(this: CallChainImpl, sel: string) {
+      this.elements = this.elements.flatMap(el => Array.from(elementGuard(el).querySelectorAll(sel)));
+      return this.createSubChain();
+    }, selector));
     return this;
   }
 
-  each(cb: (el: NodeType, idx: number) => void): Dequery {
-    this.elements.forEach(cb);
+  parent() {
+    this.callStack.push(new Call(function parent(this: CallChainImpl) {
+      this.elements = this.elements.map(el => (el as Element).parentElement!).filter(Boolean);
+      return this.createSubChain();
+    }));
     return this;
   }
 
-  find(selector: string): Dequery {
-    this.elements = this.elements.flatMap((el) =>
-      Array.from(elementGuard(el).querySelectorAll(selector))
-    );
+  children() {
+    this.callStack.push(new Call(function children(this: CallChainImpl) {
+      this.elements = this.elements.flatMap(el => Array.from(elementGuard(el).children));
+      return this.createSubChain(true);
+    }));
     return this;
   }
 
-  parent(): Dequery {
-    this.elements = this.elements
-      .map((el) => el.parentElement)
-      .filter(Boolean) as Array<Element>;
+  closest(selector: string) {
+    this.callStack.push(new Call(function closest(this: CallChainImpl, sel: string) {
+      this.elements = this.elements.map(el => elementGuard(el).closest(sel)!).filter(Boolean);
+      return this.createSubChain();
+    }, selector));
     return this;
   }
 
-  children(): Dequery {
-    this.elements = this.elements.flatMap((el) => Array.from(elementGuard(el).children));
+  filter(selector: string) {
+    this.callStack.push(new Call(function filter(this: CallChainImpl, sel: string) {
+      this.elements = this.elements.filter(el => elementGuard(el).matches(sel));
+      // ensure the chain is created with the correct number of elements
+      return this.createSubChain(this.elements.length > 0);
+    }, selector));
     return this;
   }
 
-  closest(selector: string): Dequery {
-    this.elements = this.elements
-      .map((el) => elementGuard(el).closest(selector))
-      .filter(Boolean) as Array<Element>;
-    return this;
-  }
-
-  filter(selector: string): Dequery {
-    this.elements = this.elements.filter((el) => elementGuard(el).matches(selector));
-    return this;
-  }
-
-  // --- Attributes ---
-
-  attr(name: string): string | null;
-  attr(name: string, value: string): Dequery;
-  attr(name: string, value?: string): Dequery | string | null {
+  // --- Attributes & Properties ---
+  attr(name: string, value?: string) {
     if (value !== undefined) {
-      this.elements.forEach((el) => elementGuard(el).setAttribute(name, value));
+      this.callStack.push(new Call(function setAttr(this: CallChainImpl, n: string, v: string) {
+        this.elements.forEach(el => elementGuard(el).setAttribute(n, v));
+        return null;
+      }, name, value));
       return this;
     }
-    // retrieve the attribute value from the first element
-    return elementGuard(this.el)?.getAttribute(name) ?? null;
-  }
-
-  // --- Mutations ---
-
-  empty(): Dequery {
-    this.elements.forEach((el) => {
-      elementGuard(el).innerHTML = "";
-    });
+    this.callStack.push(new Call(function getAttr(this: CallChainImpl, n: string) {
+      return elementGuard(this.getFirstElement()).getAttribute(n);
+    }, name));
     return this;
   }
 
-  html(newInnerHtml?: string): Dequery {
-    if (newInnerHtml) {
-      this.elements.forEach((el) => {
-        // partial update HTML sub-tree with new HTML (using DOMParser)
-        updateDom(elementGuard(el), newInnerHtml);
-      });
+  prop(name: keyof AllHTMLElements, value?: any) {
+    if (value !== undefined) {
+      this.callStack.push(new Call(function setProp(this: CallChainImpl, n: string, v: any) {
+        // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+        this.elements.forEach(el => (elementGuard(el) as any)[n] = v);
+        return null;
+      }, name, value));
+      return this;
     }
+    this.callStack.push(new Call(function getProp(this: CallChainImpl, n: string) {
+      return (elementGuard(this.getFirstElement()) as any)[n];
+    }, name));
     return this;
   }
 
-  jsx(newJsxPartialDom: RenderInput): Dequery {
-    this.elements.forEach((el) => {
-      // partially update the DOM with new JSX (using renderIsomorphic) 
-      updateDomWithVdom(elementGuard(el), newJsxPartialDom, globalThis as Globals);
-    });
-    return this;
-  }
-
-  text(text?: string): Dequery {
-    if (text) {
-      this.elements.forEach((el) => {
-        elementGuard(el).textContent = text;
-      });
-    }
-    return this;
-  }
-
-  update(textOrHtmlOrJsx: string | RenderInput): Dequery {
-    if (typeof textOrHtmlOrJsx === "string") {
-      const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(textOrHtmlOrJsx);
-      if (hasHtmlTags) {
-        this.html(textOrHtmlOrJsx);
-      } else {
-        this.text(textOrHtmlOrJsx);
-      }
+  // --- CSS & Classes ---
+  css(prop: string | CSSProperties, value?: string) {
+    if (typeof prop === 'string' && value === undefined) {
+      this.callStack.push(new Call(function getCss(this: CallChainImpl, p: string) {
+        return elementGuard(this.getFirstElement()).style.getPropertyValue(p);
+      }, prop));
     } else {
-      this.jsx(textOrHtmlOrJsx);
-    }
-    return this;
-  }
-
-  remove(): Dequery {
-    this.elements.forEach((el) => elementGuard(el).remove());
-    return this;
-  }
-
-  replaceWithJsx(vdomOrNode: RenderInput | NodeType): Dequery {
-    this.elements.forEach((el) => {
-      const newEl =
-        vdomOrNode instanceof Node
-          ? vdomOrNode
-          : (renderIsomorphicSync(
-            vdomOrNode,
-            elementGuard(el),
-            globalThis as Globals
-          ) as Node);
-      el.parentNode?.replaceChild(newEl.cloneNode(true), el);
-    });
-    return this;
-  }
-
-  append(content: string | NodeType | Dequery): Dequery {
-    if (content == null) {
-      return this;
-    }
-
-    // Use a static copy of the elements so that mutations don’t affect the iteration
-    const targets = this.elements.slice();
-    targets.forEach((el) => {
-      if (typeof content === "string") {
-        (el as HTMLElement).innerHTML += content;
-      } else if (content instanceof Dequery) {
-        // Append each element from the content. If appending to multiple targets,
-        // clone for all but the first.
-        content.elements.forEach((childEl, index) => {
-          const nodeToAppend =
-            targets.length > 1 && index > 0
-              ? childEl.cloneNode(true)
-              : childEl;
-          el.appendChild(nodeToAppend);
+      this.callStack.push(new Call(function setCss(this: CallChainImpl, p: any, v?: string) {
+        this.elements.forEach(el => {
+          if (typeof p === 'string') elementGuard(el).style.setProperty(p, v!);
+          else for (const k in p) elementGuard(el).style.setProperty(k, (p as any)[k]);
         });
+        return null;
+      }, prop, value));
+    }
+    return this;
+  }
+
+  addClass(name: string | Array<string>) {
+    this.callStack.push(new Call(function addClass(this: CallChainImpl, cl: any) {
+      const list = Array.isArray(cl) ? cl : [cl];
+      this.elements.forEach(el => elementGuard(el).classList.add(...list));
+      return null;
+    }, name));
+    return this;
+  }
+
+  removeClass(name: string | Array<string>) {
+    this.callStack.push(new Call(function removeClass(this: CallChainImpl, cl: any) {
+      const list = Array.isArray(cl) ? cl : [cl];
+      this.elements.forEach(el => elementGuard(el).classList.remove(...list));
+      return null;
+    }, name));
+    return this;
+  }
+
+  hasClass(name: string) {
+    this.callStack.push(new Call(function hasClass(this: CallChainImpl, cl: string) {
+      return this.elements.every(el => elementGuard(el).classList.contains(cl));
+    }, name));
+    return this;
+  }
+
+  toggleClass(name: string) {
+    this.callStack.push(new Call(function toggleClass(this: CallChainImpl, cl: string) {
+      this.elements.forEach(el => elementGuard(el).classList.toggle(cl));
+      return null;
+    }, name));
+    return this;
+  }
+
+  animateClass(name: string, duration: number) {
+    this.callStack.push(new Call(function animateClass(this: CallChainImpl, cl: string, d: number) {
+      this.elements.forEach(el => {
+        const e = elementGuard(el);
+        e.classList.add(cl);
+        setTimeout(() => e.classList.remove(cl), d);
+      });
+      return null;
+    }, name, duration));
+    return this;
+  }
+
+  // --- Content Mutations ---
+  empty() {
+    this.callStack.push(new Call(function empty(this: CallChainImpl) {
+      // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+      this.elements.forEach(el => elementGuard(el).innerHTML = '');
+      return null;
+    }));
+    return this;
+  }
+
+  html(html: string) {
+    this.callStack.push(new Call(function html(this: CallChainImpl, str: string) {
+      this.elements.forEach(el => updateDom(elementGuard(el), str));
+      return null;
+    }, html));
+    return this;
+  }
+
+  jsx(vdom: RenderInput) {
+    if (!isJSX(vdom)) {
+      console.warn('jsx: expected JSX, got', vdom);
+      return this;
+    }
+    this.callStack.push(new Call(function jsx(this: CallChainImpl, v: RenderInput) {
+      this.elements.forEach(el => updateDomWithVdom(elementGuard(el), v, globalThis as Globals));
+      return null;
+    }, vdom));
+    return this;
+  }
+
+  text(text: string) {
+    this.callStack.push(new Call(function text(this: CallChainImpl, t: string) {
+      // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+      this.elements.forEach(el => elementGuard(el).textContent = t);
+      return null;
+    }, text));
+    return this;
+  }
+
+  update(input: string | RenderInput) {
+    this.callStack.push(new Call(function update(this: CallChainImpl, input: any) {
+      if (typeof input === 'string') {
+        const hasHtml = /<\/?>[a-z][\s\S]*>/i.test(input);
+        if (hasHtml) this.elements.forEach(el => updateDom(elementGuard(el), input));
+        // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+        else this.elements.forEach(el => elementGuard(el).textContent = input);
       } else {
-        el.appendChild(content);
+        this.elements.forEach(el => updateDomWithVdom(elementGuard(el), input, globalThis as Globals));
       }
-    });
+      return null;
+    }, input));
     return this;
   }
 
-  toArray(): Array<NodeType> {
-    return [...this.elements];
-  }
-
-  // --- Events ---
-
-  on(eventName: string, handler: EventListener): Dequery {
-    this.elements.forEach((el) =>
-      el.addEventListener(eventName, handler)
-    );
+  remove() {
+    this.callStack.push(new Call(function remove(this: CallChainImpl) {
+      this.elements.forEach(el => elementGuard(el).remove());
+      return null;
+    }));
     return this;
   }
 
-  off(eventName: string, handler: EventListener): Dequery {
-    this.elements.forEach((el) =>
-      el.removeEventListener(eventName, handler)
-    );
+  replaceWith(content: string | RenderInput | NodeType | Ref<NodeType> | typeof DequeryChain) {
+    this.callStack.push(new Call(async function replaceWith(this: CallChainImpl, content: string | RenderInput | NodeType | Ref<NodeType> | typeof DequeryChain) {
+      let newElement: NodeType;
+
+      if (typeof content === 'string') {
+        const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(content);
+        if (hasHtmlTags) {
+          newElement = renderHTML(content)[0];
+        } else {
+          newElement = document.createTextNode(content);
+        }
+      } else if (isJSX(content)) {
+        newElement = renderIsomorphicSync(content as RenderInput, undefined, globalThis as Globals) as NodeType;
+      } else if (isRef(content)) {
+        await waitForRefWithPolling(content as Ref, this.options.maxWaitMs!);
+        newElement = elementGuard(content.current!);
+      } else if (content instanceof Node) {
+        newElement = content;
+      } else if (content instanceof DequeryChain) {
+        newElement = content.getFirstElement();
+      } else {
+        console.warn('replaceWith: unsupported content type', content);
+        return null;
+      }
+
+      this.elements.forEach(el => {
+        el.parentNode?.replaceChild(newElement.cloneNode(true), el);
+      });
+      return null;
+    }, content));
     return this;
   }
 
-  // --- CSS ---
-
-  css(cssProps: string): string | undefined;
-  css(cssProps: CSSProperties): Dequery;
-  css(cssProps: string, value: string): Dequery;
-  css(cssProps: CSSProperties | string, value?: string): Dequery | string | undefined {
-    if (!value && typeof cssProps === "string") {
-      // get a single CSS property value
-      return elementGuard(this.el)?.style.getPropertyValue(cssProps);
-    } else if (!value && typeof cssProps === "object") {
-      // set multiple CSS properties
-      this.elements.forEach((el) => {
-        for (const key in cssProps) {
-          elementGuard(el).style.setProperty(
-            key,
-            cssProps[key as keyof CSSProperties] as string
-          );
+  append(content: string | NodeType | typeof DequeryChain) {
+    this.callStack.push(new Call(function append(this: CallChainImpl, c: string | NodeType | typeof DequeryChain) {
+      this.elements.forEach(el => {
+        if (typeof c === 'string') {
+          elementGuard(el).innerHTML += c;
+        } else if (c instanceof DequeryChain) {
+          c.elements.forEach(childEl => {
+            el.appendChild(childEl.cloneNode(true));
+          });
+        } else {
+          el.appendChild((c as Element).cloneNode(true));
         }
       });
-      return this;
-    } else if (typeof value === "string" && typeof cssProps === "string") {
-      // set a single CSS property value
-      this.elements.forEach((el) => {
-        elementGuard(el).style.setProperty(cssProps, value);
+      return null;
+    }, content));
+    return this;
+  }
+
+  appendTo(target: NodeType | Ref<NodeType> | string | typeof DequeryChain) {
+    this.callStack.push(new Call(async function appendTo(this: CallChainImpl, target: NodeType | Ref<NodeType> | string) {
+      let targetElement: NodeType;
+
+      if (isRef(target)) {
+        await waitForRefWithPolling(target as Ref, this.options.maxWaitMs!);
+        targetElement = elementGuard(target.current!);
+      } else if (typeof target === 'string') {
+        await waitForSelectorWithPolling(target, this.options.maxWaitMs!);
+        targetElement = elementGuard(document.querySelector(target) as NodeType);
+      } else if (target instanceof Node) {
+        targetElement = elementGuard(target);
+      } else if (target instanceof DequeryChain) {
+        targetElement = elementGuard(target.getFirstElement());
+      } else {
+        console.warn('appendTo: expected selector, ref or node, got', target);
+        return null;
+      }
+
+      this.elements.forEach(el => {
+        targetElement.appendChild(el.cloneNode(true));
       });
-      return this;
-    }
+      return null;
+    }, target));
     return this;
   }
 
-  addClass(className: Array<string> | string): Dequery {
-    const classes = Array.isArray(className) ? className : [className];
-    this.elements.forEach((el) => elementGuard(el).classList.add(...classes));
+  // --- Events & Interaction ---
+  on(event: string, handler: EventListener) {
+    this.callStack.push(new Call(function on(this: CallChainImpl, ev: string, h: EventListener) {
+      this.elements.forEach(el => elementGuard(el).addEventListener(ev, h));
+      return null;
+    }, event, handler));
     return this;
   }
 
-  removeClass(className: Array<string> | string): Dequery {
-    const classes = Array.isArray(className) ? className : [className];
-    this.elements.forEach((el) => elementGuard(el).classList.remove(...classes));
+  off(event: string, handler: EventListener) {
+    this.callStack.push(new Call(function off(this: CallChainImpl, ev: string, h: EventListener) {
+      this.elements.forEach(el => elementGuard(el).removeEventListener(ev, h));
+      return null;
+    }, event, handler));
     return this;
   }
 
-  hasClass(className: string): boolean {
-    return this.elements.every((el) => elementGuard(el).classList.contains(className));
-  }
-
-  toggleClass(className: string): Dequery {
-    this.elements.forEach((el) => elementGuard(el).classList.toggle(className));
+  trigger(eventType: string) {
+    this.callStack.push(new Call(function trigger(this: CallChainImpl, ev: string) {
+      this.elements.forEach(el => elementGuard(el).dispatchEvent(new Event(ev, { bubbles: true, cancelable: true })));
+      return null;
+    }, eventType));
     return this;
   }
 
-  animateClass(className: string, duration: number): Dequery {
-    this.elements.forEach((el) => {
-      elementGuard(el).classList.add(className);
-      setTimeout(() => elementGuard(el).classList.remove(className), duration);
-    });
-    return this;
-  }
-
-  // --- Interaction Simulation ---
-
-  trigger(eventType: string): Dequery {
-    this.elements.forEach((el) => {
-      const event = new Event(eventType, { bubbles: true, cancelable: true });
-      elementGuard(el).dispatchEvent(event);
-    });
-    return this;
-  }
-
-  // --- Data extraction ---
-  val(value: string | boolean): Dequery;
-  val(): string | undefined;
-  val(value?: string | boolean): Dequery | string | undefined {
-    if (typeof value !== 'undefined') {
-      this.elements.forEach((el) => {
-        if (el instanceof HTMLInputElement) {
-          el.value = String(value);
-        }
-      });
-      return this;
+  // --- Data Extraction ---
+  val(val?: string | boolean) {
+    if (val !== undefined) {
+      this.callStack.push(new Call(function setVal(this: CallChainImpl, v: any) {
+        this.elements.forEach(el => {
+          if (el instanceof HTMLInputElement) el.value = String(v);
+        });
+        return null;
+      }, val));
     } else {
-      return elementGuard<HTMLInputElement>(this.el)?.value;
+      this.callStack.push(new Call(function getVal(this: CallChainImpl) {
+        const el = elementGuard<HTMLInputElement>(this.getFirstElement());
+        return el.value;
+      }));
     }
+    return this;
   }
 
-  map<T = any>(cb: (el: NodeType, idx: number) => any): Array<T> {
-    return this.elements.map(cb) as Array<T>;
+  map(cb: (el: NodeType, idx: number) => any) {
+    this.callStack.push(new Call(function map(this: CallChainImpl, fn: any) {
+      return this.elements.map(fn);
+    }, cb));
+    return this;
   }
 
-  prop<K extends keyof HTMLElement>(name: K, value: HTMLElement[K]): Dequery;
-  prop<K extends keyof HTMLElement>(name: K): HTMLElement[K];
-  prop<K extends keyof HTMLElement>(name: K, value?: HTMLElement[K]): Dequery | HTMLElement[K] {
-    if (typeof value !== "undefined") {
-      this.elements.forEach((el) => {
-        elementGuard(el)[name] = value;
-      });
-      return this;
+  toArray() {
+    this.callStack.push(new Call(function toArray(this: CallChainImpl) {
+      return [...this.elements];
+    }));
+    return this;
+  }
+
+  data(name: string, val?: string) {
+    if (val !== undefined) {
+      this.callStack.push(new Call(function setData(this: CallChainImpl, n: string, v: string) {
+        // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+        this.elements.forEach(el => elementGuard(el).dataset[n] = v);
+        return null;
+      }, name, val));
+    } else {
+      this.callStack.push(new Call(function getData(this: CallChainImpl, n: string) {
+        return elementGuard(this.getFirstElement()).dataset[n];
+      }, name));
     }
-    return elementGuard(this.el)[name];
+    return this;
   }
 
-  data(name: string): string | undefined;
-  data(name: string, value: string): Dequery;
-  data(name: string, value?: string): Dequery | string | undefined {
-    if (typeof value !== "undefined") {
-      this.elements.forEach((el) => {
-        elementGuard(el).dataset[name] = value;
-      });
-      return this;
-    }
-    return elementGuard(this.el)?.dataset[name];
-  }
-
-  // --- Form management ---
-
-  form(): FormKeyValues;
-  form(formData: FormKeyValues): Dequery;
-  form(formData?: FormKeyValues): Dequery | FormKeyValues {
+  form(formData?: Record<string, string | boolean>) {
     if (formData) {
-      Object.entries(formData).forEach(([key, value]) => {
-        this.elements.forEach((el) => {
-          if (el instanceof HTMLInputElement) {
-            el.value = value as string;
+      this.callStack.push(new Call(function setForm(this: CallChainImpl, formData: Record<string, string | boolean>) {
+        this.elements.forEach(el => {
+          if (el instanceof Element) {
+            const inputElements = el.querySelectorAll('input, select');
+            inputElements.forEach((input) => {
+              if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+                const key = input.name || input.id;
+                if (formData[key] !== undefined) {
+                  if (input instanceof HTMLInputElement && input.type === 'checkbox') {
+                    input.checked = Boolean(formData[key]);
+                  } else {
+                    input.value = String(formData[key]);
+                  }
+                }
+              }
+            });
           }
         });
-      });
-      return this;
+        return null;
+      }, formData));
+    } else {
+      this.callStack.push(new Call(function getForm(this: CallChainImpl) {
+        const formFields: Record<string, string | boolean> = {};
+        this.elements.forEach(el => {
+          if (el instanceof Element) {
+            const inputElements = el.querySelectorAll('input, select');
+            inputElements.forEach((input) => {
+              if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+                const key = input.name || input.id;
+                if (input instanceof HTMLInputElement && input.type === 'checkbox') {
+                  formFields[key] = input.checked;
+                } else {
+                  formFields[key] = input.value;
+                }
+              }
+            });
+          }
+        });
+        return formFields;
+      }));
     }
+    return this;
+  }
 
-    const formFields: Record<string, string> = {};
-    this.elements.forEach((el) => {
-      if (el instanceof HTMLInputElement) {
-        formFields[el.name] = el.value;
+  // --- Terminal then() ---
+
+  // biome-ignore lint/suspicious/noThenProperty: We're implementing a custom promise chain here
+  then(resolve: (value: any) => void, reject: (reason?: any) => void) {
+    if (this.stoppedWithError) return;
+    runWithTimeGuard(this.options.timeout!, async () => {
+      const results: any[] = [];
+      for (const call of this.callStack) {
+        if (this.stoppedWithError) break;
+        try {
+          results.push(await call.fn.apply(this, call.args));
+          await sleep(this.options.delay!);
+        } catch (err) {
+          this.stoppedWithError = true;
+          break;
+        }
       }
-    });
-    return formFields;
+      this.chainStack.push([...results]);
+      this.lastResult = results[results.length - 1];
+      this.callStack = [];
+      this.resetElements();
+      this.isResolved = true;
+      return this.lastResult;
+    }, [], (ms, call) => {
+      this.stoppedWithError = true;
+      this.options.onTimeGuardError!(ms, call);
+    }).then(resolve).catch(reject);
   }
 }
 
-// for query-like syntax
+// --- Proxy Wrapper ---
+export const DequeryChain = new Proxy(CallChainImpl, {
+  construct(target, args) {
+    const inst = new target(...args);
+    return new Proxy(inst, {
+      get(obj, prop) {
+        if (prop === 'then' && inst.isResolved) {
+          return Promise.resolve(inst.lastResult);
+        }
+        inst.isResolved = false;
+        return (obj as any)[prop];
+      }
+    });
+  }
+});
+
+// --- Entry Points ---
+export function dequery(selectorRefOrEl: string | NodeType | Ref<NodeType, any> | RenderInput, options: DequeryOptions | ElementCreationOptions = adefaultConfig) {
+  let promise = new DequeryChain({ ...options, initialEl: undefined }).__init(selectorRefOrEl, options);
+
+  ; (async () => { // auto-start
+    promise = await promise;
+  })();
+  return promise;
+}
 export const $ = dequery;
-// alternative syntax
-export const d = dequery;
+export const D = dequery;
+
+export type Dequery = CallChainImpl;
+
+export function isDequery(obj: unknown): obj is Dequery {
+  return typeof obj === 'object' && obj !== null && 'isResolved' in obj && 'lastResult' in obj;
+}
+
+// --- Helpers ---
+export async function waitForWithPolling<T>(
+  check: () => T | null | undefined,
+  timeout: number,
+  interval = 1
+): Promise<T> {
+  const start = Date.now();
+  return new Promise<T>((resolve, reject) => {
+    const timer = setInterval(() => {
+      try {
+        const result = check();
+        if (result != null) {
+          clearInterval(timer);
+          resolve(result);
+        } else if (Date.now() - start >= timeout) {
+          clearInterval(timer);
+          reject(new Error(`Timeout after ${timeout}ms`));
+        }
+      }
+      catch (err) {
+        clearInterval(timer);
+        reject(err);
+        throw err;
+      }
+    }, interval);
+  });
+}
+
+export async function waitForSelectorWithPolling(
+  sel: string,
+  timeout: number,
+  interval?: number
+): Promise<Element> {
+  return waitForWithPolling(() => document.querySelector(sel), timeout, interval);
+}
+
+export async function waitForRefWithPolling<T>(
+  ref: { current: T | null },
+  timeout: number,
+  interval?: number
+): Promise<T> {
+  return waitForWithPolling(() => ref.current, timeout, interval);
+}
+
+export function renderHTML(html: string, type: DOMParserSupportedType = 'text/html') {
+  const newDom = (new DOMParser()).parseFromString(html, type);
+  return Array.from(newDom.body.childNodes);
+}
+
+export function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+export function runWithTimeGuard(timeout: number, fn: Function, args: any[], onError: (ms: number, call: Call) => void): Promise<any> {
+  return fn(...args);
+  // TODO: implement the actual time guard!
+}

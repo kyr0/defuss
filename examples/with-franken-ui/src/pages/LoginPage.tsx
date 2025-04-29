@@ -1,5 +1,5 @@
 import UIkit from "uikit";
-import { createRef, a$ } from "defuss";
+import { createRef, $ } from "defuss";
 
 export function LoginPage() {
 
@@ -7,16 +7,19 @@ export function LoginPage() {
   const continueWithGoogleBtnRef = createRef();
   const formRef = createRef();
 
-  a$(signInBtnRef).on('click', async() => {
+  console.log('before signInBtnRef query');
+  $(signInBtnRef).on('click', async() => {
     console.log('signInBtnRef clicked');
-    const values = await a$(formRef).form()
+    const values = await $(formRef).form()
     console.log('values', values);
 
     const notification = UIkit.notification("MyMessage", "destructive");
     console.log('notification', notification);
   })
 
-  a$('.grid').debug((x) => {
+  console.log('before grid query');
+  $('.grid').debug((x) => {
+    console.log('grid', x);
     console.log('grid.min-h-svh.lg:grid-cols-2', x);
   })
 
