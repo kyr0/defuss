@@ -583,16 +583,14 @@ class CallChainImpl implements DequeryArrayLike {
       this.callStack.push(new Call(function setForm(this: CallChainImpl, formData: Record<string, string | boolean>) {
         this.elements.forEach(el => {
           if (el instanceof Element) {
-            const inputElements = el.querySelectorAll('input, select');
+            const inputElements = el.querySelectorAll('input, select, textarea');
             inputElements.forEach((input) => {
-              if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
-                const key = input.name || input.id;
-                if (formData[key] !== undefined) {
-                  if (input instanceof HTMLInputElement && input.type === 'checkbox') {
-                    input.checked = Boolean(formData[key]);
-                  } else {
-                    input.value = String(formData[key]);
-                  }
+              const key = (input as HTMLInputElement).name || input.id;
+              if (formData[key] !== undefined) {
+                if (input instanceof HTMLInputElement && input.type === 'checkbox') {
+                  input.checked = Boolean(formData[key]);
+                } else {
+                  (input as HTMLInputElement).value = String(formData[key]);
                 }
               }
             });
@@ -605,15 +603,13 @@ class CallChainImpl implements DequeryArrayLike {
         const formFields: Record<string, string | boolean> = {};
         this.elements.forEach(el => {
           if (el instanceof Element) {
-            const inputElements = el.querySelectorAll('input, select');
+            const inputElements = el.querySelectorAll('input, select, textarea');
             inputElements.forEach((input) => {
-              if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
-                const key = input.name || input.id;
-                if (input instanceof HTMLInputElement && input.type === 'checkbox') {
-                  formFields[key] = input.checked;
-                } else {
-                  formFields[key] = input.value;
-                }
+              const key = (input as HTMLInputElement).name || input.id;
+              if (input instanceof HTMLInputElement && input.type === 'checkbox') {
+                formFields[key] = input.checked;
+              } else {
+                formFields[key] = (input as HTMLInputElement).value;
               }
             });
           }

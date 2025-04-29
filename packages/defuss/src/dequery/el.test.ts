@@ -157,4 +157,18 @@ describe('Element creation test', async () => {
     expect(formData.username).toBe('testuser');
     expect(formData.password).toBe('securepass');
   });
+
+  it('can set and get a textarea value using form()', async () => {
+    const form = await $('<form>');
+    const textarea = await $('<textarea>', { name: 'description' });
+
+    await form.append(textarea);
+
+    // Set form values including textarea
+    await form.form({ description: 'This is a test description.' });
+
+    // Check if the textarea value is set correctly using form()
+    const formData = await form.form();
+    expect(formData.description).toBe('This is a test description.');
+  });
 });
