@@ -4,7 +4,7 @@ import typescriptLogo from './typescript.svg'
 import viteLogo from '/vite.svg'
 import { AsyncCounter } from './counter.js'
 import { a$ } from 'defuss' 
-import { render, renderAsync } from 'defuss/client' 
+import { render } from 'defuss/client' 
 import { Async } from 'defuss-ui'
 
 function App() {
@@ -51,4 +51,4 @@ function App() {
   )
 }
 // initial render
-renderAsync(<App />, a$('#app'))
+render(<App />, a$('#app'))
