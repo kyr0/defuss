@@ -1,7 +1,8 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [
-    "packages/**"
+    "packages/**",
+    "examples/**"
   ],
   "tasks": {
     "build": {
@@ -15,6 +16,9 @@
     "clean": {
       "cache": false,
       "persistent": true
+    },
+    "start": {
+      "dependsOn": ["^start"]
     }
   }
 }

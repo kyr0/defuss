@@ -1,0 +1,13 @@
+{
+  "name": "squeezy",
+  "version": "0.0.1",
+  "description": "A modern, fluid, grid-only and generative CSS utility class framework.",
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "main": "squeezy.css",
+  "style": "squeezy.css",
+  "keywords": ["css", "utility", "tailwind-inspired", "fluid", "responsive", "design", "grid-only", "styling", "library", "generative", "palette", "colors"],
+  "license": "MIT",
+  "dependencies": {
+    "squeezy-reset": "workspace:*"
+  }
+}

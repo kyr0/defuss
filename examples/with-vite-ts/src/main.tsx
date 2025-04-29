@@ -3,8 +3,8 @@ import './style.css'
 import typescriptLogo from './typescript.svg'
 import viteLogo from '/vite.svg'
 import { AsyncCounter } from './counter.js'
-import { $ } from 'defuss' 
-import { render } from 'defuss/client' 
+import { a$ } from 'defuss' 
+import { render, renderAsync } from 'defuss/client' 
 import { Async } from 'defuss-ui'
 
 function App() {
@@ -51,4 +51,4 @@ function App() {
   )
 }
 // initial render
-render(<App />, $('#app'))
+renderAsync(<App />, a$('#app'))

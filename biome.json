@@ -22,13 +22,16 @@
       },
       "complexity": {
         "noForEach": "off",
-        "noBannedTypes": "off"
+        "noBannedTypes": "off",
+        "noThisInStatic": "off"
       },
       "suspicious": {
         "noCatchAssign": "off",
         "noExplicitAny": "off",
         "noImplicitAnyLet": "off",
-        "noFallthroughSwitchClause": "off"
+        "noFallthroughSwitchClause": "off",
+        "noConfusingVoidType": "off",
+        "noEmptyInterface": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
@@ -41,7 +44,8 @@
         "useValidAnchor": "off",
         "noSvgWithoutTitle": "off",
         "useKeyWithClickEvents": "off",
-        "useMediaCaption": "off"
+        "useMediaCaption": "off",
+        "noAriaHiddenOnFocusable": "off"
       },
       "performance": {
         "noAccumulatingSpread": "off",

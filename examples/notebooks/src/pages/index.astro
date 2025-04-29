@@ -1,0 +1,10 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { App } from "../components/App";
+---
+
+<Layout title="defuss Notebooks">
+	<App client:only>
+		<div slot="fallback">Loading...</div>
+	</App>
+</Layout>

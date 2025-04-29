@@ -1,7 +1,7 @@
 import "./Counter.css"
 
 // we need a few imports from the library (TypeScript-only)
-import { type Props, createRef, $ } from "defuss"
+import { type Props, createRef, a$ } from "defuss"
 
 // When using TypeScript, interfaces come in handy
 // They help with good error messages!
@@ -40,15 +40,15 @@ export function Counter({ label, ref, clickCount }: CounterProps) {
       // Changes the innerText of the <button> element.
       // You could also do: buttonRef.current.innerText = `...`
       // but dequery works like jQuery and is much simpler!
-      $(buttonRef).text(renderLabel(clickCount, label))
+      a$(buttonRef).text(renderLabel(clickCount, label))
     } catch (err) {
       console.log("[Counter] Error in onUpdateLabel", err)
     }
 
     if (clickCount === 100) {
 
-      $(buttonRef).tap((el) => {
-        $(buttonRef).update(<strong>Maximum count reached.</strong>);
+      a$(buttonRef).debug((el) => {
+        a$(buttonRef).update(<strong>Maximum count reached.</strong>);
 
         ref.update(0); // update the parent component's state
         clickCount = 0; // reset the local state

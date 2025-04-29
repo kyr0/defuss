@@ -1,4 +1,4 @@
-import { $, createRef, type Props } from 'defuss'
+import { createRef, type Props } from 'defuss'
 import typescriptLogo from '../img/typescript.svg'
 import { Counter } from './Counter.tsx'
 import { AstroLogo } from './icon/AstroLogo.tsx';

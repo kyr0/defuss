@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/webp" href="/favicon.webp" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite + TS + defuss + Franken UI</title>
+
+  <script>
+    const htmlElement = document.documentElement;
+
+    const __FRANKEN__ = JSON.parse(
+      localStorage.getItem("__FRANKEN__") || "{}",
+    );
+
+    if (
+      __FRANKEN__.mode === "dark" ||
+      (!__FRANKEN__.mode &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    ) {
+      htmlElement.classList.add("dark");
+    } else {
+      htmlElement.classList.remove("dark");
+    }
+
+    htmlElement.classList.add(__FRANKEN__.theme || "uk-theme-zinc");
+    htmlElement.classList.add(__FRANKEN__.radii || "uk-radii-md");
+    htmlElement.classList.add(__FRANKEN__.shadows || "uk-shadows-sm");
+    htmlElement.classList.add(__FRANKEN__.font || "uk-font-sm");
+    htmlElement.classList.add(__FRANKEN__.chart || "uk-chart-default");
+  </script>
+</head>
+
+<body class="bg-background font-geist-sans text-foreground antialiased">
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

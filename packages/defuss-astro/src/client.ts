@@ -1,4 +1,4 @@
-import { hydrate, type Props, render} from 'defuss/client'
+import { hydrate, type Props, renderSync } from 'defuss/client'
 import { StaticHtml } from './render.js';
 
 export default (element: HTMLElement) =>
@@ -9,21 +9,21 @@ export default (element: HTMLElement) =>
 		{ client }: Record<string, string>,
 	) => {
 
-		const isHydrate = element.hasAttribute('ssr') && 
-											(client === 'visible' || client === 'idle' || client === 'load'|| client === 'media')
+		const isHydrate = element.hasAttribute('ssr') &&
+			(client === 'visible' || client === 'idle' || client === 'load' || client === 'media')
 
 		if (!element.hasAttribute('ssr')) return;
-		
+
 		// <slot> mechanics
 		Object.entries(slotted).forEach(([key, value]) => {
 			props[key] = StaticHtml(value);
 		});
 
 		// traverse the props object and create a new object with the same values
-		const componentProps: Props = { 
+		const componentProps: Props = {
 			...props,
 			// set hydration key to the component name by default, if not already set
-			key: props.key || Component.name 
+			key: props.key || Component.name
 		};
 
 		// children is a special prop that contains the children of the component
@@ -31,9 +31,9 @@ export default (element: HTMLElement) =>
 			// all children are passed as an array
 			if (!Array.isArray(children)) {
 				children = [children];
-			} 
+			}
 
-			for (let i=0; i<children.length; i++) {
+			for (let i = 0; i < children.length; i++) {
 				if (typeof children[i] === 'string') {
 					// turn static HTML into a component
 					children[i] = StaticHtml(children[i]);
@@ -69,14 +69,14 @@ export default (element: HTMLElement) =>
 
 			// turn the component AST into an actual DOM element and attach it to the element passed in
 			// the Array<> case is, when a component uses a Fragment (<></<>) as the top-level child (root of sub-tree)
-			let roots: HTMLElement|Array<HTMLElement> = render(Component(componentProps), element) as HTMLElement;
+			let roots: HTMLElement | Array<HTMLElement> = renderSync(Component(componentProps), element) as HTMLElement;
 
 			if (!Array.isArray(roots)) {
 				roots = [roots];
 			}
 
 			const attrs = {};
-			
+
 			// set all props as top level attributes
 			for (const [key, value] of Object.entries(props)) {
 				if (key !== 'children') {
@@ -119,5 +119,5 @@ export default (element: HTMLElement) =>
 		}, { once: true });
 	};
 
-	// components
-	export * from "./component/index.js"
+// components
+export * from "./component/index.js"

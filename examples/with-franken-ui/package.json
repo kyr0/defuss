@@ -1,0 +1,27 @@
+{
+  "name": "@example/with-vite-ts",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf ./node_modules/.vite",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@astrojs/node": "^8.3.4",
+    "@tailwindcss/vite": "^4.1.4",
+    "@types/uikit": "^3.14.5",
+    "browserslist": "^4.24.3",
+    "defuss": "workspace:*",
+    "defuss-ui": "workspace:*",
+    "defuss-vite": "workspace:*",
+    "franken-ui": "2.1.0-next.4",
+    "tailwindcss": "^4.1.4",
+    "tailwindcss-animate": "^1.0.7",
+    "uikit": "^3.23.6",
+    "vite": "^6.3.2"
+  },
+  "packageManager": "pnpm@9.13.2"
+}

@@ -51,7 +51,7 @@ How does `defuss` work?
 
 ```tsx
 // we need a few imports from the library (TypeScript-only)
-import { type Props, type Ref, $, render } from "defuss"
+import { type Props, type Ref, $, render, createRef } from "defuss"
 
 // When using TypeScript, interfaces come in handy
 // They help with good error messages!
@@ -67,7 +67,7 @@ export function Counter({ label }: CounterProps) {
 
   // References the DOM element once it becomes visible.
   // When it's gone, the reference is gone. Easy? Yeah.
-  const ref: Ref = {}
+  const btnRef: Ref = createRef()
 
   // A vanilla JavaScript variable. No magic here!
   let clickCounter = 0
@@ -81,17 +81,15 @@ export function Counter({ label }: CounterProps) {
 
     console.log("updateLabel: Native mouse event", evt)
 
-    // Changes the innerText of the <button> element.
-    // You could also do: buttonRef.current.innerText = `...`
-    // but dequery works like jQuery and is much simpler!
-    $(ref).text(`Count is: ${clickCounter}`)
+    // partially and atomically update the DOM with a new VDOM  
+    $(btnRef).update(<em>{`Count is: ${clickCounter}`}</em>)
   }
 
-  // Already when your code builds, this JSX is turned into a virtual DOM.
-  // At runtime, the virtual DOM is rendered and displayed in the browser.
-  // It usually is pre-rendered (SSR) on server-side and hydrated in the browser.
+  // When the code builds, this JSX is turned into a virtual DOM (JSON).
+  // At runtime, the JSON-based virtual DOM is rendered (SSR or CSR) and eventually displayed.
+  // When using the defuss Astro adapter, passing down hydration state is as simple as passing one prop.
   return (
-    <button type="button" ref={ref} onClick={updateLabel}>
+    <button type="button" ref={btnRef} onClick={updateLabel}>
       {/* This label is rendered *once*. It will never change reactively! */}
       {/* Only with *explicit* code, will the content of this <button> change. */}
       {label}

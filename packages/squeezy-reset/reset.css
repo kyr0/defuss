@@ -1,0 +1,254 @@
+/**
+ * Accessible Fluid CSS Reset - 2025 by Aron Homberg
+ *
+ * This CSS reset is designed to provide a solid foundation for accessible, fluid typography and layout.
+ * It includes a fluid typography system that scales with the viewport width, ensuring a consistent 
+ * reading experience across devices. The reset also includes a number of accessibility and usability
+ * improvements, such as dark/light mode preference adoption, full-height layout, consistent box-sizing, 
+ * and reduced motion support when preferred.
+ * 
+ * This reset uses advanced and modern CSS features, such as CSS custom properties, clamp(), and fluid typography.
+ * It calculates the font sizes based on a minimum font size, a base font size, a step factor, and a viewport scaling factor.
+ * The algorithm used here is a linear interpolation (lerp) between a minimum and maximum font size, based on the viewport width.
+ * The fluid typography system is based on a minor third ratio for size stepping (up/down) by default,
+ * which can be changed by adjusting the --squeezy-step-factor variable.
+ * 
+ * The base scaling can be adjusted by changing the --squeezy-base-font-size variable.
+ * The --squeezy-font-size-min variable sets the minimum font size according to accessibility standards.
+ * This reset expects typical viewports to be between 320px and 1920px wide. 
+ * You can adjust the --squeezy-vw-base variable to change the scaling factor, relative to the viewport width.
+ */
+:root {
+
+  /* Minimum font size according to accessibility standard */
+  --squeezy-font-size-min: 12px; 
+
+  /* Base font size, for step 0, all sizes are calculated relative to this base size, usually 16px */
+  --squeezy-base-font-size: 1rem; 
+
+  /* Scaling factor (completely dynamic) */
+  --squeezy-step-factor: 1.15; /* minor third ratio for size stepping (up/down) */
+
+  /* Overall font size adjustment factor */
+  --squeezy-font-scale-factor: 1.0; /* Overall font size adjustment factor */
+
+  /* VW scaling factor (multiplied dynamically per step) */
+  /* 16px: minimum body font size, 20px: maximum body font size; 1920px: max viewport size, 320px min viewport width */
+  --squeezy-vw-base: calc((20 - 16) / (1920 - 320) * 100vw * var(--squeezy-font-scale-factor)); /* Dynamic viewport scaling factor */
+
+  /* Negative Steps */
+  --squeezy-font-size--2: clamp(
+    calc(var(--squeezy-font-size-min) / var(--squeezy-step-factor) / var(--squeezy-step-factor)),
+    calc(var(--squeezy-base-font-size) / var(--squeezy-step-factor) / var(--squeezy-step-factor) + var(--squeezy-vw-base)),
+    calc(var(--squeezy-base-font-size) / var(--squeezy-step-factor) / var(--squeezy-step-factor) * var(--squeezy-step-factor))
+  );
+
+  --squeezy-font-size--1: clamp(
+    calc(var(--squeezy-font-size-min) / var(--squeezy-step-factor)),
+    calc(var(--squeezy-base-font-size) / var(--squeezy-step-factor) + var(--squeezy-vw-base)),
+    calc(var(--squeezy-base-font-size) / var(--squeezy-step-factor) * var(--squeezy-step-factor))
+  );
+
+  /* Base Step */
+  --squeezy-font-size-0: clamp(
+    var(--squeezy-font-size-min),
+    calc(var(--squeezy-base-font-size) + var(--squeezy-vw-base)),
+    calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor))
+  );
+
+  /* Heading Steps */
+  --squeezy-font-size-1: clamp(
+    calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)),
+    calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) + var(--squeezy-vw-base)),
+    calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor))
+  );
+
+  --squeezy-font-size-2: clamp(
+    calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)),
+    calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) + var(--squeezy-vw-base)),
+    calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor))
+  );
+
+  --squeezy-font-size-3: clamp(
+    calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)),
+    calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) + var(--squeezy-vw-base)),
+    calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor))
+  );
+
+  --squeezy-font-size-4: clamp(
+    calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)),
+    calc(calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) + var(--squeezy-vw-base)),
+    calc(calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor))
+  );
+
+  --squeezy-font-size-5: clamp(
+    calc(calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)),
+    calc(calc(calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) + var(--squeezy-vw-base)),
+    calc(calc(calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor))
+  );
+
+  --squeezy-font-size-6: clamp(
+    calc(calc(calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)),
+    calc(calc(calc(calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) + var(--squeezy-vw-base)),
+    calc(calc(calc(calc(calc(calc(calc(var(--squeezy-base-font-size) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor)) * var(--squeezy-step-factor))
+  );
+}
+
+/* 1) Universal box sizing, margin reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box; /* universal box-sizing: ensures consistent sizing by including padding and border in element's total width and height */
+  margin: 0; /* eliminates default spacing around elements for a cleaner, consistent layout */
+}
+
+/* 2) Full-height layout */
+html,
+body {
+  height: 100%; /* makes html and body elements span the full height of the viewport */
+  font-size: var(--squeezy-font-size-0); /* default body font size */
+}
+
+/* 3) Base HTML + body adjustments */
+html {
+  -webkit-text-size-adjust: 100%; /* prevents automatic text size adjustments in Safari */
+  -moz-text-size-adjust: 100%; /* prevents automatic text size adjustments in Firefox */
+  text-size-adjust: 100%; /* prevents automatic text size adjustments in modern browsers */
+  scroll-behavior: smooth; /* enables smooth scrolling */
+  color-scheme: light dark; /* supports both light and dark color schemes */
+}
+
+body {
+  font-synthesis: none; /* prevents font synthesis for a more consistent appearance */
+  text-rendering: optimizeLegibility; /* enhances text rendering for better legibility */
+  -webkit-font-smoothing: antialiased; /* smooths fonts in WebKit browsers */
+  font-family: system-ui, sans-serif; /* uses system UI font for a native look */
+  line-height: clamp(1.3, var(--squeezy-font-size-0) / 1rem, 1.5); /* clamps line-height to font-size, ensuring it is never smaller than 1.3 and never bigger than 1.5 */
+}
+
+/* 4) Typography + text wrapping */
+h1, h2, h3, h4, h5, h6,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  overflow-wrap: break-word; /* prevents text overflow */
+}
+
+p,
+figure,
+blockquote,
+dl,
+li,
+dd {
+  text-wrap: pretty; /* experimental: friendly line breaks */
+  padding: calc(var(--squeezy-font-size-0) / 4) 0; /* fluid padding for accessibility */
+}
+
+p {
+  padding: clamp(0.25rem, calc(0.25rem + var(--squeezy-vw-base)), 1rem) 0; /* fluid padding for accessibility */
+}
+
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance; /* experimental: balanced headings */
+  line-height: 1.1; /* accessible line-height, because the font-size is already regulated */
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit; /* ensures form elements inherit font styles */
+}
+
+/* 5) Media elements */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block; /* ensures media elements are block, so they don't come with inline-typographic "pseudo-margin" */
+  max-width: 100%; /* ensures media elements don't exceed their container's width */
+  height: auto; /* ensures media elements maintain their aspect ratio */
+}
+
+/* 6) Consistent decoration */
+a img {
+  border: none; /* removes default border around linked images */
+}
+
+/* 7) Accessibility + focus */
+:focus {
+  outline: 2px solid currentColor; /* ensures focus rings are visible and consistent */
+  outline-offset: 2px; /* ensures focus rings are visible and consistent */
+}
+
+/* 8) Reduced motion, if preferred */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important; /* disables animations */
+    transition: none !important; /* disables transitions */
+  }
+}
+
+/* 9) Fluid typography */
+h1, .h1 {
+  font-size: var(--squeezy-font-size-6);
+   /* fluid padding for accessibility */
+  padding: calc(var(--squeezy-font-size-6) / 6) 0;
+  /* clamps line-height to font-size, ensuring it is never smaller than 1.1 and never bigger than 1.3 */
+  line-height: clamp(1.1, var(--squeezy-font-size-6) / 1rem, 1.3); 
+}
+
+h2, .h2 {
+  font-size: var(--squeezy-font-size-5);
+  /* fluid padding for accessibility */
+  padding: calc(var(--squeezy-font-size-5) / 5) 0; 
+  /* clamps line-height to font-size, ensuring it is never smaller than 1.1 and never bigger than 1.3 */
+  line-height: clamp(1.1, var(--squeezy-font-size-5) / 1rem, 1.3); 
+}
+
+h3, .h3 {
+  font-size: var(--squeezy-font-size-4);
+  /* fluid padding for accessibility */
+  padding: calc(var(--squeezy-font-size-4) / 4) 0; 
+  /* clamps line-height to font-size, ensuring it is never smaller than 1.1 and never bigger than 1.3 */
+  line-height: clamp(1.1, var(--squeezy-font-size-4) / 1rem, 1.3); 
+}
+
+h4, .h4 {
+  font-size: var(--squeezy-font-size-3);
+   /* fluid padding for accessibility */
+  padding: calc(var(--squeezy-font-size-3) / 3) 0;
+  /* clamps line-height to font-size, ensuring it is never smaller than 1.1 and never bigger than 1.3 */
+  line-height: clamp(1.1, var(--squeezy-font-size-3) / 1rem, 1.3); 
+}
+
+h5, .h5 {
+  font-size: var(--squeezy-font-size-2);
+  /* fluid padding for accessibility */
+  padding: calc(var(--squeezy-font-size-2) / 2) 0; 
+  /* clamps line-height to font-size, ensuring it is never smaller than 1.1 and never bigger than 1.3 */
+  line-height: clamp(1.1, var(--squeezy-font-size-2) / 1rem, 1.3); 
+}
+
+h6, .h6 {
+  font-size: var(--squeezy-font-size-1);
+  /* fluid padding for accessibility */
+  padding: var(--squeezy-font-size-1) 0; 
+  /* clamps line-height to font-size, ensuring it is never smaller than 1.1 and never bigger than 1.3 */
+  line-height: clamp(1.1, var(--squeezy-font-size-1) / 1rem, 1.3); 
+}
+
+small {
+  font-size: var(--squeezy-font-size--1);
+  /* clamps line-height to font-size, ensuring it is never smaller than 1.1 and never bigger than 1.3 */
+  line-height: clamp(1.1, var(--squeezy-font-size--1) / 1rem, 1.3); 
+}
+
+.squeezy-tiny {
+  font-size: var(--squeezy-font-size--2);
+  /* clamps line-height to font-size, ensuring it is never smaller than 1.1 and never bigger than 1.3 */
+  line-height: clamp(1.1, var(--squeezy-font-size--2) / 1rem, 1.3); 
+}

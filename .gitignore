@@ -4,3 +4,7 @@ node_modules
 coverage
 .env
 .turbo
+.astro
+CLAUDE_STATE.json
+CLAUDE_VECTORDB.json
+CLAUDE.md

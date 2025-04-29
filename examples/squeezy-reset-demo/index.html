@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>defuss - squeezy-reset - Accessible Fluid CSS Reset Demo</title>
+  <style id="reset-style">
+    @import url('squeezy-reset/reset.css');
+
+    body {
+      padding: 1rem;
+      /* there is no default padding */
+    }
+  </style>
+  <script>
+    const disableReset = () => {
+      document.getElementById('reset-style').innerText = '';
+    };
+  </script>
+</head>
+
+<body>
+  <header>
+    <h1>
+      <code>squeezy-reset</code>
+    </h1>
+    <h2>
+      Accessible Fluid CSS Reset Demo
+    </h2>
+
+    <p>
+      <em>2025 by Aron Homberg</em>
+    </p>
+    <p>See how a modern, fluid CSS reset improves your web page's typographic rendering and layout consistency.</p>
+    <p>
+      Watch how it would look like by default: <button type="button" aria-label="Removed the reset styles"
+              onclick="disableReset()">Disable defuss-reset.css</button>
+    </p>
+    <h6>
+      What does this reset do?
+    </h6>
+    <ol>
+      <li>
+        <strong>Universal Box Sizing and Margin Reset:</strong>
+        Ensures consistent sizing by applying <code>box-sizing: border-box</code> to all elements and removes default
+        margins for cleaner layouts.
+      </li>
+      <li>
+        <strong>Full-Height Layout:</strong>
+        Applies <code>height: 100%</code> to <code>html</code> and <code>body</code> elements so they span the full
+        viewport height.
+      </li>
+      <li>
+        <strong>HTML Adjustments:</strong>
+        Prevents automatic text resizing in browsers using <code>text-size-adjust</code>, smooths scrolling with
+        <code>scroll-behavior: smooth</code>, and supports light/dark themes with <code>color-scheme</code>.
+      </li>
+      <li>
+        <strong>Typography Enhancements:</strong>
+        Improves readability with balanced text wrapping for headings (<code>text-wrap: balance</code>) and ensures
+        friendly line breaks for paragraphs (<code>text-wrap: pretty</code>).
+      </li>
+      <li>
+        <strong>Form Element Inheritance:</strong>
+        Ensures form elements (inputs, buttons, etc.) inherit font styles using <code>font: inherit</code>.
+      </li>
+      <li>
+        <strong>Media Element Layout:</strong>
+        Media elements like images, videos, and SVGs are displayed as block elements and constrained to their containers
+        with <code>max-width: 100%</code>.
+      </li>
+      <li>
+        <strong>Consistent Decoration:</strong>
+        Removes default borders around linked images with <code>a img { border: none }</code>.
+      </li>
+      <li>
+        <strong>Accessibility Focus:</strong>
+        Improves focus visibility with <code>:focus</code> styles and honors user preferences for reduced motion using
+        <code>@media (prefers-reduced-motion)</code>.
+      </li>
+      <li>
+        <strong>Responsive Typography:</strong>
+        Uses <code>clamp()</code> to ensure font sizes scale with the viewport while respecting minimum and maximum
+        sizes, e.g., <code>html { font-size: clamp(12px, 1vw + 1rem, 18px); }</code>.
+      </li>
+    </ol>
+
+  </header>
+  <main>
+    <section>
+      <h2>Typography</h2>
+      <strong>There is strong body text.</strong>
+      <em>And emphasized body text.</em>
+      <small>This is a small text.</small>
+      <small class="defuss-tiny">
+        This is a tiny text using <code>.defuss-tiny</code>, but even that does not shrink below 12px.
+      </small>
+      <p>Paragrpah text looks like this, while headings are rendered with balanced text wrapping, ensuring a clean and
+        modern appearance:</p>
+      <h1>Main Heading that breaks nicely (H1)</h1>
+      <h2>Subheading that breaks nicely (H2)</h2>
+      <h3>Sub-subheading that breaks nicely (H3)</h3>
+      <h4>Sub-sub-subheading that breaks nicely (H4)</h4>
+      <h5>Sub-sub-sub-subheading that breaks nicely (H5)</h5>
+      <h6>Sub-sub-sub-sub-subheading that breaks nicely (H6)</h6>
+    </section>
+    <section>
+      <h3>Longer Text</h3>
+      <p>Paragraphs are styled for optimal readability with improved line height and pretty text wrapping:</p>
+      <p>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero.
+        Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet.
+      </p>
+      <p>
+        This is another paragraph to demonstrate consistent spacing and line height between blocks
+        of text for a harmonious visual flow.
+      </p>
+    </section>
+    <section>
+      <h3>Images Without Pseudo-Margins</h3>
+      <p>
+        Images are styled as block elements without inline typographic pseudo-margins, ensuring they integrate smoothly
+        into layouts:
+      </p>
+      <p>Below is an image example:</p>
+      <h4>Images In Anchors Do Not Come With A Border</h4>
+      <a aria-label="Link to a placeholder image of 600x300 pixels" href="https://via.placeholder.com/600x300"
+         target="_blank" rel="noopener noreferrer">
+        <img src="https://via.placeholder.com/600x300" alt="Placeholder Image for 600x300 pixels in size" />
+      </a>
+      <p>
+        As you can see, the image aligns perfectly with the text and its container, avoiding unintended gaps caused by
+        pseudo-margins.
+      </p>
+    </section>
+  </main>
+  <footer>
+    <p>Built with the Modern CSS Reset to demonstrate clean, consistent design.</p>
+  </footer>
+</body>
+
+</html>

@@ -1,0 +1,58 @@
+{
+  "name": "defuss-db",
+  "version": "0.0.1",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "description": "Isomorphic database abstraction, defussed.",
+  "keywords": [
+    "db",
+    "database",
+    "dexie",
+    "libsql"
+  ],
+  "repository": {
+    "url": "git+https://github.com/kyr0/defuss.git",
+    "type": "git"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
+    "pretest": "pnpm run build",
+    "prebuild": "pnpm run clean",
+    "build": "pkgroll"
+  },
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "pkgroll": "^2.5.1",
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.2"
+  },
+  "engines": {
+    "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
+  },
+  "dependencies": {
+    "dexie": "^4.0.10",
+    "@libsql/client": "^0.14.0"
+  }
+}

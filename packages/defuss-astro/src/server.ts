@@ -1,6 +1,6 @@
 import type { AstroComponentMetadata, NamedSSRLoadedRendererValue } from 'astro';
 import type { RendererContext } from './types.js';
-import { renderToString, render, getBrowserGlobals, getDocument, createInPlaceErrorMessageVNode } from 'defuss/server'
+import { renderToString, renderSync, getBrowserGlobals, getDocument, createInPlaceErrorMessageVNode } from 'defuss/server'
 import type { Props, RenderInput } from 'defuss'
 import { StaticHtml } from './render.js';
 
@@ -12,7 +12,7 @@ async function check(
 	_props: Record<string, any>,
 	_children: any,
 ) {
-	
+
 	if (typeof Component !== 'function') return false;
 	if (Component.name === 'QwikComponent') return false;
 	// Svelte component renders fine by Solid as an empty string. The only way to detect
@@ -63,7 +63,7 @@ async function renderToStaticMarkup(
 	const document = getDocument(false, browserGlobals)
 	browserGlobals.document = document;
 
-  // declare window and document as globals on server-side
+	// declare window and document as globals on server-side
 	// this allows for a fantastic developer experience
 	// as the global objects are available at JSX runtime
 	for (const key of Object.keys(browserGlobals)) {
@@ -88,16 +88,16 @@ async function renderToStaticMarkup(
 		console.error("Original error", error)
 	}
 
-	let roots: HTMLElement|Array<HTMLElement>;
+	let roots: HTMLElement | Array<HTMLElement>;
 	let html = '';
 
 	const attrs = {};
 
 	// turn the component AST into an actual DOM element and attach it to the element passed in
-	roots = render(vdom, document.documentElement, { 
+	roots = renderSync(vdom, document.documentElement, {
 		browserGlobals
 	}) as HTMLElement;
-	
+
 	// set all props as top level attributes
 	for (const [key, value] of Object.entries(props)) {
 		if (key !== 'children') {

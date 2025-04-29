@@ -1,0 +1,28 @@
+{
+  "id": "demo-1",
+  "title": "Introduction to Astro 1",
+  "data": {
+    "time": 1740661876868,
+    "blocks": [
+      {
+        "id": "wcCYwB7lqA",
+        "type": "code",
+        "data": {
+          "code": "console.log('Hello, World12!')"
+        }
+      },
+      {
+        "id": "dYT7csb_xF",
+        "type": "image",
+        "data": {
+          "url": "/data/blue-2705642_1280.jpg",
+          "caption": "",
+          "withBorder": false,
+          "withBackground": false,
+          "stretched": false
+        }
+      }
+    ],
+    "version": "2.31.0-rc.7"
+  }
+}
