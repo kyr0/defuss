@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { createRef, getRenderer, render, renderToString } from '@/render/client.js'
+import { createRef, getRenderer, renderSync, renderToString } from '@/render/client.js'
 import type { Props, VNode } from '@/render/client.js'
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
@@ -10,7 +10,7 @@ customElements.define(
     constructor() {
       super() 
  
-      const template = render(<p>Foo</p>) as Element
+      const template = renderSync(<p>Foo</p>) as Element
 
       this.attachShadow({ mode: 'open' }).appendChild(template.cloneNode(true))
     }
@@ -19,20 +19,20 @@ customElements.define(
 
 describe('client render', () => {
   it('can render', () => {
-    const el: Element = render(
+    const el: Element = renderSync(
       <html lang='en'>
         <head></head>
         <body></body>
       </html>,
     ) as Element
 
-    expect(render).toBeDefined()
+    expect(renderSync).toBeDefined()
     expect(el.nodeName).toEqual('HTML')
   })
 
   it('can renderToString', () => {
     const html: string = renderToString(
-      render(
+      renderSync(
         <html lang='en'>
           <head></head>
           <body></body>
@@ -58,7 +58,7 @@ describe('Renderer create operation', () => {
       </ul>
     )
 
-    render(list, parentDOMElement)
+    renderSync(list, parentDOMElement)
 
     expect((parentDOMElement.childNodes[0] as HTMLLIElement).id).toEqual('123')
     expect((parentDOMElement.childNodes[0] as HTMLLIElement).childNodes[0].nodeName).toEqual('LI')
@@ -81,7 +81,7 @@ describe('Functional components', () => {
     )
 
     const someFc = <FC />
-    render(someFc, parentDOMElement)
+    renderSync(someFc, parentDOMElement)
 
     expect((parentDOMElement.childNodes[0] as HTMLDivElement).id).toEqual('123')
     expect((parentDOMElement.childNodes[0] as HTMLDivElement).textContent).toEqual('Foo')
@@ -99,7 +99,7 @@ describe('Functional components', () => {
     )
 
     const someFc = <FC />
-    render(someFc, parentDOMElement)
+    renderSync(someFc, parentDOMElement)
 
     expect((parentDOMElement.childNodes[0] as HTMLElement).nodeName).toEqual('DIV')
   })
@@ -121,7 +121,7 @@ describe('Renderer an fragment', () => {
       </fragment>
     )
 
-    render(wrappedWithFragment, parentDOMElement)
+    renderSync(wrappedWithFragment, parentDOMElement)
 
     expect((parentDOMElement.childNodes[0] as HTMLDivElement).id).toEqual('123')
     expect((parentDOMElement.childNodes[0] as HTMLDivElement).textContent).toEqual('Foo')
@@ -137,7 +137,7 @@ describe('Renderer an fragment', () => {
       </>
     )
 
-    render(wrappedWithFragment, parentDOMElement)
+    renderSync(wrappedWithFragment, parentDOMElement)
 
     expect((parentDOMElement.childNodes[0] as HTMLDivElement).id).toEqual('123')
     expect((parentDOMElement.childNodes[0] as HTMLDivElement).textContent).toEqual('Foo')
@@ -171,31 +171,31 @@ describe('VirtualDOM', () => {
 
   it('can render to document.body', () => {
     const divRef = createRef<HTMLDivElement>();
-    expect((render(<div ref={divRef} />, document.body) as Element).nodeName).toEqual('DIV')
+    expect((renderSync(<div ref={divRef} />, document.body) as Element).nodeName).toEqual('DIV')
     expect(divRef.current!.nodeName).toEqual('DIV')
     expect(divRef.current!.parentNode!.childNodes[0]).toEqual(divRef.current)
   })
 
   it('can render text to document.body', () => {
-    expect(render('Mesg', document.body)!.nodeName).toEqual('#text')
+    expect(renderSync('Mesg', document.body)!.nodeName).toEqual('#text')
     expect(document.documentElement.textContent).toEqual('Mesg')
   })
 
   it('can render Text', () => {
-    expect(render('Foo')).toBeDefined()
-    expect(render('Foo')!.nodeName).toEqual('#text')
+    expect(renderSync('Foo')).toBeDefined()
+    expect(renderSync('Foo')!.nodeName).toEqual('#text')
   }) 
 
   it('can render an Array of elements', () => {
-    expect(render([<div>A</div>, <div>B</div>])).toBeDefined()
-    expect(render([<div>A</div>, <div>B</div>])).toBeInstanceOf(Array)
-    expect((render([<div>A</div>, <div>B</div>]) as unknown as Array<any>).length).toBe(2)
+    expect(renderSync([<div>A</div>, <div>B</div>])).toBeDefined()
+    expect(renderSync([<div>A</div>, <div>B</div>])).toBeInstanceOf(Array)
+    expect((renderSync([<div>A</div>, <div>B</div>]) as unknown as Array<any>).length).toBe(2)
   })
 
   it('can render SVG elements', () => {
     expect(
       (
-        render(
+        renderSync(
           <svg className="star__svg" viewBox="0 0 32 32">
             <path className="star__svg__path"></path>
             <rect fill="none" width="32" height="32"></rect>
@@ -213,7 +213,7 @@ describe('VirtualDOM', () => {
   it('can render SVG elements to string', () => {
     expect(
       renderToString(
-        render(
+        renderSync(
           <svg
             className="star__svg"
             xmlns="http://www.w3.org/2000/svg"
@@ -237,17 +237,17 @@ describe('VirtualDOM', () => {
   })
 
   it('can render undefined values', () => {
-    expect((render(undefined) as Text).nodeName).toEqual('#text')
+    expect((renderSync(undefined) as Text).nodeName).toEqual('#text')
   })
 
   it('can render null values', () => {
-    expect(render(<div>{null}</div>)).toBeTruthy()
+    expect(renderSync(<div>{null}</div>)).toBeTruthy()
   })
 
   it('can render refs', () => {
     const divRef = createRef<Element>();
 
-    expect((render(<div ref={divRef} />) as Element).nodeName).toEqual('DIV')
+    expect((renderSync(<div ref={divRef} />) as Element).nodeName).toEqual('DIV')
     expect(divRef.current!.nodeName).toEqual('DIV')
   })
 
@@ -256,7 +256,7 @@ describe('VirtualDOM', () => {
     const onClick = vi.fn(() => {})
 
     expect(
-      (render(<button label="button" type="button" ref={buttonRef} onClick={onClick} />) as Element).nodeName,
+      (renderSync(<button label="button" type="button" ref={buttonRef} onClick={onClick} />) as Element).nodeName,
     ).toEqual('BUTTON')
     expect(buttonRef.current!.nodeName).toEqual('BUTTON')
 
@@ -270,7 +270,7 @@ describe('VirtualDOM', () => {
     const onClick = vi.fn(() => {})
 
     expect(
-      (render(<button label="button" type="button" ref={buttonRef} onClickCapture={onClick} />) as Element).nodeName,
+      (renderSync(<button label="button" type="button" ref={buttonRef} onClickCapture={onClick} />) as Element).nodeName,
     ).toEqual('BUTTON')
     expect(buttonRef.current.nodeName).toEqual('BUTTON')
 
@@ -280,7 +280,7 @@ describe('VirtualDOM', () => {
   })
 
   it('can apply many classes at once', () => {
-    const el: Element = render(<button label="button" type="button" class={['a', 'b']} />) as HTMLButtonElement
+    const el: Element = renderSync(<button label="button" type="button" class={['a', 'b']} />) as HTMLButtonElement
 
     expect(el.nodeName).toEqual('BUTTON')
     expect(el.classList.contains('a')).toBe(true)
@@ -288,7 +288,7 @@ describe('VirtualDOM', () => {
   })
 
   it('can apply many classes at once - with React syntax', () => {
-    const el: Element = render(<button label="button" type="button" className={['a', 'b']} />) as HTMLButtonElement
+    const el: Element = renderSync(<button label="button" type="button" className={['a', 'b']} />) as HTMLButtonElement
 
     expect(el.nodeName).toEqual('BUTTON')
     expect(el.classList.contains('a')).toBe(true)
@@ -296,13 +296,13 @@ describe('VirtualDOM', () => {
   })
 
   it('can render undefined attributes', () => {
-    const el: Element = render(<button value={undefined as any} label="foo" type="button" />) as HTMLButtonElement
+    const el: Element = renderSync(<button value={undefined as any} label="foo" type="button" />) as HTMLButtonElement
 
     expect(el.nodeName).toEqual('BUTTON')
   })
 
   it('can render style props', () => {
-    const el: HTMLButtonElement = render(
+    const el: HTMLButtonElement = renderSync(
       <button
         label="button"
         type="button"
@@ -319,20 +319,20 @@ describe('VirtualDOM', () => {
   })
 
   it('can render boolean attributes', () => {
-    const el: HTMLButtonElement = render(<button label="button" type="button" disabled={false} />) as HTMLButtonElement
+    const el: HTMLButtonElement = renderSync(<button label="button" type="button" disabled={false} />) as HTMLButtonElement
 
     expect(el.nodeName).toEqual('BUTTON')
     expect(el.disabled).toBe(false)
   })
 
   it('can render boolean attributes positively', () => {
-    const el: HTMLButtonElement = render(<button label="button" type="button" disabled />) as HTMLButtonElement
+    const el: HTMLButtonElement = renderSync(<button label="button" type="button" disabled />) as HTMLButtonElement
     expect(el.nodeName).toEqual('BUTTON')
     expect(el.disabled).toBe(true)
   })
 
   it('can render boolean attributes implicitly', () => {
-    const el: HTMLButtonElement = render(<button label="button" type="button" disabled />) as HTMLButtonElement
+    const el: HTMLButtonElement = renderSync(<button label="button" type="button" disabled />) as HTMLButtonElement
     expect(el.nodeName).toEqual('BUTTON')
     expect(el.disabled).toBe(true)
   })
@@ -344,7 +344,7 @@ describe('VirtualDOM', () => {
       // callback
     })
 
-    render([
+    renderSync([
       <div ref={someDivRef} onMount={onMount}>
         A
       </div>,
@@ -362,9 +362,9 @@ describe('VirtualDOM', () => {
       // callback
     })
 
-    render([<div ref={someParentDivRef}>1</div>, <div>2</div>])
+    renderSync([<div ref={someParentDivRef}>1</div>, <div>2</div>])
 
-    render(
+    renderSync(
       [
         <div onMount={onMount} ref={someDivRef}>
           A
@@ -420,7 +420,7 @@ describe('VirtualDOM', () => {
 
     const forwardedRef = createRef<Element>()
 
-    render(<TryForwardRef ref={forwardedRef} />)
+    renderSync(<TryForwardRef ref={forwardedRef} />)
 
     expect(forwardedRef.current!.nodeName).toEqual('SPAN')
     expect(forwardedRef.current!.id).toEqual('forwardedRef')
@@ -445,7 +445,7 @@ describe('VirtualDOM', () => {
 
     const forwardedRef = createRef()
 
-    render(<TryForwardRef ref={forwardedRef} />)
+    renderSync(<TryForwardRef ref={forwardedRef} />)
 
     forwardedRef.update!(newState)
 
@@ -655,7 +655,7 @@ describe('getRenderer', () => {
 
 describe('customElements support', () => {
   it('can render webcomponents', () => {
-    const rendered = render(
+    const rendered = renderSync(
       <p>
         {/** @ts-ignore */}
         <my-paragraph></my-paragraph>
@@ -669,7 +669,7 @@ describe('customElements support', () => {
 describe('readme', () => {
   it('renders what the docs say', () => {
     // HTMLParagraphElement
-    const dom: Node = render(<p>Some paragraph</p>) as Element
+    const dom: Node = renderSync(<p>Some paragraph</p>) as Element
 
     // <p xmlns="http://www.w3.org/1999/xhtml">Some paragraph</p>
     const html: string = renderToString(dom)
@@ -679,7 +679,7 @@ describe('readme', () => {
 
   it('whole doc', () => {
     // HTMLElement
-    const dom: Node = render(
+    const dom: Node = renderSync(
       <html lang="en">
         <head></head>
         <body></body>
@@ -695,7 +695,7 @@ describe('readme', () => {
 describe('dangerouslySetInnerHTML', () => {
   it('renders elements with innerHTML and no dangerouslySetInnerHTML attribute', () => {
     // Initial empty parent DOM element
-    const parentDOMElement: Element = render(
+    const parentDOMElement: Element = renderSync(
       <div></div>,
     ) as Element
       
@@ -703,7 +703,7 @@ describe('dangerouslySetInnerHTML', () => {
     const FC = () => <div dangerouslySetInnerHTML={{ __html: innerHtmlContent }}></div>
 
     const someFc = <FC />
-    render(someFc, parentDOMElement)
+    renderSync(someFc, parentDOMElement)
     
     // Check that the rendered node is a DIV and has the expected innerHTML content
     expect(parentDOMElement.innerHTML).toEqual(`<div>${innerHtmlContent}</div>`)

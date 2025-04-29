@@ -1,11 +1,21 @@
-import type { Dequery } from '@/dequery/dequery.js';
-import { observeUnmount, renderIsomorphic } from '@/render/isomorph.js'
+import { observeUnmount, renderIsomorphicSync, renderIsomorphicAsync, type ParentElementInput, type ParentElementInputAsync, globalScopeDomApis } from '@/render/isomorph.js'
 import type { RenderInput, RenderResult, VNode } from '@/render/types.js'
 
-export const render = <T extends RenderInput>(
+export const renderSync = <T extends RenderInput>(
   virtualNode: T,
-  parentDomElement: Element | Document | Dequery = document.documentElement,
-): RenderResult<T> => renderIsomorphic(virtualNode, parentDomElement, window) as any
+  parentDomElement: ParentElementInput = document.documentElement,
+): RenderResult<T> => {
+  globalScopeDomApis(window, document)
+  return renderIsomorphicSync(virtualNode, parentDomElement, window) as any
+}
+
+export const render = async<T extends RenderInput>(
+  virtualNode: T | Promise<T>,
+  parentDomElement: ParentElementInputAsync = document.documentElement,
+): Promise<RenderResult<T>> => {
+  globalScopeDomApis(window, document)
+  return renderIsomorphicAsync(virtualNode, parentDomElement, window) as any
+}
 
 export const renderToString = (el: Node) => new XMLSerializer().serializeToString(el)
 

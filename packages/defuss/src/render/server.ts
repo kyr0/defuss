@@ -1,8 +1,7 @@
 import * as HappyDom from 'happy-dom'
-import { renderIsomorphic } from '@/render/isomorph.js'
+import { renderIsomorphicSync, renderIsomorphicAsync, globalScopeDomApis, type ParentElementInput, type ParentElementInputAsync } from '@/render/isomorph.js'
 import type { RenderInput, RenderResult, Globals } from '@/render/types.js'
 import serializeHtml from 'w3c-xmlserializer'
-import type { Dequery } from '@/dequery/dequery.js'
 
 export interface RenderOptions {
   /** choose an arbitrary server-side DOM / Document implementation; this library defaults to 'linkedom'; default: undefined */
@@ -12,18 +11,35 @@ export interface RenderOptions {
   createRoot?: boolean
 }
 
-export const render = <T extends RenderInput>(
-  virtualNode: T,
-  parentDomElement?: Element | Dequery,
-  options: RenderOptions = {},
-): RenderResult<T> => {
+const setupDomApis = (options: RenderOptions = {}) => {
   const browserGlobals = options.browserGlobals ? options.browserGlobals : getBrowserGlobals()
   const document = getDocument(options.createRoot, browserGlobals)
+  globalScopeDomApis(browserGlobals, document)
+  return { browserGlobals, document }
+}
 
+export const renderSync = <T extends RenderInput>(
+  virtualNode: T,
+  parentDomElement?: ParentElementInput,
+  options: RenderOptions = {},
+): RenderResult<T> => {
+  const { browserGlobals, document } = setupDomApis(options)
   if (!parentDomElement) {
     parentDomElement = document.documentElement
   }
-  return renderIsomorphic(virtualNode, parentDomElement, browserGlobals) as any
+  return renderIsomorphicSync(virtualNode, parentDomElement, browserGlobals) as any
+}
+
+export const render = <T extends RenderInput>(
+  virtualNode: T,
+  parentDomElement?: ParentElementInputAsync,
+  options: RenderOptions = {},
+): Promise<RenderResult<T>> => {
+  const { browserGlobals, document } = setupDomApis(options)
+  if (!parentDomElement) {
+    parentDomElement = document.documentElement
+  }
+  return renderIsomorphicAsync(virtualNode, parentDomElement, browserGlobals) as any
 }
 
 export const createRoot = (document: Document): Element => {
@@ -32,7 +48,7 @@ export const createRoot = (document: Document): Element => {
   return document.documentElement
 }
 
-export const getBrowserGlobals = (initialHtml = '<!DOCTYPE html>'): Globals => {
+export const getBrowserGlobals = (): Globals => {
   return new HappyDom.Window({ url: "http://localhost/" }) as unknown as (Window & typeof globalThis)
 }
 

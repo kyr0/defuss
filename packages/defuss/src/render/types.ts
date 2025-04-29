@@ -1380,3 +1380,75 @@ export type RenderResultNode = Element | Text | undefined
 export type RenderResult<T = RenderInput> = T extends Array<RenderNodeInput>
   ? Array<RenderResultNode>
   : RenderResultNode
+
+export type AllHTMLElements =
+  & HTMLElement
+  & HTMLAnchorElement
+  & HTMLAreaElement
+  & HTMLAudioElement
+  & HTMLBaseElement
+  & HTMLBodyElement
+  & HTMLBRElement
+  & HTMLButtonElement
+  & HTMLCanvasElement
+  & HTMLDataElement
+  & HTMLDataListElement
+  & HTMLDetailsElement
+  & HTMLDialogElement
+  & HTMLDivElement
+  & HTMLDListElement
+  & HTMLEmbedElement
+  & HTMLFieldSetElement
+  & HTMLFormElement
+  & HTMLHeadingElement
+  & HTMLHeadElement
+  & HTMLHtmlElement
+  & HTMLHRElement
+  & HTMLIFrameElement
+  & HTMLImageElement
+  & HTMLInputElement
+  & HTMLLabelElement
+  & HTMLLegendElement
+  & HTMLLIElement
+  & HTMLLinkElement
+  & HTMLMapElement
+  & HTMLMenuElement
+  & HTMLMetaElement
+  & HTMLMeterElement
+  & HTMLModElement
+  & HTMLOListElement
+  & HTMLObjectElement
+  & HTMLOptGroupElement
+  & HTMLOptionElement
+  & HTMLOutputElement
+  & HTMLParagraphElement
+  & HTMLPictureElement
+  & HTMLPreElement
+  & HTMLProgressElement
+  & HTMLQuoteElement
+  & HTMLScriptElement
+  & HTMLSelectElement
+  & HTMLSlotElement
+  & HTMLSourceElement
+  & HTMLSpanElement
+  & HTMLStyleElement
+  & HTMLTableCaptionElement
+  & HTMLTableCellElement
+  & HTMLTableColElement
+  & HTMLTableElement
+  & HTMLTableRowElement
+  & HTMLTableSectionElement
+  & HTMLTemplateElement
+  & HTMLTextAreaElement
+  & HTMLTimeElement
+  & HTMLTitleElement
+  & HTMLTrackElement
+  & HTMLUListElement
+  & HTMLUnknownElement
+  & HTMLVideoElement
+  // deprecated / legacy:
+  & HTMLParamElement
+  & HTMLFontElement
+  & HTMLMarqueeElement
+  & HTMLTableDataCellElement
+  & HTMLTableHeaderCellElement;

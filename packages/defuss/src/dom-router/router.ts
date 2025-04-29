@@ -108,11 +108,11 @@ export const setupRouter = (config: RouterConfig = {
 
   // safe SSR rendering, and fine default for client side
   if (typeof window !== 'undefined' && !windowImpl) {
-    windowImpl = window;
+    windowImpl = globalThis.__defuss_window /** for SSR support */ || window;
   }
 
   if (!windowImpl) {
-    console.warn('Router requires a window implementation');
+    console.warn('Router requires a Window API implementation!');
   }
 
   const api = {
@@ -133,7 +133,6 @@ export const setupRouter = (config: RouterConfig = {
           tokenizedPath: tokenizePath(registration.path)
         });
       }
-
       return api as Router;
     },
     match(path?: string) {

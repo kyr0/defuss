@@ -1,5 +1,5 @@
 import { updateDom, updateDomWithVdom } from "../common/dom.js";
-import { isRef, renderIsomorphic, type CSSProperties, type Globals, type Ref, type RenderInput } from "../render/index.js";
+import { isRef, renderIsomorphicSync, type CSSProperties, type Globals, type Ref, type RenderInput } from "../render/index.js";
 
 export type NodeType = Node | Text | Element | Document | DocumentFragment | HTMLElement | SVGElement;
 
@@ -83,6 +83,7 @@ export const dequery = (
 
 interface DequeryArrayLike {
   [index: number]: NodeType;
+  length: number;
 }
 
 export class Dequery implements DequeryArrayLike {
@@ -128,7 +129,6 @@ export class Dequery implements DequeryArrayLike {
   }
 
   query(selector: string): Dequery {
-    console.log('querying', selector);
     this.elements = Array.from(document.querySelectorAll(selector));
     return this;
   }
@@ -295,7 +295,7 @@ export class Dequery implements DequeryArrayLike {
       const newEl =
         vdomOrNode instanceof Node
           ? vdomOrNode
-          : (renderIsomorphic(
+          : (renderIsomorphicSync(
             vdomOrNode,
             elementGuard(el),
             globalThis as Globals
@@ -493,3 +493,5 @@ export class Dequery implements DequeryArrayLike {
 
 // for query-like syntax
 export const $ = dequery;
+// alternative syntax
+export const d = dequery;

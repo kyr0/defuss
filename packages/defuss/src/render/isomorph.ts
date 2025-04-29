@@ -1,4 +1,5 @@
-import type { Dequery } from '@/dequery/dequery.js'
+import type { Dequery, aDequery } from '@/dequery/index.js'
+import { isADequery } from '../dequery/index.js'
 import type { VNodeChild, VNodeChildren, VNode, VNodeType, VNodeAttributes, DomAbstractionImpl, Globals } from '@/render/types.js'
 
 const CLASS_ATTRIBUTE_NAME = 'class'
@@ -10,6 +11,11 @@ const nsMap = {
   [XMLNS_ATTRIBUTE_NAME]: 'http://www.w3.org/2000/xmlns/',
   [XLINK_ATTRIBUTE_NAME]: 'http://www.w3.org/1999/xlink',
   svg: 'http://www.w3.org/2000/svg',
+}
+
+declare global {
+  var __defuss_document: Document;
+  var __defuss_window: Window;
 }
 
 // If a JSX comment is written, it looks like: { /* this */ }
@@ -315,14 +321,18 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
   return renderer
 }
 
-export const renderIsomorphic = (
-  virtualNode: VNode | undefined | string | Array<VNode | undefined | string>,
-  parentDomElement: Element | Document | Dequery | undefined,
+export type SyncRenderInput = VNode | undefined | string | Array<VNode | undefined | string>;
+export type ParentElementInput = Element | Document | Dequery | undefined;
+export type SyncRenderResult = Array<Element | Text | undefined> | Element | Text | undefined;
+
+export const renderIsomorphicSync = (
+  virtualNode: SyncRenderInput,
+  parentDomElement: ParentElementInput,
   globals: Globals,
-): Array<Element | Text | undefined> | Element | Text | undefined => {
+): SyncRenderResult => {
 
   const parentEl = (parentDomElement as Dequery).el as Element || parentDomElement
-  let renderResult: Array<Element | Text | undefined> | Element | Text | undefined
+  let renderResult: SyncRenderResult;
 
   if (typeof virtualNode === 'string') {
     renderResult = getRenderer(globals.window.document).createTextNode(virtualNode, parentEl)
@@ -330,6 +340,43 @@ export const renderIsomorphic = (
     renderResult = getRenderer(globals.window.document).createElementOrElements(virtualNode, parentEl)
   }
   return renderResult;
+}
+
+export type ParentElementInputAsync = ParentElementInput | aDequery | Promise<ParentElementInput | aDequery>;
+
+export const renderIsomorphicAsync = async (
+  virtualNode: SyncRenderInput | Promise<SyncRenderInput>,
+  parentDomElement: ParentElementInputAsync,
+  globals: Globals,
+): Promise<SyncRenderResult> => {
+
+  if (parentDomElement instanceof Promise) {
+    parentDomElement = (await parentDomElement) as ParentElementInput | aDequery
+  }
+
+  if (isADequery(parentDomElement)) {
+    // awaits the dequery chain to resolve or fail, then renders the VDOM
+    parentDomElement = (await (parentDomElement as aDequery).toArray())[0] as Element
+  }
+
+  if (virtualNode instanceof Promise) {
+    virtualNode = await virtualNode
+  }
+  return renderIsomorphicSync(virtualNode, parentDomElement, globals)
+}
+
+export const globalScopeDomApis = (window: Window, document: Document) => {
+  globalThis.__defuss_document = document
+  globalThis.__defuss_window = window
+}
+
+export const isJSX = (o: any): boolean => {
+  if (o === null || typeof o !== 'object') return false
+  if (Array.isArray(o)) return o.every(isJSX)
+  if (typeof o.type === 'string') return true
+  if (typeof o.type === 'function') return true
+  if (typeof o.attributes === 'object' && typeof o.children === 'object') return true
+  return false
 }
 
 // --- JSX standard (necessary exports for jsx-runtime)
@@ -355,7 +402,7 @@ export const jsxDEV = (
 export default {
   jsx,
   Fragment,
-  renderIsomorphic,
+  renderIsomorphic: renderIsomorphicSync,
   getRenderer,
 
   // implementing the full standard
