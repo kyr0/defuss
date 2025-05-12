@@ -1,17 +1,25 @@
-import type { Dequery } from '@/dequery/index.js'
-import { isDequery } from '../dequery/index.js'
-import type { VNodeChild, VNodeChildren, VNode, VNodeType, VNodeAttributes, DomAbstractionImpl, Globals } from '@/render/types.js'
+import type { Dequery } from "@/dequery/index.js";
+import { isDequery } from "../dequery/index.js";
+import type {
+  VNodeChild,
+  VNodeChildren,
+  VNode,
+  VNodeType,
+  VNodeAttributes,
+  DomAbstractionImpl,
+  Globals,
+} from "@/render/types.js";
 
-const CLASS_ATTRIBUTE_NAME = 'class'
-const XLINK_ATTRIBUTE_NAME = 'xlink'
-const XMLNS_ATTRIBUTE_NAME = 'xmlns'
-const REF_ATTRIBUTE_NAME = 'ref'
+const CLASS_ATTRIBUTE_NAME = "class";
+const XLINK_ATTRIBUTE_NAME = "xlink";
+const XMLNS_ATTRIBUTE_NAME = "xmlns";
+const REF_ATTRIBUTE_NAME = "ref";
 
 const nsMap = {
-  [XMLNS_ATTRIBUTE_NAME]: 'http://www.w3.org/2000/xmlns/',
-  [XLINK_ATTRIBUTE_NAME]: 'http://www.w3.org/1999/xlink',
-  svg: 'http://www.w3.org/2000/svg',
-}
+  [XMLNS_ATTRIBUTE_NAME]: "http://www.w3.org/2000/xmlns/",
+  [XLINK_ATTRIBUTE_NAME]: "http://www.w3.org/1999/xlink",
+  svg: "http://www.w3.org/2000/svg",
+};
 
 declare global {
   var __defuss_document: Document;
@@ -22,26 +30,31 @@ declare global {
 // Therefore, it turns into: {}, which is detected here
 const isJSXComment = (node: VNode): boolean =>
   /* v8 ignore next */
-  node && typeof node === 'object' && !node.attributes && !node.type && !node.children
+  node &&
+  typeof node === "object" &&
+  !node.attributes &&
+  !node.type &&
+  !node.children;
 
 // Filters comments and undefines like: ['a', 'b', false, {}] to: ['a', 'b', false]
 const filterComments = (children: Array<VNode> | Array<VNodeChild>) =>
-  children.filter((child: VNodeChild) => !isJSXComment(child as VNode))
+  children.filter((child: VNodeChild) => !isJSXComment(child as VNode));
 
 export const createInPlaceErrorMessageVNode = (error: unknown) => ({
-  type: 'p',
+  type: "p",
   attributes: {},
-  children: [`FATAL ERROR: ${(error as Error)?.message || error}`]
-})
+  children: [`FATAL ERROR: ${(error as Error)?.message || error}`],
+});
 
 export const jsx = (
   type: VNodeType | Function | any,
-  attributes: (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>) | null,
-  key?: string
+  attributes:
+    | (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>)
+    | null,
+  key?: string,
 ): Array<VNode> | VNode => {
-
   // clone attributes as well
-  attributes = { ...attributes }
+  attributes = { ...attributes };
 
   if (typeof key !== "undefined") {
     /* key passed for instance-based lifecycle event listener registration */
@@ -49,31 +62,34 @@ export const jsx = (
   }
 
   // extract children from attributes and ensure it's always an array
-  let children: Array<VNodeChild> = (attributes?.children ? [].concat(attributes.children) : []).filter(Boolean);
+  let children: Array<VNodeChild> = (
+    attributes?.children ? [].concat(attributes.children) : []
+  ).filter(Boolean);
   delete attributes?.children;
 
   children = filterComments(
     // Implementation to flatten virtual node children structures like:
     // [<p>1</p>, [<p>2</p>,<p>3</p>]] to: [<p>1</p>,<p>2</p>,<p>3</p>]
-    ([] as Array<VNodeChildren>).concat.apply([], children as any) as Array<VNodeChildren>,
-  )
+    ([] as Array<VNodeChildren>).concat.apply(
+      [],
+      children as any,
+    ) as Array<VNodeChildren>,
+  );
 
   // effectively unwrap by directly returning the children
-  if (type === 'fragment') {
+  if (type === "fragment") {
     return filterComments(children) as Array<VNode>;
   }
 
   // it's a component, divide and conquer children
   // in case of async functions, we just pass them through
-  if (typeof type === 'function' && type.constructor.name !== 'AsyncFunction') {
-
+  if (typeof type === "function" && type.constructor.name !== "AsyncFunction") {
     try {
       return type({
         children,
         ...attributes,
-      })
+      });
     } catch (error) {
-
       if (typeof error === "string") {
         error = `[JsxError] in ${type.name}: ${error}`;
       } else if (error instanceof Error) {
@@ -81,7 +97,7 @@ export const jsx = (
       }
 
       // render the error in place
-      return createInPlaceErrorMessageVNode(error)
+      return createInPlaceErrorMessageVNode(error);
     }
   }
 
@@ -90,16 +106,18 @@ export const jsx = (
     attributes,
     children,
   };
-}
+};
 
 export const observeUnmount = (domNode: Node, onUnmount: () => void): void => {
-  if (!domNode || typeof onUnmount !== 'function') {
-    throw new Error('Invalid arguments. Ensure domNode and onUnmount are valid.');
+  if (!domNode || typeof onUnmount !== "function") {
+    throw new Error(
+      "Invalid arguments. Ensure domNode and onUnmount are valid.",
+    );
   }
 
   const parentNode = domNode.parentNode;
   if (!parentNode) {
-    throw new Error('The provided domNode does not have a parentNode.');
+    throw new Error("The provided domNode does not have a parentNode.");
   }
 
   const observer = new MutationObserver((mutationsList) => {
@@ -118,212 +136,265 @@ export const observeUnmount = (domNode: Node, onUnmount: () => void): void => {
 
   // Observe the parentNode for child removals
   observer.observe(parentNode, { childList: true });
-}
+};
 
 /** lifecycle event attachment has been implemented separately, because it is also required to run when partially updating the DOM */
 export const handleLifecycleEventsForOnMount = (newEl: HTMLElement) => {
-
   // check for a lifecycle "onMount" hook and call it
-  if (typeof (newEl as any)?.$onMount === 'function') {
-    ; (newEl as any).$onMount!()
-      // remove the hook after it's been called
-      ; (newEl as any).$onMount = null;
+  if (typeof (newEl as any)?.$onMount === "function") {
+    (newEl as any).$onMount!();
+    // remove the hook after it's been called
+    (newEl as any).$onMount = null;
   }
 
   // optionally check for a element lifecycle "onUnmount" and hook it up
-  if (typeof (newEl as any)?.$onUnmount === 'function') {
+  if (typeof (newEl as any)?.$onUnmount === "function") {
     // register the unmount observer (MutationObserver)
     observeUnmount(newEl as HTMLElement, (newEl as any).$onUnmount!);
   }
-}
+};
 
 export const getRenderer = (document: Document): DomAbstractionImpl => {
   // DOM abstraction layer for manipulation
   const renderer = {
-    hasElNamespace: (domElement: Element | Document): boolean => (domElement as Element).namespaceURI === nsMap.svg,
+    hasElNamespace: (domElement: Element | Document): boolean =>
+      (domElement as Element).namespaceURI === nsMap.svg,
 
-    hasSvgNamespace: (parentElement: Element | Document, type: string): boolean =>
-      renderer.hasElNamespace(parentElement) && type !== 'STYLE' && type !== 'SCRIPT',
+    hasSvgNamespace: (
+      parentElement: Element | Document,
+      type: string,
+    ): boolean =>
+      renderer.hasElNamespace(parentElement) &&
+      type !== "STYLE" &&
+      type !== "SCRIPT",
 
     createElementOrElements: (
       virtualNode: VNode | undefined | Array<VNode | undefined | string>,
       parentDomElement?: Element | Document,
     ): Array<Element | Text | undefined> | Element | Text | undefined => {
       if (Array.isArray(virtualNode)) {
-        return renderer.createChildElements(virtualNode, parentDomElement)
+        return renderer.createChildElements(virtualNode, parentDomElement);
       }
-      if (typeof virtualNode !== 'undefined') {
-        return renderer.createElement(virtualNode, parentDomElement)
+      if (typeof virtualNode !== "undefined") {
+        return renderer.createElement(virtualNode, parentDomElement);
       }
       // undefined virtualNode -> e.g. when a tsx variable is used in markup which is undefined
-      return renderer.createTextNode('', parentDomElement)
+      return renderer.createTextNode("", parentDomElement);
     },
 
-    createElement: (virtualNode: VNode, parentDomElement?: Element | Document): Element | undefined => {
+    createElement: (
+      virtualNode: VNode,
+      parentDomElement?: Element | Document,
+    ): Element | undefined => {
       let newEl: Element | undefined = undefined;
 
       try {
-        // if a synchronous function is still a function, VDOM has obviously not resolved, probably an 
+        // if a synchronous function is still a function, VDOM has obviously not resolved, probably an
         // Error occurred while generating the VDOM (in JSX runtime)
-        if (
-          virtualNode.constructor.name === 'AsyncFunction'
+        if (virtualNode.constructor.name === "AsyncFunction") {
+          newEl = document.createElement("div");
+        } else if (typeof virtualNode.type === "function") {
+          newEl = document.createElement("div");
+          (newEl as HTMLElement).innerText =
+            `FATAL ERROR: ${virtualNode.type._error}`;
+        } else if (
+          // SVG support
+          virtualNode.type.toUpperCase() === "SVG" ||
+          (parentDomElement &&
+            renderer.hasSvgNamespace(
+              parentDomElement,
+              virtualNode.type.toUpperCase(),
+            ))
         ) {
-          newEl = document.createElement('div')
-        } else if (typeof virtualNode.type === 'function') {
-          newEl = document.createElement('div')
-            ; (newEl as HTMLElement).innerText = `FATAL ERROR: ${virtualNode.type._error}`
-        } else if ( // SVG support
-          virtualNode.type.toUpperCase() === 'SVG' ||
-          (parentDomElement && renderer.hasSvgNamespace(parentDomElement, virtualNode.type.toUpperCase()))
-        ) { // SVG support
-          newEl = document.createElementNS(nsMap.svg, virtualNode.type as string)
+          // SVG support
+          newEl = document.createElementNS(
+            nsMap.svg,
+            virtualNode.type as string,
+          );
         } else {
-          newEl = document.createElement(virtualNode.type as string)
+          newEl = document.createElement(virtualNode.type as string);
         }
 
         if (virtualNode.attributes) {
-          renderer.setAttributes(virtualNode, newEl as Element)
+          renderer.setAttributes(virtualNode, newEl as Element);
 
           // Apply dangerouslySetInnerHTML if provided
           if (virtualNode.attributes.dangerouslySetInnerHTML) {
             // TODO: FIX me
-            newEl.innerHTML = virtualNode.attributes.dangerouslySetInnerHTML.__html;
+            newEl.innerHTML =
+              virtualNode.attributes.dangerouslySetInnerHTML.__html;
           }
         }
 
         if (virtualNode.children) {
-          renderer.createChildElements(virtualNode.children, newEl as Element)
+          renderer.createChildElements(virtualNode.children, newEl as Element);
         }
 
         if (parentDomElement) {
-          parentDomElement.appendChild(newEl)
-          handleLifecycleEventsForOnMount(newEl as HTMLElement)
+          parentDomElement.appendChild(newEl);
+          handleLifecycleEventsForOnMount(newEl as HTMLElement);
         }
       } catch (e) {
-        console.error('Fatal error! Error happend while rendering the VDOM!', e, virtualNode);
+        console.error(
+          "Fatal error! Error happend while rendering the VDOM!",
+          e,
+          virtualNode,
+        );
         throw e;
       }
-      return newEl as Element
+      return newEl as Element;
     },
 
     createTextNode: (text: string, domElement?: Element | Document): Text => {
-      const node = document.createTextNode(text.toString())
+      const node = document.createTextNode(text.toString());
 
       if (domElement) {
-        domElement.appendChild(node)
+        domElement.appendChild(node);
       }
-      return node
+      return node;
     },
 
     createChildElements: (
       virtualChildren: VNodeChildren,
       domElement?: Element | Document,
     ): Array<Element | Text | undefined> => {
-      const children: Array<Element | Text | undefined> = []
+      const children: Array<Element | Text | undefined> = [];
 
       for (let i = 0; i < virtualChildren.length; i++) {
-        const virtualChild = virtualChildren[i]
-        if (virtualChild === null || (typeof virtualChild !== 'object' && typeof virtualChild !== 'function')) {
+        const virtualChild = virtualChildren[i];
+        if (
+          virtualChild === null ||
+          (typeof virtualChild !== "object" &&
+            typeof virtualChild !== "function")
+        ) {
           children.push(
             renderer.createTextNode(
-              (typeof virtualChild === 'undefined' || virtualChild === null ? '' : virtualChild!).toString(),
+              (typeof virtualChild === "undefined" || virtualChild === null
+                ? ""
+                : virtualChild!
+              ).toString(),
               domElement,
             ),
-          )
+          );
         } else {
-          children.push(renderer.createElement(virtualChild as VNode, domElement))
+          children.push(
+            renderer.createElement(virtualChild as VNode, domElement),
+          );
         }
       }
-      return children
+      return children;
     },
 
-    setAttribute: (name: string, value: any, domElement: Element, virtualNode: VNode<VNodeAttributes>) => {
+    setAttribute: (
+      name: string,
+      value: any,
+      domElement: Element,
+      virtualNode: VNode<VNodeAttributes>,
+    ) => {
       // attributes not set (undefined) are ignored; use null value to reset an attributes state
-      if (typeof value === 'undefined') return // if not set, ignore
+      if (typeof value === "undefined") return; // if not set, ignore
 
       // TODO: use DANGROUSLY_SET_INNER_HTML_ATTRIBUTE here
-      if (name === 'dangerouslySetInnerHTML') return; // special case, handled elsewhere
+      if (name === "dangerouslySetInnerHTML") return; // special case, handled elsewhere
 
       // save ref as { current: DOMElement } in ref object
       // allows for ref={someRef}
-      if (name === REF_ATTRIBUTE_NAME && typeof value !== 'function') {
-        value.current = domElement // update ref
+      if (name === REF_ATTRIBUTE_NAME && typeof value !== "function") {
+        value.current = domElement; // update ref
         return; // but do not render the ref as a string [object Object] into the DOM
       }
 
-      if (name.startsWith('on') && typeof value === 'function') {
+      if (name.startsWith("on") && typeof value === "function") {
+        let eventName = name.substring(2).toLowerCase();
+        const capturePos = eventName.indexOf("capture");
+        const doCapture = capturePos > -1;
 
-        let eventName = name.substring(2).toLowerCase()
-        const capturePos = eventName.indexOf('capture')
-        const doCapture = capturePos > -1
-
-        if (eventName === 'mount') {
-          ; (domElement as any).$onMount = value // DOM event lifecycle hook
+        if (eventName === "mount") {
+          (domElement as any).$onMount = value; // DOM event lifecycle hook
         }
 
-        if (eventName === 'unmount') {
-          ; (domElement as any).$onUnmount = value // DOM event lifecycle hook
+        if (eventName === "unmount") {
+          (domElement as any).$onUnmount = value; // DOM event lifecycle hook
         }
 
         // onClickCapture={...} support
         if (doCapture) {
-          eventName = eventName.substring(0, capturePos)
+          eventName = eventName.substring(0, capturePos);
         }
-        domElement.addEventListener(eventName, value, doCapture)
-        return
+        domElement.addEventListener(eventName, value, doCapture);
+        return;
       }
 
       // transforms className="..." -> class="..."
       // allows for React JSX to work seamlessly
-      if (name === 'className') {
-        name = CLASS_ATTRIBUTE_NAME
+      if (name === "className") {
+        name = CLASS_ATTRIBUTE_NAME;
       }
 
       // transforms class={['a', 'b']} into class="a b"
       if (name === CLASS_ATTRIBUTE_NAME && Array.isArray(value)) {
-        value = value.join(' ')
+        value = value.join(" ");
       }
 
       // SVG support
-      const nsEndIndex = name.match(/[A-Z]/)?.index
+      const nsEndIndex = name.match(/[A-Z]/)?.index;
       if (renderer.hasElNamespace(domElement) && nsEndIndex) {
-        const ns = name.substring(0, nsEndIndex).toLowerCase()
-        const attrName = name.substring(nsEndIndex, name.length).toLowerCase()
-        const namespace = nsMap[ns as keyof typeof nsMap] || null
+        const ns = name.substring(0, nsEndIndex).toLowerCase();
+        const attrName = name.substring(nsEndIndex, name.length).toLowerCase();
+        const namespace = nsMap[ns as keyof typeof nsMap] || null;
         domElement.setAttributeNS(
           namespace,
-          ns === XLINK_ATTRIBUTE_NAME || ns === 'xmlns' ? `${ns}:${attrName}` : name,
+          ns === XLINK_ATTRIBUTE_NAME || ns === "xmlns"
+            ? `${ns}:${attrName}`
+            : name,
           value,
-        )
-      } else if (name === 'style' && typeof value !== 'string') {
-        const propNames = Object.keys(value)
+        );
+      } else if (name === "style" && typeof value !== "string") {
+        const propNames = Object.keys(value);
 
         // allows for style={{ margin: 10 }} etc.
         for (let i = 0; i < propNames.length; i++) {
-          ; (domElement as HTMLElement).style[propNames[i] as any] = value[propNames[i]]
+          (domElement as HTMLElement).style[propNames[i] as any] =
+            value[propNames[i]];
         }
-      } else if (typeof value === 'boolean') {
+      } else if (typeof value === "boolean") {
         // for cases like <button checked={false} />
-        ; (domElement as any)[name] = value
+        (domElement as any)[name] = value;
       } else {
         // for any other case
-        domElement.setAttribute(name, value)
+        domElement.setAttribute(name, value);
       }
     },
 
-    setAttributes: (virtualNode: VNode<VNodeAttributes>, domElement: Element) => {
-      const attrNames = Object.keys(virtualNode.attributes!)
+    setAttributes: (
+      virtualNode: VNode<VNodeAttributes>,
+      domElement: Element,
+    ) => {
+      const attrNames = Object.keys(virtualNode.attributes!);
       for (let i = 0; i < attrNames.length; i++) {
-        renderer.setAttribute(attrNames[i], virtualNode.attributes![attrNames[i]], domElement, virtualNode)
+        renderer.setAttribute(
+          attrNames[i],
+          virtualNode.attributes![attrNames[i]],
+          domElement,
+          virtualNode,
+        );
       }
     },
-  }
-  return renderer
-}
+  };
+  return renderer;
+};
 
-export type SyncRenderInput = VNode | undefined | string | Array<VNode | undefined | string>;
+export type SyncRenderInput =
+  | VNode
+  | undefined
+  | string
+  | Array<VNode | undefined | string>;
 export type ParentElementInput = Element | Document | Dequery | undefined;
-export type SyncRenderResult = Array<Element | Text | undefined> | Element | Text | undefined;
+export type SyncRenderResult =
+  | Array<Element | Text | undefined>
+  | Element
+  | Text
+  | undefined;
 
 export const renderIsomorphicSync = (
   virtualNode: SyncRenderInput,
@@ -331,61 +402,80 @@ export const renderIsomorphicSync = (
   globals: Globals,
 ): SyncRenderResult => {
   if (isDequery(parentDomElement)) {
-    parentDomElement = (parentDomElement as Dequery).getFirstElement() as Element || parentDomElement
+    parentDomElement =
+      ((parentDomElement as Dequery).getFirstElement() as Element) ||
+      parentDomElement;
   }
   let renderResult: SyncRenderResult;
 
-  if (typeof virtualNode === 'string') {
-    renderResult = getRenderer(globals.window.document).createTextNode(virtualNode, parentDomElement)
+  if (typeof virtualNode === "string") {
+    renderResult = getRenderer(globals.window.document).createTextNode(
+      virtualNode,
+      parentDomElement,
+    );
   } else {
-    renderResult = getRenderer(globals.window.document).createElementOrElements(virtualNode, parentDomElement)
+    renderResult = getRenderer(globals.window.document).createElementOrElements(
+      virtualNode,
+      parentDomElement,
+    );
   }
   return renderResult;
-}
+};
 
-export type ParentElementInputAsync = ParentElementInput | Dequery | Promise<ParentElementInput | Dequery>;
+export type ParentElementInputAsync =
+  | ParentElementInput
+  | Dequery
+  | Promise<ParentElementInput | Dequery>;
 
 export const renderIsomorphicAsync = async (
   virtualNode: SyncRenderInput | Promise<SyncRenderInput>,
   parentDomElement: ParentElementInputAsync,
   globals: Globals,
 ): Promise<SyncRenderResult> => {
-
   if (parentDomElement instanceof Promise) {
-    parentDomElement = (await parentDomElement) as ParentElementInput | Dequery
+    parentDomElement = (await parentDomElement) as ParentElementInput | Dequery;
   }
 
   if (isDequery(parentDomElement)) {
     // awaits the dequery chain to resolve or fail, then renders the VDOM
-    parentDomElement = (await (parentDomElement as Dequery).toArray())[0] as Element
+    parentDomElement = (
+      await (parentDomElement as Dequery).toArray()
+    )[0] as Element;
   }
 
   if (virtualNode instanceof Promise) {
-    virtualNode = await virtualNode
+    virtualNode = await virtualNode;
   }
-  return renderIsomorphicSync(virtualNode, parentDomElement, globals)
-}
+  return renderIsomorphicSync(
+    virtualNode,
+    parentDomElement as ParentElementInput,
+    globals,
+  );
+};
 
 export const globalScopeDomApis = (window: Window, document: Document) => {
-  globalThis.__defuss_document = document
-  globalThis.__defuss_window = window
-}
+  globalThis.__defuss_document = document;
+  globalThis.__defuss_window = window;
+};
 
 export const isJSX = (o: any): boolean => {
-  if (o === null || typeof o !== 'object') return false
-  if (Array.isArray(o)) return o.every(isJSX)
-  if (typeof o.type === 'string') return true
-  if (typeof o.type === 'function') return true
-  if (typeof o.attributes === 'object' && typeof o.children === 'object') return true
-  return false
-}
+  if (o === null || typeof o !== "object") return false;
+  if (Array.isArray(o)) return o.every(isJSX);
+  if (typeof o.type === "string") return true;
+  if (typeof o.type === "function") return true;
+  if (typeof o.attributes === "object" && typeof o.children === "object")
+    return true;
+  return false;
+};
 
 // --- JSX standard (necessary exports for jsx-runtime)
-export const Fragment = (props: VNode) => props.children
-export const jsxs = jsx
+export const Fragment = (props: VNode) => props.children;
+export const jsxs = jsx;
 export const jsxDEV = (
   type: VNodeType | Function | any,
-  attributes: (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>) | null,
+  attributes:
+    | (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>)
+    | null,
   key?: string,
   allChildrenAreStatic?: boolean,
   sourceInfo?: string,
@@ -395,10 +485,17 @@ export const jsxDEV = (
   try {
     renderResult = jsx(type, attributes, key);
   } catch (error) {
-    console.error("JSX error:", error, 'in', sourceInfo, 'component', selfReference);
+    console.error(
+      "JSX error:",
+      error,
+      "in",
+      sourceInfo,
+      "component",
+      selfReference,
+    );
   }
   return renderResult!;
-}
+};
 
 export default {
   jsx,

@@ -1,4 +1,3 @@
-import { updateDom, updateDomWithVdom } from "../common/dom.js";
 import {
   isJSX,
   isRef,
@@ -19,17 +18,9 @@ export type NodeType =
   | DocumentFragment
   | HTMLElement
   | SVGElement;
-
 export type FormFieldValue = string | Date | File | boolean | number;
 export interface FormKeyValues {
-  [keyOrPath: string]: string;
-}
-
-export interface Dimensions {
-  width: number;
-  height: number;
-  outerWidth?: number;
-  outerHeight?: number;
+  [keyOrPath: string]: FormFieldValue;
 }
 
 declare global {
@@ -45,6 +36,7 @@ const elementGuard = <T = HTMLElement>(el: NodeType): T => {
 };
 
 export interface DequeryOptions<NT = ChainMethodReturnType> {
+  maxWaitMs?: number;
   timeout?: number;
   delay?: number;
   resultStack?: NT[];
@@ -55,7 +47,8 @@ export interface DequeryOptions<NT = ChainMethodReturnType> {
 
 function getDefaultConfig<NT>(): DequeryOptions<NT> {
   return {
-    timeout: 500,
+    maxWaitMs: 1000,
+    timeout: 5000,
     delay: 0,
     resultStack: [],
     verbose: false,
@@ -84,22 +77,7 @@ class Call<NT> {
   }
 }
 
-const NonChainedReturnCallNames = [
-  "getFirstElement",
-  "isHidden",
-  "isVisible",
-  "hasClass",
-  "dimension",
-  "position",
-  "offset",
-  "prop",
-  "val",
-  "form",
-  "attr",
-  "data",
-  "css",
-  "html",
-];
+const SyncCallNames = ["getFirstElement"];
 
 export class CallChainImpl<NT = ChainMethodReturnType> {
   [index: number]: NT;
@@ -150,7 +128,7 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
         return this[0];
       }),
     );
-    return subChainForNextAwait(this) as PromiseLike<NT> | NT; // returns the first element synchronously
+    return subChainForNextAwait(this) as PromiseLike<NT>;
   }
 
   // async, wrapped/chainable API methods
@@ -168,7 +146,7 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   ref(ref: Ref<NodeType>) {
     this.callStack.push(
       new Call<NT>("ref", async () => {
-        await waitForRef(ref, this.options.timeout!);
+        await waitForRef(ref, this.options.maxWaitMs!);
         if (ref.current) {
           return [elementGuard(ref.current)] as NT;
         } else {
@@ -182,12 +160,11 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   query(selector: string) {
     this.callStack.push(
       new Call<NT>("query", async () => {
-        return Array.from(
-          await waitForDOM(
-            () => Array.from(document.querySelectorAll(selector)),
-            this.options.timeout!,
-          ),
-        ) as NT;
+        await waitFor(
+          () => document.querySelectorAll(selector),
+          this.options.maxWaitMs!,
+        );
+        return Array.from(document.querySelectorAll(selector)) as NT;
       }),
     );
     return subChainForNextAwait(this);
@@ -220,22 +197,24 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   find(selector: string) {
     this.callStack.push(
       new Call<NT>("find", async () => {
-        //console.log("find", selector);
-        //console.log("elements", this.__elements.length);
+        console.log("find", selector);
+        console.log("elements", this.__elements.length);
 
         // Use Promise.all to wait for all elements to be found
         const results = await Promise.all(
           this.__elements.map(async (el) => {
-            return await waitForDOM(
-              () => Array.from(elementGuard(el).querySelectorAll(selector)),
-              this.options.timeout!,
+            // Create a scoped waitForSelectorAll that works within this element
+            const elementResults = await waitFor(
+              () => elementGuard(el).querySelectorAll(selector),
+              this.options.maxWaitMs!,
             );
+            return Array.from(elementResults);
           }),
         );
 
         // Flatten the results
         const res = results.flat();
-        //console.log("res", res.length);
+        console.log("res", res.length);
         return res as NT;
       }),
     );
@@ -293,13 +272,22 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     return subChainForNextAwait(this);
   }
 
+  all() {
+    this.callStack.push(
+      new Call<NT>("all", async () => {
+        return this.__elements as NT;
+      }),
+    );
+    return subChainForNextAwait(this);
+  }
+
   // --- Attribute & Property Methods ---
 
   attr(name: string, value?: string) {
     if (value !== undefined) {
       // Set attribute
       this.callStack.push(
-        new Call<NT>("attr", async () => {
+        new Call<NT>("setAttr", async () => {
           this.__elements.forEach((el) =>
             elementGuard(el).setAttribute(name, value),
           );
@@ -310,19 +298,21 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     } else {
       // Get attribute
       this.callStack.push(
-        new Call<NT>("attr", async () => {
-          return elementGuard(this.__elements[0]).getAttribute(name) as NT;
+        new Call<NT>("getAttr", async () => {
+          return [
+            elementGuard(this.__elements[0]).getAttribute(name) as any,
+          ] as NT;
         }),
       );
       return subChainForNextAwait(this);
     }
   }
 
-  prop<K extends keyof AllHTMLElements>(name: K, value?: any) {
+  prop<K extends keyof AllHTMLElements>(name: K, value?: AllHTMLElements[K]) {
     if (value !== undefined) {
       // Set property
       this.callStack.push(
-        new Call<NT>("prop", async () => {
+        new Call<NT>("setProp", async () => {
           this.__elements.forEach((el) => {
             (elementGuard(el) as any)[name] = value;
           });
@@ -333,8 +323,8 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     } else {
       // Get property
       this.callStack.push(
-        new Call<NT>("prop", async () => {
-          return (elementGuard(this.__elements[0]) as any)[name] as NT;
+        new Call<NT>("getProp", async () => {
+          return [(elementGuard(this.__elements[0]) as any)[name]] as NT;
         }),
       );
       return subChainForNextAwait(this);
@@ -348,7 +338,7 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       // Get CSS property
       this.callStack.push(
         new Call<NT>(
-          "css",
+          "getCss",
           async () =>
             elementGuard(this.__elements[0]).style.getPropertyValue(prop) as NT,
         ),
@@ -356,19 +346,15 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     } else {
       // Set CSS property/properties
       this.callStack.push(
-        new Call<NT>("css", async () => {
+        new Call<NT>("setCss", async () => {
           this.__elements.forEach((el) => {
             const elementStyle = elementGuard<HTMLElement>(el).style;
             if (typeof prop === "string") {
               elementStyle.setProperty(prop, value!);
             } else {
-              // For object properties, assign directly to handle camelCase
-              for (const k in prop) {
-                if (Object.prototype.hasOwnProperty.call(prop, k)) {
-                  // @ts-ignore - Allow indexing style object with string key
-                  elementStyle[k] = (prop as any)[k];
-                }
-              }
+              Object.entries(prop).forEach(([key, val]) => {
+                (elementStyle as any)[key] = val;
+              });
             }
           });
           return this.__elements as NT;
@@ -407,9 +393,11 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   hasClass(name: string) {
     this.callStack.push(
       new Call<NT>("hasClass", async () => {
-        return this.__elements.every((el) =>
-          elementGuard(el).classList.contains(name),
-        ) as NT;
+        return [
+          this.__elements.every((el) =>
+            elementGuard(el).classList.contains(name),
+          ),
+        ] as NT;
       }),
     );
     return subChainForNextAwait(this) as PromiseLike<boolean>;
@@ -458,44 +446,15 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     return subChainForNextAwait(this);
   }
 
-  //
-  html(html?: string) {
-    if (typeof html === "undefined") {
-      // Get the HTML contents of the first element in the set of matched elements
-      this.callStack.push(
-        new Call<NT>("html", async () => {
-          return (this.__elements[0] as HTMLElement).innerHTML as NT;
-        }),
-      );
-    } else {
-      // set the HTML contents of every matched element.
-      this.callStack.push(
-        new Call<NT>("html", async () => {
-          this.__elements.forEach((el) => {
-            elementGuard(el).innerHTML = html;
-          });
-          return this.__elements as NT;
-        }),
-      );
-    }
-    return subChainForNextAwait(this);
-  }
-
-  jsx(vdom: RenderInput) {
-    if (!isJSX(vdom)) {
-      console.warn("jsx: expected JSX, got", vdom);
-      return subChainForNextAwait(this);
-    }
-
+  html(html: string) {
     this.callStack.push(
-      new Call<NT>("jsx", async () => {
-        this.__elements.forEach((el) =>
-          updateDomWithVdom(elementGuard(el), vdom, globalThis as Globals),
-        );
+      new Call<NT>("html", async () => {
+        this.__elements.forEach((el) => {
+          elementGuard(el).innerHTML = html;
+        });
         return this.__elements as NT;
       }),
     );
-
     return subChainForNextAwait(this);
   }
 
@@ -517,207 +476,6 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
         const removedElements = [...this.__elements];
         this.__elements.forEach((el) => elementGuard(el).remove());
         return removedElements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
-  }
-
-  replaceWith<T = NT>(
-    content:
-      | string
-      | RenderInput
-      | NodeType
-      | Ref<NodeType>
-      | CallChainImpl<T>
-      | CallChainImplThenable<T>,
-  ) {
-    this.callStack.push(
-      new Call<NT>("replaceWith", async () => {
-        let newElement: NodeType;
-
-        if (typeof content === "string") {
-          const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(content);
-          if (hasHtmlTags) {
-            newElement = renderHTML(content)[0];
-          } else {
-            newElement = document.createTextNode(content);
-          }
-        } else if (isJSX(content)) {
-          newElement = renderIsomorphicSync(
-            content as RenderInput,
-            undefined,
-            globalThis as Globals,
-          ) as NodeType;
-        } else if (isRef(content)) {
-          await waitForRef(content as Ref<NodeType>, this.options.timeout!);
-          newElement = elementGuard(content.current!);
-        } else if ((content as Node).nodeType) {
-          newElement = content as NodeType;
-        } else if (isDequery(content)) {
-          const firstElement = await content.getFirstElement();
-          newElement = elementGuard(firstElement as NodeType);
-        } else {
-          console.warn("replaceWith: unsupported content type", content);
-          return this.__elements as NT;
-        }
-
-        this.__elements.forEach((el) => {
-          if (el.parentNode) {
-            // Create a fresh clone for each replacement to avoid side effects
-            const clone = newElement.cloneNode(true);
-            el.parentNode.replaceChild(clone, el);
-          }
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
-  }
-
-  append<T = NT>(
-    content:
-      | string
-      | RenderInput
-      | NodeType
-      | Ref<NodeType>
-      | CallChainImpl<T>
-      | CallChainImplThenable<T>,
-  ) {
-    this.callStack.push(
-      new Call<NT>("append", async () => {
-        // Don't do anything if content is null or undefined
-        if (content == null) {
-          return this.__elements as NT;
-        }
-
-        if (typeof content === "string") {
-          const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(content);
-          if (hasHtmlTags) {
-            const elements = renderHTML(content);
-            this.__elements.forEach((el) => {
-              elements.forEach((childEl) =>
-                elementGuard(el).appendChild(childEl.cloneNode(true)),
-              );
-            });
-          } else {
-            this.__elements.forEach((el) => {
-              elementGuard(el).appendChild(document.createTextNode(content));
-            });
-          }
-        } else if (isJSX(content)) {
-          const element = renderIsomorphicSync(
-            content as RenderInput,
-            undefined,
-            globalThis as Globals,
-          ) as NodeType;
-          this.__elements.forEach((el) => {
-            elementGuard(el).appendChild(element.cloneNode(true));
-          });
-        } else if (isRef(content)) {
-          await waitForRef(content as Ref<NodeType>, this.options.timeout!);
-          const refElement = elementGuard(content.current!);
-          this.__elements.forEach((el) => {
-            elementGuard(el).appendChild(refElement.cloneNode(true));
-          });
-        } else if ((content as Node).nodeType) {
-          this.__elements.forEach((el) => {
-            elementGuard(el).appendChild((content as Node).cloneNode(true));
-          });
-        } else if (isDequery(content)) {
-          this.__elements.forEach((el) => {
-            content.__elements.forEach((childEl) => {
-              if ((childEl as Node).nodeType && (el as Node).nodeType) {
-                elementGuard(el).appendChild((childEl as Node).cloneNode(true));
-              }
-            });
-          });
-        } else {
-          console.warn("append: unsupported content type", content);
-        }
-
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
-  }
-
-  appendTo<T = NT>(
-    target:
-      | string
-      | NodeType
-      | Ref<NodeType>
-      | CallChainImpl<T>
-      | CallChainImplThenable<T>,
-  ) {
-    this.callStack.push(
-      new Call<NT>("appendTo", async () => {
-        let targetElements: NodeType[] = [];
-
-        if (isRef(target)) {
-          await waitForRef(target as Ref<NodeType>, this.options.timeout!);
-          targetElements = [elementGuard(target.current!)];
-        } else if (typeof target === "string") {
-          const result = await waitForDOM(() => {
-            const el = document.querySelector(target);
-            if (el) {
-              return [el];
-            } else {
-              return [];
-            }
-          }, this.options.timeout!);
-          const el = result[0];
-          if (el) targetElements = [elementGuard(el as NodeType)];
-        } else if ((target as Node).nodeType) {
-          targetElements = [elementGuard(target as NodeType)];
-        } else if (isDequery(target)) {
-          const elements = (target as CallChainImpl<T>).__elements;
-          targetElements = elements
-            .filter((el) => (el as Node).nodeType !== undefined)
-            .map((el) => elementGuard(el as NodeType));
-        } else {
-          console.warn("appendTo: expected selector, ref or node, got", target);
-          return this.__elements as NT;
-        }
-
-        if (targetElements.length === 0) {
-          console.warn("appendTo: no target elements found");
-          return this.__elements as NT;
-        }
-
-        targetElements.forEach((targetEl) => {
-          this.__elements.forEach((el) => {
-            targetEl.appendChild(el.cloneNode(true));
-          });
-        });
-
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
-  }
-
-  update(input: string | RenderInput) {
-    this.callStack.push(
-      new Call<NT>("update", async () => {
-        if (typeof input === "string") {
-          const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(input);
-          if (hasHtmlTags) {
-            this.__elements.forEach((el) => {
-              updateDom(elementGuard(el), input);
-            });
-          } else {
-            this.__elements.forEach((el) => {
-              elementGuard(el).textContent = input;
-            });
-          }
-        } else if (isJSX(input)) {
-          this.__elements.forEach((el) => {
-            updateDomWithVdom(elementGuard(el), input, globalThis as Globals);
-          });
-        } else {
-          console.warn("update: unsupported content type", input);
-        }
-        return this.__elements as NT;
       }),
     );
     return subChainForNextAwait(this);
@@ -822,10 +580,12 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     this.callStack.push(
       new Call<NT>("position", async () => {
         const el = elementGuard<HTMLElement>(this.__elements[0]);
-        return {
-          top: el.offsetTop,
-          left: el.offsetLeft,
-        } as NT;
+        return [
+          {
+            top: el.offsetTop,
+            left: el.offsetLeft,
+          },
+        ] as NT;
       }),
     );
     return subChainForNextAwait(this);
@@ -836,47 +596,23 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       new Call<NT>("offset", async () => {
         const el = elementGuard<HTMLElement>(this.__elements[0]);
         const rect = el.getBoundingClientRect();
-        return {
-          top: rect.top + window.scrollY,
-          left: rect.left + window.scrollX,
-        } as NT;
+        return [
+          {
+            top: rect.top + window.scrollY,
+            left: rect.left + window.scrollX,
+          },
+        ] as NT;
       }),
     );
-    return subChainForNextAwait(this) as PromiseLike<DOMRect>;
+    return subChainForNextAwait(this);
   }
 
-  // --- Data Methods ---
-
-  data(name: string, value?: string) {
-    if (value !== undefined) {
-      // Set data attribute
-      this.callStack.push(
-        new Call<NT>("data", async () => {
-          this.__elements.forEach((el) => {
-            (elementGuard(el) as HTMLElement).dataset[name] = value;
-          });
-          return this.__elements as NT;
-        }),
-      );
-      return subChainForNextAwait(this) as PromiseLike<NT>;
-    } else {
-      // Get data attribute
-      this.callStack.push(
-        new Call<NT>("data", async () => {
-          if (this.__elements.length === 0) return [undefined] as NT;
-          return (elementGuard(this.__elements[0]) as HTMLElement).dataset[
-            name
-          ] as NT;
-        }),
-      );
-      return subChainForNextAwait(this) as PromiseLike<string | undefined>;
-    }
-  }
+  // --- Data Extraction Methods ---
 
   val(val?: string | boolean) {
     if (val !== undefined) {
       this.callStack.push(
-        new Call<NT>("val", async () => {
+        new Call<NT>("setVal", async () => {
           this.__elements.forEach((el) => {
             const input = el as HTMLInputElement;
             if (input.type === "checkbox" && typeof val === "boolean") {
@@ -890,310 +626,31 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       );
     } else {
       this.callStack.push(
-        new Call<NT>("val", async () => {
+        new Call<NT>("getVal", async () => {
           const el = elementGuard<HTMLInputElement>(this.__elements[0]);
           if (el.type === "checkbox") {
-            return el.checked as NT;
+            return [el.checked] as NT;
           }
-          return el.value as NT;
+          return [el.value] as NT;
         }),
       );
     }
     return subChainForNextAwait(this) as PromiseLike<string | boolean>;
   }
 
-  form<T = FormKeyValues>(formData?: Record<string, string | boolean>) {
-    if (formData) {
-      this.callStack.push(
-        new Call<NT>("form", async () => {
-          this.__elements.forEach((el) => {
-            if (el instanceof Element) {
-              const inputElements = el.querySelectorAll(
-                "input, select, textarea",
-              ) as NodeListOf<HTMLInputElement>;
-              inputElements.forEach((input) => {
-                if (["INPUT", "SELECT", "TEXTAREA"].includes(input.tagName)) {
-                  const key = input.name || input.id;
-                  if (formData[key] !== undefined) {
-                    if (input.type === "checkbox") {
-                      input.checked = Boolean(formData[key]);
-                    } else {
-                      input.value = String(formData[key]);
-                    }
-                  }
-                }
-              });
-            }
-          });
-          return this.__elements as NT;
-        }),
-      );
-      return subChainForNextAwait(this) as PromiseLike<T>;
-    } else {
-      this.callStack.push(
-        new Call<NT>("form", async () => {
-          const formFields: Record<string, string | boolean> = {};
-          this.__elements.forEach((el) => {
-            if (el instanceof Element) {
-              const inputElements = el.querySelectorAll(
-                "input, select, textarea",
-              ) as NodeListOf<HTMLInputElement>;
-              inputElements.forEach((input) => {
-                if (["INPUT", "SELECT", "TEXTAREA"].includes(input.tagName)) {
-                  const key = input.name || input.id;
-                  if (input.type === "checkbox") {
-                    formFields[key] = input.checked;
-                  } else {
-                    formFields[key] = input.value;
-                  }
-                }
-              });
-            }
-          });
-          return formFields as NT;
-        }),
-      );
-      return subChainForNextAwait(this) as PromiseLike<T>;
-    }
-  }
-
-  // --- Dimension Methods ---
-
-  dimension(
-    includeMarginOrPadding?: boolean,
-    includePaddingIfMarginTrue?: boolean,
-  ) {
-    this.callStack.push(
-      new Call<NT>("dimension", async () => {
-        if (this.__elements.length === 0) {
-          return { width: 0, height: 0 } as NT;
-        }
-
-        const el = elementGuard<HTMLElement>(this.__elements[0]);
-        const style = window.getComputedStyle(el);
-
-        // Get base element dimensions from getBoundingClientRect
-        const rect = el.getBoundingClientRect();
-        let width = rect.width;
-        let height = rect.height;
-
-        let includeMargin = false;
-        let includePadding = true; // Default based on getBoundingClientRect
-
-        // Determine flags based on arguments provided
-        if (includePaddingIfMarginTrue !== undefined) {
-          // Both arguments provided: dimension(includeMargin, includePadding)
-          includeMargin = !!includeMarginOrPadding;
-          includePadding = !!includePaddingIfMarginTrue;
-        } else if (includeMarginOrPadding !== undefined) {
-          // One argument provided: dimension(includePadding)
-          includePadding = !!includeMarginOrPadding;
-        }
-
-        // Subtract padding if includePadding is false
-        if (!includePadding) {
-          const paddingLeft = Number.parseFloat(style.paddingLeft) || 0;
-          const paddingRight = Number.parseFloat(style.paddingRight) || 0;
-          const paddingTop = Number.parseFloat(style.paddingTop) || 0;
-          const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
-
-          // Subtract border widths as well
-          const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
-          const borderRight = Number.parseFloat(style.borderRightWidth) || 0;
-          const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
-          const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
-
-          width -= paddingLeft + paddingRight + borderLeft + borderRight;
-          height -= paddingTop + paddingBottom + borderTop + borderBottom;
-        }
-
-        // If includeMargin is true, calculate outer dimensions
-        if (includeMargin) {
-          const marginLeft = Number.parseFloat(style.marginLeft) || 0;
-          const marginRight = Number.parseFloat(style.marginRight) || 0;
-          const marginTop = Number.parseFloat(style.marginTop) || 0;
-          const marginBottom = Number.parseFloat(style.marginBottom) || 0;
-
-          const baseWidthForOuter = includePadding ? rect.width : width;
-          const baseHeightForOuter = includePadding ? rect.height : height;
-
-          const outerWidth = baseWidthForOuter + marginLeft + marginRight;
-          const outerHeight = baseHeightForOuter + marginTop + marginBottom;
-
-          return {
-            width,
-            height,
-            outerWidth,
-            outerHeight,
-          } as NT;
-        }
-
-        return {
-          width,
-          height,
-        } as NT;
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<Dimensions>;
-  }
-
-  // --- Visibility Methods ---
-
-  isVisible() {
-    this.callStack.push(
-      new Call<NT>("isVisible", async () => {
-        if (this.__elements.length === 0) return false as NT;
-
-        const el = elementGuard<HTMLElement>(this.__elements[0]);
-        const style = window.getComputedStyle(el);
-
-        // Check if element has dimensions
-        if (el.offsetWidth === 0 || el.offsetHeight === 0) return false as NT;
-
-        // Check if element is hidden via CSS
-        if (
-          style.display === "none" ||
-          style.visibility === "hidden" ||
-          style.opacity === "0" ||
-          Number.parseFloat(style.opacity) === 0
-        )
-          return false as NT;
-
-        // Check if element is detached from DOM
-        if (!document.body.contains(el)) return false as NT;
-
-        // Check if any parent is hidden
-        let parent = el.parentElement;
-        while (parent) {
-          const parentStyle = window.getComputedStyle(parent);
-          if (
-            parentStyle.display === "none" ||
-            parentStyle.visibility === "hidden" ||
-            parentStyle.opacity === "0" ||
-            Number.parseFloat(parentStyle.opacity) === 0
-          ) {
-            return false as NT;
-          }
-          parent = parent.parentElement;
-        }
-
-        return true as NT;
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<boolean>;
-  }
-
-  isHidden() {
-    this.callStack.push(
-      new Call<NT>("isHidden", async () => {
-        if (this.__elements.length === 0) return true as NT;
-
-        const el = elementGuard<HTMLElement>(this.__elements[0]);
-        const style = window.getComputedStyle(el);
-
-        // Check if element has dimensions
-        if (el.offsetWidth === 0 || el.offsetHeight === 0) return true as NT;
-
-        // Check if element is hidden via CSS
-        if (
-          style.display === "none" ||
-          style.visibility === "hidden" ||
-          style.opacity === "0" ||
-          Number.parseFloat(style.opacity) === 0
-        )
-          return true as NT;
-
-        // Check if element is detached from DOM
-        if (!document.body.contains(el)) return true as NT;
-
-        // Check if any parent is hidden
-        let parent = el.parentElement;
-        while (parent) {
-          const parentStyle = window.getComputedStyle(parent);
-          if (
-            parentStyle.display === "none" ||
-            parentStyle.visibility === "hidden" ||
-            parentStyle.opacity === "0" ||
-            Number.parseFloat(parentStyle.opacity) === 0
-          ) {
-            return true as NT;
-          }
-          parent = parent.parentElement;
-        }
-
-        return false as NT;
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<boolean>;
-  }
-
-  // --- Scrolling Methods ---
-
-  scrollTo(xOrOptions: number | ScrollToOptions, y?: number) {
-    this.callStack.push(
-      new Call<NT>("scrollTo", async () => {
-        this.__elements.forEach((el) => {
-          const element = elementGuard<HTMLElement>(el);
-          if (typeof xOrOptions === "object") {
-            element.scrollTo(xOrOptions);
-          } else if (y !== undefined) {
-            element.scrollTo(xOrOptions, y);
-          } else {
-            element.scrollTo(xOrOptions, 0);
-          }
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
-  }
-
-  scrollBy(xOrOptions: number | ScrollToOptions, y?: number) {
-    this.callStack.push(
-      new Call<NT>("scrollBy", async () => {
-        this.__elements.forEach((el) => {
-          const element = elementGuard<HTMLElement>(el);
-          if (typeof xOrOptions === "object") {
-            element.scrollBy(xOrOptions);
-          } else if (y !== undefined) {
-            element.scrollBy(xOrOptions, y);
-          } else {
-            element.scrollBy(xOrOptions, 0);
-          }
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
-  }
-
-  scrollIntoView(options?: boolean | ScrollIntoViewOptions) {
-    this.callStack.push(
-      new Call<NT>("scrollIntoView", async () => {
-        if (this.__elements.length === 0) return this.__elements as NT;
-        const el = elementGuard<HTMLElement>(this.__elements[0]);
-        el.scrollIntoView(options);
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
-  }
-
-  // --- Transformation Methods ---
-
-  map<T>(cb: (el: NT, idx: number) => T) {
+  map<T>(cb: (el: NodeType, idx: number) => T) {
     this.callStack.push(
       new Call<NT>("map", async () => {
-        return (this.__elements as NT[]).map(cb) as NT;
+        return this.__elements.map(cb) as NT;
       }),
     );
-    return subChainForNextAwait(this) as PromiseLike<NT[]>;
+    return subChainForNextAwait(this) as PromiseLike<T[]>;
   }
 
   toArray() {
     this.callStack.push(
       new Call<NT>("toArray", async () => {
-        return [...(this.__elements as NT[])] as NT;
+        return [...this.__elements] as NT;
       }),
     );
     return subChainForNextAwait(this) as PromiseLike<NT[]>;
@@ -1207,7 +664,7 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
         ) as NT;
       }),
     );
-    return subChainForNextAwait(this);
+    return subChainForNextAwait(this) as PromiseLike<NT[]>;
   }
 }
 
@@ -1232,7 +689,6 @@ export class CallChainImplThenable<
       );
     }
 
-    /*
     console.log(
       "then",
       this.isResolved,
@@ -1240,14 +696,13 @@ export class CallChainImplThenable<
       this.stackPointer >= this.callStack.length,
       this.callStack,
     );
-    */
 
     if (this.isResolved && this.stackPointer >= this.callStack.length) {
       this.lastResolvedStackPointer = this.stackPointer;
       const lastCallName = this.callStack[this.callStack.length - 1]?.name;
 
       let result;
-      if (NonChainedReturnCallNames.includes(lastCallName)) {
+      if (SyncCallNames.includes(lastCallName)) {
         result = this.lastResult;
       } else {
         // We cannot return a CallChainImplThenable here, because returning
@@ -1270,7 +725,6 @@ export class CallChainImplThenable<
     return runWithTimeGuard<NT>(
       this.options.timeout!,
       async () => {
-        //console.log("runWithTimeGuard", this.options.timeout);
         const startTime = Date.now();
         let call: Call<NT>;
         while (this.stackPointer < this.callStack.length) {
@@ -1280,18 +734,9 @@ export class CallChainImplThenable<
           }
 
           try {
-            //console.log("calling", call.name);
-
-            const callReturnValue = (await call.fn.apply(this)) as NT[];
-            this.lastResult = callReturnValue;
-
-            // method returns that return a value directly, don't modify the selection result stack
-            // this allows for getting values from elements or modifying elements (e.g. html()) in
-            // between selection changes without breaking the chain functionally (the chain expects)
-            // all this.resultStack values to be of a DOM node type)
-            if (!NonChainedReturnCallNames.includes(call.name)) {
-              this.resultStack.push(callReturnValue);
-            }
+            console.log("calling", call.name);
+            this.resultStack.push((await call.fn.apply(this)) as NT[]);
+            this.lastResult = this.resultStack[this.resultStack.length - 1];
 
             if (Array.isArray(this.lastResult)) {
               // allow for array-like access, immediately after the call
@@ -1411,57 +856,27 @@ export function dequery<NT = ChainMethodReturnType>(
 }
 
 export const $: typeof dequery = dequery;
+export const D: typeof dequery = dequery;
 
-export type Dequery = CallChainImplThenable | CallChainImpl;
+export type Dequery = CallChainImplThenable;
 
-export function isDequery(
-  obj: unknown,
-): obj is CallChainImplThenable | CallChainImpl {
+export function isDequery(obj: unknown): obj is CallChainImplThenable {
   return (
     typeof obj === "object" &&
     obj !== null &&
     "isResolved" in obj &&
     "lastResult" in obj &&
-    "resultStack" in obj &&
-    "callStack" in obj &&
-    "stackPointer" in obj
+    "resultStack" in obj
   );
 }
 
-export async function waitForWithPolling<T>(
+async function waitFor<T>(
   check: () => T | null | undefined,
   timeout: number,
-  interval = 1,
 ): Promise<T> {
-  const start = Date.now();
   return new Promise<T>((resolve, reject) => {
-    const timer = setInterval(() => {
-      try {
-        const result = check();
-        if (result != null) {
-          clearInterval(timer);
-          resolve(result);
-        } else if (Date.now() - start >= timeout) {
-          clearInterval(timer);
-          reject(new Error(`Timeout after ${timeout}ms`));
-        }
-      } catch (err) {
-        clearInterval(timer);
-        reject(err);
-        throw err;
-      }
-    }, interval);
-  });
-}
-
-export async function waitForDOM(
-  check: () => Array<NodeType>,
-  timeout: number,
-): Promise<Array<NodeType>> {
-  return new Promise<Array<NodeType>>((resolve, reject) => {
     const initialResult = check();
-    //console.log("waitFor initialResult", initialResult);
-    if (initialResult.length) return resolve(initialResult);
+    if (initialResult != null) return resolve(initialResult);
 
     const timeoutId = setTimeout(() => {
       observer.disconnect();
@@ -1470,8 +885,7 @@ export async function waitForDOM(
 
     const observer = new MutationObserver(() => {
       const result = check();
-      //console.log("waitFor result", initialResult);
-      if (result.length) {
+      if (result != null) {
         clearTimeout(timeoutId);
         observer.disconnect();
         resolve(result);
@@ -1486,7 +900,7 @@ export async function waitForDOM(
   });
 }
 
-export function mapArrayIndexAccess<NT = ChainMethodReturnType>(
+function mapArrayIndexAccess<NT = ChainMethodReturnType>(
   source: CallChainImpl<NT>,
   target: CallChainImpl<NT>,
 ) {
@@ -1498,7 +912,7 @@ export function mapArrayIndexAccess<NT = ChainMethodReturnType>(
   target.length = elements.length;
 }
 
-export function createSubChain<NT = ChainMethodReturnType>(
+function createSubChain<NT = ChainMethodReturnType>(
   source: CallChainImpl<NT>,
   Constructor:
     | typeof CallChainImpl
@@ -1521,9 +935,9 @@ export function createSubChain<NT = ChainMethodReturnType>(
   return subChain;
 }
 
-export function subChainForNextAwait<NT>(
+function subChainForNextAwait<NT>(
   source: CallChainImpl<NT>,
-): CallChainImplThenable<NT> | CallChainImpl<NT> {
+): CallChainImpl<NT> | CallChainImplThenable<NT> {
   // First continuation of chain case (second await in the chain)
   // The chain was finished by resolving the chain by a then() call.
   // The lastResolvedStackPointer therefore is set to the last call.
@@ -1567,26 +981,23 @@ export function subChainForNextAwait<NT>(
     : createSubChain<NT>(source, CallChainImplThenable);
 }
 
-export async function waitForRef<T>(
+async function waitForRef<T>(
   ref: { current: T | null },
   timeout: number,
 ): Promise<T> {
-  return waitForWithPolling(() => ref.current, timeout);
+  return waitFor(() => ref.current, timeout);
 }
 
-export function renderHTML(
-  html: string,
-  type: DOMParserSupportedType = "text/html",
-) {
+function renderHTML(html: string, type: DOMParserSupportedType = "text/html") {
   const newDom = new DOMParser().parseFromString(html, type);
   return Array.from(newDom.body.childNodes);
 }
 
-export function sleep(ms: number) {
+function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-export function runWithTimeGuard<NT>(
+function runWithTimeGuard<NT>(
   timeout: number,
   fn: Function,
   args: any[],

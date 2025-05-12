@@ -1,5 +1,14 @@
-import type { Globals, RenderInput, VNode, VNodeAttributes, VNodeChild } from "defuss/jsx-runtime";
-import { getRenderer, handleLifecycleEventsForOnMount } from "../render/isomorph.js";
+import type {
+  Globals,
+  RenderInput,
+  VNode,
+  VNodeAttributes,
+  VNodeChild,
+} from "defuss/jsx-runtime";
+import {
+  getRenderer,
+  handleLifecycleEventsForOnMount,
+} from "../render/isomorph.js";
 
 /**
  * Compares two DOM nodes for equality with performance optimizations.
@@ -88,14 +97,14 @@ export const updateDom = (targetElement: Element, newHTML: string): void => {
   // 1) Parse the new HTML string into a DocumentFragment-like structure
   const parser = new DOMParser();
   // 'text/html' => parse as a full HTML doc. We take the <body>'s children as our new nodes
-  const doc = parser.parseFromString(newHTML, 'text/html');
+  const doc = parser.parseFromString(newHTML, "text/html");
 
   // 2) Extract the root child elements from the newly parsed doc
   //    Typically, doc.body is where your HTML snippet content is placed.
   const newRoots = Array.from(doc.body.children);
 
   if (newRoots.length === 0) {
-    console.warn('No root elements found in the new HTML.');
+    console.warn("No root elements found in the new HTML.");
     return;
   }
 
@@ -175,7 +184,11 @@ function patchDomInPlace(domNode: Node, child: ValidChild, globals: Globals) {
   const renderer = getRenderer(globals.window.document);
 
   // textlike
-  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+  if (
+    typeof child === "string" ||
+    typeof child === "number" ||
+    typeof child === "boolean"
+  ) {
     const newText = String(child);
     if (domNode.nodeValue !== newText) {
       domNode.nodeValue = newText;
@@ -184,14 +197,21 @@ function patchDomInPlace(domNode: Node, child: ValidChild, globals: Globals) {
   }
 
   // element
-  if (domNode.nodeType === Node.ELEMENT_NODE && child && typeof child === "object") {
+  if (
+    domNode.nodeType === Node.ELEMENT_NODE &&
+    child &&
+    typeof child === "object"
+  ) {
     // 1) update attributes
     // remove old attributes not present
     const el = domNode as Element;
     const existingAttrs = Array.from(el.attributes);
     for (const attr of existingAttrs) {
       const { name } = attr;
-      if (!Object.prototype.hasOwnProperty.call(child.attributes, name) && name !== "style") {
+      if (
+        !Object.prototype.hasOwnProperty.call(child.attributes, name) &&
+        name !== "style"
+      ) {
         el.removeAttribute(name);
       }
     }
@@ -219,17 +239,27 @@ function patchDomInPlace(domNode: Node, child: ValidChild, globals: Globals) {
 /********************************************************
  * 4) Create brand new DOM node from a ValidChild
  ********************************************************/
-function createDomFromChild(child: ValidChild, globals: Globals): Node | Node[] | undefined {
+function createDomFromChild(
+  child: ValidChild,
+  globals: Globals,
+): Node | Node[] | undefined {
   const renderer = getRenderer(globals.window.document);
 
   if (child == null) return undefined;
-  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+  if (
+    typeof child === "string" ||
+    typeof child === "number" ||
+    typeof child === "boolean"
+  ) {
     return globals.window.document.createTextNode(String(child));
   }
 
   // else it's a VNode, create without parent as we don't know where it goes yet
   // therefore, we need to handle the onMount lifecycle event later too
-  let renderResult = renderer.createElementOrElements(child) as Node | Node[] | undefined;
+  let renderResult = renderer.createElementOrElements(child) as
+    | Node
+    | Node[]
+    | undefined;
 
   if (renderResult && !Array.isArray(renderResult)) {
     renderResult = [renderResult];
@@ -243,15 +273,16 @@ function createDomFromChild(child: ValidChild, globals: Globals): Node | Node[] 
 export function updateDomWithVdom(
   parentElement: Element,
   newVDOM: RenderInput,
-  globals: Globals
+  globals: Globals,
 ) {
-
   //console.log('updateDomWithVdom', newVDOM, parentElement)
 
   // A) Convert newVDOM => array of "valid" children
   let newChildren: ValidChild[] = [];
   if (Array.isArray(newVDOM)) {
-    newChildren = newVDOM.map(toValidChild).filter((c): c is ValidChild => c !== undefined);
+    newChildren = newVDOM
+      .map(toValidChild)
+      .filter((c): c is ValidChild => c !== undefined);
   } else if (
     typeof newVDOM === "string" ||
     typeof newVDOM === "number" ||
@@ -267,8 +298,8 @@ export function updateDomWithVdom(
 
   // B) Generate brand-new DOM for each new child in an array
   //    We'll compare them 1:1 with the old nodes.
-  const newDomArray: (Node | Node[] | undefined)[] = newChildren.map((vdomChild) =>
-    createDomFromChild(vdomChild, globals)
+  const newDomArray: (Node | Node[] | undefined)[] = newChildren.map(
+    (vdomChild) => createDomFromChild(vdomChild, globals),
   );
 
   // C) Snapshot old children
@@ -305,7 +336,7 @@ export function updateDomWithVdom(
               parentElement.insertBefore(newDom[k]!, first.nextSibling);
 
               if (typeof newDom[k] !== "undefined") {
-                console.log("inserBefore!")
+                //console.log("inserBefore!")
                 handleLifecycleEventsForOnMount(newDom[k] as HTMLElement);
               }
             }
@@ -331,7 +362,7 @@ export function updateDomWithVdom(
           const wasAdded = newNode && parentElement.appendChild(newNode);
 
           if (wasAdded) {
-            handleLifecycleEventsForOnMount(newNode as HTMLElement)
+            handleLifecycleEventsForOnMount(newNode as HTMLElement);
           }
           return wasAdded;
         });
@@ -348,11 +379,15 @@ export function updateDomWithVdom(
 }
 
 /**
- * Directly blow away all children in `parentElement` and create new DOM 
- * from `newVDOM`. This never skips or leaves behind stale nodes, 
+ * Directly blow away all children in `parentElement` and create new DOM
+ * from `newVDOM`. This never skips or leaves behind stale nodes,
  * at the cost of losing partial update performance.
  */
-export function replaceDomWithVdom(parentElement: Element, newVDOM: RenderInput, globals: Globals) {
+export function replaceDomWithVdom(
+  parentElement: Element,
+  newVDOM: RenderInput,
+  globals: Globals,
+) {
   // 1) Clear all existing DOM children
   while (parentElement.firstChild) {
     parentElement.removeChild(parentElement.firstChild);
@@ -361,9 +396,11 @@ export function replaceDomWithVdom(parentElement: Element, newVDOM: RenderInput,
   // 2) Re-render from scratch
   const renderer = getRenderer(globals.window.document);
 
-  // Possibly convert `newVDOM` to array if needed, 
+  // Possibly convert `newVDOM` to array if needed,
   // but `renderer.createElementOrElements` handles it either way:
-  const newDom = renderer.createElementOrElements(newVDOM as VNode | undefined | Array<VNode | undefined | string>);
+  const newDom = renderer.createElementOrElements(
+    newVDOM as VNode | undefined | Array<VNode | undefined | string>,
+  );
 
   // 3) Append the newly created node(s)
   if (Array.isArray(newDom)) {
