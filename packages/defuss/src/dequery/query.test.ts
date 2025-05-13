@@ -153,11 +153,15 @@ describe("Traversal", () => {
   it("executes debug callback", async () => {
     let debugCalled = false;
     let elementsInDebug: any[] = [];
-    await $(".item").debug((elements) => {
-      debugCalled = true;
-      elementsInDebug = Array.isArray(elements) ? elements : [elements];
-    });
+    const chain = await $<HTMLElement>(".item")
+      .debug((chain) => {
+        debugCalled = true;
+        elementsInDebug = chain.__elements;
+      })
+      .html("Debugging");
     expect(debugCalled).toBe(true);
     expect(elementsInDebug.length).toBe(3);
+    expect(elementsInDebug[0].textContent).toBe("Debugging");
+    expect(chain[0].textContent).toBe("Debugging");
   });
 });

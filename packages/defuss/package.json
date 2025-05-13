@@ -18,7 +18,7 @@
     "test:watch": "vitest --coverage ./src/**/*.test.ts",
     "test": "vitest run --coverage ./src/**/*.test.ts",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll --minify --sourcemap"
+    "build": "pkgroll"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

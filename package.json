@@ -8,20 +8,15 @@
   },
   "license": "MIT",
   "description": "Explicit simplicity for the web.",
-  "keywords": [
-    "jsx",
-    "render",
-    "ssr",
-    "isomorphic"
-  ],
+  "keywords": ["jsx", "render", "ssr", "isomorphic"],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
   },
   "scripts": {
-    "build": "turbo run build",
-    "test": "turbo run test",
-    "clean": "turbo run clean"
+    "build": "turbo run build --concurrency=1",
+    "test": "turbo run test --concurrency=15 ",
+    "clean": "turbo run clean --concurrency=15 "
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -31,18 +26,14 @@
     "turbo": "^2.3.0",
     "typescript": "^5.6.3"
   },
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": ["packages/*"],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "packageManager": "pnpm@9.13.2",
   "pnpm": {
     "peerDependencyRules": {
-      "allowAny": [
-        "astro"
-      ]
+      "allowAny": ["astro"]
     },
     "overrides": {
       "nanoid@<3.3.8": ">=3.3.8",

@@ -8,17 +8,8 @@ import {
   type RenderInput,
   type AllHTMLElements,
   type CSSProperties,
+  type NodeType,
 } from "../render/index.js";
-
-// --- Types & Helpers ---
-export type NodeType =
-  | Node
-  | Text
-  | Element
-  | Document
-  | DocumentFragment
-  | HTMLElement
-  | SVGElement;
 
 export type FormFieldValue = string | Date | File | boolean | number;
 export interface FormKeyValues {
@@ -46,7 +37,8 @@ const elementGuard = <T = HTMLElement>(el: NodeType): T => {
 
 export interface DequeryOptions<NT = ChainMethodReturnType> {
   timeout?: number;
-  delay?: number;
+  autoStart?: boolean;
+  autoStartDelay?: number;
   resultStack?: NT[];
   state?: any;
   verbose?: boolean;
@@ -55,8 +47,12 @@ export interface DequeryOptions<NT = ChainMethodReturnType> {
 
 function getDefaultConfig<NT>(): DequeryOptions<NT> {
   return {
-    timeout: 500,
-    delay: 0,
+    timeout: 500 /** ms */,
+    // even long sync chains would execute in < 0.1ms
+    // so after 1ms, we can assume the "await" in front is
+    // missing (intentionally non-blocking in sync code)
+    autoStartDelay: 1 /** ms */,
+    autoStart: true,
     resultStack: [],
     verbose: false,
     onTimeGuardError: () => {},
@@ -66,7 +62,12 @@ function getDefaultConfig<NT>(): DequeryOptions<NT> {
 export type ElementCreationOptions = JSX.HTMLAttributesLowerCase &
   JSX.HTMLAttributesLowerCase & { html?: string; text?: string };
 
-type ChainMethodReturnType = Array<NodeType> | NodeType | string | boolean;
+type ChainMethodReturnType =
+  | Array<NodeType>
+  | NodeType
+  | string
+  | boolean
+  | null;
 
 // --- Core Async Call & Chain ---
 class Call<NT> {
@@ -113,6 +114,9 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   stoppedWithError: Error | null;
   lastResult: NT[] | CallChainImpl<NT> | CallChainImplThenable<NT>;
   length: number;
+  chainStartTime: number;
+  chainAsyncStartTime: number;
+  chainAsyncFinishTime: number;
 
   constructor(options: DequeryOptions<NT> = {}) {
     this.options = { ...getDefaultConfig(), ...options } as DequeryOptions<NT>;
@@ -126,6 +130,9 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     this.lastResult = [];
     this.length = 0;
     this.isResolved = false;
+    this.chainStartTime = performance.now(); // mark start of sync chain
+    this.chainAsyncStartTime = 0; // mark start of async chain
+    this.chainAsyncFinishTime = 0; // mark end of async chain
   }
 
   // sync methods
@@ -155,11 +162,11 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
 
   // async, wrapped/chainable API methods
 
-  debug(cb: (currentResult: ChainMethodReturnType) => void) {
+  debug(cb: (chain: CallChainImpl<NT>) => void) {
     this.callStack.push(
       new Call<NT>("debug", async () => {
-        cb(this.__elements);
-        return this.__elements as unknown as NT; // pipe
+        cb(this);
+        return this.__elements as NT; // pipe
       }),
     );
     return subChainForNextAwait(this);
@@ -562,6 +569,7 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
         }
 
         this.__elements.forEach((el) => {
+          if (!el || !newElement) return;
           if (el.parentNode) {
             // Create a fresh clone for each replacement to avoid side effects
             const clone = newElement.cloneNode(true);
@@ -611,6 +619,7 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
             globalThis as Globals,
           ) as NodeType;
           this.__elements.forEach((el) => {
+            if (!element) return;
             elementGuard(el).appendChild(element.cloneNode(true));
           });
         } else if (isRef(content)) {
@@ -686,6 +695,7 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
 
         targetElements.forEach((targetEl) => {
           this.__elements.forEach((el) => {
+            if (!targetEl || !el) return;
             targetEl.appendChild(el.cloneNode(true));
           });
         });
@@ -1209,6 +1219,13 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     );
     return subChainForNextAwait(this);
   }
+
+  // TODO:
+  // - serialize (to URL string, JSON, etc.)
+  // - deserialize (from URL string, JSON, etc.)
+  // - dispose() (cleanup, remove event listeners - therefore keep track of on() refs, etc.)
+  // Re-use the common/* shared code!
+  // Remove duplicated code in the chain methods
 }
 
 // custom promise chain
@@ -1225,22 +1242,14 @@ export class CallChainImplThenable<
     onfulfilled?: (value: CallChainImpl<NT>) => CallChainImpl<NT>,
     onrejected?: (reason: any) => any | PromiseLike<any>,
   ): Promise<any> {
+    this.chainAsyncStartTime = performance.now();
+
     if (this.stoppedWithError) {
       return Promise.reject(this.stoppedWithError).then(
         onfulfilled as any,
         onrejected,
       );
     }
-
-    /*
-    console.log(
-      "then",
-      this.isResolved,
-      this.stackPointer,
-      this.stackPointer >= this.callStack.length,
-      this.callStack,
-    );
-    */
 
     if (this.isResolved && this.stackPointer >= this.callStack.length) {
       this.lastResolvedStackPointer = this.stackPointer;
@@ -1264,6 +1273,10 @@ export class CallChainImplThenable<
         // is necessary to continue the chain or not.
         result = createSubChain<NT>(this, CallChainImpl, true);
       }
+
+      // performance metrics tracking
+      this.chainAsyncFinishTime = performance.now() - this.chainAsyncStartTime;
+
       return Promise.resolve(result).then(onfulfilled as any, onrejected);
     }
 
@@ -1300,13 +1313,6 @@ export class CallChainImplThenable<
             }
 
             this.stackPointer++;
-
-            if (
-              this.options.delay! > 0 &&
-              this.stackPointer < this.callStack.length
-            ) {
-              await sleep(this.options.delay!);
-            }
           } catch (err) {
             this.stoppedWithError = err as Error;
             throw err;
@@ -1315,6 +1321,10 @@ export class CallChainImplThenable<
 
         // at this point, we have finished all calls
         this.isResolved = true;
+
+        // performance metrics tracking
+        this.chainAsyncFinishTime =
+          performance.now() - this.chainAsyncStartTime;
 
         return this;
       },
@@ -1351,10 +1361,55 @@ export class CallChainImplThenable<
   }
 }
 
+export function delayedAutoStart<NT = ChainMethodReturnType>(
+  chain: CallChainImplThenable<NT> | CallChainImpl<NT>,
+): CallChainImplThenable<NT> | CallChainImpl<NT> {
+  if (chain.options.autoStart) {
+    setTimeout(async () => {
+      // still not started (no then() called)
+      if (chain.chainAsyncStartTime === 0) {
+        chain = await chain;
+      }
+    }, chain.options.autoStartDelay!);
+  }
+  return chain;
+}
+
 export function dequery<NT = ChainMethodReturnType>(
-  selectorRefOrEl: string | NodeType | Ref<NodeType, any> | RenderInput,
+  selectorRefOrEl:
+    | string
+    | NodeType
+    | Ref<NodeType, any>
+    | RenderInput
+    | Function,
   options: DequeryOptions<NT> | ElementCreationOptions = getDefaultConfig(),
-): CallChainImplThenable<NT> {
+): CallChainImplThenable<NT> | CallChainImpl<NT> {
+  // async co-routine execution
+  if (typeof selectorRefOrEl === "function") {
+    const syncChain: CallChainImplThenable<NT> | CallChainImpl<NT> = dequery(
+      "body",
+      options,
+    );
+    requestAnimationFrame(async () => {
+      const result = await selectorRefOrEl();
+      if (!syncChain.isResolved) {
+        if (typeof result !== "undefined") {
+          // allows for $(async () => { ... }) to be chained
+          // e.g. await $(async () => { ... return someRef }).html("foo")
+          // would replace the content of the ref'ed element with "foo"
+          // asynchronously
+          const newChain = dequery(result, options);
+          syncChain.resultStack = newChain.resultStack;
+          syncChain.lastResult = newChain.lastResult;
+          mapArrayIndexAccess(newChain, syncChain);
+        }
+      }
+    });
+    return delayedAutoStart(syncChain);
+  }
+
+  // standard options -- selector handling
+
   const chain = new CallChainImplThenable<NT>({
     ...options,
     resultStack: [],
@@ -1382,15 +1437,19 @@ export function dequery<NT = ChainMethodReturnType>(
       }
 
       chain.resultStack = [elements as NT[]];
-      return chain;
+      return delayedAutoStart(chain);
     } else {
-      return chain.query(selectorRefOrEl) as CallChainImplThenable<NT>;
+      return delayedAutoStart(
+        chain.query(selectorRefOrEl) as CallChainImplThenable<NT>,
+      );
     }
   } else if (isRef(selectorRefOrEl)) {
-    return chain.ref(selectorRefOrEl) as CallChainImplThenable<NT>;
+    return delayedAutoStart(
+      chain.ref(selectorRefOrEl) as CallChainImplThenable<NT>,
+    );
   } else if ((selectorRefOrEl as Node).nodeType) {
     chain.resultStack = [[selectorRefOrEl as NT]];
-    return chain;
+    return delayedAutoStart(chain);
   } else if (isJSX(selectorRefOrEl)) {
     const renderResult = renderIsomorphicSync(
       selectorRefOrEl as RenderInput,
@@ -1405,7 +1464,7 @@ export function dequery<NT = ChainMethodReturnType>(
         : []
     ) as NodeType[];
     chain.resultStack = [elements as NT[]];
-    return chain;
+    return delayedAutoStart(chain);
   }
   throw new Error("Unsupported selectorOrEl type");
 }
@@ -1518,7 +1577,7 @@ export function createSubChain<NT = ChainMethodReturnType>(
   if (Array.isArray(subChain.lastResult)) {
     mapArrayIndexAccess(source, subChain);
   }
-  return subChain;
+  return delayedAutoStart(subChain);
 }
 
 export function subChainForNextAwait<NT>(
