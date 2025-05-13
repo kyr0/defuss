@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@astrojs/node": "^9.1.1",
-    "astro": "^5.7.3",
+    "astro": "^5.7.12",
     "defuss": "workspace:*",
     "defuss-astro": "workspace:*",
     "squeezy": "workspace:*",

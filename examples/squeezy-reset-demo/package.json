@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vite": "^6.0.3",
+    "vite": "^6.3.5",
     "squeezy-reset": "workspace:*",
     "lightningcss": "^1.28.2",
     "browserslist": "^4.24.3"

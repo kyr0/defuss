@@ -8,7 +8,12 @@
   },
   "license": "MIT",
   "description": "Explicit simplicity for the web.",
-  "keywords": ["jsx", "render", "ssr", "isomorphic"],
+  "keywords": [
+    "jsx",
+    "render",
+    "ssr",
+    "isomorphic"
+  ],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -26,14 +31,18 @@
     "turbo": "^2.3.0",
     "typescript": "^5.6.3"
   },
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "packageManager": "pnpm@9.13.2",
   "pnpm": {
     "peerDependencyRules": {
-      "allowAny": ["astro"]
+      "allowAny": [
+        "astro"
+      ]
     },
     "overrides": {
       "nanoid@<3.3.8": ">=3.3.8",
@@ -56,7 +65,8 @@
       "vite@>=5.0.0 <5.4.18": ">=5.4.18",
       "vite@>=6.0.0 <6.0.15": ">=6.0.15",
       "vite@>=6.2.0 <6.2.6": ">=6.2.6",
-      "@babel/runtime@<7.26.10": ">=7.26.10"
+      "@babel/runtime@<7.26.10": ">=7.26.10",
+      "vite@>=6.3.0 <=6.3.3": ">=6.3.4"
     }
   }
 }
