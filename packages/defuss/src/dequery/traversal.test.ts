@@ -135,16 +135,11 @@ describe("Traversal methods", () => {
 
   it("preserves the correct this context in traversal methods", async () => {
     const container = document.getElementById("parent")!;
-
-    // Directly chain all methods in a single await call to ensure proper resolution
-    // TODO: Why is this await not recognized?
     const result = await $<HTMLElement>(container).children().first();
-
     expect(result.length).toBe(1);
     expect(result[0].className).toBe("first-child");
   });
 
-  // Scroll method tests (modified)
   describe("Scroll methods", () => {
     it("can scroll to specific coordinates", async () => {
       const scrollToSpy = vi.spyOn(scrollContainer, "scrollTo");

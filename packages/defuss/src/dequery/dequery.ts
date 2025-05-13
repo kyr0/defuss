@@ -1,3 +1,4 @@
+import { pick, omit } from "../common/object.js";
 import { updateDom, updateDomWithVdom } from "../common/dom.js";
 import {
   isJSX,
@@ -13,7 +14,7 @@ import {
 
 export type FormFieldValue = string | Date | File | boolean | number;
 export interface FormKeyValues {
-  [keyOrPath: string]: string;
+  [keyOrPath: string]: string | boolean;
 }
 
 export interface Dimensions {
@@ -23,17 +24,18 @@ export interface Dimensions {
   outerHeight?: number;
 }
 
+export interface Position {
+  top: number;
+  left: number;
+}
+
+export type DOMPropValue = string | number | boolean | null;
+
 declare global {
   interface HTMLElement {
     _dequeryEvents?: Map<string, Set<EventListener>>;
   }
 }
-
-const elementGuard = <T = HTMLElement>(el: NodeType): T => {
-  if (el instanceof HTMLElement) return el as T;
-  console.warn("Expected HTMLElement, but found:", el?.nodeName ?? el);
-  return el as T;
-};
 
 export interface DequeryOptions<NT = ChainMethodReturnType> {
   timeout?: number;
@@ -43,12 +45,22 @@ export interface DequeryOptions<NT = ChainMethodReturnType> {
   state?: any;
   verbose?: boolean;
   onTimeGuardError?: (ms: number, call: Call<NT>) => void;
+  globals?: Partial<Globals>;
+}
+
+export function isDequeryOptionsObject(o: object) {
+  return (
+    o &&
+    typeof o === "object" &&
+    (o as DequeryOptions).timeout !== undefined &&
+    (o as DequeryOptions).globals !== undefined
+  );
 }
 
 function getDefaultConfig<NT>(): DequeryOptions<NT> {
   return {
     timeout: 500 /** ms */,
-    // even long sync chains would execute in < 0.1ms
+    // even long sync chains would execute in < .1ms
     // so after 1ms, we can assume the "await" in front is
     // missing (intentionally non-blocking in sync code)
     autoStartDelay: 1 /** ms */,
@@ -56,6 +68,11 @@ function getDefaultConfig<NT>(): DequeryOptions<NT> {
     resultStack: [],
     verbose: false,
     onTimeGuardError: () => {},
+    globals: {
+      document: globalThis.document,
+      window: globalThis.window,
+      performance: globalThis.performance,
+    },
   };
 }
 
@@ -87,6 +104,8 @@ class Call<NT> {
 
 const NonChainedReturnCallNames = [
   "getFirstElement",
+  "toArray",
+  "map",
   "isHidden",
   "isVisible",
   "hasClass",
@@ -107,6 +126,7 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
 
   isResolved: boolean;
   options: DequeryOptions<NT>;
+  elementCreationOptions: ElementCreationOptions;
   callStack: Call<NT>[];
   resultStack: NT[][];
   stackPointer: number;
@@ -119,7 +139,25 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   chainAsyncFinishTime: number;
 
   constructor(options: DequeryOptions<NT> = {}) {
-    this.options = { ...getDefaultConfig(), ...options } as DequeryOptions<NT>;
+    // merge default options with user-provided options
+    this.options = {
+      ...getDefaultConfig(),
+      ...options,
+    };
+
+    const optionsKeys = Object.keys(getDefaultConfig()) as Array<
+      keyof DequeryOptions<NT>
+    >;
+
+    this.options = pick(this.options, optionsKeys);
+
+    const elementCreationOptions: ElementCreationOptions = omit(
+      options,
+      optionsKeys,
+    );
+
+    this.elementCreationOptions = elementCreationOptions;
+
     this.callStack = [];
     this.resultStack = (
       options.resultStack ? [options.resultStack] : []
@@ -130,9 +168,25 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     this.lastResult = [];
     this.length = 0;
     this.isResolved = false;
-    this.chainStartTime = performance.now(); // mark start of sync chain
+    this.chainStartTime = this.performance.now() ?? 0; // mark start of sync chain
     this.chainAsyncStartTime = 0; // mark start of async chain
     this.chainAsyncFinishTime = 0; // mark end of async chain
+  }
+
+  get window(): Window {
+    return this.options.globals!.window as Window;
+  }
+
+  get document(): Document {
+    return this.options.globals!.window!.document as Document;
+  }
+
+  get performance(): Performance {
+    return this.options.globals!.performance as Performance;
+  }
+
+  get globals(): Globals {
+    return this.options.globals as Globals;
   }
 
   // sync methods
@@ -152,381 +206,302 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   // async, direct result method
 
   getFirstElement() {
-    this.callStack.push(
-      new Call<NT>("getFirstElement", async () => {
-        return this[0];
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<NT> | NT; // returns the first element synchronously
+    return this.createCall(
+      "getFirstElement",
+      async () => this[0],
+    ) as PromiseLike<NT>;
   }
 
   // async, wrapped/chainable API methods
 
   debug(cb: (chain: CallChainImpl<NT>) => void) {
-    this.callStack.push(
-      new Call<NT>("debug", async () => {
-        cb(this);
-        return this.__elements as NT; // pipe
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("debug", async () => {
+      cb(this);
+      return this.__elements as NT;
+    });
   }
 
   ref(ref: Ref<NodeType>) {
-    this.callStack.push(
-      new Call<NT>("ref", async () => {
-        await waitForRef(ref, this.options.timeout!);
-        if (ref.current) {
-          return [elementGuard(ref.current)] as NT;
-        } else {
-          throw new Error("Ref is null or undefined");
-        }
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("ref", async () => {
+      await waitForRef(ref, this.options.timeout!);
+      if (ref.current) {
+        return [ref.current] as NT;
+      } else {
+        throw new Error("Ref is null or undefined");
+      }
+    });
   }
 
   query(selector: string) {
-    this.callStack.push(
-      new Call<NT>("query", async () => {
-        return Array.from(
-          await waitForDOM(
-            () => Array.from(document.querySelectorAll(selector)),
-            this.options.timeout!,
-          ),
-        ) as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("query", async () => {
+      return Array.from(
+        await waitForDOM(
+          () => Array.from(this.document.querySelectorAll(selector) || []),
+          this.options.timeout!,
+          this.document,
+        ),
+      ) as NT;
+    });
   }
 
   next() {
-    this.callStack.push(
-      new Call<NT>("next", async () => {
-        return this.__elements
-          .map((el) => (el instanceof Element ? el.nextElementSibling : null))
-          .filter((el): el is Element => el instanceof Element) as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.traverse("next", (el) => el.nextElementSibling);
   }
 
   prev() {
-    this.callStack.push(
-      new Call<NT>("prev", async () => {
-        return this.__elements
-          .map((el) =>
-            el instanceof Element ? el.previousElementSibling : null,
-          )
-          .filter((el): el is Element => el instanceof Element) as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.traverse("prev", (el) => el.previousElementSibling);
   }
 
   find(selector: string) {
-    this.callStack.push(
-      new Call<NT>("find", async () => {
-        //console.log("find", selector);
-        //console.log("elements", this.__elements.length);
+    return this.createCall("find", async () => {
+      // Use Promise.all to wait for all elements to be found
+      const results = await Promise.all(
+        this.__elements.map(async (el) => {
+          return await waitForDOM(
+            () => Array.from((el as HTMLElement).querySelectorAll(selector)),
+            this.options.timeout!,
+            this.document,
+          );
+        }),
+      );
 
-        // Use Promise.all to wait for all elements to be found
-        const results = await Promise.all(
-          this.__elements.map(async (el) => {
-            return await waitForDOM(
-              () => Array.from(elementGuard(el).querySelectorAll(selector)),
-              this.options.timeout!,
-            );
-          }),
-        );
-
-        // Flatten the results
-        const res = results.flat();
-        //console.log("res", res.length);
-        return res as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+      // Flatten the results
+      const res = results.flat();
+      return res as NT;
+    }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
   parent() {
-    this.callStack.push(
-      new Call<NT>("parent", async () => {
-        return this.__elements
-          .map((el) => (el as Element).parentElement)
-          .filter((el): el is HTMLElement => el !== null) as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.traverse("parent", (el) => el.parentElement);
   }
 
   children() {
-    this.callStack.push(
-      new Call<NT>("children", async () => {
-        return this.__elements.flatMap((el) =>
-          Array.from(elementGuard(el).children),
-        ) as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.traverse("children", (el) => Array.from(el.children));
   }
 
   closest(selector: string) {
-    this.callStack.push(
-      new Call<NT>("closest", async () => {
-        return this.__elements
-          .map((el) => (el as Element).closest(selector))
-          .filter((el): el is HTMLElement => el !== null) as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.traverse("closest", (el) => el.closest(selector));
   }
 
   first() {
-    this.callStack.push(
-      new Call<NT>("first", async () => {
-        return this.__elements.slice(0, 1) as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("first", async () => {
+      return this.__elements.slice(0, 1) as NT;
+    });
   }
 
   last() {
-    this.callStack.push(
-      new Call<NT>("last", async () => {
-        return this.__elements.slice(-1) as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("last", async () => {
+      return this.__elements.slice(-1) as NT;
+    });
   }
 
   // --- Attribute & Property Methods ---
 
+  attr(name: string, value: string): PromiseLike<CallChainImplThenable<NT>>;
+  attr(name: string): PromiseLike<string | null>;
   attr(name: string, value?: string) {
-    if (value !== undefined) {
-      // Set attribute
-      this.callStack.push(
-        new Call<NT>("attr", async () => {
-          this.__elements.forEach((el) =>
-            elementGuard(el).setAttribute(name, value),
-          );
-          return this.__elements as NT;
-        }),
-      );
-      return subChainForNextAwait(this);
-    } else {
-      // Get attribute
-      this.callStack.push(
-        new Call<NT>("attr", async () => {
-          return elementGuard(this.__elements[0]).getAttribute(name) as NT;
-        }),
-      );
-      return subChainForNextAwait(this);
-    }
+    return this.createGetterSetterCall<string | null, string>(
+      "attr",
+      value,
+      // Getter function
+      () => {
+        if (this.__elements.length === 0) return null;
+        return (this.__elements[0] as HTMLElement).getAttribute(name);
+      },
+      // Setter function
+      (val) => {
+        this.__elements.forEach((el) =>
+          (el as HTMLElement).setAttribute(name, val),
+        );
+      },
+    ) as PromiseLike<string | null | CallChainImplThenable<NT>>;
   }
 
-  prop<K extends keyof AllHTMLElements>(name: K, value?: any) {
-    if (value !== undefined) {
-      // Set property
-      this.callStack.push(
-        new Call<NT>("prop", async () => {
-          this.__elements.forEach((el) => {
-            (elementGuard(el) as any)[name] = value;
-          });
-          return this.__elements as NT;
-        }),
-      );
-      return subChainForNextAwait(this);
-    } else {
-      // Get property
-      this.callStack.push(
-        new Call<NT>("prop", async () => {
-          return (elementGuard(this.__elements[0]) as any)[name] as NT;
-        }),
-      );
-      return subChainForNextAwait(this);
-    }
+  // TODO: improve type safety here and remove any
+  prop<K extends keyof AllHTMLElements>(
+    name: K,
+    value: DOMPropValue,
+  ): PromiseLike<CallChainImplThenable<NT>>;
+  prop<K extends keyof AllHTMLElements>(name: K): PromiseLike<string>;
+  prop<K extends keyof AllHTMLElements>(name: K, value?: DOMPropValue) {
+    return this.createGetterSetterCall<DOMPropValue, DOMPropValue>(
+      "prop",
+      value,
+      // Getter function
+      () => {
+        if (this.__elements.length === 0) return undefined;
+        return (this.__elements[0] as any)[name];
+      },
+      // Setter function
+      (val) => {
+        this.__elements.forEach((el) => {
+          (el as any)[name] = val;
+        });
+      },
+    ) as PromiseLike<DOMPropValue | CallChainImplThenable<NT>>;
   }
 
   // --- CSS & Class Methods ---
 
+  css(prop: CSSProperties): PromiseLike<CallChainImplThenable<NT>>;
+  css(prop: string, value: string): PromiseLike<CallChainImplThenable<NT>>;
+  css(prop: string): PromiseLike<string>;
   css(prop: string | CSSProperties, value?: string) {
-    if (typeof prop === "string" && value === undefined) {
-      // Get CSS property
-      this.callStack.push(
-        new Call<NT>(
-          "css",
-          async () =>
-            elementGuard(this.__elements[0]).style.getPropertyValue(prop) as NT,
-        ),
-      );
-    } else {
-      // Set CSS property/properties
-      this.callStack.push(
-        new Call<NT>("css", async () => {
-          this.__elements.forEach((el) => {
-            const elementStyle = elementGuard<HTMLElement>(el).style;
-            if (typeof prop === "string") {
-              elementStyle.setProperty(prop, value!);
-            } else {
-              // For object properties, assign directly to handle camelCase
-              for (const k in prop) {
-                if (Object.prototype.hasOwnProperty.call(prop, k)) {
-                  // @ts-ignore - Allow indexing style object with string key
-                  elementStyle[k] = (prop as any)[k];
-                }
-              }
+    if (typeof prop === "object") {
+      // Handle object-style CSS properties
+      return this.createCall("css", async () => {
+        this.__elements.forEach((el) => {
+          const elementStyle = (el as HTMLElement).style;
+          for (const k in prop) {
+            if (Object.prototype.hasOwnProperty.call(prop, k)) {
+              // @ts-ignore allow indexing style object with string key
+              elementStyle[k] = (prop as any)[k];
             }
-          });
-          return this.__elements as NT;
-        }),
-      );
+          }
+        });
+        return this.__elements as NT;
+      }) as PromiseLike<CallChainImplThenable<NT>>;
     }
-    return subChainForNextAwait(this) as PromiseLike<CSSStyleDeclaration>;
+
+    return this.createGetterSetterCall<string, string>(
+      "css",
+      value,
+      // Getter function
+      () => {
+        if (this.__elements.length === 0) return "";
+        return (this.__elements[0] as HTMLElement).style.getPropertyValue(prop);
+      },
+      // Setter function
+      (val) => {
+        this.__elements.forEach((el) => {
+          (el as HTMLElement).style.setProperty(prop, val);
+        });
+      },
+    ) as PromiseLike<CallChainImplThenable<NT> | string>;
   }
 
   addClass(name: string | Array<string>) {
-    this.callStack.push(
-      new Call<NT>("addClass", async () => {
-        const list = Array.isArray(name) ? name : [name];
-        this.__elements.forEach((el) =>
-          elementGuard(el).classList.add(...list),
-        );
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("addClass", async () => {
+      const list = Array.isArray(name) ? name : [name];
+      this.__elements.forEach((el) =>
+        (el as HTMLElement).classList.add(...list),
+      );
+      return this.__elements as NT;
+    }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
   removeClass(name: string | Array<string>) {
-    this.callStack.push(
-      new Call<NT>("removeClass", async () => {
-        const list = Array.isArray(name) ? name : [name];
-        this.__elements.forEach((el) =>
-          elementGuard(el).classList.remove(...list),
-        );
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("removeClass", async () => {
+      const list = Array.isArray(name) ? name : [name];
+      this.__elements.forEach((el) =>
+        (el as HTMLElement).classList.remove(...list),
+      );
+      return this.__elements as NT;
+    }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
   hasClass(name: string) {
-    this.callStack.push(
-      new Call<NT>("hasClass", async () => {
-        return this.__elements.every((el) =>
-          elementGuard(el).classList.contains(name),
-        ) as NT;
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<boolean>;
+    return this.createCall(
+      "hasClass",
+      async () =>
+        this.__elements.every((el) =>
+          (el as HTMLElement).classList.contains(name),
+        ) as NT,
+    ) as PromiseLike<boolean>;
   }
 
   toggleClass(name: string) {
-    this.callStack.push(
-      new Call<NT>("toggleClass", async () => {
-        this.__elements.forEach((el) =>
-          elementGuard(el).classList.toggle(name),
-        );
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("toggleClass", async () => {
+      this.__elements.forEach((el) =>
+        (el as HTMLElement).classList.toggle(name),
+      );
+      return this.__elements as NT;
+    }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
   animateClass(name: string, duration: number) {
-    this.callStack.push(
-      new Call<NT>("animateClass", async () => {
-        this.__elements.forEach((el) => {
-          const e = elementGuard(el);
-          e.classList.add(name);
-          setTimeout(() => e.classList.remove(name), duration);
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("animateClass", async () => {
+      this.__elements.forEach((el) => {
+        const e = el as HTMLElement;
+        e.classList.add(name);
+        setTimeout(() => e.classList.remove(name), duration);
+      });
+      return this.__elements as NT;
+    }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
   // --- Content Manipulation Methods ---
 
   empty() {
-    this.callStack.push(
-      new Call<NT>("empty", async () => {
-        this.__elements.forEach((el) => {
-          const element = elementGuard(el);
-          while (element.firstChild) {
-            element.firstChild.remove();
-          }
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("empty", async () => {
+      this.__elements.forEach((el) => {
+        const element = el as HTMLElement;
+        while (element.firstChild) {
+          element.firstChild.remove();
+        }
+      });
+      return this.__elements as NT;
+    }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
-  //
+  // TODO: add these overload signatures to all methods!
+  html(): PromiseLike<string>;
+  html(html: string): PromiseLike<CallChainImplThenable<NT>>;
   html(html?: string) {
-    if (typeof html === "undefined") {
-      // Get the HTML contents of the first element in the set of matched elements
-      this.callStack.push(
-        new Call<NT>("html", async () => {
-          return (this.__elements[0] as HTMLElement).innerHTML as NT;
-        }),
-      );
-    } else {
-      // set the HTML contents of every matched element.
-      this.callStack.push(
-        new Call<NT>("html", async () => {
-          this.__elements.forEach((el) => {
-            elementGuard(el).innerHTML = html;
-          });
-          return this.__elements as NT;
-        }),
-      );
-    }
-    return subChainForNextAwait(this);
-  }
-
-  jsx(vdom: RenderInput) {
-    if (!isJSX(vdom)) {
-      console.warn("jsx: expected JSX, got", vdom);
-      return subChainForNextAwait(this);
-    }
-
-    this.callStack.push(
-      new Call<NT>("jsx", async () => {
-        this.__elements.forEach((el) =>
-          updateDomWithVdom(elementGuard(el), vdom, globalThis as Globals),
-        );
-        return this.__elements as NT;
-      }),
-    );
-
-    return subChainForNextAwait(this);
-  }
-
-  text(text: string) {
-    this.callStack.push(
-      new Call<NT>("text", async () => {
+    return this.createGetterSetterCall<string, string>(
+      "html",
+      html,
+      () => {
+        // getter
+        if (this.__elements.length === 0) return "";
+        return (this.__elements[0] as HTMLElement).innerHTML;
+      },
+      (val) => {
+        // setter
         this.__elements.forEach((el) => {
-          elementGuard(el).textContent = text;
+          (el as HTMLElement).innerHTML = val;
         });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+      },
+    ) as PromiseLike<string | CallChainImplThenable<NT>>;
+  }
+
+  jsx(vdom: RenderInput): CallChainImplThenable<NT> {
+    if (!isJSX(vdom)) {
+      throw new Error("Invalid JSX input");
+    }
+
+    return this.createCall("jsx", async () => {
+      this.__elements.forEach((el) =>
+        updateDomWithVdom(el as HTMLElement, vdom, globalThis as Globals),
+      );
+      return this.__elements as NT;
+    }) as CallChainImplThenable<NT>;
+  }
+
+  text(text?: string) {
+    return this.createGetterSetterCall<string, string>(
+      "text",
+      text,
+      // Getter function
+      () => {
+        if (this.__elements.length === 0) return "";
+        return (this.__elements[0] as HTMLElement).textContent || "";
+      },
+      // Setter function
+      (val) => {
+        this.__elements.forEach((el) => {
+          (el as HTMLElement).textContent = val;
+        });
+      },
+    ) as PromiseLike<string>;
   }
 
   remove() {
-    this.callStack.push(
-      new Call<NT>("remove", async () => {
-        const removedElements = [...this.__elements];
-        this.__elements.forEach((el) => elementGuard(el).remove());
-        return removedElements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("remove", async () => {
+      const removedElements = [...this.__elements];
+      this.__elements.forEach((el) => (el as HTMLElement).remove());
+      return removedElements as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   replaceWith<T = NT>(
@@ -538,48 +513,28 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
   ) {
-    this.callStack.push(
-      new Call<NT>("replaceWith", async () => {
-        let newElement: NodeType;
+    return this.createCall("replaceWith", async () => {
+      const newElement = await resolveContent(content, this.options);
+      if (!newElement) return this.__elements as NT;
 
-        if (typeof content === "string") {
-          const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(content);
-          if (hasHtmlTags) {
-            newElement = renderHTML(content)[0];
-          } else {
-            newElement = document.createTextNode(content);
-          }
-        } else if (isJSX(content)) {
-          newElement = renderIsomorphicSync(
-            content as RenderInput,
-            undefined,
-            globalThis as Globals,
-          ) as NodeType;
-        } else if (isRef(content)) {
-          await waitForRef(content as Ref<NodeType>, this.options.timeout!);
-          newElement = elementGuard(content.current!);
-        } else if ((content as Node).nodeType) {
-          newElement = content as NodeType;
-        } else if (isDequery(content)) {
-          const firstElement = await content.getFirstElement();
-          newElement = elementGuard(firstElement as NodeType);
-        } else {
-          console.warn("replaceWith: unsupported content type", content);
-          return this.__elements as NT;
+      this.__elements.forEach((el, index) => {
+        if (!el || !newElement) return;
+
+        if (el.parentNode) {
+          // create a fresh clone for each replacement to avoid side effects
+          const clone = newElement.cloneNode(true);
+          el.parentNode.replaceChild(clone, el);
+
+          // replace the reference in the __elements array
+          this.__elements[index] = clone;
+
+          // update indexing
+          mapArrayIndexAccess(this, this);
         }
+      });
 
-        this.__elements.forEach((el) => {
-          if (!el || !newElement) return;
-          if (el.parentNode) {
-            // Create a fresh clone for each replacement to avoid side effects
-            const clone = newElement.cloneNode(true);
-            el.parentNode.replaceChild(clone, el);
-          }
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+      return this.__elements as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   append<T = NT>(
@@ -591,63 +546,47 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
   ) {
-    this.callStack.push(
-      new Call<NT>("append", async () => {
-        // Don't do anything if content is null or undefined
-        if (content == null) {
-          return this.__elements as NT;
-        }
-
-        if (typeof content === "string") {
-          const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(content);
-          if (hasHtmlTags) {
-            const elements = renderHTML(content);
-            this.__elements.forEach((el) => {
-              elements.forEach((childEl) =>
-                elementGuard(el).appendChild(childEl.cloneNode(true)),
-              );
-            });
-          } else {
-            this.__elements.forEach((el) => {
-              elementGuard(el).appendChild(document.createTextNode(content));
-            });
-          }
-        } else if (isJSX(content)) {
-          const element = renderIsomorphicSync(
-            content as RenderInput,
-            undefined,
-            globalThis as Globals,
-          ) as NodeType;
-          this.__elements.forEach((el) => {
-            if (!element) return;
-            elementGuard(el).appendChild(element.cloneNode(true));
-          });
-        } else if (isRef(content)) {
-          await waitForRef(content as Ref<NodeType>, this.options.timeout!);
-          const refElement = elementGuard(content.current!);
-          this.__elements.forEach((el) => {
-            elementGuard(el).appendChild(refElement.cloneNode(true));
-          });
-        } else if ((content as Node).nodeType) {
-          this.__elements.forEach((el) => {
-            elementGuard(el).appendChild((content as Node).cloneNode(true));
-          });
-        } else if (isDequery(content)) {
-          this.__elements.forEach((el) => {
-            content.__elements.forEach((childEl) => {
-              if ((childEl as Node).nodeType && (el as Node).nodeType) {
-                elementGuard(el).appendChild((childEl as Node).cloneNode(true));
-              }
-            });
-          });
-        } else {
-          console.warn("append: unsupported content type", content);
-        }
-
+    return this.createCall("append", async () => {
+      // Don't do anything if content is null or undefined
+      if (content == null) {
         return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+      }
+
+      const element = await resolveContent(content, this.options);
+      if (!element) return this.__elements as NT;
+
+      if (isDequery(content)) {
+        // Special handling for Dequery objects which may contain multiple elements
+        this.__elements.forEach((el) => {
+          (content as CallChainImpl<T>).__elements.forEach((childEl) => {
+            if ((childEl as Node).nodeType && (el as Node).nodeType) {
+              (el as HTMLElement).appendChild(
+                (childEl as Node).cloneNode(true),
+              );
+            }
+          });
+        });
+      } else if (
+        typeof content === "string" &&
+        /<\/?[a-z][\s\S]*>/i.test(content)
+      ) {
+        // Special handling for HTML strings which might produce multiple elements
+        const elements = renderHTML(content, this.options);
+        this.__elements.forEach((el) => {
+          elements.forEach((childEl) =>
+            (el as HTMLElement).appendChild(childEl.cloneNode(true)),
+          );
+        });
+      } else {
+        // Single element handling
+        this.__elements.forEach((el) => {
+          if (!element) return;
+          (el as HTMLElement).appendChild(element.cloneNode(true));
+        });
+      }
+
+      return this.__elements as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   appendTo<T = NT>(
@@ -658,313 +597,200 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
   ) {
-    this.callStack.push(
-      new Call<NT>("appendTo", async () => {
-        let targetElements: NodeType[] = [];
+    return this.createCall("appendTo", async () => {
+      const targetElements = await resolveTargets(
+        target,
+        this.options.timeout!,
+        this.document,
+      );
 
-        if (isRef(target)) {
-          await waitForRef(target as Ref<NodeType>, this.options.timeout!);
-          targetElements = [elementGuard(target.current!)];
-        } else if (typeof target === "string") {
-          const result = await waitForDOM(() => {
-            const el = document.querySelector(target);
-            if (el) {
-              return [el];
-            } else {
-              return [];
-            }
-          }, this.options.timeout!);
-          const el = result[0];
-          if (el) targetElements = [elementGuard(el as NodeType)];
-        } else if ((target as Node).nodeType) {
-          targetElements = [elementGuard(target as NodeType)];
-        } else if (isDequery(target)) {
-          const elements = (target as CallChainImpl<T>).__elements;
-          targetElements = elements
-            .filter((el) => (el as Node).nodeType !== undefined)
-            .map((el) => elementGuard(el as NodeType));
-        } else {
-          console.warn("appendTo: expected selector, ref or node, got", target);
-          return this.__elements as NT;
-        }
-
-        if (targetElements.length === 0) {
-          console.warn("appendTo: no target elements found");
-          return this.__elements as NT;
-        }
-
-        targetElements.forEach((targetEl) => {
-          this.__elements.forEach((el) => {
-            if (!targetEl || !el) return;
-            targetEl.appendChild(el.cloneNode(true));
-          });
-        });
-
+      if (targetElements.length === 0) {
+        console.warn("appendTo: no target elements found");
         return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+      }
+
+      targetElements.forEach((targetEl) => {
+        this.__elements.forEach((el) => {
+          if (!targetEl || !el) return;
+          (targetEl as HTMLElement).appendChild(el.cloneNode(true));
+        });
+      });
+
+      return this.__elements as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   update(input: string | RenderInput) {
-    this.callStack.push(
-      new Call<NT>("update", async () => {
-        if (typeof input === "string") {
-          const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(input);
-          if (hasHtmlTags) {
-            this.__elements.forEach((el) => {
-              updateDom(elementGuard(el), input);
-            });
-          } else {
-            this.__elements.forEach((el) => {
-              elementGuard(el).textContent = input;
-            });
-          }
-        } else if (isJSX(input)) {
+    return this.createCall("update", async () => {
+      if (typeof input === "string") {
+        const doc = parseHTML(input, "text/html", this.options);
+        if (isHTML(doc)) {
           this.__elements.forEach((el) => {
-            updateDomWithVdom(elementGuard(el), input, globalThis as Globals);
+            updateDom(el as HTMLElement, input, doc);
           });
         } else {
-          console.warn("update: unsupported content type", input);
+          this.__elements.forEach((el) => {
+            (el as HTMLElement).textContent = input;
+          });
         }
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+      } else if (isJSX(input)) {
+        this.__elements.forEach((el) => {
+          updateDomWithVdom(el as HTMLElement, input, globalThis as Globals);
+        });
+      } else {
+        console.warn("update: unsupported content type", input);
+      }
+      return this.__elements as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   // --- Event Methods ---
 
   on(event: string, handler: EventListener) {
-    this.callStack.push(
-      new Call<NT>("on", async () => {
-        this.__elements.forEach((el) => {
-          const elem = elementGuard(el);
-
-          // Store event bindings for potential cleanup
-          if (!elem._dequeryEvents) {
-            elem._dequeryEvents = new Map();
-          }
-
-          if (!elem._dequeryEvents.has(event)) {
-            elem._dequeryEvents.set(event, new Set());
-          }
-
-          elem._dequeryEvents.get(event)!.add(handler);
-          elem.addEventListener(event, handler);
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("on", async () => {
+      this.__elements.forEach((el) => {
+        this.addElementEvent(el as HTMLElement, event, handler);
+      });
+      return this.__elements as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   off(event: string, handler?: EventListener) {
-    this.callStack.push(
-      new Call<NT>("off", async () => {
-        this.__elements.forEach((el) => {
-          const elem = elementGuard(el);
-
-          if (handler) {
-            // Remove specific handler
-            elem.removeEventListener(event, handler);
-
-            // Update tracking
-            if (elem._dequeryEvents?.has(event)) {
-              elem._dequeryEvents.get(event)!.delete(handler);
-              if (elem._dequeryEvents.get(event)!.size === 0) {
-                elem._dequeryEvents.delete(event);
-              }
-            }
-          } else {
-            // Remove all handlers for this event type
-            if (elem._dequeryEvents?.has(event)) {
-              elem._dequeryEvents.get(event)!.forEach((h: EventListener) => {
-                elem.removeEventListener(event, h);
-              });
-              elem._dequeryEvents.delete(event);
-            }
-          }
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("off", async () => {
+      this.__elements.forEach((el) => {
+        this.removeElementEvent(el as HTMLElement, event, handler);
+      });
+      return this.__elements as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   clearEvents() {
-    this.callStack.push(
-      new Call<NT>("clearEvents", async () => {
-        this.__elements.forEach((el) => {
-          const elem = elementGuard(el);
-          if (elem._dequeryEvents) {
-            elem._dequeryEvents.forEach((handlers, eventType) => {
-              handlers.forEach((handler: EventListener) => {
-                elem.removeEventListener(eventType, handler);
-              });
-            });
-            elem._dequeryEvents.clear();
-          }
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("clearEvents", async () => {
+      this.__elements.forEach((el) => {
+        this.clearElementEvents(el as HTMLElement);
+      });
+      return this.__elements as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   trigger(eventType: string) {
-    this.callStack.push(
-      new Call<NT>("trigger", async () => {
-        this.__elements.forEach((el) =>
-          elementGuard(el).dispatchEvent(
-            new Event(eventType, { bubbles: true, cancelable: true }),
-          ),
-        );
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("trigger", async () => {
+      this.__elements.forEach((el) =>
+        (el as HTMLElement).dispatchEvent(
+          new Event(eventType, { bubbles: true, cancelable: true }),
+        ),
+      );
+      return this.__elements as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   // --- Position Methods ---
 
   position() {
-    this.callStack.push(
-      new Call<NT>("position", async () => {
-        const el = elementGuard<HTMLElement>(this.__elements[0]);
-        return {
-          top: el.offsetTop,
-          left: el.offsetLeft,
-        } as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall(
+      "position",
+      async () =>
+        ({
+          top: (this.__elements[0] as HTMLElement).offsetTop,
+          left: (this.__elements[0] as HTMLElement).offsetLeft,
+        }) as NT,
+    ) as PromiseLike<Position>;
   }
 
   offset() {
-    this.callStack.push(
-      new Call<NT>("offset", async () => {
-        const el = elementGuard<HTMLElement>(this.__elements[0]);
-        const rect = el.getBoundingClientRect();
-        return {
-          top: rect.top + window.scrollY,
-          left: rect.left + window.scrollX,
-        } as NT;
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<DOMRect>;
+    return this.createCall("offset", async () => {
+      const el = this.__elements[0] as HTMLElement;
+      const rect = el.getBoundingClientRect();
+      return {
+        top: rect.top + window.scrollY,
+        left: rect.left + window.scrollX,
+      } as NT;
+    }) as PromiseLike<Position>;
   }
 
   // --- Data Methods ---
 
   data(name: string, value?: string) {
-    if (value !== undefined) {
-      // Set data attribute
-      this.callStack.push(
-        new Call<NT>("data", async () => {
-          this.__elements.forEach((el) => {
-            (elementGuard(el) as HTMLElement).dataset[name] = value;
-          });
-          return this.__elements as NT;
-        }),
-      );
-      return subChainForNextAwait(this) as PromiseLike<NT>;
-    } else {
-      // Get data attribute
-      this.callStack.push(
-        new Call<NT>("data", async () => {
-          if (this.__elements.length === 0) return [undefined] as NT;
-          return (elementGuard(this.__elements[0]) as HTMLElement).dataset[
-            name
-          ] as NT;
-        }),
-      );
-      return subChainForNextAwait(this) as PromiseLike<string | undefined>;
-    }
+    return this.createGetterSetterCall<string | undefined, string>(
+      "data",
+      value,
+      // Getter function
+      () => {
+        if (this.__elements.length === 0) return undefined;
+        return (this.__elements[0] as HTMLElement).dataset[name];
+      },
+      // Setter function
+      (val) => {
+        this.__elements.forEach((el) => {
+          (el as HTMLElement).dataset[name] = val;
+        });
+      },
+    ) as PromiseLike<string | undefined>;
   }
 
   val(val?: string | boolean) {
-    if (val !== undefined) {
-      this.callStack.push(
-        new Call<NT>("val", async () => {
-          this.__elements.forEach((el) => {
-            const input = el as HTMLInputElement;
-            if (input.type === "checkbox" && typeof val === "boolean") {
-              input.checked = val;
-            } else {
-              input.value = String(val);
-            }
-          });
-          return this.__elements as NT;
-        }),
-      );
-    } else {
-      this.callStack.push(
-        new Call<NT>("val", async () => {
-          const el = elementGuard<HTMLInputElement>(this.__elements[0]);
-          if (el.type === "checkbox") {
-            return el.checked as NT;
+    return this.createGetterSetterCall<string | boolean, string | boolean>(
+      "val",
+      val,
+      // Getter function
+      () => {
+        if (this.__elements.length === 0) return "";
+        const el = this.__elements[0] as HTMLInputElement;
+        if (el.type === "checkbox") {
+          return el.checked;
+        }
+        return el.value;
+      },
+      // Setter function
+      (value) => {
+        this.__elements.forEach((el) => {
+          const input = el as HTMLInputElement;
+          if (input.type === "checkbox" && typeof value === "boolean") {
+            input.checked = value;
+          } else {
+            input.value = String(value);
           }
-          return el.value as NT;
-        }),
-      );
-    }
-    return subChainForNextAwait(this) as PromiseLike<string | boolean>;
+        });
+      },
+    ) as PromiseLike<string | boolean>;
   }
 
   form<T = FormKeyValues>(formData?: Record<string, string | boolean>) {
-    if (formData) {
-      this.callStack.push(
-        new Call<NT>("form", async () => {
-          this.__elements.forEach((el) => {
-            if (el instanceof Element) {
-              const inputElements = el.querySelectorAll(
-                "input, select, textarea",
-              ) as NodeListOf<HTMLInputElement>;
-              inputElements.forEach((input) => {
-                if (["INPUT", "SELECT", "TEXTAREA"].includes(input.tagName)) {
-                  const key = input.name || input.id;
-                  if (formData[key] !== undefined) {
-                    if (input.type === "checkbox") {
-                      input.checked = Boolean(formData[key]);
-                    } else {
-                      input.value = String(formData[key]);
-                    }
-                  }
-                }
-              });
+    return this.createGetterSetterCall<
+      FormKeyValues,
+      Record<string, string | boolean>
+    >(
+      "form",
+      formData,
+      // Getter function
+      () => {
+        const formFields: Record<string, string | boolean> = {};
+        this.__elements.forEach((el) => {
+          this.processFormElements(el, (input, key) => {
+            if (input.type === "checkbox") {
+              formFields[key] = input.checked;
+            } else {
+              formFields[key] = input.value;
             }
           });
-          return this.__elements as NT;
-        }),
-      );
-      return subChainForNextAwait(this) as PromiseLike<T>;
-    } else {
-      this.callStack.push(
-        new Call<NT>("form", async () => {
-          const formFields: Record<string, string | boolean> = {};
-          this.__elements.forEach((el) => {
-            if (el instanceof Element) {
-              const inputElements = el.querySelectorAll(
-                "input, select, textarea",
-              ) as NodeListOf<HTMLInputElement>;
-              inputElements.forEach((input) => {
-                if (["INPUT", "SELECT", "TEXTAREA"].includes(input.tagName)) {
-                  const key = input.name || input.id;
-                  if (input.type === "checkbox") {
-                    formFields[key] = input.checked;
-                  } else {
-                    formFields[key] = input.value;
-                  }
-                }
-              });
+        });
+        return formFields;
+      },
+      // Setter function
+      (values) => {
+        this.__elements.forEach((el) => {
+          this.processFormElements(el, (input, key) => {
+            if (values[key] !== undefined) {
+              if (input.type === "checkbox") {
+                input.checked = Boolean(values[key]);
+              } else {
+                input.value = String(values[key]);
+              }
             }
           });
-          return formFields as NT;
-        }),
-      );
-      return subChainForNextAwait(this) as PromiseLike<T>;
-    }
+        });
+      },
+    ) as PromiseLike<T>;
   }
 
   // --- Dimension Methods ---
@@ -973,259 +799,361 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     includeMarginOrPadding?: boolean,
     includePaddingIfMarginTrue?: boolean,
   ) {
-    this.callStack.push(
-      new Call<NT>("dimension", async () => {
-        if (this.__elements.length === 0) {
-          return { width: 0, height: 0 } as NT;
-        }
+    return this.createCall("dimension", async () => {
+      if (this.__elements.length === 0) {
+        return { width: 0, height: 0 } as NT;
+      }
 
-        const el = elementGuard<HTMLElement>(this.__elements[0]);
-        const style = window.getComputedStyle(el);
+      const el = this.__elements[0] as HTMLElement;
+      const style = this.window.getComputedStyle(el);
+      if (!style) return { width: 0, height: 0 } as NT;
 
-        // Get base element dimensions from getBoundingClientRect
-        const rect = el.getBoundingClientRect();
-        let width = rect.width;
-        let height = rect.height;
+      // Get base element dimensions from getBoundingClientRect
+      const rect = el.getBoundingClientRect();
+      let width = rect.width;
+      let height = rect.height;
 
-        let includeMargin = false;
-        let includePadding = true; // Default based on getBoundingClientRect
+      let includeMargin = false;
+      let includePadding = true; // Default based on getBoundingClientRect
 
-        // Determine flags based on arguments provided
-        if (includePaddingIfMarginTrue !== undefined) {
-          // Both arguments provided: dimension(includeMargin, includePadding)
-          includeMargin = !!includeMarginOrPadding;
-          includePadding = !!includePaddingIfMarginTrue;
-        } else if (includeMarginOrPadding !== undefined) {
-          // One argument provided: dimension(includePadding)
-          includePadding = !!includeMarginOrPadding;
-        }
+      // Determine flags based on arguments provided
+      if (includePaddingIfMarginTrue !== undefined) {
+        // Both arguments provided: dimension(includeMargin, includePadding)
+        includeMargin = !!includeMarginOrPadding;
+        includePadding = !!includePaddingIfMarginTrue;
+      } else if (includeMarginOrPadding !== undefined) {
+        // One argument provided: dimension(includePadding)
+        includePadding = !!includeMarginOrPadding;
+      }
 
-        // Subtract padding if includePadding is false
-        if (!includePadding) {
-          const paddingLeft = Number.parseFloat(style.paddingLeft) || 0;
-          const paddingRight = Number.parseFloat(style.paddingRight) || 0;
-          const paddingTop = Number.parseFloat(style.paddingTop) || 0;
-          const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+      // Subtract padding if includePadding is false
+      if (!includePadding) {
+        const paddingLeft = Number.parseFloat(style.paddingLeft) || 0;
+        const paddingRight = Number.parseFloat(style.paddingRight) || 0;
+        const paddingTop = Number.parseFloat(style.paddingTop) || 0;
+        const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
 
-          // Subtract border widths as well
-          const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
-          const borderRight = Number.parseFloat(style.borderRightWidth) || 0;
-          const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
-          const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
+        // Subtract border widths as well
+        const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
+        const borderRight = Number.parseFloat(style.borderRightWidth) || 0;
+        const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
+        const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
 
-          width -= paddingLeft + paddingRight + borderLeft + borderRight;
-          height -= paddingTop + paddingBottom + borderTop + borderBottom;
-        }
+        width -= paddingLeft + paddingRight + borderLeft + borderRight;
+        height -= paddingTop + paddingBottom + borderTop + borderBottom;
+      }
 
-        // If includeMargin is true, calculate outer dimensions
-        if (includeMargin) {
-          const marginLeft = Number.parseFloat(style.marginLeft) || 0;
-          const marginRight = Number.parseFloat(style.marginRight) || 0;
-          const marginTop = Number.parseFloat(style.marginTop) || 0;
-          const marginBottom = Number.parseFloat(style.marginBottom) || 0;
+      // If includeMargin is true, calculate outer dimensions
+      if (includeMargin) {
+        const marginLeft = Number.parseFloat(style.marginLeft) || 0;
+        const marginRight = Number.parseFloat(style.marginRight) || 0;
+        const marginTop = Number.parseFloat(style.marginTop) || 0;
+        const marginBottom = Number.parseFloat(style.marginBottom) || 0;
 
-          const baseWidthForOuter = includePadding ? rect.width : width;
-          const baseHeightForOuter = includePadding ? rect.height : height;
+        const baseWidthForOuter = includePadding ? rect.width : width;
+        const baseHeightForOuter = includePadding ? rect.height : height;
 
-          const outerWidth = baseWidthForOuter + marginLeft + marginRight;
-          const outerHeight = baseHeightForOuter + marginTop + marginBottom;
-
-          return {
-            width,
-            height,
-            outerWidth,
-            outerHeight,
-          } as NT;
-        }
+        const outerWidth = baseWidthForOuter + marginLeft + marginRight;
+        const outerHeight = baseHeightForOuter + marginTop + marginBottom;
 
         return {
           width,
           height,
+          outerWidth,
+          outerHeight,
         } as NT;
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<Dimensions>;
+      }
+
+      return {
+        width,
+        height,
+      } as NT;
+    }) as PromiseLike<Dimensions>;
   }
 
   // --- Visibility Methods ---
 
   isVisible() {
-    this.callStack.push(
-      new Call<NT>("isVisible", async () => {
-        if (this.__elements.length === 0) return false as NT;
-
-        const el = elementGuard<HTMLElement>(this.__elements[0]);
-        const style = window.getComputedStyle(el);
-
-        // Check if element has dimensions
-        if (el.offsetWidth === 0 || el.offsetHeight === 0) return false as NT;
-
-        // Check if element is hidden via CSS
-        if (
-          style.display === "none" ||
-          style.visibility === "hidden" ||
-          style.opacity === "0" ||
-          Number.parseFloat(style.opacity) === 0
-        )
-          return false as NT;
-
-        // Check if element is detached from DOM
-        if (!document.body.contains(el)) return false as NT;
-
-        // Check if any parent is hidden
-        let parent = el.parentElement;
-        while (parent) {
-          const parentStyle = window.getComputedStyle(parent);
-          if (
-            parentStyle.display === "none" ||
-            parentStyle.visibility === "hidden" ||
-            parentStyle.opacity === "0" ||
-            Number.parseFloat(parentStyle.opacity) === 0
-          ) {
-            return false as NT;
-          }
-          parent = parent.parentElement;
-        }
-
-        return true as NT;
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<boolean>;
+    return this.createCall("isVisible", async () => {
+      if (this.__elements.length === 0) return false as NT;
+      const el = this.__elements[0] as HTMLElement;
+      return this.checkElementVisibility(el) as NT;
+    }) as PromiseLike<boolean>;
   }
 
   isHidden() {
-    this.callStack.push(
-      new Call<NT>("isHidden", async () => {
-        if (this.__elements.length === 0) return true as NT;
-
-        const el = elementGuard<HTMLElement>(this.__elements[0]);
-        const style = window.getComputedStyle(el);
-
-        // Check if element has dimensions
-        if (el.offsetWidth === 0 || el.offsetHeight === 0) return true as NT;
-
-        // Check if element is hidden via CSS
-        if (
-          style.display === "none" ||
-          style.visibility === "hidden" ||
-          style.opacity === "0" ||
-          Number.parseFloat(style.opacity) === 0
-        )
-          return true as NT;
-
-        // Check if element is detached from DOM
-        if (!document.body.contains(el)) return true as NT;
-
-        // Check if any parent is hidden
-        let parent = el.parentElement;
-        while (parent) {
-          const parentStyle = window.getComputedStyle(parent);
-          if (
-            parentStyle.display === "none" ||
-            parentStyle.visibility === "hidden" ||
-            parentStyle.opacity === "0" ||
-            Number.parseFloat(parentStyle.opacity) === 0
-          ) {
-            return true as NT;
-          }
-          parent = parent.parentElement;
-        }
-
-        return false as NT;
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<boolean>;
+    return this.createCall("isHidden", async () => {
+      if (this.__elements.length === 0) return true as NT;
+      const el = this.__elements[0] as HTMLElement;
+      return !this.checkElementVisibility(el) as NT;
+    }) as PromiseLike<boolean>;
   }
 
   // --- Scrolling Methods ---
 
   scrollTo(xOrOptions: number | ScrollToOptions, y?: number) {
-    this.callStack.push(
-      new Call<NT>("scrollTo", async () => {
-        this.__elements.forEach((el) => {
-          const element = elementGuard<HTMLElement>(el);
-          if (typeof xOrOptions === "object") {
-            element.scrollTo(xOrOptions);
-          } else if (y !== undefined) {
-            element.scrollTo(xOrOptions, y);
-          } else {
-            element.scrollTo(xOrOptions, 0);
-          }
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.scrollHelper(
+      "scrollTo",
+      xOrOptions,
+      y,
+    ) as CallChainImplThenable<NT>;
   }
 
   scrollBy(xOrOptions: number | ScrollToOptions, y?: number) {
-    this.callStack.push(
-      new Call<NT>("scrollBy", async () => {
-        this.__elements.forEach((el) => {
-          const element = elementGuard<HTMLElement>(el);
-          if (typeof xOrOptions === "object") {
-            element.scrollBy(xOrOptions);
-          } else if (y !== undefined) {
-            element.scrollBy(xOrOptions, y);
-          } else {
-            element.scrollBy(xOrOptions, 0);
-          }
-        });
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.scrollHelper(
+      "scrollBy",
+      xOrOptions,
+      y,
+    ) as CallChainImplThenable<NT>;
   }
 
   scrollIntoView(options?: boolean | ScrollIntoViewOptions) {
-    this.callStack.push(
-      new Call<NT>("scrollIntoView", async () => {
-        if (this.__elements.length === 0) return this.__elements as NT;
-        const el = elementGuard<HTMLElement>(this.__elements[0]);
-        el.scrollIntoView(options);
-        return this.__elements as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+    return this.createCall("scrollIntoView", async () => {
+      if (this.__elements.length === 0) return this.__elements as NT;
+      (this.__elements[0] as HTMLElement).scrollIntoView(options);
+      return this.__elements as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   // --- Transformation Methods ---
 
   map<T>(cb: (el: NT, idx: number) => T) {
-    this.callStack.push(
-      new Call<NT>("map", async () => {
-        return (this.__elements as NT[]).map(cb) as NT;
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<NT[]>;
+    return this.createCall(
+      "map",
+      async () => (this.__elements as NT[]).map(cb) as NT,
+    ) as PromiseLike<NT[]>;
   }
 
   toArray() {
-    this.callStack.push(
-      new Call<NT>("toArray", async () => {
-        return [...(this.__elements as NT[])] as NT;
-      }),
-    );
-    return subChainForNextAwait(this) as PromiseLike<NT[]>;
+    return this.createCall(
+      "toArray",
+      async () => [...(this.__elements as NT[])] as NT,
+    ) as PromiseLike<NT[]>;
   }
 
   filter(selector: string) {
-    this.callStack.push(
-      new Call<NT>("filter", async () => {
-        return this.__elements.filter(
+    return this.createCall(
+      "filter",
+      async () =>
+        this.__elements.filter(
           (el) => el instanceof Element && el.matches(selector),
-        ) as NT;
-      }),
-    );
-    return subChainForNextAwait(this);
+        ) as NT,
+    ) as CallChainImplThenable<NT>;
+  }
+
+  // --- Cleanup Methods ---
+
+  /** memory cleanup (chain becomes useless after calling this method) */
+  dispose(): PromiseLike<void> {
+    this.callStack = [];
+    this.resultStack = [];
+    // @ts-ignore
+    this.lastResult = undefined;
+    // @ts-ignore
+    this.stoppedWithError = undefined;
+    return Promise.resolve();
   }
 
   // TODO:
+  // - ready (isReady)
   // - serialize (to URL string, JSON, etc.)
   // - deserialize (from URL string, JSON, etc.)
-  // - dispose() (cleanup, remove event listeners - therefore keep track of on() refs, etc.)
   // Re-use the common/* shared code!
-  // Remove duplicated code in the chain methods
+
+  // Add this helper function inside the CallChainImpl class or before it as a utility function
+
+  private checkElementVisibility(element: HTMLElement): boolean {
+    const style = this.window.getComputedStyle(element);
+    if (!style) return false;
+
+    // Check if element has dimensions
+    if (element.offsetWidth === 0 || element.offsetHeight === 0) return false;
+
+    // Check if element is hidden via CSS
+    if (
+      style.display === "none" ||
+      style.visibility === "hidden" ||
+      style.opacity === "0" ||
+      Number.parseFloat(style.opacity) === 0
+    )
+      return false;
+
+    // Check if element is detached from DOM
+    if (!this.document.body.contains(element)) return false;
+
+    // Check if any parent is hidden
+    let parent = element.parentElement;
+    while (parent) {
+      const parentStyle = this.window.getComputedStyle(parent);
+      if (
+        parentStyle &&
+        (parentStyle.display === "none" ||
+          parentStyle.visibility === "hidden" ||
+          parentStyle.opacity === "0" ||
+          Number.parseFloat(parentStyle.opacity) === 0)
+      ) {
+        return false;
+      }
+      parent = parent.parentElement;
+    }
+    return true;
+  }
+
+  private createCall(
+    methodName: string,
+    handler: () => Promise<NT>,
+  ): CallChainImplThenable<NT> | CallChainImpl<NT> {
+    this.callStack.push(new Call<NT>(methodName, handler));
+    return subChainForNextAwait(this);
+  }
+
+  private createGetterSetterCall<T, V>(
+    methodName: string,
+    value: V | undefined,
+    getter: () => T,
+    setter: (value: V) => void,
+  ): CallChainImplThenable<NT> | CallChainImpl<NT> {
+    if (value !== undefined) {
+      return this.createCall(methodName, async () => {
+        setter(value);
+        return this.__elements as NT;
+      });
+    } else {
+      return this.createCall(methodName, async () => {
+        return getter() as unknown as NT;
+      });
+    }
+  }
+
+  private traverse<R = NT>(
+    methodName: string,
+    selector: (el: Element) => Element | Element[] | null | undefined,
+  ): CallChainImplThenable<R> | CallChainImpl<R> {
+    return this.createCall(methodName, async () => {
+      return this.__elements.flatMap((el) => {
+        if (el instanceof Element) {
+          try {
+            const result = selector(el);
+            if (Array.isArray(result)) {
+              return result.filter(
+                (item): item is Element => item instanceof Element,
+              );
+            } else if (result instanceof Element) {
+              return [result];
+            }
+          } catch (err) {
+            console.warn("Error in traverse selector function:", err);
+          }
+        }
+        return [];
+      }) as NT;
+    }) as unknown as CallChainImplThenable<R> | CallChainImpl<R>;
+  }
+
+  private getEventMap(element: HTMLElement): Map<string, Set<EventListener>> {
+    if (!element._dequeryEvents) {
+      element._dequeryEvents = new Map();
+    }
+    return element._dequeryEvents;
+  }
+
+  private addElementEvent(
+    element: HTMLElement,
+    eventType: string,
+    handler: EventListener,
+  ): void {
+    const eventMap = this.getEventMap(element);
+
+    if (!eventMap.has(eventType)) {
+      eventMap.set(eventType, new Set());
+    }
+
+    eventMap.get(eventType)!.add(handler);
+    element.addEventListener(eventType, handler);
+  }
+
+  private removeElementEvent(
+    element: HTMLElement,
+    eventType: string,
+    handler?: EventListener,
+  ): void {
+    const eventMap = this.getEventMap(element);
+
+    if (!eventMap.has(eventType)) return;
+
+    if (handler) {
+      // Remove specific handler
+      if (eventMap.get(eventType)!.has(handler)) {
+        element.removeEventListener(eventType, handler);
+        eventMap.get(eventType)!.delete(handler);
+
+        if (eventMap.get(eventType)!.size === 0) {
+          eventMap.delete(eventType);
+        }
+      }
+    } else {
+      // Remove all handlers for this event type
+      eventMap.get(eventType)!.forEach((h: EventListener) => {
+        element.removeEventListener(eventType, h);
+      });
+      eventMap.delete(eventType);
+    }
+  }
+
+  private clearElementEvents(element: HTMLElement): void {
+    const eventMap = this.getEventMap(element);
+
+    eventMap.forEach((handlers, eventType) => {
+      handlers.forEach((handler: EventListener) => {
+        element.removeEventListener(eventType, handler);
+      });
+    });
+
+    eventMap.clear();
+  }
+
+  private scrollHelper(
+    methodName: "scrollTo" | "scrollBy",
+    xOrOptions: number | ScrollToOptions,
+    y?: number,
+  ): CallChainImplThenable<NT> | CallChainImpl<NT> {
+    return this.createCall(methodName, async () => {
+      this.__elements.forEach((el) => {
+        const element = el as HTMLElement;
+        if (typeof xOrOptions === "object") {
+          element[methodName](xOrOptions);
+        } else if (y !== undefined) {
+          element[methodName](xOrOptions, y);
+        } else {
+          element[methodName](xOrOptions, 0);
+        }
+      });
+      return this.__elements as NT;
+    });
+  }
+
+  /**
+   * Helper method to process form elements and apply a callback to each
+   * @private
+   */
+  // TODO: move all private methods outside of the class!
+  private processFormElements(
+    el: NodeType,
+    callback: (input: HTMLInputElement, key: string) => void,
+  ): void {
+    if (el instanceof Element) {
+      const inputElements = el.querySelectorAll(
+        "input, select, textarea",
+      ) as NodeListOf<HTMLInputElement>;
+
+      inputElements.forEach((input) => {
+        if (["INPUT", "SELECT", "TEXTAREA"].includes(input.tagName)) {
+          const key = input.name || input.id;
+          callback(input, key);
+        }
+      });
+    }
+  }
 }
 
 // custom promise chain
@@ -1242,7 +1170,7 @@ export class CallChainImplThenable<
     onfulfilled?: (value: CallChainImpl<NT>) => CallChainImpl<NT>,
     onrejected?: (reason: any) => any | PromiseLike<any>,
   ): Promise<any> {
-    this.chainAsyncStartTime = performance.now();
+    this.chainAsyncStartTime = this.performance.now() ?? 0;
 
     if (this.stoppedWithError) {
       return Promise.reject(this.stoppedWithError).then(
@@ -1275,7 +1203,8 @@ export class CallChainImplThenable<
       }
 
       // performance metrics tracking
-      this.chainAsyncFinishTime = performance.now() - this.chainAsyncStartTime;
+      this.chainAsyncFinishTime =
+        (this.performance.now() ?? 0) - this.chainAsyncStartTime;
 
       return Promise.resolve(result).then(onfulfilled as any, onrejected);
     }
@@ -1324,7 +1253,7 @@ export class CallChainImplThenable<
 
         // performance metrics tracking
         this.chainAsyncFinishTime =
-          performance.now() - this.chainAsyncStartTime;
+          (this.performance.now() ?? 0) - this.chainAsyncStartTime;
 
         return this;
       },
@@ -1382,7 +1311,7 @@ export function dequery<NT = ChainMethodReturnType>(
     | Ref<NodeType, any>
     | RenderInput
     | Function,
-  options: DequeryOptions<NT> | ElementCreationOptions = getDefaultConfig(),
+  options: DequeryOptions<NT> & ElementCreationOptions = getDefaultConfig(),
 ): CallChainImplThenable<NT> | CallChainImpl<NT> {
   // async co-routine execution
   if (typeof selectorRefOrEl === "function") {
@@ -1420,9 +1349,10 @@ export function dequery<NT = ChainMethodReturnType>(
 
   if (typeof selectorRefOrEl === "string") {
     if (selectorRefOrEl.indexOf("<") === 0) {
-      const elements = renderHTML(selectorRefOrEl);
+      const elements = renderHTML(selectorRefOrEl, chain.options);
       const renderRootEl = elements[0];
-      const { text, html, ...attributes } = options as ElementCreationOptions;
+
+      const { text, html, ...attributes } = chain.elementCreationOptions;
 
       if (renderRootEl instanceof Element) {
         Object.entries(attributes).forEach(([key, value]) => {
@@ -1453,8 +1383,8 @@ export function dequery<NT = ChainMethodReturnType>(
   } else if (isJSX(selectorRefOrEl)) {
     const renderResult = renderIsomorphicSync(
       selectorRefOrEl as RenderInput,
-      undefined,
-      globalThis as Globals,
+      chain.document.body,
+      chain.globals,
     );
     const elements = (
       typeof renderResult !== "undefined"
@@ -1487,60 +1417,107 @@ export function isDequery(
   );
 }
 
+/**
+ * Creates a promise that rejects if the operation doesn't complete within the timeout
+ * @export
+ */
+export function createTimeoutPromise<T>(
+  timeoutMs: number,
+  operation: () => Promise<T> | T,
+  timeoutCallback?: (ms: number) => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      timeoutCallback?.(timeoutMs);
+      reject(new Error(`Timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    Promise.resolve().then(async () => {
+      try {
+        const result = await operation();
+        clearTimeout(timeoutId);
+        resolve(result);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    });
+  });
+}
+
+export function runWithTimeGuard<NT>(
+  timeout: number,
+  fn: Function,
+  args: any[],
+  onError: (ms: number, call: Call<NT>) => void,
+): Promise<any> {
+  return createTimeoutPromise(
+    timeout,
+    () => fn(...args),
+    (ms) => {
+      const fakeCall = new Call<NT>("timeout", async () => [] as NT);
+      onError(ms, fakeCall);
+    },
+  );
+}
+
 export async function waitForWithPolling<T>(
   check: () => T | null | undefined,
   timeout: number,
   interval = 1,
 ): Promise<T> {
   const start = Date.now();
-  return new Promise<T>((resolve, reject) => {
-    const timer = setInterval(() => {
-      try {
-        const result = check();
-        if (result != null) {
+
+  return createTimeoutPromise(timeout, () => {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setInterval(() => {
+        try {
+          const result = check();
+          if (result != null) {
+            clearInterval(timer);
+            resolve(result);
+          }
+        } catch (err) {
           clearInterval(timer);
-          resolve(result);
-        } else if (Date.now() - start >= timeout) {
-          clearInterval(timer);
-          reject(new Error(`Timeout after ${timeout}ms`));
+          reject(err);
         }
-      } catch (err) {
-        clearInterval(timer);
-        reject(err);
-        throw err;
-      }
-    }, interval);
+      }, interval);
+    });
   });
 }
 
 export async function waitForDOM(
   check: () => Array<NodeType>,
   timeout: number,
+  document?: Document,
 ): Promise<Array<NodeType>> {
-  return new Promise<Array<NodeType>>((resolve, reject) => {
-    const initialResult = check();
-    //console.log("waitFor initialResult", initialResult);
-    if (initialResult.length) return resolve(initialResult);
+  const initialResult = check();
+  if (initialResult.length) return initialResult;
 
-    const timeoutId = setTimeout(() => {
-      observer.disconnect();
-      reject(new Error(`Timeout after ${timeout}ms`));
-    }, timeout);
-
-    const observer = new MutationObserver(() => {
-      const result = check();
-      //console.log("waitFor result", initialResult);
-      if (result.length) {
-        clearTimeout(timeoutId);
-        observer.disconnect();
-        resolve(result);
+  return createTimeoutPromise(timeout, () => {
+    return new Promise<Array<NodeType>>((resolve) => {
+      if (!document) {
+        // Fallback if no document is provided
+        setTimeout(() => resolve(check()), 0);
+        return;
       }
-    });
 
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
+      const observer = new MutationObserver(() => {
+        const result = check();
+        if (result.length) {
+          observer.disconnect();
+          resolve(result);
+        }
+      });
+
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+
+      // Return function to clean up observer on timeout
+      return () => observer.disconnect();
     });
   });
 }
@@ -1633,40 +1610,117 @@ export async function waitForRef<T>(
   return waitForWithPolling(() => ref.current, timeout);
 }
 
+export function parseHTML(
+  str: string,
+  type: DOMParserSupportedType,
+  options: DequeryOptions<any>,
+): Document {
+  const parser = new options!.globals!.window!.DOMParser();
+  return parser.parseFromString(str, type);
+}
+
+export function isHTML(doc: Document): boolean {
+  return doc.documentElement.querySelectorAll("*").length > 2; // 2 = <html> and <body>
+}
+
 export function renderHTML(
   html: string,
+  options: DequeryOptions<any>,
   type: DOMParserSupportedType = "text/html",
 ) {
-  const newDom = new DOMParser().parseFromString(html, type);
-  return Array.from(newDom.body.childNodes);
+  return Array.from(parseHTML(html, type, options).body.childNodes);
 }
 
-export function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
+/**
+ * Resolves various types of content into a DOM element
+ * @export
+ */
+export async function resolveContent<T = ChainMethodReturnType>(
+  content:
+    | string
+    | RenderInput
+    | NodeType
+    | Ref<NodeType>
+    | CallChainImpl<T>
+    | CallChainImplThenable<T>
+    | null
+    | undefined,
+  options: DequeryOptions<any>,
+): Promise<NodeType | null> {
+  if (content == null) {
+    return null;
+  }
+
+  if (typeof content === "string") {
+    const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(content);
+    if (hasHtmlTags) {
+      return renderHTML(content, options)[0];
+    } else {
+      return options.globals!.document!.createTextNode(content);
+    }
+  } else if (isJSX(content)) {
+    return renderIsomorphicSync(
+      content as RenderInput,
+      options.globals!.document!.body,
+      options.globals as Globals,
+    ) as NodeType;
+  } else if (isRef(content)) {
+    await waitForRef(content as Ref<NodeType>, options.timeout!);
+    return content.current!;
+  } else if ((content as Node).nodeType) {
+    return content as NodeType;
+  } else if (isDequery(content)) {
+    const firstElement = await content.getFirstElement();
+    return firstElement as NodeType;
+  }
+
+  console.warn("resolveContent: unsupported content type", content);
+  return null;
 }
 
-export function runWithTimeGuard<NT>(
+/**
+ * Resolves various types of targets into an array of DOM elements
+ * @export
+ */
+export async function resolveTargets<T = ChainMethodReturnType>(
+  target:
+    | string
+    | NodeType
+    | Ref<NodeType>
+    | CallChainImpl<T>
+    | CallChainImplThenable<T>,
   timeout: number,
-  fn: Function,
-  args: any[],
-  onError: (ms: number, call: Call<NT>) => void,
-): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      const fakeCall = new Call<NT>("timeout", async () => [] as NT);
-      onError(timeout, fakeCall);
-      reject(new Error(`Timeout after ${timeout}ms`));
-    }, timeout);
+  document?: Document,
+): Promise<NodeType[]> {
+  let targetElements: NodeType[] = [];
 
-    (async () => {
-      try {
-        const result = await fn(...args);
-        clearTimeout(timeoutId);
-        resolve(result);
-      } catch (error) {
-        clearTimeout(timeoutId);
-        reject(error);
-      }
-    })();
-  });
+  if (isRef(target)) {
+    await waitForRef(target as Ref<NodeType>, timeout);
+    targetElements = [target.current!];
+  } else if (typeof target === "string" && document) {
+    const result = await waitForDOM(
+      () => {
+        const el = document.querySelector(target);
+        if (el) {
+          return [el];
+        } else {
+          return [];
+        }
+      },
+      timeout,
+      document,
+    );
+    const el = result[0];
+    if (el) targetElements = [el as NodeType];
+  } else if ((target as Node).nodeType) {
+    targetElements = [target as NodeType];
+  } else if (isDequery(target)) {
+    const elements = (target as CallChainImpl<T>).__elements;
+    targetElements = elements
+      .filter((el) => (el as Node).nodeType !== undefined)
+      .map((el) => el as NodeType);
+  } else {
+    console.warn("resolveTargets: expected selector, ref or node, got", target);
+  }
+  return targetElements;
 }

@@ -1,9 +1,9 @@
-import type { Store } from "@/store/store.js";
+import type { Store } from "../store/store.js";
 import type * as CSS from "csstype";
 
 export type * as CSS from "csstype";
 
-export type Globals = Window & typeof globalThis;
+export type Globals = Performance & Window & typeof globalThis;
 
 // --- Types & Helpers ---
 export type NodeType =

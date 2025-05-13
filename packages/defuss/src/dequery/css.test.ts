@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { $, sleep } from "./dequery.js";
+import { wait } from "../common/delay.js";
+import { $ } from "./dequery.js";
 
 describe("CSS class manipulation", async () => {
   it("can toggle a CSS class", async () => {
@@ -75,13 +76,13 @@ describe("CSS class manipulation", async () => {
     const duration = 100; // Use a shorter duration for real timer tests
     const chain = await $(document.body).animateClass("fade-out", duration);
 
-    await sleep(duration / 2); // Wait for half the duration
+    await wait(duration / 2); // Wait for half the duration
     // Immediately after call, class should be added
     expect(document.body.classList.contains("fade-out")).toBe(true);
 
     // Wait for the animation to complete
 
-    await sleep(duration / 2); // Wait for half the duration
+    await wait(duration / 2); // Wait for half the duration
 
     // After waiting, class should be removed
     expect(document.body.classList.contains("fade-out")).toBe(false);

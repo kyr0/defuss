@@ -1,4 +1,4 @@
-import type { Dequery } from "@/dequery/index.js";
+import type { Dequery } from "../dequery/index.js";
 import { isDequery } from "../dequery/index.js";
 import type {
   VNodeChild,
@@ -8,7 +8,7 @@ import type {
   VNodeAttributes,
   DomAbstractionImpl,
   Globals,
-} from "@/render/types.js";
+} from "./types.js";
 
 const CLASS_ATTRIBUTE_NAME = "class";
 const XLINK_ATTRIBUTE_NAME = "xlink";
@@ -403,9 +403,10 @@ export const renderIsomorphicSync = (
 ): SyncRenderResult => {
   if (isDequery(parentDomElement)) {
     parentDomElement =
-      ((parentDomElement as Dequery).getFirstElement() as Element) ||
+      ((parentDomElement as Dequery).getFirstElement() as unknown as Element) ||
       parentDomElement;
   }
+
   let renderResult: SyncRenderResult;
 
   if (typeof virtualNode === "string") {
