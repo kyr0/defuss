@@ -1,1 +1,1 @@
-export * from "@/store/store.js"
+export * from "./store.js";

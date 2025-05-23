@@ -3,7 +3,7 @@ import type {
   PersistenceProviderType,
   PersistenceProviderImpl,
   PersistenceProviderOptions,
-} from "../provider.js";
+} from "../types.js";
 
 /** returns the default persistence provider for each runtime environment */
 export const getPersistenceProvider = <T>(

@@ -1,2 +1,2 @@
-export * from './memory.js'
-export * from './generic.js'
+export * from "./memory.js";
+export * from "./generic.js";

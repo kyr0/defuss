@@ -7,20 +7,13 @@
   },
   "license": "MIT",
   "description": "Defuss Integration for Astro.",
-  "keywords": [
-    "jsx",
-    "render",
-    "ssr",
-    "isomorphic",
-    "astro"
-  ],
+  "keywords": ["jsx", "render", "ssr", "isomorphic", "astro"],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
   },
   "scripts": {
     "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
-    "pretest": "pnpm run build",
     "prebuild": "pnpm run clean",
     "build": "pkgroll",
     "postbuild": "tsx ./scripts/finalize-build.ts"
@@ -66,9 +59,7 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "devDependencies": {
     "pkgroll": "^2.5.1",
     "typescript": "^5.6.3",

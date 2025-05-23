@@ -1,3 +1,4 @@
+import type { NodeType } from "../render/index.js";
 import type { Dequery } from "../dequery/index.js";
 import { isDequery } from "../dequery/index.js";
 import type {
@@ -105,7 +106,7 @@ export const jsx = (
     type,
     attributes,
     children,
-  };
+  } as VNode;
 };
 
 export const observeUnmount = (domNode: Node, onUnmount: () => void): void => {
@@ -389,7 +390,11 @@ export type SyncRenderInput =
   | undefined
   | string
   | Array<VNode | undefined | string>;
-export type ParentElementInput = Element | Document | Dequery | undefined;
+export type ParentElementInput =
+  | Element
+  | Document
+  | Dequery<NodeType>
+  | undefined;
 export type SyncRenderResult =
   | Array<Element | Text | undefined>
   | Element
@@ -403,8 +408,9 @@ export const renderIsomorphicSync = (
 ): SyncRenderResult => {
   if (isDequery(parentDomElement)) {
     parentDomElement =
-      ((parentDomElement as Dequery).getFirstElement() as unknown as Element) ||
-      parentDomElement;
+      ((
+        parentDomElement as Dequery<NodeType>
+      ).getFirstElement() as unknown as Element) || parentDomElement;
   }
 
   let renderResult: SyncRenderResult;
@@ -425,8 +431,8 @@ export const renderIsomorphicSync = (
 
 export type ParentElementInputAsync =
   | ParentElementInput
-  | Dequery
-  | Promise<ParentElementInput | Dequery>;
+  | Dequery<NodeType>
+  | Promise<ParentElementInput | Dequery<NodeType>>;
 
 export const renderIsomorphicAsync = async (
   virtualNode: SyncRenderInput | Promise<SyncRenderInput>,
@@ -434,13 +440,15 @@ export const renderIsomorphicAsync = async (
   globals: Globals,
 ): Promise<SyncRenderResult> => {
   if (parentDomElement instanceof Promise) {
-    parentDomElement = (await parentDomElement) as ParentElementInput | Dequery;
+    parentDomElement = (await parentDomElement) as
+      | ParentElementInput
+      | Dequery<NodeType>;
   }
 
   if (isDequery(parentDomElement)) {
     // awaits the dequery chain to resolve or fail, then renders the VDOM
     parentDomElement = (
-      await (parentDomElement as Dequery).toArray()
+      await (parentDomElement as Dequery<NodeType>).toArray()
     )[0] as Element;
   }
 

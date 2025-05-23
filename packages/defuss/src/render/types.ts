@@ -154,7 +154,11 @@ export interface KeyFrameProperties {
   "100%"?: Partial<CSSProperties>;
 }
 
-export type RefUpdateRenderFnInput = string | RenderInput | NodeType | Dequery;
+export type RefUpdateRenderFnInput =
+  | string
+  | RenderInput
+  | NodeType
+  | Dequery<NodeType>;
 export type RefUpdateFn<D> = (state: D) => void;
 export type RefUpdateRenderFn = (
   input: RefUpdateRenderFnInput,

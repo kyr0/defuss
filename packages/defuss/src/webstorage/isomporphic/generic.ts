@@ -5,17 +5,17 @@ export interface GenericLocalStorage<T> {
    *
    * Dispatches a storage event on Window objects holding an equivalent Storage object.
    */
-  clear(): void
+  clear(): void;
 
   /** Returns the current value associated with the given key, or null if the given key does not exist. */
-  getItem(key: string): T | null
+  getItem(key: string): T | null;
 
   /**
    * Removes the key/value pair with the given key, if a key/value pair with the given key exists.
    *
    * Dispatches a storage event on Window objects holding an equivalent Storage object.
    */
-  removeItem(key: string): void
+  removeItem(key: string): void;
 
   /**
    * Sets the value of the pair identified by key to value, creating a new key/value pair if none existed for key previously.
@@ -24,5 +24,5 @@ export interface GenericLocalStorage<T> {
    *
    * Dispatches a storage event on Window objects holding an equivalent Storage object.
    */
-  setItem(key: string, value: T): void
+  setItem(key: string, value: T): void;
 }

@@ -382,4 +382,14 @@ describe("Store", () => {
       );
     });
   });
+
+  it("can initStorage without value and storageProvider === provider (", () => {
+    const store = createStore({ count: 0 });
+    store.set("count", 1);
+    store.persist("test-store", "memory");
+    store.persist("test-store", "memory");
+
+    expect(store.get("count")).toBeDefined();
+    expect(store.get("count")).toEqual(1);
+  });
 });

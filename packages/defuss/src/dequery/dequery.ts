@@ -81,7 +81,10 @@ export const emptyImpl = async <T>(nodes: Array<T>) => {
   return nodes as T[];
 };
 
-export class CallChainImpl<NT = DequerySyncMethodReturnType> {
+export class CallChainImpl<
+  NT = DequerySyncMethodReturnType,
+  ET extends Dequery<NT> = Dequery<NT>,
+> {
   [index: number]: NT;
 
   isResolved: boolean;
@@ -92,7 +95,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   stackPointer: number;
   lastResolvedStackPointer: number;
   stoppedWithError: Error | null;
-  lastResult: NT[] | CallChainImpl<NT> | CallChainImplThenable<NT>;
+  lastResult: NT[] | CallChainImpl<NT, ET> | CallChainImplThenable<NT, ET>;
   length: number;
   chainStartTime: number;
   chainAsyncStartTime: number;
@@ -165,7 +168,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   // async, direct result method
 
   getFirstElement() {
-    return createCall<NT>(
+    return createCall(
       this,
       "getFirstElement",
       async () => this[0],
@@ -174,15 +177,15 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
 
   // async, wrapped/chainable API methods
 
-  debug(cb: (chain: CallChainImpl<NT>) => void) {
-    return createCall<NT>(this, "debug", async () => {
+  debug(cb: (chain: CallChainImpl<NT, ET>) => void) {
+    return createCall(this, "debug", async () => {
       cb(this);
       return this.nodes as NT;
     });
   }
 
   ref(ref: Ref<NodeType>) {
-    return createCall<NT>(this, "ref", async () => {
+    return createCall(this, "ref", async () => {
       await waitForRef(ref, this.options.timeout!);
       if (ref.current) {
         return [ref.current] as NT;
@@ -193,7 +196,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   }
 
   query(selector: string) {
-    return createCall<NT>(this, "query", async () => {
+    return createCall(this, "query", async () => {
       return Array.from(
         await waitForDOM(
           () => Array.from(this.document.querySelectorAll(selector) || []),
@@ -205,15 +208,17 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   }
 
   next() {
-    return traverse<NT>(this, "next", (el) => el.nextElementSibling);
+    return traverse(this, "next", (el) => el.nextElementSibling);
   }
 
   prev() {
-    return traverse<NT>(this, "prev", (el) => el.previousElementSibling);
+    return traverse(this, "prev", (el) => el.previousElementSibling);
   }
 
-  find(selector: string) {
-    return createCall<NT>(this, "find", async () => {
+  find(
+    selector: string,
+  ): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
+    return createCall(this, "find", async () => {
       // Use Promise.all to wait for all elements to be found
       const results = await Promise.all(
         this.nodes.map(async (el) => {
@@ -225,7 +230,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
         }),
       );
       return results.flat() as NT;
-    }) as PromiseLike<CallChainImplThenable<NT>>;
+    }) as CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET>;
   }
 
   parent() {
@@ -241,23 +246,23 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   }
 
   first() {
-    return createCall<NT>(this, "first", async () => {
+    return createCall(this, "first", async () => {
       return this.nodes.slice(0, 1) as NT;
     });
   }
 
   last() {
-    return createCall<NT>(this, "last", async () => {
+    return createCall(this, "last", async () => {
       return this.nodes.slice(-1) as NT;
     });
   }
 
   // --- Attribute & Property Methods ---
 
-  attr(name: string, value: string): PromiseLike<CallChainImplThenable<NT>>;
+  attr(name: string, value: string): PromiseLike<ET>;
   attr(name: string): PromiseLike<string | null>;
   attr(name: string, value?: string) {
-    return createGetterSetterCall<NT, string | null, string>(
+    return createGetterSetterCall(
       this,
       "attr",
       value,
@@ -270,17 +275,17 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
       (val) => {
         this.nodes.forEach((el) => (el as HTMLElement).setAttribute(name, val));
       },
-    ) as PromiseLike<string | null | CallChainImplThenable<NT>>;
+    ) as PromiseLike<string | null | ET>;
   }
 
   // TODO: improve type safety here and remove any
   prop<K extends keyof AllHTMLElements>(
     name: K,
     value: DOMPropValue,
-  ): PromiseLike<CallChainImplThenable<NT>>;
+  ): PromiseLike<ET>;
   prop<K extends keyof AllHTMLElements>(name: K): PromiseLike<string>;
   prop<K extends keyof AllHTMLElements>(name: K, value?: DOMPropValue) {
-    return createGetterSetterCall<NT, DOMPropValue, DOMPropValue>(
+    return createGetterSetterCall(
       this,
       "prop",
       value,
@@ -295,18 +300,18 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
           (el as any)[name] = val;
         });
       },
-    ) as PromiseLike<DOMPropValue | CallChainImplThenable<NT>>;
+    ) as PromiseLike<DOMPropValue | ET>;
   }
 
   // --- CSS & Class Methods ---
 
-  css(prop: CSSProperties): PromiseLike<CallChainImplThenable<NT>>;
-  css(prop: string, value: string): PromiseLike<CallChainImplThenable<NT>>;
+  css(prop: CSSProperties): PromiseLike<ET>;
+  css(prop: string, value: string): PromiseLike<ET>;
   css(prop: string): PromiseLike<string>;
   css(prop: string | CSSProperties, value?: string) {
     if (typeof prop === "object") {
       // Handle object-style CSS properties
-      return createCall<NT>(this, "css", async () => {
+      return createCall(this, "css", async () => {
         this.nodes.forEach((el) => {
           const elementStyle = (el as HTMLElement).style;
           for (const k in prop) {
@@ -317,10 +322,10 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
           }
         });
         return this.nodes as NT;
-      }) as PromiseLike<CallChainImplThenable<NT>>;
+      }) as PromiseLike<ET>;
     }
 
-    return createGetterSetterCall<NT, string, string>(
+    return createGetterSetterCall(
       this,
       "css",
       value,
@@ -335,27 +340,27 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
           (el as HTMLElement).style.setProperty(prop, val);
         });
       },
-    ) as PromiseLike<CallChainImplThenable<NT> | string>;
+    ) as PromiseLike<ET | string>;
   }
 
-  addClass(name: string | Array<string>) {
-    return createCall<NT>(this, "addClass", async () => {
+  addClass(name: string | Array<string>): ET {
+    return createCall(this, "addClass", async () => {
       const list = Array.isArray(name) ? name : [name];
       this.nodes.forEach((el) => (el as HTMLElement).classList.add(...list));
       return this.nodes as NT;
-    }) as PromiseLike<CallChainImplThenable<NT>>;
+    }) as unknown as ET;
   }
 
-  removeClass(name: string | Array<string>) {
-    return createCall<NT>(this, "removeClass", async () => {
+  removeClass(name: string | Array<string>): ET {
+    return createCall(this, "removeClass", async () => {
       const list = Array.isArray(name) ? name : [name];
       this.nodes.forEach((el) => (el as HTMLElement).classList.remove(...list));
       return this.nodes as NT;
-    }) as PromiseLike<CallChainImplThenable<NT>>;
+    }) as unknown as ET;
   }
 
   hasClass(name: string) {
-    return createCall<NT>(
+    return createCall(
       this,
       "hasClass",
       async () =>
@@ -365,38 +370,38 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
     ) as PromiseLike<boolean>;
   }
 
-  toggleClass(name: string) {
-    return createCall<NT>(this, "toggleClass", async () => {
+  toggleClass(name: string): ET {
+    return createCall(this, "toggleClass", async () => {
       this.nodes.forEach((el) => (el as HTMLElement).classList.toggle(name));
       return this.nodes as NT;
-    }) as PromiseLike<CallChainImplThenable<NT>>;
+    }) as unknown as ET;
   }
 
-  animateClass(name: string, duration: number) {
-    return createCall<NT>(this, "animateClass", async () => {
+  animateClass(name: string, duration: number): ET {
+    return createCall(this, "animateClass", async () => {
       this.nodes.forEach((el) => {
         const e = el as HTMLElement;
         e.classList.add(name);
         setTimeout(() => e.classList.remove(name), duration);
       });
       return this.nodes as NT;
-    }) as PromiseLike<CallChainImplThenable<NT>>;
+    }) as unknown as ET;
   }
 
   // --- Content Manipulation Methods ---
 
-  empty() {
-    return createCall<NT>(
+  empty(): ET {
+    return createCall(
       this,
       "empty",
       async () => emptyImpl(this.nodes) as NT,
-    ) as PromiseLike<CallChainImplThenable<NT>>;
+    ) as unknown as ET;
   }
 
   html(): PromiseLike<string>;
-  html(html: string): PromiseLike<CallChainImplThenable<NT>>;
+  html(html: string): PromiseLike<ET>;
   html(html?: string) {
-    return createGetterSetterCall<NT, string, string>(
+    return createGetterSetterCall(
       this,
       "html",
       html,
@@ -411,24 +416,24 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
           (el as HTMLElement).innerHTML = val;
         });
       },
-    ) as PromiseLike<string | CallChainImplThenable<NT>>;
+    ) as PromiseLike<string | ET>;
   }
 
-  jsx(vdom: RenderInput): CallChainImplThenable<NT> {
+  jsx(vdom: RenderInput): ET {
     if (!isJSX(vdom)) {
       throw new Error("Invalid JSX input");
     }
 
-    return createCall<NT>(this, "jsx", async () => {
+    return createCall(this, "jsx", async () => {
       this.nodes.forEach((el) =>
         updateDomWithVdom(el as HTMLElement, vdom, globalThis as Globals),
       );
       return this.nodes as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
   text(text?: string) {
-    return createGetterSetterCall<NT, string, string>(
+    return createGetterSetterCall(
       this,
       "text",
       text,
@@ -446,12 +451,12 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
     ) as PromiseLike<string>;
   }
 
-  remove() {
-    return createCall<NT>(this, "remove", async () => {
+  remove(): ET {
+    return createCall(this, "remove", async () => {
       const removedElements = [...this.nodes];
       this.nodes.forEach((el) => (el as HTMLElement).remove());
       return removedElements as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
   replaceWith<T = NT>(
@@ -462,8 +467,8 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
       | Ref<NodeType>
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
-  ) {
-    return createCall<NT>(this, "replaceWith", async () => {
+  ): ET {
+    return createCall(this, "replaceWith", async () => {
       const newElement = await renderNode(content, this);
       if (!newElement) return this.nodes as NT;
 
@@ -484,7 +489,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
       });
 
       return this.nodes as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
   append<T = NT>(
@@ -495,8 +500,8 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
       | Ref<NodeType>
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
-  ) {
-    return createCall<NT>(this, "append", async () => {
+  ): ET {
+    return createCall(this, "append", async () => {
       // Don't do anything if content is null or undefined
       if (content == null) {
         return this.nodes as NT;
@@ -554,7 +559,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
       }
 
       return this.nodes as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
   appendTo<T = NT>(
@@ -564,8 +569,8 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
       | Ref<NodeType>
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
-  ) {
-    return createCall<NT>(this, "appendTo", async () => {
+  ): ET {
+    return createCall(this, "appendTo", async () => {
       const nodes = await resolveNodes(
         target,
         this.options.timeout!,
@@ -585,11 +590,11 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
       });
 
       return this.nodes as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
-  update(input: string | RenderInput | NodeType | Dequery) {
-    return createCall<NT>(this, "update", async () => {
+  update(input: string | RenderInput | NodeType | Dequery<NT>): ET {
+    return createCall(this, "update", async () => {
       if (isDequery(input)) {
         input = input[0] as HTMLElement;
       }
@@ -633,53 +638,53 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
         console.warn("update: unsupported content type", input);
       }
       return this.nodes as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
   // --- Event Methods ---
 
-  on(event: string, handler: EventListener) {
-    return createCall<NT>(this, "on", async () => {
+  on(event: string, handler: EventListener): ET {
+    return createCall(this, "on", async () => {
       this.nodes.forEach((el) => {
         addElementEvent(el as HTMLElement, event, handler);
       });
       return this.nodes as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
-  off(event: string, handler?: EventListener) {
-    return createCall<NT>(this, "off", async () => {
+  off(event: string, handler?: EventListener): ET {
+    return createCall(this, "off", async () => {
       this.nodes.forEach((el) => {
         removeElementEvent(el as HTMLElement, event, handler);
       });
       return this.nodes as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
-  clearEvents() {
-    return createCall<NT>(this, "clearEvents", async () => {
+  clearEvents(): ET {
+    return createCall(this, "clearEvents", async () => {
       this.nodes.forEach((el) => {
         clearElementEvents(el as HTMLElement);
       });
       return this.nodes as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
-  trigger(eventType: string) {
-    return createCall<NT>(this, "trigger", async () => {
+  trigger(eventType: string): ET {
+    return createCall(this, "trigger", async () => {
       this.nodes.forEach((el) =>
         (el as HTMLElement).dispatchEvent(
           new Event(eventType, { bubbles: true, cancelable: true }),
         ),
       );
       return this.nodes as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
   // --- Position Methods ---
 
   position() {
-    return createCall<NT>(
+    return createCall(
       this,
       "position",
       async () =>
@@ -691,7 +696,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   }
 
   offset() {
-    return createCall<NT>(this, "offset", async () => {
+    return createCall(this, "offset", async () => {
       const el = this.nodes[0] as HTMLElement;
       const rect = el.getBoundingClientRect();
       return {
@@ -704,7 +709,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   // --- Data Methods ---
 
   data(name: string, value?: string) {
-    return createGetterSetterCall<NT, string | undefined, string>(
+    return createGetterSetterCall(
       this,
       "data",
       value,
@@ -723,7 +728,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   }
 
   val(val?: string | boolean) {
-    return createGetterSetterCall<NT, string | boolean, string | boolean>(
+    return createGetterSetterCall(
       this,
       "val",
       val,
@@ -756,7 +761,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
     const mapValue = (value: string | boolean) =>
       typeof value === "boolean" ? (value ? "on" : "off") : value;
 
-    return createCall<NT>(this, "serialize", async () => {
+    return createCall(this, "serialize", async () => {
       const formData = getAllFormValues(this);
       if (format === "json") {
         return JSON.stringify(formData) as NT;
@@ -781,11 +786,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   }
 
   form<T = FormKeyValues>(formData?: Record<string, string | boolean>) {
-    return createGetterSetterCall<
-      NT,
-      FormKeyValues,
-      Record<string, string | boolean>
-    >(
+    return createGetterSetterCall(
       this,
       "form",
       formData,
@@ -814,7 +815,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
     includeMarginOrPadding?: boolean,
     includePaddingIfMarginTrue?: boolean,
   ) {
-    return createCall<NT>(this, "dimension", async () => {
+    return createCall(this, "dimension", async () => {
       if (this.nodes.length === 0) {
         return { width: 0, height: 0 } as NT;
       }
@@ -889,7 +890,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   // --- Visibility Methods ---
 
   isVisible() {
-    return createCall<NT>(this, "isVisible", async () => {
+    return createCall(this, "isVisible", async () => {
       if (this.nodes.length === 0) return false as NT;
       const el = this.nodes[0] as HTMLElement;
       return checkElementVisibility(el, this.window, this.document) as NT;
@@ -897,7 +898,7 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   }
 
   isHidden() {
-    return createCall<NT>(this, "isHidden", async () => {
+    return createCall(this, "isHidden", async () => {
       if (this.nodes.length === 0) return true as NT;
       const el = this.nodes[0] as HTMLElement;
       return !checkElementVisibility(el, this.window, this.document) as NT;
@@ -906,30 +907,30 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
 
   // --- Scrolling Methods ---
 
-  scrollTo(xOrOptions: number | ScrollToOptions, y?: number) {
-    return createCall<NT>(this, "scrollTo", async () => {
+  scrollTo(xOrOptions: number | ScrollToOptions, y?: number): ET {
+    return createCall(this, "scrollTo", async () => {
       return scrollHelper("scrollTo", this.nodes, xOrOptions, y) as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
-  scrollBy(xOrOptions: number | ScrollToOptions, y?: number) {
-    return createCall<NT>(this, "scrollBy", async () => {
+  scrollBy(xOrOptions: number | ScrollToOptions, y?: number): ET {
+    return createCall(this, "scrollBy", async () => {
       return scrollHelper("scrollBy", this.nodes, xOrOptions, y) as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
-  scrollIntoView(options?: boolean | ScrollIntoViewOptions) {
-    return createCall<NT>(this, "scrollIntoView", async () => {
+  scrollIntoView(options?: boolean | ScrollIntoViewOptions): ET {
+    return createCall(this, "scrollIntoView", async () => {
       if (this.nodes.length === 0) return this.nodes as NT;
       (this.nodes[0] as HTMLElement).scrollIntoView(options);
       return this.nodes as NT;
-    }) as CallChainImplThenable<NT>;
+    }) as unknown as ET;
   }
 
   // --- Transformation Methods ---
 
   map<T>(cb: (el: NT, idx: number) => T) {
-    return createCall<NT>(
+    return createCall(
       this,
       "map",
       async () => (this.nodes as NT[]).map(cb) as NT,
@@ -937,22 +938,22 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   }
 
   toArray() {
-    return createCall<NT>(
+    return createCall(
       this,
       "toArray",
       async () => [...(this.nodes as NT[])] as NT,
     ) as PromiseLike<NT[]>;
   }
 
-  filter(selector: string) {
-    return createCall<NT>(
+  filter(selector: string): ET {
+    return createCall(
       this,
       "filter",
       async () =>
         this.nodes.filter(
           (el) => el instanceof Element && el.matches(selector),
         ) as NT,
-    ) as CallChainImplThenable<NT>;
+    ) as unknown as ET;
   }
 
   // --- Cleanup Methods ---
@@ -975,7 +976,8 @@ export class CallChainImpl<NT = DequerySyncMethodReturnType> {
 
 export class CallChainImplThenable<
   NT = DequerySyncMethodReturnType,
-> extends CallChainImpl<NT> {
+  ET extends Dequery<NT> = Dequery<NT>,
+> extends CallChainImpl<NT, ET> {
   constructor(options: DequeryOptions<NT> = {}, isResolved = false) {
     super(options);
     this.isResolved = isResolved;
@@ -983,7 +985,7 @@ export class CallChainImplThenable<
 
   // biome-ignore lint/suspicious/noThenProperty: <explanation>
   then(
-    onfulfilled?: (value: CallChainImpl<NT>) => CallChainImpl<NT>,
+    onfulfilled?: (value: CallChainImpl<NT, ET>) => CallChainImpl<NT, ET>,
     onrejected?: (reason: any) => any | PromiseLike<any>,
   ): Promise<any> {
     this.chainAsyncStartTime = this.performance.now() ?? 0;
@@ -1012,10 +1014,7 @@ export class CallChainImplThenable<
         // the moment (await will unwrap the Promise), but keep the
         // possibility for any subsequent synchonous calls to be further
         // chained onto the stack (same state, different instance)
-        // because every synchronous call returns the return value of
-        // subChainForNextAwait() which decides if an instance clone
-        // is necessary to continue the chain or not.
-        result = createSubChain<NT>(this, CallChainImpl, true);
+        result = createSubChain<NT, ET>(this, CallChainImpl, true);
       }
 
       // performance metrics tracking
@@ -1127,7 +1126,9 @@ export function scrollHelper<T = NodeType>(
   return elements;
 }
 
-export function getAllFormValues(chain: CallChainImpl<any>): FormKeyValues {
+export function getAllFormValues(
+  chain: CallChainImpl<any, any>,
+): FormKeyValues {
   const formFields: FormKeyValues = {};
 
   const mapCheckboxValue = (value: string) => (value === "on" ? true : value);
@@ -1193,9 +1194,12 @@ export function getAllFormValues(chain: CallChainImpl<any>): FormKeyValues {
   return formFields;
 }
 
-export function delayedAutoStart<NT = DequerySyncMethodReturnType>(
-  chain: CallChainImplThenable<NT> | CallChainImpl<NT>,
-): CallChainImplThenable<NT> | CallChainImpl<NT> {
+export function delayedAutoStart<
+  NT = DequerySyncMethodReturnType,
+  ET extends Dequery<NT> = Dequery<NT>,
+>(
+  chain: CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET>,
+): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
   if (chain.options.autoStart) {
     setTimeout(async () => {
       // still not started (no then() called)
@@ -1207,7 +1211,14 @@ export function delayedAutoStart<NT = DequerySyncMethodReturnType>(
   return chain;
 }
 
-export function dequery<NT = DequerySyncMethodReturnType>(
+export interface Dequery<NT>
+  extends CallChainImplThenable<NT>,
+    CallChainImpl<NT> {}
+
+export function dequery<
+  NT = DequerySyncMethodReturnType,
+  ET extends Dequery<NT> = Dequery<NT>,
+>(
   selectorRefOrEl:
     | string
     | NodeType
@@ -1216,21 +1227,14 @@ export function dequery<NT = DequerySyncMethodReturnType>(
     | Function,
   options: DequeryOptions<NT> &
     ElementCreationOptions = getDefaultDequeryOptions(),
-): CallChainImplThenable<NT> | CallChainImpl<NT> {
+): ET {
   // async co-routine execution
   if (typeof selectorRefOrEl === "function") {
-    const syncChain: CallChainImplThenable<NT> | CallChainImpl<NT> = dequery(
-      "body",
-      options,
-    );
+    const syncChain = dequery("body", options);
     requestAnimationFrame(async () => {
       const result = await selectorRefOrEl();
       if (!syncChain.isResolved) {
         if (typeof result !== "undefined") {
-          // allows for $(async () => { ... }) to be chained
-          // e.g. await $(async () => { ... return someRef }).html("foo")
-          // would replace the content of the ref'ed element with "foo"
-          // asynchronously
           const newChain = dequery(result, options);
           syncChain.resultStack = newChain.resultStack;
           syncChain.lastResult = newChain.lastResult;
@@ -1238,12 +1242,12 @@ export function dequery<NT = DequerySyncMethodReturnType>(
         }
       }
     });
-    return delayedAutoStart(syncChain);
+    return delayedAutoStart(syncChain) as unknown as ET;
   }
 
   // standard options -- selector handling
 
-  const chain = new CallChainImplThenable<NT>({
+  const chain = new CallChainImplThenable<NT, ET>({
     ...options,
     resultStack: [],
   });
@@ -1271,19 +1275,19 @@ export function dequery<NT = DequerySyncMethodReturnType>(
       }
 
       chain.resultStack = [elements as NT[]];
-      return delayedAutoStart(chain);
+      return delayedAutoStart(chain) as unknown as ET;
     } else {
       return delayedAutoStart(
-        chain.query(selectorRefOrEl) as CallChainImplThenable<NT>,
-      );
+        chain.query(selectorRefOrEl) as CallChainImplThenable<NT, ET>,
+      ) as unknown as ET;
     }
   } else if (isRef(selectorRefOrEl)) {
     return delayedAutoStart(
-      chain.ref(selectorRefOrEl) as CallChainImplThenable<NT>,
-    );
+      chain.ref(selectorRefOrEl) as CallChainImplThenable<NT, ET>,
+    ) as unknown as ET;
   } else if ((selectorRefOrEl as Node).nodeType) {
     chain.resultStack = [[selectorRefOrEl as NT]];
-    return delayedAutoStart(chain);
+    return delayedAutoStart(chain) as unknown as ET;
   } else if (isJSX(selectorRefOrEl)) {
     const renderResult = renderIsomorphicSync(
       selectorRefOrEl as RenderInput,
@@ -1298,14 +1302,67 @@ export function dequery<NT = DequerySyncMethodReturnType>(
         : []
     ) as NodeType[];
     chain.resultStack = [elements as NT[]];
-    return delayedAutoStart(chain);
+    return delayedAutoStart(chain) as unknown as ET;
   }
   throw new Error("Unsupported selectorOrEl type");
 }
 
-export const $: typeof dequery = dequery;
+dequery.extend = <TExtendedClass extends new (...args: any[]) => any>(
+  ExtensionClass: TExtendedClass,
+) => {
+  // Get the prototype of the extension class
+  const extensionPrototype = ExtensionClass.prototype;
+  const basePrototype = CallChainImpl.prototype;
 
-export type Dequery = CallChainImplThenable | CallChainImpl;
+  // Get all method names from the extension class prototype
+  const extensionMethods = Object.getOwnPropertyNames(extensionPrototype);
+  const baseMethods = Object.getOwnPropertyNames(basePrototype);
+
+  // Only add methods that don't exist on the base prototype
+  extensionMethods.forEach((methodName) => {
+    if (
+      methodName !== "constructor" &&
+      !baseMethods.includes(methodName) &&
+      typeof extensionPrototype[methodName] === "function"
+    ) {
+      // Add to both CallChainImpl and CallChainImplThenable prototypes
+      (CallChainImpl.prototype as any)[methodName] =
+        extensionPrototype[methodName];
+      (CallChainImplThenable.prototype as any)[methodName] =
+        extensionPrototype[methodName];
+    }
+  });
+
+  // Return a typed function that produces instances of the extended class type
+  return <NT = DequerySyncMethodReturnType>(
+    selectorRefOrEl:
+      | string
+      | NodeType
+      | Ref<NodeType, any>
+      | RenderInput
+      | Function,
+    options?: DequeryOptions<NT> & ElementCreationOptions,
+  ): InstanceType<TExtendedClass> => {
+    return dequery(
+      selectorRefOrEl,
+      options,
+    ) as unknown as InstanceType<TExtendedClass>;
+  };
+};
+
+export const $: typeof dequery & {
+  extend: <TExtendedClass extends new (...args: any[]) => any>(
+    ExtensionClass: TExtendedClass,
+  ) => <NT = DequerySyncMethodReturnType>(
+    selectorRefOrEl:
+      | string
+      | NodeType
+      | Ref<NodeType, any>
+      | RenderInput
+      | Function,
+    options?: DequeryOptions<NT> & ElementCreationOptions,
+  ) => InstanceType<TExtendedClass>;
+} = dequery as any;
 
 export function isDequery(
   obj: unknown,
@@ -1347,10 +1404,10 @@ export function getDefaultDequeryOptions<NT>(): DequeryOptions<NT> {
   };
 }
 
-export function mapArrayIndexAccess<NT = DequerySyncMethodReturnType>(
-  source: CallChainImpl<NT>,
-  target: CallChainImpl<NT>,
-) {
+export function mapArrayIndexAccess<
+  NT = DequerySyncMethodReturnType,
+  ET extends Dequery<NT> = Dequery<NT>,
+>(source: CallChainImpl<NT, ET>, target: CallChainImpl<NT, ET>) {
   const elements = source.nodes;
   // allow for array-like access
   for (let i = 0; i < elements.length; i++) {
@@ -1359,42 +1416,45 @@ export function mapArrayIndexAccess<NT = DequerySyncMethodReturnType>(
   target.length = elements.length;
 }
 
-export function createCall<NT>(
-  chain: CallChainImpl<NT>,
+export function createCall<NT, ET extends Dequery<NT>>(
+  chain: CallChainImpl<NT, ET>,
   methodName: string,
   handler: () => Promise<NT>,
-): CallChainImplThenable<NT> | CallChainImpl<NT> {
+): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
   chain.callStack.push(new Call<NT>(methodName, handler));
   return subChainForNextAwait(chain);
 }
 
-export function createGetterSetterCall<NT, T, V>(
-  chain: CallChainImpl<NT>,
+export function createGetterSetterCall<NT, ET extends Dequery<NT>, T, V>(
+  chain: CallChainImpl<NT, ET>,
   methodName: string,
   value: V | undefined,
   getter: () => T,
   setter: (value: V) => void,
-): CallChainImplThenable<NT> | CallChainImpl<NT> {
+): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
   if (value !== undefined) {
-    return createCall<NT>(chain, methodName, async () => {
+    return createCall(chain, methodName, async () => {
       setter(value);
       return chain.nodes as NT;
     });
   } else {
-    return createCall<NT>(chain, methodName, async () => {
+    return createCall(chain, methodName, async () => {
       return getter() as unknown as NT;
     });
   }
 }
 
-export function createSubChain<NT = DequerySyncMethodReturnType>(
-  source: CallChainImpl<NT>,
+export function createSubChain<
+  NT = DequerySyncMethodReturnType,
+  ET extends Dequery<NT> = Dequery<NT>,
+>(
+  source: CallChainImpl<NT, ET>,
   Constructor:
     | typeof CallChainImpl
     | typeof CallChainImplThenable = CallChainImpl,
   isResolved = false,
 ) {
-  const subChain = new Constructor<NT>(source.options);
+  const subChain = new Constructor<NT, ET>(source.options);
   subChain.callStack = source.callStack;
   subChain.resultStack = source.resultStack;
   subChain.stackPointer = source.stackPointer;
@@ -1410,9 +1470,9 @@ export function createSubChain<NT = DequerySyncMethodReturnType>(
   return delayedAutoStart(subChain);
 }
 
-export function subChainForNextAwait<NT>(
-  source: CallChainImpl<NT>,
-): CallChainImplThenable<NT> | CallChainImpl<NT> {
+export function subChainForNextAwait<NT, ET extends Dequery<NT>>(
+  source: CallChainImpl<NT, ET>,
+): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
   // First continuation of chain case (second await in the chain)
   // The chain was finished by resolving the chain by a then() call.
   // The lastResolvedStackPointer therefore is set to the last call.
@@ -1438,7 +1498,7 @@ export function subChainForNextAwait<NT>(
   }
 
   // Second continuation (3rd await in a chain case)
-  // If this is already a CallChainImpl but not a thenable
+  // If this is already a CallChainImplBut not a thenable
   // we need to explicitly return a fresh thenable chain
 
   // The second chain (see above) finished because the await called the then() again,
@@ -1453,7 +1513,7 @@ export function subChainForNextAwait<NT>(
   // const result3 = await result2.next(); // we're here.
   return source instanceof CallChainImplThenable
     ? source
-    : createSubChain<NT>(source, CallChainImplThenable);
+    : createSubChain(source, CallChainImplThenable);
 }
 
 export function runWithTimeGuard<NT>(
@@ -1555,12 +1615,12 @@ export async function resolveNodes<T = DequerySyncMethodReturnType>(
   return nodes;
 }
 
-export function traverse<NT, R = NT>(
-  chain: CallChainImpl<NT>,
+export function traverse<NT, R = NT, ET extends Dequery<R> = Dequery<R>>(
+  chain: CallChainImpl<NT, any>,
   methodName: string,
   selector: (el: Element) => Element | Element[] | null | undefined,
-): CallChainImplThenable<R> | CallChainImpl<R> {
-  return createCall<NT>(chain, methodName, async () => {
+): ET {
+  return createCall(chain as any, methodName, async () => {
     return chain.nodes.flatMap((el) => {
       if (el instanceof Element) {
         try {
@@ -1578,5 +1638,5 @@ export function traverse<NT, R = NT>(
       }
       return [];
     }) as NT;
-  }) as unknown as CallChainImplThenable<R> | CallChainImpl<R>;
+  }) as unknown as ET;
 }

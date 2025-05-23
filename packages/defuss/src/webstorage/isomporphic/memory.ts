@@ -1,32 +1,34 @@
-import type { PersistenceProviderImpl } from '../provider.js'
-import type { GenericLocalStorage } from './generic.js'
-import type { MiddlewareFn } from '../provider.js'
+import type { PersistenceProviderImpl } from "../types.js";
+import type { GenericLocalStorage } from "./generic.js";
+import type { MiddlewareFn } from "../types.js";
 
-export type MemoryProviderOptions = {}
+export type MemoryProviderOptions = {};
 
-export const newInMemoryGenericStorageBackend = <T = string>(): GenericLocalStorage<T> => {
-  const cache = new Map<string, T>()
+export const newInMemoryGenericStorageBackend = <
+  T = string,
+>(): GenericLocalStorage<T> => {
+  const cache = new Map<string, T>();
   return {
     clear: (): void => {
-      cache.clear()
+      cache.clear();
     },
 
     getItem: (key: string): T | null => {
-      return cache.get(String(key)) ?? null
+      return cache.get(String(key)) ?? null;
     },
 
     removeItem: (key: string): void => {
-      cache.delete(String(key))
+      cache.delete(String(key));
     },
 
     setItem: (key: string, value: T): void => {
-      cache.set(String(key), value)
+      cache.set(String(key), value);
     },
-  }
-}
+  };
+};
 
 /** global in-memory storage backend */
-export const memory = newInMemoryGenericStorageBackend()
+export const memory = newInMemoryGenericStorageBackend();
 
 /** a simple, serverless and high-performance key/value storage engine  */
 export class WebStorageProvider<T> implements PersistenceProviderImpl<T> {
@@ -70,9 +72,9 @@ export class WebStorageProvider<T> implements PersistenceProviderImpl<T> {
 }
 
 export interface MemoryStorage<T> extends PersistenceProviderImpl<T> {
-  backendApi: Omit<Omit<Storage, 'key'>, 'length'>
+  backendApi: Omit<Omit<Storage, "key">, "length">;
 }
 
 export interface WebStorage<T> extends PersistenceProviderImpl<T> {
-  backendApi: Storage
+  backendApi: Storage;
 }

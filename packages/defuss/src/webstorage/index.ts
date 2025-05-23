@@ -2,7 +2,7 @@ import type {
   PersistenceProviderType,
   PersistenceProviderImpl,
   PersistenceProviderOptions,
-} from "./provider.js";
+} from "./types.js";
 import { getPersistenceProvider as getPersistenceProviderClient } from "./client/index.js";
 import { getPersistenceProvider as getPersistenceProviderServer } from "./server/index.js";
 import { isServer } from "./runtime.js";
@@ -10,7 +10,7 @@ import { isServer } from "./runtime.js";
 export type {
   PersistenceProviderType,
   PersistenceProviderOptions,
-} from "./provider.js";
+} from "./types.js";
 
 /** returns the persistence provider (isomorphic) */
 export const webstorage = <T>(
@@ -24,4 +24,4 @@ export const webstorage = <T>(
   }
 };
 
-export * from "./provider.js";
+export * from "./types.js";
