@@ -376,7 +376,7 @@ describe("VirtualDOM", () => {
     ) as HTMLButtonElement;
 
     expect(el.nodeName).toEqual("BUTTON");
-    expect(el.style.border).toBe("1px solid #ccc");
+    expect(el.style.border).toBe("1px solid rgb(204, 204, 204)");
     expect(el.style.fontSize).toBe("10px");
   });
 

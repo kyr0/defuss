@@ -304,22 +304,24 @@ export class CallChainImpl<
   }
 
   // --- CSS & Class Methods ---
+  private static resultCache = new WeakMap<Element, Map<string, any>>();
 
   css(prop: CSSProperties): PromiseLike<ET>;
   css(prop: string, value: string): PromiseLike<ET>;
   css(prop: string): PromiseLike<string>;
   css(prop: string | CSSProperties, value?: string) {
     if (typeof prop === "object") {
-      // Handle object-style CSS properties
+      // Batch DOM operations for object CSS
       return createCall(this, "css", async () => {
-        this.nodes.forEach((el) => {
-          const elementStyle = (el as HTMLElement).style;
-          for (const k in prop) {
-            if (Object.prototype.hasOwnProperty.call(prop, k)) {
-              // @ts-ignore allow indexing style object with string key
-              elementStyle[k] = (prop as any)[k];
-            }
-          }
+        const elements = this.nodes;
+        elements.forEach((el) => {
+          const htmlEl = el as HTMLElement;
+          Object.entries(prop).forEach(([key, val]) => {
+            htmlEl.style.setProperty(
+              key.replace(/([A-Z])/g, "-$1").toLowerCase(),
+              String(val),
+            );
+          });
         });
         return this.nodes as NT;
       }) as PromiseLike<ET>;
@@ -329,15 +331,33 @@ export class CallChainImpl<
       this,
       "css",
       value,
-      // Getter function
+      // Getter with caching
       () => {
         if (this.nodes.length === 0) return "";
-        return (this.nodes[0] as HTMLElement).style.getPropertyValue(prop);
+
+        const el = this.nodes[0] as HTMLElement;
+        const cache = CallChainImpl.resultCache.get(el) || new Map();
+        const cacheKey = `css:${prop}`;
+
+        if (cache.has(cacheKey)) {
+          return cache.get(cacheKey);
+        }
+
+        const result = el.style.getPropertyValue(prop);
+        cache.set(cacheKey, result);
+        CallChainImpl.resultCache.set(el, cache);
+
+        return result;
       },
-      // Setter function
+      // Setter with cache invalidation
       (val) => {
         this.nodes.forEach((el) => {
-          (el as HTMLElement).style.setProperty(prop, val);
+          (el as HTMLElement).style.setProperty(prop, String(val));
+          // Invalidate cache
+          const cache = CallChainImpl.resultCache.get(el as Element);
+          if (cache) {
+            cache.delete(`css:${prop}`);
+          }
         });
       },
     ) as PromiseLike<ET | string>;
@@ -930,11 +950,16 @@ export class CallChainImpl<
   // --- Transformation Methods ---
 
   map<T>(cb: (el: NT, idx: number) => T) {
-    return createCall(
-      this,
-      "map",
-      async () => (this.nodes as NT[]).map(cb) as NT,
-    ) as PromiseLike<NT[]>;
+    return createCall(this, "map", async () => {
+      const elements = this.nodes;
+      const results: T[] = new Array(elements.length);
+
+      for (let i = 0; i < elements.length; i++) {
+        results[i] = cb(elements[i] as NT, i);
+      }
+
+      return results as any;
+    }) as PromiseLike<T[]>;
   }
 
   toArray() {
@@ -960,13 +985,18 @@ export class CallChainImpl<
 
   /** memory cleanup (chain becomes useless after calling this method) */
   dispose(): PromiseLike<void> {
-    this.callStack = [];
-    this.resultStack = [];
-    // @ts-ignore
-    this.lastResult = undefined;
-    // @ts-ignore
-    this.stoppedWithError = undefined;
-    return Promise.resolve();
+    return createCall(this, "dispose", async () => {
+      this.nodes.forEach((el) => {
+        CallChainImpl.resultCache.delete(el as Element);
+      });
+
+      this.callStack.length = 0;
+      this.resultStack.length = 0;
+      this.stackPointer = 0;
+      this.lastResolvedStackPointer = 0;
+
+      return undefined as any;
+    }) as PromiseLike<void>;
   }
 
   // TODO:
@@ -1387,21 +1417,26 @@ export function isDequeryOptionsObject(o: object) {
   );
 }
 
+let defaultOptions: DequeryOptions<any> | null = null;
+
 export function getDefaultDequeryOptions<NT>(): DequeryOptions<NT> {
-  return {
-    timeout: 500 /** ms */,
-    // even long sync chains would execute in < .1ms
-    // so after 1ms, we can assume the "await" in front is
-    // missing (intentionally non-blocking in sync code)
-    autoStartDelay: 1 /** ms */,
-    autoStart: true,
-    resultStack: [],
-    globals: {
-      document: globalThis.document,
-      window: globalThis.window,
-      performance: globalThis.performance,
-    },
-  };
+  if (!defaultOptions) {
+    defaultOptions = {
+      timeout: 500 /** ms */,
+      // even long sync chains would execute in < .1ms
+      // so after 1ms, we can assume the "await" in front is
+      // missing (intentionally non-blocking in sync code)
+      autoStartDelay: 1 /** ms */,
+      autoStart: true,
+      resultStack: [],
+      globals: {
+        document: globalThis.document,
+        window: globalThis.window,
+        performance: globalThis.performance,
+      },
+    };
+  }
+  return { ...defaultOptions } as DequeryOptions<NT>;
 }
 
 export function mapArrayIndexAccess<
