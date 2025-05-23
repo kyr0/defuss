@@ -13,7 +13,7 @@
     "type": "git"
   },
   "scripts": {
-    "clean": "rm -rf ./dist && rm -rf ./coverage && rm -rf ./node_modules/.pnpm && rm -rf ./node_modules/.vite",
+    "clean": "rm -rf ./coverage && rm -rf ./node_modules/.pnpm && rm -rf ./node_modules/.vite",
     "pretest": "pnpm run build",
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",

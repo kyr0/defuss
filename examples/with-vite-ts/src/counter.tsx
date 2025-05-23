@@ -75,7 +75,7 @@ export async function AsyncCounter({ label }: CounterProps) {
       //asyncRef.update("loaded")
 
       // sync to external state
-      countButtonRef.update(clickCounter);
+      countButtonRef.updateState(clickCounter);
 
       // re-render the <Later /> component
       $(containerRef).update(

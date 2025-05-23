@@ -1,5 +1,16 @@
 import { pick, omit } from "../common/object.js";
-import { updateDom, updateDomWithVdom } from "../common/dom.js";
+import {
+  addElementEvent,
+  checkElementVisibility,
+  clearElementEvents,
+  isMarkup,
+  removeElementEvent,
+  renderMarkup,
+  updateDom,
+  updateDomWithVdom,
+  waitForDOM,
+  processAllFormElements,
+} from "../common/dom.js";
 import {
   isJSX,
   isRef,
@@ -11,83 +22,21 @@ import {
   type CSSProperties,
   type NodeType,
 } from "../render/index.js";
-
-export type FormFieldValue = string | Date | File | boolean | number;
-export interface FormKeyValues {
-  [keyOrPath: string]: string | boolean;
-}
-
-export interface Dimensions {
-  width: number;
-  height: number;
-  outerWidth?: number;
-  outerHeight?: number;
-}
-
-export interface Position {
-  top: number;
-  left: number;
-}
-
-export type DOMPropValue = string | number | boolean | null;
-
-declare global {
-  interface HTMLElement {
-    _dequeryEvents?: Map<string, Set<EventListener>>;
-  }
-}
-
-export interface DequeryOptions<NT = ChainMethodReturnType> {
-  timeout?: number;
-  autoStart?: boolean;
-  autoStartDelay?: number;
-  resultStack?: NT[];
-  state?: any;
-  verbose?: boolean;
-  onTimeGuardError?: (ms: number, call: Call<NT>) => void;
-  globals?: Partial<Globals>;
-}
-
-export function isDequeryOptionsObject(o: object) {
-  return (
-    o &&
-    typeof o === "object" &&
-    (o as DequeryOptions).timeout !== undefined &&
-    (o as DequeryOptions).globals !== undefined
-  );
-}
-
-function getDefaultConfig<NT>(): DequeryOptions<NT> {
-  return {
-    timeout: 500 /** ms */,
-    // even long sync chains would execute in < .1ms
-    // so after 1ms, we can assume the "await" in front is
-    // missing (intentionally non-blocking in sync code)
-    autoStartDelay: 1 /** ms */,
-    autoStart: true,
-    resultStack: [],
-    verbose: false,
-    onTimeGuardError: () => {},
-    globals: {
-      document: globalThis.document,
-      window: globalThis.window,
-      performance: globalThis.performance,
-    },
-  };
-}
-
-export type ElementCreationOptions = JSX.HTMLAttributesLowerCase &
-  JSX.HTMLAttributesLowerCase & { html?: string; text?: string };
-
-type ChainMethodReturnType =
-  | Array<NodeType>
-  | NodeType
-  | string
-  | boolean
-  | null;
+import { createTimeoutPromise, waitForRef } from "../common/delay.js";
+import type {
+  DequeryOptions,
+  DequerySyncMethodReturnType,
+  Dimensions,
+  DOMPropValue,
+  FormKeyValues,
+  Position,
+  ElementCreationOptions,
+  FormFieldValue,
+} from "./types.js";
 
 // --- Core Async Call & Chain ---
-class Call<NT> {
+
+export class Call<NT> {
   name: string;
   fn: (...args: any[]) => Promise<NT>;
   args: any[];
@@ -102,7 +51,7 @@ class Call<NT> {
   }
 }
 
-const NonChainedReturnCallNames = [
+export const NonChainedReturnCallNames = [
   "getFirstElement",
   "toArray",
   "map",
@@ -119,9 +68,20 @@ const NonChainedReturnCallNames = [
   "data",
   "css",
   "html",
+  "serialize",
 ];
 
-export class CallChainImpl<NT = ChainMethodReturnType> {
+export const emptyImpl = async <T>(nodes: Array<T>) => {
+  nodes.forEach((el) => {
+    const element = el as HTMLElement;
+    while (element.firstChild) {
+      element.firstChild.remove();
+    }
+  });
+  return nodes as T[];
+};
+
+export class CallChainImpl<NT = DequerySyncMethodReturnType> {
   [index: number]: NT;
 
   isResolved: boolean;
@@ -138,18 +98,29 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   chainAsyncStartTime: number;
   chainAsyncFinishTime: number;
 
+  // SSR-ability
+  document: Document;
+  window: Window;
+  performance: Performance;
+  Parser: typeof DOMParser;
+
   constructor(options: DequeryOptions<NT> = {}) {
     // merge default options with user-provided options
     this.options = {
-      ...getDefaultConfig(),
+      ...getDefaultDequeryOptions(),
       ...options,
     };
 
-    const optionsKeys = Object.keys(getDefaultConfig()) as Array<
+    const optionsKeys = Object.keys(getDefaultDequeryOptions()) as Array<
       keyof DequeryOptions<NT>
     >;
 
     this.options = pick(this.options, optionsKeys);
+
+    this.window = this.options.globals!.window as Window;
+    this.document = this.options.globals!.window!.document as Document;
+    this.performance = this.options.globals!.performance as Performance;
+    this.Parser = this.options.globals!.window!.DOMParser as typeof DOMParser;
 
     const elementCreationOptions: ElementCreationOptions = omit(
       options,
@@ -173,26 +144,14 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     this.chainAsyncFinishTime = 0; // mark end of async chain
   }
 
-  get window(): Window {
-    return this.options.globals!.window as Window;
-  }
-
-  get document(): Document {
-    return this.options.globals!.window!.document as Document;
-  }
-
-  get performance(): Performance {
-    return this.options.globals!.performance as Performance;
-  }
-
   get globals(): Globals {
     return this.options.globals as Globals;
   }
 
   // sync methods
 
-  // currently selected elements
-  get __elements(): NodeType[] {
+  // currently selected nodes
+  get nodes(): NodeType[] {
     return this.resultStack.length > 0
       ? (this.resultStack[this.resultStack.length - 1] as NodeType[])
       : [];
@@ -200,13 +159,14 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
 
   // allow for for .. of loop
   [Symbol.iterator]() {
-    return this.__elements[Symbol.iterator]() as IterableIterator<NT>;
+    return this.nodes[Symbol.iterator]() as IterableIterator<NT>;
   }
 
   // async, direct result method
 
   getFirstElement() {
-    return this.createCall(
+    return createCall<NT>(
+      this,
       "getFirstElement",
       async () => this[0],
     ) as PromiseLike<NT>;
@@ -215,14 +175,14 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   // async, wrapped/chainable API methods
 
   debug(cb: (chain: CallChainImpl<NT>) => void) {
-    return this.createCall("debug", async () => {
+    return createCall<NT>(this, "debug", async () => {
       cb(this);
-      return this.__elements as NT;
+      return this.nodes as NT;
     });
   }
 
   ref(ref: Ref<NodeType>) {
-    return this.createCall("ref", async () => {
+    return createCall<NT>(this, "ref", async () => {
       await waitForRef(ref, this.options.timeout!);
       if (ref.current) {
         return [ref.current] as NT;
@@ -233,7 +193,7 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   }
 
   query(selector: string) {
-    return this.createCall("query", async () => {
+    return createCall<NT>(this, "query", async () => {
       return Array.from(
         await waitForDOM(
           () => Array.from(this.document.querySelectorAll(selector) || []),
@@ -245,18 +205,18 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   }
 
   next() {
-    return this.traverse("next", (el) => el.nextElementSibling);
+    return traverse<NT>(this, "next", (el) => el.nextElementSibling);
   }
 
   prev() {
-    return this.traverse("prev", (el) => el.previousElementSibling);
+    return traverse<NT>(this, "prev", (el) => el.previousElementSibling);
   }
 
   find(selector: string) {
-    return this.createCall("find", async () => {
+    return createCall<NT>(this, "find", async () => {
       // Use Promise.all to wait for all elements to be found
       const results = await Promise.all(
-        this.__elements.map(async (el) => {
+        this.nodes.map(async (el) => {
           return await waitForDOM(
             () => Array.from((el as HTMLElement).querySelectorAll(selector)),
             this.options.timeout!,
@@ -264,34 +224,31 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
           );
         }),
       );
-
-      // Flatten the results
-      const res = results.flat();
-      return res as NT;
+      return results.flat() as NT;
     }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
   parent() {
-    return this.traverse("parent", (el) => el.parentElement);
+    return traverse(this, "parent", (el) => el.parentElement);
   }
 
   children() {
-    return this.traverse("children", (el) => Array.from(el.children));
+    return traverse(this, "children", (el) => Array.from(el.children));
   }
 
   closest(selector: string) {
-    return this.traverse("closest", (el) => el.closest(selector));
+    return traverse(this, "closest", (el) => el.closest(selector));
   }
 
   first() {
-    return this.createCall("first", async () => {
-      return this.__elements.slice(0, 1) as NT;
+    return createCall<NT>(this, "first", async () => {
+      return this.nodes.slice(0, 1) as NT;
     });
   }
 
   last() {
-    return this.createCall("last", async () => {
-      return this.__elements.slice(-1) as NT;
+    return createCall<NT>(this, "last", async () => {
+      return this.nodes.slice(-1) as NT;
     });
   }
 
@@ -300,19 +257,18 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   attr(name: string, value: string): PromiseLike<CallChainImplThenable<NT>>;
   attr(name: string): PromiseLike<string | null>;
   attr(name: string, value?: string) {
-    return this.createGetterSetterCall<string | null, string>(
+    return createGetterSetterCall<NT, string | null, string>(
+      this,
       "attr",
       value,
       // Getter function
       () => {
-        if (this.__elements.length === 0) return null;
-        return (this.__elements[0] as HTMLElement).getAttribute(name);
+        if (this.nodes.length === 0) return null;
+        return (this.nodes[0] as HTMLElement).getAttribute(name);
       },
       // Setter function
       (val) => {
-        this.__elements.forEach((el) =>
-          (el as HTMLElement).setAttribute(name, val),
-        );
+        this.nodes.forEach((el) => (el as HTMLElement).setAttribute(name, val));
       },
     ) as PromiseLike<string | null | CallChainImplThenable<NT>>;
   }
@@ -324,17 +280,18 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   ): PromiseLike<CallChainImplThenable<NT>>;
   prop<K extends keyof AllHTMLElements>(name: K): PromiseLike<string>;
   prop<K extends keyof AllHTMLElements>(name: K, value?: DOMPropValue) {
-    return this.createGetterSetterCall<DOMPropValue, DOMPropValue>(
+    return createGetterSetterCall<NT, DOMPropValue, DOMPropValue>(
+      this,
       "prop",
       value,
       // Getter function
       () => {
-        if (this.__elements.length === 0) return undefined;
-        return (this.__elements[0] as any)[name];
+        if (this.nodes.length === 0) return undefined;
+        return (this.nodes[0] as any)[name];
       },
       // Setter function
       (val) => {
-        this.__elements.forEach((el) => {
+        this.nodes.forEach((el) => {
           (el as any)[name] = val;
         });
       },
@@ -349,8 +306,8 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   css(prop: string | CSSProperties, value?: string) {
     if (typeof prop === "object") {
       // Handle object-style CSS properties
-      return this.createCall("css", async () => {
-        this.__elements.forEach((el) => {
+      return createCall<NT>(this, "css", async () => {
+        this.nodes.forEach((el) => {
           const elementStyle = (el as HTMLElement).style;
           for (const k in prop) {
             if (Object.prototype.hasOwnProperty.call(prop, k)) {
@@ -359,21 +316,22 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
             }
           }
         });
-        return this.__elements as NT;
+        return this.nodes as NT;
       }) as PromiseLike<CallChainImplThenable<NT>>;
     }
 
-    return this.createGetterSetterCall<string, string>(
+    return createGetterSetterCall<NT, string, string>(
+      this,
       "css",
       value,
       // Getter function
       () => {
-        if (this.__elements.length === 0) return "";
-        return (this.__elements[0] as HTMLElement).style.getPropertyValue(prop);
+        if (this.nodes.length === 0) return "";
+        return (this.nodes[0] as HTMLElement).style.getPropertyValue(prop);
       },
       // Setter function
       (val) => {
-        this.__elements.forEach((el) => {
+        this.nodes.forEach((el) => {
           (el as HTMLElement).style.setProperty(prop, val);
         });
       },
@@ -381,84 +339,75 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   }
 
   addClass(name: string | Array<string>) {
-    return this.createCall("addClass", async () => {
+    return createCall<NT>(this, "addClass", async () => {
       const list = Array.isArray(name) ? name : [name];
-      this.__elements.forEach((el) =>
-        (el as HTMLElement).classList.add(...list),
-      );
-      return this.__elements as NT;
+      this.nodes.forEach((el) => (el as HTMLElement).classList.add(...list));
+      return this.nodes as NT;
     }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
   removeClass(name: string | Array<string>) {
-    return this.createCall("removeClass", async () => {
+    return createCall<NT>(this, "removeClass", async () => {
       const list = Array.isArray(name) ? name : [name];
-      this.__elements.forEach((el) =>
-        (el as HTMLElement).classList.remove(...list),
-      );
-      return this.__elements as NT;
+      this.nodes.forEach((el) => (el as HTMLElement).classList.remove(...list));
+      return this.nodes as NT;
     }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
   hasClass(name: string) {
-    return this.createCall(
+    return createCall<NT>(
+      this,
       "hasClass",
       async () =>
-        this.__elements.every((el) =>
+        this.nodes.every((el) =>
           (el as HTMLElement).classList.contains(name),
         ) as NT,
     ) as PromiseLike<boolean>;
   }
 
   toggleClass(name: string) {
-    return this.createCall("toggleClass", async () => {
-      this.__elements.forEach((el) =>
-        (el as HTMLElement).classList.toggle(name),
-      );
-      return this.__elements as NT;
+    return createCall<NT>(this, "toggleClass", async () => {
+      this.nodes.forEach((el) => (el as HTMLElement).classList.toggle(name));
+      return this.nodes as NT;
     }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
   animateClass(name: string, duration: number) {
-    return this.createCall("animateClass", async () => {
-      this.__elements.forEach((el) => {
+    return createCall<NT>(this, "animateClass", async () => {
+      this.nodes.forEach((el) => {
         const e = el as HTMLElement;
         e.classList.add(name);
         setTimeout(() => e.classList.remove(name), duration);
       });
-      return this.__elements as NT;
+      return this.nodes as NT;
     }) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
   // --- Content Manipulation Methods ---
 
   empty() {
-    return this.createCall("empty", async () => {
-      this.__elements.forEach((el) => {
-        const element = el as HTMLElement;
-        while (element.firstChild) {
-          element.firstChild.remove();
-        }
-      });
-      return this.__elements as NT;
-    }) as PromiseLike<CallChainImplThenable<NT>>;
+    return createCall<NT>(
+      this,
+      "empty",
+      async () => emptyImpl(this.nodes) as NT,
+    ) as PromiseLike<CallChainImplThenable<NT>>;
   }
 
-  // TODO: add these overload signatures to all methods!
   html(): PromiseLike<string>;
   html(html: string): PromiseLike<CallChainImplThenable<NT>>;
   html(html?: string) {
-    return this.createGetterSetterCall<string, string>(
+    return createGetterSetterCall<NT, string, string>(
+      this,
       "html",
       html,
       () => {
         // getter
-        if (this.__elements.length === 0) return "";
-        return (this.__elements[0] as HTMLElement).innerHTML;
+        if (this.nodes.length === 0) return "";
+        return (this.nodes[0] as HTMLElement).innerHTML;
       },
       (val) => {
         // setter
-        this.__elements.forEach((el) => {
+        this.nodes.forEach((el) => {
           (el as HTMLElement).innerHTML = val;
         });
       },
@@ -470,26 +419,27 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       throw new Error("Invalid JSX input");
     }
 
-    return this.createCall("jsx", async () => {
-      this.__elements.forEach((el) =>
+    return createCall<NT>(this, "jsx", async () => {
+      this.nodes.forEach((el) =>
         updateDomWithVdom(el as HTMLElement, vdom, globalThis as Globals),
       );
-      return this.__elements as NT;
+      return this.nodes as NT;
     }) as CallChainImplThenable<NT>;
   }
 
   text(text?: string) {
-    return this.createGetterSetterCall<string, string>(
+    return createGetterSetterCall<NT, string, string>(
+      this,
       "text",
       text,
       // Getter function
       () => {
-        if (this.__elements.length === 0) return "";
-        return (this.__elements[0] as HTMLElement).textContent || "";
+        if (this.nodes.length === 0) return "";
+        return (this.nodes[0] as HTMLElement).textContent || "";
       },
       // Setter function
       (val) => {
-        this.__elements.forEach((el) => {
+        this.nodes.forEach((el) => {
           (el as HTMLElement).textContent = val;
         });
       },
@@ -497,9 +447,9 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   }
 
   remove() {
-    return this.createCall("remove", async () => {
-      const removedElements = [...this.__elements];
-      this.__elements.forEach((el) => (el as HTMLElement).remove());
+    return createCall<NT>(this, "remove", async () => {
+      const removedElements = [...this.nodes];
+      this.nodes.forEach((el) => (el as HTMLElement).remove());
       return removedElements as NT;
     }) as CallChainImplThenable<NT>;
   }
@@ -513,11 +463,11 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
   ) {
-    return this.createCall("replaceWith", async () => {
-      const newElement = await resolveContent(content, this.options);
-      if (!newElement) return this.__elements as NT;
+    return createCall<NT>(this, "replaceWith", async () => {
+      const newElement = await renderNode(content, this);
+      if (!newElement) return this.nodes as NT;
 
-      this.__elements.forEach((el, index) => {
+      this.nodes.forEach((el, index) => {
         if (!el || !newElement) return;
 
         if (el.parentNode) {
@@ -526,14 +476,14 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
           el.parentNode.replaceChild(clone, el);
 
           // replace the reference in the __elements array
-          this.__elements[index] = clone;
+          this.nodes[index] = clone;
 
           // update indexing
           mapArrayIndexAccess(this, this);
         }
       });
 
-      return this.__elements as NT;
+      return this.nodes as NT;
     }) as CallChainImplThenable<NT>;
   }
 
@@ -546,46 +496,64 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
   ) {
-    return this.createCall("append", async () => {
+    return createCall<NT>(this, "append", async () => {
       // Don't do anything if content is null or undefined
       if (content == null) {
-        return this.__elements as NT;
+        return this.nodes as NT;
       }
 
-      const element = await resolveContent(content, this.options);
-      if (!element) return this.__elements as NT;
+      if (content instanceof Node) {
+        // If content is a Node, append it directly
+        this.nodes.forEach((el) => {
+          if (
+            el &&
+            content &&
+            !el.isEqualNode(content) &&
+            el.parentNode !== content
+          ) {
+            (el as HTMLElement).appendChild(content);
+          }
+        });
+        return this.nodes as NT;
+      }
+
+      const element = await renderNode(content, this);
+      if (!element) return this.nodes as NT;
 
       if (isDequery(content)) {
         // Special handling for Dequery objects which may contain multiple elements
-        this.__elements.forEach((el) => {
-          (content as CallChainImpl<T>).__elements.forEach((childEl) => {
-            if ((childEl as Node).nodeType && (el as Node).nodeType) {
-              (el as HTMLElement).appendChild(
-                (childEl as Node).cloneNode(true),
-              );
+        this.nodes.forEach((el) => {
+          (content as CallChainImpl<T>).nodes.forEach((childEl) => {
+            if (
+              (childEl as Node).nodeType &&
+              (el as Node).nodeType &&
+              !(childEl as Node).isEqualNode(el) &&
+              el!.parentNode !== childEl
+            ) {
+              (el as HTMLElement).appendChild(childEl as Node);
             }
           });
         });
       } else if (
         typeof content === "string" &&
-        /<\/?[a-z][\s\S]*>/i.test(content)
+        isMarkup(content, this.Parser)
       ) {
         // Special handling for HTML strings which might produce multiple elements
-        const elements = renderHTML(content, this.options);
-        this.__elements.forEach((el) => {
+        const elements = renderMarkup(content, this.Parser);
+        this.nodes.forEach((el) => {
           elements.forEach((childEl) =>
             (el as HTMLElement).appendChild(childEl.cloneNode(true)),
           );
         });
       } else {
         // Single element handling
-        this.__elements.forEach((el) => {
+        this.nodes.forEach((el) => {
           if (!element) return;
           (el as HTMLElement).appendChild(element.cloneNode(true));
         });
       }
 
-      return this.__elements as NT;
+      return this.nodes as NT;
     }) as CallChainImplThenable<NT>;
   }
 
@@ -597,109 +565,134 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
   ) {
-    return this.createCall("appendTo", async () => {
-      const targetElements = await resolveTargets(
+    return createCall<NT>(this, "appendTo", async () => {
+      const nodes = await resolveNodes(
         target,
         this.options.timeout!,
         this.document,
       );
 
-      if (targetElements.length === 0) {
+      if (nodes.length === 0) {
         console.warn("appendTo: no target elements found");
-        return this.__elements as NT;
+        return this.nodes as NT;
       }
 
-      targetElements.forEach((targetEl) => {
-        this.__elements.forEach((el) => {
-          if (!targetEl || !el) return;
-          (targetEl as HTMLElement).appendChild(el.cloneNode(true));
+      nodes.forEach((node) => {
+        this.nodes.forEach((el) => {
+          if (!node || !el) return;
+          node.appendChild(el.cloneNode(true));
         });
       });
 
-      return this.__elements as NT;
+      return this.nodes as NT;
     }) as CallChainImplThenable<NT>;
   }
 
-  update(input: string | RenderInput) {
-    return this.createCall("update", async () => {
+  update(input: string | RenderInput | NodeType | Dequery) {
+    return createCall<NT>(this, "update", async () => {
+      if (isDequery(input)) {
+        input = input[0] as HTMLElement;
+      }
+
+      if (input instanceof Node) {
+        (await emptyImpl(this.nodes)) as NT;
+        for (let i = 0; i < this.nodes.length; i++) {
+          const el = this.nodes[i];
+          if (
+            !el ||
+            !input ||
+            el.isEqualNode(input as Node) ||
+            el.parentNode === input
+          ) {
+            continue;
+          }
+          el.appendChild(input);
+        }
+        return this.nodes as NT;
+      }
+
       if (typeof input === "string") {
-        const doc = parseHTML(input, "text/html", this.options);
-        if (isHTML(doc)) {
-          this.__elements.forEach((el) => {
-            updateDom(el as HTMLElement, input, doc);
+        if (isMarkup(input, this.Parser)) {
+          this.nodes.forEach((el) => {
+            updateDom(el as HTMLElement, input as string, this.Parser);
           });
         } else {
-          this.__elements.forEach((el) => {
-            (el as HTMLElement).textContent = input;
+          this.nodes.forEach((el) => {
+            (el as HTMLElement).textContent = input as string;
           });
         }
       } else if (isJSX(input)) {
-        this.__elements.forEach((el) => {
-          updateDomWithVdom(el as HTMLElement, input, globalThis as Globals);
+        this.nodes.forEach((el) => {
+          updateDomWithVdom(
+            el as HTMLElement,
+            input as RenderInput,
+            globalThis as Globals,
+          );
         });
       } else {
         console.warn("update: unsupported content type", input);
       }
-      return this.__elements as NT;
+      return this.nodes as NT;
     }) as CallChainImplThenable<NT>;
   }
 
   // --- Event Methods ---
 
   on(event: string, handler: EventListener) {
-    return this.createCall("on", async () => {
-      this.__elements.forEach((el) => {
-        this.addElementEvent(el as HTMLElement, event, handler);
+    return createCall<NT>(this, "on", async () => {
+      this.nodes.forEach((el) => {
+        addElementEvent(el as HTMLElement, event, handler);
       });
-      return this.__elements as NT;
+      return this.nodes as NT;
     }) as CallChainImplThenable<NT>;
   }
 
   off(event: string, handler?: EventListener) {
-    return this.createCall("off", async () => {
-      this.__elements.forEach((el) => {
-        this.removeElementEvent(el as HTMLElement, event, handler);
+    return createCall<NT>(this, "off", async () => {
+      this.nodes.forEach((el) => {
+        removeElementEvent(el as HTMLElement, event, handler);
       });
-      return this.__elements as NT;
+      return this.nodes as NT;
     }) as CallChainImplThenable<NT>;
   }
 
   clearEvents() {
-    return this.createCall("clearEvents", async () => {
-      this.__elements.forEach((el) => {
-        this.clearElementEvents(el as HTMLElement);
+    return createCall<NT>(this, "clearEvents", async () => {
+      this.nodes.forEach((el) => {
+        clearElementEvents(el as HTMLElement);
       });
-      return this.__elements as NT;
+      return this.nodes as NT;
     }) as CallChainImplThenable<NT>;
   }
 
   trigger(eventType: string) {
-    return this.createCall("trigger", async () => {
-      this.__elements.forEach((el) =>
+    return createCall<NT>(this, "trigger", async () => {
+      this.nodes.forEach((el) =>
         (el as HTMLElement).dispatchEvent(
           new Event(eventType, { bubbles: true, cancelable: true }),
         ),
       );
-      return this.__elements as NT;
+      return this.nodes as NT;
     }) as CallChainImplThenable<NT>;
   }
 
   // --- Position Methods ---
 
   position() {
-    return this.createCall(
+    return createCall<NT>(
+      this,
       "position",
       async () =>
         ({
-          top: (this.__elements[0] as HTMLElement).offsetTop,
-          left: (this.__elements[0] as HTMLElement).offsetLeft,
+          top: (this.nodes[0] as HTMLElement).offsetTop,
+          left: (this.nodes[0] as HTMLElement).offsetLeft,
         }) as NT,
     ) as PromiseLike<Position>;
   }
 
   offset() {
-    return this.createCall("offset", async () => {
-      const el = this.__elements[0] as HTMLElement;
+    return createCall<NT>(this, "offset", async () => {
+      const el = this.nodes[0] as HTMLElement;
       const rect = el.getBoundingClientRect();
       return {
         top: rect.top + window.scrollY,
@@ -711,17 +704,18 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   // --- Data Methods ---
 
   data(name: string, value?: string) {
-    return this.createGetterSetterCall<string | undefined, string>(
+    return createGetterSetterCall<NT, string | undefined, string>(
+      this,
       "data",
       value,
       // Getter function
       () => {
-        if (this.__elements.length === 0) return undefined;
-        return (this.__elements[0] as HTMLElement).dataset[name];
+        if (this.nodes.length === 0) return undefined;
+        return (this.nodes[0] as HTMLElement).dataset[name];
       },
       // Setter function
       (val) => {
-        this.__elements.forEach((el) => {
+        this.nodes.forEach((el) => {
           (el as HTMLElement).dataset[name] = val;
         });
       },
@@ -729,13 +723,14 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   }
 
   val(val?: string | boolean) {
-    return this.createGetterSetterCall<string | boolean, string | boolean>(
+    return createGetterSetterCall<NT, string | boolean, string | boolean>(
+      this,
       "val",
       val,
       // Getter function
       () => {
-        if (this.__elements.length === 0) return "";
-        const el = this.__elements[0] as HTMLInputElement;
+        if (this.nodes.length === 0) return "";
+        const el = this.nodes[0] as HTMLInputElement;
         if (el.type === "checkbox") {
           return el.checked;
         }
@@ -743,7 +738,7 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
       },
       // Setter function
       (value) => {
-        this.__elements.forEach((el) => {
+        this.nodes.forEach((el) => {
           const input = el as HTMLInputElement;
           if (input.type === "checkbox" && typeof value === "boolean") {
             input.checked = value;
@@ -755,34 +750,54 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     ) as PromiseLike<string | boolean>;
   }
 
+  serialize(
+    format: "querystring" | "json" = "querystring",
+  ): PromiseLike<string> {
+    const mapValue = (value: string | boolean) =>
+      typeof value === "boolean" ? (value ? "on" : "off") : value;
+
+    return createCall<NT>(this, "serialize", async () => {
+      const formData = getAllFormValues(this);
+      if (format === "json") {
+        return JSON.stringify(formData) as NT;
+      } else {
+        const urlSearchParams = new URLSearchParams();
+        const keys = Object.keys(formData);
+        keys.forEach((key) => {
+          const value = formData[key];
+          if (typeof value === "string") {
+            urlSearchParams.append(key, value);
+          } else if (typeof value === "boolean") {
+            urlSearchParams.append(key, mapValue(value));
+          } else if (Array.isArray(value)) {
+            value.forEach((value) =>
+              urlSearchParams.append(key, mapValue(value)),
+            );
+          }
+        });
+        return urlSearchParams.toString() as NT;
+      }
+    }) as PromiseLike<string>;
+  }
+
   form<T = FormKeyValues>(formData?: Record<string, string | boolean>) {
-    return this.createGetterSetterCall<
+    return createGetterSetterCall<
+      NT,
       FormKeyValues,
       Record<string, string | boolean>
     >(
+      this,
       "form",
       formData,
       // Getter function
-      () => {
-        const formFields: Record<string, string | boolean> = {};
-        this.__elements.forEach((el) => {
-          this.processFormElements(el, (input, key) => {
-            if (input.type === "checkbox") {
-              formFields[key] = input.checked;
-            } else {
-              formFields[key] = input.value;
-            }
-          });
-        });
-        return formFields;
-      },
+      () => getAllFormValues(this),
       // Setter function
       (values) => {
-        this.__elements.forEach((el) => {
-          this.processFormElements(el, (input, key) => {
+        this.nodes.forEach((el) => {
+          processAllFormElements(el, (input, key) => {
             if (values[key] !== undefined) {
               if (input.type === "checkbox") {
-                input.checked = Boolean(values[key]);
+                (input as HTMLInputElement).checked = Boolean(values[key]);
               } else {
                 input.value = String(values[key]);
               }
@@ -799,12 +814,12 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
     includeMarginOrPadding?: boolean,
     includePaddingIfMarginTrue?: boolean,
   ) {
-    return this.createCall("dimension", async () => {
-      if (this.__elements.length === 0) {
+    return createCall<NT>(this, "dimension", async () => {
+      if (this.nodes.length === 0) {
         return { width: 0, height: 0 } as NT;
       }
 
-      const el = this.__elements[0] as HTMLElement;
+      const el = this.nodes[0] as HTMLElement;
       const style = this.window.getComputedStyle(el);
       if (!style) return { width: 0, height: 0 } as NT;
 
@@ -874,68 +889,67 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
   // --- Visibility Methods ---
 
   isVisible() {
-    return this.createCall("isVisible", async () => {
-      if (this.__elements.length === 0) return false as NT;
-      const el = this.__elements[0] as HTMLElement;
-      return this.checkElementVisibility(el) as NT;
+    return createCall<NT>(this, "isVisible", async () => {
+      if (this.nodes.length === 0) return false as NT;
+      const el = this.nodes[0] as HTMLElement;
+      return checkElementVisibility(el, this.window, this.document) as NT;
     }) as PromiseLike<boolean>;
   }
 
   isHidden() {
-    return this.createCall("isHidden", async () => {
-      if (this.__elements.length === 0) return true as NT;
-      const el = this.__elements[0] as HTMLElement;
-      return !this.checkElementVisibility(el) as NT;
+    return createCall<NT>(this, "isHidden", async () => {
+      if (this.nodes.length === 0) return true as NT;
+      const el = this.nodes[0] as HTMLElement;
+      return !checkElementVisibility(el, this.window, this.document) as NT;
     }) as PromiseLike<boolean>;
   }
 
   // --- Scrolling Methods ---
 
   scrollTo(xOrOptions: number | ScrollToOptions, y?: number) {
-    return this.scrollHelper(
-      "scrollTo",
-      xOrOptions,
-      y,
-    ) as CallChainImplThenable<NT>;
+    return createCall<NT>(this, "scrollTo", async () => {
+      return scrollHelper("scrollTo", this.nodes, xOrOptions, y) as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   scrollBy(xOrOptions: number | ScrollToOptions, y?: number) {
-    return this.scrollHelper(
-      "scrollBy",
-      xOrOptions,
-      y,
-    ) as CallChainImplThenable<NT>;
+    return createCall<NT>(this, "scrollBy", async () => {
+      return scrollHelper("scrollBy", this.nodes, xOrOptions, y) as NT;
+    }) as CallChainImplThenable<NT>;
   }
 
   scrollIntoView(options?: boolean | ScrollIntoViewOptions) {
-    return this.createCall("scrollIntoView", async () => {
-      if (this.__elements.length === 0) return this.__elements as NT;
-      (this.__elements[0] as HTMLElement).scrollIntoView(options);
-      return this.__elements as NT;
+    return createCall<NT>(this, "scrollIntoView", async () => {
+      if (this.nodes.length === 0) return this.nodes as NT;
+      (this.nodes[0] as HTMLElement).scrollIntoView(options);
+      return this.nodes as NT;
     }) as CallChainImplThenable<NT>;
   }
 
   // --- Transformation Methods ---
 
   map<T>(cb: (el: NT, idx: number) => T) {
-    return this.createCall(
+    return createCall<NT>(
+      this,
       "map",
-      async () => (this.__elements as NT[]).map(cb) as NT,
+      async () => (this.nodes as NT[]).map(cb) as NT,
     ) as PromiseLike<NT[]>;
   }
 
   toArray() {
-    return this.createCall(
+    return createCall<NT>(
+      this,
       "toArray",
-      async () => [...(this.__elements as NT[])] as NT,
+      async () => [...(this.nodes as NT[])] as NT,
     ) as PromiseLike<NT[]>;
   }
 
   filter(selector: string) {
-    return this.createCall(
+    return createCall<NT>(
+      this,
       "filter",
       async () =>
-        this.__elements.filter(
+        this.nodes.filter(
           (el) => el instanceof Element && el.matches(selector),
         ) as NT,
     ) as CallChainImplThenable<NT>;
@@ -956,209 +970,11 @@ export class CallChainImpl<NT = ChainMethodReturnType> {
 
   // TODO:
   // - ready (isReady)
-  // - serialize (to URL string, JSON, etc.)
   // - deserialize (from URL string, JSON, etc.)
-  // Re-use the common/* shared code!
-
-  // Add this helper function inside the CallChainImpl class or before it as a utility function
-
-  private checkElementVisibility(element: HTMLElement): boolean {
-    const style = this.window.getComputedStyle(element);
-    if (!style) return false;
-
-    // Check if element has dimensions
-    if (element.offsetWidth === 0 || element.offsetHeight === 0) return false;
-
-    // Check if element is hidden via CSS
-    if (
-      style.display === "none" ||
-      style.visibility === "hidden" ||
-      style.opacity === "0" ||
-      Number.parseFloat(style.opacity) === 0
-    )
-      return false;
-
-    // Check if element is detached from DOM
-    if (!this.document.body.contains(element)) return false;
-
-    // Check if any parent is hidden
-    let parent = element.parentElement;
-    while (parent) {
-      const parentStyle = this.window.getComputedStyle(parent);
-      if (
-        parentStyle &&
-        (parentStyle.display === "none" ||
-          parentStyle.visibility === "hidden" ||
-          parentStyle.opacity === "0" ||
-          Number.parseFloat(parentStyle.opacity) === 0)
-      ) {
-        return false;
-      }
-      parent = parent.parentElement;
-    }
-    return true;
-  }
-
-  private createCall(
-    methodName: string,
-    handler: () => Promise<NT>,
-  ): CallChainImplThenable<NT> | CallChainImpl<NT> {
-    this.callStack.push(new Call<NT>(methodName, handler));
-    return subChainForNextAwait(this);
-  }
-
-  private createGetterSetterCall<T, V>(
-    methodName: string,
-    value: V | undefined,
-    getter: () => T,
-    setter: (value: V) => void,
-  ): CallChainImplThenable<NT> | CallChainImpl<NT> {
-    if (value !== undefined) {
-      return this.createCall(methodName, async () => {
-        setter(value);
-        return this.__elements as NT;
-      });
-    } else {
-      return this.createCall(methodName, async () => {
-        return getter() as unknown as NT;
-      });
-    }
-  }
-
-  private traverse<R = NT>(
-    methodName: string,
-    selector: (el: Element) => Element | Element[] | null | undefined,
-  ): CallChainImplThenable<R> | CallChainImpl<R> {
-    return this.createCall(methodName, async () => {
-      return this.__elements.flatMap((el) => {
-        if (el instanceof Element) {
-          try {
-            const result = selector(el);
-            if (Array.isArray(result)) {
-              return result.filter(
-                (item): item is Element => item instanceof Element,
-              );
-            } else if (result instanceof Element) {
-              return [result];
-            }
-          } catch (err) {
-            console.warn("Error in traverse selector function:", err);
-          }
-        }
-        return [];
-      }) as NT;
-    }) as unknown as CallChainImplThenable<R> | CallChainImpl<R>;
-  }
-
-  private getEventMap(element: HTMLElement): Map<string, Set<EventListener>> {
-    if (!element._dequeryEvents) {
-      element._dequeryEvents = new Map();
-    }
-    return element._dequeryEvents;
-  }
-
-  private addElementEvent(
-    element: HTMLElement,
-    eventType: string,
-    handler: EventListener,
-  ): void {
-    const eventMap = this.getEventMap(element);
-
-    if (!eventMap.has(eventType)) {
-      eventMap.set(eventType, new Set());
-    }
-
-    eventMap.get(eventType)!.add(handler);
-    element.addEventListener(eventType, handler);
-  }
-
-  private removeElementEvent(
-    element: HTMLElement,
-    eventType: string,
-    handler?: EventListener,
-  ): void {
-    const eventMap = this.getEventMap(element);
-
-    if (!eventMap.has(eventType)) return;
-
-    if (handler) {
-      // Remove specific handler
-      if (eventMap.get(eventType)!.has(handler)) {
-        element.removeEventListener(eventType, handler);
-        eventMap.get(eventType)!.delete(handler);
-
-        if (eventMap.get(eventType)!.size === 0) {
-          eventMap.delete(eventType);
-        }
-      }
-    } else {
-      // Remove all handlers for this event type
-      eventMap.get(eventType)!.forEach((h: EventListener) => {
-        element.removeEventListener(eventType, h);
-      });
-      eventMap.delete(eventType);
-    }
-  }
-
-  private clearElementEvents(element: HTMLElement): void {
-    const eventMap = this.getEventMap(element);
-
-    eventMap.forEach((handlers, eventType) => {
-      handlers.forEach((handler: EventListener) => {
-        element.removeEventListener(eventType, handler);
-      });
-    });
-
-    eventMap.clear();
-  }
-
-  private scrollHelper(
-    methodName: "scrollTo" | "scrollBy",
-    xOrOptions: number | ScrollToOptions,
-    y?: number,
-  ): CallChainImplThenable<NT> | CallChainImpl<NT> {
-    return this.createCall(methodName, async () => {
-      this.__elements.forEach((el) => {
-        const element = el as HTMLElement;
-        if (typeof xOrOptions === "object") {
-          element[methodName](xOrOptions);
-        } else if (y !== undefined) {
-          element[methodName](xOrOptions, y);
-        } else {
-          element[methodName](xOrOptions, 0);
-        }
-      });
-      return this.__elements as NT;
-    });
-  }
-
-  /**
-   * Helper method to process form elements and apply a callback to each
-   * @private
-   */
-  // TODO: move all private methods outside of the class!
-  private processFormElements(
-    el: NodeType,
-    callback: (input: HTMLInputElement, key: string) => void,
-  ): void {
-    if (el instanceof Element) {
-      const inputElements = el.querySelectorAll(
-        "input, select, textarea",
-      ) as NodeListOf<HTMLInputElement>;
-
-      inputElements.forEach((input) => {
-        if (["INPUT", "SELECT", "TEXTAREA"].includes(input.tagName)) {
-          const key = input.name || input.id;
-          callback(input, key);
-        }
-      });
-    }
-  }
 }
 
-// custom promise chain
 export class CallChainImplThenable<
-  NT = ChainMethodReturnType,
+  NT = DequerySyncMethodReturnType,
 > extends CallChainImpl<NT> {
   constructor(options: DequeryOptions<NT> = {}, isResolved = false) {
     super(options);
@@ -1260,7 +1076,9 @@ export class CallChainImplThenable<
       [],
       (ms, call) => {
         this.stoppedWithError = new Error(`Timeout after ${ms}ms`);
-        this.options.onTimeGuardError!(ms, call);
+
+        // TODO: implement a onMaxTimeExceeded() method and find it here (Call)
+        //this.options.onTimeGuardError!(ms, call);
       },
     )
       .then((result) => {
@@ -1290,7 +1108,92 @@ export class CallChainImplThenable<
   }
 }
 
-export function delayedAutoStart<NT = ChainMethodReturnType>(
+export function scrollHelper<T = NodeType>(
+  methodName: "scrollTo" | "scrollBy",
+  elements: T[],
+  xOrOptions: number | ScrollToOptions,
+  y?: number,
+): T[] {
+  elements.forEach((el) => {
+    const element = el as unknown as HTMLElement;
+    if (typeof xOrOptions === "object") {
+      element[methodName](xOrOptions);
+    } else if (y !== undefined) {
+      element[methodName](xOrOptions, y);
+    } else {
+      element[methodName](xOrOptions, 0);
+    }
+  });
+  return elements;
+}
+
+export function getAllFormValues(chain: CallChainImpl<any>): FormKeyValues {
+  const formFields: FormKeyValues = {};
+
+  const mapCheckboxValue = (value: string) => (value === "on" ? true : value);
+
+  chain.nodes.forEach((el) => {
+    processAllFormElements(el, (input, key) => {
+      if (!key) return; // Skip elements without name/id
+
+      // Handle checkboxes and radio buttons
+      if (input instanceof HTMLInputElement) {
+        if (input.type === "checkbox") {
+          if (input.checked) {
+            const value = mapCheckboxValue(input.value);
+            if (typeof formFields[key] !== "undefined") {
+              formFields[key] = [formFields[key] as FormFieldValue, value];
+            } else if (Array.isArray(formFields[key])) {
+              (formFields[key] as Array<FormFieldValue>).push(value);
+            } else {
+              formFields[key] = value;
+            }
+          }
+        } else if (input.type === "radio") {
+          // Only include checked radio buttons
+          if (input.checked) {
+            console.log("input radio value", input.value);
+            formFields[key] =
+              (input as HTMLInputElement).value === "on"
+                ? true
+                : (input as HTMLInputElement).value;
+          }
+        } else if (input.type === "file") {
+          // For file inputs, get the file name(s)
+          if (input.files?.length) {
+            const fileNames = Array.from(input.files).map((file) => file.name);
+            formFields[key] = fileNames.length === 1 ? fileNames[0] : fileNames;
+          }
+        } else {
+          // Regular text inputs
+          formFields[key] = input.value;
+        }
+      }
+      // Handle select elements
+      else if (input instanceof HTMLSelectElement) {
+        if (input.multiple) {
+          // For multi-select, collect all selected options
+          const values = Array.from(input.selectedOptions).map(
+            (option) => option.value,
+          );
+          formFields[key] = values.length === 1 ? values[0] : values;
+        } else {
+          // Single select
+          formFields[key] = input.value;
+        }
+      }
+      // Handle textareas
+      else if (input instanceof HTMLTextAreaElement) {
+        formFields[key] = input.value;
+      }
+    });
+  });
+
+  console.log("formFields", formFields);
+  return formFields;
+}
+
+export function delayedAutoStart<NT = DequerySyncMethodReturnType>(
   chain: CallChainImplThenable<NT> | CallChainImpl<NT>,
 ): CallChainImplThenable<NT> | CallChainImpl<NT> {
   if (chain.options.autoStart) {
@@ -1304,14 +1207,15 @@ export function delayedAutoStart<NT = ChainMethodReturnType>(
   return chain;
 }
 
-export function dequery<NT = ChainMethodReturnType>(
+export function dequery<NT = DequerySyncMethodReturnType>(
   selectorRefOrEl:
     | string
     | NodeType
     | Ref<NodeType, any>
     | RenderInput
     | Function,
-  options: DequeryOptions<NT> & ElementCreationOptions = getDefaultConfig(),
+  options: DequeryOptions<NT> &
+    ElementCreationOptions = getDefaultDequeryOptions(),
 ): CallChainImplThenable<NT> | CallChainImpl<NT> {
   // async co-routine execution
   if (typeof selectorRefOrEl === "function") {
@@ -1349,7 +1253,7 @@ export function dequery<NT = ChainMethodReturnType>(
 
   if (typeof selectorRefOrEl === "string") {
     if (selectorRefOrEl.indexOf("<") === 0) {
-      const elements = renderHTML(selectorRefOrEl, chain.options);
+      const elements = renderMarkup(selectorRefOrEl, chain.Parser);
       const renderRootEl = elements[0];
 
       const { text, html, ...attributes } = chain.elementCreationOptions;
@@ -1417,116 +1321,37 @@ export function isDequery(
   );
 }
 
-/**
- * Creates a promise that rejects if the operation doesn't complete within the timeout
- * @export
- */
-export function createTimeoutPromise<T>(
-  timeoutMs: number,
-  operation: () => Promise<T> | T,
-  timeoutCallback?: (ms: number) => void,
-): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      timeoutCallback?.(timeoutMs);
-      reject(new Error(`Timeout after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    Promise.resolve().then(async () => {
-      try {
-        const result = await operation();
-        clearTimeout(timeoutId);
-        resolve(result);
-      } catch (error) {
-        clearTimeout(timeoutId);
-        reject(error);
-      }
-    });
-  });
-}
-
-export function runWithTimeGuard<NT>(
-  timeout: number,
-  fn: Function,
-  args: any[],
-  onError: (ms: number, call: Call<NT>) => void,
-): Promise<any> {
-  return createTimeoutPromise(
-    timeout,
-    () => fn(...args),
-    (ms) => {
-      const fakeCall = new Call<NT>("timeout", async () => [] as NT);
-      onError(ms, fakeCall);
-    },
+export function isDequeryOptionsObject(o: object) {
+  return (
+    o &&
+    typeof o === "object" &&
+    (o as DequeryOptions).timeout !== undefined &&
+    (o as DequeryOptions).globals !== undefined
   );
 }
 
-export async function waitForWithPolling<T>(
-  check: () => T | null | undefined,
-  timeout: number,
-  interval = 1,
-): Promise<T> {
-  const start = Date.now();
-
-  return createTimeoutPromise(timeout, () => {
-    return new Promise<T>((resolve, reject) => {
-      const timer = setInterval(() => {
-        try {
-          const result = check();
-          if (result != null) {
-            clearInterval(timer);
-            resolve(result);
-          }
-        } catch (err) {
-          clearInterval(timer);
-          reject(err);
-        }
-      }, interval);
-    });
-  });
+export function getDefaultDequeryOptions<NT>(): DequeryOptions<NT> {
+  return {
+    timeout: 500 /** ms */,
+    // even long sync chains would execute in < .1ms
+    // so after 1ms, we can assume the "await" in front is
+    // missing (intentionally non-blocking in sync code)
+    autoStartDelay: 1 /** ms */,
+    autoStart: true,
+    resultStack: [],
+    globals: {
+      document: globalThis.document,
+      window: globalThis.window,
+      performance: globalThis.performance,
+    },
+  };
 }
 
-export async function waitForDOM(
-  check: () => Array<NodeType>,
-  timeout: number,
-  document?: Document,
-): Promise<Array<NodeType>> {
-  const initialResult = check();
-  if (initialResult.length) return initialResult;
-
-  return createTimeoutPromise(timeout, () => {
-    return new Promise<Array<NodeType>>((resolve) => {
-      if (!document) {
-        // Fallback if no document is provided
-        setTimeout(() => resolve(check()), 0);
-        return;
-      }
-
-      const observer = new MutationObserver(() => {
-        const result = check();
-        if (result.length) {
-          observer.disconnect();
-          resolve(result);
-        }
-      });
-
-      observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-      });
-
-      // Return function to clean up observer on timeout
-      return () => observer.disconnect();
-    });
-  });
-}
-
-export function mapArrayIndexAccess<NT = ChainMethodReturnType>(
+export function mapArrayIndexAccess<NT = DequerySyncMethodReturnType>(
   source: CallChainImpl<NT>,
   target: CallChainImpl<NT>,
 ) {
-  const elements = source.__elements;
+  const elements = source.nodes;
   // allow for array-like access
   for (let i = 0; i < elements.length; i++) {
     target[i] = elements[i] as NT;
@@ -1534,7 +1359,35 @@ export function mapArrayIndexAccess<NT = ChainMethodReturnType>(
   target.length = elements.length;
 }
 
-export function createSubChain<NT = ChainMethodReturnType>(
+export function createCall<NT>(
+  chain: CallChainImpl<NT>,
+  methodName: string,
+  handler: () => Promise<NT>,
+): CallChainImplThenable<NT> | CallChainImpl<NT> {
+  chain.callStack.push(new Call<NT>(methodName, handler));
+  return subChainForNextAwait(chain);
+}
+
+export function createGetterSetterCall<NT, T, V>(
+  chain: CallChainImpl<NT>,
+  methodName: string,
+  value: V | undefined,
+  getter: () => T,
+  setter: (value: V) => void,
+): CallChainImplThenable<NT> | CallChainImpl<NT> {
+  if (value !== undefined) {
+    return createCall<NT>(chain, methodName, async () => {
+      setter(value);
+      return chain.nodes as NT;
+    });
+  } else {
+    return createCall<NT>(chain, methodName, async () => {
+      return getter() as unknown as NT;
+    });
+  }
+}
+
+export function createSubChain<NT = DequerySyncMethodReturnType>(
   source: CallChainImpl<NT>,
   Constructor:
     | typeof CallChainImpl
@@ -1603,40 +1456,24 @@ export function subChainForNextAwait<NT>(
     : createSubChain<NT>(source, CallChainImplThenable);
 }
 
-export async function waitForRef<T>(
-  ref: { current: T | null },
+export function runWithTimeGuard<NT>(
   timeout: number,
-): Promise<T> {
-  return waitForWithPolling(() => ref.current, timeout);
+  fn: Function,
+  args: any[],
+  onError: (ms: number, call: Call<NT>) => void,
+): Promise<any> {
+  return createTimeoutPromise(
+    timeout,
+    () => fn(...args),
+    (ms) => {
+      const fakeCall = new Call<NT>("timeout", async () => [] as NT);
+      onError(ms, fakeCall);
+    },
+  );
 }
 
-export function parseHTML(
-  str: string,
-  type: DOMParserSupportedType,
-  options: DequeryOptions<any>,
-): Document {
-  const parser = new options!.globals!.window!.DOMParser();
-  return parser.parseFromString(str, type);
-}
-
-export function isHTML(doc: Document): boolean {
-  return doc.documentElement.querySelectorAll("*").length > 2; // 2 = <html> and <body>
-}
-
-export function renderHTML(
-  html: string,
-  options: DequeryOptions<any>,
-  type: DOMParserSupportedType = "text/html",
-) {
-  return Array.from(parseHTML(html, type, options).body.childNodes);
-}
-
-/**
- * Resolves various types of content into a DOM element
- * @export
- */
-export async function resolveContent<T = ChainMethodReturnType>(
-  content:
+export async function renderNode<T = DequerySyncMethodReturnType>(
+  input:
     | string
     | RenderInput
     | NodeType
@@ -1645,45 +1482,38 @@ export async function resolveContent<T = ChainMethodReturnType>(
     | CallChainImplThenable<T>
     | null
     | undefined,
-  options: DequeryOptions<any>,
+  chain: CallChainImpl<any> | CallChainImplThenable<any>,
 ): Promise<NodeType | null> {
-  if (content == null) {
+  if (input == null) {
     return null;
   }
 
-  if (typeof content === "string") {
-    const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(content);
-    if (hasHtmlTags) {
-      return renderHTML(content, options)[0];
+  if (typeof input === "string") {
+    if (isMarkup(input, chain.Parser)) {
+      return renderMarkup(input, chain.Parser)[0];
     } else {
-      return options.globals!.document!.createTextNode(content);
+      return chain.document.createTextNode(input);
     }
-  } else if (isJSX(content)) {
+  } else if (isJSX(input)) {
     return renderIsomorphicSync(
-      content as RenderInput,
-      options.globals!.document!.body,
-      options.globals as Globals,
+      input as RenderInput,
+      chain.document.body,
+      chain.options.globals as Globals,
     ) as NodeType;
-  } else if (isRef(content)) {
-    await waitForRef(content as Ref<NodeType>, options.timeout!);
-    return content.current!;
-  } else if ((content as Node).nodeType) {
-    return content as NodeType;
-  } else if (isDequery(content)) {
-    const firstElement = await content.getFirstElement();
-    return firstElement as NodeType;
+  } else if (isRef(input)) {
+    await waitForRef(input as Ref<NodeType>, chain.options.timeout!);
+    return input.current!;
+  } else if (input && typeof input === "object" && "nodeType" in input) {
+    return input as NodeType;
+  } else if (isDequery(input)) {
+    return (await input.getFirstElement()) as NodeType;
   }
-
-  console.warn("resolveContent: unsupported content type", content);
+  console.warn("resolveContent: unsupported content type", input);
   return null;
 }
 
-/**
- * Resolves various types of targets into an array of DOM elements
- * @export
- */
-export async function resolveTargets<T = ChainMethodReturnType>(
-  target:
+export async function resolveNodes<T = DequerySyncMethodReturnType>(
+  input:
     | string
     | NodeType
     | Ref<NodeType>
@@ -1692,15 +1522,15 @@ export async function resolveTargets<T = ChainMethodReturnType>(
   timeout: number,
   document?: Document,
 ): Promise<NodeType[]> {
-  let targetElements: NodeType[] = [];
+  let nodes: NodeType[] = [];
 
-  if (isRef(target)) {
-    await waitForRef(target as Ref<NodeType>, timeout);
-    targetElements = [target.current!];
-  } else if (typeof target === "string" && document) {
+  if (isRef(input)) {
+    await waitForRef(input as Ref<NodeType>, timeout);
+    nodes = [input.current!];
+  } else if (typeof input === "string" && document) {
     const result = await waitForDOM(
       () => {
-        const el = document.querySelector(target);
+        const el = document.querySelector(input);
         if (el) {
           return [el];
         } else {
@@ -1711,16 +1541,42 @@ export async function resolveTargets<T = ChainMethodReturnType>(
       document,
     );
     const el = result[0];
-    if (el) targetElements = [el as NodeType];
-  } else if ((target as Node).nodeType) {
-    targetElements = [target as NodeType];
-  } else if (isDequery(target)) {
-    const elements = (target as CallChainImpl<T>).__elements;
-    targetElements = elements
+    if (el) nodes = [el as NodeType];
+  } else if (input && typeof input === "object" && "nodeType" in input) {
+    nodes = [input as NodeType];
+  } else if (isDequery(input)) {
+    const elements = (input as CallChainImpl<T>).nodes;
+    nodes = elements
       .filter((el) => (el as Node).nodeType !== undefined)
       .map((el) => el as NodeType);
   } else {
-    console.warn("resolveTargets: expected selector, ref or node, got", target);
+    console.warn("resolveTargets: expected selector, ref or node, got", input);
   }
-  return targetElements;
+  return nodes;
+}
+
+export function traverse<NT, R = NT>(
+  chain: CallChainImpl<NT>,
+  methodName: string,
+  selector: (el: Element) => Element | Element[] | null | undefined,
+): CallChainImplThenable<R> | CallChainImpl<R> {
+  return createCall<NT>(chain, methodName, async () => {
+    return chain.nodes.flatMap((el) => {
+      if (el instanceof Element) {
+        try {
+          const result = selector(el);
+          if (Array.isArray(result)) {
+            return result.filter(
+              (item): item is Element => item instanceof Element,
+            );
+          } else if (result instanceof Element) {
+            return [result];
+          }
+        } catch (err) {
+          console.warn("Error in traverse selector function:", err);
+        }
+      }
+      return [];
+    }) as NT;
+  }) as unknown as CallChainImplThenable<R> | CallChainImpl<R>;
 }

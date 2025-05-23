@@ -515,7 +515,7 @@ describe("VirtualDOM", () => {
 
     renderSync(<TryForwardRef ref={forwardedRef} />);
 
-    forwardedRef.update!(newState);
+    forwardedRef.updateState!(newState);
 
     expect(innerUpdateFn.mock.calls.length).toEqual(1);
   });

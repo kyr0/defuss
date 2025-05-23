@@ -156,7 +156,7 @@ describe("Traversal", () => {
     const chain = await $<HTMLElement>(".item")
       .debug((chain) => {
         debugCalled = true;
-        elementsInDebug = chain.__elements;
+        elementsInDebug = chain.nodes;
       })
       .html("Debugging");
     expect(debugCalled).toBe(true);

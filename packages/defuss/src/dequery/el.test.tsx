@@ -133,9 +133,13 @@ describe("Element creation test", async () => {
       text: "Child 2",
     });
 
-    div.html();
+    const markup = await div.html();
 
-    await div.append(span1).append(span2);
+    console.log("markup", markup);
+
+    const newMarkup = await div.append(span1).append(span2).html();
+
+    console.log("newMarkup", newMarkup);
 
     expect(div[0]).toBeInstanceOf(HTMLElement); // check that the first element is an HTMLElement
     expect(div[0].tagName).toBe("DIV"); // check that the first element is a <div>
@@ -143,7 +147,7 @@ describe("Element creation test", async () => {
 
     const children = await div.children();
 
-    expect(children.length).toBe(4);
+    expect(children.length).toBe(2);
 
     expect(children[0]).toBeInstanceOf(HTMLElement);
     expect(children[0].tagName).toBe("SPAN");
@@ -152,6 +156,62 @@ describe("Element creation test", async () => {
     expect(children[1]).toBeInstanceOf(HTMLElement);
     expect(children[1].tagName).toBe("SPAN");
     expect(children[1].textContent).toBe("Child 2");
+  });
+
+  it("can append a dom node to another element", async () => {
+    const div = await $<HTMLElement>("<div>Parent</div>");
+    const span = await $<HTMLElement>("<span>Child</span>");
+    const spanNode = span[0]; // Get the DOM node from the Dequery object
+    await div.append(spanNode);
+    expect(div).toBeInstanceOf(CallChainImpl); // check that div is an instance of Dequery
+    expect(div[0].tagName).toBe("DIV"); // check that the element is a <div>
+    expect(div[0].textContent).toContain("Parent"); // check for the correct text content in div
+    expect(div[0].querySelector("span")).not.toBeNull(); // check that a <span> is appended
+    expect(div[0].querySelector("span")?.textContent).toBe("Child"); // check for the correct text content in span
+  });
+
+  it("can update the text content of an element", async () => {
+    const div = await $<HTMLElement>("<div>Old Text</div>");
+    await div.update("New Text");
+    expect(div).toBeInstanceOf(CallChainImpl); // check that div is an instance of Dequery
+    expect(div[0].tagName).toBe("DIV"); // check that the element is a <div>
+    expect(div[0].textContent).toBe("New Text"); // check for the updated text content
+  });
+
+  it("can update the html content of an element", async () => {
+    const div = await $<HTMLElement>("<div>Old HTML</div>");
+    await div.update("<span>New HTML</span>");
+    expect(div).toBeInstanceOf(CallChainImpl); // check that div is an instance of Dequery
+    expect(div[0].tagName).toBe("DIV"); // check that the element is a <div>
+    expect(div[0].innerHTML).toBe("<span>New HTML</span>"); // check for the updated html content
+  });
+
+  it("can update with JSX", async () => {
+    const div = await $<HTMLElement>("<div>Old JSX</div>");
+    const jsxElement = <span>New JSX</span>; // Create a JSX element
+    await div.update(jsxElement);
+    expect(div).toBeInstanceOf(CallChainImpl); // check that div is an instance of Dequery
+    expect(div[0].tagName).toBe("DIV"); // check that the element is a <div>
+    expect(div[0].innerHTML).toBe("<span>New JSX</span>"); // check for the updated html content
+  });
+
+  it("can update (replace) with a DOM node", async () => {
+    const div = await $<HTMLElement>("<div>Old Node</div>");
+    const newNode = document.createElement("span");
+    newNode.textContent = "New Node";
+    await div.update(newNode);
+    expect(div).toBeInstanceOf(CallChainImpl); // check that div is an instance of Dequery
+    expect(div[0].tagName).toBe("DIV"); // check that the element is a <div>
+    expect(div[0].innerHTML).toBe("<span>New Node</span>"); // check for the updated html content
+  });
+
+  it("can update with a dequery object", async () => {
+    const div = await $<HTMLElement>("<div>Old Dequery</div>");
+    const newDequery = await $<HTMLElement>("<span>New Dequery</span>");
+    await div.update(newDequery);
+    expect(div).toBeInstanceOf(CallChainImpl); // check that div is an instance of Dequery
+    expect(div[0].tagName).toBe("DIV"); // check that the element is a <div>
+    expect(div[0].innerHTML).toBe("<span>New Dequery</span>"); // check for the updated html content
   });
 
   it("can create a form with values and then set it", async () => {

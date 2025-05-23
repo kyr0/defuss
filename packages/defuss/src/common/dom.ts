@@ -9,7 +9,8 @@ import {
   getRenderer,
   handleLifecycleEventsForOnMount,
 } from "../render/isomorph.js";
-import type { DequeryOptions } from "../dequery/dequery.js";
+import type { NodeType } from "../render/index.js";
+import { createTimeoutPromise } from "./delay.js";
 
 /**
  * Compares two DOM nodes for equality with performance optimizations.
@@ -97,15 +98,12 @@ const updateNode = (oldNode: Node, newNode: Node) => {
 export const updateDom = (
   targetElement: Element,
   newHTML: string,
-  doc?: Document,
-  options?: DequeryOptions<any>,
+  Parser: typeof DOMParser,
 ): void => {
-  if (!doc) {
-    // 1) Parse the new HTML string into a DocumentFragment-like structure
-    const parser = new options!.globals!.window!.DOMParser();
-    // 'text/html' => parse as a full HTML doc. We take the <body>'s children as our new nodes
-    doc = parser.parseFromString(newHTML, "text/html");
-  }
+  // 1) Parse the new HTML string into a DocumentFragment-like structure
+  const parser = new Parser();
+  // 'text/html' => parse as a full HTML doc. We take the <body>'s children as our new nodes
+  const doc = parser.parseFromString(newHTML, "text/html");
 
   // 2) Extract all child nodes from the newly parsed doc (including Text nodes)
   const newNodes = Array.from(doc.body.childNodes);
@@ -417,4 +415,237 @@ export function replaceDomWithVdom(
   } else if (newDom) {
     parentElement.appendChild(newDom);
   }
+}
+
+export async function waitForDOM(
+  check: () => Array<NodeType>,
+  timeout: number,
+  document?: Document,
+): Promise<Array<NodeType>> {
+  const initialResult = check();
+
+  if (initialResult.length) return initialResult;
+
+  return createTimeoutPromise(timeout, () => {
+    return new Promise<Array<NodeType>>((resolve) => {
+      if (!document) {
+        setTimeout(() => resolve(check()), 0);
+        return;
+      }
+
+      const observer = new MutationObserver(() => {
+        const result = check();
+        if (result.length) {
+          observer.disconnect();
+          resolve(result);
+        }
+      });
+
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+
+      return () => observer.disconnect();
+    });
+  });
+}
+
+export function parseDOM(
+  input: string,
+  type: DOMParserSupportedType,
+  Parser: typeof DOMParser,
+): Document {
+  return new Parser().parseFromString(input, type);
+}
+
+export function isSVG(input: string, Parser: typeof DOMParser) {
+  const doc = parseDOM(input, "image/svg+xml", Parser);
+  if (!doc.documentElement) return false;
+  return doc.documentElement.nodeName.toLowerCase() === "svg";
+}
+
+export function isHTML(input: string, Parser: typeof DOMParser): boolean {
+  const doc = parseDOM(input, "text/html", Parser);
+  return doc.documentElement.querySelectorAll("*").length > 2; // 2 = <html> and <body>
+}
+
+export const isMarkup = (input: string, Parser: typeof DOMParser): boolean =>
+  input.indexOf("<") > -1 &&
+  input.indexOf(">") > -1 &&
+  (isHTML(input, Parser) || isSVG(input, Parser));
+
+export function renderMarkup(
+  markup: string,
+  Parser: typeof DOMParser,
+  doc?: Document,
+) {
+  // TODO: test with SVG markup
+  return Array.from(
+    (doc ? doc : parseDOM(markup, getMimeType(markup, Parser), Parser)).body
+      .childNodes,
+  );
+}
+
+export function getMimeType(
+  input: string,
+  Parser: typeof DOMParser,
+): DOMParserSupportedType {
+  if (isSVG(input, Parser)) {
+    return "image/svg+xml";
+  }
+  return "text/html";
+}
+
+/**
+ * Enhanced version of processFormElements that handles all form control types
+ * including multiple select elements and radio button groups
+ */
+export function processAllFormElements(
+  node: NodeType,
+  callback: (
+    input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+    key: string,
+  ) => void,
+): void {
+  if (node instanceof Element) {
+    // For form elements
+    if (node instanceof HTMLFormElement) {
+      Array.from(node.elements).forEach((element) => {
+        if (
+          element instanceof HTMLInputElement ||
+          element instanceof HTMLSelectElement ||
+          element instanceof HTMLTextAreaElement
+        ) {
+          const key = element.name || element.id;
+          if (key) {
+            callback(element, key);
+          }
+        }
+      });
+    }
+    // For individual elements or container elements
+    else {
+      const inputElements = node.querySelectorAll("input, select, textarea");
+
+      inputElements.forEach((element) => {
+        if (
+          element instanceof HTMLInputElement ||
+          element instanceof HTMLSelectElement ||
+          element instanceof HTMLTextAreaElement
+        ) {
+          const key = element.name || element.id;
+          if (key) {
+            callback(element, key);
+          }
+        }
+      });
+    }
+  }
+}
+
+export function checkElementVisibility(
+  element: HTMLElement,
+  window: Window,
+  document: Document,
+): boolean {
+  const style = window.getComputedStyle(element);
+  if (!style) return false;
+
+  // Check if element has dimensions
+  if (element.offsetWidth === 0 || element.offsetHeight === 0) return false;
+
+  // Check if element is hidden via CSS
+  if (
+    style.display === "none" ||
+    style.visibility === "hidden" ||
+    style.opacity === "0" ||
+    Number.parseFloat(style.opacity) === 0
+  )
+    return false;
+
+  // Check if element is detached from DOM
+  if (!document.body.contains(element)) return false;
+
+  // Check if any parent is hidden
+  let parent = element.parentElement;
+  while (parent) {
+    const parentStyle = window.getComputedStyle(parent);
+    if (
+      parentStyle &&
+      (parentStyle.display === "none" ||
+        parentStyle.visibility === "hidden" ||
+        parentStyle.opacity === "0" ||
+        Number.parseFloat(parentStyle.opacity) === 0)
+    ) {
+      return false;
+    }
+    parent = parent.parentElement;
+  }
+  return true;
+}
+
+export function getEventMap(
+  element: HTMLElement,
+): Map<string, Set<EventListener>> {
+  if (!element._dequeryEvents) {
+    element._dequeryEvents = new Map();
+  }
+  return element._dequeryEvents;
+}
+
+export function addElementEvent(
+  element: HTMLElement,
+  eventType: string,
+  handler: EventListener,
+): void {
+  const eventMap = getEventMap(element);
+
+  if (!eventMap.has(eventType)) {
+    eventMap.set(eventType, new Set());
+  }
+
+  eventMap.get(eventType)!.add(handler);
+  element.addEventListener(eventType, handler);
+}
+
+export function removeElementEvent(
+  element: HTMLElement,
+  eventType: string,
+  handler?: EventListener,
+): void {
+  const eventMap = getEventMap(element);
+
+  if (!eventMap.has(eventType)) return;
+
+  if (handler) {
+    // remove specific handler
+    if (eventMap.get(eventType)!.has(handler)) {
+      element.removeEventListener(eventType, handler);
+      eventMap.get(eventType)!.delete(handler);
+
+      if (eventMap.get(eventType)!.size === 0) {
+        eventMap.delete(eventType);
+      }
+    }
+  } else {
+    // remove all handlers for this event type
+    eventMap.get(eventType)!.forEach((h: EventListener) => {
+      element.removeEventListener(eventType, h);
+    });
+    eventMap.delete(eventType);
+  }
+}
+
+export function clearElementEvents(element: HTMLElement): void {
+  const eventMap = getEventMap(element);
+
+  eventMap.forEach((handlers, eventType) => {
+    handlers.forEach((handler: EventListener) => {
+      element.removeEventListener(eventType, handler);
+    });
+  });
+
+  eventMap.clear();
 }

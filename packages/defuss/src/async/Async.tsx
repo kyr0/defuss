@@ -130,13 +130,13 @@ export const Async = ({
 
     // when the suspense state is updated in outer scope
     // we bridge the update to the internal containerRef
-    ref.update = (state: AsyncState) => {
+    ref.updateState = (state: AsyncState) => {
       if (!isInitial) {
-        containerRef.update(state);
+        containerRef.updateState(state);
       }
     };
     // let's tell the outer scope the initial state
-    ref.update("loading");
+    ref.updateState("loading");
 
     isInitial = false; // render any outer scope updates from now on
   }
@@ -162,7 +162,7 @@ export const Async = ({
       // all the other synchronous cases
       return Promise.resolve(vnode);
     } catch (error) {
-      containerRef.update("error");
+      containerRef.updateState("error");
       containerRef.error = error;
 
       if (typeof onError === "function") {
@@ -174,17 +174,17 @@ export const Async = ({
 
   const onMount = () => {
     if (promisedChildren.length) {
-      containerRef.update("loading");
+      containerRef.updateState("loading");
 
       Promise.all(promisedChildren)
         .then((awaitedVnodes) => {
           childrenToRender = awaitedVnodes.flatMap((vnode: VNode) =>
             vnode?.type === "Fragment" ? vnode.children : vnode,
           );
-          containerRef.update("loaded");
+          containerRef.updateState("loaded");
         })
         .catch((error) => {
-          containerRef.update("error");
+          containerRef.updateState("error");
           containerRef.error = error;
 
           if (inDevMode) {

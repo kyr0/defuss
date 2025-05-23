@@ -7,12 +7,7 @@
   },
   "license": "MIT",
   "description": "Isomorphic database abstraction, defussed.",
-  "keywords": [
-    "db",
-    "database",
-    "dexie",
-    "libsql"
-  ],
+  "keywords": ["db", "database", "abstraction", "dexie", "libsql", "mongodb"],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -21,7 +16,10 @@
     "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
     "pretest": "pnpm run build",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll"
+    "build": "pkgroll",
+    "mongodb:start": "tsx scripts/mongo-start.ts",
+    "mongodb:stop": "tsx scripts/mongo-stop.ts",
+    "test:integration": "vitest --run  --coverage"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -35,24 +33,48 @@
         "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
       }
+    },
+    "./server.js": {
+      "require": {
+        "types": "./dist/server.d.ts",
+        "default": "./dist/server.cjs"
+      },
+      "import": {
+        "types": "./dist/server.d.ts",
+        "default": "./dist/server.mjs"
+      }
+    },
+    "./client.js": {
+      "require": {
+        "types": "./dist/client.d.ts",
+        "default": "./dist/client.cjs"
+      },
+      "import": {
+        "types": "./dist/client.d.ts",
+        "default": "./dist/client.mjs"
+      }
     }
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": [
-    "dist"
-  ],
-  "devDependencies": {
-    "pkgroll": "^2.5.1",
-    "typescript": "^5.6.3",
-    "tsx": "^4.19.2"
-  },
+  "files": ["dist"],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "dependencies": {
-    "dexie": "^4.0.10",
-    "@libsql/client": "^0.14.0"
+    "@libsql/client": "^0.15.6",
+    "dexie": "^4.0.11",
+    "dotenv": "^16.5.0",
+    "fake-indexeddb": "^6.0.1",
+    "mongodb": "^6.16.0"
+  },
+  "devDependencies": {
+    "happy-dom": "^15.11.7",
+    "pkgroll": "^2.5.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^3.1.3",
+    "@vitest/coverage-v8": "^3.1.3"
   }
 }

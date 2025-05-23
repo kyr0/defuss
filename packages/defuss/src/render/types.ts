@@ -1,3 +1,5 @@
+import type { PersistenceProviderType } from "../webstorage/index.js";
+import type { CallChainImpl, Dequery } from "../dequery/dequery.js";
 import type { Store } from "../store/store.js";
 import type * as CSS from "csstype";
 
@@ -152,16 +154,23 @@ export interface KeyFrameProperties {
   "100%"?: Partial<CSSProperties>;
 }
 
+export type RefUpdateRenderFnInput = string | RenderInput | NodeType | Dequery;
 export type RefUpdateFn<D> = (state: D) => void;
+export type RefUpdateRenderFn = (
+  input: RefUpdateRenderFnInput,
+) => Promise<CallChainImpl<NodeType>>;
 
 export interface Ref<NT = null | Node | Element | Text, ST = any> {
   current: NT;
   store?: Store<ST>;
   state?: ST;
-  update: RefUpdateFn<ST>;
+  update: RefUpdateRenderFn;
+  updateState: RefUpdateFn<ST>;
   subscribe: (
     refUpdateFn: RefUpdateFn<ST>,
   ) => /* unsubscribe function */ () => void;
+  persist: (key: string, provider?: PersistenceProviderType) => void;
+  restore: (key: string, provider?: PersistenceProviderType) => void;
 }
 
 //export type VRef = (el: Element) => void

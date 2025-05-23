@@ -1,245 +1,429 @@
-import Dexie, { type Table, type DexieOptions } from 'dexie';
-import type { DefussProvider, DefussRow, LookupType } from '../types';
+import type { Dexie, Table, DexieOptions, IndexableType } from "dexie";
+import type {
+  DefussProvider,
+  DefussRecord,
+  PrimaryKeyValue,
+  RecordValue,
+} from "../types.js";
+
+export type DexieProviderOptions = DexieOptions;
+
 /**
  * DexieProvider implements DefussProvider for IndexedDB using Dexie.js.
  */
 export class DexieProvider implements DefussProvider<DexieOptions> {
-  protected db: Dexie;
-  protected tables: Map<string, Table<DefussRow, number>>;
-  protected databaseName: string;
+  db!: Dexie;
+  tables: Map<string, Table<any, IndexableType>> = new Map();
+  databaseName: string;
+  schema: Map<string, Record<string, string>> = new Map();
+  schemaVersion = 1;
+  isOpen = false;
 
-  constructor(
-    databaseName: string,
-  ) {
-
+  constructor(databaseName: string) {
     if (!databaseName) {
-      databaseName = 'DefussDB';
+      databaseName = "DefussDB";
     }
     this.databaseName = databaseName;
   }
 
   /**
    * Connects to IndexedDB. Dexie.js manages connections internally.
-   * @param connectionString - Not used for DexieProvider.
+   * @param options - Dexie-specific configuration options.
    */
   async connect(options: DexieOptions = {}): Promise<void> {
-      this.db = new Dexie(this.databaseName, options);
-      this.tables = new Map();
+    const isNode =
+      typeof process !== "undefined" &&
+      typeof process.versions === "object" &&
+      typeof process.versions.node !== "undefined";
+
+    if (isNode) {
+      // load shim for Node.js for SSR and test environments
+      // @ts-ignore: no types for fake-indexeddb
+      await import("fake-indexeddb/auto");
+    }
+
+    const DexieImpl: typeof Dexie = (await import("dexie"))
+      .default as unknown as typeof Dexie;
+
+    this.db = new DexieImpl(this.databaseName, options);
+    this.isOpen = true;
   }
 
-    /**
-     * Disconnects from IndexedDB.
-     */
-    async disconnect(): Promise<void> {
-        this.db.close();
+  /**
+   * Disconnects from IndexedDB.
+   */
+  async disconnect(): Promise<void> {
+    if (this.db) {
+      this.db.close();
+      this.isOpen = false;
+    }
+  }
+
+  /**
+   * Creates a table if it doesn't exist with dynamic schema support.
+   * @param table - The name of the table.
+   */
+  async createTable(table: string): Promise<void> {
+    // If table already exists in our cache, no need to recreate
+    if (this.tables.has(table)) return;
+
+    // Initialize schema for this table if it doesn't exist
+    if (!this.schema.has(table)) {
+      this.schema.set(table, { pk: "++" }); // Start with auto-incrementing primary key
     }
 
-    /**
-     * Creates a table if it doesn't exist.
-     * @param table - The name of the table.
-     */
-    async createTable(table: string): Promise<void> {
-        if (this.tables.has(table)) return;
+    // Update the database version and schema
+    this.schemaVersion++;
 
-        // Define the schema. All dynamic indices will be added as separate properties.
-        // Dexie requires predefined indexes. For dynamic indices, Dexie does not support adding indexes at runtime.
-        // As a workaround, we can define a primary key and manage indices manually.
-
-        // Initialize the table with primary_key as primary key
-        // Dexie requires schema versioning. We need to handle dynamic indices carefully.
-        // For simplicity, we'll define the table with only the primary_key initially.
-        // Dynamic indices will be managed via DefussRow's dynamic properties without actual IndexedDB indexes.
-
-        // Check existing versions to avoid redefining
-        const currentVersion = this.db.verno;
-        const newVersion = currentVersion + 1;
-
-        this.db.close();
-
-        this.db.version(newVersion).stores({
-            [table]: '++primary_key'
-        });
-
-        // https://stackoverflow.com/questions/44907820/dexie-how-to-add-to-array-in-nested-object
-        const tableDexie = this.db.table<DefussRow, number>(table);
-        this.tables.set(table, tableDexie);
-
-        // Open the database to apply the version changes
-        await this.db.open();
+    // Close existing connection to apply schema changes
+    if (this.isOpen) {
+      this.db.close();
     }
 
-    /**
-     * Inserts a new record into the table with dynamic indices.
-     * @param table - The name of the table.
-     * @param value - The item to insert.
-     * @param indexData - Dynamic indices for the item.
-     * @returns The primary key of the inserted record.
-     */
-    async insert<T>(table: string, value: T, indexData: Record<string, string | number>): Promise<number> {
-        await this.createTable(table);
-        const tableDexie = this.db.table<DefussRow, number>(table);
+    // Define new schema with current columns
+    const tableSchema: Record<string, string> = {};
+    for (const [tableName, columns] of this.schema.entries()) {
+      // Convert column definition object to Dexie schema string
+      const schemaString = Object.entries(columns)
+        .map(([column, indexType]) => {
+          if (column === "pk") return "++pk"; // Primary key is special
+          return indexType ? `${indexType}${column}` : column;
+        })
+        .join(", ");
 
-        // Serialize the value
-        let type: LookupType;
-        let json: string | undefined = undefined;
-        let blob: ArrayBuffer | undefined = undefined;
+      tableSchema[tableName] = schemaString;
+    }
 
-        if (value instanceof ArrayBuffer) {
-            type = 'blob';
-            blob = value
+    // Apply the new schema
+    this.db.version(this.schemaVersion).stores(tableSchema);
+
+    // Reopen the database to apply changes
+    await this.db.open();
+    this.isOpen = true;
+
+    // Cache the table reference
+    const tableDexie = this.db.table(table);
+    this.tables.set(table, tableDexie);
+  }
+
+  /**
+   * Adds columns to the schema if they don't exist, with proper indexing.
+   * @param table - The name of the table.
+   * @param record - The record with properties to consider adding.
+   */
+  private async ensureColumnsForRecord(
+    table: string,
+    record: DefussRecord,
+  ): Promise<void> {
+    // Get current schema or create new one
+    const tableSchema = this.schema.get(table) || { pk: "++" };
+    let schemaUpdated = false;
+
+    // Check each property in the record
+    for (const [prop, value] of Object.entries(record)) {
+      // Skip pk (it's already handled)
+      if (prop === "pk") continue;
+
+      // Skip properties that are already in the schema
+      if (prop in tableSchema) continue;
+
+      // Check if this property should be indexed (if it ends with _index)
+      if (prop.endsWith("_index")) {
+        const baseField = prop.slice(0, -6);
+        if (!(baseField in tableSchema)) {
+          // Add the index to the schema - determine the index type
+          if (Array.isArray(value)) {
+            tableSchema[prop] = "*"; // Multi-valued index
+          } else {
+            tableSchema[prop] = ""; // Regular index
+          }
+          schemaUpdated = true;
+        }
+      } else if (!(prop in tableSchema)) {
+        // Add the property as a non-indexed column
+        tableSchema[prop] = "";
+        schemaUpdated = true;
+      }
+    }
+
+    // If schema was updated, apply changes
+    if (schemaUpdated) {
+      this.schema.set(table, tableSchema);
+      await this.createTable(table); // This will reapply schema with new columns
+    }
+  }
+
+  /**
+   * Inserts a record into a table.
+   * @param table - The name of the table.
+   * @param record - The record to insert.
+   * @returns The primary key of the inserted record.
+   */
+  async insert<T extends DefussRecord>(
+    table: string,
+    record: T,
+  ): Promise<PrimaryKeyValue> {
+    await this.createTable(table);
+
+    // First prepare data for insertion, handling any binary fields
+    const insertData: Record<string, any> = {};
+
+    // Process all fields in the record
+    for (const [key, value] of Object.entries(record)) {
+      // Skip primary key as it will be auto-generated if not provided
+      if (key === "pk") {
+        if (value !== undefined) {
+          insertData.pk = value;
+        }
+        continue;
+      }
+
+      // Store the value directly
+      insertData[key] = value;
+    }
+
+    // Ensure all needed columns exist in schema
+    await this.ensureColumnsForRecord(table, record);
+
+    // Get the table reference and insert the data
+    const tableDexie = this.tables.get(table)!;
+
+    // Insert the record and return the primary key
+    const id = await tableDexie.add(insertData);
+
+    // Convert the index to a PrimaryKeyValue
+    if (typeof id === "number") {
+      return id;
+    } else if (typeof id === "string") {
+      return id;
+    } else {
+      // Handle IndexableType -> PrimaryKeyValue conversion
+      return String(id);
+    }
+  }
+
+  /**
+   * Finds records in the table based on query.
+   * @param table - The name of the table.
+   * @param query - Query criteria.
+   * @returns An array of matching records.
+   */
+  async find<T extends DefussRecord>(
+    table: string,
+    query: Partial<Record<string, RecordValue>>,
+  ): Promise<T[]> {
+    await this.createTable(table);
+    const tableDexie = this.tables.get(table)!;
+
+    // Ensure all needed columns exist
+    await this.ensureColumnsForRecord(table, query as DefussRecord);
+
+    // Simple case: no filters, return all records
+    if (Object.keys(query).length === 0) {
+      const results = await tableDexie.toArray();
+      return results.map((result) => this.normalizeRecord(result) as T);
+    }
+
+    // Apply filters based on query - using index fields where possible
+    let collection = tableDexie.toCollection();
+
+    if ("pk" in query) {
+      // Handle primary key query
+      try {
+        const record = await tableDexie.get(query.pk as IndexableType);
+        return record ? [this.normalizeRecord(record) as T] : [];
+      } catch (err) {
+        // Fall back to regular query if direct get fails
+        collection = collection.and((item) => item.pk === query.pk);
+      }
+    } else {
+      // Handle all other queries
+      for (const [key, value] of Object.entries(query)) {
+        if (key.endsWith("_index")) {
+          // Use indexed queries when possible
+          collection = collection.and((item) => item[key] === value);
         } else {
-            type = 'json';
-            json = JSON.stringify(value);
+          collection = collection.and((item) => item[key] === value);
         }
-
-        // Construct the DefussRow
-        const row: DefussRow = {
-            type,
-            json,
-            blob,
-            ...indexData
-        };
-
-        const primary_key = await tableDexie.add(row);
-        return primary_key;
+      }
     }
 
-    /**
-     * Finds records in the table based on indexData.
-     * @param table - The name of the table.
-     * @param indexData - Partial indices to filter records.
-     * @returns An array of matching records.
-     */
-    async find<T>(table: string, indexData: Partial<Record<string, string | number>>): Promise<T[]> {
-        await this.createTable(table);
-        const tableDexie = this.db.table<DefussRow, number>(table);
+    // Execute the query and normalize the results
+    const results = await collection.toArray();
+    return results.map((result) => this.normalizeRecord(result) as T);
+  }
 
-        let collection = tableDexie.toCollection();
+  /**
+   * Finds a single record in the table based on query.
+   * @param table - The name of the table.
+   * @param query - Query criteria.
+   * @returns The first matching record or null.
+   */
+  async findOne<T extends DefussRecord>(
+    table: string,
+    query: Partial<Record<string, RecordValue>>,
+  ): Promise<T | null> {
+    // If query is by primary key, use get for efficiency
+    if (Object.keys(query).length === 1 && "pk" in query) {
+      await this.createTable(table);
+      const tableDexie = this.tables.get(table)!;
 
-        // Apply filters based on indexData
-        for (const [key, value] of Object.entries(indexData)) {
-            collection = collection.and(row => row[key] === value);
+      try {
+        const result = await tableDexie.get(query.pk as IndexableType);
+        return result ? (this.normalizeRecord(result) as T) : null;
+      } catch (err) {
+        // Fall back to regular find if get fails
+      }
+    }
+
+    // Otherwise use the find method
+    const results = await this.find<T>(table, query);
+    return results.length > 0 ? results[0] : null;
+  }
+
+  /**
+   * Updates records in the table based on query.
+   * @param table - The name of the table.
+   * @param query - Query criteria.
+   * @param update - Fields to update.
+   */
+  async update<T extends DefussRecord>(
+    table: string,
+    query: Partial<Record<string, RecordValue>>,
+    update: Partial<T>,
+  ): Promise<void> {
+    await this.createTable(table);
+    const tableDexie = this.tables.get(table)!;
+
+    // Ensure all needed columns exist
+    await this.ensureColumnsForRecord(table, query as DefussRecord);
+    await this.ensureColumnsForRecord(table, update as DefussRecord);
+
+    // Prepare update data - pk can't be updated
+    const updateData: Record<string, any> = {};
+    for (const [key, value] of Object.entries(update)) {
+      if (key === "pk") continue; // Skip primary key
+      updateData[key] = value;
+    }
+
+    // Handle primary key query for efficiency
+    if (Object.keys(query).length === 1 && "pk" in query) {
+      await tableDexie.update(query.pk as IndexableType, updateData);
+      return;
+    }
+
+    // For other queries, find matching records and update them
+    const collection = tableDexie.toCollection().and((record) => {
+      for (const [key, value] of Object.entries(query)) {
+        if (record[key] !== value) return false;
+      }
+      return true;
+    });
+
+    const keys = await collection.primaryKeys();
+    for (const key of keys) {
+      await tableDexie.update(key, updateData);
+    }
+  }
+
+  /**
+   * Deletes records from the table based on query.
+   * @param table - The name of the table.
+   * @param query - Query criteria.
+   */
+  async delete(table: string, query: Partial<DefussRecord>): Promise<void> {
+    await this.createTable(table);
+    const tableDexie = this.tables.get(table)!;
+
+    // Ensure all needed columns exist
+    await this.ensureColumnsForRecord(table, query);
+
+    // Handle primary key delete for efficiency
+    if (Object.keys(query).length === 1 && "pk" in query) {
+      await tableDexie.delete(query.pk as IndexableType);
+      return;
+    }
+
+    // For other deletes, find matching records and delete them
+    const collection = tableDexie.toCollection().and((record) => {
+      for (const [key, value] of Object.entries(query)) {
+        if (record[key] !== value) return false;
+      }
+      return true;
+    });
+
+    const keys = await collection.primaryKeys();
+    await tableDexie.bulkDelete(keys);
+  }
+
+  /**
+   * Upserts a record into the table based on query.
+   * @param table - The name of the table.
+   * @param record - The record to upsert.
+   * @param query - Query criteria.
+   * @returns The primary key of the upserted record.
+   */
+  async upsert<T extends DefussRecord>(
+    table: string,
+    record: T,
+    query: Partial<Record<string, RecordValue>>,
+  ): Promise<PrimaryKeyValue> {
+    await this.createTable(table);
+
+    // First, try to find an existing record
+    const existingRecord = await this.findOne(table, query);
+
+    if (existingRecord && existingRecord.pk !== undefined) {
+      // Update existing record
+      // Make a merged copy of the record with the query fields
+      const mergedRecord = { ...record };
+
+      // Update the record by its primary key
+      await this.update<T>(
+        table,
+        { pk: existingRecord.pk },
+        mergedRecord as Partial<T>,
+      );
+      return existingRecord.pk;
+    } else {
+      // Insert new record - include query fields
+      const mergedRecord = { ...record } as DefussRecord;
+
+      // Include query fields in the insert if not already in the record
+      for (const [key, value] of Object.entries(query)) {
+        if (!(key in mergedRecord)) {
+          mergedRecord[key] = value;
         }
+      }
 
-        const rows = await collection.toArray();
-        return rows.map(row => this.deserializeRow(row));
+      // Insert and return the new primary key
+      return await this.insert<T>(table, mergedRecord as T);
+    }
+  }
+
+  /**
+   * Normalizes a database record to match DefussRecord structure.
+   * @param record - The record from the database.
+   * @returns A normalized DefussRecord.
+   */
+  private normalizeRecord(record: any): DefussRecord {
+    const result: DefussRecord = {};
+
+    // Handle each field
+    for (const [key, value] of Object.entries(record)) {
+      // Special handling for primary key
+      if (key === "pk") {
+        result.pk = value as PrimaryKeyValue;
+        continue;
+      }
+
+      // Skip internal fields if any
+      if (key.startsWith("_")) continue;
+
+      // Copy the field
+      result[key] = value as any;
     }
 
-    /**
-     * Finds a single record in the table based on indexData.
-     * @param table - The name of the table.
-     * @param indexData - Partial indices to filter records.
-     * @returns The first matching record or null.
-     */
-    async findOne<T>(table: string, indexData: Partial<Record<string, string | number>>): Promise<T | null> {
-        const results = await this.find<T>(table, indexData);
-        return results.length > 0 ? results[0] : null;
-    }
-
-    /**
-     * Updates records in the table based on indexData.
-     * @param table - The name of the table.
-     * @param indexData - Partial indices to filter records.
-     * @param dataToUpdate - Fields to update.
-     */
-    async update<T>(table: string, indexData: Partial<Record<string, string | number>>, dataToUpdate: Partial<T>): Promise<void> {
-        await this.createTable(table);
-        const tableDexie = this.db.table<DefussRow, number>(table);
-
-        // Find records matching indexData
-        const records = await this.find<T>(table, indexData);
-        for (const record of records) {
-            const primary_key = (record as any).primary_key;
-            if (primary_key !== undefined) {
-                // Serialize the updated data
-                let type: LookupType;
-                let json: string | undefined;
-                let blob: ArrayBuffer | undefined;
-
-                if (typeof dataToUpdate === 'object' && dataToUpdate !== null) {
-                    if (dataToUpdate instanceof ArrayBuffer) {
-                        type = 'blob';
-                        blob = dataToUpdate;
-                    } else {
-                        type = 'json';
-                        json = JSON.stringify(dataToUpdate);
-                    }
-                } else {
-                    throw new Error('Unsupported data type for update.');
-                }
-
-                const updatedRow: DefussRow = {
-                    type,
-                    json,
-                    blob,
-                    ...dataToUpdate
-                };
-
-                await tableDexie.update(primary_key, updatedRow);
-            }
-        }
-    }
-
-    /**
-     * Deletes records from the table based on indexData.
-     * @param table - The name of the table.
-     * @param indexData - Partial indices to filter records.
-     */
-    async delete<T>(table: string, indexData: Partial<Record<string, string | number>>): Promise<void> {
-        await this.createTable(table);
-        const tableDexie = this.db.table<DefussRow, number>(table);
-
-        // Find records matching indexData
-        const records = await this.find<T>(table, indexData);
-        for (const record of records) {
-            const primary_key = (record as any).primary_key;
-            if (primary_key !== undefined) {
-                await tableDexie.delete(primary_key);
-            }
-        }
-    }
-
-    /**
-     * Upserts a record into the table based on indexData.
-     * @param table - The name of the table.
-     * @param value - The item to upsert.
-     * @param indexData - Indices to identify the record.
-     * @returns The primary key of the upserted record.
-     */
-    async upsert<T>(table: string, value: T, indexData: Record<string, string | number>): Promise<number> {
-        const existingRecords = await this.find<T>(table, indexData);
-
-        if (existingRecords.length > 0) {
-            // Update existing records
-            await this.update(table, indexData, value as Partial<T>);
-
-            // Retrieve the primary key of the updated record
-            const updatedRecord = await this.findOne<T>(table, indexData);
-            if (updatedRecord && (updatedRecord as any).primary_key) {
-                return (updatedRecord as any).primary_key;
-            } else {
-                throw new Error('Failed to retrieve updated record after upsert.');
-            }
-        } else {
-            // Insert new record
-            return this.insert<T>(table, value, indexData);
-        }
-    }
-
-    /**
-     * Deserializes a DefussRow into a JavaScript object.
-     * @param row - The DefussRow to deserialize.
-     * @returns The deserialized JavaScript object.
-     */
-    private deserializeRow(row: DefussRow): any {
-        if (row.type === 'json' && row.json) {
-            return JSON.parse(row.json);
-        } else if (row.type === 'blob' && row.blob) {
-            // Handle binary data if needed
-            // For simplicity, converting ArrayBuffer to Buffer in Node.js
-            return Buffer.from(row.blob);
-        } else {
-            throw new Error('Invalid row type or missing data.');
-        }
-    }
+    return result;
+  }
 }

@@ -1,5 +1,4 @@
-// i18n string tools
-
+// i18n, form // path string tools
 const ARRAY_INDEX = /(.*)\[(\d+)\]/;
 const IS_NUMBER = /^\d+$/;
 
