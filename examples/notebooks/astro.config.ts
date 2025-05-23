@@ -22,12 +22,6 @@ export default defineConfig({
     },
   },
 
-  vite: {
-    ssr: {
-      noExternal: ["astro"],
-    },
-  },
-
   // the node adapter allows for server-side rendering and preview mode
   adapter: node({
     mode: "standalone",
