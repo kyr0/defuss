@@ -1,4 +1,4 @@
-import type { ValidatorPrimitiveFn } from "../index.js";
+import type { ValidatorPrimitiveFn } from "../types.js";
 
 // implements RFC 5322 official, see https://emailregex.com/
 export const isEmail: ValidatorPrimitiveFn = (value: string) =>

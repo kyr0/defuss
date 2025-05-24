@@ -1,4 +1,4 @@
-import type { ValidatorPrimitiveFn } from "../index.js";
+import type { ValidatorPrimitiveFn } from "../types.js";
 import { isObject } from "./isObject.js";
 import { isString } from "./isString.js";
 

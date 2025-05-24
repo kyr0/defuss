@@ -513,6 +513,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^3.1.3
         version: 3.1.3(vitest@3.1.3(@types/debug@4.1.12)(@types/node@22.15.21)(happy-dom@15.11.7)(jiti@2.4.2)(jsdom@25.0.1(canvas@2.11.2(encoding@0.1.13)))(lightningcss@1.30.0)(terser@5.37.0)(tsx@4.19.2))
+      defuss:
+        specifier: workspace:*
+        version: link:../defuss
       pkgroll:
         specifier: ^2.5.1
         version: 2.12.2(typescript@5.7.2)
@@ -4652,7 +4655,7 @@ packages:
   vitefu@1.0.6:
     resolution: {integrity: sha512-+Rex1GlappUyNN6UfwbVZne/9cYC4+R2XDk9xkNXBKMw6HQagdX9PgZ8V2v1WUSK1wfBLp7qbI1+XSNIlB1xmA==}
     peerDependencies:
-      vite: '>=5.4.12'
+      vite: '>=6.0.9'
     peerDependenciesMeta:
       vite:
         optional: true

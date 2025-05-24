@@ -1,47 +1,17 @@
-export type ValidationMessage = string | any;
-export type ValidationFnResult = true | ValidationMessage;
-
-export interface IntermediateValidationState {
-  value: any;
-  intermediateResult: SingleValidationResult;
-  states: Array<SingleValidationResult>;
-
-  /** holds any value of any field validated already */
-  formState: any;
-}
-
-export type Validator = (
-  validationState: IntermediateValidationState,
-) => ValidationFnResult | Promise<ValidationFnResult>;
-
-export type ValidatorPrimitiveFn = (value: any) => boolean | Promise<boolean>;
-
-export interface SingleValidationResult {
-  message?: ValidationMessage;
-  isValid: boolean;
-}
-
-export type ValidationChainMap<T> = {
-  [fieldName in keyof T]?: Array<Validator>;
-};
-
-export interface SingleValidationChainResult extends SingleValidationResult {
-  states: Array<SingleValidationResult>;
-}
-
-export type ValidationChainMapResult<T> = {
-  [fieldName in keyof T]?: SingleValidationResult;
-};
-
-export type ValidationResult<T> = ValidationChainMapResult<T> &
-  SingleValidationResult;
+import type {
+  SingleValidationStateResult,
+  SingleValidationResult,
+  ValidationMap,
+  ValidationResult,
+  Validator,
+} from "./types.js";
 
 export const validateSingle = async <T = any, F = any>(
   value: T, // input value to pass to the/each validator
   validationChain: Array<Validator>, // one or more validators
   stopOnInvalid = true, // in case you want all states, set this to false; return on first error: true
   formState?: F,
-): Promise<SingleValidationChainResult> => {
+): Promise<SingleValidationStateResult> => {
   let intermediateResult: SingleValidationResult = { isValid: true };
   const states: Array<SingleValidationResult> = [];
   for (let i = 0; i < validationChain.length; i++) {
@@ -71,7 +41,7 @@ export const validateSingle = async <T = any, F = any>(
 
 export const validate = async <T = any>(
   value: T, // input value to pass to the/each validator
-  validationChain: ValidationChainMap<T>, // one or more validators
+  validationChain: ValidationMap<T>, // one or more validators
   stopOnInvalid = true, // in case you want all states, set this to false; return on first error: true
 ): Promise<ValidationResult<T>> => {
   const fieldNames = Object.keys(validationChain);
@@ -98,3 +68,4 @@ export const validate = async <T = any>(
 };
 
 export * from "./validators/index.js";
+export { validate as validateChain } from "./chain.js";

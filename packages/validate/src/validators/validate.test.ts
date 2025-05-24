@@ -1,9 +1,6 @@
 import { isDefined, isEmail, isEqual } from "./index.js";
-import {
-  validate,
-  type Validator,
-  type IntermediateValidationState,
-} from "../index.js";
+import { validate } from "../index.js";
+import type { Validator, IntermediateValidationState } from "../types.js";
 
 const isValidEmail: Validator = async ({ value }: { value: unknown }) =>
   isEmail(value) ? true : "Not a valid email";
