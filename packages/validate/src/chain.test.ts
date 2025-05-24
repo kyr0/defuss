@@ -295,7 +295,6 @@ describe("Chain", () => {
     // First validation
     const result1 = await validator.isValid({ field: "test" });
     expect(result1).toBe(true);
-    expect(validator.isResolved).toBe(false); // Should not affect isResolved for BaseValidators
 
     // Second validation should work without issues
     const result2 = await validator.isValid({ field: "test2" });

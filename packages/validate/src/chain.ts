@@ -29,14 +29,8 @@ export class BaseValidators<ET = ValidationChainApi>
 {
   fieldPath: string;
   validationCalls: ValidationCall[];
-  stackPointer: number;
-  isResolved: boolean;
-  stoppedWithError: Error | null;
-  lastResult: boolean;
   lastValidationResult: AllValidationResult;
   options: ValidationChainOptions;
-  chainStartTime: number;
-  chainAsyncStartTime: number;
   messageFormatter?: (
     messages: string[],
     format: (msgs: string[]) => string,
@@ -45,17 +39,8 @@ export class BaseValidators<ET = ValidationChainApi>
   constructor(fieldPath: string, options: ValidationChainOptions = {}) {
     this.fieldPath = fieldPath;
     this.validationCalls = [];
-    this.stackPointer = 0;
-    this.isResolved = false;
-    this.stoppedWithError = null;
-    this.lastResult = true;
     this.lastValidationResult = { isValid: true, messages: [] };
-    this.options = {
-      timeout: 5000,
-      ...options,
-    };
-    this.chainStartTime = performance.now();
-    this.chainAsyncStartTime = 0;
+    this.options = { timeout: 5000, ...options };
 
     // Bind methods to preserve context
     this.isValid = this.isValid.bind(this);
@@ -70,29 +55,21 @@ export class BaseValidators<ET = ValidationChainApi>
   ): Promise<boolean> {
     // If callback is provided, use co-routine approach
     if (typeof callback === "function") {
-      // Use setTimeout for non-blocking co-routine execution
       setTimeout(async () => {
         try {
-          const result = await this._performValidationWithTimeout(formData);
-          // If validation returned an error result (not thrown), pass the error to callback
-          if (result.error) {
-            callback(result.isValid, result.error);
-          } else {
-            callback(result.isValid);
-          }
+          const result = await this._performValidation(formData);
+          callback(result.isValid, result.error);
         } catch (error) {
-          // If an error was thrown, pass it to callback
           callback(false, error as Error);
         }
       }, 0);
 
-      // Return a resolved promise immediately for non-blocking behavior
       return Promise.resolve(true);
     }
 
-    // For non-callback case, let timeout and runtime errors propagate but catch validation errors
+    // For non-callback case, let timeout and runtime errors propagate
     try {
-      const result = await this._performValidationWithTimeout(formData);
+      const result = await this._performValidation(formData);
       return result.isValid;
     } catch (error) {
       // Re-throw timeout errors and runtime errors (like missing field paths)
@@ -102,73 +79,36 @@ export class BaseValidators<ET = ValidationChainApi>
       ) {
         throw error;
       }
-      // For other validation errors, return false
       return false;
     }
-  }
-
-  private async _performValidationWithTimeout<T = any>(
-    formData: T,
-  ): Promise<AllValidationResult> {
-    if (this.options.timeout && this.options.timeout > 0) {
-      // Use Promise.race with setTimeout-based timeout
-      let timeoutId: NodeJS.Timeout;
-
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          const timeoutError = new Error(
-            `Validation timeout after ${this.options.timeout}ms`,
-          );
-          this.stoppedWithError = timeoutError;
-          reject(timeoutError);
-        }, this.options.timeout);
-      });
-
-      try {
-        const result = await Promise.race([
-          this._performValidation(formData),
-          timeoutPromise,
-        ]);
-        clearTimeout(timeoutId!);
-        return result;
-      } catch (error) {
-        clearTimeout(timeoutId!);
-        throw error;
-      }
-    }
-    return this._performValidation(formData);
   }
 
   private async _performValidation<T = any>(
     formData: T,
   ): Promise<AllValidationResult> {
-    let value: any;
-    value = getByPath(formData, this.fieldPath);
+    const validationPromise = this._executeValidation(formData);
 
-    // Check if the field path exists - if getByPath returns undefined and the path has dots,
-    // it likely means the field doesn't exist in the form data
-    if (value === undefined && this.fieldPath.includes(".")) {
-      // Try to traverse the path manually to see if it's a missing field
-      const pathParts = this.fieldPath.split(".");
-      let current = formData;
-
-      for (let i = 0; i < pathParts.length; i++) {
-        if (current === null || current === undefined) {
-          throw new Error(
-            `Validation failed for field: ${this.fieldPath} - path not found at '${pathParts.slice(0, i).join(".")}'`,
+    // Apply timeout if configured
+    if (this.options.timeout && this.options.timeout > 0) {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(`Validation timeout after ${this.options.timeout}ms`),
           );
-        }
+        }, this.options.timeout);
+      });
 
-        if (typeof current !== "object" || !(pathParts[i] in current)) {
-          throw new Error(
-            `Validation failed for field: ${this.fieldPath} - field '${pathParts[i]}' not found`,
-          );
-        }
-
-        current = (current as any)[pathParts[i]];
-      }
-      value = current;
+      return Promise.race([validationPromise, timeoutPromise]);
     }
+
+    return validationPromise;
+  }
+
+  private async _executeValidation<T = any>(
+    formData: T,
+  ): Promise<AllValidationResult> {
+    // Get field value with path validation
+    const value = this._getFieldValue(formData);
 
     const messages: string[] = [];
     let isValid = true;
@@ -179,19 +119,17 @@ export class BaseValidators<ET = ValidationChainApi>
         const result = await call.fn(value, ...call.args);
         if (result !== true) {
           isValid = false;
-          if (typeof result === "string") {
-            messages.push(result);
-          } else {
-            messages.push(`Validation failed for ${call.name}`);
-          }
-          // Continue to collect all error messages instead of stopping at first failure
+          messages.push(
+            typeof result === "string"
+              ? result
+              : `Validation failed for ${call.name}`,
+          );
         }
       }
 
       this.lastValidationResult = { isValid, messages };
       return this.lastValidationResult;
     } catch (error) {
-      this.stoppedWithError = error as Error;
       const errorResult = {
         isValid: false,
         messages: [`Validation error: ${(error as Error).message}`],
@@ -205,9 +143,40 @@ export class BaseValidators<ET = ValidationChainApi>
           args: [],
         });
       }
-      // Return the error result for validation errors (thrown by validators)
+
       return errorResult;
     }
+  }
+
+  private _getFieldValue<T = any>(formData: T): any {
+    const value = getByPath(formData, this.fieldPath);
+
+    // Check if the field path exists for dotted paths
+    if (value === undefined && this.fieldPath.includes(".")) {
+      const pathParts = this.fieldPath.split(".");
+      let current = formData;
+
+      for (let i = 0; i < pathParts.length; i++) {
+        if (current === null || current === undefined) {
+          throw new Error(
+            `Validation failed for field: ${this.fieldPath} - path not found at '${pathParts
+              .slice(0, i)
+              .join(".")}'`,
+          );
+        }
+
+        if (typeof current !== "object" || !(pathParts[i] in current)) {
+          throw new Error(
+            `Validation failed for field: ${this.fieldPath} - field '${pathParts[i]}' not found`,
+          );
+        }
+
+        current = (current as any)[pathParts[i]];
+      }
+      return current;
+    }
+
+    return value;
   }
 
   message(
@@ -245,21 +214,7 @@ export class BaseValidators<ET = ValidationChainApi>
       | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
-    this.chainAsyncStartTime = performance.now();
-
-    if (this.stoppedWithError) {
-      return Promise.reject(this.stoppedWithError).then(
-        onfulfilled as any,
-        onrejected,
-      );
-    }
-
-    if (this.isResolved) {
-      return Promise.resolve(this as any).then(onfulfilled as any, onrejected);
-    }
-
     // For thenable behavior, resolve immediately with the chain itself
-    // This allows the chain to be used in .then() calls like dequery
     return Promise.resolve(this as any).then(onfulfilled as any, onrejected);
   }
 }
@@ -273,11 +228,8 @@ function chainFn(
     new ValidationCall<boolean>(
       "validator",
       async (value) => {
-        const result = fn(value, ...args);
-        // Handle both sync and async validator functions
-        const resolvedResult = await Promise.resolve(result);
-        // Return the actual result to preserve string messages
-        return resolvedResult as boolean;
+        const result = await Promise.resolve(fn(value, ...args));
+        return result as boolean;
       },
       ...args,
     ),
@@ -287,19 +239,13 @@ function chainFn(
 }
 
 // Dynamically add validator methods to prototype
-for (const validatorName of Object.keys(validators)) {
-  if (
-    typeof validators[validatorName as keyof typeof validators] === "function"
-  ) {
-    const validatorFn = validators[
-      validatorName as keyof typeof validators
-    ] as ValidatorFn;
-
+for (const [validatorName, validatorFn] of Object.entries(validators)) {
+  if (typeof validatorFn === "function") {
     (BaseValidators.prototype as any)[validatorName] = function (
       this: BaseValidators,
       ...args: any[]
     ) {
-      return chainFn.call(this, validatorFn, ...args);
+      return chainFn.call(this, validatorFn as ValidatorFn, ...args);
     };
   }
 }
@@ -431,26 +377,25 @@ export function validateAll(
 validate.extend = <ET extends new (...args: any[]) => any>(
   ExtensionClass: ET,
 ) => {
-  const extensionPrototype = ExtensionClass.prototype;
-  const basePrototype = BaseValidators.prototype;
+  // Get only the custom methods from the extension class
+  const extensionMethods = Object.getOwnPropertyNames(
+    ExtensionClass.prototype,
+  ).filter(
+    (name) =>
+      name !== "constructor" &&
+      !Object.getOwnPropertyNames(BaseValidators.prototype).includes(name) &&
+      typeof ExtensionClass.prototype[name] === "function",
+  );
 
-  const extensionMethods = Object.getOwnPropertyNames(extensionPrototype);
-  const baseMethods = Object.getOwnPropertyNames(basePrototype);
-
+  // Add extension methods to BaseValidators prototype
   extensionMethods.forEach((methodName) => {
-    if (
-      methodName !== "constructor" &&
-      !baseMethods.includes(methodName) &&
-      typeof extensionPrototype[methodName] === "function"
+    (BaseValidators.prototype as any)[methodName] = function (
+      this: BaseValidators,
+      ...args: any[]
     ) {
-      (BaseValidators.prototype as any)[methodName] = function (
-        this: BaseValidators,
-        ...args: any[]
-      ) {
-        const validatorFn = extensionPrototype[methodName](...args);
-        return chainFn.call(this, validatorFn, ...args);
-      };
-    }
+      const validatorFn = ExtensionClass.prototype[methodName](...args);
+      return chainFn.call(this, validatorFn, ...args);
+    };
   });
 
   const extendedValidationChain = (
@@ -463,7 +408,6 @@ validate.extend = <ET extends new (...args: any[]) => any>(
       InstanceType<ET>;
 
   extendedValidationChain.extend = validate.extend;
-
   return extendedValidationChain;
 };
 
