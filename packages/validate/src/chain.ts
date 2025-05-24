@@ -8,19 +8,11 @@ import * as validators from "./validators/index.js";
 import { getByPath } from "defuss";
 
 export class ValidationCall<VT = boolean> {
-  name: string;
-  fn: (...args: any[]) => Promise<VT>;
-  args: any[];
-
   constructor(
-    name: string,
-    fn: (...args: any[]) => Promise<VT>,
-    ...args: any[]
-  ) {
-    this.name = name;
-    this.fn = fn;
-    this.args = args;
-  }
+    public name: string,
+    public fn: (...args: any[]) => Promise<VT>,
+    public args: any[],
+  ) {}
 }
 
 // @ts-ignore
@@ -107,14 +99,11 @@ export class BaseValidators<ET = ValidationChainApi>
   private async _executeValidation<T = any>(
     formData: T,
   ): Promise<AllValidationResult> {
-    // Get field value with path validation
     const value = this._getFieldValue(formData);
-
     const messages: string[] = [];
     let isValid = true;
 
     try {
-      // Execute all validation calls in sequence
       for (const call of this.validationCalls) {
         const result = await call.fn(value, ...call.args);
         if (result !== true) {
@@ -127,56 +116,51 @@ export class BaseValidators<ET = ValidationChainApi>
         }
       }
 
-      this.lastValidationResult = { isValid, messages };
-      return this.lastValidationResult;
+      // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+      return (this.lastValidationResult = { isValid, messages });
     } catch (error) {
       const errorResult = {
         isValid: false,
         messages: [`Validation error: ${(error as Error).message}`],
         error: error as Error,
       };
-      this.lastValidationResult = errorResult;
 
-      if (this.options.onValidationError) {
-        this.options.onValidationError(error as Error, {
-          fn: () => false,
-          args: [],
-        });
-      }
-
-      return errorResult;
+      this.options.onValidationError?.(error as Error, {
+        fn: () => false,
+        args: [],
+      });
+      // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+      return (this.lastValidationResult = errorResult);
     }
   }
 
   private _getFieldValue<T = any>(formData: T): any {
     const value = getByPath(formData, this.fieldPath);
 
-    // Check if the field path exists for dotted paths
-    if (value === undefined && this.fieldPath.includes(".")) {
-      const pathParts = this.fieldPath.split(".");
-      let current = formData;
-
-      for (let i = 0; i < pathParts.length; i++) {
-        if (current === null || current === undefined) {
-          throw new Error(
-            `Validation failed for field: ${this.fieldPath} - path not found at '${pathParts
-              .slice(0, i)
-              .join(".")}'`,
-          );
-        }
-
-        if (typeof current !== "object" || !(pathParts[i] in current)) {
-          throw new Error(
-            `Validation failed for field: ${this.fieldPath} - field '${pathParts[i]}' not found`,
-          );
-        }
-
-        current = (current as any)[pathParts[i]];
-      }
-      return current;
+    if (value !== undefined || !this.fieldPath.includes(".")) {
+      return value;
     }
 
-    return value;
+    // Validate dotted path exists
+    const pathParts = this.fieldPath.split(".");
+    let current = formData;
+
+    for (let i = 0; i < pathParts.length; i++) {
+      if (current == null) {
+        throw new Error(
+          `Validation failed for field: ${this.fieldPath} - path not found at '${pathParts.slice(0, i).join(".")}'`,
+        );
+      }
+
+      if (typeof current !== "object" || !(pathParts[i] in current)) {
+        throw new Error(
+          `Validation failed for field: ${this.fieldPath} - field '${pathParts[i]}' not found`,
+        );
+      }
+
+      current = (current as any)[pathParts[i]];
+    }
+    return current;
   }
 
   message(
@@ -225,16 +209,12 @@ function chainFn(
   ...args: any[]
 ): BaseValidators {
   this.validationCalls.push(
-    new ValidationCall<boolean>(
+    new ValidationCall(
       "validator",
-      async (value) => {
-        const result = await Promise.resolve(fn(value, ...args));
-        return result as boolean;
-      },
-      ...args,
+      (value) => Promise.resolve(fn(value, ...args)) as Promise<boolean>,
+      args,
     ),
   );
-
   return this;
 }
 
@@ -261,28 +241,7 @@ export function validate(
 }
 
 export function validateAll(
-  chains: BaseValidators[],
-  options?: ValidationChainOptions,
-): {
-  isValid: <T = any>(
-    formData: T,
-    callback?: (isValid: boolean, error?: Error) => void,
-  ) => Promise<boolean>;
-  getMessages: () => string[];
-  getFormattedMessage: () => string;
-};
-export function validateAll(...chains: BaseValidators[]): {
-  isValid: <T = any>(
-    formData: T,
-    callback?: (isValid: boolean, error?: Error) => void,
-  ) => Promise<boolean>;
-  getMessages: () => string[];
-  getFormattedMessage: () => string;
-};
-export function validateAll(
-  chainsOrFirstChain: BaseValidators[] | BaseValidators,
-  optionsOrSecondChain?: ValidationChainOptions | BaseValidators,
-  ...restChains: BaseValidators[]
+  ...args: (BaseValidators | BaseValidators[] | ValidationChainOptions)[]
 ): {
   isValid: <T = any>(
     formData: T,
@@ -294,19 +253,14 @@ export function validateAll(
   let chains: BaseValidators[];
   let options: ValidationChainOptions = {};
 
-  // Handle different call signatures
-  if (Array.isArray(chainsOrFirstChain)) {
-    // validateAll([chain1, chain2], options?)
-    chains = chainsOrFirstChain;
-    options = (optionsOrSecondChain as ValidationChainOptions) || {};
+  // Simple logic: if first arg is array, use it as chains, otherwise collect all BaseValidators
+  if (Array.isArray(args[0])) {
+    chains = args[0];
+    options = (args[1] as ValidationChainOptions) || {};
   } else {
-    // validateAll(chain1, chain2, chain3, ...)
-    chains = [chainsOrFirstChain];
-    if (optionsOrSecondChain && "fieldPath" in optionsOrSecondChain) {
-      // Second argument is a BaseValidators, not options
-      chains.push(optionsOrSecondChain as BaseValidators);
-    }
-    chains.push(...restChains);
+    chains = args.filter(
+      (arg) => arg && typeof arg === "object" && "fieldPath" in arg,
+    ) as BaseValidators[];
   }
 
   return {
@@ -314,62 +268,48 @@ export function validateAll(
       formData: T,
       callback?: (isValid: boolean, error?: Error) => void,
     ): Promise<boolean> {
-      // If callback is provided, use co-routine approach
-      if (typeof callback === "function") {
+      if (callback) {
         setTimeout(async () => {
           try {
             const results = await Promise.all(
               chains.map((chain) => chain.isValid(formData)),
             );
-            const isValid = results.every((result) => result);
-            callback(isValid);
+            callback(results.every(Boolean));
           } catch (error) {
             callback(false, error as Error);
           }
         }, 0);
-
-        return Promise.resolve(true);
+        return true;
       }
 
-      // For non-callback case, validate all chains
       try {
         const results = await Promise.all(
           chains.map((chain) => chain.isValid(formData)),
         );
-        return results.every((result) => result);
+        return results.every(Boolean);
       } catch (error) {
-        // Re-throw timeout errors and runtime errors (like missing field paths)
+        const message = (error as Error).message;
         if (
-          (error as Error).message.includes("timeout") ||
-          (error as Error).message.includes("Validation failed for field:")
+          message.includes("timeout") ||
+          message.includes("Validation failed for field:")
         ) {
           throw error;
         }
-        // For other validation errors, return false
         return false;
       }
     },
 
-    getMessages(): string[] {
-      return chains.flatMap((chain) => chain.getMessages());
-    },
+    getMessages: () => chains.flatMap((chain) => chain.getMessages()),
 
     getFormattedMessage(): string {
       const allMessages = chains.flatMap((chain) => chain.getMessages());
       const defaultFormatter = (msgs: string[]) => msgs.join(", ");
 
-      // Use the first chain's formatter if available, otherwise use default
-      const firstChainWithFormatter = chains.find(
-        (chain) => chain.messageFormatter,
+      const formatterChain = chains.find((chain) => chain.messageFormatter);
+      return (
+        formatterChain?.messageFormatter?.(allMessages, defaultFormatter) ||
+        defaultFormatter(allMessages)
       );
-      if (firstChainWithFormatter?.messageFormatter) {
-        return firstChainWithFormatter.messageFormatter(
-          allMessages,
-          defaultFormatter,
-        );
-      }
-
-      return defaultFormatter(allMessages);
     },
   };
 }
@@ -377,7 +317,6 @@ export function validateAll(
 validate.extend = <ET extends new (...args: any[]) => any>(
   ExtensionClass: ET,
 ) => {
-  // Get only the custom methods from the extension class
   const extensionMethods = Object.getOwnPropertyNames(
     ExtensionClass.prototype,
   ).filter(
@@ -387,21 +326,23 @@ validate.extend = <ET extends new (...args: any[]) => any>(
       typeof ExtensionClass.prototype[name] === "function",
   );
 
-  // Add extension methods to BaseValidators prototype
   extensionMethods.forEach((methodName) => {
     (BaseValidators.prototype as any)[methodName] = function (
       this: BaseValidators,
       ...args: any[]
     ) {
-      const validatorFn = ExtensionClass.prototype[methodName](...args);
-      return chainFn.call(this, validatorFn, ...args);
+      return chainFn.call(
+        this,
+        ExtensionClass.prototype[methodName](...args),
+        ...args,
+      );
     };
   });
 
   const extendedValidationChain = (
     fieldPath: string,
     options?: ValidationChainOptions,
-  ): ValidationChainApi<InstanceType<ET>> & InstanceType<ET> =>
+  ) =>
     new BaseValidators(fieldPath, options) as unknown as ValidationChainApi<
       InstanceType<ET>
     > &
