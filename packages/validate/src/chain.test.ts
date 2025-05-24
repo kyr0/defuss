@@ -9,10 +9,10 @@ describe("Chain", () => {
         value: 12,
       },
     };
-    expect(isValid(formData)).toBe(true);
+    expect(await isValid(formData)).toBe(true);
   });
 
-  it("can be extended with custom validators", () => {
+  it("can be extended with custom validators", async () => {
     // Define custom validators as a class that extends BaseValidators
     class CustomValidators extends BaseValidators {
       customValidator(prefix: string) {
@@ -43,12 +43,33 @@ describe("Chain", () => {
     const formData = {
       customField: "custom_value",
     };
-    expect(isValid(formData)).toBe(true);
+    expect(await isValid(formData)).toBe(true);
 
     expect(
-      isValid({
+      await isValid({
         customField: "cust0m_value",
       }),
     ).toBe(false);
+  });
+
+  test("should handle async custom validators", async () => {
+    class AsyncValidators extends BaseValidators {
+      asyncEmailCheck(apiEndpoint: string) {
+        return (async (value: string) => {
+          // Simulate async API call
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return value.includes("@") && value.includes(".");
+        }) as unknown as BaseValidators & this;
+      }
+    }
+
+    const myValidateAsync = validate.extend(AsyncValidators);
+    const { isValid } = myValidateAsync
+      .async("email")
+      .isString()
+      .asyncEmailCheck("/api/check-email");
+
+    expect(await isValid({ email: "test@example.com" })).toBe(true);
+    expect(await isValid({ email: "invalid-email" })).toBe(false);
   });
 });

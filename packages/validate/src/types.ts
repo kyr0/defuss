@@ -62,5 +62,5 @@ export interface ValidationChainApi<ET = {}> {
   translate(locale: string): ValidationChainApi<ET> & ET;
 
   // Core validation method
-  isValid: (formData: any) => boolean;
+  isValid: (formData: any) => Promise<boolean>;
 }
