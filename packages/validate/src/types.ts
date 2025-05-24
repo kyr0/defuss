@@ -1,40 +1,12 @@
 export type ValidationMessage = string | any;
 export type ValidationFnResult = true | ValidationMessage;
 
-export interface IntermediateValidationState {
-  value: any;
-  intermediateResult: SingleValidationResult;
-  states: Array<SingleValidationResult>;
-
-  /** holds any value of any field validated already */
-  formState: any;
-}
-
-export type Validator = (
-  validationState: IntermediateValidationState,
-) => ValidationFnResult | Promise<ValidationFnResult>;
-
 export type ValidatorPrimitiveFn = (value: any) => boolean | Promise<boolean>;
 
 export interface SingleValidationResult {
   message?: ValidationMessage;
   isValid: boolean;
 }
-
-export type ValidationMap<T> = {
-  [fieldName in keyof T]?: Array<Validator>;
-};
-
-export interface SingleValidationStateResult extends SingleValidationResult {
-  states: Array<SingleValidationResult>;
-}
-
-export type ValidationStateMapResult<T> = {
-  [fieldName in keyof T]?: SingleValidationResult;
-};
-
-export type ValidationResult<T> = ValidationStateMapResult<T> &
-  SingleValidationResult;
 
 // chain types
 
@@ -60,7 +32,18 @@ export interface ValidationChainApi<ET = {}> {
     ) => string,
   ): ValidationChainApi<ET> & ET;
   translate(locale: string): ValidationChainApi<ET> & ET;
-
-  // Core validation method
   isValid: (formData: any) => Promise<boolean>;
+  getMessages: () => string[];
+  getFormattedMessage: () => string;
+}
+
+export interface ValidationChainOptions {
+  timeout?: number;
+  onValidationError?: (error: Error, step: ValidationStep) => void;
+}
+
+export interface AllValidationResult {
+  isValid: boolean;
+  messages: string[];
+  error?: Error;
 }

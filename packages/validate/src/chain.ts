@@ -1,13 +1,11 @@
 import type {
+  AllValidationResult,
   ValidationChainApi,
-  ValidationStep,
+  ValidationChainOptions,
   ValidatorFn,
 } from "./types.js";
 import * as validators from "./validators/index.js";
 import { getByPath } from "defuss";
-import { createTimeoutPromise } from "defuss";
-
-// --- Core Async Validation Call & Chain ---
 
 export class ValidationCall<VT = boolean> {
   name: string;
@@ -25,13 +23,6 @@ export class ValidationCall<VT = boolean> {
   }
 }
 
-export interface ValidationChainOptions {
-  timeout?: number;
-  autoStart?: boolean;
-  autoStartDelay?: number;
-  onValidationError?: (error: Error, step: ValidationStep) => void;
-}
-
 // @ts-ignore
 export class BaseValidators<ET = ValidationChainApi>
   implements ValidationChainApi<ET>
@@ -42,9 +33,14 @@ export class BaseValidators<ET = ValidationChainApi>
   isResolved: boolean;
   stoppedWithError: Error | null;
   lastResult: boolean;
+  lastValidationResult: AllValidationResult;
   options: ValidationChainOptions;
   chainStartTime: number;
   chainAsyncStartTime: number;
+  messageFormatter?: (
+    messages: string[],
+    format: (msgs: string[]) => string,
+  ) => string;
 
   constructor(fieldPath: string, options: ValidationChainOptions = {}) {
     this.fieldPath = fieldPath;
@@ -53,10 +49,9 @@ export class BaseValidators<ET = ValidationChainApi>
     this.isResolved = false;
     this.stoppedWithError = null;
     this.lastResult = true;
+    this.lastValidationResult = { isValid: true, messages: [] };
     this.options = {
       timeout: 5000,
-      autoStart: true,
-      autoStartDelay: 1,
       ...options,
     };
     this.chainStartTime = performance.now();
@@ -64,54 +59,190 @@ export class BaseValidators<ET = ValidationChainApi>
 
     // Bind methods to preserve context
     this.isValid = this.isValid.bind(this);
+    this.getMessages = this.getMessages.bind(this);
+    this.getFormattedMessage = this.getFormattedMessage.bind(this);
   }
 
   // Async validation method that maintains the original API signature
-  async isValid<T = any>(formData: T): Promise<boolean> {
-    const value = getByPath(formData, this.fieldPath);
+  async isValid<T = any>(
+    formData: T,
+    callback?: (isValid: boolean, error?: Error) => void,
+  ): Promise<boolean> {
+    // If callback is provided, use co-routine approach
+    if (typeof callback === "function") {
+      // Use setTimeout for non-blocking co-routine execution
+      setTimeout(async () => {
+        try {
+          const result = await this._performValidationWithTimeout(formData);
+          // If validation returned an error result (not thrown), pass the error to callback
+          if (result.error) {
+            callback(result.isValid, result.error);
+          } else {
+            callback(result.isValid);
+          }
+        } catch (error) {
+          // If an error was thrown, pass it to callback
+          callback(false, error as Error);
+        }
+      }, 0);
+
+      // Return a resolved promise immediately for non-blocking behavior
+      return Promise.resolve(true);
+    }
+
+    // For non-callback case, let timeout and runtime errors propagate but catch validation errors
+    try {
+      const result = await this._performValidationWithTimeout(formData);
+      return result.isValid;
+    } catch (error) {
+      // Re-throw timeout errors and runtime errors (like missing field paths)
+      if (
+        (error as Error).message.includes("timeout") ||
+        (error as Error).message.includes("Validation failed for field:")
+      ) {
+        throw error;
+      }
+      // For other validation errors, return false
+      return false;
+    }
+  }
+
+  private async _performValidationWithTimeout<T = any>(
+    formData: T,
+  ): Promise<AllValidationResult> {
+    if (this.options.timeout && this.options.timeout > 0) {
+      // Use Promise.race with setTimeout-based timeout
+      let timeoutId: NodeJS.Timeout;
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          const timeoutError = new Error(
+            `Validation timeout after ${this.options.timeout}ms`,
+          );
+          this.stoppedWithError = timeoutError;
+          reject(timeoutError);
+        }, this.options.timeout);
+      });
+
+      try {
+        const result = await Promise.race([
+          this._performValidation(formData),
+          timeoutPromise,
+        ]);
+        clearTimeout(timeoutId!);
+        return result;
+      } catch (error) {
+        clearTimeout(timeoutId!);
+        throw error;
+      }
+    }
+    return this._performValidation(formData);
+  }
+
+  private async _performValidation<T = any>(
+    formData: T,
+  ): Promise<AllValidationResult> {
+    let value: any;
+    value = getByPath(formData, this.fieldPath);
+
+    // Check if the field path exists - if getByPath returns undefined and the path has dots,
+    // it likely means the field doesn't exist in the form data
+    if (value === undefined && this.fieldPath.includes(".")) {
+      // Try to traverse the path manually to see if it's a missing field
+      const pathParts = this.fieldPath.split(".");
+      let current = formData;
+
+      for (let i = 0; i < pathParts.length; i++) {
+        if (current === null || current === undefined) {
+          throw new Error(
+            `Validation failed for field: ${this.fieldPath} - path not found at '${pathParts.slice(0, i).join(".")}'`,
+          );
+        }
+
+        if (typeof current !== "object" || !(pathParts[i] in current)) {
+          throw new Error(
+            `Validation failed for field: ${this.fieldPath} - field '${pathParts[i]}' not found`,
+          );
+        }
+
+        current = (current as any)[pathParts[i]];
+      }
+      value = current;
+    }
+
+    const messages: string[] = [];
+    let isValid = true;
 
     try {
       // Execute all validation calls in sequence
       for (const call of this.validationCalls) {
         const result = await call.fn(value, ...call.args);
         if (result !== true) {
-          return false;
+          isValid = false;
+          if (typeof result === "string") {
+            messages.push(result);
+          } else {
+            messages.push(`Validation failed for ${call.name}`);
+          }
+          // Continue to collect all error messages instead of stopping at first failure
         }
       }
 
-      return true;
+      this.lastValidationResult = { isValid, messages };
+      return this.lastValidationResult;
     } catch (error) {
       this.stoppedWithError = error as Error;
+      const errorResult = {
+        isValid: false,
+        messages: [`Validation error: ${(error as Error).message}`],
+        error: error as Error,
+      };
+      this.lastValidationResult = errorResult;
+
       if (this.options.onValidationError) {
         this.options.onValidationError(error as Error, {
           fn: () => false,
           args: [],
         });
       }
-      return false;
+      // Return the error result for validation errors (thrown by validators)
+      return errorResult;
     }
   }
 
   message(
-    messageFn: (
+    messageFn?: (
       messages: string[],
       format: (msgs: string[]) => string,
     ) => string,
   ): ValidationChainApi<ET> & ET {
+    if (messageFn) {
+      this.messageFormatter = messageFn;
+    }
     return this as unknown as ValidationChainApi<ET> & ET;
   }
-}
 
-export class BaseValidatorsThenable<
-  ET = ValidationChainApi,
-> extends BaseValidators<ET> {
-  constructor(fieldPath: string, options: ValidationChainOptions = {}) {
-    super(fieldPath, options);
+  getMessages(): string[] {
+    return this.lastValidationResult.messages;
+  }
+
+  getFormattedMessage(): string {
+    const defaultFormatter = (msgs: string[]) => msgs.join(", ");
+
+    if (this.messageFormatter) {
+      return this.messageFormatter(
+        this.lastValidationResult.messages,
+        defaultFormatter,
+      );
+    }
+    return defaultFormatter(this.lastValidationResult.messages);
   }
 
   // biome-ignore lint/suspicious/noThenProperty: Required for Promise-like behavior
   then<TResult1 = boolean, TResult2 = never>(
-    onfulfilled?: ((value: boolean) => TResult1 | PromiseLike<TResult1>) | null,
+    onfulfilled?:
+      | ((value: BaseValidators<ET>) => TResult1 | PromiseLike<TResult1>)
+      | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     this.chainAsyncStartTime = performance.now();
@@ -124,60 +255,14 @@ export class BaseValidatorsThenable<
     }
 
     if (this.isResolved) {
-      return Promise.resolve(this.lastResult).then(
-        onfulfilled as any,
-        onrejected,
-      );
+      return Promise.resolve(this as any).then(onfulfilled as any, onrejected);
     }
 
-    return this.runValidationChain()
-      .then((result) => {
-        this.lastResult = result;
-        this.isResolved = true;
-        return onfulfilled ? onfulfilled(result) : (result as any);
-      })
-      .catch(onrejected);
-  }
-
-  catch<TResult = never>(
-    onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null,
-  ): Promise<boolean | TResult> {
-    return this.then(undefined, onrejected);
-  }
-
-  finally(onfinally?: (() => void) | null): Promise<boolean> {
-    return this.then(
-      (value) => {
-        onfinally?.();
-        return value;
-      },
-      (reason) => {
-        onfinally?.();
-        throw reason;
-      },
-    );
-  }
-
-  private async runValidationChain(): Promise<boolean> {
-    return createTimeoutPromise(
-      this.options.timeout!,
-      async () => {
-        // This would be called with actual form data in real usage
-        // For now, we'll need the form data to be passed when awaited
-        throw new Error(
-          "Validation requires form data. Use validate(formData) instead of await.",
-        );
-      },
-      () => {
-        this.stoppedWithError = new Error(
-          `Validation timeout after ${this.options.timeout}ms`,
-        );
-      },
-    );
+    // For thenable behavior, resolve immediately with the chain itself
+    // This allows the chain to be used in .then() calls like dequery
+    return Promise.resolve(this as any).then(onfulfilled as any, onrejected);
   }
 }
-
-// --- Dynamic Prototype Extension (Simplified) ---
 
 function chainFn(
   this: BaseValidators,
@@ -191,7 +276,8 @@ function chainFn(
         const result = fn(value, ...args);
         // Handle both sync and async validator functions
         const resolvedResult = await Promise.resolve(result);
-        return resolvedResult === true;
+        // Return the actual result to preserve string messages
+        return resolvedResult as boolean;
       },
       ...args,
     ),
@@ -200,26 +286,7 @@ function chainFn(
   return this;
 }
 
-function asyncChainFn(
-  this: BaseValidators,
-  fn: ValidatorFn,
-  ...args: any[]
-): BaseValidatorsThenable {
-  this.validationCalls.push(
-    new ValidationCall<boolean>(
-      "async-validator",
-      async (value) => {
-        const result = await fn(value, ...args);
-        return result === true;
-      },
-      ...args,
-    ),
-  );
-
-  return createSubValidationChain(this, BaseValidatorsThenable);
-}
-
-// Dynamically add validator methods to both prototypes
+// Dynamically add validator methods to prototype
 for (const validatorName of Object.keys(validators)) {
   if (
     typeof validators[validatorName as keyof typeof validators] === "function"
@@ -234,13 +301,6 @@ for (const validatorName of Object.keys(validators)) {
     ) {
       return chainFn.call(this, validatorFn, ...args);
     };
-
-    (BaseValidatorsThenable.prototype as any)[validatorName] = function (
-      this: BaseValidatorsThenable,
-      ...args: any[]
-    ) {
-      return asyncChainFn.call(this, validatorFn, ...args);
-    };
   }
 }
 
@@ -254,15 +314,119 @@ export function validate(
   ) as unknown as ValidationChainApi<BaseValidators>;
 }
 
-validate.async = (
-  fieldPath: string,
+export function validateAll(
+  chains: BaseValidators[],
   options?: ValidationChainOptions,
-): ValidationChainApi<BaseValidatorsThenable> => {
-  return new BaseValidatorsThenable(
-    fieldPath,
-    options,
-  ) as unknown as ValidationChainApi<BaseValidatorsThenable>;
+): {
+  isValid: <T = any>(
+    formData: T,
+    callback?: (isValid: boolean, error?: Error) => void,
+  ) => Promise<boolean>;
+  getMessages: () => string[];
+  getFormattedMessage: () => string;
 };
+export function validateAll(...chains: BaseValidators[]): {
+  isValid: <T = any>(
+    formData: T,
+    callback?: (isValid: boolean, error?: Error) => void,
+  ) => Promise<boolean>;
+  getMessages: () => string[];
+  getFormattedMessage: () => string;
+};
+export function validateAll(
+  chainsOrFirstChain: BaseValidators[] | BaseValidators,
+  optionsOrSecondChain?: ValidationChainOptions | BaseValidators,
+  ...restChains: BaseValidators[]
+): {
+  isValid: <T = any>(
+    formData: T,
+    callback?: (isValid: boolean, error?: Error) => void,
+  ) => Promise<boolean>;
+  getMessages: () => string[];
+  getFormattedMessage: () => string;
+} {
+  let chains: BaseValidators[];
+  let options: ValidationChainOptions = {};
+
+  // Handle different call signatures
+  if (Array.isArray(chainsOrFirstChain)) {
+    // validateAll([chain1, chain2], options?)
+    chains = chainsOrFirstChain;
+    options = (optionsOrSecondChain as ValidationChainOptions) || {};
+  } else {
+    // validateAll(chain1, chain2, chain3, ...)
+    chains = [chainsOrFirstChain];
+    if (optionsOrSecondChain && "fieldPath" in optionsOrSecondChain) {
+      // Second argument is a BaseValidators, not options
+      chains.push(optionsOrSecondChain as BaseValidators);
+    }
+    chains.push(...restChains);
+  }
+
+  return {
+    async isValid<T = any>(
+      formData: T,
+      callback?: (isValid: boolean, error?: Error) => void,
+    ): Promise<boolean> {
+      // If callback is provided, use co-routine approach
+      if (typeof callback === "function") {
+        setTimeout(async () => {
+          try {
+            const results = await Promise.all(
+              chains.map((chain) => chain.isValid(formData)),
+            );
+            const isValid = results.every((result) => result);
+            callback(isValid);
+          } catch (error) {
+            callback(false, error as Error);
+          }
+        }, 0);
+
+        return Promise.resolve(true);
+      }
+
+      // For non-callback case, validate all chains
+      try {
+        const results = await Promise.all(
+          chains.map((chain) => chain.isValid(formData)),
+        );
+        return results.every((result) => result);
+      } catch (error) {
+        // Re-throw timeout errors and runtime errors (like missing field paths)
+        if (
+          (error as Error).message.includes("timeout") ||
+          (error as Error).message.includes("Validation failed for field:")
+        ) {
+          throw error;
+        }
+        // For other validation errors, return false
+        return false;
+      }
+    },
+
+    getMessages(): string[] {
+      return chains.flatMap((chain) => chain.getMessages());
+    },
+
+    getFormattedMessage(): string {
+      const allMessages = chains.flatMap((chain) => chain.getMessages());
+      const defaultFormatter = (msgs: string[]) => msgs.join(", ");
+
+      // Use the first chain's formatter if available, otherwise use default
+      const firstChainWithFormatter = chains.find(
+        (chain) => chain.messageFormatter,
+      );
+      if (firstChainWithFormatter?.messageFormatter) {
+        return firstChainWithFormatter.messageFormatter(
+          allMessages,
+          defaultFormatter,
+        );
+      }
+
+      return defaultFormatter(allMessages);
+    },
+  };
+}
 
 validate.extend = <ET extends new (...args: any[]) => any>(
   ExtensionClass: ET,
@@ -279,27 +443,12 @@ validate.extend = <ET extends new (...args: any[]) => any>(
       !baseMethods.includes(methodName) &&
       typeof extensionPrototype[methodName] === "function"
     ) {
-      // Add to both sync and async prototypes
       (BaseValidators.prototype as any)[methodName] = function (
         this: BaseValidators,
         ...args: any[]
       ) {
         const validatorFn = extensionPrototype[methodName](...args);
-
-        // Check if the validator function is async
-        if (validatorFn && typeof validatorFn.then === "function") {
-          return asyncChainFn.call(this, validatorFn, ...args);
-        } else {
-          return chainFn.call(this, validatorFn, ...args);
-        }
-      };
-
-      (BaseValidatorsThenable.prototype as any)[methodName] = function (
-        this: BaseValidatorsThenable,
-        ...args: any[]
-      ) {
-        const validatorFn = extensionPrototype[methodName](...args);
-        return asyncChainFn.call(this, validatorFn, ...args);
+        return chainFn.call(this, validatorFn, ...args);
       };
     }
   });
@@ -313,49 +462,9 @@ validate.extend = <ET extends new (...args: any[]) => any>(
     > &
       InstanceType<ET>;
 
-  extendedValidationChain.async = (
-    fieldPath: string,
-    options?: ValidationChainOptions,
-  ): ValidationChainApi<InstanceType<ET>> & InstanceType<ET> =>
-    new BaseValidatorsThenable(
-      fieldPath,
-      options,
-    ) as unknown as ValidationChainApi<InstanceType<ET>> & InstanceType<ET>;
-
   extendedValidationChain.extend = validate.extend;
 
   return extendedValidationChain;
 };
-
-function createSubValidationChain<T extends BaseValidators>(
-  source: BaseValidators,
-  Constructor: new (fieldPath: string, options?: ValidationChainOptions) => T,
-): T {
-  const subChain = new Constructor(source.fieldPath, source.options);
-  subChain.validationCalls = source.validationCalls;
-  subChain.stackPointer = source.stackPointer;
-  subChain.stoppedWithError = source.stoppedWithError;
-  subChain.lastResult = source.lastResult;
-  subChain.isResolved = source.isResolved;
-  return subChain;
-}
-
-// Auto-start behavior similar to dequery
-function delayedAutoStart<T extends BaseValidators>(chain: T): T {
-  if (chain.options.autoStart) {
-    setTimeout(async () => {
-      if (
-        chain.chainAsyncStartTime === 0 &&
-        chain instanceof BaseValidatorsThenable
-      ) {
-        // Auto-start only works with explicit form data
-        console.warn(
-          "Auto-start validation requires explicit validate(formData) call",
-        );
-      }
-    }, chain.options.autoStartDelay!);
-  }
-  return chain;
-}
 
 export type ExtendedValidationChain<T> = BaseValidators & T;
