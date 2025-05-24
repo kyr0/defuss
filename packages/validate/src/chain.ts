@@ -15,7 +15,7 @@ export class ValidationCall<VT = boolean> {
   ) {}
 }
 
-// @ts-ignore
+// @ts-ignore: Allow dynamic typing for validation calls without adding all methods to the class
 export class BaseValidators<ET = ValidationChainApi>
   implements ValidationChainApi<ET>
 {
@@ -34,40 +34,34 @@ export class BaseValidators<ET = ValidationChainApi>
     this.lastValidationResult = { isValid: true, messages: [] };
     this.options = { timeout: 5000, ...options };
 
-    // Bind methods to preserve context
+    // bind methods for destructuring support
     this.isValid = this.isValid.bind(this);
     this.getMessages = this.getMessages.bind(this);
     this.getFormattedMessage = this.getFormattedMessage.bind(this);
   }
 
-  // Async validation method that maintains the original API signature
   async isValid<T = any>(
     formData: T,
     callback?: (isValid: boolean, error?: Error) => void,
   ): Promise<boolean> {
-    // If callback is provided, use co-routine approach
-    if (typeof callback === "function") {
-      setTimeout(async () => {
-        try {
-          const result = await this._performValidation(formData);
-          callback(result.isValid, result.error);
-        } catch (error) {
-          callback(false, error as Error);
-        }
-      }, 0);
-
-      return Promise.resolve(true);
-    }
-
-    // For non-callback case, let timeout and runtime errors propagate
     try {
       const result = await this._performValidation(formData);
+
+      if (callback) {
+        queueMicrotask(() => callback(result.isValid, result.error));
+      }
+
       return result.isValid;
     } catch (error) {
-      // Re-throw timeout errors and runtime errors (like missing field paths)
+      if (callback) {
+        queueMicrotask(() => callback(false, error as Error));
+      }
+
+      // re-throw critical errors only
+      const message = (error as Error).message;
       if (
-        (error as Error).message.includes("timeout") ||
-        (error as Error).message.includes("Validation failed for field:")
+        message.includes("timeout") ||
+        message.includes("Validation failed for field:")
       ) {
         throw error;
       }
@@ -80,20 +74,22 @@ export class BaseValidators<ET = ValidationChainApi>
   ): Promise<AllValidationResult> {
     const validationPromise = this._executeValidation(formData);
 
-    // Apply timeout if configured
-    if (this.options.timeout && this.options.timeout > 0) {
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(
-            new Error(`Validation timeout after ${this.options.timeout}ms`),
-          );
-        }, this.options.timeout);
-      });
-
-      return Promise.race([validationPromise, timeoutPromise]);
+    if (!this.options.timeout || this.options.timeout <= 0) {
+      return validationPromise;
     }
 
-    return validationPromise;
+    return Promise.race([
+      validationPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(`Validation timeout after ${this.options.timeout}ms`),
+            ),
+          this.options.timeout,
+        ),
+      ),
+    ]);
   }
 
   private async _executeValidation<T = any>(
@@ -101,13 +97,11 @@ export class BaseValidators<ET = ValidationChainApi>
   ): Promise<AllValidationResult> {
     const value = this._getFieldValue(formData);
     const messages: string[] = [];
-    let isValid = true;
 
     try {
       for (const call of this.validationCalls) {
         const result = await call.fn(value, ...call.args);
         if (result !== true) {
-          isValid = false;
           messages.push(
             typeof result === "string"
               ? result
@@ -117,7 +111,10 @@ export class BaseValidators<ET = ValidationChainApi>
       }
 
       // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
-      return (this.lastValidationResult = { isValid, messages });
+      return (this.lastValidationResult = {
+        isValid: messages.length === 0,
+        messages,
+      });
     } catch (error) {
       const errorResult = {
         isValid: false,
@@ -129,7 +126,7 @@ export class BaseValidators<ET = ValidationChainApi>
         fn: () => false,
         args: [],
       });
-      // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+      // biome-ignore lint/suspicious/noAssignInExpressions: performance
       return (this.lastValidationResult = errorResult);
     }
   }
@@ -181,24 +178,22 @@ export class BaseValidators<ET = ValidationChainApi>
 
   getFormattedMessage(): string {
     const defaultFormatter = (msgs: string[]) => msgs.join(", ");
-
-    if (this.messageFormatter) {
-      return this.messageFormatter(
+    return (
+      this.messageFormatter?.(
         this.lastValidationResult.messages,
         defaultFormatter,
-      );
-    }
-    return defaultFormatter(this.lastValidationResult.messages);
+      ) || defaultFormatter(this.lastValidationResult.messages)
+    );
   }
 
-  // biome-ignore lint/suspicious/noThenProperty: Required for Promise-like behavior
+  // biome-ignore lint/suspicious/noThenProperty: Required for custom promise-chain behavior
   then<TResult1 = boolean, TResult2 = never>(
     onfulfilled?:
       | ((value: BaseValidators<ET>) => TResult1 | PromiseLike<TResult1>)
       | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
-    // For thenable behavior, resolve immediately with the chain itself
+    // for thenable behavior, resolve immediately with the chain itself
     return Promise.resolve(this as any).then(onfulfilled as any, onrejected);
   }
 }
@@ -240,9 +235,7 @@ export function validate(
   ) as unknown as ValidationChainApi<BaseValidators>;
 }
 
-export function validateAll(
-  ...args: (BaseValidators | BaseValidators[] | ValidationChainOptions)[]
-): {
+export function validateAll(...args: (BaseValidators | BaseValidators[])[]): {
   isValid: <T = any>(
     formData: T,
     callback?: (isValid: boolean, error?: Error) => void,
@@ -250,44 +243,33 @@ export function validateAll(
   getMessages: () => string[];
   getFormattedMessage: () => string;
 } {
-  let chains: BaseValidators[];
-  let options: ValidationChainOptions = {};
-
-  // Simple logic: if first arg is array, use it as chains, otherwise collect all BaseValidators
-  if (Array.isArray(args[0])) {
-    chains = args[0];
-    options = (args[1] as ValidationChainOptions) || {};
-  } else {
-    chains = args.filter(
-      (arg) => arg && typeof arg === "object" && "fieldPath" in arg,
-    ) as BaseValidators[];
-  }
+  const chains = Array.isArray(args[0])
+    ? args[0]
+    : (args.filter(
+        (arg) => arg && typeof arg === "object" && "fieldPath" in arg,
+      ) as BaseValidators[]);
 
   return {
     async isValid<T = any>(
       formData: T,
       callback?: (isValid: boolean, error?: Error) => void,
     ): Promise<boolean> {
-      if (callback) {
-        setTimeout(async () => {
-          try {
-            const results = await Promise.all(
-              chains.map((chain) => chain.isValid(formData)),
-            );
-            callback(results.every(Boolean));
-          } catch (error) {
-            callback(false, error as Error);
-          }
-        }, 0);
-        return true;
-      }
-
       try {
         const results = await Promise.all(
           chains.map((chain) => chain.isValid(formData)),
         );
-        return results.every(Boolean);
+        const isValid = results.every(Boolean);
+
+        if (callback) {
+          queueMicrotask(() => callback(isValid));
+        }
+
+        return isValid;
       } catch (error) {
+        if (callback) {
+          queueMicrotask(() => callback(false, error as Error));
+        }
+
         const message = (error as Error).message;
         if (
           message.includes("timeout") ||
@@ -304,7 +286,6 @@ export function validateAll(
     getFormattedMessage(): string {
       const allMessages = chains.flatMap((chain) => chain.getMessages());
       const defaultFormatter = (msgs: string[]) => msgs.join(", ");
-
       const formatterChain = chains.find((chain) => chain.messageFormatter);
       return (
         formatterChain?.messageFormatter?.(allMessages, defaultFormatter) ||

@@ -8,8 +8,6 @@ export interface SingleValidationResult {
   isValid: boolean;
 }
 
-// chain types
-
 export type ValidatorFn = (...args: any[]) => boolean | string;
 export type ValidationStep = { fn: ValidatorFn; args: any[] };
 
@@ -31,7 +29,6 @@ export interface ValidationChainApi<ET = {}> {
       format: (msgs: string[]) => string,
     ) => string,
   ): ValidationChainApi<ET> & ET;
-  translate(locale: string): ValidationChainApi<ET> & ET;
   isValid: (formData: any) => Promise<boolean>;
   getMessages: () => string[];
   getFormattedMessage: () => string;
