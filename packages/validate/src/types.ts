@@ -1,73 +1,79 @@
-export type ValidationMessage = string | any;
-export type ValidationFnResult = true | ValidationMessage;
+import type { ValidationStep } from "defuss-runtime";
 
-export type ValidatorPrimitiveFn = (value: any) => boolean | Promise<boolean>;
+// Utility type for cleaner return types
+type ValidationChain<ET = {}> = ValidationChainApi<ET> & ET;
 
-export interface SingleValidationResult {
-  message?: ValidationMessage;
-  isValid: boolean;
-}
-
-export type ValidatorFn = (...args: any[]) => boolean | string;
-export type ValidationStep = { fn: ValidatorFn; args: any[] };
-
+// TODO: Does not correspond to the actual API, needs to be updated
 export interface ValidationChainApi<ET = {}> {
   // Basic type validators
-  isNumber(): ValidationChainApi<ET> & ET;
-  isString(): ValidationChainApi<ET> & ET;
-  isArray(): ValidationChainApi<ET> & ET;
-  isObject(): ValidationChainApi<ET> & ET;
-  isDate(): ValidationChainApi<ET> & ET;
-  isNumeric(): ValidationChainApi<ET> & ET;
+  isNumberSafe(): ValidationChain<ET>;
+  isString(): ValidationChain<ET>;
+  isArray(): ValidationChain<ET>;
+  isObject(): ValidationChain<ET>;
+  isDate(): ValidationChain<ET>;
+  isNumericAndSafe(): ValidationChain<ET>;
+  isBoolean(): ValidationChain<ET>;
+  isInteger(): ValidationChain<ET>;
 
   // Presence validators
-  isRequired(): ValidationChainApi<ET> & ET;
-  isDefined(): ValidationChainApi<ET> & ET;
-  isEmpty(): ValidationChainApi<ET> & ET;
+  // TODO:
+  is(): ValidationChain<ET>;
+  isInstanceOf<T>(c: new (...args: any[]) => T): ValidationChain<ET>;
+  isTypeOf(type: string): ValidationChain<ET>;
+
+  isRequired(): ValidationChain<ET>; // has some value (!undefined or null or empty)
+
+  isDefined(): ValidationChain<ET>;
+  isEmpty(): ValidationChain<ET>;
+  isNull(): ValidationChain<ET>;
+  isUndefined(): ValidationChain<ET>;
+  isNullOrUndefined(): ValidationChain<ET>;
 
   // Format validators
-  isEmail(): ValidationChainApi<ET> & ET;
-  isUrl(): ValidationChainApi<ET> & ET;
-  isUrlPath(): ValidationChainApi<ET> & ET;
-  isSlug(): ValidationChainApi<ET> & ET;
-  isPhoneNumber(): ValidationChainApi<ET> & ET;
+  isEmail(): ValidationChain<ET>;
+  isUrl(): ValidationChain<ET>;
+  isUrlPath(): ValidationChain<ET>;
+  isSlug(): ValidationChain<ET>;
+  isPhoneNumber(): ValidationChain<ET>;
 
   // Comparison validators
-  isEqual(value: any): ValidationChainApi<ET> & ET;
-  isOneOf(options: Array<string | number>): ValidationChainApi<ET> & ET;
+  isEqual<T>(value: T): ValidationChain<ET>;
+  isOneOf<T extends readonly (string | number)[]>(
+    options: T,
+  ): ValidationChain<ET>;
 
   // Length validators
-  isLongerThan(
+  isLongerThan(minLength: number, inclusive?: boolean): ValidationChain<ET>;
+  isShorterThan(maxLength: number, inclusive?: boolean): ValidationChain<ET>;
+  hasLengthBetween(
     minLength: number,
-    includeEqual?: boolean,
-  ): ValidationChainApi<ET> & ET;
-  isShorterThan(
     maxLength: number,
-    includeEqual?: boolean,
-  ): ValidationChainApi<ET> & ET;
+    inclusive?: boolean,
+  ): ValidationChain<ET>;
+  hasExactLength(length: number): ValidationChain<ET>;
 
   // Numeric comparison validators
-  isGreaterThan(
+  isGreaterThan(minValue: number, inclusive?: boolean): ValidationChain<ET>;
+  isLessThan(maxValue: number, inclusive?: boolean): ValidationChain<ET>;
+  isBetween(
     minValue: number,
-    includeEqual?: boolean,
-  ): ValidationChainApi<ET> & ET;
-  isLowerThan(
     maxValue: number,
-    includeEqual?: boolean,
-  ): ValidationChainApi<ET> & ET;
+    inclusive?: boolean,
+  ): ValidationChain<ET>;
+  isPositive(includeZero?: boolean): ValidationChain<ET>;
+  isNegative(includeZero?: boolean): ValidationChain<ET>;
 
   // Date comparison validators
-  isAfterMinDate(
-    minDate: Date,
+  isAfter(minDate: Date, inclusive?: boolean): ValidationChain<ET>;
+  isBefore(maxDate: Date, inclusive?: boolean): ValidationChain<ET>;
+  isBetweenDates(
+    startDate: Date,
+    endDate: Date,
     inclusive?: boolean,
-  ): ValidationChainApi<ET> & ET;
-  isBeforeMaxDate(
-    maxDate: Date,
-    inclusive?: boolean,
-  ): ValidationChainApi<ET> & ET;
+  ): ValidationChain<ET>;
 
   // Pattern validator
-  hasPattern(pattern: RegExp): ValidationChainApi<ET> & ET;
+  hasPattern(pattern: RegExp): ValidationChain<ET>;
 
   // Message formatter
   message(
@@ -75,17 +81,20 @@ export interface ValidationChainApi<ET = {}> {
       messages: string[],
       format: (msgs: string[]) => string,
     ) => string,
-  ): ValidationChainApi<ET> & ET;
+  ): ValidationChain<ET>;
 
   // Validation execution
-  isValid: (formData: any) => Promise<boolean>;
-  getMessages: () => string[];
-  getFormattedMessage: () => string;
+  isValid<T = unknown>(formData: T): Promise<boolean>;
+  getMessages(): string[];
+  getFormattedMessage(): string;
 }
 
 export interface ValidationChainOptions {
   timeout?: number;
-  onValidationError?: (error: Error, step: ValidationStep) => void;
+  onValidationError?: <T extends unknown[] = unknown[]>(
+    error: Error,
+    step: ValidationStep<T>,
+  ) => void;
 }
 
 export interface AllValidationResult {

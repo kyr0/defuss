@@ -2,12 +2,79 @@ import type {
   AllValidationResult,
   ValidationChainApi,
   ValidationChainOptions,
-  ValidatorFn,
 } from "./types.js";
-import * as validators from "./validators/index.js";
-import { getByPath } from "defuss";
+import type { ValidatorFn } from "defuss-runtime";
+import {
+  isAfterMinDate,
+  isArray,
+  isBeforeMaxDate,
+  isDate,
+  isDefined,
+  isEmail,
+  isEmpty,
+  isEqual,
+  isGreaterThan,
+  isInteger,
+  isLongerThan,
+  isLowerThan,
+  isNumberSafe,
+  isNumericAndSafe,
+  isObject,
+  isOneOf,
+  isPhoneNumber,
+  isRequired,
+  isShorterThan,
+  isSlug,
+  isString,
+  isUrl,
+  isUrlPath,
+  hasPattern,
+} from "defuss-runtime";
+import {
+  asArray,
+  asBoolean,
+  asDate,
+  asInteger,
+  asNumber,
+} from "defuss-runtime";
+import { getByPath } from "defuss-runtime";
 
-export class ValidationCall<VT = boolean> {
+const validators = {
+  isAfterMinDate,
+  isArray,
+  isBeforeMaxDate,
+  isDate,
+  isDefined,
+  isEmail,
+  isEmpty,
+  isEqual,
+  isGreaterThan,
+  isInteger,
+  isLongerThan,
+  isLowerThan,
+  isNumberSafe,
+  isNumericAndSafe,
+  isObject,
+  isOneOf,
+  isPhoneNumber,
+  isRequired,
+  isShorterThan,
+  isSlug,
+  isString,
+  isUrl,
+  isUrlPath,
+  hasPattern,
+};
+
+const transformers = {
+  asArray,
+  asBoolean,
+  asDate,
+  asInteger,
+  asNumber,
+};
+
+export class Call<VT = boolean> {
   constructor(
     public name: string,
     public fn: (...args: any[]) => Promise<VT>,
@@ -20,7 +87,7 @@ export class BaseValidators<ET = ValidationChainApi>
   implements ValidationChainApi<ET>
 {
   fieldPath: string;
-  validationCalls: ValidationCall[];
+  validationCalls: Call[];
   lastValidationResult: AllValidationResult;
   options: ValidationChainOptions;
   messageFormatter?: (
@@ -201,11 +268,12 @@ export class BaseValidators<ET = ValidationChainApi>
 function chainFn(
   this: BaseValidators,
   fn: ValidatorFn,
+  type: "validator" | "transformer",
   ...args: any[]
 ): BaseValidators {
   this.validationCalls.push(
-    new ValidationCall(
-      "validator",
+    new Call(
+      type,
       (value) => Promise.resolve(fn(value, ...args)) as Promise<boolean>,
       args,
     ),
@@ -220,7 +288,12 @@ for (const [validatorName, validatorFn] of Object.entries(validators)) {
       this: BaseValidators,
       ...args: any[]
     ) {
-      return chainFn.call(this, validatorFn as ValidatorFn, ...args);
+      return chainFn.call(
+        this,
+        validatorFn as ValidatorFn,
+        "validator",
+        ...args,
+      );
     };
   }
 }
@@ -315,6 +388,7 @@ validate.extend = <ET extends new (...args: any[]) => any>(
       return chainFn.call(
         this,
         ExtensionClass.prototype[methodName](...args),
+        "validator",
         ...args,
       );
     };

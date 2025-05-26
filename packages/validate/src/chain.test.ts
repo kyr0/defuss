@@ -2,7 +2,7 @@ import { validate, BaseValidators, validateAll } from "./chain.js";
 
 describe("Chain", () => {
   it("should validate number field", async () => {
-    const { isValid } = validate("age.value").isNumber().isGreaterThan(10);
+    const { isValid } = validate("age.value").isNumberSafe().isGreaterThan(10);
 
     const formData = {
       age: {
@@ -73,7 +73,7 @@ describe("Chain", () => {
   });
 
   it("should support callback-based auto-start validation", async () => {
-    const { isValid } = validate("age.value").isNumber().isGreaterThan(10);
+    const { isValid } = validate("age.value").isNumberSafe().isGreaterThan(10);
 
     const formData = {
       age: {
@@ -92,7 +92,7 @@ describe("Chain", () => {
   });
 
   it("should handle callback-based validation errors", async () => {
-    const { isValid } = validate("age.value").isNumber().isGreaterThan(100);
+    const { isValid } = validate("age.value").isNumberSafe().isGreaterThan(100);
 
     const formData = {
       age: {
@@ -184,12 +184,12 @@ describe("Chain", () => {
   });
 
   it("should handle catching errors", async () => {
-    const { isValid } = validate("age.value").isNumber().isGreaterThan(10);
+    const { isValid } = validate("age.value").isNumberSafe().isGreaterThan(10);
     const formData = { age: { value: 12 } };
 
     console.log("Starting validation...");
 
-    const thenResult = validate("age.value").isNumber().isGreaterThan(10);
+    const thenResult = validate("age.value").isNumberSafe().isGreaterThan(10);
 
     expect(await thenResult.isValid(formData)).toBe(true);
 
@@ -197,7 +197,9 @@ describe("Chain", () => {
 
     // Test catch - this should work since we expect it to resolve now
     try {
-      const catchResult = validate("age.value1").isNumber().isGreaterThan(100);
+      const catchResult = validate("age.value1")
+        .isNumberSafe()
+        .isGreaterThan(100);
       await catchResult.isValid(formData);
     } catch (error) {
       console.log("Catch block executed");
@@ -318,7 +320,7 @@ describe("Chain", () => {
   it("should validate multiple fields with validateAll", async () => {
     const chains = [
       validate("name").isString(),
-      validate("age").isNumber().isGreaterThan(0),
+      validate("age").isNumberSafe().isGreaterThan(0),
       validate("email").isString().isEmail(),
     ];
 
@@ -377,7 +379,10 @@ describe("Chain", () => {
   });
 
   it("should handle callback with validateAll", async () => {
-    const chains = [validate("name").isString(), validate("age").isNumber()];
+    const chains = [
+      validate("name").isString(),
+      validate("age").isNumberSafe(),
+    ];
 
     const validator = validateAll(chains);
 
@@ -399,7 +404,7 @@ describe("Chain", () => {
   it("should validate multiple fields with validateAll using spread syntax", async () => {
     const validator = validateAll(
       validate("name").isString(),
-      validate("age").isNumber().isGreaterThan(0),
+      validate("age").isNumberSafe().isGreaterThan(0),
       validate("email").isString().isEmail(),
     );
 

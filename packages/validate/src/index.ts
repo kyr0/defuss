@@ -1,2 +1,2 @@
-export * from "./validators/index.js";
 export * from "./chain.js";
+export * from "./types.js";

@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src"],
+  "include": ["src", "../runtime/src/transform"],
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",

@@ -50,7 +50,7 @@
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "devDependencies": {
-    "defuss": "workspace:*",
+    "defuss-runtime": "workspace:*",
     "pkgroll": "^2.5.1",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
