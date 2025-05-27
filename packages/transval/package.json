@@ -1,6 +1,6 @@
 {
   "name": "defuss-transval",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -50,10 +50,10 @@
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "dependencies": {
-    "defuss-runtime": "workspace:*"
+    "defuss-runtime": "^1.0.0"
   },
   "devDependencies": {
-    "defuss": "workspace:*",
+    "defuss": "^2.0.3",
     "pkgroll": "^2.5.1",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
