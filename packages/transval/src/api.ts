@@ -28,8 +28,7 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     messages: string[],
     format: (msgs: string[]) => string,
   ) => string;
-  private isNegated = false;
-  public hasValidators = false;
+  protected _state = { isNegated: false, hasValidators: false };
 
   constructor(fieldPath: string, options: ValidationChainOptions = {}) {
     this.fieldPath = fieldPath;
@@ -40,24 +39,36 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
 
     // bind methods for destructuring support
     this.isValid = this.isValid.bind(this);
-    this.getMessages = this.getMessages.bind(this);
-    this.getFormattedMessage = this.getFormattedMessage.bind(this);
   }
 
   // Negation getter - can only be used once per chain
   get not(): ValidationChainApi<ET> & ET {
-    if (this.isNegated) {
+    if (this._state.isNegated || this._state.hasValidators) {
       throw new Error(
         "Multiple negations are not allowed in a validation chain",
       );
     }
-    if (this.hasValidators) {
-      throw new Error(
-        "Multiple negations are not allowed in a validation chain",
-      );
-    }
-    this.isNegated = true;
+    this._state.isNegated = true;
     return this as unknown as ValidationChainApi<ET> & ET;
+  }
+
+  protected _handleValidationError(
+    error: Error,
+    callback?: (isValid: boolean, error?: Error) => void,
+  ): boolean {
+    if (callback) {
+      queueMicrotask(() => callback(false, error));
+    }
+
+    // re-throw critical errors only
+    const message = error.message;
+    if (
+      message.includes("timeout") ||
+      message.includes("Validation failed for field:")
+    ) {
+      throw error;
+    }
+    return false;
   }
 
   async isValid<T = any>(
@@ -73,19 +84,7 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
 
       return result.isValid;
     } catch (error) {
-      if (callback) {
-        queueMicrotask(() => callback(false, error as Error));
-      }
-
-      // re-throw critical errors only
-      const message = (error as Error).message;
-      if (
-        message.includes("timeout") ||
-        message.includes("Validation failed for field:")
-      ) {
-        throw error;
-      }
-      return false;
+      return this._handleValidationError(error as Error, callback);
     }
   }
 
@@ -115,70 +114,78 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
   private async _executeValidation<T = any>(
     formData: T,
   ): Promise<AllValidationResult> {
-    let value = this._getFieldValue(formData);
-    const messages: string[] = [];
+    let currentValue = this._getFieldValue(formData);
+    const validationErrors: string[] = [];
 
     // Initialize transformed data with original form data
     this.transformedData = JSON.parse(JSON.stringify(formData));
 
     try {
+      // Process all validation calls in sequence
       for (const call of this.validationCalls) {
+        const result = await call.fn(currentValue, ...call.args);
+
         if (call.type === "transformer") {
-          // Apply transformer and update value
-          value = await call.fn(value, ...call.args);
-          // Update the transformed data cache - setByPath returns a new object
+          // Update value and transformed data for transformers
+          currentValue = result;
           this.transformedData = setByPath(
             this.transformedData,
             this.fieldPath,
-            value,
+            currentValue,
           );
-        } else {
-          // Apply validator
-          const result = await call.fn(value, ...call.args);
-          if (result !== true) {
-            messages.push(
-              typeof result === "string"
-                ? result
-                : `Validation failed for ${call.name}`,
-            );
-          }
+        } else if (result !== true) {
+          // Collect validation errors
+          validationErrors.push(
+            typeof result === "string"
+              ? result
+              : `Validation failed for ${call.name}`,
+          );
         }
       }
 
-      // Apply negation to the final validation result if needed
-      const isValid = messages.length === 0;
-      const finalIsValid = this.isNegated ? !isValid : isValid;
-
-      // If negated and originally valid, add a message indicating the negation failed
-      const finalMessages = [...messages];
-      if (this.isNegated && isValid) {
-        finalMessages.push("Validation was expected to fail but passed");
-      }
-
-      // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
-      return (this.lastValidationResult = {
-        isValid: finalIsValid,
-        messages: finalMessages,
-      });
+      return this._buildValidationResult(validationErrors);
     } catch (error) {
-      const originalIsValid = false;
-      const finalIsValid = this.isNegated ? !originalIsValid : originalIsValid;
-
-      const errorResult = {
-        isValid: finalIsValid,
-        messages: this.isNegated
-          ? [] // If negated, an error becomes a pass
-          : [`Validation error: ${(error as Error).message}`],
-        error: error as Error,
-      };
-
-      this.options.onValidationError?.(error as Error, {
-        fn: () => false,
-        args: [],
-      });
-      // biome-ignore lint/suspicious/noAssignInExpressions: performance
-      return (this.lastValidationResult = errorResult);
+      return this._buildErrorResult(error as Error);
     }
+  }
+
+  private _buildValidationResult(errors: string[]): AllValidationResult {
+    const isValid = errors.length === 0;
+    const finalIsValid = this._state.isNegated ? !isValid : isValid;
+
+    const finalMessages = [...errors];
+    if (this._state.isNegated && isValid) {
+      finalMessages.push("Validation was expected to fail but passed");
+    }
+
+    // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+    return (this.lastValidationResult = {
+      isValid: finalIsValid,
+      messages: finalMessages,
+    });
+  }
+
+  private _buildErrorResult(error: Error): AllValidationResult {
+    const originalIsValid = false;
+    const finalIsValid = this._state.isNegated
+      ? !originalIsValid
+      : originalIsValid;
+
+    const errorResult = {
+      isValid: finalIsValid,
+      messages: this._state.isNegated
+        ? [] // If negated, an error becomes a pass
+        : [`Validation error: ${error.message}`],
+      error,
+    };
+
+    this.options.onValidationError?.(error, {
+      fn: () => false,
+      args: [],
+    });
+
+    // biome-ignore lint/suspicious/noAssignInExpressions: performance
+    return (this.lastValidationResult = errorResult);
   }
 
   private _getFieldValue<T = any>(formData: T): any {
@@ -222,18 +229,20 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     return this as unknown as ValidationChainApi<ET> & ET;
   }
 
+  protected _formatMessages(messages: string[]): string {
+    const defaultFormatter = (msgs: string[]) => msgs.join(", ");
+    return (
+      this.messageFormatter?.(messages, defaultFormatter) ||
+      defaultFormatter(messages)
+    );
+  }
+
   getMessages(): string[] {
     return this.lastValidationResult.messages;
   }
 
   getFormattedMessage(): string {
-    const defaultFormatter = (msgs: string[]) => msgs.join(", ");
-    return (
-      this.messageFormatter?.(
-        this.lastValidationResult.messages,
-        defaultFormatter,
-      ) || defaultFormatter(this.lastValidationResult.messages)
-    );
+    return this._formatMessages(this.lastValidationResult.messages);
   }
 
   getData(): any {
@@ -269,7 +278,7 @@ function chainFn(
 ): Rules {
   // Track that validators have been added (for negation prevention)
   if (type === "validator") {
-    this.hasValidators = true;
+    this._state.hasValidators = true;
   }
 
   this.validationCalls.push(
@@ -283,39 +292,23 @@ function chainFn(
   return this;
 }
 
-// Dynamically add validator methods to prototype
-for (const [validatorName, validatorFn] of Object.entries(validators)) {
-  if (typeof validatorFn === "function") {
-    (Rules.prototype as any)[validatorName] = function (
-      this: Rules,
-      ...args: any[]
-    ) {
-      return chainFn.call(
-        this,
-        validatorFn as ValidatorFn,
-        "validator",
-        ...args,
-      );
-    };
+// Unified method addition for both validators and transformers
+function _addMethodsToPrototype(
+  methods: Record<string, any>,
+  type: "validator" | "transformer",
+) {
+  for (const [name, fn] of Object.entries(methods)) {
+    if (typeof fn === "function") {
+      (Rules.prototype as any)[name] = function (this: Rules, ...args: any[]) {
+        return chainFn.call(this, fn as ValidatorFn, type, ...args);
+      };
+    }
   }
 }
 
-// Dynamically add transformer methods to prototype
-for (const [transformerName, transformerFn] of Object.entries(transformers)) {
-  if (typeof transformerFn === "function") {
-    (Rules.prototype as any)[transformerName] = function (
-      this: Rules,
-      ...args: any[]
-    ) {
-      return chainFn.call(
-        this,
-        transformerFn as ValidatorFn,
-        "transformer",
-        ...args,
-      );
-    };
-  }
-}
+// Add all methods with unified approach
+_addMethodsToPrototype(validators, "validator");
+_addMethodsToPrototype(transformers, "transformer");
 
 export function rule(
   fieldPath: string,
@@ -338,6 +331,24 @@ export function transval(...args: (Rules | Rules[])[]): {
         (arg) => arg && typeof arg === "object" && "fieldPath" in arg,
       ) as Rules[]);
 
+  const _handleError = (
+    error: Error,
+    callback?: (isValid: boolean, error?: Error) => void,
+  ): boolean => {
+    if (callback) {
+      queueMicrotask(() => callback(false, error));
+    }
+
+    const message = error.message;
+    if (
+      message.includes("timeout") ||
+      message.includes("Validation failed for field:")
+    ) {
+      throw error;
+    }
+    return false;
+  };
+
   return {
     async isValid<T = any>(
       formData: T,
@@ -355,18 +366,7 @@ export function transval(...args: (Rules | Rules[])[]): {
 
         return isValid;
       } catch (error) {
-        if (callback) {
-          queueMicrotask(() => callback(false, error as Error));
-        }
-
-        const message = (error as Error).message;
-        if (
-          message.includes("timeout") ||
-          message.includes("Validation failed for field:")
-        ) {
-          throw error;
-        }
-        return false;
+        return _handleError(error as Error, callback);
       }
     },
 
@@ -374,12 +374,8 @@ export function transval(...args: (Rules | Rules[])[]): {
 
     getFormattedMessage(): string {
       const allMessages = chains.flatMap((chain) => chain.getMessages());
-      const defaultFormatter = (msgs: string[]) => msgs.join(", ");
       const formatterChain = chains.find((chain) => chain.messageFormatter);
-      return (
-        formatterChain?.messageFormatter?.(allMessages, defaultFormatter) ||
-        defaultFormatter(allMessages)
-      );
+      return formatterChain?.getFormattedMessage() ?? allMessages.join(", ");
     },
   };
 }
@@ -399,18 +395,11 @@ rule.extend = <ET extends new (...args: any[]) => any>(ExtensionClass: ET) => {
       this: Rules,
       ...args: any[]
     ) {
-      // Get the function from the extension class
       const extensionFn = ExtensionClass.prototype[methodName].bind(this)(
         ...args,
       );
-
-      // Determine if it's a transformer or validator by checking the method name
-      // Transformers follow the "as*" naming convention (asNumber, asString, etc.)
-      // We check for "as" followed by an uppercase letter to avoid false positives like "asyncEmailCheck"
       const isTransformer = /^as[A-Z]/.test(methodName);
 
-      // For extension methods, the extensionFn is already the validator/transformer function
-      // that takes (value) as parameter, so we don't pass additional args to it in chainFn
       return chainFn.call(
         this,
         extensionFn,

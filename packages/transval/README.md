@@ -15,7 +15,8 @@ Powerful Data Transformation and Validation
 </h1>
 
 
-> `defuss-transval` provides a flexible, chainable API for data transformation and validation in JavaScript and TypeScript applications. It supports a wide range of built-in validators, allows for custom validators to be easily added while maintaining type safety. It is designed for both synchronous and asynchronous transformation and validation scenarios.
+> `defuss-transval` provides a flexible, chainable API for data transformation and validation in JavaScript and TypeScript applications. It supports a wide range of built-in validators, allows for custom validators to be easily added while maintaining type safety. It is designed for both synchronous and asynchronous transformation and validation scenarios. The idea is that when you deterministically transform values, you can spare on runtime type checks and tedious else-case transformations. The value type is guaranteed, followed by validation rules. Eventually, when all validation rules are satisfied, you simply get the 
+transformed data in a type-safe manner.
 
 <h3 align="center">
 
@@ -54,7 +55,7 @@ const formData = {
 const { isValid, getMessages, getData, getValue } = transval(
   rule("person.username").asString().isLongerThan(3),
   rule("person.email").asString().isEmail(),
-  rule("person.age").asNumber().isGreaterThan(18)
+  rule("person.age").asNumber().not.isLessThan(14),
 );
 
 // resolves the whole, potentially async transformation/validation chain
@@ -81,7 +82,7 @@ You can register your own custom validators using the `ValidatorRegistry`:
 import { rule, transval, Rules } from 'defuss-validate';
 
 class CustomRules extends Rules {
-  asyncEmailCheck(apiEndpoint: string) {
+  checkEmail(apiEndpoint: string) {
     return (async (value: string) => {
       // Simulate an async API call
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -97,9 +98,7 @@ const formData = {
 const customRules = rule.extend(CustomRules);
 
 const { isValid, getMessages } = transval(
-  customRules("email")
-    .isString()
-    .asyncEmailCheck("/api/check-email")
+  customRules("email").isString().checkEmail("/api/check-email")
 );
 
 // resolves the whole chain
@@ -112,67 +111,6 @@ if (await isValid(formData)) {
   const validationMessages = await getMessages();
   console.log('Validation errors:', validationMessages);
 }
-```
-
-<h3 align="center">
-
-Type-Safe Custom Validators with Generics
-
-</h3>
-
-To make your custom validators type-safe with proper TypeScript support:
-
-```typescript
-import { ValidatorRegistry, ValidationChain, validate } from 'defuss-validate';
-import type { SimpleValidators, ParameterizedValidators } from 'defuss-validate/extend-types';
-
-// 1. Define interfaces for your custom validators
-interface HexColorValidator<T> extends SimpleValidators<T> {
-  isHexColor(): T;
-}
-
-interface DivisibleByValidator<T> extends ParameterizedValidators<T> {
-  isDivisibleBy(divisor: number): T;
-}
-
-// 2. Create a custom ValidationChain type with your validators
-type CustomValidationChain<T = any> = ValidationChain<
-  T, 
-  HexColorValidator<any>, 
-  DivisibleByValidator<any>
->;
-
-// 3. Register your custom validators
-ValidatorRegistry.registerSimple(
-  'isHexColor', 
-  (value) => typeof value === 'string' && /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(value),
-  'Must be a valid hex color code'
-);
-
-ValidatorRegistry.registerParameterized(
-  'isDivisibleBy',
-  (value, divisor) => typeof value === 'number' && value % divisor === 0,
-  'Must be divisible by {0}'
-);
-
-// 4. Apply validators to the ValidationChain prototype
-ValidatorRegistry.applyValidatorsToPrototype(ValidationChain.prototype);
-
-// 5. Create a helper function to use your custom ValidationChain
-function customValidate<T = any>(data: T, fieldPath: string): CustomValidationChain<T> {
-  return validate<T, HexColorValidator<any>, DivisibleByValidator<any>>(data, fieldPath);
-}
-
-// 6. Now you can use your custom validators with full type safety!
-const colorChain = customValidate(formData, 'color')
-  .isRequired()
-  .isString()
-  .isHexColor();  // TypeScript now recognizes this method
-
-const numberChain = customValidate(formData, 'value')
-  .isRequired()
-  .isNumber()
-  .isDivisibleBy(2);  // TypeScript now recognizes this method with parameters
 ```
 
 <h3 align="center">
