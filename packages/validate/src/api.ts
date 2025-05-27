@@ -4,88 +4,21 @@ import type {
   ValidationChainOptions,
 } from "./types.js";
 import type { ValidatorFn } from "defuss-runtime";
-import {
-  isAfterMinDate,
-  isArray,
-  isBeforeMaxDate,
-  isDate,
-  isDefined,
-  isEmail,
-  isEmpty,
-  isEqual,
-  isGreaterThan,
-  isInteger,
-  isLongerThan,
-  isLowerThan,
-  isNumberSafe,
-  isNumericAndSafe,
-  isObject,
-  isOneOf,
-  isPhoneNumber,
-  isRequired,
-  isShorterThan,
-  isSlug,
-  isString,
-  isUrl,
-  isUrlPath,
-  hasPattern,
-} from "defuss-runtime";
-import {
-  asArray,
-  asBoolean,
-  asDate,
-  asInteger,
-  asNumber,
-} from "defuss-runtime";
-import { getByPath } from "defuss-runtime";
-
-const validators = {
-  isAfterMinDate,
-  isArray,
-  isBeforeMaxDate,
-  isDate,
-  isDefined,
-  isEmail,
-  isEmpty,
-  isEqual,
-  isGreaterThan,
-  isInteger,
-  isLongerThan,
-  isLowerThan,
-  isNumberSafe,
-  isNumericAndSafe,
-  isObject,
-  isOneOf,
-  isPhoneNumber,
-  isRequired,
-  isShorterThan,
-  isSlug,
-  isString,
-  isUrl,
-  isUrlPath,
-  hasPattern,
-};
-
-const transformers = {
-  asArray,
-  asBoolean,
-  asDate,
-  asInteger,
-  asNumber,
-};
+import { getByPath, setByPath } from "defuss-runtime";
+import { validators } from "./validators.js";
+import { transformers } from "./transformers.js";
 
 export class Call<VT = boolean> {
   constructor(
     public name: string,
     public fn: (...args: any[]) => Promise<VT>,
     public args: any[],
+    public type: "validator" | "transformer" = "validator",
   ) {}
 }
 
 // @ts-ignore: Allow dynamic typing for validation calls without adding all methods to the class
-export class BaseValidators<ET = ValidationChainApi>
-  implements ValidationChainApi<ET>
-{
+export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
   fieldPath: string;
   validationCalls: Call[];
   lastValidationResult: AllValidationResult;
@@ -162,18 +95,24 @@ export class BaseValidators<ET = ValidationChainApi>
   private async _executeValidation<T = any>(
     formData: T,
   ): Promise<AllValidationResult> {
-    const value = this._getFieldValue(formData);
+    let value = this._getFieldValue(formData);
     const messages: string[] = [];
 
     try {
       for (const call of this.validationCalls) {
-        const result = await call.fn(value, ...call.args);
-        if (result !== true) {
-          messages.push(
-            typeof result === "string"
-              ? result
-              : `Validation failed for ${call.name}`,
-          );
+        if (call.type === "transformer") {
+          // Apply transformer and update value
+          value = await call.fn(value, ...call.args);
+        } else {
+          // Apply validator
+          const result = await call.fn(value, ...call.args);
+          if (result !== true) {
+            messages.push(
+              typeof result === "string"
+                ? result
+                : `Validation failed for ${call.name}`,
+            );
+          }
         }
       }
 
@@ -256,7 +195,7 @@ export class BaseValidators<ET = ValidationChainApi>
   // biome-ignore lint/suspicious/noThenProperty: Required for custom promise-chain behavior
   then<TResult1 = boolean, TResult2 = never>(
     onfulfilled?:
-      | ((value: BaseValidators<ET>) => TResult1 | PromiseLike<TResult1>)
+      | ((value: Rules<ET>) => TResult1 | PromiseLike<TResult1>)
       | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
@@ -266,17 +205,18 @@ export class BaseValidators<ET = ValidationChainApi>
 }
 
 function chainFn(
-  this: BaseValidators,
+  this: Rules,
   fn: ValidatorFn,
   type: "validator" | "transformer",
   ...args: any[]
-): BaseValidators {
+): Rules {
   this.validationCalls.push(
     new Call(
-      type,
-      (value) => Promise.resolve(fn(value, ...args)) as Promise<boolean>,
+      fn.name || type,
+      (value) => Promise.resolve(fn(value, ...args)),
       args,
-    ),
+      type,
+    ) as Call,
   );
   return this;
 }
@@ -284,8 +224,8 @@ function chainFn(
 // Dynamically add validator methods to prototype
 for (const [validatorName, validatorFn] of Object.entries(validators)) {
   if (typeof validatorFn === "function") {
-    (BaseValidators.prototype as any)[validatorName] = function (
-      this: BaseValidators,
+    (Rules.prototype as any)[validatorName] = function (
+      this: Rules,
       ...args: any[]
     ) {
       return chainFn.call(
@@ -298,17 +238,31 @@ for (const [validatorName, validatorFn] of Object.entries(validators)) {
   }
 }
 
-export function validate(
-  fieldPath: string,
-  options?: ValidationChainOptions,
-): ValidationChainApi<BaseValidators> {
-  return new BaseValidators(
-    fieldPath,
-    options,
-  ) as unknown as ValidationChainApi<BaseValidators>;
+// Dynamically add transformer methods to prototype
+for (const [transformerName, transformerFn] of Object.entries(transformers)) {
+  if (typeof transformerFn === "function") {
+    (Rules.prototype as any)[transformerName] = function (
+      this: Rules,
+      ...args: any[]
+    ) {
+      return chainFn.call(
+        this,
+        transformerFn as ValidatorFn,
+        "transformer",
+        ...args,
+      );
+    };
+  }
 }
 
-export function validateAll(...args: (BaseValidators | BaseValidators[])[]): {
+export function rule(
+  fieldPath: string,
+  options?: ValidationChainOptions,
+): ValidationChainApi<Rules> {
+  return new Rules(fieldPath, options) as unknown as ValidationChainApi<Rules>;
+}
+
+export function transval(...args: (Rules | Rules[])[]): {
   isValid: <T = any>(
     formData: T,
     callback?: (isValid: boolean, error?: Error) => void,
@@ -320,7 +274,7 @@ export function validateAll(...args: (BaseValidators | BaseValidators[])[]): {
     ? args[0]
     : (args.filter(
         (arg) => arg && typeof arg === "object" && "fieldPath" in arg,
-      ) as BaseValidators[]);
+      ) as Rules[]);
 
   return {
     async isValid<T = any>(
@@ -368,21 +322,19 @@ export function validateAll(...args: (BaseValidators | BaseValidators[])[]): {
   };
 }
 
-validate.extend = <ET extends new (...args: any[]) => any>(
-  ExtensionClass: ET,
-) => {
+rule.extend = <ET extends new (...args: any[]) => any>(ExtensionClass: ET) => {
   const extensionMethods = Object.getOwnPropertyNames(
     ExtensionClass.prototype,
   ).filter(
     (name) =>
       name !== "constructor" &&
-      !Object.getOwnPropertyNames(BaseValidators.prototype).includes(name) &&
+      !Object.getOwnPropertyNames(Rules.prototype).includes(name) &&
       typeof ExtensionClass.prototype[name] === "function",
   );
 
   extensionMethods.forEach((methodName) => {
-    (BaseValidators.prototype as any)[methodName] = function (
-      this: BaseValidators,
+    (Rules.prototype as any)[methodName] = function (
+      this: Rules,
       ...args: any[]
     ) {
       return chainFn.call(
@@ -398,13 +350,13 @@ validate.extend = <ET extends new (...args: any[]) => any>(
     fieldPath: string,
     options?: ValidationChainOptions,
   ) =>
-    new BaseValidators(fieldPath, options) as unknown as ValidationChainApi<
+    new Rules(fieldPath, options) as unknown as ValidationChainApi<
       InstanceType<ET>
     > &
       InstanceType<ET>;
 
-  extendedValidationChain.extend = validate.extend;
+  extendedValidationChain.extend = rule.extend;
   return extendedValidationChain;
 };
 
-export type ExtendedValidationChain<T> = BaseValidators & T;
+export type ExtendedValidationChain<T> = Rules & T;

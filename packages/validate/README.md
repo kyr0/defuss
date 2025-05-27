@@ -3,20 +3,19 @@
 <img src="assets/defuss_mascott.png" width="100px" />
 
 <p align="center">
-  <code>defuss-validate</code>
+  <code>defuss-transval</code>
 </p>
 
 <sup align="center">
 
-Form and Data Validation
+Powerful Data Transformation and Validation
 
 </sup>
 
 </h1>
 
 
-> `defuss-validate` provides a flexible, chainable API for form and data validation in JavaScript and TypeScript applications. It supports a wide range of built-in validators and allows for custom validators to be easily added.
-
+> `defuss-transval` provides a flexible, chainable API for data transformation and validation in JavaScript and TypeScript applications. It supports a wide range of built-in validators, allows for custom validators to be easily added while maintaining type safety. It is designed for both synchronous and asynchronous transformation and validation scenarios.
 
 <h3 align="center">
 
@@ -39,44 +38,34 @@ Basic Usage
 </h3>
 
 ```typescript
-import { validate, validateAll } from 'defuss-validate';
+import { rule, transval } from 'defuss-transval';
 
 const formData = {
-  username: 'johndoe',
-  email: 'john@example.com',
-  age: 25
+  person: {
+    username: 'johndoe',
+    email: 'john@example.com',
+    age: 25
+  },
+  color: '#ff5733',
+  someValue: 42
 };
 
-// Create validation chains for each field
-const usernameChain = validate(formData, 'username')
-  .isRequired()
-  .isString()
-  .isLongerThan(3);
+// configure a partial transformation and validation rule set
+const { isValid, getMessages, getData, getValue } = transval(
+  rule("person.username").asString().isLongerThan(3),
+  rule("person.email").asString().isEmail(),
+  rule("person.age").asNumber().isGreaterThan(18)
+);
 
-const emailChain = validate(formData, 'email')
-  .isRequired()
-  .isString()
-  .isEmail();
-
-const ageChain = validate(formData, 'age')
-  .isRequired()
-  .isNumber()
-  .isGreaterThan(18);
-
-// Validate all chains at once
-const result = await validateAll([
-  usernameChain,
-  emailChain,
-  ageChain
-]);
-
-// Check if all validations passed
-if (await result.isValid()) {
-  console.log('All fields are valid!');
+// resolves the whole, potentially async transformation/validation chain
+if (await isValid(formData)) {
+  // full set of data with partially transformed nested fields
+  const transformedData = getData();
+  console.log('Form data is valid! Data:', transformedData);
 } else {
-  // Get all error messages grouped by field
-  const errors = await result.getErrors();
-  console.log('Validation errors:', errors);
+  // Get all validation messages
+  const validationMessages = await getMessages();
+  console.log('Validation errors:', validationMessages);
 }
 ```
 
@@ -89,30 +78,40 @@ Custom Validators
 You can register your own custom validators using the `ValidatorRegistry`:
 
 ```typescript
-import { ValidatorRegistry, validate, validateAll } from 'defuss-validate';
+import { rule, transval, Rules } from 'defuss-validate';
 
-// Register a simple validator (takes only a value)
-ValidatorRegistry.registerSimple(
-  'isHexColor',
-  (value) => typeof value === 'string' && /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(value),
-  'Must be a valid hex color code'
+class CustomRules extends Rules {
+  asyncEmailCheck(apiEndpoint: string) {
+    return (async (value: string) => {
+      // Simulate an async API call
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return value.includes("@") && value.includes(".");
+    }) as unknown as Rules & this;
+  }
+}
+
+const formData = {
+  email: 'john@example.com',
+};
+
+const customRules = rule.extend(CustomRules);
+
+const { isValid, getMessages } = transval(
+  customRules("email")
+    .isString()
+    .asyncEmailCheck("/api/check-email")
 );
 
-// Register a parameterized validator (takes value plus parameters)
-ValidatorRegistry.registerParameterized(
-  'isDivisibleBy',
-  (value, divisor) => typeof value === 'number' && value % divisor === 0,
-  'Must be divisible by {0}' // Use {0}, {1}, etc. for parameter placeholders
-);
-
-// Apply the registered validators to the ValidationChain
-ValidatorRegistry.applyValidatorsToPrototype(ValidationChain.prototype);
-
-// Use your custom validators
-const colorChain = validate(formData, 'color').isHexColor();
-const numberChain = validate(formData, 'value').isNumber().isDivisibleBy(2);
-
-const result = await validateAll([colorChain, numberChain]);
+// resolves the whole chain
+if (await isValid(formData)) {
+  // full set of data with partially transformed nested fields
+  const transformedData = getData();
+  console.log('Form data is valid! Data:', transformedData);
+} else {
+  // Get all validation messages
+  const validationMessages = await getMessages();
+  console.log('Validation errors:', validationMessages);
+}
 ```
 
 <h3 align="center">
@@ -201,7 +200,7 @@ Available Validators
 - `isLongerThan(minLength)` - Checks if a string is longer than the specified length
 - `isShorterThan(maxLength)` - Checks if a string is shorter than the specified length
 - `isGreaterThan(minValue)` - Checks if a number is greater than the specified value
-- `isLowerThan(maxValue)` - Checks if a number is lower than the specified value
+- `isLessThan(maxValue)` - Checks if a number is lower than the specified value
 - `hasPattern(pattern)` - Checks if a string matches the specified regex pattern
 - `isEqual(compareValue)` - Checks if a value is equal to another value
 - `isOneOf(allowedValues)` - Checks if a value is one of the allowed values

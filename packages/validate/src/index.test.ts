@@ -1,16 +1,16 @@
-import { validate, validateAll } from "./index.js";
+import { rule, transval } from "./index.js";
 
 describe("API exports", () => {
-  it("should export validate and validateAll functions", () => {
-    expect(validate).toBeDefined();
-    expect(validateAll).toBeDefined();
+  it("should export value and transval functions", () => {
+    expect(rule).toBeDefined();
+    expect(transval).toBeDefined();
   });
 
-  it("validate should be a function", () => {
-    expect(typeof validate).toBe("function");
+  it("value should be a function", () => {
+    expect(typeof rule).toBe("function");
   });
 
-  it("validateAll should be a function", () => {
-    expect(typeof validateAll).toBe("function");
+  it("transval should be a function", () => {
+    expect(typeof transval).toBe("function");
   });
 });

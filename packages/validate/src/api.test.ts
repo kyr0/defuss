@@ -1,8 +1,8 @@
-import { validate, BaseValidators, validateAll } from "./chain.js";
+import { rule, Rules, transval } from "./api.js";
 
-describe("Chain", () => {
+describe("Chain API", () => {
   it("should validate number field", async () => {
-    const { isValid } = validate("age.value").isNumberSafe().isGreaterThan(10);
+    const { isValid } = rule("age.value").isNumberSafe().isGreaterThan(10);
 
     const formData = {
       age: {
@@ -14,22 +14,22 @@ describe("Chain", () => {
 
   it("can be extended with custom validators", async () => {
     // Define custom validators as a class that extends BaseValidators
-    class CustomValidators extends BaseValidators {
+    class CustomValidators extends Rules {
       customValidator(prefix: string) {
         return ((value: string) =>
           typeof value === "string" &&
-          value.startsWith(prefix)) as unknown as BaseValidators & this;
+          value.startsWith(prefix)) as unknown as Rules & this;
       }
     }
 
-    const myValidate = validate.extend(CustomValidators);
+    const myValidate = rule.extend(CustomValidators);
 
     // important: extend from base custom validators class
     class CustomValidators2 extends CustomValidators {
       customValidator2(prefix: string) {
         return ((value: string) =>
           typeof value === "string" &&
-          value.startsWith(prefix)) as unknown as BaseValidators & this;
+          value.startsWith(prefix)) as unknown as Rules & this;
       }
     }
 
@@ -53,17 +53,17 @@ describe("Chain", () => {
   });
 
   it("should handle async custom validators", async () => {
-    class AsyncValidators extends BaseValidators {
+    class CustomRules extends Rules {
       asyncEmailCheck(apiEndpoint: string) {
         return (async (value: string) => {
           // Simulate async API call
           await new Promise((resolve) => setTimeout(resolve, 100));
           return value.includes("@") && value.includes(".");
-        }) as unknown as BaseValidators & this;
+        }) as unknown as Rules & this;
       }
     }
 
-    const myValidateAsync = validate.extend(AsyncValidators);
+    const myValidateAsync = rule.extend(CustomRules);
     const { isValid } = myValidateAsync("email")
       .isString()
       .asyncEmailCheck("/api/check-email");
@@ -73,7 +73,7 @@ describe("Chain", () => {
   });
 
   it("should support callback-based auto-start validation", async () => {
-    const { isValid } = validate("age.value").isNumberSafe().isGreaterThan(10);
+    const { isValid } = rule("age.value").isNumberSafe().isGreaterThan(10);
 
     const formData = {
       age: {
@@ -92,7 +92,7 @@ describe("Chain", () => {
   });
 
   it("should handle callback-based validation errors", async () => {
-    const { isValid } = validate("age.value").isNumberSafe().isGreaterThan(100);
+    const { isValid } = rule("age.value").isNumberSafe().isGreaterThan(100);
 
     const formData = {
       age: {
@@ -111,17 +111,17 @@ describe("Chain", () => {
   });
 
   it("should handle async custom validators with callback", async () => {
-    class AsyncValidators extends BaseValidators {
+    class AsyncValidators extends Rules {
       asyncEmailCheck(apiEndpoint: string) {
         return (async (value: string) => {
           // Simulate async API call
           await new Promise((resolve) => setTimeout(resolve, 50));
           return value.includes("@") && value.includes(".");
-        }) as unknown as BaseValidators & this;
+        }) as unknown as Rules & this;
       }
     }
 
-    const myValidateAsync = validate.extend(AsyncValidators);
+    const myValidateAsync = rule.extend(AsyncValidators);
     const { isValid } = myValidateAsync("email")
       .isString()
       .asyncEmailCheck("/api/check-email");
@@ -137,17 +137,17 @@ describe("Chain", () => {
   });
 
   it("should handle timeout with custom async validator", async () => {
-    class SlowAsyncValidators extends BaseValidators {
+    class SlowAsyncValidators extends Rules {
       slowAsyncCheck() {
         return (async (value: string) => {
           // Simulate a slow API call that exceeds timeout
           await new Promise((resolve) => setTimeout(resolve, 200));
           return true;
-        }) as unknown as BaseValidators & this;
+        }) as unknown as Rules & this;
       }
     }
 
-    const myValidate = validate.extend(SlowAsyncValidators);
+    const myValidate = rule.extend(SlowAsyncValidators);
     const { isValid } = myValidate("email", { timeout: 100 })
       .isString()
       .slowAsyncCheck();
@@ -161,15 +161,15 @@ describe("Chain", () => {
   it("should handle validation errors with onValidationError callback", async () => {
     const errorCallback = vi.fn();
 
-    class ErrorValidators extends BaseValidators {
+    class ErrorValidators extends Rules {
       throwingValidator() {
         return (() => {
           throw new Error("Custom validation error");
-        }) as unknown as BaseValidators & this;
+        }) as unknown as Rules & this;
       }
     }
 
-    const myValidate = validate.extend(ErrorValidators);
+    const myValidate = rule.extend(ErrorValidators);
     const { isValid } = myValidate("field", {
       onValidationError: errorCallback,
     }).throwingValidator();
@@ -184,12 +184,12 @@ describe("Chain", () => {
   });
 
   it("should handle catching errors", async () => {
-    const { isValid } = validate("age.value").isNumberSafe().isGreaterThan(10);
+    const { isValid } = rule("age.value").isNumberSafe().isGreaterThan(10);
     const formData = { age: { value: 12 } };
 
     console.log("Starting validation...");
 
-    const thenResult = validate("age.value").isNumberSafe().isGreaterThan(10);
+    const thenResult = rule("age.value").isNumberSafe().isGreaterThan(10);
 
     expect(await thenResult.isValid(formData)).toBe(true);
 
@@ -197,9 +197,7 @@ describe("Chain", () => {
 
     // Test catch - this should work since we expect it to resolve now
     try {
-      const catchResult = validate("age.value1")
-        .isNumberSafe()
-        .isGreaterThan(100);
+      const catchResult = rule("age.value1").isNumberSafe().isGreaterThan(100);
       await catchResult.isValid(formData);
     } catch (error) {
       console.log("Catch block executed");
@@ -212,18 +210,18 @@ describe("Chain", () => {
   });
 
   it("should handle message formatting", async () => {
-    class MessageValidators extends BaseValidators {
+    class MessageValidators extends Rules {
       customMessageValidator(expectedValue: string) {
         return ((value: string) => {
           if (value !== expectedValue) {
             return `Expected "${expectedValue}" but got "${value}"`;
           }
           return true;
-        }) as unknown as BaseValidators & this;
+        }) as unknown as Rules & this;
       }
     }
 
-    const myValidate = validate.extend(MessageValidators);
+    const myValidate = rule.extend(MessageValidators);
     const validator = myValidate("field")
       .customMessageValidator("expected")
       .message((messages, format) => `Validation failed: ${format(messages)}`);
@@ -238,14 +236,14 @@ describe("Chain", () => {
   });
 
   it("should handle multiple validation failures with message collection", async () => {
-    class MultiValidators extends BaseValidators {
+    class MultiValidators extends Rules {
       mustContain(substring: string) {
         return ((value: string) => {
           if (!value.includes(substring)) {
             return `Must contain "${substring}"`;
           }
           return true;
-        }) as unknown as BaseValidators & this;
+        }) as unknown as Rules & this;
       }
 
       mustNotContain(substring: string) {
@@ -254,11 +252,11 @@ describe("Chain", () => {
             return `Must not contain "${substring}"`;
           }
           return true;
-        }) as unknown as BaseValidators & this;
+        }) as unknown as Rules & this;
       }
     }
 
-    const myValidate = validate.extend(MultiValidators);
+    const myValidate = rule.extend(MultiValidators);
     const validator = myValidate("field")
       .mustContain("required")
       .mustNotContain("forbidden");
@@ -273,15 +271,15 @@ describe("Chain", () => {
   });
 
   it("should handle callback with error parameter", async () => {
-    class ErrorValidators extends BaseValidators {
+    class ErrorValidators extends Rules {
       errorValidator() {
         return (() => {
           throw new Error("Validation error");
-        }) as unknown as BaseValidators & this;
+        }) as unknown as Rules & this;
       }
     }
 
-    const myValidate = validate.extend(ErrorValidators);
+    const myValidate = rule.extend(ErrorValidators);
     const { isValid } = myValidate("field").errorValidator();
 
     isValid({ field: "test" }, (result, error) => {
@@ -292,7 +290,7 @@ describe("Chain", () => {
   });
 
   it("should handle resolved state correctly", async () => {
-    const validator = validate("field").isString();
+    const validator = rule("field").isString();
 
     // First validation
     const result1 = await validator.isValid({ field: "test" });
@@ -307,7 +305,7 @@ describe("Chain", () => {
     const formData = { age: null }; // age is null, so age.value.deep will fail at 'age'
 
     try {
-      const validator = validate("age.value.deep").isString();
+      const validator = rule("age.value.deep").isString();
       await validator.isValid(formData);
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
@@ -319,12 +317,12 @@ describe("Chain", () => {
 
   it("should validate multiple fields with validateAll", async () => {
     const chains = [
-      validate("name").isString(),
-      validate("age").isNumberSafe().isGreaterThan(0),
-      validate("email").isString().isEmail(),
+      rule("name").isString(),
+      rule("age").isNumberSafe().isGreaterThan(0),
+      rule("email").isString().isEmail(),
     ];
 
-    const validator = validateAll(chains);
+    const validator = transval(chains);
 
     const validFormData = {
       name: "John Doe",
@@ -344,25 +342,25 @@ describe("Chain", () => {
   });
 
   it("should collect messages from all chains in validateAll", async () => {
-    class MessageValidators extends BaseValidators {
+    class MessageValidators extends Rules {
       customMessage(message: string) {
         return ((value: any) => {
           if (!value) {
             return message;
           }
           return true;
-        }) as unknown as BaseValidators & this;
+        }) as unknown as Rules & this;
       }
     }
 
-    const myValidate = validate.extend(MessageValidators);
+    const myValidate = rule.extend(MessageValidators);
 
     const chains = [
       myValidate("name").customMessage("Name is required"),
       myValidate("age").customMessage("Age is required"),
     ];
 
-    const validator = validateAll(chains);
+    const validator = transval(chains);
 
     const invalidFormData = {
       name: "",
@@ -379,12 +377,9 @@ describe("Chain", () => {
   });
 
   it("should handle callback with validateAll", async () => {
-    const chains = [
-      validate("name").isString(),
-      validate("age").isNumberSafe(),
-    ];
+    const chains = [rule("name").isString(), rule("age").isNumberSafe()];
 
-    const validator = validateAll(chains);
+    const validator = transval(chains);
 
     const formData = {
       name: "John",
@@ -402,10 +397,10 @@ describe("Chain", () => {
   });
 
   it("should validate multiple fields with validateAll using spread syntax", async () => {
-    const validator = validateAll(
-      validate("name").isString(),
-      validate("age").isNumberSafe().isGreaterThan(0),
-      validate("email").isString().isEmail(),
+    const validator = transval(
+      rule("name").isString(),
+      rule("age").isNumberSafe().isGreaterThan(0),
+      rule("email").isString().isEmail(),
     );
 
     const validFormData = {
@@ -426,28 +421,28 @@ describe("Chain", () => {
   });
 
   it("should collect messages from all chains in validateAll with spread syntax", async () => {
-    class MessageValidators extends BaseValidators {
+    class MessageValidators extends Rules {
       customMessage(message: string) {
         return ((value: any) => {
           if (!value) {
             return message;
           }
           return true;
-        }) as unknown as BaseValidators & this;
+        }) as unknown as Rules & this;
       }
     }
 
-    const myValidate = validate.extend(MessageValidators);
-
-    const validator = validateAll(
-      myValidate("name").customMessage("Name is required"),
-      myValidate("age").customMessage("Age is required"),
-    );
+    const myValidate = rule.extend(MessageValidators);
 
     const invalidFormData = {
       name: "",
       age: null,
     };
+
+    const validator = transval(
+      myValidate("name").customMessage("Name is required"),
+      myValidate("age").customMessage("Age is required"),
+    );
 
     const result = await validator.isValid(invalidFormData);
     expect(result).toBe(false);
@@ -456,5 +451,76 @@ describe("Chain", () => {
     expect(messages).toContain("Name is required");
     expect(messages).toContain("Age is required");
     expect(messages).toHaveLength(2);
+  });
+
+  it("should transform string to number and validate", async () => {
+    const formData = {
+      age: "25",
+    };
+    const validator = rule("age").asNumber().isGreaterThan(18);
+
+    expect(await validator.isValid(formData)).toBe(true);
+  });
+
+  it("should transform string to integer and validate", async () => {
+    const formData = {
+      count: "42.7",
+    };
+
+    const validator = rule("count").asInteger().isEqual(42);
+
+    expect(await validator.isValid(formData)).toBe(true);
+  });
+
+  it("should transform to boolean and validate", async () => {
+    const formData = {
+      active: "true",
+    };
+
+    const validator = rule("active").asBoolean().isEqual(true);
+
+    expect(await validator.isValid(formData)).toBe(true);
+  });
+
+  it("should transform to array and validate", async () => {
+    const formData = {
+      items: "item1,item2,item3",
+    };
+    const validator = rule("items")
+      .asArray((value) => value.split(","))
+      .isArray();
+
+    expect(await validator.isValid(formData)).toBe(true);
+  });
+
+  it("should chain multiple transformers", async () => {
+    const formData = {
+      value: 150,
+    };
+    const validator = rule("value").asString().asNumber().isGreaterThan(100);
+
+    expect(await validator.isValid(formData)).toBe(true);
+  });
+
+  it("should handle transformer and validator chain", async () => {
+    const formData = {
+      price: "499.99",
+    };
+    const validator = rule("price")
+      .asNumber()
+      .isGreaterThan(0)
+      .isLessThan(1000)
+      .is(499.99);
+
+    expect(await validator.isValid(formData)).toBe(true);
+  });
+
+  it("should handle failed transformation", async () => {
+    const formData = {
+      invalid: "not-a-number",
+    };
+    const validator = rule("invalid").asNumber().isGreaterThan(0);
+
+    expect(await validator.isValid(formData)).toBe(false);
   });
 });

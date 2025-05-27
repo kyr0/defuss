@@ -16,18 +16,13 @@ export interface ValidationChainApi<ET = {}> {
   isInteger(): ValidationChain<ET>;
 
   // Presence validators
-  // TODO:
-  is(): ValidationChain<ET>;
-  isInstanceOf<T>(c: new (...args: any[]) => T): ValidationChain<ET>;
-  isTypeOf(type: string): ValidationChain<ET>;
 
-  isRequired(): ValidationChain<ET>; // has some value (!undefined or null or empty)
+  isNull(): ValidationChain<ET>; // has no value (null)
+  isRequired(): ValidationChain<ET>; // has some value (isDefined() and !isNull() and !isEmpty())
+  isUndefined(): ValidationChain<ET>;
 
   isDefined(): ValidationChain<ET>;
   isEmpty(): ValidationChain<ET>;
-  isNull(): ValidationChain<ET>;
-  isUndefined(): ValidationChain<ET>;
-  isNullOrUndefined(): ValidationChain<ET>;
 
   // Format validators
   isEmail(): ValidationChain<ET>;
@@ -37,40 +32,37 @@ export interface ValidationChainApi<ET = {}> {
   isPhoneNumber(): ValidationChain<ET>;
 
   // Comparison validators
-  isEqual<T>(value: T): ValidationChain<ET>;
+  is(v: any): ValidationChain<ET>; // === check
+  isEqual<T>(
+    // must be equal to the provided value
+    value: T,
+  ): ValidationChain<ET>; // equals check (via JSON stringify, equalsJSON from defuss-runtime)
+  isInstanceOf<T>(c: new (...args: any[]) => T): ValidationChain<ET>; // instanceof check
+  isTypeOf(type: string): ValidationChain<ET>; // typeof check (e.g., "string", "number", etc.)
   isOneOf<T extends readonly (string | number)[]>(
+    // must be one of the provided values
     options: T,
   ): ValidationChain<ET>;
 
   // Length validators
   isLongerThan(minLength: number, inclusive?: boolean): ValidationChain<ET>;
   isShorterThan(maxLength: number, inclusive?: boolean): ValidationChain<ET>;
-  hasLengthBetween(
-    minLength: number,
-    maxLength: number,
-    inclusive?: boolean,
-  ): ValidationChain<ET>;
-  hasExactLength(length: number): ValidationChain<ET>;
 
   // Numeric comparison validators
   isGreaterThan(minValue: number, inclusive?: boolean): ValidationChain<ET>;
   isLessThan(maxValue: number, inclusive?: boolean): ValidationChain<ET>;
-  isBetween(
-    minValue: number,
-    maxValue: number,
-    inclusive?: boolean,
-  ): ValidationChain<ET>;
-  isPositive(includeZero?: boolean): ValidationChain<ET>;
-  isNegative(includeZero?: boolean): ValidationChain<ET>;
 
   // Date comparison validators
   isAfter(minDate: Date, inclusive?: boolean): ValidationChain<ET>;
   isBefore(maxDate: Date, inclusive?: boolean): ValidationChain<ET>;
-  isBetweenDates(
-    startDate: Date,
-    endDate: Date,
-    inclusive?: boolean,
-  ): ValidationChain<ET>;
+
+  // Transformers
+  asString(): ValidationChain<ET>;
+  asNumber(): ValidationChain<ET>;
+  asBoolean(): ValidationChain<ET>;
+  asDate(): ValidationChain<ET>;
+  asArray(transformerFn: (value: any) => any): ValidationChain<ET>;
+  asInteger(): ValidationChain<ET>;
 
   // Pattern validator
   hasPattern(pattern: RegExp): ValidationChain<ET>;
