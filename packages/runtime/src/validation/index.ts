@@ -1,6 +1,7 @@
 export * from "./isAfter.js";
 export * from "./isArray.js";
 export * from "./isBefore.js";
+export * from "./isBoolean.js";
 export * from "./isDate.js";
 export * from "./isDefined.js";
 export * from "./isEmail.js";
