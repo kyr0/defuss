@@ -22,6 +22,8 @@ describe("datatype/object index", () => {
     expect(exportedFunctions).toContain("pick");
     expect(exportedFunctions).toContain("omit");
     expect(exportedFunctions).toContain("equalsJSON");
-    expect(exportedFunctions.length).toBe(3);
+    expect(exportedFunctions).toContain("isPathAccessor");
+    expect(exportedFunctions).toContain("access");
+    expect(exportedFunctions).toContain("PATH_ACCESSOR_SYMBOL");
   });
 });
