@@ -3,8 +3,8 @@ import type {
   ValidationChainApi,
   ValidationChainOptions,
 } from "./types.js";
-import type { ValidatorFn } from "defuss-runtime";
-import { getByPath, setByPath } from "defuss-runtime";
+import type { ValidatorFn, PathAccessor } from "defuss-runtime";
+import { getByPath, setByPath, isPathAccessor } from "defuss-runtime";
 import { validators } from "./validators.js";
 import { transformers } from "./transformers.js";
 
@@ -21,7 +21,7 @@ const defaultFormatter = (msgs: string[]) => msgs.join(", ");
 
 // @ts-ignore: Allow dynamic typing for validation calls without adding all methods to the class
 export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
-  fieldPath: string;
+  fieldPath: string | PathAccessor<any>;
   validationCalls: Call[];
   lastValidationResult: AllValidationResult;
   transformedData: any;
@@ -32,7 +32,10 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
   ) => string;
   protected _state = { isNegated: false, hasValidators: false };
 
-  constructor(fieldPath: string, options: ValidationChainOptions = {}) {
+  constructor(
+    fieldPath: string | PathAccessor<any>,
+    options: ValidationChainOptions = {},
+  ) {
     this.fieldPath = fieldPath;
     this.validationCalls = [];
     this.lastValidationResult = { isValid: true, messages: [] };
@@ -111,6 +114,9 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     try {
       const calls = this.validationCalls;
       const fieldPath = this.fieldPath;
+      const pathString = isPathAccessor(fieldPath)
+        ? String(fieldPath)
+        : fieldPath;
       let transformedData = this.transformedData;
 
       for (let i = 0; i < calls.length; i++) {
@@ -120,7 +126,7 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
         if (call.type === "transformer") {
           transformedData = setByPath(
             transformedData,
-            fieldPath,
+            pathString,
             // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
             (currentValue = result),
           );
@@ -196,22 +202,25 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
 
   private _getFieldValue<T = any>(formData: T): any {
     const fieldPath = this.fieldPath;
-    const value = getByPath(formData, fieldPath);
-    if (value !== undefined || !fieldPath.includes(".")) return value;
+    const pathString = isPathAccessor(fieldPath)
+      ? String(fieldPath)
+      : fieldPath;
+    const value = getByPath(formData, pathString);
+    if (value !== undefined || !pathString.includes(".")) return value;
 
-    const pathParts = fieldPath.split(".");
+    const pathParts = pathString.split(".");
     let current = formData;
 
     for (let i = 0; i < pathParts.length; i++) {
       const part = pathParts[i];
       if (current == null) {
         throw new Error(
-          `Validation failed for field: ${fieldPath} - path not found at '${pathParts.slice(0, i).join(".")}'`,
+          `Validation failed for field: ${pathString} - path not found at '${pathParts.slice(0, i).join(".")}'`,
         );
       }
       if (typeof current !== "object" || !(part in current)) {
         throw new Error(
-          `Validation failed for field: ${fieldPath} - field '${part}' not found`,
+          `Validation failed for field: ${pathString} - field '${part}' not found`,
         );
       }
       current = (current as any)[part];
@@ -237,13 +246,14 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     return this.transformedData;
   }
 
-  getValue(path: string): any {
+  getValue(path: string | PathAccessor<any>): any {
     if (this.transformedData === undefined) {
       throw new Error(
         "No transformed data available. Call isValid() first to execute validation and transformers.",
       );
     }
-    return getByPath(this.transformedData, path);
+    const pathString = isPathAccessor(path) ? String(path) : path;
+    return getByPath(this.transformedData, pathString);
   }
 
   // biome-ignore lint/suspicious/noThenProperty: Required for custom promise-chain behavior
@@ -294,7 +304,7 @@ _addMethodsToPrototype(validators, "validator");
 _addMethodsToPrototype(transformers, "transformer");
 
 export function rule(
-  fieldPath: string,
+  fieldPath: string | PathAccessor<any>,
   options?: ValidationChainOptions,
 ): ValidationChainApi<Rules> {
   return new Rules(fieldPath, options) as unknown as ValidationChainApi<Rules>;
@@ -306,7 +316,7 @@ export function transval(...args: (Rules | Rules[])[]): {
     callback?: (isValid: boolean, error?: Error) => void,
   ) => Promise<boolean>;
   getMessages: <T = string[]>(
-    path?: string,
+    path?: string | PathAccessor<any>,
     customFormatterFn?: (messages: string[]) => T,
   ) => T;
 } {
@@ -341,7 +351,7 @@ export function transval(...args: (Rules | Rules[])[]): {
     },
 
     getMessages: <T = string[]>(
-      path?: string,
+      path?: string | PathAccessor<any>,
       customFormatterFn?: (messages: string[]) => T,
     ): T => {
       let messages: string[];
@@ -351,7 +361,13 @@ export function transval(...args: (Rules | Rules[])[]): {
         messages = chains.flatMap((chain) => chain.getMessages());
       } else {
         // Get messages from specific field
-        const targetChain = chains.find((chain) => chain.fieldPath === path);
+        const pathString = isPathAccessor(path) ? String(path) : path;
+        const targetChain = chains.find((chain) => {
+          const chainPathString = isPathAccessor(chain.fieldPath)
+            ? String(chain.fieldPath)
+            : chain.fieldPath;
+          return chainPathString === pathString;
+        });
         messages = targetChain ? targetChain.getMessages() : [];
       }
 
@@ -393,7 +409,7 @@ rule.extend = <ET extends new (...args: any[]) => any>(ExtensionClass: ET) => {
   });
 
   const extendedValidationChain = (
-    fieldPath: string,
+    fieldPath: string | PathAccessor<any>,
     options?: ValidationChainOptions,
   ) =>
     new Rules(fieldPath, options) as unknown as ValidationChainApi<

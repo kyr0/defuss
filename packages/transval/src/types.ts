@@ -1,11 +1,11 @@
-import type { ValidationStep } from "defuss-runtime";
+import type { ValidationStep, PathAccessor } from "defuss-runtime";
 import type { Call } from "./api.js";
 
 // Utility type for cleaner return types
 type ValidationChain<ET = {}> = ValidationChainApi<ET> & ET;
 
 export interface ValidationChainApi<ET = {}> {
-  fieldPath: string;
+  fieldPath: string | PathAccessor<any>;
   validationCalls: Call[];
   lastValidationResult: AllValidationResult;
   transformedData: any;
@@ -90,7 +90,7 @@ export interface ValidationChainApi<ET = {}> {
 
   // Data access methods
   getData(): any;
-  getValue(path: string): any;
+  getValue(path: string | PathAccessor<any>): any;
 }
 
 export interface ValidationChainOptions {
