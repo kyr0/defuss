@@ -174,15 +174,19 @@ if (await isValid(userData)) {
 }
 ```
 
-### Mixed Usage
+<h3 align="center">
+
+Mixed Usage
+
+</h3>
 
 You can mix string paths and PathAccessors in the same validation:
 
 ```typescript
 // Mix string and PathAccessor approaches
 const { isValid } = transval(
-  rule("user.profile.name").asString().isRequired(),           
-  rule($<UserData>().user.profile.email).asString().isEmail(),
+  rule("user.profile.name").asString().isRequired(),
+  rule(o.user.profile.email).asString().isEmail(),
   rule("user.posts.0.title").asString().isLongerThan(3)
 );
 
@@ -191,7 +195,7 @@ if (await isValid(userData)) {
 }
 ```
 
-### Benefits of PathAccessor
+#### Benefits of PathAccessor
 
 - **Type Safety**: Get compile-time checking for field paths
 - **Auto-completion**: IDE support for discovering available fields
@@ -207,8 +211,7 @@ Custom Validators
 You can create custom validators by extending the `Rules` class and use them with both string paths and PathAccessors:
 
 ```typescript
-import { rule, transval, Rules } from 'defuss-transval';
-import { $ } from 'defuss-runtime';
+import { rule, transval, Rules, access } from 'defuss-transval';
 
 type FormData = {
   user: {
@@ -219,6 +222,8 @@ type FormData = {
     };
   };
 };
+
+const o = access<FormData>();
 
 class CustomRules extends Rules {
   checkEmail(apiEndpoint: string) {
@@ -252,11 +257,11 @@ const formData: FormData = {
 const customRules = rule.extend(CustomRules);
 
 // Use PathAccessors with custom validators
-const emailRule = customRules($<FormData>().user.email)
+const emailRule = customRules(o.user.email)
   .isString()
   .checkEmail("/api/check-email");
 
-const usernameRule = customRules($<FormData>().user.username)
+const usernameRule = customRules(o.user.username)
   .isString()
   .isValidUsername(5);
 
@@ -271,14 +276,14 @@ if (await isValid(formData)) {
   console.log('Form data is valid!');
   
   // Access individual rule data using PathAccessors
-  console.log('Email data:', emailRule.getValue($<FormData>().user.email));
-  console.log('Username data:', usernameRule.getValue($<FormData>().user.username));
+  console.log('Email data:', emailRule.getValue(o.user.email));
+  console.log('Username data:', usernameRule.getValue(o.user.username));
   console.log('Newsletter data:', newsletterRule.getValue("user.preferences.newsletter"));
 } else {
   // Get validation messages using PathAccessors
-  const emailErrors = getMessages($<FormData>().user.email);
-  const usernameErrors = getMessages($<FormData>().user.username);
-  
+  const emailErrors = getMessages(o.user.email);
+  const usernameErrors = getMessages(o.user.username);
+
   console.log('Validation errors:', {
     email: emailErrors,
     username: usernameErrors
@@ -359,7 +364,7 @@ Individual Rule Chain Methods
 Each rule chain created with `rule()` has its own methods for validation and data access. These methods work with both string paths and PathAccessors:
 
 ```typescript
-import { $ } from 'defuss-runtime';
+import { access } from 'defuss-transval';
 
 type PersonData = {
   person: {
@@ -375,8 +380,10 @@ const formData: PersonData = {
   }
 };
 
+const o = access<PersonData>();
+
 // Create rule with PathAccessor
-const ageRule = rule($<PersonData>().person.age).asNumber().isGreaterThan(18);
+const ageRule = rule(o.person.age).asNumber().isGreaterThan(18);
 
 // Execute validation for this specific rule
 const isValid = await ageRule.isValid(formData);
@@ -388,7 +395,7 @@ const messages = ageRule.getMessages();
 const allData = ageRule.getData();
 
 // Get a specific value using PathAccessor
-const specificAge = ageRule.getValue($<PersonData>().person.age);
+const specificAge = ageRule.getValue(o.person.age);
 
 // Or using string path
 const specificName = ageRule.getValue("person.name");
