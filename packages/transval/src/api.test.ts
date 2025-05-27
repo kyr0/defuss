@@ -225,7 +225,9 @@ describe("Chain API", () => {
     const myValidate = rule.extend(MessageValidators);
     const validator = myValidate("field")
       .customMessageValidator("expected")
-      .message((messages, format) => `Validation failed: ${format(messages)}`);
+      .useFormatter(
+        (messages, format) => `Validation failed: ${format(messages)}`,
+      );
 
     const result = await validator.isValid({ field: "actual" });
     expect(result).toBe(false);
@@ -233,7 +235,7 @@ describe("Chain API", () => {
     expect(validator.getMessages()).toContain(
       'Expected "expected" but got "actual"',
     );
-    expect(validator.getFormattedMessage()).toContain("Validation failed:");
+    expect(validator.getFormattedMessages()).toContain("Validation failed:");
   });
 
   it("should handle multiple validation failures with message collection", async () => {

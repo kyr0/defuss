@@ -17,6 +17,8 @@ export class Call<VT = boolean> {
   ) {}
 }
 
+const defaultFormatter = (msgs: string[]) => msgs.join(", ");
+
 // @ts-ignore: Allow dynamic typing for validation calls without adding all methods to the class
 export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
   fieldPath: string;
@@ -36,19 +38,17 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     this.lastValidationResult = { isValid: true, messages: [] };
     this.transformedData = undefined;
     this.options = { timeout: 5000, ...options };
-
-    // bind methods for destructuring support
     this.isValid = this.isValid.bind(this);
   }
 
-  // Negation getter - can only be used once per chain
   get not(): ValidationChainApi<ET> & ET {
-    if (this._state.isNegated || this._state.hasValidators) {
+    const state = this._state;
+    if (state.isNegated || state.hasValidators) {
       throw new Error(
         "Multiple negations are not allowed in a validation chain",
       );
     }
-    this._state.isNegated = true;
+    state.isNegated = true;
     return this as unknown as ValidationChainApi<ET> & ET;
   }
 
@@ -56,18 +56,13 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     error: Error,
     callback?: (isValid: boolean, error?: Error) => void,
   ): boolean {
-    if (callback) {
-      queueMicrotask(() => callback(false, error));
-    }
-
-    // re-throw critical errors only
+    callback && queueMicrotask(() => callback(false, error));
     const message = error.message;
     if (
       message.includes("timeout") ||
       message.includes("Validation failed for field:")
-    ) {
+    )
       throw error;
-    }
     return false;
   }
 
@@ -76,39 +71,34 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     callback?: (isValid: boolean, error?: Error) => void,
   ): Promise<boolean> {
     try {
-      const result = await this._performValidation(formData);
-
-      if (callback) {
-        queueMicrotask(() => callback(result.isValid, result.error));
-      }
-
+      const result = await this._triggerValidation(formData);
+      callback && queueMicrotask(() => callback(result.isValid, result.error));
       return result.isValid;
     } catch (error) {
       return this._handleValidationError(error as Error, callback);
     }
   }
 
-  private async _performValidation<T = any>(
+  private async _triggerValidation<T = any>(
     formData: T,
   ): Promise<AllValidationResult> {
     const validationPromise = this._executeValidation(formData);
-
-    if (!this.options.timeout || this.options.timeout <= 0) {
-      return validationPromise;
-    }
-
-    return Promise.race([
-      validationPromise,
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(`Validation timeout after ${this.options.timeout}ms`),
+    return !this.options.timeout || this.options.timeout <= 0
+      ? validationPromise
+      : Promise.race([
+          validationPromise,
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    `Validation timeout after ${this.options.timeout}ms`,
+                  ),
+                ),
+              this.options.timeout,
             ),
-          this.options.timeout,
-        ),
-      ),
-    ]);
+          ),
+        ]);
   }
 
   private async _executeValidation<T = any>(
@@ -116,25 +106,25 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
   ): Promise<AllValidationResult> {
     let currentValue = this._getFieldValue(formData);
     const validationErrors: string[] = [];
-
-    // Initialize transformed data with original form data
     this.transformedData = JSON.parse(JSON.stringify(formData));
 
     try {
-      // Process all validation calls in sequence
-      for (const call of this.validationCalls) {
+      const calls = this.validationCalls;
+      const fieldPath = this.fieldPath;
+      let transformedData = this.transformedData;
+
+      for (let i = 0; i < calls.length; i++) {
+        const call = calls[i];
         const result = await call.fn(currentValue, ...call.args);
 
         if (call.type === "transformer") {
-          // Update value and transformed data for transformers
-          currentValue = result;
-          this.transformedData = setByPath(
-            this.transformedData,
-            this.fieldPath,
-            currentValue,
+          transformedData = setByPath(
+            transformedData,
+            fieldPath,
+            // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+            (currentValue = result),
           );
         } else if (result !== true) {
-          // Collect validation errors
           validationErrors.push(
             typeof result === "string"
               ? result
@@ -143,6 +133,7 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
         }
       }
 
+      this.transformedData = transformedData;
       return this._buildValidationResult(validationErrors);
     } catch (error) {
       return this._buildErrorResult(error as Error);
@@ -150,87 +141,68 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
   }
 
   private _buildValidationResult(errors: string[]): AllValidationResult {
-    const isValid = errors.length === 0;
-    const finalIsValid = this._state.isNegated ? !isValid : isValid;
-
-    const finalMessages = [...errors];
-    if (this._state.isNegated && isValid) {
-      finalMessages.push("Validation was expected to fail but passed");
-    }
+    const isValid = !errors.length;
+    const state = this._state;
+    const finalIsValid = state.isNegated ? !isValid : isValid;
 
     // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
     return (this.lastValidationResult = {
       isValid: finalIsValid,
-      messages: finalMessages,
+      messages:
+        state.isNegated && isValid
+          ? [...errors, "Validation was expected to fail but passed"]
+          : errors,
     });
   }
 
   private _buildErrorResult(error: Error): AllValidationResult {
-    const originalIsValid = false;
-    const finalIsValid = this._state.isNegated
-      ? !originalIsValid
-      : originalIsValid;
+    const state = this._state;
+    this.options.onValidationError?.(error, { fn: () => false, args: [] });
 
-    const errorResult = {
-      isValid: finalIsValid,
-      messages: this._state.isNegated
-        ? [] // If negated, an error becomes a pass
-        : [`Validation error: ${error.message}`],
+    // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+    return (this.lastValidationResult = {
+      isValid: state.isNegated,
+      messages: state.isNegated ? [] : [`Validation error: ${error.message}`],
       error,
-    };
-
-    this.options.onValidationError?.(error, {
-      fn: () => false,
-      args: [],
     });
-
-    // biome-ignore lint/suspicious/noAssignInExpressions: performance
-    return (this.lastValidationResult = errorResult);
   }
 
   private _getFieldValue<T = any>(formData: T): any {
-    const value = getByPath(formData, this.fieldPath);
+    const fieldPath = this.fieldPath;
+    const value = getByPath(formData, fieldPath);
+    if (value !== undefined || !fieldPath.includes(".")) return value;
 
-    if (value !== undefined || !this.fieldPath.includes(".")) {
-      return value;
-    }
-
-    // Validate dotted path exists
-    const pathParts = this.fieldPath.split(".");
+    const pathParts = fieldPath.split(".");
     let current = formData;
 
     for (let i = 0; i < pathParts.length; i++) {
+      const part = pathParts[i];
       if (current == null) {
         throw new Error(
-          `Validation failed for field: ${this.fieldPath} - path not found at '${pathParts.slice(0, i).join(".")}'`,
+          `Validation failed for field: ${fieldPath} - path not found at '${pathParts.slice(0, i).join(".")}'`,
         );
       }
-
-      if (typeof current !== "object" || !(pathParts[i] in current)) {
+      if (typeof current !== "object" || !(part in current)) {
         throw new Error(
-          `Validation failed for field: ${this.fieldPath} - field '${pathParts[i]}' not found`,
+          `Validation failed for field: ${fieldPath} - field '${part}' not found`,
         );
       }
-
-      current = (current as any)[pathParts[i]];
+      current = (current as any)[part];
     }
     return current;
   }
 
-  message(
-    messageFn?: (
+  useFormatter(
+    messageFn?: <T = string>(
       messages: string[],
       format: (msgs: string[]) => string,
-    ) => string,
+    ) => T,
   ): ValidationChainApi<ET> & ET {
-    if (messageFn) {
-      this.messageFormatter = messageFn;
-    }
+    if (messageFn) this.messageFormatter = messageFn;
     return this as unknown as ValidationChainApi<ET> & ET;
   }
 
   protected _formatMessages(messages: string[]): string {
-    const defaultFormatter = (msgs: string[]) => msgs.join(", ");
     return (
       this.messageFormatter?.(messages, defaultFormatter) ||
       defaultFormatter(messages)
@@ -241,8 +213,10 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     return this.lastValidationResult.messages;
   }
 
-  getFormattedMessage(): string {
-    return this._formatMessages(this.lastValidationResult.messages);
+  getFormattedMessages<T = string>(): T {
+    return this._formatMessages(
+      this.lastValidationResult.messages,
+    ) as unknown as T;
   }
 
   getData(): any {
@@ -276,11 +250,7 @@ function chainFn(
   type: "validator" | "transformer",
   ...args: any[]
 ): Rules {
-  // Track that validators have been added (for negation prevention)
-  if (type === "validator") {
-    this._state.hasValidators = true;
-  }
-
+  if (type === "validator") this._state.hasValidators = true;
   this.validationCalls.push(
     new Call(
       fn.name || type,
@@ -292,7 +262,6 @@ function chainFn(
   return this;
 }
 
-// Unified method addition for both validators and transformers
 function _addMethodsToPrototype(
   methods: Record<string, any>,
   type: "validator" | "transformer",
@@ -323,31 +292,13 @@ export function transval(...args: (Rules | Rules[])[]): {
     callback?: (isValid: boolean, error?: Error) => void,
   ) => Promise<boolean>;
   getMessages: () => string[];
-  getFormattedMessage: () => string;
+  getFormattedMessages: <T = string>() => T;
 } {
   const chains = Array.isArray(args[0])
     ? args[0]
     : (args.filter(
         (arg) => arg && typeof arg === "object" && "fieldPath" in arg,
       ) as Rules[]);
-
-  const _handleError = (
-    error: Error,
-    callback?: (isValid: boolean, error?: Error) => void,
-  ): boolean => {
-    if (callback) {
-      queueMicrotask(() => callback(false, error));
-    }
-
-    const message = error.message;
-    if (
-      message.includes("timeout") ||
-      message.includes("Validation failed for field:")
-    ) {
-      throw error;
-    }
-    return false;
-  };
 
   return {
     async isValid<T = any>(
@@ -359,23 +310,27 @@ export function transval(...args: (Rules | Rules[])[]): {
           chains.map((chain) => chain.isValid(formData)),
         );
         const isValid = results.every(Boolean);
-
-        if (callback) {
-          queueMicrotask(() => callback(isValid));
-        }
-
+        callback && queueMicrotask(() => callback(isValid));
         return isValid;
       } catch (error) {
-        return _handleError(error as Error, callback);
+        callback && queueMicrotask(() => callback(false, error as Error));
+        const message = (error as Error).message;
+        if (
+          message.includes("timeout") ||
+          message.includes("Validation failed for field:")
+        )
+          throw error;
+        return false;
       }
     },
 
     getMessages: () => chains.flatMap((chain) => chain.getMessages()),
 
-    getFormattedMessage(): string {
+    getFormattedMessages: <T>() => {
       const allMessages = chains.flatMap((chain) => chain.getMessages());
-      const formatterChain = chains.find((chain) => chain.messageFormatter);
-      return formatterChain?.getFormattedMessage() ?? allMessages.join(", ");
+      return (chains
+        .find((chain) => chain.messageFormatter)
+        ?.getFormattedMessages() ?? defaultFormatter(allMessages)) as T;
     },
   };
 }

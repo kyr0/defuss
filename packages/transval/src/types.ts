@@ -77,17 +77,17 @@ export interface ValidationChainApi<ET = {}> {
   hasPattern(pattern: RegExp): ValidationChain<ET>;
 
   // Message formatter
-  message(
-    messageFn: (
+  useFormatter(
+    messageFn: <T = string>(
       messages: string[],
       format: (msgs: string[]) => string,
-    ) => string,
+    ) => T,
   ): ValidationChain<ET>;
 
   // Validation execution
   isValid<T = unknown>(formData: T): Promise<boolean>;
   getMessages(): string[];
-  getFormattedMessage(): string;
+  getFormattedMessages<T>(): T;
 
   // Data access methods
   getData(): any;
