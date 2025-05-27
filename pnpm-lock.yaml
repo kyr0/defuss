@@ -329,6 +329,9 @@ importers:
       csstype:
         specifier: ^3.1.3
         version: 3.1.3
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
       happy-dom:
         specifier: ^15.11.7
         version: 15.11.7
@@ -500,6 +503,24 @@ importers:
         specifier: ^3.1.3
         version: 3.1.3(@types/debug@4.1.12)(@types/node@22.15.21)(happy-dom@15.11.7)(jiti@2.4.2)(jsdom@25.0.1(canvas@2.11.2(encoding@0.1.13)))(lightningcss@1.30.0)(terser@5.37.0)(tsx@4.19.2)
 
+  packages/runtime:
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^3.1.3
+        version: 3.1.3(vitest@3.1.3(@types/debug@4.1.12)(@types/node@22.15.21)(happy-dom@15.11.7)(jiti@2.4.2)(jsdom@25.0.1(canvas@2.11.2(encoding@0.1.13)))(lightningcss@1.30.0)(terser@5.37.0)(tsx@4.19.2))
+      pkgroll:
+        specifier: ^2.5.1
+        version: 2.12.2(typescript@5.8.3)
+      tsx:
+        specifier: ^4.19.2
+        version: 4.19.2
+      typescript:
+        specifier: ^5.6.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.1.3
+        version: 3.1.3(@types/debug@4.1.12)(@types/node@22.15.21)(happy-dom@15.11.7)(jiti@2.4.2)(jsdom@25.0.1(canvas@2.11.2(encoding@0.1.13)))(lightningcss@1.30.0)(terser@5.37.0)(tsx@4.19.2)
+
   packages/squeezy:
     dependencies:
       squeezy-reset:
@@ -508,23 +529,23 @@ importers:
 
   packages/squeezy-reset: {}
 
-  packages/validate:
+  packages/transval:
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^3.1.3
         version: 3.1.3(vitest@3.1.3(@types/debug@4.1.12)(@types/node@22.15.21)(happy-dom@15.11.7)(jiti@2.4.2)(jsdom@25.0.1(canvas@2.11.2(encoding@0.1.13)))(lightningcss@1.30.0)(terser@5.37.0)(tsx@4.19.2))
-      defuss:
+      defuss-runtime:
         specifier: workspace:*
-        version: link:../defuss
+        version: link:../runtime
       pkgroll:
         specifier: ^2.5.1
-        version: 2.12.2(typescript@5.7.2)
+        version: 2.12.2(typescript@5.8.3)
       tsx:
         specifier: ^4.19.2
         version: 4.19.2
       typescript:
         specifier: ^5.6.3
-        version: 5.7.2
+        version: 5.8.3
       vitest:
         specifier: ^3.1.3
         version: 3.1.3(@types/debug@4.1.12)(@types/node@22.15.21)(happy-dom@15.11.7)(jiti@2.4.2)(jsdom@25.0.1(canvas@2.11.2(encoding@0.1.13)))(lightningcss@1.30.0)(terser@5.37.0)(tsx@4.19.2)
@@ -8513,6 +8534,22 @@ snapshots:
       rollup-pluginutils: 2.8.2
     optionalDependencies:
       typescript: 5.7.2
+
+  pkgroll@2.12.2(typescript@5.8.3):
+    dependencies:
+      '@rollup/plugin-alias': 5.1.1(rollup@4.40.0)
+      '@rollup/plugin-commonjs': 28.0.2(rollup@4.40.0)
+      '@rollup/plugin-dynamic-import-vars': 2.1.5(rollup@4.40.0)
+      '@rollup/plugin-inject': 5.0.5(rollup@4.40.0)
+      '@rollup/plugin-json': 6.1.0(rollup@4.40.0)
+      '@rollup/plugin-node-resolve': 16.0.0(rollup@4.40.0)
+      '@rollup/pluginutils': 5.1.4(rollup@4.40.0)
+      esbuild: 0.25.4
+      magic-string: 0.30.17
+      rollup: 4.40.0
+      rollup-pluginutils: 2.8.2
+    optionalDependencies:
+      typescript: 5.8.3
 
   pkgroll@2.5.1(typescript@5.6.3):
     dependencies:

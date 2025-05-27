@@ -1,4 +1,4 @@
-import { getByPath, setByPath } from "../common/index.js";
+import { getByPath, setByPath } from "defuss-runtime";
 import {
   webstorage,
   type PersistenceProviderImpl,

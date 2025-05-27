@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { wait } from "../common/delay.js";
+import { wait } from "defuss-runtime";
 import { $ } from "./dequery.js";
 
 describe("CSS class manipulation", async () => {

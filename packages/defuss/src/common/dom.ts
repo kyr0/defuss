@@ -10,7 +10,7 @@ import {
   handleLifecycleEventsForOnMount,
 } from "../render/isomorph.js";
 import type { NodeType } from "../render/index.js";
-import { createTimeoutPromise } from "./delay.js";
+import { createTimeoutPromise } from "defuss-runtime";
 
 /**
  * Compares two DOM nodes for equality with performance optimizations.

@@ -1,4 +1,4 @@
-import { pick, omit } from "../common/object.js";
+import { pick, omit } from "defuss-runtime";
 import {
   addElementEvent,
   checkElementVisibility,
@@ -22,7 +22,7 @@ import {
   type CSSProperties,
   type NodeType,
 } from "../render/index.js";
-import { createTimeoutPromise, waitForRef } from "../common/delay.js";
+import { createTimeoutPromise, waitForRef } from "defuss-runtime";
 import type {
   DequeryOptions,
   DequerySyncMethodReturnType,

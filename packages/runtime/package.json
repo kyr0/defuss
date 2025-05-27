@@ -21,7 +21,7 @@
     "type": "git"
   },
   "scripts": {
-    "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
+    "clean": "rm -rf ./node_modules/.pnpm",
     "pretest": "pnpm run build",
     "prebuild": "pnpm run clean",
     "build": "pkgroll",
