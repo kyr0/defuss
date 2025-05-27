@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { rule, transval, Rules } from "./api.js";
+import { access } from "./index.js";
 
 describe("README Examples", () => {
   describe("Basic Usage Example", () => {
@@ -20,11 +21,15 @@ describe("README Examples", () => {
       const ageRule = rule("person.age").asNumber().not.isLessThan(14);
 
       // Configure validation with multiple rules
-      const validation = transval(usernameRule, emailRule, ageRule);
+      const { isValid, getMessages } = transval(
+        usernameRule,
+        emailRule,
+        ageRule,
+      );
 
       // Execute validation
-      const isValid = await validation.isValid(formData);
-      expect(isValid).toBe(true);
+      const valid = await isValid(formData);
+      expect(valid).toBe(true);
 
       // Access transformed data from individual rules
       const transformedUsername = usernameRule.getValue("person.username");
@@ -49,23 +54,318 @@ describe("README Examples", () => {
       const emailRule = rule("person.email").asString().isEmail();
       const ageRule = rule("person.age").asNumber().not.isLessThan(14);
 
-      const validation = transval(usernameRule, emailRule, ageRule);
+      const { isValid, getMessages } = transval(
+        usernameRule,
+        emailRule,
+        ageRule,
+      );
 
-      const isValid = await validation.isValid(formData);
-      expect(isValid).toBe(false);
+      const valid = await isValid(formData);
+      expect(valid).toBe(false);
 
       // Get all validation messages
-      const validationMessages = validation.getMessages();
+      const validationMessages = getMessages();
       expect(validationMessages.length).toBeGreaterThan(0);
 
       // Get messages for specific fields
-      const emailErrors = validation.getMessages("person.email");
+      const emailErrors = getMessages("person.email");
       expect(emailErrors.length).toBeGreaterThan(0);
     });
   });
 
+  describe("PathAccessor Support Example", () => {
+    it("should work with the PathAccessor support example from README", async () => {
+      type UserData = {
+        user: {
+          profile: {
+            name: string;
+            email: string;
+            settings: {
+              theme: "light" | "dark";
+              notifications: boolean;
+            };
+          };
+          posts: Array<{
+            title: string;
+            published: boolean;
+          }>;
+        };
+      };
+
+      const userData: UserData = {
+        user: {
+          profile: {
+            name: "John Doe",
+            email: "john@example.com",
+            settings: {
+              theme: "dark",
+              notifications: true,
+            },
+          },
+          posts: [
+            { title: "First Post", published: true },
+            { title: "Draft Post", published: false },
+          ],
+        },
+      };
+
+      const userAccess = access<UserData>();
+
+      // setup rules using PathAccessors for type-safe field paths
+      const { isValid, getMessages } = transval(
+        rule(userAccess.user.profile.name).asString().isLongerThan(2),
+        rule(userAccess.user.profile.email).asString().isEmail(),
+        rule(userAccess.user.profile.settings.theme)
+          .asString()
+          .isOneOf(["light", "dark"]),
+        rule(userAccess.user.posts[0].title).asString().isLongerThan(5),
+      );
+
+      const valid = await isValid(userData);
+      expect(valid).toBe(true);
+
+      // Get specific rules for individual testing
+      const nameRule = rule(userAccess.user.profile.name)
+        .asString()
+        .isLongerThan(2);
+      const emailRule = rule(userAccess.user.profile.email)
+        .asString()
+        .isEmail();
+
+      await nameRule.isValid(userData);
+      await emailRule.isValid(userData);
+
+      // Access transformed values using PathAccessor
+      const transformedName = nameRule.getValue(userAccess.user.profile.name);
+      const transformedEmail = emailRule.getValue(
+        userAccess.user.profile.email,
+      );
+
+      expect(transformedName).toBe("John Doe");
+      expect(transformedEmail).toBe("john@example.com");
+    });
+
+    it("should handle validation failures and get messages with PathAccessors", async () => {
+      type UserData = {
+        user: {
+          profile: {
+            name: string;
+            email: string;
+            settings: {
+              theme: "light" | "dark";
+              notifications: boolean;
+            };
+          };
+          posts: Array<{
+            title: string;
+            published: boolean;
+          }>;
+        };
+      };
+
+      const userData: UserData = {
+        user: {
+          profile: {
+            name: "Jo", // too short
+            email: "invalid-email", // invalid email
+            settings: {
+              theme: "dark",
+              notifications: true,
+            },
+          },
+          posts: [
+            { title: "Short", published: true }, // too short title
+          ],
+        },
+      };
+
+      const userAccess = access<UserData>();
+
+      const { isValid, getMessages } = transval(
+        rule(userAccess.user.profile.name).asString().isLongerThan(2),
+        rule(userAccess.user.profile.email).asString().isEmail(),
+        rule(userAccess.user.posts[0].title).asString().isLongerThan(5),
+      );
+
+      const valid = await isValid(userData);
+      expect(valid).toBe(false);
+
+      // Get validation messages for specific PathAccessor fields
+      const nameErrors = getMessages(userAccess.user.profile.name);
+      const emailErrors = getMessages(userAccess.user.profile.email);
+
+      expect(nameErrors.length).toBeGreaterThan(0);
+      expect(emailErrors.length).toBeGreaterThan(0);
+    });
+
+    it("should work with mixed string and PathAccessor usage", async () => {
+      type UserData = {
+        user: {
+          profile: {
+            name: string;
+            email: string;
+          };
+          posts: Array<{
+            title: string;
+          }>;
+        };
+      };
+
+      const userData: UserData = {
+        user: {
+          profile: {
+            name: "John Doe",
+            email: "john@example.com",
+          },
+          posts: [{ title: "My First Post" }],
+        },
+      };
+
+      const userAccess = access<UserData>();
+
+      // Mix string and PathAccessor approaches
+      const { isValid } = transval(
+        rule("user.profile.name")
+          .asString()
+          .isRequired(), // String path
+        rule(userAccess.user.profile.email)
+          .asString()
+          .isEmail(), // PathAccessor
+        rule("user.posts.0.title")
+          .asString()
+          .isLongerThan(3), // String path with array index
+      );
+
+      const valid = await isValid(userData);
+      expect(valid).toBe(true);
+    });
+  });
+
   describe("Custom Validators Example", () => {
-    it("should work with custom validators extension", async () => {
+    it("should work with custom validators extension using PathAccessors", async () => {
+      type FormData = {
+        user: {
+          email: string;
+          username: string;
+          preferences: {
+            newsletter: boolean;
+          };
+        };
+      };
+
+      class CustomRules extends Rules {
+        checkEmail(apiEndpoint: string) {
+          return (async (value: string) => {
+            // Simulate an async API call
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            return value.includes("@") && value.includes(".");
+          }) as unknown as Rules & this;
+        }
+
+        isValidUsername(minLength = 3) {
+          return ((value: string) => {
+            return (
+              typeof value === "string" &&
+              value.length >= minLength &&
+              /^[a-zA-Z0-9_]+$/.test(value)
+            );
+          }) as unknown as Rules & this;
+        }
+      }
+
+      const formData: FormData = {
+        user: {
+          email: "john@example.com",
+          username: "johndoe123",
+          preferences: {
+            newsletter: true,
+          },
+        },
+      };
+
+      const userAccess = access<FormData>();
+
+      // Extend the rule function with custom validators
+      const customRules = rule.extend(CustomRules);
+
+      // Use PathAccessors with custom validators
+      const emailRule = customRules(userAccess.user.email)
+        .isString()
+        .checkEmail("/api/check-email");
+
+      const usernameRule = customRules(userAccess.user.username)
+        .isString()
+        .isValidUsername(5);
+
+      // Mix with regular string paths
+      const newsletterRule = customRules("user.preferences.newsletter")
+        .asBoolean()
+        .isDefined();
+
+      const { isValid } = transval(emailRule, usernameRule, newsletterRule);
+
+      const valid = await isValid(formData);
+      expect(valid).toBe(true);
+
+      // Access individual rule data using PathAccessors
+      expect(emailRule.getValue(userAccess.user.email)).toBe(
+        "john@example.com",
+      );
+      expect(usernameRule.getValue(userAccess.user.username)).toBe(
+        "johndoe123",
+      );
+      expect(newsletterRule.getValue("user.preferences.newsletter")).toBe(true);
+    });
+
+    it("should fail custom validation with invalid data and get PathAccessor messages", async () => {
+      type FormData = {
+        user: {
+          email: string;
+          username: string;
+        };
+      };
+
+      class CustomRules extends Rules {
+        isValidUsername(minLength = 3) {
+          return ((value: string) => {
+            return (
+              typeof value === "string" &&
+              value.length >= minLength &&
+              /^[a-zA-Z0-9_]+$/.test(value)
+            );
+          }) as unknown as Rules & this;
+        }
+      }
+
+      const formData: FormData = {
+        user: {
+          email: "invalid-email",
+          username: "jo!", // invalid characters and too short
+        },
+      };
+
+      const userAccess = access<FormData>();
+      const customRules = rule.extend(CustomRules);
+
+      const emailRule = customRules(userAccess.user.email).isString().isEmail();
+      const usernameRule = customRules(userAccess.user.username)
+        .isString()
+        .isValidUsername(5);
+
+      const { isValid, getMessages } = transval(emailRule, usernameRule);
+
+      const valid = await isValid(formData);
+      expect(valid).toBe(false);
+
+      // Get validation messages using PathAccessors
+      const emailErrors = getMessages(userAccess.user.email);
+      const usernameErrors = getMessages(userAccess.user.username);
+
+      expect(emailErrors.length).toBeGreaterThan(0);
+      expect(usernameErrors.length).toBeGreaterThan(0);
+    });
+
+    it("should work with legacy string-based custom validators", async () => {
       class CustomRules extends Rules {
         checkEmail(apiEndpoint: string) {
           return (async (value: string) => {
@@ -101,49 +401,62 @@ describe("README Examples", () => {
         .isString()
         .isValidUsername(5);
 
-      const validation = transval(emailRule, usernameRule);
+      const { isValid } = transval(emailRule, usernameRule);
 
-      const isValid = await validation.isValid(formData);
-      expect(isValid).toBe(true);
+      const valid = await isValid(formData);
+      expect(valid).toBe(true);
 
       // Access individual rule data
       expect(emailRule.getValue("email")).toBe("john@example.com");
       expect(usernameRule.getValue("username")).toBe("johndoe123");
     });
-
-    it("should fail custom validation with invalid data", async () => {
-      class CustomRules extends Rules {
-        isValidUsername(minLength = 3) {
-          return ((value: string) => {
-            return (
-              typeof value === "string" &&
-              value.length >= minLength &&
-              /^[a-zA-Z0-9_]+$/.test(value)
-            );
-          }) as unknown as Rules & this;
-        }
-      }
-
-      const formData = {
-        username: "jo!", // invalid characters and too short
-      };
-
-      const customRules = rule.extend(CustomRules);
-      const usernameRule = customRules("username")
-        .isString()
-        .isValidUsername(5);
-      const validation = transval(usernameRule);
-
-      const isValid = await validation.isValid(formData);
-      expect(isValid).toBe(false);
-
-      const validationMessages = validation.getMessages();
-      expect(validationMessages.length).toBeGreaterThan(0);
-    });
   });
 
   describe("Individual Rule Chain Methods", () => {
-    it("should work with individual rule chain methods", async () => {
+    it("should work with individual rule chain methods using PathAccessors", async () => {
+      type PersonData = {
+        person: {
+          age: number;
+          name: string;
+        };
+      };
+
+      const formData: PersonData = {
+        person: {
+          age: 25,
+          name: "John Doe",
+        },
+      };
+
+      const personAccess = access<PersonData>();
+
+      // Create rule with PathAccessor
+      const ageRule = rule(personAccess.person.age)
+        .asNumber()
+        .isGreaterThan(18);
+
+      // Execute validation for this specific rule
+      const isValid = await ageRule.isValid(formData);
+      expect(isValid).toBe(true);
+
+      // Get validation messages for this rule
+      const messages = ageRule.getMessages();
+      expect(messages).toEqual([]);
+
+      // Get the entire transformed form data (includes all fields)
+      const allData = ageRule.getData();
+      expect(allData).toEqual(formData);
+
+      // Get a specific value using PathAccessor
+      const specificAge = ageRule.getValue(personAccess.person.age);
+      expect(specificAge).toBe(25);
+
+      // Or using string path
+      const specificName = ageRule.getValue("person.name");
+      expect(specificName).toBe("John Doe");
+    });
+
+    it("should work with legacy string-based individual rule chain methods", async () => {
       const formData = {
         person: {
           age: 25,
@@ -183,12 +496,12 @@ describe("README Examples", () => {
           return `Email validation failed: ${defaultFormat(messages)}`;
         });
 
-      const validation = transval(rule1);
+      const { isValid, getMessages } = transval(rule1);
 
-      const isValid = await validation.isValid(formData);
-      expect(isValid).toBe(false);
+      const valid = await isValid(formData);
+      expect(valid).toBe(false);
 
-      const messages = validation.getMessages();
+      const messages = getMessages();
       expect(messages.length).toBeGreaterThan(0);
       // Note: The actual formatting might depend on the internal implementation
     });
@@ -204,10 +517,10 @@ describe("README Examples", () => {
       const ageRule = rule("age").not.isLessThan(18); // age must NOT be less than 18
       const emailRule = rule("email").not.isEmpty(); // email must NOT be empty
 
-      const validation = transval(ageRule, emailRule);
+      const { isValid } = transval(ageRule, emailRule);
 
-      const isValid = await validation.isValid(formData);
-      expect(isValid).toBe(true);
+      const valid = await isValid(formData);
+      expect(valid).toBe(true);
     });
 
     it("should fail negation when condition is met", async () => {
@@ -228,13 +541,13 @@ describe("README Examples", () => {
       };
 
       const emailRule = rule("email").isString().isEmail();
-      const validation = transval(emailRule);
+      const { isValid } = transval(emailRule);
 
       let callbackResult: boolean | undefined;
       let callbackError: Error | undefined;
 
-      await validation.isValid(formData, (isValid, error) => {
-        callbackResult = isValid;
+      await isValid(formData, (isValidResult, error) => {
+        callbackResult = isValidResult;
         callbackError = error;
       });
 
@@ -308,7 +621,7 @@ describe("README Examples", () => {
       // Note: isBoolean is not available in current validators
       const intRule = rule("int").isInteger();
 
-      const validation = transval(
+      const { isValid } = transval(
         numRule,
         strRule,
         arrRule,
@@ -316,8 +629,8 @@ describe("README Examples", () => {
         dateRule,
         intRule,
       );
-      const isValid = await validation.isValid(formData);
-      expect(isValid).toBe(true);
+      const valid = await isValid(formData);
+      expect(valid).toBe(true);
     });
   });
 
@@ -336,9 +649,9 @@ describe("README Examples", () => {
       // Note: isInstanceOf and isTypeOf are not available in current validators
       const optionRule = rule("option").isOneOf(["red", "blue", "green"]);
 
-      const validation = transval(exactRule, equalRule, optionRule);
-      const isValid = await validation.isValid(formData);
-      expect(isValid).toBe(true);
+      const { isValid } = transval(exactRule, equalRule, optionRule);
+      const valid = await isValid(formData);
+      expect(valid).toBe(true);
     });
   });
 
@@ -360,7 +673,7 @@ describe("README Examples", () => {
       const arrRule = rule("arr").asArray((value) => value.split(","));
       const intRule = rule("int").asInteger();
 
-      const validation = transval(
+      const { isValid } = transval(
         strRule,
         numRule,
         boolRule,
@@ -368,8 +681,8 @@ describe("README Examples", () => {
         arrRule,
         intRule,
       );
-      const isValid = await validation.isValid(formData);
-      expect(isValid).toBe(true);
+      const valid = await isValid(formData);
+      expect(valid).toBe(true);
 
       expect(strRule.getValue("str")).toBe("123");
       expect(numRule.getValue("num")).toBe(456);

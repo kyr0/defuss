@@ -19,7 +19,7 @@ Powerful Data Transformation and Validation
 > 
 > It supports a wide range of built-in validators and transformers, allows for custom validators to be easily added while maintaining type safety, and is designed for both synchronous and asynchronous validation scenarios.
 >
-> The library follows a field-path based approach where you create validation rules for specific data paths, apply transformations and validations in a chainable manner, and then execute them against your data. When validation succeeds, you get access to the transformed data with type safety guarantees.
+> The library follows a field-path based approach where you create validation rules for specific data paths using either string paths or type-safe PathAccessor objects, apply transformations and validations in a chainable manner, and then execute them against your data. When validation succeeds, you get access to the transformed data with type safety guarantees.
 
 <h3 align="center">
 
@@ -28,12 +28,13 @@ Features
 </h3>
 
 - **Fluent API**: Chain validators together for a clean and readable validation syntax
-- **Type Safety**: Written in TypeScript with strong type definitions
+- **Type Safety**: Written in TypeScript with strong type definitions and PathAccessor support for type-safe field paths
 - **Extensible**: Easily add custom validators through the registry system
 - **Parameterized Validators**: Support for validators that take parameters
 - **Custom Error Messages**: Customize error messages for each validator or chain
 - **Translation Support**: Built-in support for translating error messages
 - **Async Support**: All validation operations return Promises for consistent async programming
+- **PathAccessor Integration**: Use type-safe field paths with auto-completion and refactoring support
 
 <h3 align="center">
 
@@ -60,10 +61,10 @@ const emailRule = rule("person.email").asString().isEmail();
 const ageRule = rule("person.age").asNumber().not.isLessThan(14);
 
 // Configure validation with multiple rules
-const validation = transval(usernameRule, emailRule, ageRule);
+const { isValid, getMessages } = transval(usernameRule, emailRule, ageRule);
 
 // Execute validation
-if (await validation.isValid(formData)) {
+if (await isValid(formData)) {
   console.log('Form data is valid!');
   
   // Access transformed data from individual rules
@@ -78,14 +79,124 @@ if (await validation.isValid(formData)) {
   });
 } else {
   // Get all validation messages
-  const validationMessages = validation.getMessages();
+  const validationMessages = getMessages();
   console.log('Validation errors:', validationMessages);
   
   // Or get messages for specific fields
-  const emailErrors = validation.getMessages("person.email");
+  const emailErrors = getMessages("person.email");
   console.log('Email errors:', emailErrors);
 }
 ```
+
+<h3 align="center">
+
+PathAccessor Support
+
+</h3>
+
+`defuss-transval` supports both string-based and object-based path access. This provides better type safety and auto-completion when working with typed data structures.
+
+```typescript
+import { rule, transval, access } from 'defuss-transval';
+
+type UserData = {
+  user: {
+    profile: {
+      name: string;
+      email: string;
+      settings: {
+        theme: 'light' | 'dark';
+        notifications: boolean;
+      };
+    };
+    posts: Array<{
+      title: string;
+      published: boolean;
+    }>;
+  };
+};
+
+const userData: UserData = {
+  user: {
+    profile: {
+      name: 'John Doe',
+      email: 'john@example.com',
+      settings: {
+        theme: 'dark',
+        notifications: true
+      }
+    },
+    posts: [
+      { title: 'First Post', published: true },
+      { title: 'Draft Post', published: false }
+    ]
+  }
+};
+
+const o = access<UserData>();
+
+// setup rules using PathAccessors for type-safe field paths
+const { isValid, getMessages } = transval(
+  rule(o.user.profile.name)
+    .asString()
+    .isLongerThan(2), 
+  rule(o.user.profile.email)
+    .asString()
+    .isEmail(), 
+  rule(o.user.profile.settings.theme)
+    .asString()
+    .isOneOf(['light', 'dark']), 
+  rule(o.user.posts[0].title)
+    .asString()
+    .isLongerThan(5)
+);
+
+if (await isValid(userData)) {
+  console.log('User data is valid!');
+  
+  // Access transformed values using PathAccessor
+  const transformedName = nameRule.getValue(o.user.profile.name);
+  const transformedEmail = emailRule.getValue(o.user.profile.email);
+
+  console.log('Transformed data:', {
+    name: transformedName,
+    email: transformedEmail
+  });
+} else {
+  // Get validation messages for specific PathAccessor fields
+  const nameErrors = getMessages(o.user.profile.name);
+  const emailErrors = getMessages(o.user.profile.email);
+
+  console.log('Validation errors:', {
+    name: nameErrors,
+    email: emailErrors
+  });
+}
+```
+
+### Mixed Usage
+
+You can mix string paths and PathAccessors in the same validation:
+
+```typescript
+// Mix string and PathAccessor approaches
+const { isValid } = transval(
+  rule("user.profile.name").asString().isRequired(),           
+  rule($<UserData>().user.profile.email).asString().isEmail(),
+  rule("user.posts.0.title").asString().isLongerThan(3)
+);
+
+if (await isValid(userData)) {
+  console.log('Mixed validation passed!');
+}
+```
+
+### Benefits of PathAccessor
+
+- **Type Safety**: Get compile-time checking for field paths
+- **Auto-completion**: IDE support for discovering available fields
+- **Refactoring**: Automatic updates when you rename fields in your types
+- **Runtime Safety**: PathAccessor validates that paths exist at runtime
 
 <h3 align="center">
 
@@ -93,10 +204,21 @@ Custom Validators
 
 </h3>
 
-You can create custom validators by extending the `Rules` class:
+You can create custom validators by extending the `Rules` class and use them with both string paths and PathAccessors:
 
 ```typescript
 import { rule, transval, Rules } from 'defuss-transval';
+import { $ } from 'defuss-runtime';
+
+type FormData = {
+  user: {
+    email: string;
+    username: string;
+    preferences: {
+      newsletter: boolean;
+    };
+  };
+};
 
 class CustomRules extends Rules {
   checkEmail(apiEndpoint: string) {
@@ -116,29 +238,51 @@ class CustomRules extends Rules {
   }
 }
 
-const formData = {
-  email: 'john@example.com',
-  username: 'johndoe123'
+const formData: FormData = {
+  user: {
+    email: 'john@example.com',
+    username: 'johndoe123',
+    preferences: {
+      newsletter: true
+    }
+  }
 };
 
 // Extend the rule function with custom validators
 const customRules = rule.extend(CustomRules);
 
-const emailRule = customRules("email").isString().checkEmail("/api/check-email");
-const usernameRule = customRules("username").isString().isValidUsername(5);
+// Use PathAccessors with custom validators
+const emailRule = customRules($<FormData>().user.email)
+  .isString()
+  .checkEmail("/api/check-email");
 
-const validation = transval(emailRule, usernameRule);
+const usernameRule = customRules($<FormData>().user.username)
+  .isString()
+  .isValidUsername(5);
 
-if (await validation.isValid(formData)) {
+// Mix with regular string paths
+const newsletterRule = customRules("user.preferences.newsletter")
+  .asBoolean()
+  .isDefined();
+
+const { isValid, getMessages } = transval(emailRule, usernameRule, newsletterRule);
+
+if (await isValid(formData)) {
   console.log('Form data is valid!');
   
-  // Access individual rule data
-  console.log('Email data:', emailRule.getValue("email"));
-  console.log('Username data:', usernameRule.getValue("username"));
+  // Access individual rule data using PathAccessors
+  console.log('Email data:', emailRule.getValue($<FormData>().user.email));
+  console.log('Username data:', usernameRule.getValue($<FormData>().user.username));
+  console.log('Newsletter data:', newsletterRule.getValue("user.preferences.newsletter"));
 } else {
-  // Get all validation messages
-  const validationMessages = validation.getMessages();
-  console.log('Validation errors:', validationMessages);
+  // Get validation messages using PathAccessors
+  const emailErrors = getMessages($<FormData>().user.email);
+  const usernameErrors = getMessages($<FormData>().user.username);
+  
+  console.log('Validation errors:', {
+    email: emailErrors,
+    username: usernameErrors
+  });
 }
 ```
 
@@ -212,10 +356,27 @@ Individual Rule Chain Methods
 
 </h3>
 
-Each rule chain created with `rule()` has its own methods for validation and data access:
+Each rule chain created with `rule()` has its own methods for validation and data access. These methods work with both string paths and PathAccessors:
 
 ```typescript
-const ageRule = rule("person.age").asNumber().isGreaterThan(18);
+import { $ } from 'defuss-runtime';
+
+type PersonData = {
+  person: {
+    age: number;
+    name: string;
+  };
+};
+
+const formData: PersonData = {
+  person: {
+    age: 25,
+    name: 'John Doe'
+  }
+};
+
+// Create rule with PathAccessor
+const ageRule = rule($<PersonData>().person.age).asNumber().isGreaterThan(18);
 
 // Execute validation for this specific rule
 const isValid = await ageRule.isValid(formData);
@@ -226,8 +387,13 @@ const messages = ageRule.getMessages();
 // Get the entire transformed form data (includes all fields)
 const allData = ageRule.getData();
 
-// Get a specific value from the transformed data
-const specificValue = ageRule.getValue("person.age");
+// Get a specific value using PathAccessor
+const specificAge = ageRule.getValue($<PersonData>().person.age);
+
+// Or using string path
+const specificName = ageRule.getValue("person.name");
+
+console.log('Age value:', specificAge); // Type-safe access
 ```
 
 **Note:** `getData()` returns the entire form data object with transformations applied, while `getValue(path)` returns the value at a specific field path.
@@ -248,10 +414,10 @@ const rule1 = rule("email")
     return `Email validation failed: ${defaultFormat(messages)}`;
   });
 
-const validation = transval(rule1);
+const { isValid, getMessages } = transval(rule1);
 
-if (!await validation.isValid({ email: "invalid-email" })) {
-  console.log(validation.getMessages()); // Custom formatted messages
+if (!await isValid({ email: "invalid-email" })) {
+  console.log(getMessages()); // Custom formatted messages
 }
 ```
 
@@ -268,14 +434,15 @@ All validation operations are asynchronous and return Promises:
 const isEmailValid = await emailRule.isValid(formData);
 
 // Multiple rules validation
-const areAllValid = await transval(rule1, rule2, rule3).isValid(formData);
+const { isValid } = transval(rule1, rule2, rule3);
+const areAllValid = await isValid(formData);
 
 // With callback support
-await validation.isValid(formData, (isValid, error) => {
+await isValid(formData, (isValidResult, error) => {
   if (error) {
     console.error('Validation error:', error);
   } else {
-    console.log('Validation result:', isValid);
+    console.log('Validation result:', isValidResult);
   }
 });
 ```
@@ -315,20 +482,20 @@ Complete API Reference
 </h3>
 
 ### Main Functions
-- `rule(fieldPath, options?)` - Create a validation rule for a specific field path
-- `transval(...rules)` - Combine multiple rules into a validation object
+- `rule(fieldPath, options?)` - Create a validation rule for a specific field path (supports both string paths and PathAccessor objects)
+- `transval(...rules)` - Combine multiple rules into a validation object that returns `{ isValid, getMessages }`
 - `rule.extend(CustomClass)` - Extend the rule function with custom validators
 
 ### Rule Chain Methods
 - `isValid(formData, callback?)` - Execute validation and return boolean result
 - `getMessages()` - Get validation error messages for this rule
 - `getData()` - Get the entire transformed form data object
-- `getValue(path)` - Get a specific value from the transformed data
+- `getValue(path)` - Get a specific value from the transformed data (supports both string paths and PathAccessor objects)
 - `useFormatter(messageFn)` - Customize error message formatting
 
 ### Validation Object Methods (from `transval()`)
 - `isValid(formData, callback?)` - Execute all rules and return combined result
-- `getMessages(path?, formatter?)` - Get validation messages (all or for specific field)
+- `getMessages(path?, formatter?)` - Get validation messages (all or for specific field, supports both string paths and PathAccessor objects)
 
 ## 🧞 Commands
 
