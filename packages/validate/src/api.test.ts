@@ -1,8 +1,9 @@
+import { describe, it, expect } from "vitest";
 import { rule, Rules, transval } from "./api.js";
 
 describe("Chain API", () => {
   it("should validate number field", async () => {
-    const { isValid } = rule("age.value").isNumberSafe().isGreaterThan(10);
+    const { isValid } = rule("age.value").isSafeNumber().isGreaterThan(10);
 
     const formData = {
       age: {
@@ -54,7 +55,7 @@ describe("Chain API", () => {
 
   it("should handle async custom validators", async () => {
     class CustomRules extends Rules {
-      asyncEmailCheck(apiEndpoint: string) {
+      emailCheck(apiEndpoint: string) {
         return (async (value: string) => {
           // Simulate async API call
           await new Promise((resolve) => setTimeout(resolve, 100));
@@ -66,14 +67,14 @@ describe("Chain API", () => {
     const myValidateAsync = rule.extend(CustomRules);
     const { isValid } = myValidateAsync("email")
       .isString()
-      .asyncEmailCheck("/api/check-email");
+      .emailCheck("/api/check-email");
 
     expect(await isValid({ email: "test@example.com" })).toBe(true);
     expect(await isValid({ email: "invalid-email" })).toBe(false);
   });
 
   it("should support callback-based auto-start validation", async () => {
-    const { isValid } = rule("age.value").isNumberSafe().isGreaterThan(10);
+    const { isValid } = rule("age.value").isSafeNumber().isGreaterThan(10);
 
     const formData = {
       age: {
@@ -92,7 +93,7 @@ describe("Chain API", () => {
   });
 
   it("should handle callback-based validation errors", async () => {
-    const { isValid } = rule("age.value").isNumberSafe().isGreaterThan(100);
+    const { isValid } = rule("age.value").isSafeNumber().isGreaterThan(100);
 
     const formData = {
       age: {
@@ -184,12 +185,12 @@ describe("Chain API", () => {
   });
 
   it("should handle catching errors", async () => {
-    const { isValid } = rule("age.value").isNumberSafe().isGreaterThan(10);
+    const { isValid } = rule("age.value").isSafeNumber().isGreaterThan(10);
     const formData = { age: { value: 12 } };
 
     console.log("Starting validation...");
 
-    const thenResult = rule("age.value").isNumberSafe().isGreaterThan(10);
+    const thenResult = rule("age.value").isSafeNumber().isGreaterThan(10);
 
     expect(await thenResult.isValid(formData)).toBe(true);
 
@@ -197,7 +198,7 @@ describe("Chain API", () => {
 
     // Test catch - this should work since we expect it to resolve now
     try {
-      const catchResult = rule("age.value1").isNumberSafe().isGreaterThan(100);
+      const catchResult = rule("age.value1").isSafeNumber().isGreaterThan(100);
       await catchResult.isValid(formData);
     } catch (error) {
       console.log("Catch block executed");
@@ -318,7 +319,7 @@ describe("Chain API", () => {
   it("should validate multiple fields with validateAll", async () => {
     const chains = [
       rule("name").isString(),
-      rule("age").isNumberSafe().isGreaterThan(0),
+      rule("age").isSafeNumber().isGreaterThan(0),
       rule("email").isString().isEmail(),
     ];
 
@@ -377,7 +378,7 @@ describe("Chain API", () => {
   });
 
   it("should handle callback with validateAll", async () => {
-    const chains = [rule("name").isString(), rule("age").isNumberSafe()];
+    const chains = [rule("name").isString(), rule("age").isSafeNumber()];
 
     const validator = transval(chains);
 
@@ -399,7 +400,7 @@ describe("Chain API", () => {
   it("should validate multiple fields with validateAll using spread syntax", async () => {
     const validator = transval(
       rule("name").isString(),
-      rule("age").isNumberSafe().isGreaterThan(0),
+      rule("age").isSafeNumber().isGreaterThan(0),
       rule("email").isString().isEmail(),
     );
 
@@ -522,5 +523,336 @@ describe("Chain API", () => {
     const validator = rule("invalid").asNumber().isGreaterThan(0);
 
     expect(await validator.isValid(formData)).toBe(false);
+  });
+});
+
+describe("ValidationChain getData and getValue", () => {
+  describe("getData", () => {
+    it("should return undefined before validation is executed", () => {
+      const chain = rule("name");
+      expect(chain.getData()).toBeUndefined();
+    });
+
+    it("should return original data when no transformers are applied", async () => {
+      const formData = { name: "John", age: 30 };
+      const chain = rule("name").isString();
+
+      await chain.isValid(formData);
+
+      expect(chain.getData()).toEqual(formData);
+    });
+
+    it("should return transformed data after applying transformers", async () => {
+      const formData = { name: "  john  ", age: "30" };
+
+      // Test with actual working transformers by manually adding them
+      const nameChain = rule("name") as any;
+      const ageChain = rule("age") as any;
+
+      // Manually add transformer calls
+      nameChain.validationCalls.push({
+        name: "asTrimString",
+        fn: async (value: string) =>
+          typeof value === "string" ? value.trim() : value,
+        args: [],
+        type: "transformer",
+      });
+
+      ageChain.validationCalls.push({
+        name: "asMyNumber",
+        fn: async (value: any) => {
+          const num = Number(value);
+          return Number.isNaN(num) ? value : num;
+        },
+        args: [],
+        type: "transformer",
+      });
+
+      await nameChain.isValid(formData);
+      await ageChain.isValid(formData);
+
+      // Name chain should have trimmed name
+      expect(nameChain.getData().name).toBe("john");
+
+      // Age chain should have converted age to number
+      expect(ageChain.getData().age).toBe(30);
+    });
+
+    it("should handle nested field transformations", async () => {
+      const formData = { user: { profile: { name: "  JANE  " } } };
+
+      const chain = rule("user.profile.name");
+      chain.validationCalls.push({
+        name: "trimAndLower",
+        fn: async (value: string) =>
+          typeof value === "string" ? value.trim().toLowerCase() : value,
+        args: [],
+        type: "transformer",
+      } as any);
+
+      await chain.isValid(formData);
+
+      const transformedData = chain.getData();
+      expect(transformedData.user.profile.name).toBe("jane");
+    });
+
+    it("should preserve other fields when transforming specific field", async () => {
+      const formData = {
+        name: "  john  ",
+        email: "john@example.com",
+        settings: { theme: "dark" },
+      };
+
+      const chain = rule("name");
+      chain.validationCalls.push({
+        name: "trimString",
+        fn: async (value: string) =>
+          typeof value === "string" ? value.trim() : value,
+        args: [],
+        type: "transformer",
+      } as any);
+
+      await chain.isValid(formData);
+
+      const transformedData = chain.getData();
+      expect(transformedData.name).toBe("john");
+      expect(transformedData.email).toBe("john@example.com");
+      expect(transformedData.settings).toEqual({ theme: "dark" });
+    });
+
+    it("should handle multiple transformers in sequence", async () => {
+      const formData = { value: "  123.45  " };
+
+      const chain = rule("value");
+      chain.validationCalls.push(
+        {
+          name: "trimString",
+          fn: async (value: string) =>
+            typeof value === "string" ? value.trim() : value,
+          args: [],
+          type: "transformer",
+        } as any,
+        {
+          name: "toNumber",
+          fn: async (value: any) => {
+            const num = Number(value);
+            return Number.isNaN(num) ? value : num;
+          },
+          args: [],
+          type: "transformer",
+        } as any,
+      );
+
+      await chain.isValid(formData);
+
+      expect(chain.getData().value).toBe(123.45);
+      expect(typeof chain.getData().value).toBe("number");
+    });
+  });
+
+  describe("getValue", () => {
+    it("should throw error before validation is executed", () => {
+      const chain = rule("name");
+
+      expect(() => chain.getValue("name")).toThrow(
+        "No transformed data available. Call isValid() first to execute validation and transformers.",
+      );
+    });
+
+    it("should return original value when no transformers are applied", async () => {
+      const formData = { name: "John", age: 30 };
+      const chain = rule("name").isString();
+
+      await chain.isValid(formData);
+
+      expect(chain.getValue("name")).toBe("John");
+      expect(chain.getValue("age")).toBe(30);
+    });
+
+    it("should return transformed value after applying transformers", async () => {
+      const formData = { name: "  john  ", age: "30" };
+
+      const nameChain = rule("name");
+      nameChain.validationCalls.push({
+        name: "trimString",
+        fn: async (value: string) =>
+          typeof value === "string" ? value.trim() : value,
+        args: [],
+        type: "transformer",
+      } as any);
+
+      await nameChain.isValid(formData);
+
+      expect(nameChain.getValue("name")).toBe("john");
+      expect(nameChain.getValue("age")).toBe("30"); // unchanged
+    });
+
+    it("should handle nested field paths", async () => {
+      const formData = { user: { profile: { name: "  JANE  " } } };
+
+      const chain = rule("user.profile.name");
+      chain.validationCalls.push({
+        name: "trimAndLower",
+        fn: async (value: string) =>
+          typeof value === "string" ? value.trim().toLowerCase() : value,
+        args: [],
+        type: "transformer",
+      } as any);
+
+      await chain.isValid(formData);
+
+      expect(chain.getValue("user.profile.name")).toBe("jane");
+      expect(chain.getValue("user")).toEqual({ profile: { name: "jane" } });
+    });
+
+    it("should work with array indices", async () => {
+      const formData = { items: ["  apple  ", "  banana  "] };
+
+      const chain = rule("items.0");
+      chain.validationCalls.push({
+        name: "trimString",
+        fn: async (value: string) =>
+          typeof value === "string" ? value.trim() : value,
+        args: [],
+        type: "transformer",
+      } as any);
+
+      await chain.isValid(formData);
+
+      expect(chain.getValue("items.0")).toBe("apple");
+      expect(chain.getValue("items.1")).toBe("  banana  "); // unchanged
+    });
+  });
+
+  describe("integration with validation errors", () => {
+    it("should still provide transformed data even when validation fails", async () => {
+      const formData = { age: "25" };
+
+      const chain = rule("age");
+      chain.validationCalls.push({
+        name: "toNumber",
+        fn: async (value: any) => {
+          const num = Number(value);
+          return Number.isNaN(num) ? value : num;
+        },
+        args: [],
+        type: "transformer",
+      } as any);
+
+      // Add a failing validator
+      chain.validationCalls.push({
+        name: "isGreaterThan",
+        fn: async (value: number) =>
+          value > 30 || "Value must be greater than 30",
+        args: [30],
+        type: "validator",
+      } as any);
+
+      const isValid = await chain.isValid(formData);
+
+      expect(isValid).toBe(false);
+      expect(chain.getValue("age")).toBe(25); // transformed to number
+      expect(typeof chain.getValue("age")).toBe("number");
+      expect(chain.getMessages()).toContain("Value must be greater than 30");
+    });
+
+    it("should handle transformer errors gracefully", async () => {
+      const formData = { value: "test" };
+
+      const chain = rule("value");
+      chain.validationCalls.push({
+        name: "failingTransformer",
+        fn: async (value: any) => {
+          throw new Error("Transformer failed");
+        },
+        args: [],
+        type: "transformer",
+      } as any);
+
+      const isValid = await chain.isValid(formData);
+
+      expect(isValid).toBe(false);
+      // Should still have some data available
+      expect(chain.getData()).toBeDefined();
+    });
+  });
+
+  describe("with multiple validation chains", () => {
+    it("should maintain separate transformed data for each chain", async () => {
+      const formData = { name: "  john  ", age: "30" };
+
+      const nameChain = rule("name");
+      nameChain.validationCalls.push({
+        name: "trimString",
+        fn: async (value: string) =>
+          typeof value === "string" ? value.trim() : value,
+        args: [],
+        type: "transformer",
+      } as any);
+
+      const ageChain = rule("age");
+      ageChain.validationCalls.push({
+        name: "toNumber",
+        fn: async (value: any) => {
+          const num = Number(value);
+          return Number.isNaN(num) ? value : num;
+        },
+        args: [],
+        type: "transformer",
+      } as any);
+
+      await nameChain.isValid(formData);
+      await ageChain.isValid(formData);
+
+      expect(nameChain.getValue("name")).toBe("john");
+      expect(nameChain.getValue("age")).toBe("30"); // string in name chain
+
+      expect(ageChain.getValue("name")).toBe("  john  "); // unchanged in age chain
+      expect(ageChain.getValue("age")).toBe(30); // number in age chain
+    });
+  });
+
+  describe("edge cases", () => {
+    it("should handle null and undefined values", async () => {
+      const formData = { name: null, age: undefined };
+      const chain = rule("name").isDefined();
+
+      await chain.isValid(formData);
+
+      expect(chain.getValue("name")).toBeNull();
+      expect(chain.getValue("age")).toBeUndefined();
+    });
+
+    it("should handle empty objects and arrays", async () => {
+      const formData = { obj: {}, arr: [] };
+      const chain = rule("obj").isObject();
+
+      await chain.isValid(formData);
+
+      expect(chain.getValue("obj")).toEqual({});
+      expect(chain.getValue("arr")).toEqual([]);
+    });
+
+    it("should deep clone original data to avoid mutations", async () => {
+      const formData = { user: { name: "John" } };
+
+      const chain = rule("user.name");
+      chain.validationCalls.push({
+        name: "toUpperCase",
+        fn: async (value: string) =>
+          typeof value === "string" ? value.toUpperCase() : value,
+        args: [],
+        type: "transformer",
+      } as any);
+
+      await chain.isValid(formData);
+
+      // Modify original data
+      formData.user.name = "Modified";
+
+      // Transformed data should not be affected
+      expect(chain.getValue("user.name")).toBe("JOHN");
+      expect(chain.getValue("user.name")).not.toBe("Modified");
+    });
   });
 });

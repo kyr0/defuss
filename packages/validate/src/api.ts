@@ -22,6 +22,7 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
   fieldPath: string;
   validationCalls: Call[];
   lastValidationResult: AllValidationResult;
+  transformedData: any;
   options: ValidationChainOptions;
   messageFormatter?: (
     messages: string[],
@@ -32,6 +33,7 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     this.fieldPath = fieldPath;
     this.validationCalls = [];
     this.lastValidationResult = { isValid: true, messages: [] };
+    this.transformedData = undefined;
     this.options = { timeout: 5000, ...options };
 
     // bind methods for destructuring support
@@ -98,11 +100,20 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     let value = this._getFieldValue(formData);
     const messages: string[] = [];
 
+    // Initialize transformed data with original form data
+    this.transformedData = JSON.parse(JSON.stringify(formData));
+
     try {
       for (const call of this.validationCalls) {
         if (call.type === "transformer") {
           // Apply transformer and update value
           value = await call.fn(value, ...call.args);
+          // Update the transformed data cache - setByPath returns a new object
+          this.transformedData = setByPath(
+            this.transformedData,
+            this.fieldPath,
+            value,
+          );
         } else {
           // Apply validator
           const result = await call.fn(value, ...call.args);
@@ -190,6 +201,19 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
         defaultFormatter,
       ) || defaultFormatter(this.lastValidationResult.messages)
     );
+  }
+
+  getData(): any {
+    return this.transformedData;
+  }
+
+  getValue(path: string): any {
+    if (this.transformedData === undefined) {
+      throw new Error(
+        "No transformed data available. Call isValid() first to execute validation and transformers.",
+      );
+    }
+    return getByPath(this.transformedData, path);
   }
 
   // biome-ignore lint/suspicious/noThenProperty: Required for custom promise-chain behavior
@@ -337,11 +361,22 @@ rule.extend = <ET extends new (...args: any[]) => any>(ExtensionClass: ET) => {
       this: Rules,
       ...args: any[]
     ) {
+      // Get the function from the extension class
+      const extensionFn = ExtensionClass.prototype[methodName].bind(this)(
+        ...args,
+      );
+
+      // Determine if it's a transformer or validator by checking the method name
+      // Transformers follow the "as*" naming convention (asNumber, asString, etc.)
+      // We check for "as" followed by an uppercase letter to avoid false positives like "asyncEmailCheck"
+      const isTransformer = /^as[A-Z]/.test(methodName);
+
+      // For extension methods, the extensionFn is already the validator/transformer function
+      // that takes (value) as parameter, so we don't pass additional args to it in chainFn
       return chainFn.call(
         this,
-        ExtensionClass.prototype[methodName](...args),
-        "validator",
-        ...args,
+        extensionFn,
+        isTransformer ? "transformer" : "validator",
       );
     };
   });

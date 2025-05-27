@@ -204,8 +204,8 @@ Available Validators
 - `hasPattern(pattern)` - Checks if a string matches the specified regex pattern
 - `isEqual(compareValue)` - Checks if a value is equal to another value
 - `isOneOf(allowedValues)` - Checks if a value is one of the allowed values
-- `isAfterMinDate(minDate)` - Checks if a date is after the minimum date
-- `isBeforeMaxDate(maxDate)` - Checks if a date is before the maximum date
+- `isAfter(minDate)` - Checks if a date is after the minimum date
+- `isBefore(maxDate)` - Checks if a date is before the maximum date
 
 ## 🧞 Commands
 

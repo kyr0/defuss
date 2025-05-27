@@ -1,17 +1,23 @@
 import type { ValidationStep } from "defuss-runtime";
+import type { Call } from "./api.js";
 
 // Utility type for cleaner return types
 type ValidationChain<ET = {}> = ValidationChainApi<ET> & ET;
 
-// TODO: Does not correspond to the actual API, needs to be updated
 export interface ValidationChainApi<ET = {}> {
+  fieldPath: string;
+  validationCalls: Call[];
+  lastValidationResult: AllValidationResult;
+  transformedData: any;
+  options: ValidationChainOptions;
+
   // Basic type validators
-  isNumberSafe(): ValidationChain<ET>;
+  isSafeNumber(): ValidationChain<ET>;
   isString(): ValidationChain<ET>;
   isArray(): ValidationChain<ET>;
   isObject(): ValidationChain<ET>;
   isDate(): ValidationChain<ET>;
-  isNumericAndSafe(): ValidationChain<ET>;
+  isSafeNumeric(): ValidationChain<ET>;
   isBoolean(): ValidationChain<ET>;
   isInteger(): ValidationChain<ET>;
 
@@ -79,6 +85,10 @@ export interface ValidationChainApi<ET = {}> {
   isValid<T = unknown>(formData: T): Promise<boolean>;
   getMessages(): string[];
   getFormattedMessage(): string;
+
+  // Data access methods
+  getData(): any;
+  getValue(path: string): any;
 }
 
 export interface ValidationChainOptions {

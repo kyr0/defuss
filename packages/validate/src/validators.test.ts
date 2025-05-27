@@ -4,9 +4,9 @@ describe("Supported validators", () => {
   it("should export all validator functions", () => {
     expect(validators).toEqual(
       expect.objectContaining({
-        isAfterMinDate: validators.isAfterMinDate,
+        isAfter: validators.isAfter,
         isArray: validators.isArray,
-        isBeforeMaxDate: validators.isBeforeMaxDate,
+        isBefore: validators.isBefore,
         isDate: validators.isDate,
         isDefined: validators.isDefined,
         isEmail: validators.isEmail,
@@ -17,8 +17,8 @@ describe("Supported validators", () => {
         isInteger: validators.isInteger,
         isLongerThan: validators.isLongerThan,
         isLessThan: validators.isLessThan,
-        isNumberSafe: validators.isNumberSafe,
-        isNumericAndSafe: validators.isNumericAndSafe,
+        isSafeNumber: validators.isSafeNumber,
+        isSafeNumeric: validators.isSafeNumeric,
         isObject: validators.isObject,
         isOneOf: validators.isOneOf,
         isPhoneNumber: validators.isPhoneNumber,

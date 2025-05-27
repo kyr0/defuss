@@ -1,7 +1,7 @@
 import {
-  isAfterMinDate,
+  isAfter,
   isArray,
-  isBeforeMaxDate,
+  isBefore,
   isDate,
   isDefined,
   isEmail,
@@ -11,8 +11,8 @@ import {
   isInteger,
   isLongerThan,
   isLessThan,
-  isNumberSafe,
-  isNumericAndSafe,
+  isSafeNumber,
+  isSafeNumeric,
   isObject,
   isOneOf,
   isPhoneNumber,
@@ -27,9 +27,9 @@ import {
 } from "defuss-runtime";
 
 export const validators = {
-  isAfterMinDate,
+  isAfter,
   isArray,
-  isBeforeMaxDate,
+  isBefore,
   isDate,
   isDefined,
   isEmail,
@@ -40,8 +40,8 @@ export const validators = {
   isInteger,
   isLongerThan,
   isLessThan,
-  isNumberSafe,
-  isNumericAndSafe,
+  isSafeNumber,
+  isSafeNumeric,
   isObject,
   isOneOf,
   isPhoneNumber,
