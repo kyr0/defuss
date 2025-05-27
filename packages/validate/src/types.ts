@@ -11,6 +11,9 @@ export interface ValidationChainApi<ET = {}> {
   transformedData: any;
   options: ValidationChainOptions;
 
+  // Negation chain for the current validation
+  not: ValidationChainApi<ET> & ET;
+
   // Basic type validators
   isSafeNumber(): ValidationChain<ET>;
   isString(): ValidationChain<ET>;

@@ -28,6 +28,8 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     messages: string[],
     format: (msgs: string[]) => string,
   ) => string;
+  private isNegated = false;
+  public hasValidators = false;
 
   constructor(fieldPath: string, options: ValidationChainOptions = {}) {
     this.fieldPath = fieldPath;
@@ -40,6 +42,22 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     this.isValid = this.isValid.bind(this);
     this.getMessages = this.getMessages.bind(this);
     this.getFormattedMessage = this.getFormattedMessage.bind(this);
+  }
+
+  // Negation getter - can only be used once per chain
+  get not(): ValidationChainApi<ET> & ET {
+    if (this.isNegated) {
+      throw new Error(
+        "Multiple negations are not allowed in a validation chain",
+      );
+    }
+    if (this.hasValidators) {
+      throw new Error(
+        "Multiple negations are not allowed in a validation chain",
+      );
+    }
+    this.isNegated = true;
+    return this as unknown as ValidationChainApi<ET> & ET;
   }
 
   async isValid<T = any>(
@@ -127,15 +145,30 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
         }
       }
 
+      // Apply negation to the final validation result if needed
+      const isValid = messages.length === 0;
+      const finalIsValid = this.isNegated ? !isValid : isValid;
+
+      // If negated and originally valid, add a message indicating the negation failed
+      const finalMessages = [...messages];
+      if (this.isNegated && isValid) {
+        finalMessages.push("Validation was expected to fail but passed");
+      }
+
       // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
       return (this.lastValidationResult = {
-        isValid: messages.length === 0,
-        messages,
+        isValid: finalIsValid,
+        messages: finalMessages,
       });
     } catch (error) {
+      const originalIsValid = false;
+      const finalIsValid = this.isNegated ? !originalIsValid : originalIsValid;
+
       const errorResult = {
-        isValid: false,
-        messages: [`Validation error: ${(error as Error).message}`],
+        isValid: finalIsValid,
+        messages: this.isNegated
+          ? [] // If negated, an error becomes a pass
+          : [`Validation error: ${(error as Error).message}`],
         error: error as Error,
       };
 
@@ -234,6 +267,11 @@ function chainFn(
   type: "validator" | "transformer",
   ...args: any[]
 ): Rules {
+  // Track that validators have been added (for negation prevention)
+  if (type === "validator") {
+    this.hasValidators = true;
+  }
+
   this.validationCalls.push(
     new Call(
       fn.name || type,
