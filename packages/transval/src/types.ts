@@ -78,16 +78,15 @@ export interface ValidationChainApi<ET = {}> {
 
   // Message formatter
   useFormatter(
-    messageFn: <T = string>(
+    messageFn: (
       messages: string[],
       format: (msgs: string[]) => string,
-    ) => T,
+    ) => string,
   ): ValidationChain<ET>;
 
   // Validation execution
   isValid<T = unknown>(formData: T): Promise<boolean>;
   getMessages(): string[];
-  getFormattedMessages<T>(): T;
 
   // Data access methods
   getData(): any;

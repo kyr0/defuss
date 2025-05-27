@@ -124,12 +124,28 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
             // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
             (currentValue = result),
           );
-        } else if (result !== true) {
-          validationErrors.push(
-            typeof result === "string"
-              ? result
-              : `Validation failed for ${call.name}`,
-          );
+        } else {
+          // Handle validator results
+          if (result === true) {
+            // Validation passed, continue
+            // biome-ignore lint/correctness/noUnnecessaryContinue: <explanation>
+            continue;
+          } else if (result === false) {
+            // Validation failed with no specific message
+            validationErrors.push(`Validation failed for ${call.name}`);
+          } else if (typeof result === "string") {
+            // Validation failed with error message
+            validationErrors.push(result);
+          } else if (Array.isArray(result)) {
+            // Handle multiple errors from a single validator
+            const stringErrors = (result as Array<any>).filter(
+              (item: any): item is string => typeof item === "string",
+            );
+            validationErrors.push(...stringErrors);
+          } else {
+            // Any other non-true value is treated as failure
+            validationErrors.push(`Validation failed for ${call.name}`);
+          }
         }
       }
 
@@ -145,13 +161,24 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     const state = this._state;
     const finalIsValid = state.isNegated ? !isValid : isValid;
 
+    let finalMessages =
+      state.isNegated && isValid
+        ? [...errors, "Validation was expected to fail but passed"]
+        : errors;
+
+    // Apply custom formatter if available
+    if (this.messageFormatter && finalMessages.length > 0) {
+      const formattedMessage = this.messageFormatter(
+        finalMessages,
+        defaultFormatter,
+      );
+      finalMessages = [formattedMessage];
+    }
+
     // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
     return (this.lastValidationResult = {
       isValid: finalIsValid,
-      messages:
-        state.isNegated && isValid
-          ? [...errors, "Validation was expected to fail but passed"]
-          : errors,
+      messages: finalMessages,
     });
   }
 
@@ -193,30 +220,17 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
   }
 
   useFormatter(
-    messageFn?: <T = string>(
+    messageFn?: (
       messages: string[],
       format: (msgs: string[]) => string,
-    ) => T,
+    ) => string,
   ): ValidationChainApi<ET> & ET {
     if (messageFn) this.messageFormatter = messageFn;
     return this as unknown as ValidationChainApi<ET> & ET;
   }
 
-  protected _formatMessages(messages: string[]): string {
-    return (
-      this.messageFormatter?.(messages, defaultFormatter) ||
-      defaultFormatter(messages)
-    );
-  }
-
   getMessages(): string[] {
     return this.lastValidationResult.messages;
-  }
-
-  getFormattedMessages<T = string>(): T {
-    return this._formatMessages(
-      this.lastValidationResult.messages,
-    ) as unknown as T;
   }
 
   getData(): any {
@@ -291,8 +305,10 @@ export function transval(...args: (Rules | Rules[])[]): {
     formData: T,
     callback?: (isValid: boolean, error?: Error) => void,
   ) => Promise<boolean>;
-  getMessages: () => string[];
-  getFormattedMessages: <T = string>() => T;
+  getMessages: <T = string[]>(
+    path?: string,
+    customFormatterFn?: (messages: string[]) => T,
+  ) => T;
 } {
   const chains = Array.isArray(args[0])
     ? args[0]
@@ -324,13 +340,26 @@ export function transval(...args: (Rules | Rules[])[]): {
       }
     },
 
-    getMessages: () => chains.flatMap((chain) => chain.getMessages()),
+    getMessages: <T = string[]>(
+      path?: string,
+      customFormatterFn?: (messages: string[]) => T,
+    ): T => {
+      let messages: string[];
 
-    getFormattedMessages: <T>() => {
-      const allMessages = chains.flatMap((chain) => chain.getMessages());
-      return (chains
-        .find((chain) => chain.messageFormatter)
-        ?.getFormattedMessages() ?? defaultFormatter(allMessages)) as T;
+      if (path === undefined || path === null) {
+        // Get all messages from all chains
+        messages = chains.flatMap((chain) => chain.getMessages());
+      } else {
+        // Get messages from specific field
+        const targetChain = chains.find((chain) => chain.fieldPath === path);
+        messages = targetChain ? targetChain.getMessages() : [];
+      }
+
+      if (customFormatterFn) {
+        return customFormatterFn(messages);
+      }
+
+      return messages as T;
     },
   };
 }

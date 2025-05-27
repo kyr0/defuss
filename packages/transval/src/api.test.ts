@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { rule, Rules, transval } from "./api.js";
 
 describe("Chain API", () => {
@@ -232,10 +232,12 @@ describe("Chain API", () => {
     const result = await validator.isValid({ field: "actual" });
     expect(result).toBe(false);
 
-    expect(validator.getMessages()).toContain(
-      'Expected "expected" but got "actual"',
+    // With useFormatter, the formatted message should replace the original
+    const messages = validator.getMessages();
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toBe(
+      'Validation failed: Expected "expected" but got "actual"',
     );
-    expect(validator.getFormattedMessages()).toContain("Validation failed:");
   });
 
   it("should handle multiple validation failures with message collection", async () => {
@@ -855,6 +857,372 @@ describe("ValidationChain getData and getValue", () => {
       // Transformed data should not be affected
       expect(chain.getValue("user.name")).toBe("JOHN");
       expect(chain.getValue("user.name")).not.toBe("Modified");
+    });
+  });
+});
+
+describe("Error System Comprehensive Tests", () => {
+  describe("Multiple errors per rule", () => {
+    it("should collect multiple validation errors from a single rule", async () => {
+      class MultiErrorValidators extends Rules {
+        multipleChecks() {
+          return ((value: any) => {
+            const errors: string[] = [];
+
+            if (typeof value !== "string") {
+              errors.push("Value must be a string");
+            }
+            if (typeof value === "string" && value.length < 3) {
+              errors.push("Value must be at least 3 characters");
+            }
+            if (typeof value === "string" && !/^[A-Z]/.test(value)) {
+              errors.push("Value must start with uppercase letter");
+            }
+            if (typeof value === "string" && !/[0-9]/.test(value)) {
+              errors.push("Value must contain at least one number");
+            }
+
+            return errors.length > 0 ? errors : true;
+          }) as unknown as Rules & this;
+        }
+      }
+
+      const myValidate = rule.extend(MultiErrorValidators);
+      const validator = myValidate("field").multipleChecks();
+
+      // Test with invalid value that triggers multiple errors
+      const result = await validator.isValid({ field: "a" });
+      expect(result).toBe(false);
+
+      const messages = validator.getMessages();
+      expect(messages).toHaveLength(3);
+      expect(messages).toContain("Value must be at least 3 characters");
+      expect(messages).toContain("Value must start with uppercase letter");
+      expect(messages).toContain("Value must contain at least one number");
+    });
+
+    it("should handle multiple errors with custom formatter", async () => {
+      class MultiErrorValidators extends Rules {
+        complexValidation() {
+          return ((value: any) => {
+            const errors: string[] = [];
+
+            if (!value || typeof value !== "object") {
+              errors.push("Value must be an object");
+            } else {
+              if (!value.name) errors.push("Name is required");
+              if (!value.email) errors.push("Email is required");
+              if (value.age && value.age < 18)
+                errors.push("Age must be 18 or older");
+            }
+
+            return errors.length > 0 ? errors : true;
+          }) as unknown as Rules & this;
+        }
+      }
+
+      const myValidate = rule.extend(MultiErrorValidators);
+      const validator = myValidate("user")
+        .complexValidation()
+        .useFormatter(
+          (messages, format) =>
+            `Validation failed (${messages.length} errors): ${format(messages)}`,
+        );
+
+      const result = await validator.isValid({ user: { age: 16 } });
+      expect(result).toBe(false);
+
+      const messages = validator.getMessages();
+      expect(messages).toHaveLength(1);
+      expect(messages[0]).toContain("Validation failed (3 errors):");
+      expect(messages[0]).toContain("Name is required");
+      expect(messages[0]).toContain("Email is required");
+      expect(messages[0]).toContain("Age must be 18 or older");
+    });
+  });
+
+  describe("getMessages() with path parameter", () => {
+    it("should return messages for specific field path", async () => {
+      class MessageValidators extends Rules {
+        customMessage(message: string) {
+          return ((value: any) => {
+            if (!value) return message;
+            return true;
+          }) as unknown as Rules & this;
+        }
+      }
+
+      const myValidate = rule.extend(MessageValidators);
+      const validator = transval(
+        myValidate("user.name").customMessage("Name is required"),
+        myValidate("user.email").customMessage("Email is required"),
+        myValidate("profile.bio").customMessage("Bio is required"),
+      );
+
+      const result = await validator.isValid({
+        user: { name: "", email: "" },
+        profile: { bio: "" },
+      });
+
+      expect(result).toBe(false);
+
+      // Test getting all messages
+      const allMessages = validator.getMessages();
+      expect(allMessages).toHaveLength(3);
+      expect(allMessages).toContain("Name is required");
+      expect(allMessages).toContain("Email is required");
+      expect(allMessages).toContain("Bio is required");
+
+      // Test getting messages for specific paths
+      const nameMessages = validator.getMessages("user.name");
+      expect(nameMessages).toEqual(["Name is required"]);
+
+      const emailMessages = validator.getMessages("user.email");
+      expect(emailMessages).toEqual(["Email is required"]);
+
+      const bioMessages = validator.getMessages("profile.bio");
+      expect(bioMessages).toEqual(["Bio is required"]);
+
+      // Test getting messages for non-existent path
+      const nonExistentMessages = validator.getMessages("nonexistent.field");
+      expect(nonExistentMessages).toEqual([]);
+    });
+
+    it("should return multiple messages for the same field path", async () => {
+      class ValidationRules extends Rules {
+        required() {
+          return ((value: any) => {
+            if (!value) return "Field is required";
+            return true;
+          }) as unknown as Rules & this;
+        }
+
+        minLength(min: number) {
+          return ((value: string) => {
+            if (typeof value === "string" && value.length < min) {
+              return `Field must be at least ${min} characters`;
+            }
+            return true;
+          }) as unknown as Rules & this;
+        }
+
+        pattern(regex: RegExp, message: string) {
+          return ((value: string) => {
+            if (typeof value === "string" && !regex.test(value)) {
+              return message;
+            }
+            return true;
+          }) as unknown as Rules & this;
+        }
+      }
+
+      const myValidate = rule.extend(ValidationRules);
+      const validator = transval(
+        myValidate("password")
+          .required()
+          .minLength(8)
+          .pattern(/[A-Z]/, "Must contain uppercase"),
+        myValidate("username").required().minLength(3),
+      );
+
+      const result = await validator.isValid({
+        password: "abc",
+        username: "",
+      });
+
+      expect(result).toBe(false);
+
+      // Password should have 2 errors (minLength + pattern)
+      const passwordMessages = validator.getMessages("password");
+      expect(passwordMessages).toHaveLength(2);
+      expect(passwordMessages).toContain("Field must be at least 8 characters");
+      expect(passwordMessages).toContain("Must contain uppercase");
+
+      // Username should have 2 errors (required + minLength)
+      const usernameMessages = validator.getMessages("username");
+      expect(usernameMessages).toHaveLength(2);
+      expect(usernameMessages).toContain("Field is required");
+      expect(usernameMessages).toContain("Field must be at least 3 characters");
+    });
+  });
+
+  describe("getMessages() with custom formatter", () => {
+    it("should apply custom formatter to all messages", async () => {
+      class MessageValidators extends Rules {
+        customMessage(message: string) {
+          return ((value: any) => {
+            if (!value) return message;
+            return true;
+          }) as unknown as Rules & this;
+        }
+      }
+
+      const myValidate = rule.extend(MessageValidators);
+      const validator = transval(
+        myValidate("field1").customMessage("Error 1"),
+        myValidate("field2").customMessage("Error 2"),
+      );
+
+      await validator.isValid({ field1: "", field2: "" });
+
+      // Test custom formatter that wraps each message
+      const wrappedMessages = validator.getMessages(undefined, (messages) =>
+        messages.map((msg) => `⚠️ ${msg}`),
+      );
+
+      expect(wrappedMessages).toEqual(["⚠️ Error 1", "⚠️ Error 2"]);
+
+      // Test custom formatter that creates a summary
+      const summaryMessage = validator.getMessages(
+        undefined,
+        (messages) => `Found ${messages.length} errors: ${messages.join(", ")}`,
+      );
+
+      expect(summaryMessage).toBe("Found 2 errors: Error 1, Error 2");
+    });
+
+    it("should apply custom formatter to specific field messages", async () => {
+      class ValidationRules extends Rules {
+        multiError() {
+          return ((value: any) => {
+            const errors: string[] = [];
+            if (!value) errors.push("Required");
+            if (typeof value === "string" && value.length < 3)
+              errors.push("Too short");
+            if (typeof value === "string" && !/^[A-Z]/.test(value))
+              errors.push("Must start with capital");
+            return errors.length > 0 ? errors : true;
+          }) as unknown as Rules & this;
+        }
+      }
+
+      const myValidate = rule.extend(ValidationRules);
+      const validator = transval(
+        myValidate("field1").multiError(),
+        myValidate("field2").multiError(),
+      );
+
+      await validator.isValid({ field1: "a", field2: "b" });
+
+      // Test custom formatter on specific field
+      const field1Formatted = validator.getMessages(
+        "field1",
+        (messages) => `Field1 errors: [${messages.join(" | ")}]`,
+      );
+
+      expect(field1Formatted).toBe(
+        "Field1 errors: [Too short | Must start with capital]",
+      );
+
+      // Test that other field is not affected
+      const field2Messages = validator.getMessages("field2");
+      expect(field2Messages).toEqual(["Too short", "Must start with capital"]);
+    });
+
+    it("should handle empty messages with custom formatter", async () => {
+      class MessageValidators extends Rules {
+        alwaysPass() {
+          return (() => true) as unknown as Rules & this;
+        }
+      }
+
+      const myValidate = rule.extend(MessageValidators);
+      const validator = transval(myValidate("field").alwaysPass());
+
+      await validator.isValid({ field: "valid" });
+
+      // Test custom formatter with empty messages
+      const formattedEmpty = validator.getMessages(undefined, (messages) =>
+        messages.length === 0 ? "No errors!" : `${messages.length} errors`,
+      );
+
+      expect(formattedEmpty).toBe("No errors!");
+    });
+  });
+
+  describe("Complex error scenarios", () => {
+    it("should handle nested validation with multiple error types", async () => {
+      class ComplexValidators extends Rules {
+        validateUser() {
+          return (async (user: any) => {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            const errors: string[] = [];
+
+            if (!user || typeof user !== "object") {
+              errors.push("User data is required");
+              return errors;
+            }
+
+            if (!user.profile) {
+              errors.push("Profile is required");
+            } else {
+              if (!user.profile.firstName)
+                errors.push("First name is required");
+              if (!user.profile.lastName) errors.push("Last name is required");
+            }
+
+            if (!user.contact) {
+              errors.push("Contact info is required");
+            } else {
+              if (!user.contact.email) errors.push("Email is required");
+              if (user.contact.email && !user.contact.email.includes("@")) {
+                errors.push("Invalid email format");
+              }
+            }
+
+            return errors.length > 0 ? errors : true;
+          }) as unknown as Rules & this;
+        }
+      }
+
+      const myValidate = rule.extend(ComplexValidators);
+      const validator = myValidate("userData")
+        .validateUser()
+        .useFormatter(
+          (messages, format) => `User validation failed: ${format(messages)}`,
+        );
+
+      const result = await validator.isValid({
+        userData: {
+          profile: { firstName: "" },
+          contact: { email: "invalid-email" },
+        },
+      });
+
+      expect(result).toBe(false);
+      const messages = validator.getMessages();
+      expect(messages).toHaveLength(1);
+      expect(messages[0]).toContain("User validation failed:");
+      expect(messages[0]).toContain("Last name is required");
+      expect(messages[0]).toContain("Invalid email format");
+    });
+
+    it("should maintain error isolation between different transval instances", async () => {
+      class MessageValidators extends Rules {
+        customMessage(message: string) {
+          return ((value: any) => {
+            if (!value) return message;
+            return true;
+          }) as unknown as Rules & this;
+        }
+      }
+
+      const myValidate = rule.extend(MessageValidators);
+
+      const validator1 = transval(
+        myValidate("field").customMessage("Error from validator 1"),
+      );
+      const validator2 = transval(
+        myValidate("field").customMessage("Error from validator 2"),
+      );
+
+      await validator1.isValid({ field: "" });
+      await validator2.isValid({ field: "" });
+
+      // Errors should be isolated
+      expect(validator1.getMessages()).toEqual(["Error from validator 1"]);
+      expect(validator2.getMessages()).toEqual(["Error from validator 2"]);
     });
   });
 });
