@@ -15,6 +15,13 @@ export type PathAccessor<T> = T extends object
       [K in keyof T]: T[K] extends object
         ? PathAccessor<T[K]> & string
         : string;
+    } & {
+      // Support array-like access with numeric indices
+      [K in number]: T extends readonly (infer U)[]
+        ? PathAccessor<U> & string
+        : T extends Record<number, infer U>
+          ? PathAccessor<U> & string
+          : PathAccessor<Dynamic> & string;
     } & string
   : string;
 
@@ -24,10 +31,22 @@ export type PathAccessor<T> = T extends object
  */
 export type Dynamic = {
   [key: string]: Dynamic;
+  [key: number]: Dynamic;
 };
 
 const createProxy = (currentPath: string[] = []): any => {
-  const pathString = currentPath.join(".");
+  // Join path segments, handling array indices specially
+  const pathString = currentPath.reduce((acc, segment, index) => {
+    if (index === 0) {
+      return segment;
+    }
+    // If segment starts with [, it's an array index, don't add a dot
+    if (segment.startsWith("[")) {
+      return `${acc}${segment}`;
+    }
+    // Otherwise, it's a property access, add a dot
+    return `${acc}.${segment}`;
+  }, "");
 
   // Create a target that extends String
   const target = Object.create(String.prototype);
@@ -54,11 +73,8 @@ const createProxy = (currentPath: string[] = []): any => {
         return undefined;
       }
 
-      // Handle array index access
-      if (
-        prop === "length" ||
-        (typeof prop === "string" && /^\d+$/.test(prop))
-      ) {
+      // Handle array index access (numeric indices only)
+      if (typeof prop === "string" && /^\d+$/.test(prop)) {
         const newPath = [...currentPath, `[${prop}]`];
         return createProxy(newPath);
       }

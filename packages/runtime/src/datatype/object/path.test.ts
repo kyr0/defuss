@@ -17,6 +17,11 @@ interface User {
     };
   };
   tags: string[];
+  // Add array property for testing
+  items: Array<{
+    id: number;
+    values: number[];
+  }>;
 }
 
 describe("Object Path Access", () => {
@@ -198,5 +203,153 @@ describe("Object Path Access", () => {
       // TypeScript should know this is not a PathAccessor
       expect(definitelyNotPath).toBe("regular string");
     }
+  });
+
+  test("should handle array index access properly", () => {
+    // Test basic array index access
+    const arrayIndexPath = access<Dynamic>().tags[0];
+    expect(String(arrayIndexPath)).toBe("tags[0]");
+
+    // Test the specific case mentioned in requirements: foo.bar[1]
+    const fooBarIndexPath = access<Dynamic>().foo.bar[1];
+    expect(String(fooBarIndexPath)).toBe("foo.bar[1]");
+
+    // Test multiple array indices
+    const multiIndexPath = access<Dynamic>().items[0][1];
+    expect(String(multiIndexPath)).toBe("items[0][1]");
+
+    // Test array access with subsequent property access
+    const arrayThenPropertyPath = access<Dynamic>().items[0].id;
+    expect(String(arrayThenPropertyPath)).toBe("items[0].id");
+
+    // Test nested array access
+    const nestedArrayPath = access<Dynamic>().items[0].values[2];
+    expect(String(nestedArrayPath)).toBe("items[0].values[2]");
+
+    // Test complex mixed access pattern
+    const complexPath = access<Dynamic>().data[0].nested.array[1].property;
+    expect(String(complexPath)).toBe("data[0].nested.array[1].property");
+  });
+
+  test("should handle numeric array indices correctly", () => {
+    // Test various numeric indices
+    expect(String(access<Dynamic>().arr[0])).toBe("arr[0]");
+    expect(String(access<Dynamic>().arr[1])).toBe("arr[1]");
+    expect(String(access<Dynamic>().arr[10])).toBe("arr[10]");
+    expect(String(access<Dynamic>().arr[999])).toBe("arr[999]");
+  });
+
+  test("should handle string-based array access", () => {
+    // Test string keys that look like array indices
+    const stringKeyPath = access<Dynamic>().obj["0"];
+    expect(String(stringKeyPath)).toBe("obj[0]");
+
+    const stringKeyPath2 = access<Dynamic>().obj["123"];
+    expect(String(stringKeyPath2)).toBe("obj[123]");
+  });
+
+  test("should handle edge cases in array access", () => {
+    // Test accessing 'length' property (should be treated as array access for consistency)
+    const lengthPath = access<Dynamic>().arr.length;
+    expect(String(lengthPath)).toBe("arr.length");
+
+    // Test mixed property and array access
+    const mixedPath = access<Dynamic>().users[0].profile.tags[1];
+    expect(String(mixedPath)).toBe("users[0].profile.tags[1]");
+  });
+
+  test("should handle typed array access", () => {
+    // Test typed array access with User interface
+    interface UserWithArrays {
+      name: string;
+      tags: string[];
+      posts: Array<{
+        id: number;
+        title: string;
+        comments: Array<{
+          id: number;
+          text: string;
+        }>;
+      }>;
+      matrix: number[][];
+    }
+
+    // Test basic typed array access
+    const tagsPath = access<UserWithArrays>().tags[0];
+    expect(String(tagsPath)).toBe("tags[0]");
+
+    // Test nested typed array access
+    const postTitlePath = access<UserWithArrays>().posts[0].title;
+    expect(String(postTitlePath)).toBe("posts[0].title");
+
+    // Test deeply nested typed array access
+    const commentTextPath = access<UserWithArrays>().posts[0].comments[1].text;
+    expect(String(commentTextPath)).toBe("posts[0].comments[1].text");
+
+    // Test multi-dimensional array access
+    const matrixPath = access<UserWithArrays>().matrix[0][1];
+    expect(String(matrixPath)).toBe("matrix[0][1]");
+  });
+
+  test("should maintain type safety with arrays", () => {
+    interface TypedArrayTest {
+      users: Array<{
+        profile: {
+          settings: {
+            theme: string;
+            notifications: boolean;
+          };
+        };
+        tags: string[];
+      }>;
+      data: {
+        items: number[];
+        nested: {
+          values: string[];
+        };
+      };
+    }
+
+    // These should all compile without errors due to type safety
+    const userProfileTheme: PathAccessor<string> =
+      access<TypedArrayTest>().users[0].profile.settings.theme;
+    const userTag: PathAccessor<string> =
+      access<TypedArrayTest>().users[0].tags[1];
+    const dataItem: PathAccessor<number> =
+      access<TypedArrayTest>().data.items[0];
+    const nestedValue: PathAccessor<string> =
+      access<TypedArrayTest>().data.nested.values[2];
+
+    // Convert to strings and verify paths
+    expect(String(userProfileTheme)).toBe("users[0].profile.settings.theme");
+    expect(String(userTag)).toBe("users[0].tags[1]");
+    expect(String(dataItem)).toBe("data.items[0]");
+    expect(String(nestedValue)).toBe("data.nested.values[2]");
+  });
+
+  test("should handle mixed typed and dynamic access", () => {
+    interface MixedTest {
+      staticProp: {
+        dynamicArea: Record<string, any>;
+      };
+      typedArray: Array<{
+        id: number;
+        dynamic: Record<string, any>;
+      }>;
+    }
+
+    // Start with typed access, then switch to dynamic
+    const mixedPath1 = access<MixedTest>().staticProp.dynamicArea;
+    const mixedPath2 = access<MixedTest>().typedArray[0].dynamic;
+
+    expect(String(mixedPath1)).toBe("staticProp.dynamicArea");
+    expect(String(mixedPath2)).toBe("typedArray[0].dynamic");
+
+    // For dynamic access within typed structures, we can use type assertion
+    const dynamicAccess = (access<MixedTest>().typedArray[0].dynamic as any)
+      .someKey[1].nested;
+    expect(String(dynamicAccess)).toBe(
+      "typedArray[0].dynamic.someKey[1].nested",
+    );
   });
 });
