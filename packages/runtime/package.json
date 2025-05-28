@@ -25,7 +25,8 @@
     "pretest": "pnpm run build",
     "prebuild": "pnpm run clean",
     "build": "pkgroll",
-    "test": "vitest --run  --coverage"
+    "test": "vitest --run  --coverage",
+    "release": "pnpm publish --no-git-checks --access public"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

@@ -4,8 +4,22 @@
   "description": "A tiny CSS utility classes solution, inspired by Tailwind.css.",
   "author": "Aron Homberg <info@aron-homberg.de>",
   "main": "windy.css",
+  "scripts": {
+    "release": "pnpm publish --no-git-checks --access public"
+  },
   "style": "windy.css",
-  "keywords": ["css", "utility", "tailwind-inspired", "responsive", "design", "styling", "library", "generative", "palette", "colors"],
+  "keywords": [
+    "css",
+    "utility",
+    "tailwind-inspired",
+    "responsive",
+    "design",
+    "styling",
+    "library",
+    "generative",
+    "palette",
+    "colors"
+  ],
   "license": "MIT",
   "dependencies": {
     "squeezy-reset": "workspace:*"

@@ -16,7 +16,8 @@
     "clean": "rm -rf ./dist",
     "pretest": "pnpm run build",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll --minify --sourcemap"
+    "build": "pkgroll --minify --sourcemap",
+    "release": "pnpm publish --no-git-checks --access public"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
