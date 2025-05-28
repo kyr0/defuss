@@ -115,7 +115,7 @@ export const Repl = () => {
       });
     };
 
-    requestAnimationFrame(() => {
+    queueMicrotask(() => {
       codeEditor.executeCode(codeEditor.getValue());
     });
   });

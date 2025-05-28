@@ -1,0 +1,32 @@
+---
+interface Props {
+  title: string;
+}
+---
+
+<!doctype html>
+<html class="dark" lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="icon" type="image/webp" href="/favicon.webp" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="keywords"
+			content="Photo Gallery, Astro, TypeScript, defuss, web development, modern web, frontend"
+		/>
+		<meta
+			name="description"
+			content="defuss Photo Canvas - a modern photo gallery built with Astro and TypeScript, showcasing the power of defuss for dynamic content loading."
+		/>
+		<title>{Astro.props.title}</title>
+		<style>
+			body {
+				background-color: #333;
+			}
+		</style>
+	</head>
+
+	<body>
+		<slot />
+	</body>
+</html>

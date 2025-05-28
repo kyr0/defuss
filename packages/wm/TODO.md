@@ -56,39 +56,112 @@ $('someDiv').decorateWindow<HTMLElement, DequeryExtended>({
 Internally uses: 
 
 $.extend({
-  decorateTaskbar: function(options) {
+  createTaskbar: function(options) {
     // Implementation for taskbar decoration
   },
-  decorateWindow: function(options) {
+  createWindow: function(options) {
     // Implementation for window decoration
   }
 })
+
+Like this:
+
+import { dequery, Dequery, createCall, CallChainImpl, createStore } from "defuss/dequery";
+
+export interface CreateTaskbarOptions {
+  position?: 'top' | 'bottom' | 'left' | 'right';
+  stateful?: boolean; // if stateful, and if it has an id, it uses windowManagerStore to save its state
+  theme?: string; // e.g., 'windows-xp', 'macos', etc.
+  size?: 'small' | 'medium' | 'large';
+  startButton?: HTMLElement;
+  startMenuEntries?: HTMLElement;
+  onTaskClick?: (task: HTMLElement) => void;
+  onTaskClose?: (task: HTMLElement) => void;
+}
+
+export interface CreateWindowOptions {
+  id?: string;
+  theme: string; // e.g., 'windows-xp', 'macos', etc.
+  title?: string;
+  stateful?: boolean; // if stateful, and if it has an id, it uses windowManagerStore to save its state
+  icon?: string;
+  width?: number;
+  height?: number;
+  x?: number;
+  y?: number;
+  resizable?: boolean;
+  draggable?: boolean;
+  closeable?: boolean;
+  minimizable?: boolean;
+  maximizable?: boolean;
+  onClose?: () => void;
+  onMinimize?: () => void;
+  onMaximize?: () => void;
+}
+
+interface WindowManagerTaskbarState {
+  position: 'top' | 'bottom' | 'left' | 'right';
+  theme: string;
+  size: 'small' | 'medium' | 'large';
+}
+
+interface WindowManagerWindowState {
+  id: string;
+  theme: string;
+  title: string;
+  icon: string;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  resizable: boolean;
+  draggable: boolean;
+  closeable: boolean;
+  minimizable: boolean;
+  maximizable: boolean;
+  minimized: boolean;
+  maximized: boolean;
+}
+
+interface DefussWindowManagerState {
+  taskbar: WindowManagerTaskbarState;
+  windows: Record<string, WindowManagerWindowState>;
+}
+
+const windowManagerStore = createStore<{
+  taskbars: HTMLElement[];
+  windows: HTMLElement[];
+}>({
+  taskbars: [],
+  windows: []
+});
+
+class DequeryWithWindowManager<NT> extends CallChainImpl<
+  NT,
+  DequeryWithWindowManager<NT> & Dequery<NT>
+> {
+  foo(bar: number): this & Dequery<NT> {
+    return createCall(this, "foo", async () => {
+      didCall = bar;
+      return this.nodes as NT;
+    }) as unknown as this & Dequery<NT>;
+  }
+}
+
+const $ = dequery.extend(DequeryWithWindowManager);
 
 Exposes interfaces for TypeScript:
 
 ```typescript
 
 export interface DefussWindowMixin {
-  decorateTaskbar: (options: {
-    position?: 'top' | 'bottom' | 'left' | 'right';
-    startButton?: HTMLElement;
-    startMenuEntries?: HTMLElement;
-    onTaskClick?: (task: HTMLElement) => void;
-    onTaskClose?: (task: HTMLElement) => void;
-  }) => void;
-  decorateWindow: (options: {
-    title?: string | HTMLElement;
-    icon?: string | HTMLElement;
-    width?: number;
-    height?: number;
-    resizable?: boolean;
-    draggable?: boolean;
-    closeable?: boolean;
-    minimizable?: boolean;
-    maximizable?: boolean;
-    onClose?: () => void;
-    onMinimize?: () => void;
-    onMaximize?: () => void;
-  }) => void;
+  // creates a taskbar root element itself if not already created
+  createTaskbar: (options: CreateTaskbarOptions) => void;
+
+  // creates a window root decoration element itself if not already created
+  createWindow: (options: CreateWindowOptions) => void;
 }
 ```
+
+Eventually, the user can do:
+
