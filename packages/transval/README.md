@@ -414,8 +414,6 @@ Message Formatting
 You can customize error message formatting by passing a formatter function to `getMessages()`. The formatter can return JSX elements for rich UI rendering:
 
 ```typescript
-import React from 'react';
-
 const emailRule = rule("email").isString().isEmail();
 const { isValid, getMessages } = transval(emailRule);
 
