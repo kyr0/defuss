@@ -1,6 +1,6 @@
 {
   "name": "defuss-windy",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A tiny CSS utility classes solution, inspired by Tailwind.css.",
   "author": "Aron Homberg <info@aron-homberg.de>",
   "main": "windy.css",

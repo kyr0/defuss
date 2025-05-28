@@ -1,13 +1,18 @@
 {
   "name": "defuss",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "license": "MIT",
   "description": "Explicit simplicity for the web.",
-  "keywords": ["jsx", "render", "ssr", "isomorphic"],
+  "keywords": [
+    "jsx",
+    "render",
+    "ssr",
+    "isomorphic"
+  ],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -77,7 +82,10 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": ["dist", "assets"],
+  "files": [
+    "dist",
+    "assets"
+  ],
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@vitest/coverage-v8": "^3.1.3",

@@ -3,6 +3,8 @@ import {
   addElementEvent,
   checkElementVisibility,
   clearElementEvents,
+  domNodeToVNode,
+  htmlStringToVNodes,
   isMarkup,
   removeElementEvent,
   renderMarkup,
@@ -71,7 +73,7 @@ export const NonChainedReturnCallNames = [
   "serialize",
 ];
 
-export const emptyImpl = async <T>(nodes: Array<T>) => {
+export const emptyImpl = <T>(nodes: Array<T>) => {
   nodes.forEach((el) => {
     const element = el as HTMLElement;
     while (element.firstChild) {
@@ -620,43 +622,63 @@ export class CallChainImpl<
       }
 
       if (input instanceof Node) {
-        (await emptyImpl(this.nodes)) as NT;
-        for (let i = 0; i < this.nodes.length; i++) {
-          const el = this.nodes[i];
-          if (
-            !el ||
-            !input ||
-            el.isEqualNode(input as Node) ||
-            el.parentNode === input
-          ) {
-            continue;
+        // Convert DOM node to VNode and use the intelligent updateDomWithVdom
+        // This preserves existing DOM structure and event listeners better
+        // than the previous "clear and replace" approach
+        const vnode = domNodeToVNode(input);
+        this.nodes.forEach((el) => {
+          if (el) {
+            updateDomWithVdom(el as HTMLElement, vnode, globalThis as Globals);
           }
-          el.appendChild(input);
-        }
+        });
         return this.nodes as NT;
       }
 
       if (typeof input === "string") {
         if (isMarkup(input, this.Parser)) {
+          // Convert HTML markup to VNodes and use intelligent updateDomWithVdom
+          // This provides better DOM state preservation than the older updateDom approach
+          const vNodes = htmlStringToVNodes(input, this.Parser);
           this.nodes.forEach((el) => {
-            updateDom(el as HTMLElement, input as string, this.Parser);
+            if (el) {
+              updateDomWithVdom(
+                el as HTMLElement,
+                vNodes,
+                globalThis as Globals,
+              );
+            }
           });
         } else {
+          // For plain text, use the more efficient updateDomWithVdom approach
+          // This preserves existing DOM structure where possible
           this.nodes.forEach((el) => {
-            (el as HTMLElement).textContent = input as string;
+            if (el) {
+              updateDomWithVdom(
+                el as HTMLElement,
+                input as string,
+                globalThis as Globals,
+              );
+            }
           });
         }
       } else if (isJSX(input)) {
+        // Use the intelligent updateDomWithVdom for JSX - this is the key improvement!
+        // This function performs partial updates, preserving existing DOM elements
+        // and only updating what has actually changed
         this.nodes.forEach((el) => {
-          updateDomWithVdom(
-            el as HTMLElement,
-            input as RenderInput,
-            globalThis as Globals,
-          );
+          if (el) {
+            updateDomWithVdom(
+              el as HTMLElement,
+              input as RenderInput,
+              globalThis as Globals,
+            );
+          }
         });
       } else {
         console.warn("update: unsupported content type", input);
       }
+
+      // All DOM operations are synchronous and complete at this point
       return this.nodes as NT;
     }) as unknown as ET;
   }

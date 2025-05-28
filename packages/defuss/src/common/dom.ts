@@ -649,3 +649,63 @@ export function clearElementEvents(element: HTMLElement): void {
 
   eventMap.clear();
 }
+
+/**
+ * Converts a DOM node to a VNode structure for use with updateDomWithVdom.
+ * This allows us to leverage the sophisticated partial update system even for Node inputs.
+ */
+export function domNodeToVNode(node: Node): VNode<VNodeAttributes> | string {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent || "";
+  }
+
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    const element = node as Element;
+    const attributes: VNodeAttributes = {};
+
+    // Convert DOM attributes to VNode attributes
+    for (let i = 0; i < element.attributes.length; i++) {
+      const attr = element.attributes[i];
+      attributes[attr.name] = attr.value;
+    }
+
+    // Convert child nodes recursively
+    const children: (VNode<VNodeAttributes> | string)[] = [];
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const childVNode = domNodeToVNode(element.childNodes[i]);
+      children.push(childVNode);
+    }
+
+    return {
+      type: element.tagName.toLowerCase(),
+      attributes,
+      children,
+    };
+  }
+
+  // For other node types (comments, etc.), convert to empty string
+  return "";
+}
+
+/**
+ * Converts an HTML string to VNode structure for use with updateDomWithVdom.
+ * This allows markup strings to benefit from the intelligent partial update system.
+ */
+export function htmlStringToVNodes(
+  html: string,
+  Parser: typeof DOMParser,
+): (VNode<VNodeAttributes> | string)[] {
+  const parser = new Parser();
+  const doc = parser.parseFromString(html, "text/html");
+  const vNodes: (VNode<VNodeAttributes> | string)[] = [];
+
+  // Convert each child node in the body to a VNode
+  for (let i = 0; i < doc.body.childNodes.length; i++) {
+    const vnode = domNodeToVNode(doc.body.childNodes[i]);
+    if (vnode !== "") {
+      vNodes.push(vnode);
+    }
+  }
+
+  return vNodes;
+}
