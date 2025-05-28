@@ -12,12 +12,12 @@
   "dependencies": {
     "@monaco-editor/loader": "^1.5.0",
     "browserslist": "^4.24.3",
-    "defuss": "workspace:*",
-    "defuss-dson": "workspace:*",
-    "defuss-ui": "workspace:*",
-    "defuss-vite": "workspace:*",
+    "defuss": "^2.0.5",
+    "defuss-dson": "^1.0.1",
+    "defuss-ui": "^0.0.2",
+    "defuss-vite": "^1.1.1",
     "lightningcss": "^1.30.0",
-    "squeezy": "workspace:*",
+    "defuss-squeezy": "^0.0.2",
     "vite": "^6.3.5"
   },
   "packageManager": "pnpm@9.13.2"

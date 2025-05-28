@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "vite": "^6.3.5",
-    "squeezy-reset": "workspace:*",
+    "defuss-squeezy-reset": "^0.0.2",
     "lightningcss": "^1.28.2",
     "browserslist": "^4.24.3"
   },

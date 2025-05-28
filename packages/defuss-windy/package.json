@@ -1,6 +1,6 @@
 {
   "name": "defuss-windy",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A tiny CSS utility classes solution, inspired by Tailwind.css.",
   "author": "Aron Homberg <info@aron-homberg.de>",
   "main": "windy.css",
@@ -22,6 +22,6 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "squeezy-reset": "workspace:*"
+    "defuss-squeezy-reset": "workspace:*"
   }
 }

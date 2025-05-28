@@ -1,6 +1,6 @@
 {
-  "name": "squeezy-reset",
-  "version": "0.0.2",
+  "name": "defuss-squeezy-reset",
+  "version": "0.0.3",
   "description": "A modern CSS reset solution.",
   "author": "Aron Homberg <info@aron-homberg.de>",
   "main": "reset.css",

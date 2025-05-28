@@ -16,7 +16,7 @@
   "scripts": {
     "build": "turbo run build --concurrency=1",
     "test": "turbo run test --concurrency=1",
-    "clean": "turbo run clean --concurrency=15"
+    "clean": "turbo run clean --concurrency=20"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
