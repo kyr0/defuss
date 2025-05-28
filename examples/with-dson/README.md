@@ -21,10 +21,10 @@ With this template, you can jumpstart your next `Vite` + `defuss` + `defuss-dson
 
 > 👩‍💻 **Seasoned developer?** Delete this file. Have fun!
 
-![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-vite-ts/public/preview.png)
+![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-dson/public/preview.png)
 
 ### ✨ It's amazing!
-![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-vite-ts/public/build_result.png)
+![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-dson/public/build_result.png)
 
 ## 🛠️ Setup
 
