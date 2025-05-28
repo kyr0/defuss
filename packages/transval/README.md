@@ -411,21 +411,45 @@ Message Formatting
 
 </h3>
 
-You can customize error message formatting using the `useFormatter` method:
+You can customize error message formatting by passing a formatter function to `getMessages()`. The formatter can return JSX elements for rich UI rendering:
 
 ```typescript
-const rule1 = rule("email")
-  .isString()
-  .isEmail()
-  .useFormatter((messages, defaultFormat) => {
-    return `Email validation failed: ${defaultFormat(messages)}`;
-  });
+import React from 'react';
 
-const { isValid, getMessages } = transval(rule1);
+const emailRule = rule("email").isString().isEmail();
+const { isValid, getMessages } = transval(emailRule);
 
 if (!await isValid({ email: "invalid-email" })) {
-  console.log(getMessages()); // Custom formatted messages
+  // Get messages with custom JSX formatter
+  const formattedMessages = getMessages(undefined, (messages) => {
+    return (
+      <div className="error-container">
+        <h4>Email Validation Failed</h4>
+        <ul>
+          {messages.map((msg, index) => (
+            <li key={index} className="error-item">
+              <span className="error-icon">⚠️</span>
+              {msg}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  });
+  
+  console.log(formattedMessages); // JSX element
 }
+
+// Or for specific field formatting
+const fieldErrors = getMessages("email", (messages) => {
+  return (
+    <div className="field-error">
+      {messages.map((msg, index) => (
+        <p key={index} className="error-text">{msg}</p>
+      ))}
+    </div>
+  );
+});
 ```
 
 <h3 align="center">
@@ -498,11 +522,10 @@ Complete API Reference
 - `getMessages()` - Get validation error messages for this rule
 - `getData()` - Get the entire transformed form data object
 - `getValue(path)` - Get a specific value from the transformed data (supports both string paths and PathAccessor objects)
-- `useFormatter(messageFn)` - Customize error message formatting
 
 ### Validation Object Methods (from `transval()`)
 - `isValid(formData, callback?)` - Execute all rules and return combined result
-- `getMessages(path?, formatter?)` - Get validation messages (all or for specific field, supports both string paths and PathAccessor objects)
+- `getMessages(path?, formatter?)` - Get validation messages with optional custom formatter that can return JSX (all messages or for specific field, supports both string paths and PathAccessor objects)
 
 ## 🧞 Commands
 

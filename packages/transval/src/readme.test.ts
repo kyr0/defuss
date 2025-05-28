@@ -484,26 +484,41 @@ describe("README Examples", () => {
   });
 
   describe("Message Formatting", () => {
-    it("should work with custom message formatting", async () => {
+    it("should work with custom message formatting using getMessages formatter", async () => {
       const formData = {
         email: "invalid-email",
       };
 
-      const rule1 = rule("email")
-        .isString()
-        .isEmail()
-        .useFormatter((messages, defaultFormat) => {
-          return `Email validation failed: ${defaultFormat(messages)}`;
-        });
-
-      const { isValid, getMessages } = transval(rule1);
+      const emailRule = rule("email").isString().isEmail();
+      const { isValid, getMessages } = transval(emailRule);
 
       const valid = await isValid(formData);
       expect(valid).toBe(false);
 
-      const messages = getMessages();
-      expect(messages.length).toBeGreaterThan(0);
-      // Note: The actual formatting might depend on the internal implementation
+      // Get messages with custom formatter (simulating JSX return)
+      const formattedMessages = getMessages(undefined, (messages) => {
+        return {
+          type: "error-container",
+          content: `Email validation failed: ${messages.join(", ")}`,
+          items: messages.map((msg, index) => ({
+            key: index,
+            message: msg,
+            icon: "⚠️",
+          })),
+        };
+      });
+
+      expect(formattedMessages).toBeDefined();
+      expect(formattedMessages.type).toBe("error-container");
+      expect(formattedMessages.items.length).toBeGreaterThan(0);
+
+      // Test field-specific formatting
+      const fieldErrors = getMessages("email", (messages) => {
+        return messages.map((msg) => `Field error: ${msg}`);
+      });
+
+      expect(fieldErrors.length).toBeGreaterThan(0);
+      expect(fieldErrors[0]).toContain("Field error:");
     });
   });
 
