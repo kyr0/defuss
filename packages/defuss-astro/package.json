@@ -16,8 +16,7 @@
     "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
     "prebuild": "pnpm run clean",
     "build": "pkgroll",
-    "postbuild": "tsx ./scripts/finalize-build.ts",
-    "release": "pnpm publish --no-git-checks --access public"
+    "postbuild": "tsx ./scripts/finalize-build.ts"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

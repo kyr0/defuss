@@ -5,9 +5,6 @@
   "author": "Aron Homberg <info@aron-homberg.de>",
   "main": "squeezy.css",
   "style": "squeezy.css",
-  "scripts": {
-    "release": "pnpm publish --no-git-checks --access public"
-  },
   "keywords": [
     "css",
     "utility",

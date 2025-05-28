@@ -11,8 +11,7 @@
     "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
     "pretest": "pnpm run build",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll --sourcemap",
-    "release": "pnpm publish --no-git-checks --access public"
+    "build": "pkgroll --sourcemap"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

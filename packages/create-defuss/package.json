@@ -7,12 +7,7 @@
   },
   "license": "MIT",
   "description": "Checks out git projects from sub-directories. Originally for jump-starting defuss projects from templates.",
-  "keywords": [
-    "git",
-    "sparse-checkout",
-    "template",
-    "typescript"
-  ],
+  "keywords": ["git", "sparse-checkout", "template", "typescript"],
   "repository": {
     "type": "git",
     "url": "https://github.com/kyr0/defuss.git"
@@ -21,8 +16,7 @@
     "clean": "rm -rf ./dist",
     "pretest": "pnpm run build",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll --minify --sourcemap",
-    "release": "pnpm publish --no-git-checks --access public"
+    "build": "pkgroll --minify --sourcemap"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -39,10 +33,7 @@
   "main": "./dist/cli.cjs",
   "module": "./dist/cli.mjs",
   "types": "./dist/cli.d.ts",
-  "files": [
-    "dist",
-    "assets"
-  ],
+  "files": ["dist", "assets"],
   "devDependencies": {
     "pkgroll": "^2.5.1",
     "typescript": "^5.6.3"

@@ -18,8 +18,7 @@
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll",
-    "release": "pnpm publish --no-git-checks --access public"
+    "build": "pkgroll"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
