@@ -15,7 +15,7 @@ describe("Negation functionality", () => {
       const validator = rule("value").not.isString();
 
       expect(await validator.isValid(formData)).toBe(false);
-      expect(validator.getMessages()).toContain(
+      expect(validator.getMessages().map((m) => m.message)).toContain(
         "Validation was expected to fail but passed",
       );
     });
@@ -236,7 +236,7 @@ describe("Negation functionality", () => {
       const validator = customRule2("value").not.asyncValidator();
 
       expect(await validator.isValid(formData)).toBe(false);
-      expect(validator.getMessages()).toContain(
+      expect(validator.getMessages().map((m) => m.message)).toContain(
         "Validation was expected to fail but passed",
       );
     });
@@ -359,7 +359,9 @@ describe("Negation functionality", () => {
       expect(await validator.isValid(formData)).toBe(true);
       // When negated, original validation failed (has custom message), but negation makes it pass
       // However, the original messages are preserved in the result
-      expect(validator.getMessages()).toContain("Custom async error message");
+      expect(validator.getMessages().map((m) => m.message)).toContain(
+        "Custom async error message",
+      );
     });
   });
 });

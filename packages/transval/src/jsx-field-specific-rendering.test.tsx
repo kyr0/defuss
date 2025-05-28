@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect } from "vitest";
 import { rule, Rules, transval } from "./api.js";
+import type { FieldValidationMessage } from "./types.js";
 
 describe("JSX error rendering - Field-specific scenarios", () => {
   it("should format field-specific errors with path parameter", async () => {
@@ -34,16 +35,19 @@ describe("JSX error rendering - Field-specific scenarios", () => {
 
     // Test formatting specific field errors
     expect(
-      validator.getMessages("user.email", (messages: string[]) => (
-        <div className="field-error" data-field="email">
-          <span className="field-label">Email:</span>
-          {messages.map((msg: string) => (
-            <span key={msg} className="error-text">
-              {` ${msg}`}
-            </span>
-          ))}
-        </div>
-      )),
+      validator.getMessages(
+        "user.email",
+        (messages: FieldValidationMessage[]) => (
+          <div className="field-error" data-field="email">
+            <span className="field-label">Email:</span>
+            {messages.map((msg: FieldValidationMessage) => (
+              <span key={msg.message} className="error-text">
+                {` ${msg.message}`}
+              </span>
+            ))}
+          </div>
+        ),
+      ),
     ).toEqual(
       <div className="field-error" data-field="email">
         <span className="field-label">Email:</span>
@@ -55,12 +59,15 @@ describe("JSX error rendering - Field-specific scenarios", () => {
 
     // Test that we can format different fields differently
     expect(
-      validator.getMessages("user.name", (messages: string[]) => (
-        <div className="field-error" data-field="name">
-          <span className="field-label">Name:</span>
-          <strong className="required-error">{messages[0]}</strong>
-        </div>
-      )),
+      validator.getMessages(
+        "user.name",
+        (messages: FieldValidationMessage[]) => (
+          <div className="field-error" data-field="name">
+            <span className="field-label">Name:</span>
+            <strong className="required-error">{messages[0]?.message}</strong>
+          </div>
+        ),
+      ),
     ).toEqual(
       <div className="field-error" data-field="name">
         <span className="field-label">Name:</span>

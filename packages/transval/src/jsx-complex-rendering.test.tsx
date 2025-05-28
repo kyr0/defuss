@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect } from "vitest";
 import { rule, Rules, transval } from "./api.js";
+import type { FieldValidationMessage } from "./types.js";
 
 describe("JSX error rendering - Complex nested scenarios", () => {
   it("should handle complex nested validation with conditional JSX", async () => {
@@ -39,12 +40,14 @@ describe("JSX error rendering - Complex nested scenarios", () => {
 
     // Test complex conditional JSX formatting
     expect(
-      validator.getMessages(undefined, (messages: string[]) => {
+      validator.getMessages(undefined, (messages: FieldValidationMessage[]) => {
         const profileErrors = messages.filter((msg) =>
-          msg.includes("name is required"),
+          msg.message.includes("name is required"),
         );
         const contactErrors = messages.filter(
-          (msg) => msg.includes("Email") || msg.includes("Valid email"),
+          (msg) =>
+            msg.message.includes("Email") ||
+            msg.message.includes("Valid email"),
         );
 
         return (
@@ -53,8 +56,8 @@ describe("JSX error rendering - Complex nested scenarios", () => {
               <div className="profile-errors">
                 <h5>Profile Issues:</h5>
                 {profileErrors.map((error) => (
-                  <p key={error} className="profile-error">
-                    {error}
+                  <p key={error.message} className="profile-error">
+                    {error.message}
                   </p>
                 ))}
               </div>
@@ -63,8 +66,8 @@ describe("JSX error rendering - Complex nested scenarios", () => {
               <div className="contact-errors">
                 <h5>Contact Issues:</h5>
                 {contactErrors.map((error) => (
-                  <p key={error} className="contact-error">
-                    {error}
+                  <p key={error.message} className="contact-error">
+                    {error.message}
                   </p>
                 ))}
               </div>

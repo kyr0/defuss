@@ -4,6 +4,11 @@ import type { Call } from "./api.js";
 // Utility type for cleaner return types
 type ValidationChain<ET = {}> = ValidationChainApi<ET> & ET;
 
+export interface FieldValidationMessage<T = string> {
+  message: T;
+  path: string;
+}
+
 export interface ValidationChainApi<ET = {}> {
   fieldPath: string | PathAccessor<any>;
   validationCalls: Call[];
@@ -79,14 +84,14 @@ export interface ValidationChainApi<ET = {}> {
   // Message formatter
   useFormatter(
     messageFn: (
-      messages: string[],
-      format: (msgs: string[]) => string,
+      messages: FieldValidationMessage[],
+      format: (msgs: FieldValidationMessage[]) => string,
     ) => string,
   ): ValidationChain<ET>;
 
   // Validation execution
   isValid<T = unknown>(formData: T): Promise<boolean>;
-  getMessages(): string[];
+  getMessages(): FieldValidationMessage[];
 
   // Data access methods
   getData(): any;
@@ -103,6 +108,6 @@ export interface ValidationChainOptions {
 
 export interface AllValidationResult {
   isValid: boolean;
-  messages: string[];
+  messages: FieldValidationMessage[];
   error?: Error;
 }

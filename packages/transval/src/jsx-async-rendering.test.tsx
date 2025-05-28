@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect } from "vitest";
 import { rule, Rules, transval } from "./api.js";
+import type { FieldValidationMessage } from "./types.js";
 
 describe("JSX error rendering - Async scenarios", () => {
   it("should format async validation errors as JSX", async () => {
@@ -34,12 +35,12 @@ describe("JSX error rendering - Async scenarios", () => {
 
     // Test async errors formatted as JSX alerts
     expect(
-      validator.getMessages(undefined, (messages: string[]) => (
+      validator.getMessages(undefined, (messages: FieldValidationMessage[]) => (
         <div className="alert alert-danger">
           <strong>Email Validation Failed:</strong>
-          {messages.map((msg: string) => (
-            <div key={msg} className="alert-item">
-              {`• ${msg}`}
+          {messages.map((msg: FieldValidationMessage) => (
+            <div key={msg.message} className="alert-item">
+              {`• ${msg.message}`}
             </div>
           ))}
         </div>

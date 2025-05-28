@@ -78,9 +78,10 @@ if (await isValid(formData)) {
     age: transformedAge
   });
 } else {
-  // Get all validation messages
+  // Get all validation messages (returns FieldValidationMessage[])
   const validationMessages = getMessages();
   console.log('Validation errors:', validationMessages);
+  // Example output: [{ message: "Invalid email", path: "person.email" }]
   
   // Or get messages for specific fields
   const emailErrors = getMessages("person.email");
@@ -351,12 +352,14 @@ Message Formatting
 You can customize error message formatting by passing a formatter function to `getMessages()`. The formatter can return JSX elements for rich UI rendering:
 
 ```typescript
+import { FieldValidationMessage } from 'defuss-transval';
+
 const emailRule = rule("email").isString().isEmail();
 const { isValid, getMessages } = transval(emailRule);
 
 if (!await isValid({ email: "invalid-email" })) {
   // Get messages with custom JSX formatter
-  const formattedMessages = getMessages(undefined, (messages) => {
+  const formattedMessages = getMessages(undefined, (messages: FieldValidationMessage[]) => {
     return (
       <div className="error-container">
         <h4>Email Validation Failed</h4>
@@ -364,7 +367,7 @@ if (!await isValid({ email: "invalid-email" })) {
           {messages.map((msg, index) => (
             <li key={index} className="error-item">
               <span className="error-icon">⚠️</span>
-              {msg}
+              {msg.message}
             </li>
           ))}
         </ul>
@@ -376,15 +379,33 @@ if (!await isValid({ email: "invalid-email" })) {
 }
 
 // Or for specific field formatting
-const fieldErrors = getMessages("email", (messages) => {
+const fieldErrors = getMessages("email", (messages: FieldValidationMessage[]) => {
   return (
     <div className="field-error">
       {messages.map((msg, index) => (
-        <p key={index} className="error-text">{msg}</p>
+        <p key={index} className="error-text">{msg.message}</p>
       ))}
     </div>
   );
 });
+```
+
+### Custom Message Formatting with `useFormatter()`
+
+You can also apply custom formatting at the rule level using `useFormatter()`:
+
+```typescript
+const emailRule = rule("email")
+  .isString()
+  .isEmail()
+  .useFormatter((messages, format) => `❌ Email Error: ${format(messages)}`);
+
+const { isValid } = transval(emailRule);
+
+if (!await isValid({ email: "invalid" })) {
+  const messages = emailRule.getMessages();
+  console.log(messages[0].message); // "❌ Email Error: Invalid email format"
+}
 ```
 
 <h3 align="center">
@@ -508,15 +529,26 @@ Complete API Reference
 
 ### Validation Object Methods (from `transval()`)
 - `isValid(formData, callback?)` - Execute all rules and return combined result
-- `getMessages(path?, formatter?)` - Get validation messages with optional custom formatter that can return JSX (all messages or for specific field, supports both string paths and PathAccessor objects)
+- `getMessages(path?, formatter?)` - Get validation messages as `FieldValidationMessage[]` with optional custom formatter that can return JSX (all messages or for specific field, supports both string paths and PathAccessor objects)
 - `getData()` - Get the transformed data after validation (returns the merged transformed data from all validation chains)
 - `getField(path)` - Get a specific field value from the transformed data (supports both string paths and PathAccessor objects)
 
 ### Rule Chain Methods
 - `isValid(formData, callback?)` - Execute validation and return boolean result
-- `getMessages()` - Get validation error messages for this rule
+- `getMessages()` - Get validation error messages for this rule as `FieldValidationMessage[]`
 - `getData()` - Get the entire transformed form data object
 - `getField(path)` - Get a specific value from the transformed data (supports both string paths and PathAccessor objects)
+
+### Message Format
+
+All validation messages are returned as `FieldValidationMessage[]` objects with the following structure:
+
+```typescript
+interface FieldValidationMessage {
+  message: string;  // The validation error message
+  path: string;     // The field path where the error occurred
+}
+```
 
 <h3 align="center">
 

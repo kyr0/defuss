@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, it, expect } from "vitest";
 import { rule, Rules, transval } from "./api.js";
+import type { FieldValidationMessage } from "./types.js";
+import type { RenderInput } from "defuss/jsx-runtime";
 
 describe("JSX error rendering - Multi-error scenarios", () => {
   it("should format multiple errors per field as JSX", async () => {
@@ -31,13 +33,13 @@ describe("JSX error rendering - Multi-error scenarios", () => {
 
     // Test formatting multiple errors as nested JSX
     expect(
-      validator.getMessages(undefined, (messages: string[]) => (
+      validator.getMessages(undefined, (messages: FieldValidationMessage[]) => (
         <div className="validation-errors">
           <h4>Password Requirements:</h4>
           <ul>
-            {messages.map((msg: string) => (
-              <li key={msg} className="error">
-                {msg}
+            {messages.map((msg: FieldValidationMessage) => (
+              <li key={msg.message} className="error">
+                {msg.message}
               </li>
             ))}
           </ul>
@@ -76,14 +78,21 @@ describe("JSX error rendering - Multi-error scenarios", () => {
 
     // Test formatting when no errors exist
     expect(
-      validator.getMessages(undefined, (messages: string[]) => {
-        if (messages.length === 0) {
+      validator.getMessages<RenderInput>(
+        undefined,
+        (messages: FieldValidationMessage[]) => {
+          if (messages.length === 0) {
+            return (
+              <div className="success-message">✅ All validations passed!</div>
+            );
+          }
           return (
-            <div className="success-message">✅ All validations passed!</div>
+            <div className="error-list">
+              {messages.map((msg) => msg.message).join(", ")}
+            </div>
           );
-        }
-        return <div className="error-list">{messages.join(", ")}</div>;
-      }),
+        },
+      ),
     ).toEqual(
       <div className="success-message">✅ All validations passed!</div>,
     );

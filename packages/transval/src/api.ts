@@ -2,6 +2,7 @@ import type {
   AllValidationResult,
   ValidationChainApi,
   ValidationChainOptions,
+  FieldValidationMessage,
 } from "./types.js";
 import type { ValidatorFn, PathAccessor } from "defuss-runtime";
 import { getByPath, setByPath, isPathAccessor } from "defuss-runtime";
@@ -17,7 +18,8 @@ export class Call<VT = boolean> {
   ) {}
 }
 
-const defaultFormatter = (msgs: string[]) => msgs.join(", ");
+const defaultFormatter = (msgs: FieldValidationMessage[]) =>
+  msgs.map((msg) => msg.message).join(", ");
 
 // @ts-ignore: Allow dynamic typing for validation calls without adding all methods to the class
 export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
@@ -27,8 +29,8 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
   transformedData: any;
   options: ValidationChainOptions;
   messageFormatter?: (
-    messages: string[],
-    format: (msgs: string[]) => string,
+    messages: FieldValidationMessage[],
+    format: (msgs: FieldValidationMessage[]) => string,
   ) => string;
   _state = { isNegated: false, hasValidators: false };
 
@@ -167,10 +169,21 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     const state = this._state;
     const finalIsValid = state.isNegated ? !isValid : isValid;
 
-    let finalMessages =
+    const fieldPath = this.fieldPath;
+    const pathString = isPathAccessor(fieldPath)
+      ? String(fieldPath)
+      : fieldPath;
+
+    let finalMessages: FieldValidationMessage[] =
       state.isNegated && isValid
-        ? [...errors, "Validation was expected to fail but passed"]
-        : errors;
+        ? [
+            ...errors.map((msg) => ({ message: msg, path: pathString })),
+            {
+              message: "Validation was expected to fail but passed",
+              path: pathString,
+            },
+          ]
+        : errors.map((msg) => ({ message: msg, path: pathString }));
 
     // Apply custom formatter if available
     if (this.messageFormatter && finalMessages.length > 0) {
@@ -178,7 +191,7 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
         finalMessages,
         defaultFormatter,
       );
-      finalMessages = [formattedMessage];
+      finalMessages = [{ message: formattedMessage, path: pathString }];
     }
 
     // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
@@ -190,12 +203,19 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
 
   private _buildErrorResult(error: Error): AllValidationResult {
     const state = this._state;
+    const fieldPath = this.fieldPath;
+    const pathString = isPathAccessor(fieldPath)
+      ? String(fieldPath)
+      : fieldPath;
+
     this.options.onValidationError?.(error, { fn: () => false, args: [] });
 
     // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
     return (this.lastValidationResult = {
       isValid: state.isNegated,
-      messages: state.isNegated ? [] : [`Validation error: ${error.message}`],
+      messages: state.isNegated
+        ? []
+        : [{ message: `Validation error: ${error.message}`, path: pathString }],
       error,
     });
   }
@@ -230,15 +250,15 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
 
   useFormatter(
     messageFn?: (
-      messages: string[],
-      format: (msgs: string[]) => string,
+      messages: FieldValidationMessage[],
+      format: (msgs: FieldValidationMessage[]) => string,
     ) => string,
   ): ValidationChainApi<ET> & ET {
     if (messageFn) this.messageFormatter = messageFn;
     return this as unknown as ValidationChainApi<ET> & ET;
   }
 
-  getMessages(): string[] {
+  getMessages(): FieldValidationMessage[] {
     return this.lastValidationResult.messages;
   }
 
@@ -315,9 +335,9 @@ export function transval(...args: (Rules | Rules[])[]): {
     formData: T,
     callback?: (isValid: boolean, error?: Error) => void,
   ) => Promise<boolean>;
-  getMessages: <T = string[]>(
+  getMessages: <T = FieldValidationMessage[]>(
     path?: string | PathAccessor<any>,
-    customFormatterFn?: (messages: string[]) => T,
+    customFormatterFn?: (messages: FieldValidationMessage[]) => T,
   ) => T;
   getData: () => any;
   getField: (path: string | PathAccessor<any>) => any;
@@ -352,11 +372,11 @@ export function transval(...args: (Rules | Rules[])[]): {
       }
     },
 
-    getMessages: <T = string[]>(
+    getMessages: <T = FieldValidationMessage[]>(
       path?: string | PathAccessor<any>,
-      customFormatterFn?: (messages: string[]) => T,
+      customFormatterFn?: (messages: FieldValidationMessage[]) => T,
     ): T => {
-      let messages: string[];
+      let messages: FieldValidationMessage[];
 
       if (path === undefined || path === null) {
         // Get all messages from all chains

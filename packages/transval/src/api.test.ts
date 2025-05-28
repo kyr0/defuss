@@ -235,9 +235,10 @@ describe("Chain API", () => {
     // With useFormatter, the formatted message should replace the original
     const messages = validator.getMessages();
     expect(messages).toHaveLength(1);
-    expect(messages[0]).toBe(
+    expect(messages[0].message).toBe(
       'Validation failed: Expected "expected" but got "actual"',
     );
+    expect(messages[0].path).toBe("field");
   });
 
   it("should handle multiple validation failures with message collection", async () => {
@@ -271,8 +272,10 @@ describe("Chain API", () => {
 
     const messages = validator.getMessages();
     expect(messages).toHaveLength(2);
-    expect(messages).toContain('Must contain "required"');
-    expect(messages).toContain('Must not contain "forbidden"');
+    expect(messages.map((m) => m.message)).toContain('Must contain "required"');
+    expect(messages.map((m) => m.message)).toContain(
+      'Must not contain "forbidden"',
+    );
   });
 
   it("should handle callback with error parameter", async () => {
@@ -376,8 +379,8 @@ describe("Chain API", () => {
     expect(result).toBe(false);
 
     const messages = validator.getMessages();
-    expect(messages).toContain("Name is required");
-    expect(messages).toContain("Age is required");
+    expect(messages.map((m) => m.message)).toContain("Name is required");
+    expect(messages.map((m) => m.message)).toContain("Age is required");
     expect(messages).toHaveLength(2);
   });
 
@@ -453,8 +456,8 @@ describe("Chain API", () => {
     expect(result).toBe(false);
 
     const messages = validator.getMessages();
-    expect(messages).toContain("Name is required");
-    expect(messages).toContain("Age is required");
+    expect(messages.map((m) => m.message)).toContain("Name is required");
+    expect(messages.map((m) => m.message)).toContain("Age is required");
     expect(messages).toHaveLength(2);
   });
 
@@ -757,7 +760,9 @@ describe("ValidationChain getData and getValue", () => {
       expect(isValid).toBe(false);
       expect(chain.getField("age")).toBe(25); // transformed to number
       expect(typeof chain.getField("age")).toBe("number");
-      expect(chain.getMessages()).toContain("Value must be greater than 30");
+      expect(chain.getMessages().map((m) => m.message)).toContain(
+        "Value must be greater than 30",
+      );
     });
 
     it("should handle transformer errors gracefully", async () => {
@@ -896,9 +901,15 @@ describe("Error System Comprehensive Tests", () => {
 
       const messages = validator.getMessages();
       expect(messages).toHaveLength(3);
-      expect(messages).toContain("Value must be at least 3 characters");
-      expect(messages).toContain("Value must start with uppercase letter");
-      expect(messages).toContain("Value must contain at least one number");
+      expect(messages.map((m) => m.message)).toContain(
+        "Value must be at least 3 characters",
+      );
+      expect(messages.map((m) => m.message)).toContain(
+        "Value must start with uppercase letter",
+      );
+      expect(messages.map((m) => m.message)).toContain(
+        "Value must contain at least one number",
+      );
     });
 
     it("should handle multiple errors with custom formatter", async () => {
@@ -934,10 +945,10 @@ describe("Error System Comprehensive Tests", () => {
 
       const messages = validator.getMessages();
       expect(messages).toHaveLength(1);
-      expect(messages[0]).toContain("Validation failed (3 errors):");
-      expect(messages[0]).toContain("Name is required");
-      expect(messages[0]).toContain("Email is required");
-      expect(messages[0]).toContain("Age must be 18 or older");
+      expect(messages[0].message).toContain("Validation failed (3 errors):");
+      expect(messages[0].message).toContain("Name is required");
+      expect(messages[0].message).toContain("Email is required");
+      expect(messages[0].message).toContain("Age must be 18 or older");
     });
   });
 
@@ -969,19 +980,21 @@ describe("Error System Comprehensive Tests", () => {
       // Test getting all messages
       const allMessages = validator.getMessages();
       expect(allMessages).toHaveLength(3);
-      expect(allMessages).toContain("Name is required");
-      expect(allMessages).toContain("Email is required");
-      expect(allMessages).toContain("Bio is required");
+      expect(allMessages.map((m) => m.message)).toContain("Name is required");
+      expect(allMessages.map((m) => m.message)).toContain("Email is required");
+      expect(allMessages.map((m) => m.message)).toContain("Bio is required");
 
       // Test getting messages for specific paths
       const nameMessages = validator.getMessages("user.name");
-      expect(nameMessages).toEqual(["Name is required"]);
+      expect(nameMessages.map((m) => m.message)).toEqual(["Name is required"]);
 
       const emailMessages = validator.getMessages("user.email");
-      expect(emailMessages).toEqual(["Email is required"]);
+      expect(emailMessages.map((m) => m.message)).toEqual([
+        "Email is required",
+      ]);
 
       const bioMessages = validator.getMessages("profile.bio");
-      expect(bioMessages).toEqual(["Bio is required"]);
+      expect(bioMessages.map((m) => m.message)).toEqual(["Bio is required"]);
 
       // Test getting messages for non-existent path
       const nonExistentMessages = validator.getMessages("nonexistent.field");
@@ -1035,14 +1048,22 @@ describe("Error System Comprehensive Tests", () => {
       // Password should have 2 errors (minLength + pattern)
       const passwordMessages = validator.getMessages("password");
       expect(passwordMessages).toHaveLength(2);
-      expect(passwordMessages).toContain("Field must be at least 8 characters");
-      expect(passwordMessages).toContain("Must contain uppercase");
+      expect(passwordMessages.map((m) => m.message)).toContain(
+        "Field must be at least 8 characters",
+      );
+      expect(passwordMessages.map((m) => m.message)).toContain(
+        "Must contain uppercase",
+      );
 
       // Username should have 2 errors (required + minLength)
       const usernameMessages = validator.getMessages("username");
       expect(usernameMessages).toHaveLength(2);
-      expect(usernameMessages).toContain("Field is required");
-      expect(usernameMessages).toContain("Field must be at least 3 characters");
+      expect(usernameMessages.map((m) => m.message)).toContain(
+        "Field is required",
+      );
+      expect(usernameMessages.map((m) => m.message)).toContain(
+        "Field must be at least 3 characters",
+      );
     });
   });
 
@@ -1067,7 +1088,7 @@ describe("Error System Comprehensive Tests", () => {
 
       // Test custom formatter that wraps each message
       const wrappedMessages = validator.getMessages(undefined, (messages) =>
-        messages.map((msg) => `⚠️ ${msg}`),
+        messages.map((msg) => `⚠️ ${msg.message}`),
       );
 
       expect(wrappedMessages).toEqual(["⚠️ Error 1", "⚠️ Error 2"]);
@@ -1075,7 +1096,8 @@ describe("Error System Comprehensive Tests", () => {
       // Test custom formatter that creates a summary
       const summaryMessage = validator.getMessages(
         undefined,
-        (messages) => `Found ${messages.length} errors: ${messages.join(", ")}`,
+        (messages) =>
+          `Found ${messages.length} errors: ${messages.map((m) => m.message).join(", ")}`,
       );
 
       expect(summaryMessage).toBe("Found 2 errors: Error 1, Error 2");
@@ -1107,7 +1129,8 @@ describe("Error System Comprehensive Tests", () => {
       // Test custom formatter on specific field
       const field1Formatted = validator.getMessages(
         "field1",
-        (messages) => `Field1 errors: [${messages.join(" | ")}]`,
+        (messages) =>
+          `Field1 errors: [${messages.map((m) => m.message).join(" | ")}]`,
       );
 
       expect(field1Formatted).toBe(
@@ -1116,7 +1139,10 @@ describe("Error System Comprehensive Tests", () => {
 
       // Test that other field is not affected
       const field2Messages = validator.getMessages("field2");
-      expect(field2Messages).toEqual(["Too short", "Must start with capital"]);
+      expect(field2Messages.map((m) => m.message)).toEqual([
+        "Too short",
+        "Must start with capital",
+      ]);
     });
 
     it("should handle empty messages with custom formatter", async () => {
@@ -1193,9 +1219,9 @@ describe("Error System Comprehensive Tests", () => {
       expect(result).toBe(false);
       const messages = validator.getMessages();
       expect(messages).toHaveLength(1);
-      expect(messages[0]).toContain("User validation failed:");
-      expect(messages[0]).toContain("Last name is required");
-      expect(messages[0]).toContain("Invalid email format");
+      expect(messages[0].message).toContain("User validation failed:");
+      expect(messages[0].message).toContain("Last name is required");
+      expect(messages[0].message).toContain("Invalid email format");
     });
 
     it("should maintain error isolation between different transval instances", async () => {
@@ -1221,8 +1247,12 @@ describe("Error System Comprehensive Tests", () => {
       await validator2.isValid({ field: "" });
 
       // Errors should be isolated
-      expect(validator1.getMessages()).toEqual(["Error from validator 1"]);
-      expect(validator2.getMessages()).toEqual(["Error from validator 2"]);
+      expect(validator1.getMessages()).toEqual([
+        { message: "Error from validator 1", path: "field" },
+      ]);
+      expect(validator2.getMessages()).toEqual([
+        { message: "Error from validator 2", path: "field" },
+      ]);
     });
   });
 });

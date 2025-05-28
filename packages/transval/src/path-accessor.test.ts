@@ -148,8 +148,8 @@ describe("PathAccessor Support", () => {
     const nameMessages = validator.getMessages(userAccess.profile.name);
     const ageMessages = validator.getMessages(userAccess.profile.age);
 
-    expect(nameMessages).toContain("Name is required");
-    expect(ageMessages).toContain("Age is required");
+    expect(nameMessages.map((m) => m.message)).toContain("Name is required");
+    expect(ageMessages.map((m) => m.message)).toContain("Age is required");
   });
 
   it("should work with transformers and PathAccessor", async () => {

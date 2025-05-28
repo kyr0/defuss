@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect } from "vitest";
 import { rule, Rules, transval } from "./api.js";
+import type { FieldValidationMessage } from "./types.js";
 
 describe("JSX error rendering - Basic scenarios", () => {
   it("should format validation errors as JSX elements", async () => {
@@ -29,9 +30,9 @@ describe("JSX error rendering - Basic scenarios", () => {
     expect(result).toBe(false);
 
     expect(
-      validator.getMessages(undefined, (messages: string[]) =>
-        messages.map((msg: string) => (
-          <div className="error-message">{msg}</div>
+      validator.getMessages(undefined, (messages: FieldValidationMessage[]) =>
+        messages.map((msg: FieldValidationMessage) => (
+          <div className="error-message">{msg.message}</div>
         )),
       ),
     ).toEqual([<div className="error-message">Name is required</div>]);
@@ -64,10 +65,10 @@ describe("JSX error rendering - Basic scenarios", () => {
     expect(result).toBe(false);
 
     expect(
-      validator.getMessages(undefined, (messages: string[]) => (
+      validator.getMessages(undefined, (messages: FieldValidationMessage[]) => (
         <ul className="error-list">
-          {messages.map((msg: string) => (
-            <li className="error-item">{msg}</li>
+          {messages.map((msg: FieldValidationMessage) => (
+            <li className="error-item">{msg.message}</li>
           ))}
         </ul>
       )),

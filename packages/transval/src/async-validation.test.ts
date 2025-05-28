@@ -26,13 +26,17 @@ describe("Async custom validators", () => {
     const validator1 = myValidate("email").asyncEmailCheck();
     let result = await validator1.isValid({ email: "taken@example.com" });
     expect(result).toBe(false);
-    expect(validator1.getMessages()).toEqual(["Email is already taken"]);
+    expect(validator1.getMessages().map((m) => m.message)).toEqual([
+      "Email is already taken",
+    ]);
 
     // Test invalid format - create fresh validator instance
     const validator2 = myValidate("email").asyncEmailCheck();
     result = await validator2.isValid({ email: "invalid-email" });
     expect(result).toBe(false);
-    expect(validator2.getMessages()).toEqual(["Invalid email format"]);
+    expect(validator2.getMessages().map((m) => m.message)).toEqual([
+      "Invalid email format",
+    ]);
 
     // Test valid email - create fresh validator instance
     const validator3 = myValidate("email").asyncEmailCheck();
@@ -84,9 +88,15 @@ describe("Async custom validators", () => {
     expect(result).toBe(false);
     const messages = validator.getMessages();
     expect(messages).toHaveLength(3);
-    expect(messages).toContain("Username 'admin' is reserved");
-    expect(messages).toContain("Email domain is blacklisted");
-    expect(messages).toContain("Phone number must be international format");
+    expect(messages.map((m) => m.message)).toContain(
+      "Username 'admin' is reserved",
+    );
+    expect(messages.map((m) => m.message)).toContain(
+      "Email domain is blacklisted",
+    );
+    expect(messages.map((m) => m.message)).toContain(
+      "Phone number must be international format",
+    );
   });
 
   it("should handle mixed sync and async validators", async () => {
@@ -130,7 +140,7 @@ describe("Async custom validators", () => {
 
     const messages = validator.getMessages();
     expect(messages).toHaveLength(1); // syncFormat fails, asyncUnique not reached
-    expect(messages[0]).toBe("Value must be at least 5 characters");
+    expect(messages[0].message).toBe("Value must be at least 5 characters");
 
     // Test with value that passes sync but fails async
     const result2 = await validator.isValid({ field: "duplicate" });
@@ -138,6 +148,6 @@ describe("Async custom validators", () => {
 
     const messages2 = validator.getMessages();
     expect(messages2).toHaveLength(1);
-    expect(messages2[0]).toBe("Value must be unique");
+    expect(messages2[0].message).toBe("Value must be unique");
   });
 });
