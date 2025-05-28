@@ -43,49 +43,56 @@ Basic Usage
 </h3>
 
 ```typescript
-import { rule, transval } from 'defuss-transval';
+import { rule, transval, Rules, access } from 'defuss-transval';
 
-const formData = {
-  person: {
-    username: 'johndoe',
-    email: 'john@example.com',
-    age: 25
-  },
-  color: '#ff5733',
-  someValue: 42
+type LoginForm = {
+  email: string;
+  password: string;
+  rememberMe: string; // "on" | "yes" | "1" | "true"
 };
 
-// Create individual validation rules
-const usernameRule = rule("person.username").asString().isLongerThan(3);
-const emailRule = rule("person.email").asString().isEmail();
-const ageRule = rule("person.age").asNumber().not.isLessThan(14);
+const form = access<LoginForm>();
 
-// Configure validation with multiple rules
-const { isValid, getMessages } = transval(usernameRule, emailRule, ageRule);
+// Custom validator to check email availability
+class LoginValidators extends Rules {
+  async isEmailAvailable() {
+    return (async (email: string) => {
+      const response = await fetch(`/api/check-email?email=${email}`);
+      const { available } = await response.json();
+      return available || "Email is already registered";
+    }) as unknown as Rules & this;
+  }
+}
 
-// Execute validation
+// Extend rule with custom validators
+const loginRule = rule.extend(LoginValidators);
+
+// Create validation with PathAccessor - clean and type-safe
+const { isValid, getMessages, getData } = transval(
+  loginRule(form.email).isString().isEmail().isEmailAvailable(),
+  loginRule(form.password).isString().isLongerThan(8),
+  loginRule(form.rememberMe).isString().asBoolean() // Transforms "on" | "yes" | "1" | "true" to boolean true
+);
+
+// Example form data (usually read using dequery as: $(...).form())
+const formData: LoginForm = {
+  email: "user@example.com",
+  password: "mypassword123",
+  rememberMe: "true"
+};
+
+// Validate and get transformed data in just a few lines
 if (await isValid(formData)) {
-  console.log('Form data is valid!');
-  
-  // Access transformed data from individual rules
-  const transformedUsername = usernameRule.getField("person.username");
-  const transformedEmail = emailRule.getField("person.email");
-  const transformedAge = ageRule.getField("person.age");
-  
-  console.log('Transformed data:', {
-    username: transformedUsername,
-    email: transformedEmail,
-    age: transformedAge
-  });
+  const data = getData(); // Get all transformed data at once
+  console.log('Login successful!', data);
+  // cleanData.rememberMe is now boolean true, not string "true"
 } else {
-  // Get all validation messages (returns FieldValidationMessage[])
-  const validationMessages = getMessages();
-  console.log('Validation errors:', validationMessages);
-  // Example output: [{ message: "Invalid email", path: "person.email" }]
-  
-  // Or get messages for specific fields
-  const emailErrors = getMessages("person.email");
-  console.log('Email errors:', emailErrors);
+  // render validation messages (you can use a custom formatter using JSX, defuss, React, etc.)
+  for (const message of getMessages()) {
+    console.error(`Error in field ${message.path}: ${message.message}`);
+    // e.g. <FieldError key={message.path} message={message.message} />
+  }
+  // getMessages() might be: [{ message: "Email is already registered", path: "email" }]
 }
 ```
 
