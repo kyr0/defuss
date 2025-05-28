@@ -10,11 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "defuss": "^2.0.5",
+    "defuss": "^2.0.7",
     "vite": "^6.3.5",
-    "defuss-vite": "^1.1.1",
-    "defuss-ui": "^0.0.2",
-    "defuss-squeezy": "^0.0.3",
+    "defuss-vite": "^1.1.3",
+    "defuss-ui": "^0.0.4",
+    "defuss-squeezy": "^0.0.4",
     "lightningcss": "^1.30.0",
     "browserslist": "^4.24.3"
   },

@@ -8,7 +8,6 @@ import {
   isMarkup,
   removeElementEvent,
   renderMarkup,
-  updateDom,
   updateDomWithVdom,
   waitForDOM,
   processAllFormElements,
@@ -623,8 +622,7 @@ export class CallChainImpl<
 
       if (input instanceof Node) {
         // Convert DOM node to VNode and use the intelligent updateDomWithVdom
-        // This preserves existing DOM structure and event listeners better
-        // than the previous "clear and replace" approach
+        // This preserves existing DOM structure and event listeners
         const vnode = domNodeToVNode(input);
         this.nodes.forEach((el) => {
           if (el) {
@@ -662,7 +660,7 @@ export class CallChainImpl<
           });
         }
       } else if (isJSX(input)) {
-        // Use the intelligent updateDomWithVdom for JSX - this is the key improvement!
+        // Use the intelligent updateDomWithVdom for JSX
         // This function performs partial updates, preserving existing DOM elements
         // and only updating what has actually changed
         this.nodes.forEach((el) => {

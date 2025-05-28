@@ -10,11 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "defuss": "^2.0.5",
+    "defuss": "^2.0.7",
     "@astrojs/node": "^8.3.4",
     "vite": "^6.3.5",
-    "defuss-vite": "^1.1.1",
-    "defuss-ui": "^0.0.2",
+    "defuss-vite": "^1.1.3",
+    "defuss-ui": "^0.0.4",
     "@ionic/core": "^8.5.3",
     "@ionic/react": "^8.5.3",
     "lightningcss": "^1.30.0",

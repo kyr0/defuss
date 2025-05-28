@@ -13,17 +13,14 @@ function setupFsLightbox(autoPlayDelayMs: number) {
 
   refreshFsLightbox();
 
-  // trigger gallery rendering
-  requestAnimationFrame(() => {
-    fsLightbox.props.autoplay = true;
-    fsLightbox.open(currentIndex);
+  fsLightbox.props.autoplay = true;
+  fsLightbox.open(currentIndex);
 
-    // closure based interval to change the photo every autoPlayDelayMs milliseconds
-    setInterval(() => {
-      currentIndex = (currentIndex + 1) % photoCount;
-      fsLightbox.open(currentIndex);
-    }, autoPlayDelayMs);
-  });
+  // closure based interval to change the photo every autoPlayDelayMs milliseconds
+  setInterval(() => {
+    currentIndex = (currentIndex + 1) % photoCount;
+    fsLightbox.open(currentIndex);
+  }, autoPlayDelayMs);
 }
 
 export function PhotoGallery({ autoPlayDelayMs = 5000 }: PhotoGalleryProps) {
@@ -37,7 +34,7 @@ export function PhotoGallery({ autoPlayDelayMs = 5000 }: PhotoGalleryProps) {
     console.log("PhotoGallery component initialized with photos:", photos);
 
     // declare photos, but hide them
-    $(photosRef).update(
+    await $(photosRef).update(
       photos.map((photo: string, index: number) => (
         <a data-fslightbox="true" href={photo}>
           <img src={photo} alt={`${index + 1}`} style={{ display: "none" }} />
@@ -45,7 +42,7 @@ export function PhotoGallery({ autoPlayDelayMs = 5000 }: PhotoGalleryProps) {
       )),
     );
 
-    requestAnimationFrame(() => setupFsLightbox(autoPlayDelayMs));
+    setupFsLightbox(autoPlayDelayMs);
   });
 
   return <div ref={photosRef}>Loading photos...</div>;

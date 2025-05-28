@@ -27,7 +27,7 @@
     "@sotaproject/strikethrough": "^1.0.1",
     "astro": "^5.7.12",
     "boxicons": "^2.1.4",
-    "defuss": "^2.0.5",
+    "defuss": "^2.0.7",
     "defuss-astro": "^1.3.3",
     "defuss-ui": "^0.0.2",
     "editorjs-alert": "^1.1.4",
