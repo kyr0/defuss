@@ -1,12 +1,28 @@
 #!/bin/bash
 
-# Release script - patches version for all packages
+# Bump script - patches version for all packages
 # This script walks through every packages/* subfolder and runs pnpm version patch
+# Usage: ./bump.sh patch|minor|major
 
 set -e  # Exit on any error
 
-echo "🚀 Starting release process for all packages..."
+echo "🚀 Starting bump process for all packages..."
 echo ""
+
+BUMP_TYPE="patch"  # Default bump type
+
+# Check if a bump type is provided
+if [ $# -gt 0 ]; then
+    case "$1" in
+        patch|minor|major)
+            BUMP_TYPE="$1"
+            ;;
+        *)
+            echo "❌ Error: Invalid bump type '$1'. Use 'patch', 'minor', or 'major'."
+            exit 1
+            ;;
+    esac
+fi
 
 # Get the absolute path to the script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
