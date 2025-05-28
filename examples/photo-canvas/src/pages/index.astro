@@ -1,13 +1,10 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { PhotoGallery } from "../components/PhotoGallery";
-import { Async } from "defuss";
 ---
 
 <Layout title="Photo Canvas">
-  <Async client:only>
-    <PhotoGallery client:only autoPlayDelayMs={7777}>
-        <div slot="fallback">Loading...</div>
-    </PhotoGallery>
-  </Async>
+  <PhotoGallery client:only autoPlayDelayMs={7777}>
+      <div slot="fallback">Loading...</div>
+  </PhotoGallery>
 </Layout>

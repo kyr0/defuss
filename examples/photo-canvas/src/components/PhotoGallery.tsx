@@ -12,25 +12,29 @@ function setupFsLightbox(autoPlayDelayMs: number) {
   let currentIndex = 0;
 
   refreshFsLightbox();
-  fsLightbox.props.autoplay = true;
-  fsLightbox.open(currentIndex);
 
-  // closure based interval to change the photo every autoPlayDelayMs milliseconds
-  setInterval(() => {
-    currentIndex = (currentIndex + 1) % photoCount;
+  // trigger gallery rendering
+  requestAnimationFrame(() => {
+    fsLightbox.props.autoplay = true;
     fsLightbox.open(currentIndex);
-  }, autoPlayDelayMs);
+
+    // closure based interval to change the photo every autoPlayDelayMs milliseconds
+    setInterval(() => {
+      currentIndex = (currentIndex + 1) % photoCount;
+      fsLightbox.open(currentIndex);
+    }, autoPlayDelayMs);
+  });
 }
 
-export async function PhotoGallery({
-  autoPlayDelayMs = 5000,
-}: PhotoGalleryProps) {
+export function PhotoGallery({ autoPlayDelayMs = 5000 }: PhotoGalleryProps) {
   const photosRef = createRef<string[]>();
 
   // load the photo descriptor JSON from public/photos.json
   $(async () => {
     const photosJson = await fetch("/photos.json");
     photos = await photosJson.json();
+
+    console.log("PhotoGallery component initialized with photos:", photos);
 
     // declare photos, but hide them
     $(photosRef).update(
@@ -41,7 +45,6 @@ export async function PhotoGallery({
       )),
     );
 
-    // trigger gallery rendering
     requestAnimationFrame(() => setupFsLightbox(autoPlayDelayMs));
   });
 

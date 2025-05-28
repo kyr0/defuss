@@ -7,12 +7,7 @@
   },
   "license": "MIT",
   "description": "Explicit simplicity for the web.",
-  "keywords": [
-    "jsx",
-    "render",
-    "ssr",
-    "isomorphic"
-  ],
+  "keywords": ["jsx", "render", "ssr", "isomorphic"],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -82,17 +77,15 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": [
-    "dist",
-    "assets"
-  ],
+  "files": ["dist", "assets"],
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@vitest/coverage-v8": "^3.1.3",
     "pkgroll": "^2.6.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^3.1.3"
+    "vitest": "^3.1.3",
+    "jsdom": "^26.1.0"
   },
   "dependencies": {
     "defuss-runtime": "workspace:*",

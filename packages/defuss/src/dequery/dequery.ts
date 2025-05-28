@@ -999,8 +999,43 @@ export class CallChainImpl<
     }) as PromiseLike<void>;
   }
 
+  ready(callback?: () => void): ET {
+    return createCall(this, "ready", async () => {
+      // Check if DOM is already ready
+      if (
+        this.document.readyState === "complete" ||
+        this.document.readyState === "interactive"
+      ) {
+        // DOM is already ready, execute callback immediately if provided
+        if (callback) {
+          callback();
+        }
+        return this.nodes as NT;
+      }
+
+      // DOM is not ready, wait for DOMContentLoaded event
+      // Capture the current context to avoid scope issues
+      const nodes = this.nodes;
+      const document = this.document;
+
+      return new Promise<NT>((resolve) => {
+        const handleDOMContentLoaded = () => {
+          document.removeEventListener(
+            "DOMContentLoaded",
+            handleDOMContentLoaded,
+          );
+          if (callback) {
+            callback();
+          }
+          resolve(nodes as NT);
+        };
+
+        document.addEventListener("DOMContentLoaded", handleDOMContentLoaded);
+      });
+    }) as unknown as ET;
+  }
+
   // TODO:
-  // - ready (isReady)
   // - deserialize (from URL string, JSON, etc.)
 }
 

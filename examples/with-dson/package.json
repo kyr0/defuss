@@ -17,7 +17,7 @@
     "defuss-ui": "^0.0.2",
     "defuss-vite": "^1.1.1",
     "lightningcss": "^1.30.0",
-    "defuss-squeezy": "^0.0.2",
+    "defuss-squeezy": "^0.0.3",
     "vite": "^6.3.5"
   },
   "packageManager": "pnpm@9.13.2"
