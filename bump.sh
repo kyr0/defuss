@@ -80,7 +80,11 @@ for package_dir in "$PACKAGES_DIR"/*; do
     echo ""
 done
 
-echo "🎉 Release process completed successfully!"
+pnpm update
+pnpm install
+echo "🔄 Updating dependencies and installing packages..."
+
+echo "🎉 Bump process completed successfully!"
 echo "📋 Summary: Processed $processed_packages packages"
 echo ""
 echo "Next steps:"
