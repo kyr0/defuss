@@ -8,6 +8,17 @@ import defuss from "defuss-vite";
 export default defineConfig({
   build: {
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // split the franken-ui styles into a separate chunk
+          "franken-ui-core": ["franken-ui/js/core.iife"],
+          "franken-ui-icons": ["franken-ui/js/icon.iife"],
+          // split the uikit styles into a separate chunk
+          uikit: ["uikit/dist/js/uikit.js", "uikit/dist/js/uikit-icons.js"],
+        },
+      },
+    },
   },
 
   // the plugin needs to be integrated so that the transpilation works

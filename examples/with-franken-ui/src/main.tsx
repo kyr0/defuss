@@ -1,8 +1,15 @@
-import "./styles.js";
+/* Theme variables */
+import "./theme/variables.css";
 import "uikit";
 import "franken-ui/js/core.iife";
 import "franken-ui/js/icon.iife";
-import { $, Route, Redirect, RouterSlot } from "defuss";
+import {
+  $,
+  Route,
+  Redirect,
+  RouterSlot,
+  type ParentElementInput,
+} from "defuss";
 import { render } from "defuss/client";
 import { LoginPage } from "./pages/LoginPage.js";
 
@@ -27,4 +34,4 @@ function App() {
 }
 
 // initial render
-render(<App />, $("body"));
+render(<App />, $("body") as ParentElementInput);
