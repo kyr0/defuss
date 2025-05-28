@@ -1261,7 +1261,7 @@ export function dequery<
   // async co-routine execution
   if (typeof selectorRefOrEl === "function") {
     const syncChain = dequery("body", options);
-    requestAnimationFrame(async () => {
+    queueMicrotask(async () => {
       const result = await selectorRefOrEl();
       if (!syncChain.isResolved) {
         if (typeof result !== "undefined") {

@@ -16,11 +16,11 @@ describe("extend() static method test with typing", () => {
       NT,
       DequeryWithFoo<NT> & Dequery<NT>
     > {
-      foo(bar: number): DequeryWithFoo<NT> & Dequery<NT> {
+      foo(bar: number): this & Dequery<NT> {
         return createCall(this, "foo", async () => {
           didCall = bar;
           return this.nodes as NT;
-        }) as unknown as DequeryWithFoo<NT> & Dequery<NT>;
+        }) as unknown as this & Dequery<NT>;
       }
     }
 

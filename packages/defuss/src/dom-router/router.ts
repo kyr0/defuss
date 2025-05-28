@@ -1,6 +1,11 @@
-export type OnHandleRouteChangeFn = (newRoute: string, oldRoute: string) => void;
+import { isServer } from "../webstorage/runtime.js";
+
+export type OnHandleRouteChangeFn = (
+  newRoute: string,
+  oldRoute: string,
+) => void;
 export type OnRouteChangeFn = (cb: OnHandleRouteChangeFn) => void;
-export type RouterStrategy = 'page-refresh' | 'slot-refresh';
+export type RouterStrategy = "page-refresh" | "slot-refresh";
 
 export interface Router {
   listeners: Array<OnHandleRouteChangeFn>;
@@ -52,7 +57,7 @@ export const tokenizePath = (path: string): TokenizedPath => {
   // Replace parameters with capturing groups and store the parameter names.
   const pattern = path.replace(paramNameRegexp, (_, paramName) => {
     groups[paramName] = groupIndex++;
-    return '([^/\.\\]+)';
+    return "([^/.\\]+)";
   });
 
   return {
@@ -64,7 +69,7 @@ export const tokenizePath = (path: string): TokenizedPath => {
 export const matchRouteRegistrations = (
   routeRegistrations: Array<RouteRegistration>,
   actualPathName: string,
-  haystackPathName?: string
+  haystackPathName?: string,
 ): RouteRequest | false => {
   for (const route of routeRegistrations) {
     // Check if path is set and route.path matches it
@@ -87,13 +92,15 @@ export const matchRouteRegistrations = (
     const params: RouteParams = {};
 
     // Extract each parameter using the stored capturing group index.
-    for (const [paramName, groupIndex] of Object.entries(route.tokenizedPath!.groups)) {
+    for (const [paramName, groupIndex] of Object.entries(
+      route.tokenizedPath!.groups,
+    )) {
       params[paramName] = match[groupIndex];
     }
 
     const request: RouteRequest = { url: actualPathName, params };
 
-    if (typeof route.handler === 'function') {
+    if (typeof route.handler === "function") {
       route.handler(request);
     }
     return request;
@@ -101,18 +108,21 @@ export const matchRouteRegistrations = (
   return false;
 };
 
-export const setupRouter = (config: RouterConfig = {
-  strategy: 'page-refresh', // default
-}, windowImpl?: Window): Router => {
+export const setupRouter = (
+  config: RouterConfig = {
+    strategy: "page-refresh", // default
+  },
+  windowImpl?: Window,
+): Router => {
   const routeRegistrations: Array<RouteRegistration> = [];
 
   // safe SSR rendering, and fine default for client side
-  if (typeof window !== 'undefined' && !windowImpl) {
+  if (typeof window !== "undefined" && !windowImpl) {
     windowImpl = globalThis.__defuss_window /** for SSR support */ || window;
   }
 
-  if (!windowImpl) {
-    console.warn('Router requires a Window API implementation!');
+  if (!windowImpl && !isServer()) {
+    console.warn("Router requires a Window API implementation!");
   }
 
   const api = {
@@ -124,30 +134,34 @@ export const setupRouter = (config: RouterConfig = {
     tokenizePath,
     add(registration: RouteRegistration): Router {
       const isAlreadyRegistered = routeRegistrations.some(
-        (registeredRoute) => registeredRoute.path === registration.path
+        (registeredRoute) => registeredRoute.path === registration.path,
       );
 
       if (!isAlreadyRegistered) {
         routeRegistrations.push({
           ...registration,
-          tokenizedPath: tokenizePath(registration.path)
+          tokenizedPath: tokenizePath(registration.path),
         });
       }
       return api as Router;
     },
     match(path?: string) {
-      return matchRouteRegistrations(routeRegistrations, windowImpl!.document.location.pathname, path);
+      return matchRouteRegistrations(
+        routeRegistrations,
+        windowImpl!.document.location.pathname,
+        path,
+      );
     },
     navigate(newPath: string) {
-      const strategy = api.strategy || 'page-refresh';
-      const oldPath = windowImpl ? windowImpl.document.location.pathname : '';
+      const strategy = api.strategy || "page-refresh";
+      const oldPath = windowImpl ? windowImpl.document.location.pathname : "";
 
-      if (strategy === 'page-refresh') {
+      if (strategy === "page-refresh") {
         document.location.href = newPath;
-      } else if (strategy === 'slot-refresh') {
+      } else if (strategy === "slot-refresh") {
         // show new path in the address bar
-        if (typeof windowImpl !== 'undefined') {
-          windowImpl!.history.pushState({}, '', newPath);
+        if (typeof windowImpl !== "undefined") {
+          windowImpl!.history.pushState({}, "", newPath);
         }
 
         for (const listener of api.listeners) {
