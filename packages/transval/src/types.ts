@@ -90,7 +90,7 @@ export interface ValidationChainApi<ET = {}> {
 
   // Data access methods
   getData(): any;
-  getValue(path: string | PathAccessor<any>): any;
+  getField(path: string | PathAccessor<any>): any;
 }
 
 export interface ValidationChainOptions {

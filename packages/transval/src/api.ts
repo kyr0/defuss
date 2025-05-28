@@ -30,7 +30,7 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     messages: string[],
     format: (msgs: string[]) => string,
   ) => string;
-  protected _state = { isNegated: false, hasValidators: false };
+  _state = { isNegated: false, hasValidators: false };
 
   constructor(
     fieldPath: string | PathAccessor<any>,
@@ -246,7 +246,7 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
     return this.transformedData;
   }
 
-  getValue(path: string | PathAccessor<any>): any {
+  getField(path: string | PathAccessor<any>): any {
     if (this.transformedData === undefined) {
       throw new Error(
         "No transformed data available. Call isValid() first to execute validation and transformers.",
@@ -319,6 +319,8 @@ export function transval(...args: (Rules | Rules[])[]): {
     path?: string | PathAccessor<any>,
     customFormatterFn?: (messages: string[]) => T,
   ) => T;
+  getData: () => any;
+  getField: (path: string | PathAccessor<any>) => any;
 } {
   const chains = Array.isArray(args[0])
     ? args[0]
@@ -376,6 +378,65 @@ export function transval(...args: (Rules | Rules[])[]): {
       }
 
       return messages as T;
+    },
+
+    getData: () => {
+      // Merge transformed data from all chains to get the complete transformed object
+      const transformedChains = chains.filter(
+        (chain) => chain.transformedData !== undefined,
+      );
+
+      if (transformedChains.length === 0) {
+        return undefined;
+      }
+
+      // Start with the first chain's transformed data as base
+      let mergedData = JSON.parse(
+        JSON.stringify(transformedChains[0].transformedData),
+      );
+
+      // Apply transformations from all other chains
+      for (let i = 1; i < transformedChains.length; i++) {
+        const chain = transformedChains[i];
+        const pathString = isPathAccessor(chain.fieldPath)
+          ? String(chain.fieldPath)
+          : chain.fieldPath;
+        const transformedValue = getByPath(chain.transformedData, pathString);
+        mergedData = setByPath(mergedData, pathString, transformedValue);
+      }
+
+      return mergedData;
+    },
+
+    getField: (path: string | PathAccessor<any>) => {
+      const pathString = isPathAccessor(path) ? String(path) : path;
+
+      // First try to find a chain that matches this exact path
+      const targetChain = chains.find((chain) => {
+        const chainPathString = isPathAccessor(chain.fieldPath)
+          ? String(chain.fieldPath)
+          : chain.fieldPath;
+        return chainPathString === pathString;
+      });
+
+      if (targetChain && targetChain.transformedData !== undefined) {
+        return getByPath(targetChain.transformedData, pathString);
+      }
+
+      // If no exact match, look in all chains' transformed data
+      for (const chain of chains) {
+        if (chain.transformedData !== undefined) {
+          try {
+            const value = getByPath(chain.transformedData, pathString);
+            if (value !== undefined) {
+              return value;
+            }
+          } catch {
+            // Continue to next chain if path doesn't exist in this data
+          }
+        }
+      }
+      return undefined;
     },
   };
 }

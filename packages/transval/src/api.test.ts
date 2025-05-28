@@ -658,7 +658,7 @@ describe("ValidationChain getData and getValue", () => {
     it("should throw error before validation is executed", () => {
       const chain = rule("name");
 
-      expect(() => chain.getValue("name")).toThrow(
+      expect(() => chain.getField("name")).toThrow(
         "No transformed data available. Call isValid() first to execute validation and transformers.",
       );
     });
@@ -669,8 +669,8 @@ describe("ValidationChain getData and getValue", () => {
 
       await chain.isValid(formData);
 
-      expect(chain.getValue("name")).toBe("John");
-      expect(chain.getValue("age")).toBe(30);
+      expect(chain.getField("name")).toBe("John");
+      expect(chain.getField("age")).toBe(30);
     });
 
     it("should return transformed value after applying transformers", async () => {
@@ -687,8 +687,8 @@ describe("ValidationChain getData and getValue", () => {
 
       await nameChain.isValid(formData);
 
-      expect(nameChain.getValue("name")).toBe("john");
-      expect(nameChain.getValue("age")).toBe("30"); // unchanged
+      expect(nameChain.getField("name")).toBe("john");
+      expect(nameChain.getField("age")).toBe("30"); // unchanged
     });
 
     it("should handle nested field paths", async () => {
@@ -705,8 +705,8 @@ describe("ValidationChain getData and getValue", () => {
 
       await chain.isValid(formData);
 
-      expect(chain.getValue("user.profile.name")).toBe("jane");
-      expect(chain.getValue("user")).toEqual({ profile: { name: "jane" } });
+      expect(chain.getField("user.profile.name")).toBe("jane");
+      expect(chain.getField("user")).toEqual({ profile: { name: "jane" } });
     });
 
     it("should work with array indices", async () => {
@@ -723,8 +723,8 @@ describe("ValidationChain getData and getValue", () => {
 
       await chain.isValid(formData);
 
-      expect(chain.getValue("items.0")).toBe("apple");
-      expect(chain.getValue("items.1")).toBe("  banana  "); // unchanged
+      expect(chain.getField("items.0")).toBe("apple");
+      expect(chain.getField("items.1")).toBe("  banana  "); // unchanged
     });
   });
 
@@ -755,8 +755,8 @@ describe("ValidationChain getData and getValue", () => {
       const isValid = await chain.isValid(formData);
 
       expect(isValid).toBe(false);
-      expect(chain.getValue("age")).toBe(25); // transformed to number
-      expect(typeof chain.getValue("age")).toBe("number");
+      expect(chain.getField("age")).toBe(25); // transformed to number
+      expect(typeof chain.getField("age")).toBe("number");
       expect(chain.getMessages()).toContain("Value must be greater than 30");
     });
 
@@ -808,11 +808,11 @@ describe("ValidationChain getData and getValue", () => {
       await nameChain.isValid(formData);
       await ageChain.isValid(formData);
 
-      expect(nameChain.getValue("name")).toBe("john");
-      expect(nameChain.getValue("age")).toBe("30"); // string in name chain
+      expect(nameChain.getField("name")).toBe("john");
+      expect(nameChain.getField("age")).toBe("30"); // string in name chain
 
-      expect(ageChain.getValue("name")).toBe("  john  "); // unchanged in age chain
-      expect(ageChain.getValue("age")).toBe(30); // number in age chain
+      expect(ageChain.getField("name")).toBe("  john  "); // unchanged in age chain
+      expect(ageChain.getField("age")).toBe(30); // number in age chain
     });
   });
 
@@ -823,8 +823,8 @@ describe("ValidationChain getData and getValue", () => {
 
       await chain.isValid(formData);
 
-      expect(chain.getValue("name")).toBeNull();
-      expect(chain.getValue("age")).toBeUndefined();
+      expect(chain.getField("name")).toBeNull();
+      expect(chain.getField("age")).toBeUndefined();
     });
 
     it("should handle empty objects and arrays", async () => {
@@ -833,8 +833,8 @@ describe("ValidationChain getData and getValue", () => {
 
       await chain.isValid(formData);
 
-      expect(chain.getValue("obj")).toEqual({});
-      expect(chain.getValue("arr")).toEqual([]);
+      expect(chain.getField("obj")).toEqual({});
+      expect(chain.getField("arr")).toEqual([]);
     });
 
     it("should deep clone original data to avoid mutations", async () => {
@@ -855,8 +855,8 @@ describe("ValidationChain getData and getValue", () => {
       formData.user.name = "Modified";
 
       // Transformed data should not be affected
-      expect(chain.getValue("user.name")).toBe("JOHN");
-      expect(chain.getValue("user.name")).not.toBe("Modified");
+      expect(chain.getField("user.name")).toBe("JOHN");
+      expect(chain.getField("user.name")).not.toBe("Modified");
     });
   });
 });

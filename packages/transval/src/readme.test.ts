@@ -32,9 +32,9 @@ describe("README Examples", () => {
       expect(valid).toBe(true);
 
       // Access transformed data from individual rules
-      const transformedUsername = usernameRule.getValue("person.username");
-      const transformedEmail = emailRule.getValue("person.email");
-      const transformedAge = ageRule.getValue("person.age");
+      const transformedUsername = usernameRule.getField("person.username");
+      const transformedEmail = emailRule.getField("person.email");
+      const transformedAge = ageRule.getField("person.age");
 
       expect(transformedUsername).toBe("johndoe");
       expect(transformedEmail).toBe("john@example.com");
@@ -112,7 +112,7 @@ describe("README Examples", () => {
       const userAccess = access<UserData>();
 
       // setup rules using PathAccessors for type-safe field paths
-      const { isValid, getMessages } = transval(
+      const { isValid, getMessages, getData } = transval(
         rule(userAccess.user.profile.name).asString().isLongerThan(2),
         rule(userAccess.user.profile.email).asString().isEmail(),
         rule(userAccess.user.profile.settings.theme)
@@ -123,6 +123,8 @@ describe("README Examples", () => {
 
       const valid = await isValid(userData);
       expect(valid).toBe(true);
+
+      expect(getData()).toEqual(userData);
 
       // Get specific rules for individual testing
       const nameRule = rule(userAccess.user.profile.name)
@@ -136,8 +138,8 @@ describe("README Examples", () => {
       await emailRule.isValid(userData);
 
       // Access transformed values using PathAccessor
-      const transformedName = nameRule.getValue(userAccess.user.profile.name);
-      const transformedEmail = emailRule.getValue(
+      const transformedName = nameRule.getField(userAccess.user.profile.name);
+      const transformedEmail = emailRule.getField(
         userAccess.user.profile.email,
       );
 
@@ -308,13 +310,13 @@ describe("README Examples", () => {
       expect(valid).toBe(true);
 
       // Access individual rule data using PathAccessors
-      expect(emailRule.getValue(userAccess.user.email)).toBe(
+      expect(emailRule.getField(userAccess.user.email)).toBe(
         "john@example.com",
       );
-      expect(usernameRule.getValue(userAccess.user.username)).toBe(
+      expect(usernameRule.getField(userAccess.user.username)).toBe(
         "johndoe123",
       );
-      expect(newsletterRule.getValue("user.preferences.newsletter")).toBe(true);
+      expect(newsletterRule.getField("user.preferences.newsletter")).toBe(true);
     });
 
     it("should fail custom validation with invalid data and get PathAccessor messages", async () => {
@@ -407,8 +409,8 @@ describe("README Examples", () => {
       expect(valid).toBe(true);
 
       // Access individual rule data
-      expect(emailRule.getValue("email")).toBe("john@example.com");
-      expect(usernameRule.getValue("username")).toBe("johndoe123");
+      expect(emailRule.getField("email")).toBe("john@example.com");
+      expect(usernameRule.getField("username")).toBe("johndoe123");
     });
   });
 
@@ -448,11 +450,11 @@ describe("README Examples", () => {
       expect(allData).toEqual(formData);
 
       // Get a specific value using PathAccessor
-      const specificAge = ageRule.getValue(personAccess.person.age);
+      const specificAge = ageRule.getField(personAccess.person.age);
       expect(specificAge).toBe(25);
 
       // Or using string path
-      const specificName = ageRule.getValue("person.name");
+      const specificName = ageRule.getField("person.name");
       expect(specificName).toBe("John Doe");
     });
 
@@ -474,11 +476,11 @@ describe("README Examples", () => {
       expect(messages).toEqual([]);
 
       // Get the transformed data for this rule
-      const transformedAge = ageRule.getValue("person.age");
+      const transformedAge = ageRule.getField("person.age");
       expect(transformedAge).toBe(25);
 
       // Get a specific value from the transformed data
-      const specificValue = ageRule.getValue("person.age");
+      const specificValue = ageRule.getField("person.age");
       expect(specificValue).toBe(25);
     });
   });
@@ -561,7 +563,7 @@ describe("README Examples", () => {
       let callbackResult: boolean | undefined;
       let callbackError: Error | undefined;
 
-      await isValid(formData, (isValidResult, error) => {
+      isValid(formData, (isValidResult, error) => {
         callbackResult = isValidResult;
         callbackError = error;
       });
@@ -699,12 +701,80 @@ describe("README Examples", () => {
       const valid = await isValid(formData);
       expect(valid).toBe(true);
 
-      expect(strRule.getValue("str")).toBe("123");
-      expect(numRule.getValue("num")).toBe(456);
-      expect(boolRule.getValue("bool")).toBe(true);
-      expect(dateRule.getValue("date")).toBeInstanceOf(Date);
-      expect(arrRule.getValue("arr")).toEqual(["1", "2", "3"]);
-      expect(intRule.getValue("int")).toBe(3);
+      expect(strRule.getField("str")).toBe("123");
+      expect(numRule.getField("num")).toBe(456);
+      expect(boolRule.getField("bool")).toBe(true);
+      expect(dateRule.getField("date")).toBeInstanceOf(Date);
+      expect(arrRule.getField("arr")).toEqual(["1", "2", "3"]);
+      expect(intRule.getField("int")).toBe(3);
+    });
+  });
+
+  describe("Data Access Methods Example", () => {
+    it("should demonstrate getData() and getField() methods from README", async () => {
+      interface FormData {
+        name: string;
+        age: string; // Input as string
+        email: string;
+        preferences: {
+          newsletter: string; // "true" or "false"
+        };
+      }
+
+      const acc = access<FormData>();
+
+      const validation = transval(
+        rule(acc.name).isString(),
+        rule(acc.age)
+          .isString()
+          .asNumber(), // Changed: First check it's a string, then transform
+        rule(acc.email).isEmail(),
+        rule(acc.preferences.newsletter)
+          .isString()
+          .asBoolean(), // Transform to boolean
+      );
+
+      const formData: FormData = {
+        name: "John Doe",
+        age: "25", // String input
+        email: "john@example.com",
+        preferences: {
+          newsletter: "true", // String input
+        },
+      };
+
+      const { isValid, getMessages, getData, getField } = validation;
+
+      const isFormValid = await isValid(formData);
+      expect(isFormValid).toBe(true);
+
+      // Get the entire transformed data object
+      const transformedData = getData();
+      expect(transformedData).toBeDefined();
+      expect(transformedData.age).toBe(25); // number, not string
+      expect(transformedData.preferences.newsletter).toBe(true); // boolean, not string
+
+      // Get specific field values using string paths
+      const userAge = getField("age");
+      expect(userAge).toBe(25); // transformed to number
+
+      const newsletter = getField("preferences.newsletter");
+      expect(newsletter).toBe(true); // transformed to boolean
+
+      // Get specific field values using PathAccessor (type-safe)
+      const userName = getField(acc.name);
+      expect(userName).toBe("John Doe"); // original string
+
+      const userEmail = getField(acc.email);
+      expect(userEmail).toBe("john@example.com");
+    });
+
+    it("should return undefined when getData() and getField() called before validation", () => {
+      const validation = transval(rule("name").isString());
+
+      // Called before validation
+      expect(validation.getData()).toBeUndefined();
+      expect(validation.getField("name")).toBeUndefined();
     });
   });
 });

@@ -42,8 +42,8 @@ describe("Negation functionality", () => {
 
       expect(await validator.isValid(formData)).toBe(true);
       // Check that transformation still happened
-      expect(validator.getValue("age")).toBe(25);
-      expect(typeof validator.getValue("age")).toBe("number");
+      expect(validator.getField("age")).toBe(25);
+      expect(typeof validator.getField("age")).toBe("number");
     });
 
     it("should transform string and negate isEmpty check", async () => {
@@ -52,7 +52,7 @@ describe("Negation functionality", () => {
 
       expect(await validator.isValid(formData)).toBe(true);
       // Transformation should still work
-      expect(validator.getValue("name")).toBe("  john  ");
+      expect(validator.getField("name")).toBe("  john  ");
     });
   });
 
@@ -99,7 +99,7 @@ describe("Negation functionality", () => {
 
       expect(await validator.isValid(formData)).toBe(true);
       // Check transformation worked
-      expect(validator.getValue("value")).toBe("custom_test");
+      expect(validator.getField("value")).toBe("custom_test");
     });
   });
 
@@ -119,7 +119,7 @@ describe("Negation functionality", () => {
 
       expect(await validator.isValid(formData)).toBe(true);
       // Check final transformation
-      expect(validator.getValue("value")).toBe("123");
+      expect(validator.getField("value")).toBe("123");
     });
   });
 
@@ -173,7 +173,7 @@ describe("Negation functionality", () => {
       const validator = rule("count").asNumber().not.isGreaterThan(10);
 
       expect(await validator.isValid(formData)).toBe(true);
-      expect(validator.getValue("count")).toBe(5); // Transformed to number
+      expect(validator.getField("count")).toBe(5); // Transformed to number
     });
 
     it("should work with required field negation", async () => {
@@ -256,7 +256,7 @@ describe("Negation functionality", () => {
 
       expect(await validator.isValid(formData)).toBe(true);
       // Check that async transformation worked
-      expect(validator.getValue("value")).toBe("prefix_test");
+      expect(validator.getField("value")).toBe("prefix_test");
     });
 
     it("should negate async validator with parameters", async () => {
@@ -283,7 +283,7 @@ describe("Negation functionality", () => {
 
       expect(await validator.isValid(formData)).toBe(true);
       // Check final transformation
-      expect(validator.getValue("value")).toBe("second_first_test");
+      expect(validator.getField("value")).toBe("second_first_test");
     });
 
     it("should handle async validator timeout with negation", async () => {

@@ -105,8 +105,8 @@ describe("PathAccessor Support", () => {
 
     await validator.isValid(formData);
 
-    expect(validator.getValue(userAccess.profile.name)).toBe("John");
-    expect(validator.getValue(userAccess.profile.age)).toBe(25);
+    expect(validator.getField(userAccess.profile.name)).toBe("John");
+    expect(validator.getField(userAccess.profile.age)).toBe(25);
   });
 
   it("should work with PathAccessor in transval getMessages()", async () => {
@@ -182,7 +182,7 @@ describe("PathAccessor Support", () => {
     expect(result).toBe(true);
 
     // Check that the transformed value is available
-    expect(validator.getValue(namePath)).toBe("John");
+    expect(validator.getField(namePath)).toBe("John");
   });
 
   it("should handle mixed string and PathAccessor usage", async () => {
