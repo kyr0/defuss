@@ -17,6 +17,7 @@
     "defuss": "workspace:*",
     "defuss-ui": "workspace:*",
     "defuss-vite": "workspace:*",
+    "defuss-transval": "workspace:*",
     "franken-ui": "2.1.0-next.4",
     "tailwindcss": "^4.1.4",
     "tailwindcss-animate": "^1.0.7",
