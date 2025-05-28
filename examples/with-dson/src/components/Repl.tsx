@@ -45,7 +45,7 @@ const everything = {
   dom: document.querySelectorAll("h4"),
 };
 
-const serialized = await DSON.stringify(everything, null, 2); 
+const serialized = await DSON.stringify(everything); 
 
 // pass custom class constructor functions if used
 const parsed = await DSON.parse(serialized, { Foo });

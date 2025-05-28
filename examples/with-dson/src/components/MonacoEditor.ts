@@ -7,6 +7,7 @@ export type Langauge = "javascript";
 export interface CodeEditorConfig {
   language: string;
   theme: string;
+  fontSize?: number;
   onReturn?: (value: any) => void;
   onChange?: (value: string) => void;
 }
@@ -66,7 +67,7 @@ export class MonacoEditor {
       },
       readOnly: this.readOnly,
       lineNumbers: "off",
-      fontSize: 16,
+      fontSize: this.config.fontSize || 16,
       roundedSelection: true,
       hideCursorInOverviewRuler: true,
       scrollBeyondLastLine: false,

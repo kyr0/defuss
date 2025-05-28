@@ -48,8 +48,10 @@ Inside of your Vite project, you'll see the following relevant folders and files
 
 ```text
 /
-├── src/counter.tsx
+├── src/components/MonacoEditor.tsx
+├── src/components/Repl.tsx
 ├── src/main.tsx
+├── src/style.css
 ├── index.html
 ├── tsconfig.json
 ├── package.json
@@ -61,9 +63,9 @@ All commands are run from the root of the project, from a terminal:
 
 | Command       | Action                                                                                                                                                                                                                           |
 | :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm run dev`    | Run in dev mode and check your custom renderer                                                    |
-| `pnpm run build` | Build for production  |
-| `pnpm run preview` | Build for production, then preview |
+| `pnpm dev`    | Run in dev mode and check your custom renderer                                                    |
+| `pnpm build` | Build for production  |
+| `pnpm preview` | Build for production, then preview |
 
 ---
 
