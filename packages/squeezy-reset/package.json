@@ -1,10 +1,18 @@
 {
   "name": "squeezy-reset",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A modern CSS reset solution.",
   "author": "Aron Homberg <info@aron-homberg.de>",
   "main": "reset.css",
   "style": "reset.css",
-  "keywords": ["css", "reset", "modern", "styles", "grid", "consistent-layout", "fluid-design"],
+  "keywords": [
+    "css",
+    "reset",
+    "modern",
+    "styles",
+    "grid",
+    "consistent-layout",
+    "fluid-design"
+  ],
   "license": "MIT"
 }

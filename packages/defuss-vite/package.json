@@ -1,13 +1,19 @@
 {
   "name": "defuss-vite",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "license": "MIT",
   "description": "Defuss Plugin for Vite.",
-  "keywords": ["jsx", "render", "ssr", "isomorphic", "vite"],
+  "keywords": [
+    "jsx",
+    "render",
+    "ssr",
+    "isomorphic",
+    "vite"
+  ],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -35,7 +41,10 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": ["dist", "assets"],
+  "files": [
+    "dist",
+    "assets"
+  ],
   "devDependencies": {
     "pkgroll": "^2.12.2",
     "typescript": "^5.6.3"

@@ -55,27 +55,54 @@ for package_dir in "$PACKAGES_DIR"/*; do
         continue
     fi
     
-    package_name=$(basename "$package_dir")
+    folder_name=$(basename "$package_dir")
     processed_packages=$((processed_packages + 1))
     
-    echo "[$processed_packages/$total_packages] 📝 Processing package: $package_name"
+    echo "[$processed_packages/$total_packages] 📝 Processing package: $folder_name"
     
     # Check if package.json exists in the directory
     if [ ! -f "$package_dir/package.json" ]; then
-        echo "   ⚠️  Warning: No package.json found in $package_name, skipping..."
+        echo "   ⚠️  Warning: No package.json found in $folder_name, skipping..."
         echo ""
         continue
     fi
     
-    # Use pnpm --filter to run version patch from the workspace root
-    echo "   🔄 Running: pnpm --filter $package_name version patch"
+    # Extract the actual package name from package.json for display
+    package_name=$(node -p "require('$package_dir/package.json').name" 2>/dev/null || echo "$folder_name")
     
-    if pnpm --filter "$package_name" version patch; then
-        echo "   ✅ Successfully patched version for $package_name"
+    # Change to package directory and run version command
+    echo "   🔄 Running: pnpm version $BUMP_TYPE (in $folder_name)"
+    
+    # Store current directory and change to package directory
+    pushd "$package_dir" > /dev/null
+    
+    # Run version command and capture output
+    if version_output=$(pnpm version "$BUMP_TYPE" --no-git-tag-version 2>&1); then
+        echo "   ✅ Successfully bumped $BUMP_TYPE version for $package_name ($folder_name)"
+        # Extract the new version from output if available
+        new_version=$(echo "$version_output" | grep -E "^v[0-9]" | head -1)
+        if [ -n "$new_version" ]; then
+            echo "   📌 New version: $new_version"
+        fi
     else
-        echo "   ❌ Failed to patch version for $package_name"
-        exit 1
+        # Check if version was actually bumped despite the error
+        if echo "$version_output" | grep -q "^v[0-9]"; then
+            echo "   ✅ Successfully bumped $BUMP_TYPE version for $package_name ($folder_name)"
+            new_version=$(echo "$version_output" | grep -E "^v[0-9]" | head -1)
+            if [ -n "$new_version" ]; then
+                echo "   📌 New version: $new_version"
+            fi
+            echo "   ⚠️  Note: Some warnings occurred but version was bumped successfully"
+        else
+            echo "   ❌ Failed to bump $BUMP_TYPE version for $package_name ($folder_name)"
+            echo "   Error output: $version_output"
+            popd > /dev/null
+            exit 1
+        fi
     fi
+    
+    # Return to original directory
+    popd > /dev/null
     
     echo ""
 done

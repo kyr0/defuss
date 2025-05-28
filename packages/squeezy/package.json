@@ -1,6 +1,6 @@
 {
   "name": "squeezy",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A modern, fluid, grid-only and generative CSS utility class framework.",
   "author": "Aron Homberg <info@aron-homberg.de>",
   "main": "squeezy.css",
