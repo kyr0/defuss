@@ -8,24 +8,24 @@
 
 <sup align="center">
 
-`Vite` + `TypeScript` + `defuss` + `Ionic Framework` Starter Kit
+`Vite` + `TypeScript` + `defuss` + `Franken UI Framework` Starter Kit
 
 </sup>
 
 </h1>
 
-With this template, you can jumpstart your next `Vite` + `TypeScript` + `defuss` + `Ionic Framework` project!
+With this template, you can jumpstart your next `Vite` + `TypeScript` + `defuss` + `Franken UI Framework` project!
 
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/kyr0/defuss/tree/main/examples/with-ionic)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kyr0/defuss?devcontainer_path=.devcontainer/with-ionic/devcontainer.json)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/kyr0/defuss/tree/main/examples/with-franken-ui)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kyr0/defuss?devcontainer_path=.devcontainer/with-franken-ui/devcontainer.json)
 
 > 👩‍💻 **Seasoned developer?** Delete this file. Have fun!
 
-![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-ionic/public/preview.png)
+![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-franken-ui/public/preview.png)
 
 ### ✨ It's amazing!
-![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-ionic/public/build_result.png)
+![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-franken-ui/public/build_result.png)
 
 ## 🛠️ Setup
 
@@ -49,13 +49,9 @@ Inside of your Vite project, you'll see the following relevant folders and files
 
 ```text
 /
-├── components/ExploreContainer.tsx
-├── components/ExploreContainer.css
-├── components/Menu.tsx
-├── components/Menu.css
-├── pages/Page.tsx
+├── layout/pre-auth-layout.tsx
+├── pages/LoginPage.tsx
 ├── theme/variables.css
-├── src/style.ts
 ├── src/main.tsx
 ├── index.html
 ├── tsconfig.json
