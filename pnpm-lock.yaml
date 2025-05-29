@@ -415,8 +415,8 @@ importers:
         specifier: ^19.6.0
         version: 19.6.0
       lightningimg:
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../lightningimg
       purgecss:
         specifier: ^7.0.2
         version: 7.0.2
@@ -561,6 +561,10 @@ importers:
       wasm-pack:
         specifier: ^0.12.1
         version: 0.12.1
+
+  packages/lightningimg/lightningimg-wasm/pkg-bundler: {}
+
+  packages/lightningimg/lightningimg-wasm/pkg-node: {}
 
   packages/runtime:
     devDependencies:
