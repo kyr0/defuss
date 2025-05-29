@@ -1,19 +1,13 @@
 {
   "name": "defuss-astro",
-  "version": "1.3.5",
+  "version": "1.4.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "license": "MIT",
-  "description": "Defuss Integration for Astro.",
-  "keywords": [
-    "jsx",
-    "render",
-    "ssr",
-    "isomorphic",
-    "astro"
-  ],
+  "description": "Defuss Integration for Astro with WASM-based built-in image conversion support.",
+  "keywords": ["jsx", "render", "ssr", "isomorphic", "astro"],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -65,9 +59,7 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "devDependencies": {
     "pkgroll": "^2.5.1",
     "typescript": "^5.6.3",
@@ -79,15 +71,12 @@
   "dependencies": {
     "defuss": "workspace:*",
     "defuss-vite": "workspace:*",
-    "astro": "^5.8.0",
+    "astro": "^5.8.1",
     "vite": "^6.3.5",
     "fast-glob": "^3.3.2",
     "svgo": "^3.3.2",
-    "lightningimg-node": "^0.3.3",
+    "lightningimg": "^1.0.0",
     "purgecss": "^7.0.2",
     "file-type": "^19.6.0"
-  },
-  "peerDependencies": {
-    "@minify-html/node": "^0.15.0"
   }
 }

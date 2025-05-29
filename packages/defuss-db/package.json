@@ -7,14 +7,7 @@
   },
   "license": "MIT",
   "description": "Isomorphic database abstraction, defussed.",
-  "keywords": [
-    "db",
-    "database",
-    "abstraction",
-    "dexie",
-    "libsql",
-    "mongodb"
-  ],
+  "keywords": ["db", "database", "abstraction", "dexie", "libsql", "mongodb"],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -65,14 +58,12 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "dependencies": {
-    "@libsql/client": "^0.15.6",
+    "@libsql/client": "^0.15.7",
     "dexie": "^4.0.11",
     "dotenv": "^16.5.0",
     "fake-indexeddb": "^6.0.1",
