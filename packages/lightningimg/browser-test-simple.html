@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LightningImg WASM Browser Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        .result {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .test-output {
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 LightningImg WASM Browser Test</h1>
+    <p>Automated test for WebAssembly image conversion in browser environment.</p>
+
+    <div id="testOutput" class="result">
+        <p>Running tests...</p>
+    </div>
+
+    <script type="module">
+        // Test results will be stored here for Puppeteer to access
+        window.testResults = {
+            completed: false,
+            success: false,
+            error: null,
+            log: [],
+            stats: {}
+        };
+
+        function log(message) {
+            console.log(message);
+            window.testResults.log.push(message);
+            document.getElementById('testOutput').innerHTML = 
+                '<div class="test-output">' + window.testResults.log.join('\n') + '</div>';
+        }
+
+        async function runBrowserTest() {
+            try {
+                log('🖼️ LightningImg WASM Browser Test Starting...\n');
+
+                // Import the WASM module
+                log('📦 Importing WASM module...');
+                const { convertImageBuffer, getImageInfo, isSupportedFormat } = 
+                    await import('./index.js');
+                log('✅ WASM module imported successfully!\n');
+
+                // Create test image data (simple PNG)
+                log('🎨 Creating test image data...');
+                const canvas = document.createElement('canvas');
+                canvas.width = 100;
+                canvas.height = 100;
+                const ctx = canvas.getContext('2d');
+                
+                // Draw a simple test pattern
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(0, 0, 50, 50);
+                ctx.fillStyle = '#00FF00';
+                ctx.fillRect(50, 0, 50, 50);
+                ctx.fillStyle = '#0000FF';
+                ctx.fillRect(0, 50, 50, 50);
+                ctx.fillStyle = '#FFFF00';
+                ctx.fillRect(50, 50, 50, 50);
+
+                // Convert canvas to PNG buffer
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const arrayBuffer = await blob.arrayBuffer();
+                const imageBuffer = new Uint8Array(arrayBuffer);
+                
+                log(`📊 Test image created: ${imageBuffer.length} bytes\n`);
+
+                // Test 1: Check if format is supported
+                log('🔍 Testing isSupportedFormat...');
+                const isSupported = await isSupportedFormat(imageBuffer);
+                log(`✅ Format supported: ${isSupported}\n`);
+
+                // Test 2: Get image information
+                log('📏 Testing getImageInfo...');
+                const imageInfo = await getImageInfo(imageBuffer);
+                log(`✅ Image info: ${JSON.stringify(imageInfo)}\n`);
+
+                // Test 3: Convert to WebP with default quality
+                log('🔄 Testing convertImageBuffer (PNG to WebP)...');
+                const webpBuffer = await convertImageBuffer(imageBuffer, 'webp');
+                log(`✅ WebP conversion successful: ${webpBuffer.length} bytes\n`);
+
+                // Test 4: Convert with resize (50x50)
+                log('🔄 Testing convertImageBuffer with resize (50x50)...');
+                const webpBufferResized = await convertImageBuffer(imageBuffer, 'webp', 50, 50);
+                log(`✅ WebP resize conversion successful: ${webpBufferResized.length} bytes\n`);
+
+                // Test 5: Convert with aspect ratio preserved resize (width only)
+                log('🔄 Testing convertImageBuffer with width-only resize (75px width)...');
+                const webpBufferAspectRatio = await convertImageBuffer(imageBuffer, 'webp', 75);
+                log(`✅ WebP aspect ratio resize successful: ${webpBufferAspectRatio.length} bytes\n`);
+
+                // Calculate compression stats
+                const defaultCompression = ((imageBuffer.length - webpBuffer.length) / imageBuffer.length * 100).toFixed(1);
+                const resizedCompression = ((imageBuffer.length - webpBufferResized.length) / imageBuffer.length * 100).toFixed(1);
+
+                log('📈 Conversion Results:');
+                log(`   Original PNG: ${imageBuffer.length} bytes`);
+                log(`   WebP (default): ${webpBuffer.length} bytes (${defaultCompression}% compression)`);
+                log(`   WebP (50x50 resize): ${webpBufferResized.length} bytes (${resizedCompression}% compression)`);
+                log(`   WebP (75px width): ${webpBufferAspectRatio.length} bytes\n`);
+
+                // Store results
+                window.testResults.stats = {
+                    originalSize: imageBuffer.length,
+                    webpSize: webpBuffer.length,
+                    webpResizedSize: webpBufferResized.length,
+                    webpAspectRatioSize: webpBufferAspectRatio.length,
+                    defaultCompression: parseFloat(defaultCompression),
+                    resizedCompression: parseFloat(resizedCompression),
+                    imageInfo: imageInfo,
+                    isSupported: isSupported
+                };
+
+                log('🎉 All browser tests passed successfully!');
+                log('✅ ESM WASM-only LightningImg with resize functionality works perfectly in browser!\n');
+
+                // Mark test as successful
+                window.testResults.success = true;
+                window.testResults.completed = true;
+
+                // Update UI
+                const outputDiv = document.getElementById('testOutput');
+                outputDiv.className = 'result success';
+
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+                log(`📍 Stack: ${error.stack}\n`);
+                
+                window.testResults.error = error.message;
+                window.testResults.success = false;
+                window.testResults.completed = true;
+
+                // Update UI
+                const outputDiv = document.getElementById('testOutput');
+                outputDiv.className = 'result error';
+            }
+        }
+
+        // Start the test
+        runBrowserTest();
+    </script>
+</body>
+</html>

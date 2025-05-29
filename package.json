@@ -16,7 +16,8 @@
   "scripts": {
     "build": "turbo run build --concurrency=1",
     "test": "turbo run test --concurrency=1",
-    "clean": "turbo run clean --concurrency=20"
+    "preclean": "rm -rf ./node_modules && pnpm i",
+    "clean": "turbo run clean --concurrency=50"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

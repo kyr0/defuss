@@ -4,10 +4,10 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**", "target/**"]
     },
     "test": {
-      "outputs": ["coverage/**"],
+      "outputs": ["coverage/**", "test_output/**"],
       "dependsOn": ["build"]
     },
     "clean": {
