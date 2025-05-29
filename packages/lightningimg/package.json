@@ -2,7 +2,7 @@
   "name": "lightningimg",
   "version": "1.0.2",
   "type": "module",
-  "description": "A transparent and safe image converter using WebAssembly. Encodes PNG, JPG, TIFF to WebP.",
+  "description": "A transparent, fast and safe WebP image converter using WebAssembly.",
   "main": "index.js",
   "types": "index.d.ts",
   "packageManager": "pnpm@9.14.2",
