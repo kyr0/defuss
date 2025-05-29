@@ -147,8 +147,8 @@ importers:
         specifier: ^2.0.7
         version: 2.0.7
       defuss-astro:
-        specifier: ^1.4.2
-        version: 1.4.2(@swc/helpers@0.5.17)(@types/node@22.15.24)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(tsx@4.19.4)(typescript@5.8.3)
+        specifier: ^1.4.3
+        version: 1.4.3(@swc/helpers@0.5.17)(@types/node@22.15.24)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(tsx@4.19.4)(typescript@5.8.3)
       fslightbox:
         specifier: ^3.6.0
         version: 3.6.0
@@ -415,8 +415,8 @@ importers:
         specifier: ^19.6.0
         version: 19.6.0
       lightningimg:
-        specifier: workspace:*
-        version: link:../lightningimg
+        specifier: ^1.0.3
+        version: 1.0.3
       purgecss:
         specifier: ^7.0.2
         version: 7.0.2
@@ -2141,8 +2141,8 @@ packages:
     resolution: {integrity: sha512-b2aqnTAzNJH6Ldm1JVV997wbkZ4VwIBqZwD+g8AYSNdliHxufhR7UJKafXeNG8g9tFyU1zJE1fyYj5TAJnEokg==}
     engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
 
-  defuss-astro@1.4.2:
-    resolution: {integrity: sha512-wJSgu/1qWaJ+rMAtVSQWiiOjSO3fNTxWqA6khDNli/mVE5SNV1XsyMYU2G06CCw1PAk7o/bddySK0lj0ETkkbA==}
+  defuss-astro@1.4.3:
+    resolution: {integrity: sha512-BfMU4pzFm55SkYNW12OspELyqGWvmlWv4BitAe4ssTv3kJDy94PhfYNoicgr3l0grYFfkFfoCJxtOr9daatcZQ==}
     engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
 
   defuss-dson@1.0.1:
@@ -2939,8 +2939,8 @@ packages:
   lightningimg@1.0.1:
     resolution: {integrity: sha512-/2u1nz8327qLmiVedh1lSVGYRW4Vnxc7R8POqu1fru/aoVFSgwJugTL1G8197oiTm5ZH0FKMzTN8TqAO45b+Tw==}
 
-  lightningimg@1.0.2:
-    resolution: {integrity: sha512-RYGwQ77mvu38eK8iHazfz4iu0gCcGcgUzbtq/noM0KCt/QAYxmohtEN56XHexGw2aKFkZAWSPZZakrYTgBIhMg==}
+  lightningimg@1.0.3:
+    resolution: {integrity: sha512-ZohZFiTS+LDOmd0ZmdFF0LfOA8ErIrHn7BVABYYEafkKj+VmkklYr2px5v8fn6vxKVPR6mIa3G9jR+3Q+vzJgg==}
 
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
@@ -5958,14 +5958,14 @@ snapshots:
       - uploadthing
       - yaml
 
-  defuss-astro@1.4.2(@swc/helpers@0.5.17)(@types/node@22.15.24)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(tsx@4.19.4)(typescript@5.8.3):
+  defuss-astro@1.4.3(@swc/helpers@0.5.17)(@types/node@22.15.24)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(tsx@4.19.4)(typescript@5.8.3):
     dependencies:
       astro: 5.8.1(@types/node@22.15.24)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(tsx@4.19.4)(typescript@5.8.3)
       defuss: 2.0.7
       defuss-vite: 1.1.3(@swc/helpers@0.5.17)(@types/node@22.15.24)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4)
       fast-glob: 3.3.3
       file-type: 19.6.0
-      lightningimg: 1.0.2
+      lightningimg: 1.0.3
       purgecss: 7.0.2
       svgo: 3.3.2
       vite: 6.3.5(@types/node@22.15.24)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4)
@@ -6916,7 +6916,7 @@ snapshots:
 
   lightningimg@1.0.1: {}
 
-  lightningimg@1.0.2: {}
+  lightningimg@1.0.3: {}
 
   lines-and-columns@1.2.4: {}
 

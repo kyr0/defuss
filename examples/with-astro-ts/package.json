@@ -15,7 +15,7 @@
     "@astrojs/node": "^9.2.2",
     "astro": "^5.8.0",
     "defuss": "^2.0.7",
-    "defuss-astro": "^1.4.1",
+    "defuss-astro": "^1.4.3",
     "defuss-squeezy": "^0.0.3",
     "defuss-ui": "^0.0.2",
     "sharp": "^0.33.5",
