@@ -1,6 +1,6 @@
 {
   "name": "defuss-astro",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -75,7 +75,7 @@
     "vite": "^6.3.5",
     "fast-glob": "^3.3.2",
     "svgo": "^3.3.2",
-    "lightningimg": "^1.0.1",
+    "lightningimg": "workspace:*",
     "purgecss": "^7.0.2",
     "file-type": "^19.6.0"
   }
