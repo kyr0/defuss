@@ -1,0 +1,131 @@
+@use "sass:map";
+
+// SCSS Variables
+$primary-bg: #000;
+$bg-image: url(/defuss_boot.webp);
+$border-color: #878787;
+$border-width: 0.2vw;
+$border-radius: 0.5vw;
+$spacing-unit: 0.1vw;
+
+// Container and logo dimensions
+$container-width: 70vw;
+$container-max-width: 900px;
+$container-margin-top: -15vh;
+$logo-width: 80vw; 
+
+// Animation durations
+$animation-duration-slow: 2s;
+$animation-duration-fast: 1s;
+
+// Loading bar dimensions
+$loading-width: 20vw;
+$loading-height: 2.15vw;
+$loading-bar-width: 1.2vw;
+$loading-bar-height: 2vw;
+$loading-container-width: 3.9vw;
+$loading-margin-top: -2vh;
+
+// Color palette for gradient
+$gradient-colors: (
+  start: #09112d,
+  light-blue: #8197cd,
+  mid-blue: #5d62ab,
+  dark-blue: #4158a6,
+  darker-blue: #204399,
+  end: #1c2954
+);
+
+// Mixins
+@mixin center-absolute {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translateY(-50%) translateX(-50%);
+}
+
+@mixin full-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+// Keyframes
+@keyframes loading {
+  0% {
+    left: -4.6vw;
+  }
+  100% {
+    left: $loading-width;
+  }
+}
+
+// Main component
+.bootloader {
+  @include full-screen;
+  background-color: $primary-bg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: none;
+}
+
+.bootloader-container {
+  margin-top: $container-margin-top;
+  width: $container-width;
+  max-width: $container-max-width;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bootloader-logo {
+  width: $logo-width;
+  height: auto;
+  max-width: 100%;
+  background-image: $bg-image;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  aspect-ratio: 3/2;
+}
+
+.bootloader-loading {
+  width: $loading-width;
+  height: $loading-height;
+  border: $border-width solid $border-color;
+  border-radius: $border-radius;
+  position: relative;
+  overflow: hidden;
+  margin-top: $loading-margin-top;
+
+  ul {
+    font-size: 0;
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    left: -2.6vw;
+    animation: $animation-duration-slow linear infinite loading;
+    width: $loading-container-width;
+
+    li {
+      width: $loading-bar-width;
+      height: $loading-bar-height;
+      display: inline-block;
+      background: linear-gradient(
+        180deg,
+        map.get($gradient-colors, start),
+        map.get($gradient-colors, light-blue) 20%,
+        map.get($gradient-colors, light-blue) 40%,
+        map.get($gradient-colors, mid-blue) 60%,
+        map.get($gradient-colors, dark-blue) 70%,
+        map.get($gradient-colors, dark-blue) 80%,
+        map.get($gradient-colors, darker-blue) 90%,
+        map.get($gradient-colors, end)
+      );
+      margin: 0 $spacing-unit 0 0;
+    }
+  }
+}

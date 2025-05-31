@@ -52,25 +52,49 @@ export class Call<NT> {
   }
 }
 
-export const NonChainedReturnCallNames = [
-  "getFirstElement",
-  "toArray",
-  "map",
-  "isHidden",
-  "isVisible",
-  "hasClass",
-  "dimension",
-  "position",
-  "offset",
-  "prop",
-  "val",
-  "form",
-  "attr",
-  "data",
-  "css",
-  "html",
-  "serialize",
-];
+// Global registry for non-chained return call names
+const globalRegistry = globalThis as any;
+if (!globalRegistry.__defuss_nonChainedReturnCallNames) {
+  globalRegistry.__defuss_nonChainedReturnCallNames = [
+    "getFirstElement",
+    "toArray",
+    "map",
+    "isHidden",
+    "isVisible",
+    "hasClass",
+    "dimension",
+    "position",
+    "offset",
+    "prop",
+    "val",
+    "form",
+    "attr",
+    "data",
+    "css",
+    "html",
+    "serialize",
+  ];
+}
+
+// Utility function to add non-chained return call names globally
+export function addNonChainedReturnCallNames(callNames: string[]): void {
+  const global = globalRegistry.__defuss_nonChainedReturnCallNames;
+  callNames.forEach((name) => {
+    if (!global.includes(name)) {
+      global.push(name);
+    }
+  });
+}
+
+// Utility function to get the current list of non-chained return call names
+export function getNonChainedReturnCallNames(): string[] {
+  return [...globalRegistry.__defuss_nonChainedReturnCallNames];
+}
+
+// Utility function to check if a call name is marked as non-chained
+export function isNonChainedReturnCall(callName: string): boolean {
+  return globalRegistry.__defuss_nonChainedReturnCallNames.includes(callName);
+}
 
 export const emptyImpl = <T>(nodes: Array<T>) => {
   nodes.forEach((el) => {
@@ -1087,7 +1111,7 @@ export class CallChainImplThenable<
       const lastCallName = this.callStack[this.callStack.length - 1]?.name;
 
       let result;
-      if (NonChainedReturnCallNames.includes(lastCallName)) {
+      if (isNonChainedReturnCall(lastCallName)) {
         result = this.lastResult;
       } else {
         // We cannot return a CallChainImplThenable here, because returning
@@ -1131,7 +1155,7 @@ export class CallChainImplThenable<
             // this allows for getting values from elements or modifying elements (e.g. html()) in
             // between selection changes without breaking the chain functionally (the chain expects)
             // all this.resultStack values to be of a DOM node type)
-            if (!NonChainedReturnCallNames.includes(call.name)) {
+            if (!isNonChainedReturnCall(call.name)) {
               this.resultStack.push(callReturnValue);
             }
 
@@ -1274,8 +1298,6 @@ export function getAllFormValues(
       }
     });
   });
-
-  console.log("formFields", formFields);
   return formFields;
 }
 
@@ -1394,6 +1416,7 @@ export function dequery<
 
 dequery.extend = <TExtendedClass extends new (...args: any[]) => any>(
   ExtensionClass: TExtendedClass,
+  nonChainedReturnCalls: string[] = [],
 ) => {
   // Get the prototype of the extension class
   const extensionPrototype = ExtensionClass.prototype;
@@ -1417,6 +1440,11 @@ dequery.extend = <TExtendedClass extends new (...args: any[]) => any>(
         extensionPrototype[methodName];
     }
   });
+
+  // Add non-chained return calls to the global list
+  if (nonChainedReturnCalls.length > 0) {
+    addNonChainedReturnCallNames(nonChainedReturnCalls);
+  }
 
   // Return a typed function that produces instances of the extended class type
   return <NT = DequerySyncMethodReturnType>(

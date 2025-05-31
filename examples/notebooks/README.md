@@ -89,6 +89,6 @@ Feel free to check [our documentation](https://docs.astro.build) or jump into ou
 
 ---
 
-<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/notebooks/public/defuss_comic.png" />
+<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/assets/defuss_comic.png" />
 
 <caption><i><b>Come visit us on <code>defuss</code> Island!</b></i></caption>

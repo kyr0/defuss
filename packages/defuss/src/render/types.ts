@@ -1411,8 +1411,12 @@ declare global {
   }
 }
 
+export type RenderNodeInput = VNode | string | undefined;
+export type RenderInput = RenderNodeInput | Array<RenderNodeInput>;
+export type RenderResultNode = Element | Text | undefined;
+
 export interface Props {
-  children?: VNodeChildren;
+  children?: VNodeChild | VNodeChildren;
 
   // allow for forwardRef
   ref?: Ref;
@@ -1423,10 +1427,6 @@ export interface Props {
   // optional callback handler for errors (can be called inside of the component, to pass errors up to the parent)
   onError?: (error: unknown) => void;
 }
-
-export type RenderNodeInput = VNode | string | undefined;
-export type RenderInput = RenderNodeInput | Array<RenderNodeInput>;
-export type RenderResultNode = Element | Text | undefined;
 
 export type RenderResult<T = RenderInput> = T extends Array<RenderNodeInput>
   ? Array<RenderResultNode>

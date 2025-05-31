@@ -1,0 +1,1 @@
+Boot -> LoginManager -> Shell -> Desktop, Taskbar

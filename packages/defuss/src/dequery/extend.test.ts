@@ -1,12 +1,5 @@
 // @vitest-environment happy-dom
-import type { NodeType } from "../render/index.js";
-import {
-  CallChainImpl,
-  CallChainImplThenable,
-  createCall,
-  dequery,
-  type Dequery,
-} from "./dequery.js";
+import { CallChainImpl, createCall, dequery, type Dequery } from "./dequery.js";
 
 describe("extend() static method test with typing", () => {
   it("can extend the dequery API", async () => {

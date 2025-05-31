@@ -1,5 +1,14 @@
 A window manager extension for defuss/dequery.
 
+CSS:
+
+Integrate 7.css as a theme of retro.css
+
+https://github.com/khang-nd/7.css
+98 / XP: https://github.com/botoxparty/XP.css
+
+Enhance by styles from: https://github.com/nielssp/classic-stylesheets (Lists, Selects, IconGrid, Menus, Toolbars, Dialogs, Panels, Grid/Flex Layouts)
+
 API:
 
 type DequeryExtended = Dequery & DefussWindowMixin

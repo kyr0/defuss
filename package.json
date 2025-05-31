@@ -14,7 +14,9 @@
     "type": "git"
   },
   "scripts": {
+    "prebuild": "rm -rf ./packages/lightningimg/lightningimg-wasm/pkg && rm -rf ./packages/lightningimg/lightningimg-wasm/pkg-bundler && rm -rf ./packages/lightningimg/lightningimg-wasm/pkg-node",
     "build": "turbo run build --concurrency=1",
+    "pretest": "npm run prebuild",
     "test": "turbo run test --concurrency=1",
     "preclean": "rm -rf ./node_modules && pnpm i",
     "clean": "turbo run clean --concurrency=50"

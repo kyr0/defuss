@@ -1,0 +1,18 @@
+/**
+ * XP theme for GUI.css
+ * Copyright (c) 2025 Aron Homberg <info@aron-homberg.de>
+ * Copyright (c) 2020 Adam Hammad <adamham.dev>
+ * Based on 98.css by Jordan Scales <thatjdanisso.cool>
+ * https://github.com/botoxparty/XP.css/blob/main/LICENSE
+ */
+
+ @forward "_variables.scss";
+ @forward "_global.scss";
+ @forward "_window.scss";
+ @forward "_buttons.scss";
+ @forward "_forms.scss";
+ @forward "_groupbox.scss";
+ @forward "_tabs.scss";
+ @forward "_treeview.scss";
+ @forward "_progressbar.scss";
+ 

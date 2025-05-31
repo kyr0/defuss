@@ -8,3 +8,4 @@ coverage
 CLAUDE_STATE.json
 CLAUDE_VECTORDB.json
 CLAUDE.md
+test_output

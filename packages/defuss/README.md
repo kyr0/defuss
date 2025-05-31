@@ -226,6 +226,6 @@ Method        | Examples
 
 ---
 
-<img src="assets/defuss_comic.png" />
+<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/assets/defuss_comic.png" />
 
 <caption><i><b>Come visit us on defuss island!</b></i></caption>

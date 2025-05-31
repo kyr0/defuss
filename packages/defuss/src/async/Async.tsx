@@ -4,6 +4,7 @@ import type {
   VNode,
   Ref,
   Props,
+  VNodeChild,
 } from "@/render/types.js";
 import { createRef, isRef } from "@/render/index.js";
 import { $ } from "@/dequery/index.js";
@@ -60,7 +61,7 @@ export const Async = ({
   errorClassName,
   onError,
 }: AsyncProps) => {
-  let childrenToRender: VNodeChildren | undefined = children;
+  let childrenToRender: VNodeChild | VNodeChildren = children;
 
   const containerRef: AsyncStateRef = createRef<AsyncState>(
     function onSuspenseUpdate(state: AsyncState) {
@@ -142,7 +143,9 @@ export const Async = ({
   }
 
   // resolve async children
-  const promisedChildren = (children || []).map((vnode) => {
+  const promisedChildren = (
+    Array.isArray(children) ? children : children ? [children] : []
+  ).map((vnode) => {
     try {
       if (!vnode || (vnode && !(vnode as VNode).type)) {
         return Promise.resolve(""); // becomes a Text node

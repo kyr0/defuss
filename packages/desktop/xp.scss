@@ -1,0 +1,4 @@
+// Import all SCSS files from the scss directory
+// This ensures all styles are available when the package is imported
+
+@forward 'themes/xp';
