@@ -25,7 +25,6 @@ function formatBytes(bytes) {
   const units = ["B", "KB", "MB", "GB"];
   let i = 0;
   while (bytes >= 1024 && i < units.length - 1) {
-    // biome-ignore lint/style/noParameterAssign: <explanation>
     bytes /= 1024;
     i++;
   }

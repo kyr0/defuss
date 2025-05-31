@@ -24,15 +24,8 @@ jobs:
           version: 10.0.0
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
-        env:
-          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
       - run: pnpm install --no-frozen-lockfile
-      - name: Test
-        uses: mujo-code/puppeteer-headful@18.9.0
-        env:
-          CI: "true"
-        with:
-          args: pnpm test --filter='!@example/notebooks' --filter='!@example/with-astro-ts' --filter='!@example/photo-canvas' --filter='!@example/desktop'
+      - run: pnpm test --filter='!@example/notebooks' --filter='!@example/with-astro-ts' --filter='!@example/photo-canvas' --filter='!@example/desktop'

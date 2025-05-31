@@ -67,8 +67,7 @@ async function runBrowserTest() {
     // Launch browser
     console.log("🌐 Launching browser...");
     browser = await puppeteer.launch({
-      headless: false, // Set to false to see the browser
-      executablePath: process.env.PUPPETEER_EXEC_PATH,
+      headless: true, // Set to false to see the browser
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
