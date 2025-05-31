@@ -28,5 +28,9 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
       - run: pnpm install --no-frozen-lockfile
-      - run: npx puppeteer browsers install chrome
-      - run: pnpm test --filter='!@example/notebooks' --filter='!@example/with-astro-ts' --filter='!@example/photo-canvas' --filter='!@example/desktop'
+      - name: Test
+        uses: mujo-code/puppeteer-headful@16.6.0
+        env:
+          CI: "true"
+        with:
+          args: pnpm test --filter='!@example/notebooks' --filter='!@example/with-astro-ts' --filter='!@example/photo-canvas' --filter='!@example/desktop'
