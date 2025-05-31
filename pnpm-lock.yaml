@@ -27,6 +27,8 @@ overrides:
   vite@>=6.2.0 <6.2.6: '>=6.2.6'
   '@babel/runtime@<7.26.10': '>=7.26.10'
   vite@>=6.3.0 <=6.3.3: '>=6.3.4'
+  axios@>=0.8.1 <0.28.0: '>=0.28.0'
+  axios@<0.30.0: '>=0.30.0'
 
 importers:
 
@@ -614,10 +616,6 @@ importers:
       wasm-pack:
         specifier: ^0.12.1
         version: 0.12.1
-
-  packages/lightningimg/lightningimg-wasm/pkg-bundler: {}
-
-  packages/lightningimg/lightningimg-wasm/pkg-node: {}
 
   packages/runtime:
     devDependencies:
@@ -1848,9 +1846,6 @@ packages:
 
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
-
-  axios@0.26.1:
-    resolution: {integrity: sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==}
 
   axios@1.9.0:
     resolution: {integrity: sha512-re4CqKTJaURpzbLHtIi6XpDv20/CnpXOtjRY5/CU32L8gU8ek9UIivcfvSWvmKEngmVbrUtPpdDwWDWL7DNHvg==}
@@ -5841,12 +5836,6 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  axios@0.26.1:
-    dependencies:
-      follow-redirects: 1.15.9
-    transitivePeerDependencies:
-      - debug
-
   axios@1.9.0:
     dependencies:
       follow-redirects: 1.15.9
@@ -5900,7 +5889,7 @@ snapshots:
 
   binary-install@1.1.0:
     dependencies:
-      axios: 0.26.1
+      axios: 1.9.0
       rimraf: 3.0.2
       tar: 6.2.1
     transitivePeerDependencies:

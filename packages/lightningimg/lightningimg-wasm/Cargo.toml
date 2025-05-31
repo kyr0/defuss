@@ -33,6 +33,9 @@ getrandom = { version = "0.2", features = ["js"] }
 [dev-dependencies]
 wasm-bindgen-test = "0.2"
 
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
 [profile.release]
 # Tell `rustc` to optimize for performance
 opt-level = 3
