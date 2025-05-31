@@ -615,6 +615,10 @@ importers:
         specifier: ^0.12.1
         version: 0.12.1
 
+  packages/lightningimg/lightningimg-wasm/pkg-bundler: {}
+
+  packages/lightningimg/lightningimg-wasm/pkg-node: {}
+
   packages/runtime:
     devDependencies:
       '@vitest/coverage-v8':

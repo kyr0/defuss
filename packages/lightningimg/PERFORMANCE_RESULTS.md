@@ -2,7 +2,7 @@
 =================================
 
 📁 Loading test image...
-📁 Test image: ./test_images/IMG_3236.jpg
+📁 Test image: ./test_images/IMG_3257.jpg
 📊 Image size: 180.45 KB
 
 🔍 Getting image info...
