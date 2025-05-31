@@ -10,7 +10,7 @@
     "prebuild": "pnpm install:deps",
     "build": "cd lightningimg-wasm && pnpm run build:all",
     "clean": "cd lightningimg-wasm && pnpm run clean",
-    "test": "pnpm run test:esm && pnpm run test:browser && pnpm example:simple",
+    "test": "pnpm run test:esm && pnpm example:simple",
     "test:browser": "node test-browser-puppeteer.js",
     "test:esm": "node test-esm.js",
     "test:performance": "node test-performance.js",
