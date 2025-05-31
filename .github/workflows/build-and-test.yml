@@ -24,6 +24,8 @@ jobs:
           version: 10.0.0
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
+        env:
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
