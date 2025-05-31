@@ -1,0 +1,1 @@
+Fast, multicore matrix multiplication using Rust and WebAssembly / SIMD in-browser (Rayon).

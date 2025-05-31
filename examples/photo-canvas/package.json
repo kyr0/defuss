@@ -7,7 +7,7 @@
     "clean": "rm -rf ./dist && rm -rf ./.astro && rm -rf ./node_modules/.vite",
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build --verbose --devOutput",
+    "build": "DEBUG=true astro build --verbose --devOutput",
     "prepreview": "astro build",
     "preview": "astro preview",
     "preserve": "astro build",
