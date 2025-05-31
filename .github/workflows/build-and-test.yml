@@ -28,4 +28,5 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
       - run: pnpm install --no-frozen-lockfile
+      - run: npx puppeteer browsers install chrome
       - run: pnpm test --filter='!@example/notebooks' --filter='!@example/with-astro-ts' --filter='!@example/photo-canvas' --filter='!@example/desktop'
