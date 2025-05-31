@@ -1,0 +1,1 @@
+Port the PoC code to vanilla JS Ionic and use `defuss-apl` - the agentic prompt language together with `vercel/ai` and `replicate` APIs for image generation and chat capabilities (provider) - via `defuss-rpc`.
