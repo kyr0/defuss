@@ -1,6 +1,6 @@
 {
   "name": "defuss-runtime",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -44,9 +44,7 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
