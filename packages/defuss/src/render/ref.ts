@@ -8,16 +8,21 @@ import type {
 } from "../render/types.js";
 import { createStore } from "../store/store.js";
 
-export const isRef = (obj: any): obj is Ref<Element> =>
+export const isRef = <
+  ST = any,
+  NT extends Node | Element | Text | null = HTMLElement,
+>(
+  obj: any,
+): obj is Ref<ST, NT> =>
   Boolean(obj && typeof obj === "object" && "current" in obj);
 
 export function createRef<
   ST = any,
   NT extends Node | Element | Text | null = HTMLElement,
->(refUpdateFn?: RefUpdateFn<ST>, defaultState?: ST): Ref<NT, ST> {
+>(refUpdateFn?: RefUpdateFn<ST>, defaultState?: ST): Ref<ST, NT> {
   const stateStore = createStore<ST>(defaultState as ST);
 
-  const ref: Ref<NT, ST> = {
+  const ref: Ref<ST, NT> = {
     current: null as NT,
     store: stateStore,
     get state() {

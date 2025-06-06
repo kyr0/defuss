@@ -12,7 +12,7 @@ import { inDevMode } from "@/common/index.js";
 
 export type AsyncState = "loading" | "loaded" | "error";
 
-export interface AsyncStateRef extends Ref<HTMLElement> {
+export interface AsyncStateRef extends Ref<AsyncState, HTMLElement> {
   /** The state of the async content */
   state?: AsyncState;
 

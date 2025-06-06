@@ -1,5 +1,9 @@
-import type { NodeType } from "../render/index.js";
-import type { Dequery } from "../dequery/index.js";
+import { isRef, type NodeType } from "../render/index.js";
+import type {
+  CallChainImpl,
+  CallChainImplThenable,
+  Dequery,
+} from "../dequery/index.js";
 import { isDequery } from "../dequery/index.js";
 import type {
   VNodeChild,
@@ -9,7 +13,16 @@ import type {
   VNodeAttributes,
   DomAbstractionImpl,
   Globals,
+  RenderInput,
+  Ref,
 } from "./types.js";
+import {
+  domNodeToVNode,
+  htmlStringToVNodes,
+  isMarkup,
+  updateDomWithVdom,
+} from "../common/dom.js";
+import { waitForRef } from "defuss-runtime";
 
 const CLASS_ATTRIBUTE_NAME = "class";
 const XLINK_ATTRIBUTE_NAME = "xlink";
@@ -505,6 +518,88 @@ export const jsxDEV = (
   }
   return renderResult!;
 };
+
+/**
+ * Core DOM update logic extracted from the update() method.
+ * This function handles the actual DOM manipulation without the createCall wrapper,
+ * allowing it to be used by both update() and replaceWith() without deadlock.
+ */
+export async function updateDom<NT>(
+  input:
+    | string
+    | RenderInput
+    | Ref<NodeType>
+    | NodeType
+    | CallChainImpl<NT>
+    | CallChainImplThenable<NT>,
+  nodes: readonly NodeType[],
+  timeout: number,
+  Parser: typeof globalThis.DOMParser,
+): Promise<readonly NodeType[]> {
+  if (isDequery(input)) {
+    input = input[0] as HTMLElement;
+  }
+
+  if (isRef(input)) {
+    await waitForRef(input as Ref<NodeType>, timeout);
+    input = (input as Ref<NodeType>).current;
+  }
+
+  if (input instanceof Node) {
+    // Convert DOM node to VNode and use the intelligent updateDomWithVdom
+    // This preserves existing DOM structure and event listeners
+    const vnode = domNodeToVNode(input);
+    nodes.forEach((el) => {
+      if (el) {
+        updateDomWithVdom(el as HTMLElement, vnode, globalThis as Globals);
+      }
+    });
+    return nodes;
+  }
+
+  if (typeof input === "string") {
+    if (isMarkup(input, Parser)) {
+      // Convert HTML markup to VNodes and use intelligent updateDomWithVdom
+      // This provides better DOM state preservation than the older updateDom approach
+      const vNodes = htmlStringToVNodes(input, Parser);
+      nodes.forEach((el) => {
+        if (el) {
+          updateDomWithVdom(el as HTMLElement, vNodes, globalThis as Globals);
+        }
+      });
+    } else {
+      // For plain text, use the more efficient updateDomWithVdom approach
+      // This preserves existing DOM structure where possible
+      nodes.forEach((el) => {
+        if (el) {
+          updateDomWithVdom(
+            el as HTMLElement,
+            input as string,
+            globalThis as Globals,
+          );
+        }
+      });
+    }
+  } else if (isJSX(input)) {
+    // Use the intelligent updateDomWithVdom for JSX
+    // This function performs partial updates, preserving existing DOM elements
+    // and only updating what has actually changed
+    nodes.forEach((el) => {
+      if (el) {
+        updateDomWithVdom(
+          el as HTMLElement,
+          input as RenderInput,
+          globalThis as Globals,
+        );
+      }
+    });
+  } else {
+    console.warn("update: unsupported content type", input);
+  }
+
+  // All DOM operations are synchronous and complete at this point
+  return nodes;
+}
 
 export default {
   jsx,

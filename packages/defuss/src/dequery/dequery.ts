@@ -3,8 +3,6 @@ import {
   addElementEvent,
   checkElementVisibility,
   clearElementEvents,
-  domNodeToVNode,
-  htmlStringToVNodes,
   isMarkup,
   removeElementEvent,
   renderMarkup,
@@ -22,6 +20,7 @@ import {
   type AllHTMLElements,
   type CSSProperties,
   type NodeType,
+  updateDom,
 } from "../render/index.js";
 import { createTimeoutPromise, waitForRef } from "defuss-runtime";
 import type {
@@ -192,11 +191,11 @@ export class CallChainImpl<
 
   // async, direct result method
 
-  getFirstElement() {
+  getFirstElement(): PromiseLike<NT> {
     return createCall(
       this,
       "getFirstElement",
-      async () => this[0],
+      async () => this[0] as NT,
     ) as PromiseLike<NT>;
   }
 
@@ -209,7 +208,7 @@ export class CallChainImpl<
     });
   }
 
-  ref(ref: Ref<NodeType>) {
+  ref(ref: Ref<any, NodeType>) {
     return createCall(this, "ref", async () => {
       await waitForRef(ref, this.options.timeout!);
       if (ref.current) {
@@ -504,36 +503,40 @@ export class CallChainImpl<
     }) as unknown as ET;
   }
 
-  replaceWith<T = NT>(
+  replaceWith(
     content:
       | string
       | RenderInput
       | NodeType
-      | Ref<NodeType>
-      | CallChainImpl<T>
-      | CallChainImplThenable<T>,
+      | Ref<any, NodeType>
+      | CallChainImpl<NT, ET>
+      | CallChainImplThenable<NT, ET>,
   ): ET {
     return createCall(this, "replaceWith", async () => {
+      const newElements: NodeType[] = [];
+
+      // Render the new content into a DOM node
       const newElement = await renderNode(content, this);
-      if (!newElement) return this.nodes as NT;
 
-      this.nodes.forEach((el, index) => {
-        if (!el || !newElement) return;
+      // For each element to be replaced
+      for (const originalEl of this.nodes) {
+        if (!originalEl?.parentNode) continue;
 
-        if (el.parentNode) {
-          // create a fresh clone for each replacement to avoid side effects
-          const clone = newElement.cloneNode(true);
-          el.parentNode.replaceChild(clone, el);
+        if (!newElement) continue;
 
-          // replace the reference in the __elements array
-          this.nodes[index] = clone;
+        // Replace the original element with the new one
+        originalEl.parentNode.replaceChild(newElement, originalEl);
+        newElements.push(newElement);
+      }
 
-          // update indexing
-          mapArrayIndexAccess(this, this);
-        }
-      });
+      // Update the result stack with the new elements
+      this.resultStack[this.resultStack.length - 1] = newElements as NT[];
 
-      return this.nodes as NT;
+      // Update array-like access (this[0], this[1], etc.) and length
+      mapArrayIndexAccess(this, this);
+
+      // Return the new elements that replaced the originals
+      return newElements as NT;
     }) as unknown as ET;
   }
 
@@ -542,7 +545,7 @@ export class CallChainImpl<
       | string
       | RenderInput
       | NodeType
-      | Ref<NodeType>
+      | Ref<any, NodeType>
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
   ): ET {
@@ -611,7 +614,7 @@ export class CallChainImpl<
     target:
       | string
       | NodeType
-      | Ref<NodeType>
+      | Ref<any, NodeType>
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
   ): ET {
@@ -638,70 +641,22 @@ export class CallChainImpl<
     }) as unknown as ET;
   }
 
-  update(input: string | RenderInput | NodeType | Dequery<NT>): ET {
+  update(
+    input:
+      | string
+      | RenderInput
+      | Ref<any, NodeType>
+      | NodeType
+      | CallChainImpl<NT>
+      | CallChainImplThenable<NT>,
+  ): ET {
     return createCall(this, "update", async () => {
-      if (isDequery(input)) {
-        input = input[0] as HTMLElement;
-      }
-
-      if (input instanceof Node) {
-        // Convert DOM node to VNode and use the intelligent updateDomWithVdom
-        // This preserves existing DOM structure and event listeners
-        const vnode = domNodeToVNode(input);
-        this.nodes.forEach((el) => {
-          if (el) {
-            updateDomWithVdom(el as HTMLElement, vnode, globalThis as Globals);
-          }
-        });
-        return this.nodes as NT;
-      }
-
-      if (typeof input === "string") {
-        if (isMarkup(input, this.Parser)) {
-          // Convert HTML markup to VNodes and use intelligent updateDomWithVdom
-          // This provides better DOM state preservation than the older updateDom approach
-          const vNodes = htmlStringToVNodes(input, this.Parser);
-          this.nodes.forEach((el) => {
-            if (el) {
-              updateDomWithVdom(
-                el as HTMLElement,
-                vNodes,
-                globalThis as Globals,
-              );
-            }
-          });
-        } else {
-          // For plain text, use the more efficient updateDomWithVdom approach
-          // This preserves existing DOM structure where possible
-          this.nodes.forEach((el) => {
-            if (el) {
-              updateDomWithVdom(
-                el as HTMLElement,
-                input as string,
-                globalThis as Globals,
-              );
-            }
-          });
-        }
-      } else if (isJSX(input)) {
-        // Use the intelligent updateDomWithVdom for JSX
-        // This function performs partial updates, preserving existing DOM elements
-        // and only updating what has actually changed
-        this.nodes.forEach((el) => {
-          if (el) {
-            updateDomWithVdom(
-              el as HTMLElement,
-              input as RenderInput,
-              globalThis as Globals,
-            );
-          }
-        });
-      } else {
-        console.warn("update: unsupported content type", input);
-      }
-
-      // All DOM operations are synchronous and complete at this point
-      return this.nodes as NT;
+      return (await updateDom(
+        input,
+        this.nodes,
+        this.options.timeout!,
+        this.Parser,
+      )) as NT;
     }) as unknown as ET;
   }
 
@@ -1329,7 +1284,7 @@ export function dequery<
   selectorRefOrEl:
     | string
     | NodeType
-    | Ref<NodeType, any>
+    | Ref<any, NodeType>
     | RenderInput
     | Function,
   options: DequeryOptions<NT> &
@@ -1390,7 +1345,10 @@ export function dequery<
     }
   } else if (isRef(selectorRefOrEl)) {
     return delayedAutoStart(
-      chain.ref(selectorRefOrEl) as CallChainImplThenable<NT, ET>,
+      chain.ref(selectorRefOrEl as Ref<any, NodeType>) as CallChainImplThenable<
+        NT,
+        ET
+      >,
     ) as unknown as ET;
   } else if ((selectorRefOrEl as Node).nodeType) {
     chain.resultStack = [[selectorRefOrEl as NT]];
@@ -1451,7 +1409,7 @@ dequery.extend = <TExtendedClass extends new (...args: any[]) => any>(
     selectorRefOrEl:
       | string
       | NodeType
-      | Ref<NodeType, any>
+      | Ref<any, NodeType>
       | RenderInput
       | Function,
     options?: DequeryOptions<NT> & ElementCreationOptions,
@@ -1470,7 +1428,7 @@ export const $: typeof dequery & {
     selectorRefOrEl:
       | string
       | NodeType
-      | Ref<NodeType, any>
+      | Ref<any, NodeType>
       | RenderInput
       | Function,
     options?: DequeryOptions<NT> & ElementCreationOptions,
@@ -1655,7 +1613,8 @@ export async function renderNode<T = DequerySyncMethodReturnType>(
     | string
     | RenderInput
     | NodeType
-    | Ref<NodeType>
+    | Dequery<T>
+    | Ref<any, NodeType>
     | CallChainImpl<T>
     | CallChainImplThenable<T>
     | null
@@ -1679,12 +1638,12 @@ export async function renderNode<T = DequerySyncMethodReturnType>(
       chain.options.globals as Globals,
     ) as NodeType;
   } else if (isRef(input)) {
-    await waitForRef(input as Ref<NodeType>, chain.options.timeout!);
+    await waitForRef(input as Ref<any, NodeType>, chain.options.timeout!);
     return input.current!;
   } else if (input && typeof input === "object" && "nodeType" in input) {
     return input as NodeType;
   } else if (isDequery(input)) {
-    return (await input.getFirstElement()) as NodeType;
+    return (await input.getFirstElement()) as Promise<NodeType | null>;
   }
   console.warn("resolveContent: unsupported content type", input);
   return null;
@@ -1694,7 +1653,7 @@ export async function resolveNodes<T = DequerySyncMethodReturnType>(
   input:
     | string
     | NodeType
-    | Ref<NodeType>
+    | Ref<any, NodeType>
     | CallChainImpl<T>
     | CallChainImplThenable<T>,
   timeout: number,
@@ -1703,7 +1662,7 @@ export async function resolveNodes<T = DequerySyncMethodReturnType>(
   let nodes: NodeType[] = [];
 
   if (isRef(input)) {
-    await waitForRef(input as Ref<NodeType>, timeout);
+    await waitForRef(input as Ref<any, NodeType>, timeout);
     nodes = [input.current!];
   } else if (typeof input === "string" && document) {
     const result = await waitForDOM(

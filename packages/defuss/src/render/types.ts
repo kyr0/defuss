@@ -159,12 +159,12 @@ export type RefUpdateRenderFnInput =
   | RenderInput
   | NodeType
   | Dequery<NodeType>;
-export type RefUpdateFn<D> = (state: D) => void;
+export type RefUpdateFn<ST> = (state: ST) => void;
 export type RefUpdateRenderFn = (
   input: RefUpdateRenderFnInput,
 ) => Promise<CallChainImpl<NodeType>>;
 
-export interface Ref<NT = null | Node | Element | Text, ST = any> {
+export interface Ref<ST = any, NT = null | Node | Element | Text> {
   current: NT;
   store?: Store<ST>;
   state?: ST;

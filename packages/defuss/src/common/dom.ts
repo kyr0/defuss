@@ -91,48 +91,6 @@ const updateNode = (oldNode: Node, newNode: Node) => {
   }
 };
 
-/**
- * Partially updates a DOM subtree by comparing `targetElement` to
- * newly parsed HTML. No `.innerHTML` is used here; we parse via DOMParser.
- */
-export const updateDom = (
-  targetElement: Element,
-  newHTML: string,
-  Parser: typeof DOMParser,
-): void => {
-  // 1) Parse the new HTML string into a DocumentFragment-like structure
-  const parser = new Parser();
-  // 'text/html' => parse as a full HTML doc. We take the <body>'s children as our new nodes
-  const doc = parser.parseFromString(newHTML, "text/html");
-
-  // 2) Extract all child nodes from the newly parsed doc (including Text nodes)
-  const newNodes = Array.from(doc.body.childNodes);
-
-  if (newNodes.length === 0) {
-    console.warn("No content found in the new HTML.");
-    return;
-  }
-
-  // 3) For each new node, see if there's an old corresponding node to update
-  for (let i = 0; i < newNodes.length; i++) {
-    const newNode = newNodes[i];
-    const oldNode = targetElement.childNodes[i];
-
-    if (oldNode) {
-      // partial update
-      updateNode(oldNode, newNode);
-    } else {
-      // target has fewer nodes => just append
-      targetElement.appendChild(newNode.cloneNode(true));
-    }
-  }
-
-  // 4) Remove any old leftover nodes that have no matching new node
-  while (targetElement.childNodes.length > newNodes.length) {
-    targetElement.removeChild(targetElement.lastChild!);
-  }
-};
-
 /********************************************************
  * 1) Define a "valid" child type & utility
  ********************************************************/
