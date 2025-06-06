@@ -69,7 +69,7 @@ export class Window {
       // Load state from windowManagerStore if available
     }
 
-    __defussDesktop.placeWindow(this);
+    __defussDesktopManager.placeWindow(this);
   }
 
   decorate(el: HTMLElement) {

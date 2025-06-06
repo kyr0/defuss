@@ -1,2 +1,17 @@
 @use "defuss-desktop/index";
 @use "defuss-desktop/xp";
+
+.bootscreen {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;  
+  background-color: #000;
+  background-size: cover;
+  background-position: center;
+  align-items: center;
+  justify-content: center;
+}

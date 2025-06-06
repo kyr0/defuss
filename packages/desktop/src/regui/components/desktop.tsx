@@ -1,13 +1,13 @@
 import { createRef, type Props, $ } from "defuss";
 import { Button } from "./button.js";
 
-export function DesktopPanel({ ref }: Props) {
+export function Desktop({ ref }: Props) {
   $(() => {
-    console.log("DesktopPanel mounted");
+    console.log("Desktop mounted");
   });
 
   return (
-    <div class="defuss-desktop-panel" ref={ref}>
+    <div class="defuss-desktop-panel crt" ref={ref}>
       <Button>Test</Button>
     </div>
   );

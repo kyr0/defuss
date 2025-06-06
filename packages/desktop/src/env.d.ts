@@ -1,9 +1,11 @@
-import type { Desktop } from "./desktop.js";
-import type { DesktopShell } from "./shell.ts";
-import type { Taskbar } from "./taskbar.ts";
+import type { DesktopManager } from "./desktop.js";
+import type { DesktopShellManager } from "./shell.ts";
+import type { SoundManager } from "./sound.ts";
+import type { TaskbarManager } from "./taskbar.ts";
 
 declare global {
-  var __defussDesktopShell: DesktopShell;
-  var __defussDesktop: Desktop;
-  var __defussTaskbar: Taskbar;
+  var __defussDesktopShellManager: DesktopShellManager;
+  var __defussDesktopManager: DesktopManager;
+  var __defussTaskbarManager: TaskbarManager;
+  var __defussSoundManager: SoundManager;
 }

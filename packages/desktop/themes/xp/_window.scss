@@ -8,7 +8,7 @@
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
     padding: 0 0 3px 0;
-    -webkit-font-smoothing: antialiased;
+    -webkit-font-smoothing: none;
 }
 .title-bar {
     font-family: "Trebuchet MS";
@@ -112,7 +112,7 @@
 
 .status-bar-field {
     font-family: var(--sans-serif);
-    -webkit-font-smoothing: antialiased;
+    -webkit-font-smoothing: none;
     box-shadow: none;
     padding: 1px 2px;
     border-right: 1px solid rgba(208, 206, 191, 0.75);

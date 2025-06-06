@@ -4,10 +4,64 @@
 
 @use "variables" as *;
 
-body {
+body, html {
     font-family: Arial;
     font-size: 12px;
     color: #222222;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    user-select: none;
+
+    -webkit-text-size-adjust: none;
+    -ms-text-size-adjust: none;
+    text-size-adjust: none;
+
+    // Apply default cursor with fallback
+    cursor: url("#{$cursor-base-path}default.cur"), default;
+
+    // Cursor utilities for different elements within the desktop
+    * {
+        &[data-cursor="default"], &.cursor-default {
+        cursor: url("#{$cursor-base-path}default.cur"), default;
+        }
+
+        &[data-cursor="pointer"], &.cursor-pointer {
+        cursor: url("#{$cursor-base-path}pointer.cur"), pointer;
+        }
+
+        &[data-cursor="text"], &.cursor-text {
+        cursor: url("#{$cursor-base-path}text.cur"), text;
+        }
+
+        &[data-cursor="wait"], &.cursor-wait {
+        cursor: url("#{$cursor-base-path}wait.cur"), wait;
+        }
+
+        &[data-cursor="crosshair"], &.cursor-crosshair {
+        cursor: url("#{$cursor-base-path}crosshair.cur"), crosshair;
+        }
+
+        &[data-cursor="help"], &.cursor-help {
+        cursor: url("#{$cursor-base-path}help.cur"), help;
+        }
+
+        &[data-cursor="move"], &.cursor-move {
+        cursor: url("#{$cursor-base-path}move.cur"), move;
+        }
+
+        &[data-cursor="not-allowed"], &.cursor-not-allowed {
+        cursor: url("#{$cursor-base-path}not-allowed.cur"), not-allowed;
+        }
+
+        &[data-cursor="grab"], &.cursor-grab {
+        cursor: url("#{$cursor-base-path}grab.cur"), grab;
+        }
+
+        &[data-cursor="grabbing"], &.cursor-grabbing {
+        cursor: url("#{$cursor-base-path}grabbing.cur"), grabbing;
+        }
+    }
 }
 .surface {
     background: var(--surface);

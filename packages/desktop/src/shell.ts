@@ -9,7 +9,7 @@ export interface DesktopShellState {
   windows: Record<string, WindowState>;
 }
 
-export class DesktopShell {
+export class DesktopShellManager {
   constructor(public apps: DefussApp[] = []) {}
 
   addApp(app: DefussApp) {
@@ -19,7 +19,7 @@ export class DesktopShell {
 }
 
 // Ensure singleton of DesktopShell module-wide
-globalThis.__defussDesktopShell =
-  globalThis.__defussDesktopShell || new DesktopShell();
+globalThis.__defussDesktopShellManager =
+  globalThis.__defussDesktopShellManager || new DesktopShellManager();
 
-export const desktopShell = globalThis.__defussDesktopShell;
+export const desktopShell = globalThis.__defussDesktopShellManager;

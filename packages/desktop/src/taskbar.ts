@@ -18,7 +18,7 @@ export const defaultTaskbarOptions: CreateTaskbarOptions = {
   size: "medium",
 };
 
-export class Taskbar {
+export class TaskbarManager {
   position: "top" | "bottom" | "left" | "right";
   theme: string; // e.g., 'windows-xp', 'macos', etc.
   size: "small" | "medium" | "large";
@@ -34,6 +34,7 @@ export class Taskbar {
 }
 
 // Ensure singleton of Taskbar module-wide
-globalThis.__defussTaskbar = globalThis.__defussTaskbar || new Taskbar();
+globalThis.__defussTaskbarManager =
+  globalThis.__defussTaskbarManager || new TaskbarManager();
 
-export const taskbar = globalThis.__defussTaskbar;
+export const taskbarManager = globalThis.__defussTaskbarManager;

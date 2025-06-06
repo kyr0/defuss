@@ -27,16 +27,16 @@ export interface CreateDesktopOptions {
   backgroundColor: string;
 }
 
-export class Desktop {
+export const defaultDesktopOptions: CreateDesktopOptions = {
+  icons: [],
+  backgroundColor: "#000",
+};
+
+export class DesktopManager {
   el?: HTMLElement;
   state?: DesktopState;
 
-  constructor(
-    public options: CreateDesktopOptions = {
-      icons: [],
-      backgroundColor: "#000",
-    },
-  ) {}
+  constructor(public options: CreateDesktopOptions = defaultDesktopOptions) {}
 
   init(el: HTMLElement, options: CreateDesktopOptions = this.options) {
     this.options = options;
@@ -57,11 +57,16 @@ export class Desktop {
       el.style.backgroundImage = `url(${this.options.backgroundImage})`;
     }
 
-    el.style.backgroundSize = this.options.backgroundImageSize || "cover";
-    el.style.backgroundRepeat = this.options.backgroundRepeat || "no-repeat";
-    el.style.backgroundPosition = this.options.backgroundPosition || "center";
+    if (this.options.backgroundImageSize) {
+      el.style.backgroundSize = this.options.backgroundImageSize || "cover";
+    }
 
-    // TODO: Use ReGUI RasterView for rendering icons
+    if (this.options.backgroundRepeat) {
+      el.style.backgroundRepeat = this.options.backgroundRepeat || "no-repeat";
+    }
+    if (this.options.backgroundPosition) {
+      el.style.backgroundPosition = this.options.backgroundPosition || "center";
+    }
   }
 
   addIcon(icon: DefussDesktopAppIcon) {
@@ -89,6 +94,7 @@ export class Desktop {
 }
 
 // Ensure singleton of DefussDesktop module-wide
-globalThis.__defussDesktop = globalThis.__defussDesktop || new Desktop();
+globalThis.__defussDesktopManager =
+  globalThis.__defussDesktopManager || new DesktopManager();
 
-export const desktop = globalThis.__defussDesktop;
+export const desktopManager = globalThis.__defussDesktopManager;

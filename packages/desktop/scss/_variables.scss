@@ -4,11 +4,32 @@
 
 // SCSS Variables (available at compile time)
 $icon-base-path: "/icons/";
+
 // Default font paths
 $font-base-path: "/fonts/";
 
+// SCSS Variables
+$primary-bg: #000;
+
+// Default cursor paths
+$cursor-base-path: "/cursors/";
+
+// Default font stack with custom fonts
+$default-font-family: 'Tahoma', Geneva, Verdana, sans-serif;
+
+// Font utility variables
+$font-families: (
+  'default': $default-font-family,
+  'system': (system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif)
+);
+
+$menuHoverBlue: #1c79c3;
+$barBlue: #0075e1;
+
 :root {
     --sans-serif: "Pixelated MS Sans Serif", Arial;
+    --tahoma: "Tahoma", sans-serif;
+
     /* Color */
     --surface: lightblue;
     --button-highlight: #ffffff;
