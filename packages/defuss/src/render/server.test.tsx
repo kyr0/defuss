@@ -463,7 +463,9 @@ describe("VirtualDOM", () => {
       <div>B</div>,
     ]);
 
-    expect(onMount.mock.calls.length).toEqual(1);
+    queueMicrotask(() => {
+      expect(onMount.mock.calls.length).toEqual(1);
+    });
   });
 
   it("calls the onMount lifecycle hook when a DOM element has been rendered in to another <div>", () => {
@@ -486,7 +488,9 @@ describe("VirtualDOM", () => {
       someParentDivRef.current,
     );
 
-    expect(onMount.mock.calls.length).toEqual(1);
+    queueMicrotask(() => {
+      expect(onMount.mock.calls.length).toEqual(1);
+    });
   });
 
   /*

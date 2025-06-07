@@ -139,7 +139,7 @@ export const observeUnmount = (domNode: Node, onUnmount: () => void): void => {
       if (mutation.removedNodes.length > 0) {
         for (const removedNode of mutation.removedNodes) {
           if (removedNode === domNode) {
-            onUnmount();
+            queueMicrotask(onUnmount); // Call the onUnmount function
             observer.disconnect(); // Stop observing after unmount
             return;
           }
@@ -156,9 +156,10 @@ export const observeUnmount = (domNode: Node, onUnmount: () => void): void => {
 export const handleLifecycleEventsForOnMount = (newEl: HTMLElement) => {
   // check for a lifecycle "onMount" hook and call it
   if (typeof (newEl as any)?.$onMount === "function") {
-    (newEl as any).$onMount!();
-    // remove the hook after it's been called
-    (newEl as any).$onMount = null;
+    queueMicrotask(() => {
+      (newEl as any).$onMount!(); // remove the hook after it's been called
+      (newEl as any).$onMount = null;
+    });
   }
 
   // optionally check for a element lifecycle "onUnmount" and hook it up

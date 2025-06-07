@@ -45,7 +45,7 @@ export const Trans = ({
 
     if (attrs.onMount) {
       // Call the provided onMount handler if it exists
-      attrs.onMount(_ref.current);
+      queueMicrotask(() => attrs.onMount(_ref.current));
     }
   };
 
@@ -56,7 +56,7 @@ export const Trans = ({
 
     if (attrs.onUnmount) {
       // Call the provided onUnmount handler if it exists
-      attrs.onUnmount(_ref.current);
+      queueMicrotask(() => attrs.onUnmount(_ref.current));
     }
   };
 
