@@ -108,6 +108,8 @@ export const hydrate = (
 
     // call onMount if provided
     if (vnode?.attributes?.onMount) {
+      console.log("hydrate onMount", vnode.attributes.onMount);
+      // ensure onMount is a function
       vnode.attributes.onMount(element);
     }
 
