@@ -12,7 +12,7 @@ export interface I18nStore {
   language: string;
   changeLanguage: (language: string) => void;
   t: (path: string, options?: Record<string, string>) => string;
-  load: (language: string, translations: TranslationObject) => void;
+  loadLanguage: (language: string, translations: TranslationObject) => void;
   subscribe: (onLanguageChange: OnLanguageChangeListener) => () => void;
   unsubscribe: (onLanguageChange: OnLanguageChangeListener) => void;
 }
@@ -55,17 +55,10 @@ export const createI18n = (): I18nStore => {
     },
 
     changeLanguage(newLanguage: string) {
-      console.log(
-        "i18n changeLanguage called:",
-        newLanguage,
-        "callbacks:",
-        onLanguageChangeCallbacks.length,
-      );
       // Only trigger callbacks if the language actually changes
       if (newLanguage !== language) {
         language = newLanguage;
         onLanguageChangeCallbacks.forEach((callback) => {
-          console.log("i18n calling callback for language change");
           callback(newLanguage);
         });
       }
@@ -109,15 +102,10 @@ export const createI18n = (): I18nStore => {
       return interpolate(template, replacements);
     },
 
-    load(newLanguage: string, namespaceTranslations: TranslationObject) {
-      console.log(
-        "i18n load called:",
-        newLanguage,
-        "translations:",
-        namespaceTranslations,
-        "callbacks:",
-        onLanguageChangeCallbacks.length,
-      );
+    loadLanguage(
+      newLanguage: string,
+      namespaceTranslations: TranslationObject,
+    ) {
       translationsStore.set(newLanguage, {
         ...translationsStore.get<TranslationObject>(newLanguage),
         ...namespaceTranslations,
@@ -125,35 +113,31 @@ export const createI18n = (): I18nStore => {
       // Only notify subscribers if the new language is the current language
       if (newLanguage === language) {
         onLanguageChangeCallbacks.forEach((callback) => {
-          console.log("i18n calling callback for load");
           callback(language);
         });
       }
     },
 
     subscribe(onLanguageChange: OnLanguageChangeListener) {
-      console.log(
-        "i18n subscribe called, total callbacks will be:",
-        onLanguageChangeCallbacks.length + 1,
-      );
       onLanguageChangeCallbacks.push(onLanguageChange);
       return () => api.unsubscribe(onLanguageChange);
     },
 
     unsubscribe(onLanguageChange: OnLanguageChangeListener) {
       const index = onLanguageChangeCallbacks.indexOf(onLanguageChange);
-      console.log(
-        "i18n unsubscribe called, index:",
-        index,
-        "total callbacks before:",
-        onLanguageChangeCallbacks.length,
-      );
       if (index >= 0) onLanguageChangeCallbacks.splice(index, 1);
     },
   };
   return api;
 };
 
-// export singleton
-globalThis.__defuss_i18n = globalThis.__defuss_i18n || createI18n();
+// export singleton with enhanced safety for multiple module instances
+if (!globalThis.__defuss_i18n) {
+  globalThis.__defuss_i18n = createI18n();
+}
 export const i18n = globalThis.__defuss_i18n as I18nStore;
+
+export const t = i18n.t.bind(i18n);
+export const changeLanguage = i18n.changeLanguage.bind(i18n);
+export const loadLanguage = i18n.loadLanguage.bind(i18n);
+export const language = i18n.language;

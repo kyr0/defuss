@@ -15,7 +15,7 @@ describe("i18n core functionality", () => {
       expect(testI18n.language).toBe("en");
       expect(typeof testI18n.changeLanguage).toBe("function");
       expect(typeof testI18n.t).toBe("function");
-      expect(typeof testI18n.load).toBe("function");
+      expect(typeof testI18n.loadLanguage).toBe("function");
       expect(typeof testI18n.subscribe).toBe("function");
     });
 
@@ -26,7 +26,7 @@ describe("i18n core functionality", () => {
 
   describe("load", () => {
     it("should load translations for a language", () => {
-      testI18n.load("en", {
+      testI18n.loadLanguage("en", {
         greeting: "Hello, {name}!",
         farewell: "Goodbye!",
       });
@@ -36,22 +36,22 @@ describe("i18n core functionality", () => {
     });
 
     it("should merge translations when loading multiple times", () => {
-      testI18n.load("en", { greeting: "Hello!" });
-      testI18n.load("en", { farewell: "Goodbye!" });
+      testI18n.loadLanguage("en", { greeting: "Hello!" });
+      testI18n.loadLanguage("en", { farewell: "Goodbye!" });
 
       expect(testI18n.t("greeting")).toBe("Hello!");
       expect(testI18n.t("farewell")).toBe("Goodbye!");
     });
 
     it("should override existing translations when loading with same key", () => {
-      testI18n.load("en", { greeting: "Hello!" });
-      testI18n.load("en", { greeting: "Hi there!" });
+      testI18n.loadLanguage("en", { greeting: "Hello!" });
+      testI18n.loadLanguage("en", { greeting: "Hi there!" });
 
       expect(testI18n.t("greeting")).toBe("Hi there!");
     });
 
     it("should support nested translation objects", () => {
-      testI18n.load("en", {
+      testI18n.loadLanguage("en", {
         common: {
           buttons: {
             save: "Save",
@@ -67,9 +67,9 @@ describe("i18n core functionality", () => {
 
   describe("changeLanguage", () => {
     beforeEach(() => {
-      testI18n.load("en", { greeting: "Hello!" });
-      testI18n.load("de", { greeting: "Hallo!" });
-      testI18n.load("es", { greeting: "¡Hola!" });
+      testI18n.loadLanguage("en", { greeting: "Hello!" });
+      testI18n.loadLanguage("de", { greeting: "Hallo!" });
+      testI18n.loadLanguage("es", { greeting: "¡Hola!" });
     });
 
     it("should change the current language", () => {
@@ -105,7 +105,7 @@ describe("i18n core functionality", () => {
 
   describe("t (translation)", () => {
     beforeEach(() => {
-      testI18n.load("en", {
+      testI18n.loadLanguage("en", {
         greeting: "Hello, {name}!",
         farewell: "Goodbye, {name}!",
         complex: "Welcome {name}, you have {count} messages and {items} items.",
@@ -254,11 +254,11 @@ describe("i18n core functionality", () => {
       });
 
       // Load translations
-      testI18n.load("en", {
+      testI18n.loadLanguage("en", {
         welcome: "Welcome, {name}!",
         goodbye: "Goodbye!",
       });
-      testI18n.load("de", {
+      testI18n.loadLanguage("de", {
         welcome: "Willkommen, {name}!",
         goodbye: "Auf Wiedersehen!",
       });
@@ -277,7 +277,7 @@ describe("i18n core functionality", () => {
     });
 
     it("should handle language with no translations", () => {
-      testI18n.load("en", { message: "Hello" });
+      testI18n.loadLanguage("en", { message: "Hello" });
       testI18n.changeLanguage("fr"); // No French translations loaded
 
       expect(testI18n.t("message")).toBe("message");
@@ -291,14 +291,14 @@ describe("i18n core functionality", () => {
     });
 
     it("should provide working singleton instance", () => {
-      i18n.load("test", { message: "Test message" });
+      i18n.loadLanguage("test", { message: "Test message" });
       i18n.changeLanguage("test");
 
       expect(i18n.t("message")).toBe("Test message");
     });
     describe("edge cases and error handling", () => {
       it("should handle null and undefined values gracefully", () => {
-        testI18n.load("en", {
+        testI18n.loadLanguage("en", {
           message: "Hello {name}",
           count: "You have {count} items",
         });
@@ -311,7 +311,7 @@ describe("i18n core functionality", () => {
       });
 
       it("should handle special characters in translation keys", () => {
-        testI18n.load("en", {
+        testI18n.loadLanguage("en", {
           "special-key": "Special message",
           key_with_underscores: "Underscore message",
           "key.with.dots": "Dotted message",
@@ -325,7 +325,7 @@ describe("i18n core functionality", () => {
       });
 
       it("should handle very deep nested objects", () => {
-        testI18n.load("en", {
+        testI18n.loadLanguage("en", {
           level1: {
             level2: {
               level3: {
@@ -347,7 +347,7 @@ describe("i18n core functionality", () => {
       });
 
       it("should handle malformed nested key paths", () => {
-        testI18n.load("en", {
+        testI18n.loadLanguage("en", {
           valid: {
             nested: "Valid nested message",
           },
@@ -370,7 +370,7 @@ describe("i18n core functionality", () => {
           largeTranslations[`key${i}`] = `Message ${i} with {value}`;
         }
 
-        testI18n.load("en", largeTranslations);
+        testI18n.loadLanguage("en", largeTranslations);
 
         expect(testI18n.t("key0", { value: "test" })).toBe(
           "Message 0 with test",
@@ -384,7 +384,7 @@ describe("i18n core functionality", () => {
       });
 
       it("should handle complex placeholder patterns", () => {
-        testI18n.load("en", {
+        testI18n.loadLanguage("en", {
           complex: "Start {var1} middle {var2} end {var3}",
           adjacent: "{first}{second}{third}",
           repeated: "{name} said '{name}' to {name}",
@@ -423,7 +423,7 @@ describe("i18n core functionality", () => {
     describe("real-world application scenarios", () => {
       beforeEach(() => {
         // E-commerce application translations
-        testI18n.load("en", {
+        testI18n.loadLanguage("en", {
           header: {
             navigation: {
               home: "Home",
@@ -464,7 +464,7 @@ describe("i18n core functionality", () => {
           },
         });
 
-        testI18n.load("es", {
+        testI18n.loadLanguage("es", {
           header: {
             navigation: {
               home: "Inicio",
@@ -600,8 +600,8 @@ describe("i18n core functionality", () => {
 
         testI18n.subscribe((lang) => results.push(lang));
 
-        testI18n.load("de", { message: "Hallo" });
-        testI18n.load("fr", { message: "Bonjour" });
+        testI18n.loadLanguage("de", { message: "Hallo" });
+        testI18n.loadLanguage("fr", { message: "Bonjour" });
 
         languages.forEach((lang) => testI18n.changeLanguage(lang));
 
@@ -609,7 +609,7 @@ describe("i18n core functionality", () => {
       });
 
       it("should handle rapid successive translations calls", () => {
-        testI18n.load("en", {
+        testI18n.loadLanguage("en", {
           msg1: "Message 1 with {value}",
           msg2: "Message 2 with {value}",
           msg3: "Message 3 with {value}",
@@ -632,7 +632,7 @@ describe("i18n core functionality", () => {
     describe("memory and performance scenarios", () => {
       it("should handle loading and overriding translations multiple times", () => {
         for (let i = 0; i < 10; i++) {
-          testI18n.load("en", {
+          testI18n.loadLanguage("en", {
             dynamic: `Dynamic message ${i} with {value}`,
             static: "Static message",
           });

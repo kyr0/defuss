@@ -1,0 +1,9 @@
+{
+  "common": {
+    "toggleLanguage": "Toggle Language"
+  },
+  "main": {
+    "description": "Translation works."
+  },
+  "Welcome, {name}!": "Welcome back, {name}!"
+}

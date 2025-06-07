@@ -1,0 +1,9 @@
+{
+  "common": {
+    "toggleLanguage": "Sprache wechseln"
+  },
+  "main": {
+    "description": "Übersetzung klappt."
+  },
+  "Welcome, {name}!": "Willkommen zurück, {name}!"
+}

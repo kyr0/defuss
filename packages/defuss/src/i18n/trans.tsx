@@ -13,6 +13,8 @@ export interface TransProps extends Props {
   class?: string;
   className?: string;
   style?: string;
+  // allow for arbitrary attributes
+  [propName: string]: any;
 }
 
 export const Trans = ({
@@ -32,31 +34,31 @@ export const Trans = ({
   };
 
   _ref.updateValues = (newValues: Replacements) => {
-    console.log("Trans updateValues called with:", newValues);
     values = newValues;
     updateContent();
   };
 
   // Mount handler to set up subscription after element is in DOM
   const onMount = () => {
-    console.log("Trans onMount called for key:", key);
     // Subscribe to i18n changes after the element is mounted
     i18n.subscribe(updateContent);
+
+    if (attrs.onMount) {
+      // Call the provided onMount handler if it exists
+      attrs.onMount(_ref.current);
+    }
   };
 
   // auto-unsubscribe when component is unmounted
   const onUnmount = () => {
-    console.log("Trans onUnmount called for key:", key);
     // unsubscribe from language change
     i18n.unsubscribe(updateContent);
-  };
 
-  console.log(
-    "Trans component creating for key:",
-    key,
-    "with initial value:",
-    i18n.t(key, values),
-  );
+    if (attrs.onUnmount) {
+      // Call the provided onUnmount handler if it exists
+      attrs.onUnmount(_ref.current);
+    }
+  };
 
   return {
     type: tag || "span",
@@ -70,3 +72,5 @@ export const Trans = ({
     children: i18n.t(key, values),
   };
 };
+
+export const T = Trans;

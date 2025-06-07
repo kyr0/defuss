@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { createRef, render } from "../render/client.js";
 
 describe("Trans component", () => {
-  const { load, changeLanguage } = i18n;
+  const { loadLanguage: load, changeLanguage } = i18n;
 
   beforeEach(() => {
     // Reset to English and clear any existing translations

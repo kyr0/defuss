@@ -44,7 +44,7 @@ export const renderSync = <T extends RenderInput>(
 
 export const render = <T extends RenderInput>(
   virtualNode: T,
-  parentDomElement?: ParentElementInputAsync,
+  parentDomElement?: ParentElementInputAsync | any,
   options: RenderOptions = {},
 ): Promise<RenderResult<T>> => {
   const { browserGlobals, document } = setupDomApis(options);

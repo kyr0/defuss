@@ -20,19 +20,19 @@ describe("i18n API interface/contract", () => {
 
   it("should translate a string with no replacements", () => {
     const i18nInstance = createI18n();
-    i18nInstance.load("en", { greeting: "Hello" });
+    i18nInstance.loadLanguage("en", { greeting: "Hello" });
     expect(i18nInstance.t("greeting")).toBe("Hello");
   });
 
   it("should translate a string with replacements", () => {
     const i18nInstance = createI18n();
-    i18nInstance.load("en", { greeting: "Hello, {name}!" });
+    i18nInstance.loadLanguage("en", { greeting: "Hello, {name}!" });
     expect(i18nInstance.t("greeting", { name: "Alice" })).toBe("Hello, Alice!");
   });
 
   it("should handle double braces in translations", () => {
     const i18nInstance = createI18n();
-    i18nInstance.load("en", { greeting: "Hello, {{name}}!" });
+    i18nInstance.loadLanguage("en", { greeting: "Hello, {{name}}!" });
     expect(i18nInstance.t("greeting", { name: "Alice" })).toBe(
       "Hello, {Alice}!",
     );

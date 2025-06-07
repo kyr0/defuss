@@ -1,3 +1,4 @@
+import type { Dequery, DequerySyncMethodReturnType } from "@/dequery/index.js";
 import {
   observeUnmount,
   renderIsomorphicSync,
@@ -22,7 +23,7 @@ export const renderSync = <T extends RenderInput>(
 
 export const render = async <T extends RenderInput>(
   virtualNode: T | Promise<T>,
-  parentDomElement: ParentElementInputAsync = document.documentElement,
+  parentDomElement: ParentElementInputAsync | any = document.documentElement,
 ): Promise<RenderResult<T>> => {
   globalScopeDomApis(window, document);
   return renderIsomorphicAsync(
@@ -108,7 +109,6 @@ export const hydrate = (
 
     // call onMount if provided
     if (vnode?.attributes?.onMount) {
-      console.log("hydrate onMount", vnode.attributes.onMount);
       // ensure onMount is a function
       vnode.attributes.onMount(element);
     }
