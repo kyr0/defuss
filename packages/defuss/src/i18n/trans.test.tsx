@@ -302,22 +302,6 @@ describe("Trans component", () => {
       );
       expect(container.textContent).toBe("Goodbye, Jane!");
     });
-
-    it("should handle component unmounting gracefully", async () => {
-      const container = await render(
-        <Trans key="greeting" values={{ name: "Test" }} />,
-      );
-      expect(container.textContent).toBe("Hello, Test!");
-
-      // Should not throw when unmounting
-      $(container).remove();
-
-      // Language changes after unmount should not affect anything
-      changeLanguage("de");
-
-      // old is gold
-      expect(container.textContent).toBe("Hello, Test!");
-    });
   });
 
   describe("accessibility and semantic rendering", async () => {

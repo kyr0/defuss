@@ -155,4 +155,5 @@ export const createI18n = (): I18nStore => {
 };
 
 // export singleton
-export const i18n = createI18n();
+globalThis.__defuss_i18n = globalThis.__defuss_i18n || createI18n();
+export const i18n = globalThis.__defuss_i18n as I18nStore;

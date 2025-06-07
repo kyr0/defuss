@@ -4,7 +4,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": ["vitest/globals"],
+    "types": ["vitest/globals", "./src/types.d.ts"],
     "jsx": "react-jsx",
     "jsxImportSource": "defuss",
     "sourceMap": true,

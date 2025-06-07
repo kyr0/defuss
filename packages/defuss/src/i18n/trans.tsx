@@ -26,17 +26,9 @@ export const Trans = ({
   const _ref: TransRef = ref || ({} as TransRef);
 
   const updateContent = () => {
-    console.log("Trans updateContent called for key:", key);
     const value = i18n.t(key, values);
-    console.log("Trans updateContent: computed value:", value);
     if (_ref.current) {
-      console.log(
-        "Trans updateContent: updating DOM element",
-        _ref.current.innerText,
-      );
-      $(_ref.current).update(value);
-    } else {
-      console.log("Trans updateContent: _ref.current is null/undefined");
+      _ref.current.textContent = value;
     }
   };
 
