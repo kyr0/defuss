@@ -131,7 +131,6 @@ export const createI18n = (): I18nStore => {
   return api;
 };
 
-// export singleton with enhanced safety for multiple module instances
 if (!globalThis.__defuss_i18n) {
   globalThis.__defuss_i18n = createI18n();
 }
@@ -140,4 +139,4 @@ export const i18n = globalThis.__defuss_i18n as I18nStore;
 export const t = i18n.t.bind(i18n);
 export const changeLanguage = i18n.changeLanguage.bind(i18n);
 export const loadLanguage = i18n.loadLanguage.bind(i18n);
-export const language = i18n.language;
+export const getLanguage = () => i18n.language;

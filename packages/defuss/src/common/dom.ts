@@ -289,10 +289,6 @@ export function updateDomWithVdom(
           const first = newDom[0];
           parentElement.replaceChild(first, oldNode);
 
-          if (typeof first !== "undefined") {
-            handleLifecycleEventsForOnMount(first as HTMLElement);
-          }
-
           // Insert the rest
           for (let k = 1; k < newDom.length; k++) {
             if (newDom[k]) {
@@ -302,6 +298,10 @@ export function updateDomWithVdom(
                 handleLifecycleEventsForOnMount(newDom[k] as HTMLElement);
               }
             }
+          }
+
+          if (typeof first !== "undefined") {
+            handleLifecycleEventsForOnMount(first as HTMLElement);
           }
         }
       } else if (newDom) {
