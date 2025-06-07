@@ -107,12 +107,6 @@ export const hydrate = (
 
     // TODO: this should be refactored to re-use logic in lifecycle.js!
 
-    // call onMount if provided
-    if (vnode?.attributes?.onMount) {
-      // ensure onMount is a function
-      vnode.attributes.onMount(element);
-    }
-
     if (vnode?.attributes?.onUnmount) {
       observeUnmount(element, vnode.attributes.onUnmount);
     }
@@ -123,6 +117,12 @@ export const hydrate = (
         vnode.children as Array<VNode | string | null>,
         Array.from(element.childNodes),
       );
+    }
+
+    // call onMount if provided
+    if (vnode?.attributes?.onMount) {
+      // ensure onMount is a function
+      vnode.attributes.onMount(element);
     }
     elementIndex++;
   }
