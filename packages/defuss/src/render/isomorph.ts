@@ -23,6 +23,7 @@ import {
   updateDomWithVdom,
 } from "../common/dom.js";
 import { waitForRef } from "defuss-runtime";
+import { queueCallback } from "../common/queue.js";
 
 const CLASS_ATTRIBUTE_NAME = "class";
 const XLINK_ATTRIBUTE_NAME = "xlink";
@@ -235,9 +236,14 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
           // Apply dangerouslySetInnerHTML if provided
           if (virtualNode.attributes.dangerouslySetInnerHTML) {
-            // TODO: FIX me
-            newEl.innerHTML =
-              virtualNode.attributes.dangerouslySetInnerHTML.__html;
+            // Old: newEl.innerHTML = virtualNode.attributes.dangerouslySetInnerHTML.__html;
+            // New: use updateDom to handle the innerHTML update
+            updateDom(
+              virtualNode.attributes.dangerouslySetInnerHTML.__html,
+              [newEl],
+              1000, // timeout in ms
+              globalThis.DOMParser,
+            );
           }
         }
 
@@ -325,11 +331,11 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         const doCapture = capturePos > -1;
 
         if (eventName === "mount") {
-          (domElement as any).$onMount = value; // DOM event lifecycle hook
+          (domElement as any).$onMount = queueCallback(value); // DOM event lifecycle hook
         }
 
         if (eventName === "unmount") {
-          (domElement as any).$onUnmount = value; // DOM event lifecycle hook
+          (domElement as any).$onUnmount = queueCallback(value); // DOM event lifecycle hook
         }
 
         // onClickCapture={...} support
