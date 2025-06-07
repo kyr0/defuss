@@ -290,7 +290,6 @@ export function updateDomWithVdom(
           parentElement.replaceChild(first, oldNode);
 
           if (typeof first !== "undefined") {
-            console.log("first", first);
             handleLifecycleEventsForOnMount(first as HTMLElement);
           }
 
@@ -300,7 +299,6 @@ export function updateDomWithVdom(
               parentElement.insertBefore(newDom[k]!, first.nextSibling);
 
               if (typeof newDom[k] !== "undefined") {
-                console.log("inserBefore", newDom);
                 handleLifecycleEventsForOnMount(newDom[k] as HTMLElement);
               }
             }
@@ -315,8 +313,6 @@ export function updateDomWithVdom(
         } else {
           // replace
           parentElement.replaceChild(newDom, oldNode);
-
-          console.log("single new node newDom", newDom);
           handleLifecycleEventsForOnMount(newDom as HTMLElement);
         }
       }
@@ -327,15 +323,12 @@ export function updateDomWithVdom(
           const wasAdded = newNode && parentElement.appendChild(newNode);
 
           if (wasAdded) {
-            console.log("parentElement wasAdded", newDom);
             handleLifecycleEventsForOnMount(newNode as HTMLElement);
           }
           return wasAdded;
         });
       } else if (newDom) {
         parentElement.appendChild(newDom);
-
-        console.log("parentElement newDom appendChild", newDom);
         handleLifecycleEventsForOnMount(newDom as HTMLElement);
       }
     } else if (oldNode && newDom === undefined) {
