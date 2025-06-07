@@ -3,7 +3,6 @@ import { Trans, type TransRef } from "./trans.js";
 import { i18n } from "./i18n.js";
 import { describe, it, expect, beforeEach } from "vitest";
 import { createRef, render } from "../render/client.js";
-import { $ } from "../dequery/index.js";
 
 describe("Trans component", () => {
   const { load, changeLanguage } = i18n;
@@ -425,13 +424,21 @@ describe("Trans component", () => {
       ref.updateValues({ status: "Complete" });
       expect(container.textContent).toBe("Status: Complete");
 
-      ref.updateValues({ count: "42" });
-      expect(container.textContent).toBe("Anzahl: 42");
+      // Create a new container for the counter component
+      const counterRef = createRef<string, HTMLElement>() as TransRef;
+      const counterContainer = await render(
+        <Trans key="counter" values={{ count: "42" }} ref={counterRef} />,
+      );
+      expect(counterContainer.textContent).toBe("Count: 42");
 
       // Change language
       changeLanguage("de");
 
       expect(container.textContent).toBe("Status: Complete");
+      expect(counterContainer.textContent).toBe("Anzahl: 42");
+
+      counterRef.updateValues({ count: "43" });
+      expect(counterContainer.textContent).toBe("Anzahl: 43");
     });
   });
 });

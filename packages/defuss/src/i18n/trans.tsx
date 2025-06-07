@@ -1,6 +1,5 @@
 import type { Props, Ref, VNodeChild } from "../render/types.js";
 import { type Replacements, i18n } from "./i18n.js";
-import { $ } from "../dequery/index.js";
 
 export interface TransRef extends Ref<string, HTMLElement> {
   updateValues: (values: Replacements) => void;
