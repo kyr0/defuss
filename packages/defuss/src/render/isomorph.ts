@@ -246,6 +246,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
         if (parentDomElement) {
           parentDomElement.appendChild(newEl);
+          console.log("Mounted parentDomElement:", newEl);
           handleLifecycleEventsForOnMount(newEl as HTMLElement);
         }
       } catch (e) {
