@@ -670,24 +670,6 @@ export async function updateDom<NT>(
         transitionTarget = element.parentElement;
       }
 
-      // Create a snapshot of the current content for true crossfade
-      let contentSnapshot: HTMLElement | null = null;
-      const shouldUseSnapshot = config.type === "fade" && target === "parent";
-
-      if (shouldUseSnapshot) {
-        try {
-          // Snapshot the transitionTarget since that's what we're applying transitions to
-          contentSnapshot = createContentSnapshot(transitionTarget);
-          insertContentSnapshot(contentSnapshot, transitionTarget);
-        } catch (error) {
-          console.warn(
-            "Failed to create content snapshot, falling back to regular transition:",
-            error,
-          );
-          contentSnapshot = null;
-        }
-      }
-
       // Store original styles that we'll modify
       const stylesToStore = [
         "opacity",
@@ -701,6 +683,8 @@ export async function updateDom<NT>(
 
       // Return a promise that resolves when the transition completes
       return new Promise<typeof node>((resolve, reject) => {
+        let contentSnapshot: HTMLElement | null = null;
+        
         const cleanup = () => {
           if (contentSnapshot) {
             removeContentSnapshot(contentSnapshot);
@@ -713,42 +697,62 @@ export async function updateDom<NT>(
           reject(error);
         };
 
-        // Step 1: Apply delay if specified (non-blocking)
-        const startTransition = () => {
+        // NEW APPROACH: Schedule DOM update immediately but hide it with snapshot
+        const startTransitionWithImmediateUpdate = () => {
           try {
-            // Apply exit styles to start the transition out
-            applyStyles(transitionTarget, transitionStyles.exit);
+            // Step 1: Create snapshot of current content BEFORE updating DOM
+            contentSnapshot = createContentSnapshot(transitionTarget);
+            insertContentSnapshot(contentSnapshot, transitionTarget);
 
-            // Force reflow
-            transitionTarget.offsetHeight;
-
-            // Apply exit-active styles to trigger the transition
-            applyStyles(transitionTarget, transitionStyles.exitActive);
-
-            // Wait for exit transition to reach midpoint (non-blocking)
-            scheduleTransitionEnd(transitionTarget, duration / 2, performUpdate);
-          } catch (error) {
-            handleError(error as Error);
-          }
-        };
-
-        // Step 2: Perform DOM update at transition midpoint (non-blocking)
-        const performUpdate = () => {
-          try {
-            // Perform the actual DOM update at the crossfade midpoint
+            // Step 2: Immediately perform DOM update (but it's hidden behind snapshot)
             performCoreDomUpdate(input, [node], timeout, Parser)
               .then(() => {
-                // Apply enter styles for the new content
-                applyStyles(transitionTarget, transitionStyles.enter);
+                // Step 3: Hide the updated content initially
+                applyStyles(transitionTarget, {
+                  opacity: "0",
+                  // Don't apply transform here - let the snapshot handle the visual transition
+                });
+
+                // Step 4: Apply exit styles to the snapshot to transition it out
+                applyStyles(contentSnapshot!, transitionStyles.exit);
 
                 // Force reflow
-                transitionTarget.offsetHeight;
+                contentSnapshot!.offsetHeight;
 
-                // Apply enter-active styles to transition in
-                applyStyles(transitionTarget, transitionStyles.enterActive);
+                // Apply exit-active styles to trigger the snapshot transition
+                applyStyles(contentSnapshot!, transitionStyles.exitActive);
 
-                // Wait for enter transition to complete (non-blocking)
-                scheduleTransitionEnd(transitionTarget, duration / 2, finishTransition);
+                // Step 5: Wait for exit transition to complete, then reveal new content
+                scheduleTransitionEnd(contentSnapshot!, duration, () => {
+                  try {
+                    // Remove the snapshot
+                    if (contentSnapshot) {
+                      removeContentSnapshot(contentSnapshot);
+                      contentSnapshot = null;
+                    }
+
+                    // Apply enter styles to the new content
+                    applyStyles(transitionTarget, transitionStyles.enter);
+
+                    // Force reflow
+                    transitionTarget.offsetHeight;
+
+                    // Apply enter-active styles to transition in the new content
+                    applyStyles(transitionTarget, transitionStyles.enterActive);
+
+                    // Wait for enter transition to complete
+                    scheduleTransitionEnd(transitionTarget, duration, () => {
+                      try {
+                        cleanup();
+                        resolve(node);
+                      } catch (error) {
+                        handleError(error as Error);
+                      }
+                    });
+                  } catch (error) {
+                    handleError(error as Error);
+                  }
+                });
               })
               .catch(handleError);
           } catch (error) {
@@ -756,18 +760,8 @@ export async function updateDom<NT>(
           }
         };
 
-        // Step 3: Finish and cleanup (non-blocking)
-        const finishTransition = () => {
-          try {
-            cleanup();
-            resolve(node);
-          } catch (error) {
-            handleError(error as Error);
-          }
-        };
-
         // Start the transition sequence with optional delay (non-blocking)
-        scheduleDelayedStep(startTransition, delay);
+        scheduleDelayedStep(startTransitionWithImmediateUpdate, delay);
       });
     });
 
