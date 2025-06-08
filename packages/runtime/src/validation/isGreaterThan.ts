@@ -8,11 +8,18 @@ import type { ValidatorFn } from "./types.js";
  * @param value - The value to check.
  * @param minValue - The minimum value to compare against.
  * @param includeEqual - Whether to include equality in the comparison (default: false).
- * @returns True if the value is greater than (or equal to, if `includeEqual` is true) the minimum value, false otherwise.
+ * @param message - Optional error message to return when validation fails.
+ * @returns True if the value is greater than (or equal to, if `includeEqual` is true) the minimum value, the message if validation fails and message is provided, false otherwise.
  */
 export const isGreaterThan: ValidatorFn = (
   value: any,
   minValue: number,
   includeEqual = false,
-): boolean =>
-  isSafeNumber(value) && (includeEqual ? value >= minValue : value > minValue);
+  message?: string,
+): boolean | string => {
+  const safeNumberResult = isSafeNumber(value);
+  const isSafeNum = safeNumberResult === true;
+  const isValid =
+    isSafeNum && (includeEqual ? value >= minValue : value > minValue);
+  return isValid ? true : message || false;
+};

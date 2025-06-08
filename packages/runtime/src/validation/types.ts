@@ -3,7 +3,8 @@ export type ValidationFnResult = true | ValidationMessage;
 
 export type ValidatorPrimitiveFn<T = unknown> = (
   value: T,
-) => boolean | Promise<boolean>;
+  message?: string,
+) => boolean | string | Promise<boolean | string>;
 
 export interface SingleValidationResult {
   message?: ValidationMessage;

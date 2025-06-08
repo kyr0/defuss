@@ -12,21 +12,27 @@ import type { ValidatorFn } from "./types.js";
  *
  * @param value - The value to check its type.
  * @param type - The type to check against.
- * @returns True if the value is of the specified type, false otherwise.
+ * @param message - Optional error message to return when validation fails.
+ * @returns True if the value is of the specified type, the message if validation fails and message is provided, false otherwise.
  */
-export const isTypeOf: ValidatorFn = <T>(value: any, type: T): boolean => {
+export const isTypeOf: ValidatorFn = <T>(
+  value: any,
+  type: T,
+  message?: string,
+): boolean | string => {
+  let isValid = false;
   if (type === "string") {
-    return typeof value === "string";
+    isValid = typeof value === "string";
   } else if (type === "number") {
-    return typeof value === "number";
+    isValid = typeof value === "number";
   } else if (type === "boolean") {
-    return typeof value === "boolean";
+    isValid = typeof value === "boolean";
   } else if (type === "object") {
-    return typeof value === "object" && value !== null;
+    isValid = typeof value === "object" && value !== null;
   } else if (type === "function") {
-    return typeof value === "function";
+    isValid = typeof value === "function";
   } else if (type === "undefined") {
-    return typeof value === "undefined";
+    isValid = typeof value === "undefined";
   }
-  return false;
+  return isValid ? true : message || false;
 };

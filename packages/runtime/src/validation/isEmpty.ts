@@ -10,13 +10,17 @@ import type { ValidatorPrimitiveFn } from "./types.js";
  * - a Date object (not considered empty)
  *
  * @param value - The value to check.
- * @returns True if the value is empty, false otherwise.
+ * @param message - Optional error message to return when validation fails.
+ * @returns True if the value is empty, the message if validation fails and message is provided, false otherwise.
  */
-export const isEmpty: ValidatorPrimitiveFn = (value) => {
-  if (value === null || value === undefined) return true;
-  if (typeof value === "string") return value === "";
-  if (Array.isArray(value)) return value.length === 0;
-  if (value instanceof Date) return false;
-  if (typeof value === "object") return Object.keys(value).length === 0;
-  return false;
+export const isEmpty: ValidatorPrimitiveFn = (value, message?: string) => {
+  let isValid = false;
+  if (value === null || value === undefined) isValid = true;
+  else if (typeof value === "string") isValid = value === "";
+  else if (Array.isArray(value)) isValid = value.length === 0;
+  else if (value instanceof Date) isValid = false;
+  else if (typeof value === "object") isValid = Object.keys(value).length === 0;
+  else isValid = false;
+
+  return isValid ? true : message || false;
 };

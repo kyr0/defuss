@@ -6,7 +6,10 @@ import { isSafeNumber } from "./isSafeNumber.js";
  * An integer is a number without a fractional part.
  *
  * @param value - The value to check.
- * @returns True if the value is an integer, false otherwise.
+ * @param message - Optional error message to return when validation fails.
+ * @returns True if the value is an integer, the message if validation fails and message is provided, false otherwise.
  */
-export const isInteger: ValidatorPrimitiveFn = (value) =>
-  isSafeNumber(value) && Number.isInteger(value as number);
+export const isInteger: ValidatorPrimitiveFn = (value, message?: string) => {
+  const isValid = isSafeNumber(value) && Number.isInteger(value as number);
+  return isValid ? true : message || false;
+};

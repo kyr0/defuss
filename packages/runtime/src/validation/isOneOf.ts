@@ -6,9 +6,14 @@ import type { ValidatorFn } from "./types.js";
  *
  * @param value - The value to check.
  * @param options - An array of strings or numbers to check against.
- * @returns True if the value is one of the options, false otherwise.
+ * @param message - Optional error message to return when validation fails.
+ * @returns True if the value is one of the options, the message if validation fails and message is provided, false otherwise.
  */
 export const isOneOf: ValidatorFn = (
   value: any,
   options: Array<string | number>,
-): boolean => options.includes(value);
+  message?: string,
+): boolean | string => {
+  const isValid = options.includes(value);
+  return isValid ? true : message || false;
+};

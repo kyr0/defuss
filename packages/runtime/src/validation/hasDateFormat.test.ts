@@ -64,4 +64,25 @@ describe("hasDateFormat", () => {
     const veryLongString = "a".repeat(1000000);
     expect(hasDateFormat(veryLongString)).toBe(false);
   });
+
+  it("should return custom message on validation failure", () => {
+    expect(hasDateFormat("invalid-date", "Please provide a valid date")).toBe(
+      "Please provide a valid date",
+    );
+    expect(hasDateFormat(null, "Date is required")).toBe("Date is required");
+    expect(hasDateFormat({}, "Invalid date format")).toBe(
+      "Invalid date format",
+    );
+    expect(hasDateFormat(BigInt(123), "BigInt not supported")).toBe(
+      "BigInt not supported",
+    );
+    expect(hasDateFormat(Symbol("test"), "Symbol not supported")).toBe(
+      "Symbol not supported",
+    );
+  });
+
+  it("should work without message parameter (backwards compatibility)", () => {
+    expect(hasDateFormat("invalid-date")).toBe(false);
+    expect(hasDateFormat("2023-12-01")).toBe(true);
+  });
 });

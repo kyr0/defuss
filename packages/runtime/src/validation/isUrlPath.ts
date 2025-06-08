@@ -7,9 +7,14 @@ import { isString } from "./isString.js";
  * It does not allow spaces or special characters.
  *
  * @param value - The value to validate as a URL path.
- * @returns True if the value is a valid URL path, false otherwise.
+ * @param message - Optional error message to return when validation fails.
+ * @returns True if the value is a valid URL path, the message if validation fails and message is provided, false otherwise.
  */
-export const isUrlPath: ValidatorPrimitiveFn = (value) =>
-  isString(value) &&
-  (value as string).length > 0 &&
-  /^[a-z0-9\-_\/]+$/.test(value as string);
+export const isUrlPath: ValidatorPrimitiveFn = (value, message?: string) => {
+  const stringCheck = isString(value);
+  const isValid =
+    stringCheck === true &&
+    (value as string).length > 0 &&
+    /^[a-z0-9\-_\/]+$/.test(value as string);
+  return isValid ? true : message || false;
+};

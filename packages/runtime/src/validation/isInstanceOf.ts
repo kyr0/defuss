@@ -7,7 +7,8 @@ import type { ValidatorFn } from "./types.js";
  *
  * @param value - The value to check.
  * @param someConstructorFunction - The constructor function to check against.
- * @returns True if the value is an instance of the constructor, false otherwise.
+ * @param message - Optional error message to return when validation fails.
+ * @returns True if the value is an instance of the constructor, the message if validation fails and message is provided, false otherwise.
  * @throws TypeError if `someConstructorFunction` is not a function.
  */
 export const isInstanceOf: ValidatorFn = <
@@ -17,12 +18,13 @@ export const isInstanceOf: ValidatorFn = <
 >(
   value: any,
   someConstructorFunction: T,
+  message?: string,
 ) => {
   if (typeof someConstructorFunction !== "function") {
     throw new TypeError("Expected a constructor function");
   }
-  return (
+  const isValid =
     value instanceof someConstructorFunction &&
-    value.constructor === someConstructorFunction
-  );
+    value.constructor === someConstructorFunction;
+  return isValid ? true : message || false;
 };
