@@ -13,6 +13,10 @@ export async function getSchema() {
 
 let schema: RpcApiSchema | null = null;
 
+export function clearSchemaCache() {
+  schema = null;
+}
+
 export async function getRpcClient<T extends Record<string, RpcApiClass>>() {
   if (schema === null) {
     // TODO: cache schema in memory or localStorage

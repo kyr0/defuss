@@ -13,14 +13,26 @@ const rpcApiClasses: RpcApiClass[] = [];
 let guardFunction: RpcGuardFn | null = null;
 
 export function createRpcServer(ns: ApiNamespace) {
+  // Clear existing classes if empty namespace is passed
+  if (Object.keys(ns).length === 0) {
+    rpcApiClasses.length = 0;
+    return;
+  }
+
   if (rpcApiClasses.length > 0) {
     return; // Prevent re-publishing the same namespace
   }
   Object.values(ns).forEach((cls) => rpcApiClasses.push(cls));
 }
 
-export function setGuardFunction(guardFn: RpcGuardFn) {
+export function setGuardFunction(guardFn: RpcGuardFn | null) {
   guardFunction = guardFn;
+}
+
+// Functions for testing - to clear state between tests
+export function clearRpcServer() {
+  createRpcServer({});
+  setGuardFunction(null);
 }
 
 export const rpcRoute: APIRoute = async ({ request }) => {
