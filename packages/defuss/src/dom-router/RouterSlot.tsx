@@ -38,6 +38,7 @@ export const RouterSlot = ({
 
   // by using this component, we automatically switch to slot-refresh strategy
   router.strategy = "slot-refresh";
+  router.attachPopStateHandler();
 
   router.onRouteChange(async () => {
     //console.log("<RouterSlot> RouterSlot.onRouteChange", newPath, oldPath, ref.current);

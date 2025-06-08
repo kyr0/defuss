@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM Router Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .nav { margin: 20px 0; }
+        .nav button { margin: 5px; padding: 10px; }
+        .current-route { background-color: #f0f8ff; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .log { background-color: #f9f9f9; padding: 10px; margin: 10px 0; border-radius: 5px; max-height: 200px; overflow-y: auto; }
+        .log-entry { margin: 2px 0; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>DOM Router Demo - Browser History Navigation</h1>
+    
+    <div class="nav">
+        <button onclick="router.navigate('/home')">Navigate to /home</button>
+        <button onclick="router.navigate('/about')">Navigate to /about</button>
+        <button onclick="router.navigate('/contact')">Navigate to /contact</button>
+        <button onclick="window.history.back()">Browser Back</button>
+        <button onclick="window.history.forward()">Browser Forward</button>
+    </div>
+    
+    <div class="current-route">
+        <strong>Current Route:</strong> <span id="current-route">/</span>
+    </div>
+    
+    <div class="log">
+        <strong>Navigation Log:</strong>
+        <div id="log"></div>
+    </div>
+
+    <script type="module">
+        // Simplified router implementation for demo
+        function setupRouter() {
+            const listeners = [];
+            let currentPath = window.location.pathname;
+            
+            const router = {
+                navigate(newPath) {
+                    const oldPath = currentPath;
+                    window.history.pushState({}, "", newPath);
+                    currentPath = newPath;
+                    
+                    for (const listener of listeners) {
+                        listener(newPath, oldPath);
+                    }
+                },
+                onRouteChange(callback) {
+                    listeners.push(callback);
+                }
+            };
+            
+            // Handle browser back/forward navigation
+            const handlePopState = (event) => {
+                const newPath = window.location.pathname;
+                const oldPath = currentPath;
+                currentPath = newPath;
+                
+                for (const listener of listeners) {
+                    listener(newPath, oldPath);
+                }
+            };
+            
+            window.addEventListener("popstate", handlePopState);
+            
+            return router;
+        }
+        
+        // Initialize router
+        const router = setupRouter();
+        window.router = router; // Make available globally for buttons
+        
+        // Set up UI updates
+        const currentRouteElement = document.getElementById('current-route');
+        const logElement = document.getElementById('log');
+        
+        function addLogEntry(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        router.onRouteChange((newRoute, oldRoute) => {
+            currentRouteElement.textContent = newRoute;
+            addLogEntry(`Route changed: ${oldRoute} → ${newRoute}`);
+        });
+        
+        // Initialize display
+        currentRouteElement.textContent = window.location.pathname;
+        addLogEntry(`Router initialized at: ${window.location.pathname}`);
+    </script>
+</body>
+</html>

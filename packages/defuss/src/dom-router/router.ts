@@ -16,6 +16,8 @@ export interface Router {
   tokenizePath(path: string): TokenizedPath;
   navigate(path: string): void;
   onRouteChange: OnRouteChangeFn;
+  destroy(): void;
+  attachPopStateHandler(): void;
 }
 
 export interface RouterConfig {
@@ -115,6 +117,7 @@ export const setupRouter = (
   windowImpl?: Window,
 ): Router => {
   const routeRegistrations: Array<RouteRegistration> = [];
+  let currentPath = ""; // Track current path for popstate events
 
   // safe SSR rendering, and fine default for client side
   if (typeof window !== "undefined" && !windowImpl) {
@@ -123,6 +126,11 @@ export const setupRouter = (
 
   if (!windowImpl && !isServer()) {
     console.warn("Router requires a Window API implementation!");
+  }
+
+  // Initialize current path
+  if (windowImpl) {
+    currentPath = windowImpl.document.location.pathname;
   }
 
   const api = {
@@ -154,7 +162,7 @@ export const setupRouter = (
     },
     navigate(newPath: string) {
       const strategy = api.strategy || "page-refresh";
-      const oldPath = windowImpl ? windowImpl.document.location.pathname : "";
+      const oldPath = currentPath; // Use tracked currentPath instead of window location
 
       if (strategy === "page-refresh") {
         document.location.href = newPath;
@@ -164,15 +172,56 @@ export const setupRouter = (
           windowImpl!.history.pushState({}, "", newPath);
         }
 
-        for (const listener of api.listeners) {
-          listener(newPath, oldPath);
-        }
+        // Update current path tracker
+        currentPath = newPath;
+
+        // Queue listeners to be called asynchronously
+        queueMicrotask(() => {
+          for (const listener of api.listeners) {
+            listener(newPath, oldPath);
+          }
+        });
       }
     },
     getRoutes() {
       return routeRegistrations;
     },
+    destroy() {
+      // Remove popstate event listener when router is destroyed
+      if (windowImpl && api.strategy === "slot-refresh") {
+        windowImpl.removeEventListener("popstate", handlePopState);
+      }
+    },
+    attachPopStateHandler() {
+      if (windowImpl && api.strategy === "slot-refresh") {
+        windowImpl.addEventListener("popstate", handlePopState);
+      }
+    },
   };
+
+  // Handle browser back/forward navigation
+  const handlePopState = (event: PopStateEvent) => {
+    if (api.strategy === "slot-refresh" && windowImpl) {
+      const newPath = windowImpl.document.location.pathname;
+      const oldPath = currentPath;
+
+      // Update current path tracker
+      currentPath = newPath;
+
+      // Queue listeners to be called asynchronously to ensure proper timing
+      queueMicrotask(() => {
+        for (const listener of api.listeners) {
+          listener(newPath, oldPath);
+        }
+      });
+    }
+  };
+
+  // Add popstate event listener for slot-refresh strategy during initialization
+  if (windowImpl && api.strategy === "slot-refresh") {
+    api.attachPopStateHandler();
+  }
+
   return api as Router;
 };
 

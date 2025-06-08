@@ -122,9 +122,7 @@ export const hydrate = (
     // call onMount if provided
     if (vnode?.attributes?.onMount) {
       // ensure onMount is a function
-      queueMicrotask(() => {
-        vnode.attributes?.onMount?.(element);
-      });
+      vnode.attributes?.onMount?.(element);
     }
     elementIndex++;
   }
