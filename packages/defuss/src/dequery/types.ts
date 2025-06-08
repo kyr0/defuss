@@ -1,4 +1,5 @@
 import type { Globals, NodeType } from "../render/index.js";
+import type { TransitionConfig } from "../render/transitions.js";
 
 export type FormFieldValue = string | boolean;
 export interface FormKeyValues {
@@ -42,3 +43,6 @@ export type DequerySyncMethodReturnType =
   | string
   | boolean
   | null;
+
+// Re-export transition types for convenience
+export type { TransitionConfig } from "../render/transitions.js";

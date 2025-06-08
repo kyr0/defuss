@@ -649,6 +649,7 @@ export class CallChainImpl<
       | NodeType
       | CallChainImpl<NT>
       | CallChainImplThenable<NT>,
+    transitionConfig?: import("../render/transitions.js").TransitionConfig,
   ): ET {
     return createCall(this, "update", async () => {
       return (await updateDom(
@@ -656,6 +657,7 @@ export class CallChainImpl<
         this.nodes,
         this.options.timeout!,
         this.Parser,
+        transitionConfig,
       )) as NT;
     }) as unknown as ET;
   }

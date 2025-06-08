@@ -525,6 +525,85 @@ export const jsxDEV = (
 };
 
 /**
+ * Helper function to perform the actual DOM update without transitions
+ */
+async function performCoreDomUpdate<NT>(
+  input:
+    | string
+    | RenderInput
+    | Ref<NodeType>
+    | NodeType
+    | CallChainImpl<NT>
+    | CallChainImplThenable<NT>,
+  nodes: readonly NodeType[],
+  timeout: number,
+  Parser: typeof globalThis.DOMParser,
+): Promise<void> {
+  let processedInput = input;
+
+  if (isDequery(processedInput)) {
+    processedInput = (processedInput as any)[0] as HTMLElement;
+  }
+
+  if (isRef(processedInput)) {
+    await waitForRef(processedInput as Ref<NodeType>, timeout);
+    processedInput = (processedInput as Ref<NodeType>).current;
+  }
+
+  if (processedInput instanceof Node) {
+    // Convert DOM node to VNode and use the intelligent updateDomWithVdom
+    // This preserves existing DOM structure and event listeners
+    const vnode = domNodeToVNode(processedInput);
+    nodes.forEach((el) => {
+      if (el) {
+        updateDomWithVdom(el as HTMLElement, vnode, globalThis as Globals);
+      }
+    });
+    return;
+  }
+
+  if (typeof processedInput === "string") {
+    if (isMarkup(processedInput, Parser)) {
+      // Convert HTML markup to VNodes and use intelligent updateDomWithVdom
+      // This provides better DOM state preservation than the older updateDom approach
+      const vNodes = htmlStringToVNodes(processedInput, Parser);
+      nodes.forEach((el) => {
+        if (el) {
+          updateDomWithVdom(el as HTMLElement, vNodes, globalThis as Globals);
+        }
+      });
+    } else {
+      // For plain text, use the more efficient updateDomWithVdom approach
+      // This preserves existing DOM structure where possible
+      nodes.forEach((el) => {
+        if (el) {
+          updateDomWithVdom(
+            el as HTMLElement,
+            processedInput as string,
+            globalThis as Globals,
+          );
+        }
+      });
+    }
+  } else if (isJSX(processedInput)) {
+    // Use the intelligent updateDomWithVdom for JSX
+    // This function performs partial updates, preserving existing DOM elements
+    // and only updating what has actually changed
+    nodes.forEach((el) => {
+      if (el) {
+        updateDomWithVdom(
+          el as HTMLElement,
+          processedInput as RenderInput,
+          globalThis as Globals,
+        );
+      }
+    });
+  } else {
+    console.warn("update: unsupported content type", processedInput);
+  }
+}
+
+/**
  * Core DOM update logic extracted from the update() method.
  * This function handles the actual DOM manipulation without the createCall wrapper,
  * allowing it to be used by both update() and replaceWith() without deadlock.
@@ -540,69 +619,99 @@ export async function updateDom<NT>(
   nodes: readonly NodeType[],
   timeout: number,
   Parser: typeof globalThis.DOMParser,
+  transitionConfig?: import("./transitions.js").TransitionConfig,
 ): Promise<readonly NodeType[]> {
-  if (isDequery(input)) {
-    input = input[0] as HTMLElement;
-  }
+  // Handle transitions if configuration is provided
+  if (transitionConfig && transitionConfig.type !== "none") {
+    const {
+      getTransitionStyles,
+      applyStyles,
+      storeOriginalStyles,
+      restoreOriginalStyles,
+      waitForTransition,
+      DEFAULT_TRANSITION_CONFIG,
+    } = await import("./transitions.js");
 
-  if (isRef(input)) {
-    await waitForRef(input as Ref<NodeType>, timeout);
-    input = (input as Ref<NodeType>).current;
-  }
+    const config = { ...DEFAULT_TRANSITION_CONFIG, ...transitionConfig };
+    const { duration = 300, easing = "ease-in-out", delay = 0 } = config;
 
-  if (input instanceof Node) {
-    // Convert DOM node to VNode and use the intelligent updateDomWithVdom
-    // This preserves existing DOM structure and event listeners
-    const vnode = domNodeToVNode(input);
-    nodes.forEach((el) => {
-      if (el) {
-        updateDomWithVdom(el as HTMLElement, vnode, globalThis as Globals);
+    // Get transition styles - either custom or predefined
+    const transitionStyles =
+      config.styles ||
+      getTransitionStyles(config.type || "fade", duration, easing);
+
+    // Apply transitions to each target node
+    const transitionPromises = nodes.map(async (node) => {
+      if (!node || !(node as HTMLElement).parentElement) {
+        // If no parent element, just do regular update without transition
+        await performCoreDomUpdate(input, [node], timeout, Parser);
+        return node;
       }
+
+      const element = node as HTMLElement;
+      const parentElement = element.parentElement!;
+
+      // Store original styles that we'll modify
+      const stylesToStore = [
+        "opacity",
+        "transform",
+        "transition",
+        "overflow",
+        "position",
+        "z-index",
+      ];
+      const originalStyles = storeOriginalStyles(parentElement, stylesToStore);
+
+      try {
+        // Apply delay if specified
+        if (delay > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        // Apply exit styles to start the transition out
+        applyStyles(parentElement, transitionStyles.exit);
+
+        // Force reflow
+        parentElement.offsetHeight;
+
+        // Apply exit-active styles to trigger the transition
+        applyStyles(parentElement, transitionStyles.exitActive);
+
+        // Wait for exit transition to complete (half the duration)
+        await waitForTransition(parentElement, duration / 2);
+
+        // Now perform the actual DOM update
+        await performCoreDomUpdate(input, [node], timeout, Parser);
+
+        // Apply enter styles for the new content
+        applyStyles(parentElement, transitionStyles.enter);
+
+        // Force reflow
+        parentElement.offsetHeight;
+
+        // Apply enter-active styles to transition in
+        applyStyles(parentElement, transitionStyles.enterActive);
+
+        // Wait for enter transition to complete
+        await waitForTransition(parentElement, duration / 2);
+
+        // Restore original styles
+        restoreOriginalStyles(parentElement, originalStyles);
+      } catch (error) {
+        // On error, restore original styles and re-throw
+        restoreOriginalStyles(parentElement, originalStyles);
+        throw error;
+      }
+
+      return node;
     });
+
+    await Promise.all(transitionPromises);
     return nodes;
   }
 
-  if (typeof input === "string") {
-    if (isMarkup(input, Parser)) {
-      // Convert HTML markup to VNodes and use intelligent updateDomWithVdom
-      // This provides better DOM state preservation than the older updateDom approach
-      const vNodes = htmlStringToVNodes(input, Parser);
-      nodes.forEach((el) => {
-        if (el) {
-          updateDomWithVdom(el as HTMLElement, vNodes, globalThis as Globals);
-        }
-      });
-    } else {
-      // For plain text, use the more efficient updateDomWithVdom approach
-      // This preserves existing DOM structure where possible
-      nodes.forEach((el) => {
-        if (el) {
-          updateDomWithVdom(
-            el as HTMLElement,
-            input as string,
-            globalThis as Globals,
-          );
-        }
-      });
-    }
-  } else if (isJSX(input)) {
-    // Use the intelligent updateDomWithVdom for JSX
-    // This function performs partial updates, preserving existing DOM elements
-    // and only updating what has actually changed
-    nodes.forEach((el) => {
-      if (el) {
-        updateDomWithVdom(
-          el as HTMLElement,
-          input as RenderInput,
-          globalThis as Globals,
-        );
-      }
-    });
-  } else {
-    console.warn("update: unsupported content type", input);
-  }
-
-  // All DOM operations are synchronous and complete at this point
+  // No transitions - perform regular update
+  await performCoreDomUpdate(input, nodes, timeout, Parser);
   return nodes;
 }
 

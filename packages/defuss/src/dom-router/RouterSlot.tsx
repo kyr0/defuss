@@ -42,7 +42,11 @@ export const RouterSlot = ({
 
   router.onRouteChange(async () => {
     //console.log("<RouterSlot> RouterSlot.onRouteChange", newPath, oldPath, ref.current);
-    await $(ref).update(RouterOutlet());
+    await $(ref).update(RouterOutlet(), {
+      type: "fade",
+      duration: 250,
+      easing: "ease-in-out",
+    });
   });
 
   if (document.getElementById(RouterSlotId)) {
