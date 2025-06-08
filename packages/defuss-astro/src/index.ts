@@ -143,7 +143,7 @@ export default function ({
         // Also, when CSS is not embedded/referenced in HTML files, it is considered as not in-scope for optimization
         if (htmlFiles.length === 0 && svgFiles.length === 0) return;
 
-        logMessage(`✴️ Optimizing ${cssFiles.length} CSS stylesheets`);
+        logMessage(`⚡ Optimizing ${cssFiles.length} CSS stylesheets`);
 
         const minifyAndWritePromises = [];
 
@@ -151,7 +151,7 @@ export default function ({
           minifyAndWritePromises.push(minifyAndWriteFile(cwd, filename, "css"));
         }
 
-        logMessage(`✴️ Optimizing ${svgFiles.length} SVG vector graphics`);
+        logMessage(`⚡ Optimizing ${svgFiles.length} SVG vector graphics`);
 
         for (const filename of svgFiles) {
           minifyAndWritePromises.push(minifyAndWriteFile(cwd, filename, "svg"));
@@ -166,7 +166,7 @@ export default function ({
             ? `${deltaT.toFixed(0)}ms`
             : `${(deltaT / 1000).toFixed(1)}s`;
 
-        logMessage(`✴️ Optimization completed in ${humanTime}`);
+        logMessage(`⚡ Optimization completed in ${humanTime}`);
       },
     },
   };
