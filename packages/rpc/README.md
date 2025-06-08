@@ -205,7 +205,7 @@ app.post("/rpc", async (req, res) => {
     });
 
     // Use the defuss-rpc route handler
-    const response = await rpcRoute({ request } as any);
+    const response = await rpcRoute({ request });
     
     // Send response back to Express
     const responseText = await response.text();
@@ -231,7 +231,7 @@ app.post("/rpc/schema", async (req, res) => {
       body: JSON.stringify(req.body),
     });
 
-    const response = await rpcRoute({ request } as any);
+    const response = await rpcRoute({ request });
     const responseText = await response.text();
     res.status(response.status)
        .set("content-type", response.headers.get("content-type") || "application/json")
