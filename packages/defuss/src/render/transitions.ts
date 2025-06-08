@@ -7,7 +7,11 @@ export type TransitionType =
   | "slide-right"
   | "slide-up"
   | "slide-down"
-  | "scale"
+  | "zoom"
+  | "rotate"
+  | "flip-horizontal"
+  | "flip-vertical"
+  | "bounce"
   | "none";
 
 export interface TransitionStyles {
@@ -67,64 +71,96 @@ export const getTransitionStyles = (
   switch (type) {
     case "fade":
       return {
-        enter: filterUndefined({ opacity: "0.5", transition: baseTransition }),
+        enter: filterUndefined({ opacity: "0", transition: baseTransition }),
         enterActive: filterUndefined({ opacity: "1" }),
         exit: filterUndefined({ opacity: "1", transition: baseTransition }),
-        exitActive: filterUndefined({ opacity: "0.5" }),
+        exitActive: filterUndefined({ opacity: "0" }),
       };
     case "slide-left":
       return {
         enter: filterUndefined({
           transform: "translateX(100%)",
+          opacity: "0",
           transition: baseTransition,
         }),
-        enterActive: filterUndefined({ transform: "translateX(0%)" }),
+        enterActive: filterUndefined({
+          transform: "translateX(0%)",
+          opacity: "1",
+        }),
         exit: filterUndefined({
           transform: "translateX(0%)",
+          opacity: "1",
           transition: baseTransition,
         }),
-        exitActive: filterUndefined({ transform: "translateX(-100%)" }),
+        exitActive: filterUndefined({
+          transform: "translateX(-200%)",
+          opacity: "0",
+        }),
       };
     case "slide-right":
       return {
         enter: filterUndefined({
-          transform: "translateX(-100%)",
+          transform: "translateX(-200%)",
+          opacity: "0",
           transition: baseTransition,
         }),
-        enterActive: filterUndefined({ transform: "translateX(0%)" }),
+        enterActive: filterUndefined({
+          transform: "translateX(0%)",
+          opacity: "1",
+        }),
         exit: filterUndefined({
           transform: "translateX(0%)",
+          opacity: "1",
           transition: baseTransition,
         }),
-        exitActive: filterUndefined({ transform: "translateX(100%)" }),
+        exitActive: filterUndefined({
+          transform: "translateX(100%)",
+          opacity: "0",
+        }),
       };
     case "slide-up":
       return {
         enter: filterUndefined({
           transform: "translateY(100%)",
+          opacity: "0",
           transition: baseTransition,
         }),
-        enterActive: filterUndefined({ transform: "translateY(0%)" }),
+        enterActive: filterUndefined({
+          transform: "translateY(0%)",
+          opacity: "1",
+        }),
         exit: filterUndefined({
           transform: "translateY(0%)",
+          opacity: "1",
           transition: baseTransition,
         }),
-        exitActive: filterUndefined({ transform: "translateY(-100%)" }),
+        exitActive: filterUndefined({
+          transform: "translateY(-200%)",
+          opacity: "0",
+        }),
       };
     case "slide-down":
       return {
         enter: filterUndefined({
-          transform: "translateY(-100%)",
+          transform: "translateY(-200%)",
+          opacity: "0",
           transition: baseTransition,
         }),
-        enterActive: filterUndefined({ transform: "translateY(0%)" }),
+        enterActive: filterUndefined({
+          transform: "translateY(0%)",
+          opacity: "1",
+        }),
         exit: filterUndefined({
           transform: "translateY(0%)",
+          opacity: "1",
           transition: baseTransition,
         }),
-        exitActive: filterUndefined({ transform: "translateY(100%)" }),
+        exitActive: filterUndefined({
+          transform: "translateY(100%)",
+          opacity: "0",
+        }),
       };
-    case "scale":
+    case "zoom":
       return {
         enter: filterUndefined({
           transform: "scale(0)",
@@ -138,6 +174,90 @@ export const getTransitionStyles = (
           transition: baseTransition,
         }),
         exitActive: filterUndefined({ transform: "scale(0)", opacity: "0" }),
+      };
+    case "rotate":
+      return {
+        enter: filterUndefined({
+          transform: "rotate(-360deg)",
+          opacity: "0",
+          transition: baseTransition,
+        }),
+        enterActive: filterUndefined({
+          transform: "rotate(0deg)",
+          opacity: "1",
+        }),
+        exit: filterUndefined({
+          transform: "rotate(0deg)",
+          opacity: "1",
+          transition: baseTransition,
+        }),
+        exitActive: filterUndefined({
+          transform: "rotate(360deg)",
+          opacity: "0",
+        }),
+      };
+    case "flip-horizontal":
+      return {
+        enter: filterUndefined({
+          transform: "perspective(1000px) rotateY(-360deg)",
+          opacity: "0",
+          transition: baseTransition,
+        }),
+        enterActive: filterUndefined({
+          transform: "perspective(1000px) rotateY(0deg)",
+          opacity: "1",
+        }),
+        exit: filterUndefined({
+          transform: "perspective(1000px) rotateY(0deg)",
+          opacity: "1",
+          transition: baseTransition,
+        }),
+        exitActive: filterUndefined({
+          transform: "perspective(1000px) rotateY(360deg)",
+          opacity: "0",
+        }),
+      };
+    case "flip-vertical":
+      return {
+        enter: filterUndefined({
+          transform: "perspective(1000px) rotateX(-360deg)",
+          opacity: "0",
+          transition: baseTransition,
+        }),
+        enterActive: filterUndefined({
+          transform: "perspective(1000px) rotateX(0deg)",
+          opacity: "1",
+        }),
+        exit: filterUndefined({
+          transform: "perspective(1000px) rotateX(0deg)",
+          opacity: "1",
+          transition: baseTransition,
+        }),
+        exitActive: filterUndefined({
+          transform: "perspective(1000px) rotateX(360deg)",
+          opacity: "0",
+        }),
+      };
+    case "bounce":
+      return {
+        enter: filterUndefined({
+          transform: "scale(0.3)",
+          opacity: "0",
+          transition: `all ${duration}ms cubic-bezier(0.68, -0.55, 0.265, 1.55)`,
+        }),
+        enterActive: filterUndefined({
+          transform: "scale(1)",
+          opacity: "1",
+        }),
+        exit: filterUndefined({
+          transform: "scale(1)",
+          opacity: "1",
+          transition: `all ${duration}ms cubic-bezier(0.68, -0.55, 0.265, 1.55)`,
+        }),
+        exitActive: filterUndefined({
+          transform: "scale(0.3)",
+          opacity: "0",
+        }),
       };
     default:
       return {
@@ -263,6 +383,54 @@ export const waitForTransition = (
     // Fallback timeout in case transitionend doesn't fire
     setTimeout(resolve, duration + 50);
   });
+};
+
+/**
+ * Non-blocking transition helper that uses queueMicrotask for immediate scheduling
+ */
+export const scheduleTransitionStep = (callback: () => void): void => {
+  queueMicrotask(callback);
+};
+
+/**
+ * Non-blocking delay that uses setTimeout without blocking
+ */
+export const scheduleDelayedStep = (callback: () => void, delay: number): void => {
+  if (delay > 0) {
+    setTimeout(callback, delay);
+  } else {
+    queueMicrotask(callback);
+  }
+};
+
+/**
+ * Non-blocking transition waiter that uses setTimeout with callback
+ */
+export const scheduleTransitionEnd = (
+  element: HTMLElement,
+  duration: number,
+  callback: () => void,
+): void => {
+  let resolved = false;
+  
+  const handleTransitionEnd = () => {
+    if (!resolved) {
+      resolved = true;
+      element.removeEventListener("transitionend", handleTransitionEnd);
+      queueMicrotask(callback);
+    }
+  };
+
+  element.addEventListener("transitionend", handleTransitionEnd);
+
+  // Fallback timeout in case transitionend doesn't fire
+  setTimeout(() => {
+    if (!resolved) {
+      resolved = true;
+      element.removeEventListener("transitionend", handleTransitionEnd);
+      queueMicrotask(callback);
+    }
+  }, duration + 50);
 };
 
 /**

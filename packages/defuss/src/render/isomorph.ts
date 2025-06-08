@@ -632,6 +632,8 @@ export async function updateDom<NT>(
       createContentSnapshot,
       insertContentSnapshot,
       removeContentSnapshot,
+      scheduleTransitionEnd,
+      scheduleDelayedStep,
       DEFAULT_TRANSITION_CONFIG,
     } = await import("./transitions.js");
 
@@ -660,8 +662,9 @@ export async function updateDom<NT>(
 
       if (shouldUseSnapshot) {
         try {
-          contentSnapshot = createContentSnapshot(element);
-          insertContentSnapshot(contentSnapshot, element);
+          // Snapshot the parentElement since that's what we're applying transitions to
+          contentSnapshot = createContentSnapshot(parentElement);
+          insertContentSnapshot(contentSnapshot, parentElement);
         } catch (error) {
           console.warn(
             "Failed to create content snapshot, falling back to regular transition:",
@@ -682,56 +685,76 @@ export async function updateDom<NT>(
       ];
       const originalStyles = storeOriginalStyles(parentElement, stylesToStore);
 
-      try {
-        // Apply delay if specified
-        if (delay > 0) {
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
+      // Return a promise that resolves when the transition completes
+      return new Promise<typeof node>((resolve, reject) => {
+        const cleanup = () => {
+          if (contentSnapshot) {
+            removeContentSnapshot(contentSnapshot);
+          }
+          restoreOriginalStyles(parentElement, originalStyles);
+        };
 
-        // Apply exit styles to start the transition out
-        applyStyles(parentElement, transitionStyles.exit);
+        const handleError = (error: Error) => {
+          cleanup();
+          reject(error);
+        };
 
-        // Force reflow
-        parentElement.offsetHeight;
+        // Step 1: Apply delay if specified (non-blocking)
+        const startTransition = () => {
+          try {
+            // Apply exit styles to start the transition out
+            applyStyles(parentElement, transitionStyles.exit);
 
-        // Apply exit-active styles to trigger the transition
-        applyStyles(parentElement, transitionStyles.exitActive);
+            // Force reflow
+            parentElement.offsetHeight;
 
-        // Wait for exit transition to reach midpoint (half duration)
-        await waitForTransition(parentElement, duration / 2);
+            // Apply exit-active styles to trigger the transition
+            applyStyles(parentElement, transitionStyles.exitActive);
 
-        // Now perform the actual DOM update at the crossfade midpoint
-        await performCoreDomUpdate(input, [node], timeout, Parser);
+            // Wait for exit transition to reach midpoint (non-blocking)
+            scheduleTransitionEnd(parentElement, duration / 2, performUpdate);
+          } catch (error) {
+            handleError(error as Error);
+          }
+        };
 
-        // Apply enter styles for the new content (starting from midpoint opacity)
-        applyStyles(parentElement, transitionStyles.enter);
+        // Step 2: Perform DOM update at transition midpoint (non-blocking)
+        const performUpdate = () => {
+          try {
+            // Perform the actual DOM update at the crossfade midpoint
+            performCoreDomUpdate(input, [node], timeout, Parser)
+              .then(() => {
+                // Apply enter styles for the new content
+                applyStyles(parentElement, transitionStyles.enter);
 
-        // Force reflow
-        parentElement.offsetHeight;
+                // Force reflow
+                parentElement.offsetHeight;
 
-        // Apply enter-active styles to transition in
-        applyStyles(parentElement, transitionStyles.enterActive);
+                // Apply enter-active styles to transition in
+                applyStyles(parentElement, transitionStyles.enterActive);
 
-        // Wait for enter transition to complete (remaining half duration)
-        await waitForTransition(parentElement, duration / 2);
+                // Wait for enter transition to complete (non-blocking)
+                scheduleTransitionEnd(parentElement, duration / 2, finishTransition);
+              })
+              .catch(handleError);
+          } catch (error) {
+            handleError(error as Error);
+          }
+        };
 
-        // Clean up content snapshot
-        if (contentSnapshot) {
-          removeContentSnapshot(contentSnapshot);
-        }
+        // Step 3: Finish and cleanup (non-blocking)
+        const finishTransition = () => {
+          try {
+            cleanup();
+            resolve(node);
+          } catch (error) {
+            handleError(error as Error);
+          }
+        };
 
-        // Restore original styles
-        restoreOriginalStyles(parentElement, originalStyles);
-      } catch (error) {
-        // On error, clean up snapshot and restore original styles
-        if (contentSnapshot) {
-          removeContentSnapshot(contentSnapshot);
-        }
-        restoreOriginalStyles(parentElement, originalStyles);
-        throw error;
-      }
-
-      return node;
+        // Start the transition sequence with optional delay (non-blocking)
+        scheduleDelayedStep(startTransition, delay);
+      });
     });
 
     await Promise.all(transitionPromises);

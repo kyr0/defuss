@@ -93,7 +93,7 @@ describe("updateDom method with Transition Effects", () => {
 
   it("should handle transition with delay", async () => {
     const transitionConfig: TransitionConfig = {
-      type: "scale",
+      type: "bounce",
       duration: 100,
       delay: 50,
     };

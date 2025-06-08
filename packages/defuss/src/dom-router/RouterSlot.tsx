@@ -1,7 +1,12 @@
-import type { Props, VNodeChild } from "@/render/types.js";
-import { createRef, type Ref, type NodeType } from "@/render/client.js";
+import type { Props, VNodeChild } from "../render/types.js";
+import {
+  createRef,
+  type Ref,
+  type NodeType,
+  type TransitionType,
+} from "../render/client.js";
 import { Router } from "./router.js";
-import { $ } from "@/dequery/index.js";
+import { $, type TransitionConfig } from "../dequery/index.js";
 
 export const RouterSlotId = "router-slot";
 
@@ -20,6 +25,9 @@ export interface RouterSlotProps extends Props {
 
   /** A component reference that returns many <Route />, <Redirect ... /> etc. components */
   RouterOutlet?: any;
+
+  /** Transition configuration for route changes; default: { type: 'fade', duration: 50 } */
+  transitionConfig?: TransitionConfig;
 }
 
 /**
@@ -31,6 +39,7 @@ export const RouterSlot = ({
   router = Router,
   children,
   RouterOutlet,
+  transitionConfig = { type: "fade", duration: 50 },
   ...attributes
 }: RouterSlotProps): VNodeChild => {
   const { tag, ...attributesWithoutTag } = attributes;
@@ -42,11 +51,7 @@ export const RouterSlot = ({
 
   router.onRouteChange(async () => {
     //console.log("<RouterSlot> RouterSlot.onRouteChange", newPath, oldPath, ref.current);
-    await $(ref).update(RouterOutlet(), {
-      type: "fade",
-      duration: 100,
-      easing: "linear",
-    });
+    await $(ref).update(RouterOutlet(), transitionConfig);
   });
 
   if (document.getElementById(RouterSlotId)) {
