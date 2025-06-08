@@ -29,7 +29,16 @@ function App() {
         <Menu />
 
         {/* client-side routing (pages) are rendered here - the RouterOutlet is passed by reference, because it runs delayed later */}
-        <RouterSlot tag="ion-content" RouterOutlet={RouterOutlet} />
+        <RouterSlot
+          tag="ion-content"
+          RouterOutlet={RouterOutlet}
+          // default transitionConfig
+          transitionConfig={{
+            type: "fade", // default transition type: "fade", can also be "slide-left", "slide-right", "shake"
+            duration: 50, // set to > 200ms for slide-left etc.; > 400ms for shake
+            target: "self", // can also be "parent" to apply the transition to the parent element
+          }}
+        />
       </ion-split-pane>
     </ion-app>
   );
