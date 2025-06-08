@@ -26,7 +26,7 @@ Remote Procedure Call (RPC)
 - ✅ **Proxy-based client**: Dynamic client generation with method interception
 - ✅ **Schema introspection**: Automatic API schema generation and discovery
 - ✅ **Authentication support**: Built-in guard function support for access control
-- ✅ **Framework agnostic**: Works with Astro, but can be used anywhere
+- ✅ **Framework agnostic**: Works with Astro, Express.js, and any framework that supports Request/Response
 - ✅ **Zero runtime dependencies**: Tiny bundle size with minimal overhead
 
 <h3 align="center">
@@ -113,7 +113,11 @@ import { getRpcClient } from "defuss-rpc/client";
 import type { RpcApi } from "../rpc.js";
 
 // Get the RPC client with full type safety
+// For Astro (default):
 const rpc = await getRpcClient<RpcApi>();
+
+// For Express.js or custom base URL:
+// const rpc = await getRpcClient<RpcApi>("http://localhost:3000");
 
 // Create API instances of the services, just as if we were on the server and use them
 const fooApi = new rpc.FooApi();
@@ -161,6 +165,89 @@ import { getSchema } from "defuss-rpc/client";
 
 const schema = await getSchema(); // btw. it caches the schema for the page lifetime
 console.log(schema); // Array of class schemas with methods and properties
+```
+
+
+##### Alternative: Use with Express.js
+```ts
+// server.ts - Express.js server setup
+import express from "express";
+import { rpcRoute } from "defuss-rpc/server";
+import "./rpc.js"; // Import to register the RPC API
+
+const app = express();
+const port = 3000;
+
+// Parse JSON bodies
+app.use(express.json());
+
+// Add CORS headers
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
+// RPC endpoint handler
+app.post("/rpc", async (req, res) => {
+  try {
+    // Convert Express request to standard Request object
+    const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+    const request = new Request(url, {
+      method: req.method,
+      headers: req.headers as Record<string, string>,
+      body: JSON.stringify(req.body),
+    });
+
+    // Use the defuss-rpc route handler
+    const response = await rpcRoute({ request } as any);
+    
+    // Send response back to Express
+    const responseText = await response.text();
+    res.status(response.status)
+       .set("content-type", response.headers.get("content-type") || "application/json")
+       .send(responseText);
+  } catch (error) {
+    console.error("RPC request error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+// RPC schema endpoint
+app.post("/rpc/schema", async (req, res) => {
+  try {
+    const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+    const request = new Request(url, {
+      method: req.method,
+      headers: req.headers as Record<string, string>,
+      body: JSON.stringify(req.body),
+    });
+
+    const response = await rpcRoute({ request } as any);
+    const responseText = await response.text();
+    res.status(response.status)
+       .set("content-type", response.headers.get("content-type") || "application/json")
+       .send(responseText);
+  } catch (error) {
+    console.error("RPC schema error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`RPC server running on http://localhost:${port}`);
+});
 ```
 
 <h3 align="center">
