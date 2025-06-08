@@ -67,10 +67,10 @@ export const getTransitionStyles = (
   switch (type) {
     case "fade":
       return {
-        enter: filterUndefined({ opacity: "0", transition: baseTransition }),
+        enter: filterUndefined({ opacity: "0.5", transition: baseTransition }),
         enterActive: filterUndefined({ opacity: "1" }),
         exit: filterUndefined({ opacity: "1", transition: baseTransition }),
-        exitActive: filterUndefined({ opacity: "0" }),
+        exitActive: filterUndefined({ opacity: "0.5" }),
       };
     case "slide-left":
       return {

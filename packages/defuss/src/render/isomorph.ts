@@ -677,13 +677,13 @@ export async function updateDom<NT>(
         // Apply exit-active styles to trigger the transition
         applyStyles(parentElement, transitionStyles.exitActive);
 
-        // Wait for exit transition to complete (half the duration)
+        // Wait for exit transition to reach midpoint (half duration)
         await waitForTransition(parentElement, duration / 2);
 
-        // Now perform the actual DOM update
+        // Now perform the actual DOM update at the crossfade midpoint
         await performCoreDomUpdate(input, [node], timeout, Parser);
 
-        // Apply enter styles for the new content
+        // Apply enter styles for the new content (starting from midpoint opacity)
         applyStyles(parentElement, transitionStyles.enter);
 
         // Force reflow
@@ -692,7 +692,7 @@ export async function updateDom<NT>(
         // Apply enter-active styles to transition in
         applyStyles(parentElement, transitionStyles.enterActive);
 
-        // Wait for enter transition to complete
+        // Wait for enter transition to complete (remaining half duration)
         await waitForTransition(parentElement, duration / 2);
 
         // Restore original styles
