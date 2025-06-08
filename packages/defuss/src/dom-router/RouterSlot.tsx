@@ -39,7 +39,11 @@ export const RouterSlot = ({
   router = Router,
   children,
   RouterOutlet,
-  transitionConfig = { type: "fade", duration: 50 },
+  transitionConfig = {
+    type: "fade",
+    duration: 25,
+    target: "self",
+  } as TransitionConfig,
   ...attributes
 }: RouterSlotProps): VNodeChild => {
   const { tag, ...attributesWithoutTag } = attributes;

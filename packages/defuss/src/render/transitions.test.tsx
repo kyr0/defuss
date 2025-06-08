@@ -187,6 +187,56 @@ describe("updateDom method with Transition Effects", () => {
     expect(testElement.innerHTML).toBe("<div>Content with self target</div>");
   });
 
+  it("should handle snapshot fade behavior correctly for different transition types", async () => {
+    // Test fade transition (should NOT fade snapshot)
+    const fadeConfig: TransitionConfig = {
+      type: "fade",
+      duration: 100,
+    };
+
+    await updateDom(
+      "<div>Fade transition content</div>",
+      [testElement],
+      1000,
+      DOMParser,
+      fadeConfig,
+    );
+
+    expect(testElement.innerHTML).toBe("<div>Fade transition content</div>");
+
+    // Test zoom transition (should fade snapshot)
+    const zoomConfig: TransitionConfig = {
+      type: "zoom",
+      duration: 100,
+    };
+
+    await updateDom(
+      "<div>Zoom transition content</div>",
+      [testElement],
+      1000,
+      DOMParser,
+      zoomConfig,
+    );
+
+    expect(testElement.innerHTML).toBe("<div>Zoom transition content</div>");
+
+    // Test bounce transition (should fade snapshot)
+    const bounceConfig: TransitionConfig = {
+      type: "bounce",
+      duration: 100,
+    };
+
+    await updateDom(
+      "<div>Bounce transition content</div>",
+      [testElement],
+      1000,
+      DOMParser,
+      bounceConfig,
+    );
+
+    expect(testElement.innerHTML).toBe("<div>Bounce transition content</div>");
+  });
+
   it("should handle target 'self' even without parent element", async () => {
     // Create isolated element without parent
     const element = document.createElement("div");

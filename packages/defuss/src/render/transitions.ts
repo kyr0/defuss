@@ -1,5 +1,9 @@
 /**
  * Transition system for defuss DOM updates
+ * 
+ * SNAPSHOT FADE BEHAVIOR:
+ * - "fade" transitions: Snapshots do NOT fade (maintains original appearance during cross-fade)
+ * - All other transitions ("bounce", "zoom", "slide-*", "flip-*", "rotate"): Snapshots fade out with same duration
  */
 export type TransitionType =
   | "fade"
@@ -51,6 +55,14 @@ export interface TransitionConfig {
    */
   target?: "parent" | "self";
 }
+
+/**
+ * Determine if a transition type should fade out the snapshot
+ * Fade transitions should NOT fade the snapshot, all others should
+ */
+const shouldFadeSnapshot = (type: TransitionType): boolean => {
+  return type !== "fade" && type !== "none";
+};
 
 /**
  * Get predefined transition styles based on transition type
@@ -180,7 +192,7 @@ export const getTransitionStyles = (
       return {
         enter: filterUndefined({
           transform: "translate3d(0, 0, 0) scale3d(0.8, 0.8, 1)",
-          opacity: "0.5",
+          opacity: "0",
           transition: baseTransition,
         }),
         enterActive: filterUndefined({
@@ -194,7 +206,7 @@ export const getTransitionStyles = (
         }),
         exitActive: filterUndefined({
           transform: "translate3d(0, 0, 0) scale3d(0.8, 0.8, 1)",
-          opacity: "0.5",
+          opacity: "0",
         }),
       };
     case "rotate":
@@ -291,6 +303,20 @@ export const getTransitionStyles = (
         exitActive: {},
       };
   }
+};
+
+/**
+ * Get transition styles with type information for enhanced snapshot control
+ */
+export const getTransitionStylesWithType = (
+  type: TransitionType,
+  duration: number,
+  easing: TransitionsEasing | string = "ease-in-out",
+): { styles: TransitionStyles; type: TransitionType } => {
+  return {
+    styles: getTransitionStyles(type, duration, easing),
+    type,
+  };
 };
 
 /**
@@ -424,6 +450,7 @@ export const performOptimizedTransition = async (
   updateCallback: () => Promise<void>,
   duration: number,
   delay = 0,
+  transitionType: TransitionType = "fade",
 ): Promise<void> => {
   // Store original styles that we'll modify
   const stylesToStore = ["opacity", "transform", "transition"];
@@ -435,23 +462,14 @@ export const performOptimizedTransition = async (
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
-    // Step 2: Fade out with exit transition
-    await executeTransition(
+    // Use the simple transition approach with snapshot control
+    await performSimpleTransition(
       element,
-      transitionStyles.exit,
-      transitionStyles.exitActive,
-      duration / 2,
-    );
-
-    // Step 3: Update DOM content at lowest opacity/visibility
-    await updateCallback();
-
-    // Step 4: Fade in with enter transition
-    await executeTransition(
-      element,
-      transitionStyles.enter,
-      transitionStyles.enterActive,
-      duration / 2,
+      transitionStyles,
+      updateCallback,
+      duration,
+      0, // delay already applied above
+      transitionType,
     );
 
     // Step 5: Restore original styles
@@ -560,8 +578,14 @@ export const removeContentSnapshot = (snapshot: HTMLElement): void => {
 };
 
 /**
- * OPTIMIZED: Simple and efficient transition without snapshots
- * This approach works for 90% of transitions and is much more performant
+ * OPTIMIZED: Simple and efficient transition with snapshot fade control
+ * 
+ * @param element - The element to apply the transition to
+ * @param transitionStyles - The transition styles for enter/exit phases
+ * @param updateCallback - Callback to update the DOM content
+ * @param duration - Duration of the transition in milliseconds
+ * @param delay - Delay before starting the transition
+ * @param transitionType - Type of transition to determine snapshot behavior
  */
 export const performSimpleTransition = async (
   element: HTMLElement,
@@ -569,6 +593,7 @@ export const performSimpleTransition = async (
   updateCallback: () => Promise<void>,
   duration: number,
   delay = 0,
+  transitionType: TransitionType = "fade",
 ): Promise<void> => {
   // Store original styles
   const originalStyles = storeOriginalStyles(element, [
@@ -585,29 +610,14 @@ export const performSimpleTransition = async (
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
-    // Check if this is a fade transition - use cross-fade approach
-    const isFadeTransition =
-      transitionStyles.exit.opacity === "1" &&
-      transitionStyles.exitActive.opacity === "0" &&
-      transitionStyles.enter.opacity === "0" &&
-      transitionStyles.enterActive.opacity === "1";
-
-    if (isFadeTransition) {
-      await performCrossFadeTransition(
-        element,
-        transitionStyles,
-        updateCallback,
-        duration,
-      );
-    } else {
-      // For non-fade transitions, use the original approach
-      await performStandardTransition(
-        element,
-        transitionStyles,
-        updateCallback,
-        duration,
-      );
-    }
+    // Use cross-fade approach for all transitions, with snapshot fade control
+    await performCrossFadeTransition(
+      element,
+      transitionStyles,
+      updateCallback,
+      duration,
+      transitionType,
+    );
 
     // Restore original styles
     restoreOriginalStyles(element, originalStyles);
@@ -619,14 +629,17 @@ export const performSimpleTransition = async (
 };
 
 /**
- * Perform a true cross-fade transition by overlaying new content on old content
+ * Perform a cross-fade transition with snapshot fade control
  */
 const performCrossFadeTransition = async (
   element: HTMLElement,
   transitionStyles: TransitionStyles,
   updateCallback: () => Promise<void>,
   duration: number,
+  transitionType: TransitionType = "fade",
 ): Promise<void> => {
+  const shouldFadeSnap = shouldFadeSnapshot(transitionType);
+  
   // Create a snapshot of the current content
   const oldContentSnapshot = element.cloneNode(true) as HTMLElement;
 
@@ -647,8 +660,10 @@ const performCrossFadeTransition = async (
     width: "100%",
     height: "100%",
     opacity: "1",
-    transition: `opacity ${duration}ms ${transitionStyles.exit.transition?.split(" ")[2] || "ease-in-out"}`,
-    pointerEvents: "none", // Prevent interaction with the overlay
+    transition: shouldFadeSnap 
+      ? `opacity ${duration}ms ${transitionStyles.exit.transition?.split(" ")[2] || "ease-in-out"}`
+      : "none",
+    pointerEvents: "none",
     zIndex: "1",
   });
 
@@ -662,11 +677,13 @@ const performCrossFadeTransition = async (
   element.appendChild(oldContentSnapshot);
 
   // Force reflow
-  element.offsetHeight;
+  void element.offsetHeight;
 
-  // Start the cross-fade: fade out old content and fade in new content
-  applyStyles(oldContentSnapshot, { opacity: "0" });
+  // Start the transition: fade in new content, and fade out snapshot if needed
   applyStyles(element, { opacity: "1" });
+  if (shouldFadeSnap) {
+    applyStyles(oldContentSnapshot, { opacity: "0" });
+  }
 
   // Wait for transition to complete
   await new Promise((resolve) => setTimeout(resolve, duration));
@@ -675,41 +692,6 @@ const performCrossFadeTransition = async (
   if (oldContentSnapshot.parentNode) {
     oldContentSnapshot.parentNode.removeChild(oldContentSnapshot);
   }
-};
-
-/**
- * Perform standard transition (non-fade)
- */
-const performStandardTransition = async (
-  element: HTMLElement,
-  transitionStyles: TransitionStyles,
-  updateCallback: () => Promise<void>,
-  duration: number,
-): Promise<void> => {
-  // Step 1: Apply exit styles and trigger transition out
-  applyStyles(element, transitionStyles.exit);
-
-  // Force reflow to ensure styles are applied
-  element.offsetHeight;
-
-  applyStyles(element, transitionStyles.exitActive);
-
-  // Step 2: Wait for half the transition to complete
-  await new Promise((resolve) => setTimeout(resolve, duration / 2));
-
-  // Step 3: Update DOM content at the transition midpoint
-  await updateCallback();
-
-  // Step 4: Apply enter styles and transition in
-  applyStyles(element, transitionStyles.enter);
-
-  // Force reflow
-  element.offsetHeight;
-
-  applyStyles(element, transitionStyles.enterActive);
-
-  // Step 5: Wait for transition to complete
-  await waitForTransition(element, duration / 2);
 };
 
 /**
