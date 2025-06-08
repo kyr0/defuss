@@ -625,6 +625,8 @@ export async function updateDom<NT>(
   if (transitionConfig && transitionConfig.type !== "none") {
     const {
       getTransitionStyles,
+      performSimpleTransition,
+      // Legacy approach (less performant but more compatible):
       applyStyles,
       storeOriginalStyles,
       restoreOriginalStyles,
@@ -645,7 +647,41 @@ export async function updateDom<NT>(
       config.styles ||
       getTransitionStyles(config.type || "fade", duration, easing);
 
-    // Apply transitions to each target node
+    // OPTIMIZED APPROACH: Use performSimpleTransition for better performance
+    // This avoids expensive DOM cloning and complex async chains
+    const shouldUseOptimizedApproach = false; // Set to false to use legacy approach for proper cross-fades
+
+    if (shouldUseOptimizedApproach) {
+      // Simple, efficient approach without snapshots
+      const transitionPromises = nodes.map(async (node) => {
+        if (!node) return node;
+
+        const element = node as HTMLElement;
+        const transitionTarget = target === "self" ? element : element.parentElement;
+        
+        if (!transitionTarget) {
+          await performCoreDomUpdate(input, [node], timeout, Parser);
+          return node;
+        }
+
+        await performSimpleTransition(
+          transitionTarget,
+          transitionStyles,
+          async () => {
+            await performCoreDomUpdate(input, [node], timeout, Parser);
+          },
+          duration,
+          delay,
+        );
+
+        return node;
+      });
+
+      await Promise.all(transitionPromises);
+      return nodes;
+    }
+
+    // LEGACY APPROACH: Original complex implementation with snapshots
     const transitionPromises = nodes.map(async (node) => {
       if (!node) {
         // If no node, skip
@@ -707,48 +743,32 @@ export async function updateDom<NT>(
             // Step 2: Immediately perform DOM update (but it's hidden behind snapshot)
             performCoreDomUpdate(input, [node], timeout, Parser)
               .then(() => {
-                // Step 3: Hide the updated content initially
-                applyStyles(transitionTarget, {
-                  opacity: "0",
-                  // Don't apply transform here - let the snapshot handle the visual transition
-                });
+                // Step 3: Set up new content for cross-fade - start with enter styles
+                applyStyles(transitionTarget, transitionStyles.enter);
 
-                // Step 4: Apply exit styles to the snapshot to transition it out
+                // Step 4: Set up snapshot for exit transition
                 applyStyles(contentSnapshot!, transitionStyles.exit);
 
-                // Force reflow
+                // Force reflow to ensure initial styles are applied
                 contentSnapshot!.offsetHeight;
+                transitionTarget.offsetHeight;
 
-                // Apply exit-active styles to trigger the snapshot transition
+                // Step 5: Start SIMULTANEOUS transitions for true cross-fade
+                // Transition snapshot out
                 applyStyles(contentSnapshot!, transitionStyles.exitActive);
+                // Transition new content in AT THE SAME TIME
+                applyStyles(transitionTarget, transitionStyles.enterActive);
 
-                // Step 5: Wait for exit transition to complete, then reveal new content
-                scheduleTransitionEnd(contentSnapshot!, duration, () => {
+                // Step 6: Wait for transition to complete and clean up
+                scheduleTransitionEnd(transitionTarget, duration, () => {
                   try {
                     // Remove the snapshot
                     if (contentSnapshot) {
                       removeContentSnapshot(contentSnapshot);
                       contentSnapshot = null;
                     }
-
-                    // Apply enter styles to the new content
-                    applyStyles(transitionTarget, transitionStyles.enter);
-
-                    // Force reflow
-                    transitionTarget.offsetHeight;
-
-                    // Apply enter-active styles to transition in the new content
-                    applyStyles(transitionTarget, transitionStyles.enterActive);
-
-                    // Wait for enter transition to complete
-                    scheduleTransitionEnd(transitionTarget, duration, () => {
-                      try {
-                        cleanup();
-                        resolve(node);
-                      } catch (error) {
-                        handleError(error as Error);
-                      }
-                    });
+                    cleanup();
+                    resolve(node);
                   } catch (error) {
                     handleError(error as Error);
                   }
