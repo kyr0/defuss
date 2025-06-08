@@ -8,6 +8,11 @@ export interface DateValue {
   millisecond: number;
 }
 
+/**
+ * Converts a Date object into a DateValue object.
+ * @param date - The Date object to convert.
+ * @returns A DateValue object containing the year, month, date, hour, minute, second, and millisecond.
+ */
 export const getDateValue = (date: Date): DateValue => ({
   year: date.getFullYear(),
   month: date.getMonth(),

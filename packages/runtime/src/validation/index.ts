@@ -27,3 +27,7 @@ export * from "./isInteger.js";
 export * from "./types.js";
 export * from "./isEqual.js";
 export * from "./is.js";
+export * from "./isTrue.js";
+export * from "./isFalse.js";
+export * from "./isTruthy.js";
+export * from "./isFalsy.js";

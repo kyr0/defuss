@@ -10,11 +10,11 @@ export interface SingleValidationResult {
   isValid: boolean;
 }
 
-export type ValidatorFn<T extends unknown[] = unknown[]> = (
+export type ValidatorFn<T extends any[] = any[]> = (
   ...args: T
 ) => boolean | string;
 
-export type ValidationStep<T extends unknown[] = unknown[]> = {
+export type ValidationStep<T extends any[] = any[]> = {
   fn: ValidatorFn<T>;
   args: T;
 };

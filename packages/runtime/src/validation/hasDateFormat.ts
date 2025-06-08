@@ -1,10 +1,12 @@
 import { asString } from "../transform/asString.js";
+import type { ValidatorFn } from "./types.js";
+
 /**
  * Checks if the given value is a valid/parsable date format.
  * @param value - The value to check.
  * @returns True if the value is a valid date format, false otherwise.
  */
-export const hasDateFormat = (value: any): boolean => {
+export const hasDateFormat: ValidatorFn = (value: any): boolean => {
   // Reject bigint and symbol types immediately
   if (typeof value === "bigint" || typeof value === "symbol") {
     return false;

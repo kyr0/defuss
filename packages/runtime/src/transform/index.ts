@@ -4,7 +4,3 @@ export * from "./asBoolean.js";
 export * from "./asArray.js";
 export * from "./asDate.js";
 export * from "./asInteger.js";
-export * from "./isTrue.js";
-export * from "./isFalse.js";
-export * from "./isTruthy.js";
-export * from "./isFalsy.js";
