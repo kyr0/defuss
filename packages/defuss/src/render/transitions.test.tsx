@@ -150,4 +150,65 @@ describe("updateDom method with Transition Effects", () => {
 
     expect(testElement.innerHTML).toBe("<div>No transition content</div>");
   });
+
+  it("should apply transition to parent element when target is 'parent'", async () => {
+    const transitionConfig: TransitionConfig = {
+      type: "fade",
+      duration: 100,
+      target: "parent",
+    };
+
+    await updateDom(
+      "<div>Content with parent target</div>",
+      [testElement],
+      1000,
+      DOMParser,
+      transitionConfig,
+    );
+
+    expect(testElement.innerHTML).toBe("<div>Content with parent target</div>");
+  });
+
+  it("should apply transition to element itself when target is 'self'", async () => {
+    const transitionConfig: TransitionConfig = {
+      type: "slide-left",
+      duration: 100,
+      target: "self",
+    };
+
+    await updateDom(
+      "<div>Content with self target</div>",
+      [testElement],
+      1000,
+      DOMParser,
+      transitionConfig,
+    );
+
+    expect(testElement.innerHTML).toBe("<div>Content with self target</div>");
+  });
+
+  it("should handle target 'self' even without parent element", async () => {
+    // Create isolated element without parent
+    const element = document.createElement("div");
+    element.innerHTML = "Isolated content";
+
+    const transitionConfig: TransitionConfig = {
+      type: "zoom",
+      duration: 100,
+      target: "self",
+    };
+
+    // Should work fine with self target even without parent
+    await expect(
+      updateDom(
+        "<div>Updated isolated with self target</div>",
+        [element],
+        1000,
+        DOMParser,
+        transitionConfig,
+      ),
+    ).resolves.not.toThrow();
+
+    expect(element.innerHTML).toBe("<div>Updated isolated with self target</div>");
+  });
 });

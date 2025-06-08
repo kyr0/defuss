@@ -638,7 +638,7 @@ export async function updateDom<NT>(
     } = await import("./transitions.js");
 
     const config = { ...DEFAULT_TRANSITION_CONFIG, ...transitionConfig };
-    const { duration = 300, easing = "ease-in-out", delay = 0 } = config;
+    const { duration = 300, easing = "ease-in-out", delay = 0, target = "parent" } = config;
 
     // Get transition styles - either custom or predefined
     const transitionStyles =
@@ -647,24 +647,38 @@ export async function updateDom<NT>(
 
     // Apply transitions to each target node
     const transitionPromises = nodes.map(async (node) => {
-      if (!node || !(node as HTMLElement).parentElement) {
-        // If no parent element, just do regular update without transition
-        await performCoreDomUpdate(input, [node], timeout, Parser);
+      if (!node) {
+        // If no node, skip
         return node;
       }
 
       const element = node as HTMLElement;
-      const parentElement = element.parentElement!;
+      
+      // Determine the transition target based on configuration
+      let transitionTarget: HTMLElement;
+      
+      if (target === "self") {
+        // Use the element itself as the transition target
+        transitionTarget = element;
+      } else {
+        // Use parent element as transition target (default behavior)
+        if (!element.parentElement) {
+          // If no parent element, just do regular update without transition
+          await performCoreDomUpdate(input, [node], timeout, Parser);
+          return node;
+        }
+        transitionTarget = element.parentElement;
+      }
 
       // Create a snapshot of the current content for true crossfade
       let contentSnapshot: HTMLElement | null = null;
-      const shouldUseSnapshot = config.type === "fade";
+      const shouldUseSnapshot = config.type === "fade" && target === "parent";
 
       if (shouldUseSnapshot) {
         try {
-          // Snapshot the parentElement since that's what we're applying transitions to
-          contentSnapshot = createContentSnapshot(parentElement);
-          insertContentSnapshot(contentSnapshot, parentElement);
+          // Snapshot the transitionTarget since that's what we're applying transitions to
+          contentSnapshot = createContentSnapshot(transitionTarget);
+          insertContentSnapshot(contentSnapshot, transitionTarget);
         } catch (error) {
           console.warn(
             "Failed to create content snapshot, falling back to regular transition:",
@@ -683,7 +697,7 @@ export async function updateDom<NT>(
         "position",
         "z-index",
       ];
-      const originalStyles = storeOriginalStyles(parentElement, stylesToStore);
+      const originalStyles = storeOriginalStyles(transitionTarget, stylesToStore);
 
       // Return a promise that resolves when the transition completes
       return new Promise<typeof node>((resolve, reject) => {
@@ -691,7 +705,7 @@ export async function updateDom<NT>(
           if (contentSnapshot) {
             removeContentSnapshot(contentSnapshot);
           }
-          restoreOriginalStyles(parentElement, originalStyles);
+          restoreOriginalStyles(transitionTarget, originalStyles);
         };
 
         const handleError = (error: Error) => {
@@ -703,16 +717,16 @@ export async function updateDom<NT>(
         const startTransition = () => {
           try {
             // Apply exit styles to start the transition out
-            applyStyles(parentElement, transitionStyles.exit);
+            applyStyles(transitionTarget, transitionStyles.exit);
 
             // Force reflow
-            parentElement.offsetHeight;
+            transitionTarget.offsetHeight;
 
             // Apply exit-active styles to trigger the transition
-            applyStyles(parentElement, transitionStyles.exitActive);
+            applyStyles(transitionTarget, transitionStyles.exitActive);
 
             // Wait for exit transition to reach midpoint (non-blocking)
-            scheduleTransitionEnd(parentElement, duration / 2, performUpdate);
+            scheduleTransitionEnd(transitionTarget, duration / 2, performUpdate);
           } catch (error) {
             handleError(error as Error);
           }
@@ -725,16 +739,16 @@ export async function updateDom<NT>(
             performCoreDomUpdate(input, [node], timeout, Parser)
               .then(() => {
                 // Apply enter styles for the new content
-                applyStyles(parentElement, transitionStyles.enter);
+                applyStyles(transitionTarget, transitionStyles.enter);
 
                 // Force reflow
-                parentElement.offsetHeight;
+                transitionTarget.offsetHeight;
 
                 // Apply enter-active styles to transition in
-                applyStyles(parentElement, transitionStyles.enterActive);
+                applyStyles(transitionTarget, transitionStyles.enterActive);
 
                 // Wait for enter transition to complete (non-blocking)
-                scheduleTransitionEnd(parentElement, duration / 2, finishTransition);
+                scheduleTransitionEnd(transitionTarget, duration / 2, finishTransition);
               })
               .catch(handleError);
           } catch (error) {

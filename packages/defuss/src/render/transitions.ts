@@ -44,6 +44,12 @@ export interface TransitionConfig {
   easing?: TransitionsEasing | string;
   /** Delay before starting transition in milliseconds */
   delay?: number;
+  /**
+   * Target element for applying transition styles
+   * - "parent": Apply transition to the parent element (default behavior)
+   * - "self": Apply transition to the element itself (child root)
+   */
+  target?: "parent" | "self";
 }
 
 /**
@@ -71,16 +77,16 @@ export const getTransitionStyles = (
   switch (type) {
     case "fade":
       return {
-        enter: filterUndefined({ opacity: "0", transition: baseTransition }),
+        enter: filterUndefined({ opacity: "0.5", transition: baseTransition }),
         enterActive: filterUndefined({ opacity: "1" }),
         exit: filterUndefined({ opacity: "1", transition: baseTransition }),
-        exitActive: filterUndefined({ opacity: "0" }),
+        exitActive: filterUndefined({ opacity: "0.5" }),
       };
     case "slide-left":
       return {
         enter: filterUndefined({
           transform: "translateX(100%)",
-          opacity: "0",
+          opacity: "0.5",
           transition: baseTransition,
         }),
         enterActive: filterUndefined({
@@ -94,14 +100,14 @@ export const getTransitionStyles = (
         }),
         exitActive: filterUndefined({
           transform: "translateX(-200%)",
-          opacity: "0",
+          opacity: "0.5",
         }),
       };
     case "slide-right":
       return {
         enter: filterUndefined({
           transform: "translateX(-200%)",
-          opacity: "0",
+          opacity: "0.5",
           transition: baseTransition,
         }),
         enterActive: filterUndefined({
@@ -115,14 +121,14 @@ export const getTransitionStyles = (
         }),
         exitActive: filterUndefined({
           transform: "translateX(100%)",
-          opacity: "0",
+          opacity: "0.5",
         }),
       };
     case "slide-up":
       return {
         enter: filterUndefined({
           transform: "translateY(100%)",
-          opacity: "0",
+          opacity: "0.5",
           transition: baseTransition,
         }),
         enterActive: filterUndefined({
@@ -136,14 +142,14 @@ export const getTransitionStyles = (
         }),
         exitActive: filterUndefined({
           transform: "translateY(-200%)",
-          opacity: "0",
+          opacity: "0.5",
         }),
       };
     case "slide-down":
       return {
         enter: filterUndefined({
           transform: "translateY(-200%)",
-          opacity: "0",
+          opacity: "0.5",
           transition: baseTransition,
         }),
         enterActive: filterUndefined({
@@ -157,14 +163,14 @@ export const getTransitionStyles = (
         }),
         exitActive: filterUndefined({
           transform: "translateY(100%)",
-          opacity: "0",
+          opacity: "0.5",
         }),
       };
     case "zoom":
       return {
         enter: filterUndefined({
           transform: "scale(0)",
-          opacity: "0",
+          opacity: "0.5",
           transition: baseTransition,
         }),
         enterActive: filterUndefined({ transform: "scale(1)", opacity: "1" }),
@@ -179,7 +185,7 @@ export const getTransitionStyles = (
       return {
         enter: filterUndefined({
           transform: "rotate(-360deg)",
-          opacity: "0",
+          opacity: "0.5",
           transition: baseTransition,
         }),
         enterActive: filterUndefined({
@@ -193,14 +199,14 @@ export const getTransitionStyles = (
         }),
         exitActive: filterUndefined({
           transform: "rotate(360deg)",
-          opacity: "0",
+          opacity: "0.5",
         }),
       };
     case "flip-horizontal":
       return {
         enter: filterUndefined({
           transform: "perspective(1000px) rotateY(-360deg)",
-          opacity: "0",
+          opacity: "0.5",
           transition: baseTransition,
         }),
         enterActive: filterUndefined({
@@ -214,14 +220,14 @@ export const getTransitionStyles = (
         }),
         exitActive: filterUndefined({
           transform: "perspective(1000px) rotateY(360deg)",
-          opacity: "0",
+          opacity: "0.5",
         }),
       };
     case "flip-vertical":
       return {
         enter: filterUndefined({
           transform: "perspective(1000px) rotateX(-360deg)",
-          opacity: "0",
+          opacity: "0.5",
           transition: baseTransition,
         }),
         enterActive: filterUndefined({
@@ -235,14 +241,14 @@ export const getTransitionStyles = (
         }),
         exitActive: filterUndefined({
           transform: "perspective(1000px) rotateX(360deg)",
-          opacity: "0",
+          opacity: "0.5",
         }),
       };
     case "bounce":
       return {
         enter: filterUndefined({
           transform: "scale(0.3)",
-          opacity: "0",
+          opacity: "0.5",
           transition: `all ${duration}ms cubic-bezier(0.68, -0.55, 0.265, 1.55)`,
         }),
         enterActive: filterUndefined({
@@ -256,7 +262,7 @@ export const getTransitionStyles = (
         }),
         exitActive: filterUndefined({
           transform: "scale(0.3)",
-          opacity: "0",
+          opacity: "0.5",
         }),
       };
     default:
@@ -363,6 +369,7 @@ export const DEFAULT_TRANSITION_CONFIG: TransitionConfig = {
   duration: 300,
   easing: "ease-in-out",
   delay: 0,
+  target: "parent",
 };
 
 /**
@@ -395,7 +402,10 @@ export const scheduleTransitionStep = (callback: () => void): void => {
 /**
  * Non-blocking delay that uses setTimeout without blocking
  */
-export const scheduleDelayedStep = (callback: () => void, delay: number): void => {
+export const scheduleDelayedStep = (
+  callback: () => void,
+  delay: number,
+): void => {
   if (delay > 0) {
     setTimeout(callback, delay);
   } else {
@@ -412,7 +422,7 @@ export const scheduleTransitionEnd = (
   callback: () => void,
 ): void => {
   let resolved = false;
-  
+
   const handleTransitionEnd = () => {
     if (!resolved) {
       resolved = true;
