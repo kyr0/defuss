@@ -29,6 +29,10 @@ describe("Supported validators", () => {
         isUrl: validators.isUrl,
         isUrlPath: validators.isUrlPath,
         hasPattern: validators.hasPattern,
+        isTrue: validators.isTrue,
+        isFalse: validators.isFalse,
+        isTruthy: validators.isTruthy,
+        isFalsy: validators.isFalsy,
       }),
     );
   });

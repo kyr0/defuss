@@ -25,6 +25,10 @@ import {
   isUrlPath,
   hasPattern,
   is,
+  isTrue,
+  isFalse,
+  isTruthy,
+  isFalsy,
 } from "defuss-runtime";
 
 export const validators = {
@@ -54,4 +58,8 @@ export const validators = {
   isUrl,
   isUrlPath,
   hasPattern,
+  isTrue,
+  isFalse,
+  isTruthy,
+  isFalsy,
 };
