@@ -25,15 +25,7 @@ import {
 import { waitForRef } from "defuss-runtime";
 import { queueCallback } from "../common/queue.js";
 import {
-  getTransitionStyles,
-  applyStyles,
-  storeOriginalStyles,
-  restoreOriginalStyles,
-  createContentSnapshot,
-  insertContentSnapshot,
-  removeContentSnapshot,
-  scheduleTransitionEnd,
-  scheduleDelayedStep,
+  performTransition,
   DEFAULT_TRANSITION_CONFIG,
   type TransitionConfig,
 } from "./transitions.js";
@@ -616,11 +608,6 @@ async function performCoreDomUpdate<NT>(
   }
 }
 
-/**
- * Core DOM update logic extracted from the update() method.
- * This function handles the actual DOM manipulation without the createCall wrapper,
- * allowing it to be used by both update() and replaceWith() without deadlock.
- */
 export async function updateDom<NT>(
   input:
     | string
@@ -637,122 +624,26 @@ export async function updateDom<NT>(
   // Handle transitions if configuration is provided
   if (transitionConfig && transitionConfig.type !== "none") {
     const config = { ...DEFAULT_TRANSITION_CONFIG, ...transitionConfig };
-    const {
-      duration = 50,
-      easing = "ease",
-      delay = 0,
-      target = "self",
-    } = config;
-
-    // Get transition styles - either custom or predefined
-    const transitionStyles =
-      config.styles ||
-      getTransitionStyles(config.type || "fade", duration, easing);
+    const { target = "self" } = config;
 
     const transitionPromises = nodes.map(async (node) => {
-      if (!node) {
-        // If no node, skip
+      if (!node) return node;
+
+      const element = node as HTMLElement;
+      const transitionTarget =
+        target === "self" ? element : element.parentElement;
+
+      if (!transitionTarget) {
+        await performCoreDomUpdate(input, [node], timeout, Parser);
         return node;
       }
 
-      const element = node as HTMLElement;
-
-      // Determine the transition target based on configuration
-      let transitionTarget: HTMLElement;
-
-      if (target === "self") {
-        // Use the element itself as the transition target
-        transitionTarget = element;
-      } else {
-        // Use parent element as transition target (default behavior)
-        if (!element.parentElement) {
-          // If no parent element, just do regular update without transition
-          await performCoreDomUpdate(input, [node], timeout, Parser);
-          return node;
-        }
-        transitionTarget = element.parentElement;
-      }
-
-      // Store original styles that we'll modify
-      const stylesToStore = [
-        "opacity",
-        "transform",
-        "transition",
-        "overflow",
-        "position",
-        "z-index",
-      ];
-      const originalStyles = storeOriginalStyles(
+      await performTransition(
         transitionTarget,
-        stylesToStore,
+        () => performCoreDomUpdate(input, [node], timeout, Parser),
+        config,
       );
-
-      // Return a promise that resolves when the transition completes
-      return new Promise<typeof node>((resolve, reject) => {
-        let contentSnapshot: HTMLElement | null = null;
-
-        const cleanup = () => {
-          if (contentSnapshot) {
-            removeContentSnapshot(contentSnapshot);
-          }
-          restoreOriginalStyles(transitionTarget, originalStyles);
-        };
-
-        const handleError = (error: Error) => {
-          cleanup();
-          reject(error);
-        };
-
-        // Schedule DOM update immediately but hide it with snapshot
-        const startTransitionWithImmediateUpdate = () => {
-          try {
-            // Step 1: Create snapshot of current content BEFORE updating DOM
-            contentSnapshot = createContentSnapshot(transitionTarget);
-            insertContentSnapshot(contentSnapshot, transitionTarget);
-
-            // Step 2: Immediately perform DOM update (but it's hidden behind snapshot)
-            performCoreDomUpdate(input, [node], timeout, Parser)
-              .then(() => {
-                // Step 3: Set up new content for cross-fade - start with enter styles
-                applyStyles(transitionTarget, transitionStyles.enter);
-
-                // Step 4: Set up snapshot for exit transition
-                applyStyles(contentSnapshot!, transitionStyles.exit);
-
-                // Force reflow to ensure initial styles are applied
-                contentSnapshot!.offsetHeight;
-                transitionTarget.offsetHeight;
-
-                // Step 5: Start SIMULTANEOUS transitions for true cross-fade
-                // Transition snapshot out
-                applyStyles(contentSnapshot!, transitionStyles.exitActive);
-                // Transition new content in AT THE SAME TIME
-                applyStyles(transitionTarget, transitionStyles.enterActive);
-
-                // Step 6: Wait for transition to complete and clean up
-                scheduleTransitionEnd(transitionTarget, duration, () => {
-                  try {
-                    // Remove the snapshot
-                    if (contentSnapshot) {
-                      removeContentSnapshot(contentSnapshot);
-                      contentSnapshot = null;
-                    }
-                    cleanup();
-                    resolve(node);
-                  } catch (error) {
-                    handleError(error as Error);
-                  }
-                });
-              })
-              .catch(handleError);
-          } catch (error) {
-            handleError(error as Error);
-          }
-        };
-
-        // Start the transition sequence with optional delay (non-blocking)
-        scheduleDelayedStep(startTransitionWithImmediateUpdate, delay);
-      });
+      return node;
     });
 
     await Promise.all(transitionPromises);
