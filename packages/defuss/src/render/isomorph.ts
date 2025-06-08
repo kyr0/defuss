@@ -35,6 +35,7 @@ import {
   scheduleTransitionEnd,
   scheduleDelayedStep,
   DEFAULT_TRANSITION_CONFIG,
+  type TransitionConfig,
 } from "./transitions.js";
 
 const CLASS_ATTRIBUTE_NAME = "class";
@@ -631,7 +632,7 @@ export async function updateDom<NT>(
   nodes: readonly NodeType[],
   timeout: number,
   Parser: typeof globalThis.DOMParser,
-  transitionConfig?: import("./transitions.js").TransitionConfig,
+  transitionConfig?: TransitionConfig,
 ): Promise<readonly NodeType[]> {
   // Handle transitions if configuration is provided
   if (transitionConfig && transitionConfig.type !== "none") {
