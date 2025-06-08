@@ -19,6 +19,7 @@ describe("LibsqlProvider Integration Tests", () => {
     await provider.connect({
       url: ":memory:",
     });
+    expect(provider.isConnected()).toBe(true);
   });
 
   // Cleanup - disconnect after all tests
@@ -68,6 +69,10 @@ describe("LibsqlProvider Integration Tests", () => {
     });
 
     expect(result.rows.length).toBeGreaterThan(0);
+  });
+
+  it("tells if the provider is connected", () => {
+    expect(provider.isConnected()).toBe(true);
   });
 
   it("should insert a document", async () => {

@@ -35,6 +35,14 @@ export class LibsqlProvider implements DefussProvider<LibsqlConfig> {
   }
 
   /**
+   * Checks if the provider is currently connected to the database.
+   * @returns True if connected, false otherwise.
+   */
+  isConnected(): boolean {
+    return this.db?.closed !== true;
+  }
+
+  /**
    * Creates a table if it doesn't exist.
    * Sets up the primary key and any initial structure needed.
    * @param table - The name of the table.

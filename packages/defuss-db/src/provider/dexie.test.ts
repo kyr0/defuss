@@ -19,6 +19,7 @@ describe("DexieProvider Integration Tests", () => {
     // Create a new provider instance before each test
     provider = new DexieProvider(TEST_DB_NAME);
     await provider.connect();
+    expect(provider.isConnected()).toBe(true);
   });
 
   afterEach(async () => {
@@ -140,7 +141,7 @@ describe("DexieProvider Integration Tests", () => {
     expect(retrievedBytes[63]).toBe(63 % 255);
   });
 
-  it("should update existing data", async () => {
+  it("should update existing data and provider still open", async () => {
     const tableName = "test_table";
     const testData = { name: "Original", value: 100, category: "test" };
 
@@ -156,6 +157,7 @@ describe("DexieProvider Integration Tests", () => {
     // Verify update
     const result = await provider.findOne(tableName, { category: "test" });
     expect(result).toMatchObject({ name: "Updated", value: 200 });
+    expect(provider.isConnected()).toBe(true);
   });
 
   it("should delete data", async () => {

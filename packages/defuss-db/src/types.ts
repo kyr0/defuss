@@ -30,6 +30,12 @@ export interface DefussProvider<O> {
   disconnect(): void;
 
   /**
+   * Checks if the provider is currently connected to the database.
+   * @returns True if connected, false otherwise.
+   */
+  isConnected(): boolean;
+
+  /**
    * Creates a table if it doesn't exist.
    * @param table - The name of the table.
    */

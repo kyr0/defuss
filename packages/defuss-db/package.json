@@ -1,6 +1,6 @@
 {
   "name": "defuss-db",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -19,7 +19,7 @@
     "build": "pkgroll",
     "mongodb:start": "tsx scripts/mongo-start.ts",
     "mongodb:stop": "tsx scripts/mongo-stop.ts",
-    "test:integration": "vitest --run  --coverage"
+    "test": "vitest --run  --coverage"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

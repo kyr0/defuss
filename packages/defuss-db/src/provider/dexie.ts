@@ -60,6 +60,14 @@ export class DexieProvider implements DefussProvider<DexieOptions> {
   }
 
   /**
+   * Checks if the provider is currently connected to the database.
+   * @returns True if connected, false otherwise.
+   */
+  isConnected(): boolean {
+    return this.isOpen;
+  }
+
+  /**
    * Creates a table if it doesn't exist with dynamic schema support.
    * @param table - The name of the table.
    */

@@ -304,6 +304,14 @@ export class MongoProvider implements DefussProvider<MongoProviderOptions> {
   }
 
   /**
+   * Checks if the provider is currently connected to the database.
+   * @returns True if connected, false otherwise.
+   */
+  isConnected(): boolean {
+    return !!this.client && !!this.db;
+  }
+
+  /**
    * Creates a collection if it doesn't exist.
    */
   async createTable(table: string): Promise<void> {

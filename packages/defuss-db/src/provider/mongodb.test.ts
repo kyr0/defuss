@@ -45,6 +45,7 @@ describe("MongoProvider Integration Tests", () => {
 
     provider = new MongoProvider(options);
     await provider.connect(options);
+    expect(provider.isConnected()).toBe(true);
 
     // Drop the test collection if it exists to start with a clean slate
     if (provider.db) {
@@ -148,6 +149,10 @@ describe("MongoProvider Integration Tests", () => {
 
     expect(id).toBeDefined();
     expect(typeof id).toBe("string"); // MongoDB returns string IDs
+  });
+
+  it("tells if the provider is connected", () => {
+    expect(provider.isConnected()).toBe(true);
   });
 
   it("should find documents", async () => {
