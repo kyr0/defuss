@@ -1,7 +1,5 @@
 /**
  * Transition system for defuss DOM updates
- * 
- * SNAPSHOT FADE BEHAVIOR:
  * - "fade" transitions: Snapshots do NOT fade (maintains original appearance during cross-fade)
  * - All other transitions ("slide-left", "slide-right", "shake"): Snapshots fade out with same duration
  */
@@ -63,7 +61,7 @@ const shouldFadeSnapshot = (type: TransitionType): boolean => {
  */
 const injectShakeKeyframes = (): void => {
   const keyframesId = "defuss-shake-keyframes";
-  
+
   // Check if keyframes already exist
   if (document.getElementById(keyframesId)) {
     return;
@@ -78,7 +76,7 @@ const injectShakeKeyframes = (): void => {
       20%, 40%, 60%, 80% { transform: translate3d(10px, 0, 0); }
     }
   `;
-  
+
   document.head.appendChild(style);
 };
 
@@ -430,8 +428,7 @@ export const scheduleTransitionEnd = (
 };
 
 /**
- * DEPRECATED: Simple snapshot for backwards compatibility
- * NOTE: This is kept for compatibility but is not recommended for performance
+ * Simple snapshot for backwards compatibility
  */
 export const createContentSnapshot = (element: HTMLElement): HTMLElement => {
   const snapshot = document.createElement("div");
@@ -456,7 +453,7 @@ export const createContentSnapshot = (element: HTMLElement): HTMLElement => {
 };
 
 /**
- * DEPRECATED: Insert snapshot for backwards compatibility
+ * Insert snapshot for backwards compatibility
  */
 export const insertContentSnapshot = (
   snapshot: HTMLElement,
@@ -466,7 +463,7 @@ export const insertContentSnapshot = (
 };
 
 /**
- * DEPRECATED: Remove snapshot for backwards compatibility
+ * Remove snapshot for backwards compatibility
  */
 export const removeContentSnapshot = (snapshot: HTMLElement): void => {
   if (snapshot.parentNode) {
@@ -475,8 +472,8 @@ export const removeContentSnapshot = (snapshot: HTMLElement): void => {
 };
 
 /**
- * OPTIMIZED: Simple and efficient transition with snapshot fade control
- * 
+ * Simple and efficient transition with snapshot fade control
+ *
  * @param element - The element to apply the transition to
  * @param transitionStyles - The transition styles for enter/exit phases
  * @param updateCallback - Callback to update the DOM content
@@ -536,7 +533,7 @@ const performCrossFadeTransition = async (
   transitionType: TransitionType = "fade",
 ): Promise<void> => {
   const shouldFadeSnap = shouldFadeSnapshot(transitionType);
-  
+
   // Create a snapshot of the current content
   const oldContentSnapshot = element.cloneNode(true) as HTMLElement;
 
@@ -557,7 +554,7 @@ const performCrossFadeTransition = async (
     width: "100%",
     height: "100%",
     opacity: "1",
-    transition: shouldFadeSnap 
+    transition: shouldFadeSnap
       ? `opacity ${duration}ms ${transitionStyles.exit.transition?.split(" ")[2] || "ease-in-out"}`
       : "none",
     pointerEvents: "none",

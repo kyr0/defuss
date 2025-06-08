@@ -24,6 +24,18 @@ import {
 } from "../common/dom.js";
 import { waitForRef } from "defuss-runtime";
 import { queueCallback } from "../common/queue.js";
+import {
+  getTransitionStyles,
+  applyStyles,
+  storeOriginalStyles,
+  restoreOriginalStyles,
+  createContentSnapshot,
+  insertContentSnapshot,
+  removeContentSnapshot,
+  scheduleTransitionEnd,
+  scheduleDelayedStep,
+  DEFAULT_TRANSITION_CONFIG,
+} from "./transitions.js";
 
 const CLASS_ATTRIBUTE_NAME = "class";
 const XLINK_ATTRIBUTE_NAME = "xlink";
@@ -623,28 +635,12 @@ export async function updateDom<NT>(
 ): Promise<readonly NodeType[]> {
   // Handle transitions if configuration is provided
   if (transitionConfig && transitionConfig.type !== "none") {
-    const {
-      getTransitionStyles,
-      performSimpleTransition,
-      // Legacy approach (less performant but more compatible):
-      applyStyles,
-      storeOriginalStyles,
-      restoreOriginalStyles,
-      waitForTransition,
-      createContentSnapshot,
-      insertContentSnapshot,
-      removeContentSnapshot,
-      scheduleTransitionEnd,
-      scheduleDelayedStep,
-      DEFAULT_TRANSITION_CONFIG,
-    } = await import("./transitions.js");
-
     const config = { ...DEFAULT_TRANSITION_CONFIG, ...transitionConfig };
     const {
-      duration = 300,
-      easing = "ease-in-out",
+      duration = 50,
+      easing = "ease",
       delay = 0,
-      target = "parent",
+      target = "self",
     } = config;
 
     // Get transition styles - either custom or predefined
@@ -652,42 +648,6 @@ export async function updateDom<NT>(
       config.styles ||
       getTransitionStyles(config.type || "fade", duration, easing);
 
-    // OPTIMIZED APPROACH: Use performSimpleTransition for better performance
-    // This avoids expensive DOM cloning and complex async chains
-    const shouldUseOptimizedApproach = false; // Set to false to use legacy approach for proper cross-fades
-
-    if (shouldUseOptimizedApproach) {
-      // Simple, efficient approach without snapshots
-      const transitionPromises = nodes.map(async (node) => {
-        if (!node) return node;
-
-        const element = node as HTMLElement;
-        const transitionTarget =
-          target === "self" ? element : element.parentElement;
-
-        if (!transitionTarget) {
-          await performCoreDomUpdate(input, [node], timeout, Parser);
-          return node;
-        }
-
-        await performSimpleTransition(
-          transitionTarget,
-          transitionStyles,
-          async () => {
-            await performCoreDomUpdate(input, [node], timeout, Parser);
-          },
-          duration,
-          delay,
-        );
-
-        return node;
-      });
-
-      await Promise.all(transitionPromises);
-      return nodes;
-    }
-
-    // LEGACY APPROACH: Original complex implementation with snapshots
     const transitionPromises = nodes.map(async (node) => {
       if (!node) {
         // If no node, skip
@@ -742,7 +702,7 @@ export async function updateDom<NT>(
           reject(error);
         };
 
-        // NEW APPROACH: Schedule DOM update immediately but hide it with snapshot
+        // Schedule DOM update immediately but hide it with snapshot
         const startTransitionWithImmediateUpdate = () => {
           try {
             // Step 1: Create snapshot of current content BEFORE updating DOM
