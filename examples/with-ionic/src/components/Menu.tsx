@@ -4,6 +4,8 @@ import {
   mailSharp,
   paperPlaneOutline,
   paperPlaneSharp,
+  arrowBackOutline,
+  arrowForwardOutline,
 } from "ionicons/icons";
 import { createRef, Router, $ } from "defuss";
 import "./Menu.css";
@@ -42,10 +44,40 @@ const labels = [
 ];
 
 const MenuList = () => {
+  console.log("MenuList called");
   return (
     <>
       <ion-list-header>defuss with Ionic</ion-list-header>
       <ion-note>defuss@ionicframework.com</ion-note>
+
+      <ion-item
+        lines="none"
+        detail={false}
+        button
+        onClick={() => history.back()}
+      >
+        <ion-icon
+          aria-hidden="true"
+          slot="start"
+          icon={arrowBackOutline}
+        ></ion-icon>
+        <ion-label>Back</ion-label>
+      </ion-item>
+
+      <ion-item
+        lines="none"
+        detail={false}
+        button
+        onClick={() => history.forward()}
+      >
+        <ion-icon
+          aria-hidden="true"
+          slot="start"
+          icon={arrowForwardOutline}
+        ></ion-icon>
+        <ion-label>Forward</ion-label>
+      </ion-item>
+
       {appPages.map((appPage) => {
         return (
           <ion-menu-toggle key={appPage.url} auto-hide="false">

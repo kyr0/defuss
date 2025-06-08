@@ -1,11 +1,11 @@
-import ExploreContainer from '../components/ExploreContainer.js';
+import ExploreContainer from "../components/ExploreContainer.js";
 
 interface PageProps {
   name: string;
 }
 
 export function Page({ name = "foo" }: PageProps) {
-
+  console.log("Page called");
   return (
     <ion-content id="main">
       <ion-header>
@@ -26,5 +26,5 @@ export function Page({ name = "foo" }: PageProps) {
         <ExploreContainer name={name} />
       </ion-content>
     </ion-content>
-  )
+  );
 }
