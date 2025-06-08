@@ -162,33 +162,77 @@ export const applyStyles = (
 };
 
 /**
- * Store original styles so they can be restored later
+ * Create a visual snapshot of the current content for crossfade transitions
  */
-export const storeOriginalStyles = (
-  element: HTMLElement,
-  properties: string[],
-): Record<string, string> => {
-  const originalStyles: Record<string, string> = {};
-  properties.forEach((property) => {
-    originalStyles[property] = element.style.getPropertyValue(property) || "";
+export const createContentSnapshot = (element: HTMLElement): HTMLElement => {
+  // Clone the current content
+  const snapshot = element.cloneNode(true) as HTMLElement;
+
+  // Get the computed styles and position of the original element
+  const computedStyle = window.getComputedStyle(element);
+  const rect = element.getBoundingClientRect();
+
+  // Style the snapshot to be positioned exactly over the original
+  applyStyles(snapshot, {
+    position: "absolute",
+    top: `${rect.top + window.scrollY}px`,
+    left: `${rect.left + window.scrollX}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    zIndex: "-1", // Behind the original content
+    pointerEvents: "none", // Don't interfere with interactions
+    // Copy important visual styles
+    background: computedStyle.background,
+    border: computedStyle.border,
+    borderRadius: computedStyle.borderRadius,
+    boxShadow: computedStyle.boxShadow,
+    // Preserve text and content styles
+    font: computedStyle.font,
+    color: computedStyle.color,
+    textAlign: computedStyle.textAlign,
+    lineHeight: computedStyle.lineHeight,
   });
-  return originalStyles;
+
+  // Add a unique class for identification
+  snapshot.classList.add("defuss-content-snapshot");
+
+  return snapshot;
 };
 
 /**
- * Restore original styles to an element
+ * Insert content snapshot into the DOM
  */
-export const restoreOriginalStyles = (
-  element: HTMLElement,
-  originalStyles: Record<string, string>,
-) => {
-  Object.entries(originalStyles).forEach(([property, value]) => {
-    if (value) {
-      element.style.setProperty(property, value);
-    } else {
-      element.style.removeProperty(property);
+export const insertContentSnapshot = (
+  snapshot: HTMLElement,
+  targetElement: HTMLElement,
+): void => {
+  // Insert the snapshot into the document body or the nearest positioned parent
+  const positionedParent = getPositionedParent(targetElement);
+  (positionedParent || document.body).appendChild(snapshot);
+};
+
+/**
+ * Remove content snapshot from the DOM
+ */
+export const removeContentSnapshot = (snapshot: HTMLElement): void => {
+  if (snapshot.parentNode) {
+    snapshot.parentNode.removeChild(snapshot);
+  }
+};
+
+/**
+ * Find the nearest positioned parent element
+ */
+const getPositionedParent = (element: HTMLElement): HTMLElement | null => {
+  let parent = element.parentElement;
+  while (parent) {
+    const style = window.getComputedStyle(parent);
+    if (style.position !== "static") {
+      return parent;
     }
-  });
+    parent = parent.parentElement;
+  }
+  return null;
 };
 
 /**
@@ -218,5 +262,42 @@ export const waitForTransition = (
 
     // Fallback timeout in case transitionend doesn't fire
     setTimeout(resolve, duration + 50);
+  });
+};
+
+/**
+ * Store original styles of an element before applying transition styles
+ */
+export const storeOriginalStyles = (
+  element: HTMLElement,
+  styleProperties: string[],
+): Record<string, string> => {
+  const originalStyles: Record<string, string> = {};
+
+  styleProperties.forEach((property) => {
+    // Get the current computed or inline style value
+    const currentValue =
+      element.style.getPropertyValue(property) ||
+      window.getComputedStyle(element).getPropertyValue(property);
+    originalStyles[property] = currentValue;
+  });
+
+  return originalStyles;
+};
+
+/**
+ * Restore original styles to an element after transition completes
+ */
+export const restoreOriginalStyles = (
+  element: HTMLElement,
+  originalStyles: Record<string, string>,
+): void => {
+  Object.entries(originalStyles).forEach(([property, value]) => {
+    if (value) {
+      element.style.setProperty(property, value);
+    } else {
+      // If the original value was empty, remove the property
+      element.style.removeProperty(property);
+    }
   });
 };

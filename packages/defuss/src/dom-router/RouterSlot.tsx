@@ -42,9 +42,9 @@ export const RouterSlot = ({
 
   router.onRouteChange(async () => {
     //console.log("<RouterSlot> RouterSlot.onRouteChange", newPath, oldPath, ref.current);
-    await $(ref, { timeout: 1001 }).update(RouterOutlet(), {
+    await $(ref).update(RouterOutlet(), {
       type: "fade",
-      duration: 1000,
+      duration: 100,
       easing: "linear",
     });
   });

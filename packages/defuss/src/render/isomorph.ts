@@ -629,6 +629,9 @@ export async function updateDom<NT>(
       storeOriginalStyles,
       restoreOriginalStyles,
       waitForTransition,
+      createContentSnapshot,
+      insertContentSnapshot,
+      removeContentSnapshot,
       DEFAULT_TRANSITION_CONFIG,
     } = await import("./transitions.js");
 
@@ -650,6 +653,23 @@ export async function updateDom<NT>(
 
       const element = node as HTMLElement;
       const parentElement = element.parentElement!;
+
+      // Create a snapshot of the current content for true crossfade
+      let contentSnapshot: HTMLElement | null = null;
+      const shouldUseSnapshot = config.type === "fade";
+
+      if (shouldUseSnapshot) {
+        try {
+          contentSnapshot = createContentSnapshot(element);
+          insertContentSnapshot(contentSnapshot, element);
+        } catch (error) {
+          console.warn(
+            "Failed to create content snapshot, falling back to regular transition:",
+            error,
+          );
+          contentSnapshot = null;
+        }
+      }
 
       // Store original styles that we'll modify
       const stylesToStore = [
@@ -695,10 +715,18 @@ export async function updateDom<NT>(
         // Wait for enter transition to complete (remaining half duration)
         await waitForTransition(parentElement, duration / 2);
 
+        // Clean up content snapshot
+        if (contentSnapshot) {
+          removeContentSnapshot(contentSnapshot);
+        }
+
         // Restore original styles
         restoreOriginalStyles(parentElement, originalStyles);
       } catch (error) {
-        // On error, restore original styles and re-throw
+        // On error, clean up snapshot and restore original styles
+        if (contentSnapshot) {
+          removeContentSnapshot(contentSnapshot);
+        }
         restoreOriginalStyles(parentElement, originalStyles);
         throw error;
       }
