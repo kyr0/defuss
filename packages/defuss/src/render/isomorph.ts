@@ -640,7 +640,12 @@ export async function updateDom<NT>(
     } = await import("./transitions.js");
 
     const config = { ...DEFAULT_TRANSITION_CONFIG, ...transitionConfig };
-    const { duration = 300, easing = "ease-in-out", delay = 0, target = "parent" } = config;
+    const {
+      duration = 300,
+      easing = "ease-in-out",
+      delay = 0,
+      target = "parent",
+    } = config;
 
     // Get transition styles - either custom or predefined
     const transitionStyles =
@@ -657,8 +662,9 @@ export async function updateDom<NT>(
         if (!node) return node;
 
         const element = node as HTMLElement;
-        const transitionTarget = target === "self" ? element : element.parentElement;
-        
+        const transitionTarget =
+          target === "self" ? element : element.parentElement;
+
         if (!transitionTarget) {
           await performCoreDomUpdate(input, [node], timeout, Parser);
           return node;
@@ -689,10 +695,10 @@ export async function updateDom<NT>(
       }
 
       const element = node as HTMLElement;
-      
+
       // Determine the transition target based on configuration
       let transitionTarget: HTMLElement;
-      
+
       if (target === "self") {
         // Use the element itself as the transition target
         transitionTarget = element;
@@ -715,12 +721,15 @@ export async function updateDom<NT>(
         "position",
         "z-index",
       ];
-      const originalStyles = storeOriginalStyles(transitionTarget, stylesToStore);
+      const originalStyles = storeOriginalStyles(
+        transitionTarget,
+        stylesToStore,
+      );
 
       // Return a promise that resolves when the transition completes
       return new Promise<typeof node>((resolve, reject) => {
         let contentSnapshot: HTMLElement | null = null;
-        
+
         const cleanup = () => {
           if (contentSnapshot) {
             removeContentSnapshot(contentSnapshot);
