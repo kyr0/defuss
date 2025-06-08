@@ -1067,6 +1067,60 @@ describe("Error System Comprehensive Tests", () => {
     });
   });
 
+  describe("Built-in validators with custom message support", () => {
+    it("should support custom messages for built-in validators", async () => {
+      const validator = transval(
+        rule("email")
+          .isString("Email must be a string")
+          .isEmail("Please provide a valid email address"),
+        rule("age")
+          .isSafeNumber("Age must be a valid number")
+          .isGreaterThan(18, false, "You must be at least 18 years old"),
+        rule("name")
+          .isString("Name must be a string")
+          .isLongerThan(2, false, "Name must be longer than 2 characters"),
+      );
+
+      const result = await validator.isValid({
+        email: "invalid-email", // not a valid email format
+        age: 16, // less than 18
+        name: "Jo", // too short
+      });
+
+      expect(result).toBe(false);
+
+      const messages = validator.getMessages();
+      console.log("All messages:", messages);
+      expect(messages).toHaveLength(3);
+      expect(messages.map((m) => m.message)).toContain(
+        "Please provide a valid email address",
+      );
+      expect(messages.map((m) => m.message)).toContain(
+        "You must be at least 18 years old",
+      );
+      expect(messages.map((m) => m.message)).toContain(
+        "Name must be longer than 2 characters",
+      );
+
+      // Test specific field messages
+      const emailMessages = validator.getMessages("email");
+      expect(emailMessages).toHaveLength(1);
+      expect(emailMessages[0].message).toBe(
+        "Please provide a valid email address",
+      );
+
+      const ageMessages = validator.getMessages("age");
+      expect(ageMessages).toHaveLength(1);
+      expect(ageMessages[0].message).toBe("You must be at least 18 years old");
+
+      const nameMessages = validator.getMessages("name");
+      expect(nameMessages).toHaveLength(1);
+      expect(nameMessages[0].message).toBe(
+        "Name must be longer than 2 characters",
+      );
+    });
+  });
+
   describe("getMessages() with custom formatter", () => {
     it("should apply custom formatter to all messages", async () => {
       class MessageValidators extends Rules {
