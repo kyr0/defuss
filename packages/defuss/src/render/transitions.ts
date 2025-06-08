@@ -3,19 +3,13 @@
  * 
  * SNAPSHOT FADE BEHAVIOR:
  * - "fade" transitions: Snapshots do NOT fade (maintains original appearance during cross-fade)
- * - All other transitions ("bounce", "zoom", "slide-*", "flip-*", "rotate"): Snapshots fade out with same duration
+ * - All other transitions ("slide-left", "slide-right", "shake"): Snapshots fade out with same duration
  */
 export type TransitionType =
   | "fade"
   | "slide-left"
   | "slide-right"
-  | "slide-up"
-  | "slide-down"
-  | "zoom"
-  | "rotate"
-  | "flip-horizontal"
-  | "flip-vertical"
-  | "bounce"
+  | "shake"
   | "none";
 
 export interface TransitionStyles {
@@ -65,6 +59,30 @@ const shouldFadeSnapshot = (type: TransitionType): boolean => {
 };
 
 /**
+ * Inject shake animation keyframes into the document
+ */
+const injectShakeKeyframes = (): void => {
+  const keyframesId = "defuss-shake-keyframes";
+  
+  // Check if keyframes already exist
+  if (document.getElementById(keyframesId)) {
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = keyframesId;
+  style.textContent = `
+    @keyframes shake {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      10%, 30%, 50%, 70%, 90% { transform: translate3d(-10px, 0, 0); }
+      20%, 40%, 60%, 80% { transform: translate3d(10px, 0, 0); }
+    }
+  `;
+  
+  document.head.appendChild(style);
+};
+
+/**
  * Get predefined transition styles based on transition type
  */
 export const getTransitionStyles = (
@@ -72,6 +90,11 @@ export const getTransitionStyles = (
   duration: number,
   easing: TransitionsEasing | string = "ease-in-out",
 ): TransitionStyles => {
+  // Inject shake keyframes if needed
+  if (type === "shake") {
+    injectShakeKeyframes();
+  }
+
   // Use transform and opacity for hardware acceleration
   const baseTransition = `transform ${duration}ms ${easing}, opacity ${duration}ms ${easing}`;
 
@@ -146,153 +169,27 @@ export const getTransitionStyles = (
           opacity: "0.5",
         }),
       };
-    case "slide-up":
+    case "shake":
       return {
         enter: filterUndefined({
-          transform: "translate3d(0, 100%, 0)",
-          opacity: "0.5",
-          transition: baseTransition,
+          transform: "translate3d(0, 0, 0)",
+          opacity: "1",
+          transition: "none",
         }),
         enterActive: filterUndefined({
           transform: "translate3d(0, 0, 0)",
           opacity: "1",
+          animation: `shake ${duration}ms cubic-bezier(0.36, 0.07, 0.19, 0.97)`,
         }),
         exit: filterUndefined({
           transform: "translate3d(0, 0, 0)",
           opacity: "1",
-          transition: baseTransition,
+          transition: "none",
         }),
         exitActive: filterUndefined({
-          transform: "translate3d(0, -100%, 0)",
-          opacity: "0.5",
-        }),
-      };
-    case "slide-down":
-      return {
-        enter: filterUndefined({
-          transform: "translate3d(0, -100%, 0)",
-          opacity: "0.5",
-          transition: baseTransition,
-        }),
-        enterActive: filterUndefined({
           transform: "translate3d(0, 0, 0)",
           opacity: "1",
-        }),
-        exit: filterUndefined({
-          transform: "translate3d(0, 0, 0)",
-          opacity: "1",
-          transition: baseTransition,
-        }),
-        exitActive: filterUndefined({
-          transform: "translate3d(0, 100%, 0)",
-          opacity: "0.5",
-        }),
-      };
-    case "zoom":
-      return {
-        enter: filterUndefined({
-          transform: "translate3d(0, 0, 0) scale3d(0.8, 0.8, 1)",
-          opacity: "0",
-          transition: baseTransition,
-        }),
-        enterActive: filterUndefined({
-          transform: "translate3d(0, 0, 0) scale3d(1, 1, 1)",
-          opacity: "1",
-        }),
-        exit: filterUndefined({
-          transform: "translate3d(0, 0, 0) scale3d(1, 1, 1)",
-          opacity: "1",
-          transition: baseTransition,
-        }),
-        exitActive: filterUndefined({
-          transform: "translate3d(0, 0, 0) scale3d(0.8, 0.8, 1)",
-          opacity: "0",
-        }),
-      };
-    case "rotate":
-      return {
-        enter: filterUndefined({
-          transform: "translate3d(0, 0, 0) rotate(-180deg)",
-          opacity: "0.5",
-          transition: baseTransition,
-        }),
-        enterActive: filterUndefined({
-          transform: "translate3d(0, 0, 0) rotate(0deg)",
-          opacity: "1",
-        }),
-        exit: filterUndefined({
-          transform: "translate3d(0, 0, 0) rotate(0deg)",
-          opacity: "1",
-          transition: baseTransition,
-        }),
-        exitActive: filterUndefined({
-          transform: "translate3d(0, 0, 0) rotate(180deg)",
-          opacity: "0.5",
-        }),
-      };
-    case "flip-horizontal":
-      return {
-        enter: filterUndefined({
-          transform:
-            "translate3d(0, 0, 0) perspective(1000px) rotateY(-180deg)",
-          opacity: "0.5",
-          transition: baseTransition,
-        }),
-        enterActive: filterUndefined({
-          transform: "translate3d(0, 0, 0) perspective(1000px) rotateY(0deg)",
-          opacity: "1",
-        }),
-        exit: filterUndefined({
-          transform: "translate3d(0, 0, 0) perspective(1000px) rotateY(0deg)",
-          opacity: "1",
-          transition: baseTransition,
-        }),
-        exitActive: filterUndefined({
-          transform: "translate3d(0, 0, 0) perspective(1000px) rotateY(180deg)",
-          opacity: "0.5",
-        }),
-      };
-    case "flip-vertical":
-      return {
-        enter: filterUndefined({
-          transform:
-            "translate3d(0, 0, 0) perspective(1000px) rotateX(-180deg)",
-          opacity: "0.5",
-          transition: baseTransition,
-        }),
-        enterActive: filterUndefined({
-          transform: "translate3d(0, 0, 0) perspective(1000px) rotateX(0deg)",
-          opacity: "1",
-        }),
-        exit: filterUndefined({
-          transform: "translate3d(0, 0, 0) perspective(1000px) rotateX(0deg)",
-          opacity: "1",
-          transition: baseTransition,
-        }),
-        exitActive: filterUndefined({
-          transform: "translate3d(0, 0, 0) perspective(1000px) rotateX(180deg)",
-          opacity: "0.5",
-        }),
-      };
-    case "bounce":
-      return {
-        enter: filterUndefined({
-          transform: "translate3d(0, 0, 0) scale3d(0.3, 0.3, 1)",
-          opacity: "0.5",
-          transition: `transform ${duration}ms cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity ${duration}ms ${easing}`,
-        }),
-        enterActive: filterUndefined({
-          transform: "translate3d(0, 0, 0) scale3d(1, 1, 1)",
-          opacity: "1",
-        }),
-        exit: filterUndefined({
-          transform: "translate3d(0, 0, 0) scale3d(1, 1, 1)",
-          opacity: "1",
-          transition: `transform ${duration}ms cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity ${duration}ms ${easing}`,
-        }),
-        exitActive: filterUndefined({
-          transform: "translate3d(0, 0, 0) scale3d(0.3, 0.3, 1)",
-          opacity: "0.5",
+          animation: `shake ${duration}ms cubic-bezier(0.36, 0.07, 0.19, 0.97)`,
         }),
       };
     default:

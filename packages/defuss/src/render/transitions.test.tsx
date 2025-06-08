@@ -93,7 +93,7 @@ describe("updateDom method with Transition Effects", () => {
 
   it("should handle transition with delay", async () => {
     const transitionConfig: TransitionConfig = {
-      type: "bounce",
+      type: "shake",
       duration: 100,
       delay: 50,
     };
@@ -203,38 +203,6 @@ describe("updateDom method with Transition Effects", () => {
     );
 
     expect(testElement.innerHTML).toBe("<div>Fade transition content</div>");
-
-    // Test zoom transition (should fade snapshot)
-    const zoomConfig: TransitionConfig = {
-      type: "zoom",
-      duration: 100,
-    };
-
-    await updateDom(
-      "<div>Zoom transition content</div>",
-      [testElement],
-      1000,
-      DOMParser,
-      zoomConfig,
-    );
-
-    expect(testElement.innerHTML).toBe("<div>Zoom transition content</div>");
-
-    // Test bounce transition (should fade snapshot)
-    const bounceConfig: TransitionConfig = {
-      type: "bounce",
-      duration: 100,
-    };
-
-    await updateDom(
-      "<div>Bounce transition content</div>",
-      [testElement],
-      1000,
-      DOMParser,
-      bounceConfig,
-    );
-
-    expect(testElement.innerHTML).toBe("<div>Bounce transition content</div>");
   });
 
   it("should handle target 'self' even without parent element", async () => {
@@ -243,7 +211,7 @@ describe("updateDom method with Transition Effects", () => {
     element.innerHTML = "Isolated content";
 
     const transitionConfig: TransitionConfig = {
-      type: "zoom",
+      type: "fade",
       duration: 100,
       target: "self",
     };
@@ -259,6 +227,8 @@ describe("updateDom method with Transition Effects", () => {
       ),
     ).resolves.not.toThrow();
 
-    expect(element.innerHTML).toBe("<div>Updated isolated with self target</div>");
+    expect(element.innerHTML).toBe(
+      "<div>Updated isolated with self target</div>",
+    );
   });
 });
