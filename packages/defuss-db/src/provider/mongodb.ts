@@ -221,14 +221,6 @@ export const toObjectId = (id: string | ObjectId): ObjectId => {
   return new ObjectId(id);
 };
 
-// Define required interfaces for the MongoDB implementation
-interface DefussRow {
-  type: "json" | "blob";
-  json?: string;
-  blob?: ArrayBuffer;
-  [key: string]: any;
-}
-
 // Adding an interface to handle MongoDB documents with optional type field
 interface MongoDefussDocument extends Document {
   type?: "json" | "blob";
@@ -236,8 +228,6 @@ interface MongoDefussDocument extends Document {
   blob?: ArrayBuffer;
   [key: string]: any;
 }
-
-type LookupType = "json" | "blob";
 
 /**
  * MongoProvider implements DefussProvider for MongoDB.
@@ -259,7 +249,9 @@ export class MongoProvider implements DefussProvider<MongoProviderOptions> {
     options: MongoProviderOptions = {} as MongoProviderOptions,
   ): Promise<void> {
     try {
-      if (this.client) return; // Already connected
+      if (this.isConnected()) {
+        return; // Already connected
+      }
 
       const connectionString =
         options.connectionString || this.connectionString;

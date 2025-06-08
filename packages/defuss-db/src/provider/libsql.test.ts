@@ -19,6 +19,10 @@ describe("LibsqlProvider Integration Tests", () => {
     await provider.connect({
       url: ":memory:",
     });
+
+    await provider.connect({
+      url: ":memory:",
+    }); // double connect to ensure it doesn't throw an error
     expect(provider.isConnected()).toBe(true);
   });
 

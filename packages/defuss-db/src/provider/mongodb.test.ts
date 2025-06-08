@@ -45,6 +45,8 @@ describe("MongoProvider Integration Tests", () => {
 
     provider = new MongoProvider(options);
     await provider.connect(options);
+    await provider.connect(options); // double connect to ensure it doesn't throw an error
+
     expect(provider.isConnected()).toBe(true);
 
     // Drop the test collection if it exists to start with a clean slate

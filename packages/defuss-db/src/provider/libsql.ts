@@ -24,6 +24,9 @@ export class LibsqlProvider implements DefussProvider<LibsqlConfig> {
    * @param config - The libsql connection configuration.
    */
   async connect(config: LibsqlConfig): Promise<void> {
+    if (this.db && this.isConnected()) {
+      return; // Already connected
+    }
     this.db = createClient(config);
   }
 

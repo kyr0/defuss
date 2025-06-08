@@ -19,6 +19,7 @@ describe("DexieProvider Integration Tests", () => {
     // Create a new provider instance before each test
     provider = new DexieProvider(TEST_DB_NAME);
     await provider.connect();
+    await provider.connect(); // double connect to ensure it doesn't throw an error
     expect(provider.isConnected()).toBe(true);
   });
 

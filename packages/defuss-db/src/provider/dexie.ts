@@ -31,6 +31,10 @@ export class DexieProvider implements DefussProvider<DexieOptions> {
    * @param options - Dexie-specific configuration options.
    */
   async connect(options: DexieOptions = {}): Promise<void> {
+    if (this.db && this.isConnected()) {
+      return; // Already connected
+    }
+
     const isNode =
       typeof process !== "undefined" &&
       typeof process.versions === "object" &&
