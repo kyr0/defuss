@@ -38,12 +38,21 @@ export interface ValidationChainApi<ET = {}> {
   isDefined(): ValidationChain<ET>;
   isEmpty(): ValidationChain<ET>;
 
+  isInstanceOf<T extends new (...args: any[]) => any>(
+    someConstructorFunction: T,
+  ): ValidationChain<ET>; // instanceof check
+
+  isTypeOf(type: string): ValidationChain<ET>; // typeof check (e.g., "string", "number", etc.)
+  isNull(): ValidationChain<ET>; // has no value (null)
+
   // Format validators
   isEmail(): ValidationChain<ET>;
   isUrl(): ValidationChain<ET>;
   isUrlPath(): ValidationChain<ET>;
   isSlug(): ValidationChain<ET>;
   isPhoneNumber(): ValidationChain<ET>;
+  hasDateFormat(format: string): ValidationChain<ET>;
+  hasPattern(pattern: RegExp): ValidationChain<ET>;
 
   // Comparison validators
   is(v: any): ValidationChain<ET>; // === check
@@ -57,6 +66,12 @@ export interface ValidationChainApi<ET = {}> {
     // must be one of the provided values
     options: T,
   ): ValidationChain<ET>;
+
+  // Boolean validators
+  isTrue(): ValidationChain<ET>; // checks if the value is true
+  isFalse(): ValidationChain<ET>; // checks if the value is false
+  isTruthy(): ValidationChain<ET>; // checks if the value is truthy
+  isFalsy(): ValidationChain<ET>; // checks if the value is falsy
 
   // Length validators
   isLongerThan(minLength: number, inclusive?: boolean): ValidationChain<ET>;
@@ -77,9 +92,6 @@ export interface ValidationChainApi<ET = {}> {
   asDate(): ValidationChain<ET>;
   asArray(transformerFn: (value: any) => any): ValidationChain<ET>;
   asInteger(): ValidationChain<ET>;
-
-  // Pattern validator
-  hasPattern(pattern: RegExp): ValidationChain<ET>;
 
   // Message formatter
   useFormatter(

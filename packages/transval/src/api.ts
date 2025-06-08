@@ -143,7 +143,7 @@ export class Rules<ET = ValidationChainApi> implements ValidationChainApi<ET> {
             validationErrors.push(`Validation failed for ${call.name}`);
           } else if (typeof result === "string") {
             // Validation failed with error message
-            validationErrors.push(result);
+            validationErrors.push(result); // last argument of each validator is the error message
           } else if (Array.isArray(result)) {
             // Handle multiple errors from a single validator
             const stringErrors = (result as Array<any>).filter(

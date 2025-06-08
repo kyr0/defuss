@@ -29,6 +29,10 @@ import {
   isFalse,
   isTruthy,
   isFalsy,
+  hasDateFormat,
+  isInstanceOf,
+  isTypeOf,
+  isNull,
 } from "defuss-runtime";
 
 export const validators = {
@@ -62,4 +66,8 @@ export const validators = {
   isFalse,
   isTruthy,
   isFalsy,
+  hasDateFormat,
+  isInstanceOf,
+  isTypeOf,
+  isNull,
 };
