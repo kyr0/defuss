@@ -104,7 +104,7 @@ describe("DSON Integration Tests", () => {
     });
 
     it("should preserve Map objects", async () => {
-      const map = new Map([
+      const map = new Map<unknown, unknown>([
         ["string-key", "string-value"],
         [42, "number-key"],
         [true, "boolean-key"],

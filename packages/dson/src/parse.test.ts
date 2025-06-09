@@ -24,6 +24,7 @@ describe("parse", () => {
 
     it("should parse numbers", async () => {
       expect(await parse("42")).toBe(42);
+      // biome-ignore lint/suspicious/noApproximativeNumericConstant: <explanation>
       expect(await parse("3.14159")).toBe(3.14159);
       expect(await parse("0")).toBe(0);
       expect(await parse("-42")).toBe(-42);
@@ -194,7 +195,7 @@ describe("parse", () => {
     });
 
     it("should parse Map with entries", async () => {
-      const map = new Map([
+      const map = new Map<unknown, unknown>([
         ["key1", "value1"],
         ["key2", 42],
         [3, "number key"],
@@ -232,7 +233,7 @@ describe("parse", () => {
     });
 
     it("should parse nested Maps and Sets", async () => {
-      const map = new Map([
+      const map = new Map<unknown, unknown>([
         ["set", new Set([1, 2])],
         ["nested", new Map([["inner", "value"]])],
       ]);
@@ -287,6 +288,7 @@ describe("parse", () => {
     });
 
     it("should parse Float32Array", async () => {
+      // biome-ignore lint/suspicious/noApproximativeNumericConstant: <explanation>
       const arr = new Float32Array([1.5, -2.5, 3.14159]);
       const serialized = await stringify(arr);
       const parsed = await parse(serialized);
@@ -295,6 +297,7 @@ describe("parse", () => {
       expect(parsed.length).toBe(3);
       expect(parsed[0]).toBeCloseTo(1.5);
       expect(parsed[1]).toBeCloseTo(-2.5);
+      // biome-ignore lint/suspicious/noApproximativeNumericConstant: <explanation>
       expect(parsed[2]).toBeCloseTo(3.14159);
     });
 
@@ -345,7 +348,7 @@ describe("parse", () => {
     it("should parse custom class instances with constructor map", async () => {
       const instance = new TestClass("test");
       const serialized = await stringify(instance);
-      const parsed = await parse(serialized, { TestClass });
+      const parsed = await parse(serialized, { TestClass } as any);
 
       expect(parsed).toBeInstanceOf(TestClass);
       expect(parsed.value).toBe("test");
@@ -450,7 +453,13 @@ describe("parse", () => {
           bigint: BigInt(123),
           fn: () => "hello",
         },
-        array: [null, undefined, Infinity, -Infinity, NaN],
+        array: [
+          null,
+          undefined,
+          Number.POSITIVE_INFINITY,
+          Number.NEGATIVE_INFINITY,
+          Number.NaN,
+        ],
       };
 
       const serialized = await stringify(complex);
@@ -466,8 +475,8 @@ describe("parse", () => {
       expect(typeof parsed.nested.fn).toBe("function");
       expect(parsed.array[0]).toBe(null);
       expect(parsed.array[1]).toBe(undefined);
-      expect(parsed.array[2]).toBe(Infinity);
-      expect(parsed.array[3]).toBe(-Infinity);
+      expect(parsed.array[2]).toBe(Number.POSITIVE_INFINITY);
+      expect(parsed.array[3]).toBe(Number.NEGATIVE_INFINITY);
       expect(Number.isNaN(parsed.array[4])).toBe(true);
     });
   });

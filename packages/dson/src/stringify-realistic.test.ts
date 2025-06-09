@@ -21,6 +21,7 @@ describe("stringify (realistic tests)", () => {
 
     it("should stringify numbers", async () => {
       expect(await stringify(42)).toBe("42");
+      // biome-ignore lint/suspicious/noApproximativeNumericConstant: <explanation>
       expect(await stringify(3.14159)).toBe("3.14159");
       expect(await stringify(0)).toBe("0");
       expect(await stringify(-42)).toBe("-42");
@@ -112,7 +113,7 @@ describe("stringify (realistic tests)", () => {
     });
 
     it("should stringify Maps", async () => {
-      const map = new Map([
+      const map = new Map<unknown, unknown>([
         ["key1", "value1"],
         ["key2", 42],
         [3, "number key"],
@@ -166,6 +167,7 @@ describe("stringify (realistic tests)", () => {
     });
 
     it("should stringify Float32Array", async () => {
+      // biome-ignore lint/suspicious/noApproximativeNumericConstant: <explanation>
       const arr = new Float32Array([1.5, -2.5, 3.14159]);
       const result = await stringify(arr);
       const parsed = JSON.parse(result);
@@ -229,9 +231,7 @@ describe("stringify (realistic tests)", () => {
     });
 
     it("should stringify async functions", async () => {
-      const fn = async function () {
-        return "async";
-      };
+      const fn = async () => "async";
       const result = await stringify(fn);
       const parsed = JSON.parse(result);
 
