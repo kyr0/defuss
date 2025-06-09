@@ -11,7 +11,9 @@ import {
   BIGINT,
 } from "./types.d.js";
 
+/* c8 ignore start */
 const env = typeof self === "object" ? self : globalThis;
+/* c8 ignore stop */
 
 type SerializedRecord = [string | number, any];
 
@@ -57,7 +59,15 @@ const deserializer = ($: Map<number, any>, _: SerializedRecord[]) => {
       }
       case ERROR: {
         const { name, message } = value;
-        return as(new (env as any)[name](message), index);
+        try {
+          return as(new (env as any)[name](message), index);
+        } catch (e) {
+          // If the error constructor doesn't exist in the global scope,
+          // create a generic Error with the original name preserved
+          const error = new Error(message);
+          error.name = name;
+          return as(error, index);
+        }
       }
       case BIGINT:
         return as(BigInt(value), index);

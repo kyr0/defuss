@@ -79,9 +79,11 @@ const serializer = (
             break;
           case "function":
           case "symbol":
+            /* c8 ignore start */
             if (strict) throw new TypeError(`unable to serialize ${type}`);
             entry = null;
             break;
+          /* c8 ignore stop */
           case "undefined":
             return as([VOID, undefined], value);
         }
@@ -147,6 +149,10 @@ const serializer = (
           if (strict || !shouldSkip(typeOf(entry))) entries.push(pair(entry));
         }
         return index;
+      }
+      case ERROR: {
+        const { name, message } = value;
+        return as([TYPE, { name, message }], value);
       }
     }
 
