@@ -5,24 +5,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DSON } from "./index.js";
 
 describe("DSON", () => {
-  let mockWindow: any;
-
-  beforeEach(() => {
-    mockWindow = {
-      document: {
-        createElement: vi.fn((tagName: string) => ({
-          tagName: tagName.toUpperCase(),
-          constructor: { name: tagName },
-          toString: () =>
-            `[object HTML${tagName.charAt(0).toUpperCase() + tagName.slice(1)}Element]`,
-          setAttribute: vi.fn(),
-          getAttribute: vi.fn(),
-          hasAttribute: vi.fn(),
-        })),
-      },
-    };
-  });
-
   describe("API exports", () => {
     it("should export DSON with all required methods", () => {
       expect(DSON).toBeDefined();
@@ -451,18 +433,8 @@ describe("DSON", () => {
         };
 
         // Standard JSON would lose type information
-        let jsonString: string;
-        let jsonParsed: any;
-        try {
-          jsonString = JSON.stringify(extendedData);
-          jsonParsed = JSON.parse(jsonString);
-        } catch (e) {
-          // JSON.stringify can't handle BigInt, so we'll create a version without it
-          const { bigint, ...jsonCompatibleData } = extendedData;
-          jsonString = JSON.stringify(jsonCompatibleData);
-          jsonParsed = JSON.parse(jsonString);
-          jsonParsed.bigint = undefined; // BigInt becomes undefined in regular JSON
-        }
+        const jsonString = JSON.stringify(extendedData);
+        const jsonParsed = JSON.parse(jsonString);
 
         expect(jsonParsed.date).toBeTypeOf("string"); // Date becomes string
         expect(jsonParsed.regex).toEqual({}); // RegExp becomes empty object

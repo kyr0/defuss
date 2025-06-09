@@ -862,6 +862,6 @@ export async function parse(
     return await reviver(parsed);
   } catch (e) {
     console.error("DSON parse error:", e);
-    throw e; // Re-throw the error instead of returning null
+    return null;
   }
 }
