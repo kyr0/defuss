@@ -1,8 +1,14 @@
 import { _binaryToBase64 } from "./base64.js";
-export const isGlobalValue = (value: any): boolean =>
-  Object.getOwnPropertyNames(globalThis).some(
+export const isGlobalValue = (value: any): boolean => {
+  // Only check for global values if it's an object (not primitive values)
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  return Object.getOwnPropertyNames(globalThis).some(
     (key) => (globalThis as any)[key] === value,
   );
+};
 /**
  * Asynchronously stringify any JavaScript value
  *
@@ -69,8 +75,31 @@ export async function stringify(
       }
 
       if (typeof value === "symbol") {
-        return [null, "Symbol", value.description || ""];
+        return [
+          null,
+          "Symbol",
+          value.description === undefined ? "__undefined__" : value.description,
+        ];
       }
+
+      // Handle special numeric values
+      if (typeof value === "number") {
+        if (Number.isNaN(value)) {
+          return [null, "NaN", null];
+        }
+        if (value === Number.POSITIVE_INFINITY) {
+          return [null, "Infinity", null];
+        }
+        if (value === Number.NEGATIVE_INFINITY) {
+          return [null, "-Infinity", null];
+        }
+      }
+
+      // Handle undefined explicitly
+      if (value === undefined) {
+        return [null, "undefined", null];
+      }
+
       return value;
     }
 
@@ -129,6 +158,12 @@ export async function stringify(
         return [id, "RegExp", { source: value.source, flags: value.flags }];
       }
 
+      // Add explicit Date handling
+      if (value instanceof Date) {
+        const time = value.getTime();
+        return [id, "Date", Number.isNaN(time) ? "Invalid Date" : time];
+      }
+
       if (value instanceof URL) {
         return [id, "URL", value.href];
       }
@@ -149,7 +184,33 @@ export async function stringify(
         return [id, "Function", value.toString()];
       }
 
-      if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
+      // Handle ArrayBuffer first
+      if (value instanceof ArrayBuffer) {
+        const base64 = _binaryToBase64(value);
+        return [id, "ArrayBuffer", base64];
+      }
+
+      // Handle DataView
+      if (value instanceof DataView) {
+        const bytes = new Uint8Array(
+          value.buffer,
+          value.byteOffset,
+          value.byteLength,
+        );
+        const base64 = _binaryToBase64(bytes.buffer);
+        return [
+          id,
+          "DataView",
+          {
+            buffer: base64,
+            byteOffset: value.byteOffset,
+            byteLength: value.byteLength,
+          },
+        ];
+      }
+
+      // Handle other TypedArrays
+      if (ArrayBuffer.isView(value)) {
         const typedArrayType = value.constructor.name;
         const bytes = new Uint8Array(
           value.buffer,

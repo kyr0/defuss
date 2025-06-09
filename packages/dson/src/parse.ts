@@ -16,6 +16,10 @@ export async function parse(
 ): Promise<any> {
   if (!serialized) return null;
   const refs = new Map<number, any>();
+  const pendingRefs = new Map<
+    number,
+    Array<{ obj: any; key: string | number | symbol }>
+  >(); // Track pending references
 
   // Try to use provided window or fall back to global
   if (!windowObj && typeof globalThis !== "undefined") {
@@ -24,7 +28,18 @@ export async function parse(
 
   // Helper function to register and return objects
   const registerWithRefs = <T>(id: number | null, value: T): T => {
-    return _registerWithRefs(refs, id, value);
+    const result = _registerWithRefs(refs, id, value);
+
+    // Resolve any pending references to this object
+    if (id !== null && pendingRefs.has(id)) {
+      const pending = pendingRefs.get(id)!;
+      for (const { obj, key } of pending) {
+        obj[key] = result;
+      }
+      pendingRefs.delete(id);
+    }
+
+    return result;
   };
 
   // Create a type-check helper to reduce duplication
@@ -83,8 +98,14 @@ export async function parse(
       const [id, type, data] = value;
 
       // Handle circular references
-      if (type === "ref" && id === null && refs.has(data)) {
-        return refs.get(data);
+      if (type === "ref" && id === null) {
+        if (refs.has(data)) {
+          return refs.get(data);
+        } else {
+          // Create a placeholder for forward references
+          const placeholder = { __pendingRef: data };
+          return placeholder;
+        }
       }
 
       // Process by type
@@ -92,7 +113,15 @@ export async function parse(
         case "BigInt":
           return BigInt(data);
         case "Symbol":
-          return Symbol(data);
+          return data === "__undefined__" ? Symbol() : Symbol(data);
+        case "undefined":
+          return undefined;
+        case "NaN":
+          return Number.NaN;
+        case "Infinity":
+          return Number.POSITIVE_INFINITY;
+        case "-Infinity":
+          return Number.NEGATIVE_INFINITY;
         case "Error": {
           const error = new Error(data.message);
           error.name = data.name;
@@ -157,12 +186,51 @@ export async function parse(
           // Ensure RegExp is correctly revived by constructing it properly
           return registerWithRefs(id, new RegExp(data.source, data.flags));
         case "Date":
-          return registerWithRefs(id, new Date(data));
-        case "Array": {
-          const result = await Promise.all(
-            data.map((item: any) => reviver(item)),
+          return registerWithRefs(
+            id,
+            data === "Invalid Date" ? new Date("invalid") : new Date(data),
           );
-          return registerWithRefs(id, result);
+        case "Array": {
+          const processedData = await Promise.all(
+            data.map(async (item: any, index: number) => {
+              const value = await reviver(item);
+              if (
+                value &&
+                typeof value === "object" &&
+                value.__pendingRef !== undefined
+              ) {
+                // This is a forward reference, we'll handle it below
+                return { __pendingRef: value.__pendingRef, __index: index };
+              }
+              return value;
+            }),
+          );
+
+          const result = processedData.map((item) =>
+            item && typeof item === "object" && item.__pendingRef !== undefined
+              ? null
+              : item,
+          );
+
+          registerWithRefs(id, result);
+
+          // Handle pending references in the array
+          for (const item of processedData) {
+            if (
+              item &&
+              typeof item === "object" &&
+              item.__pendingRef !== undefined
+            ) {
+              const refId = item.__pendingRef;
+              const index = item.__index;
+              if (!pendingRefs.has(refId)) {
+                pendingRefs.set(refId, []);
+              }
+              pendingRefs.get(refId)!.push({ obj: result, key: index });
+            }
+          }
+
+          return result;
         }
         case "Object": {
           const result = {};
@@ -177,7 +245,23 @@ export async function parse(
             if (Object.prototype.hasOwnProperty.call(data, key)) {
               promises.push(
                 (async () => {
-                  (result as any)[key] = await reviver(data[key]);
+                  const value = await reviver(data[key]);
+                  if (
+                    value &&
+                    typeof value === "object" &&
+                    value.__pendingRef !== undefined
+                  ) {
+                    // This is a forward reference, register it for later resolution
+                    const refId = value.__pendingRef;
+                    if (!pendingRefs.has(refId)) {
+                      pendingRefs.set(refId, []);
+                    }
+                    pendingRefs.get(refId)!.push({ obj: result, key });
+                    // Set a temporary placeholder
+                    (result as any)[key] = null;
+                  } else {
+                    (result as any)[key] = value;
+                  }
                 })(),
               );
             }
@@ -192,9 +276,25 @@ export async function parse(
                 promises.push(
                   (async () => {
                     const symKey = Symbol(keyDesc);
-                    (result as any)[symKey] = await reviver(
-                      data.__symbols__[keyDesc],
-                    );
+                    const value = await reviver(data.__symbols__[keyDesc]);
+                    if (
+                      value &&
+                      typeof value === "object" &&
+                      value.__pendingRef !== undefined
+                    ) {
+                      // This is a forward reference, register it for later resolution
+                      const refId = value.__pendingRef;
+                      if (!pendingRefs.has(refId)) {
+                        pendingRefs.set(refId, []);
+                      }
+                      pendingRefs
+                        .get(refId)!
+                        .push({ obj: result, key: symKey });
+                      // Set a temporary placeholder
+                      (result as any)[symKey] = null;
+                    } else {
+                      (result as any)[symKey] = value;
+                    }
                   })(),
                 );
               }
@@ -323,6 +423,11 @@ export async function parse(
         }
         case "ArrayBuffer":
           return registerWithRefs(id, _base64ToBinary(data));
+        case "DataView": {
+          const buffer = _base64ToBinary(data.buffer);
+          const result = new DataView(buffer, data.byteOffset, data.byteLength);
+          return registerWithRefs(id, result);
+        }
         case "File": {
           // Create a File object with actual content
           if (typeof File !== "undefined") {
