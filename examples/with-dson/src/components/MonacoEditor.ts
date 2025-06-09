@@ -106,6 +106,7 @@ export class MonacoEditor {
     this.monacoEditor.onDidChangeModelContent(() => {
       this.data.code = this.monacoEditor.getValue();
       this.config.onChange?.(this.data.code);
+      updateHeight();
     });
   }
 

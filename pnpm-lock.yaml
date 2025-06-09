@@ -126,14 +126,17 @@ importers:
         specifier: ^2.1.4
         version: 2.1.4
       defuss:
-        specifier: ^2.0.7
-        version: 2.0.7
+        specifier: ^2.1.0
+        version: 2.1.0
       defuss-astro:
         specifier: ^1.4.3
         version: 1.4.3(@types/node@22.15.29)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3)
       defuss-dson:
         specifier: workspace:*
         version: link:../../packages/dson
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
       defuss-squeezy:
         specifier: ^0.0.3
         version: 0.0.3
@@ -261,11 +264,11 @@ importers:
         specifier: ^4.24.3
         version: 4.24.5
       defuss:
-        specifier: ^2.0.7
-        version: 2.0.7
+        specifier: ^2.1.0
+        version: 2.1.0
       defuss-dson:
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: ^1.1.0
+        version: 1.1.0
       defuss-squeezy:
         specifier: ^0.0.3
         version: 0.0.3
@@ -652,6 +655,10 @@ importers:
       wasm-pack:
         specifier: ^0.12.1
         version: 0.12.1
+
+  packages/lightningimg/lightningimg-wasm/pkg-bundler: {}
+
+  packages/lightningimg/lightningimg-wasm/pkg-node: {}
 
   packages/rpc:
     dependencies:
@@ -2379,8 +2386,8 @@ packages:
     resolution: {integrity: sha512-BfMU4pzFm55SkYNW12OspELyqGWvmlWv4BitAe4ssTv3kJDy94PhfYNoicgr3l0grYFfkFfoCJxtOr9daatcZQ==}
     engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
 
-  defuss-dson@1.0.1:
-    resolution: {integrity: sha512-D4TtSO6R/u6AjAVRR9sfuOSrMDFhY1uEroV8d5HoyiFllnQLuBCfD9Na5RhpOGZ3ProAeEXveY6qQDhHYn24Pg==}
+  defuss-dson@1.1.0:
+    resolution: {integrity: sha512-UbzI07y1joJrXwpDZtiBs2BbVRTJL9HnJaQMiXe/Er7h9qbuCnPnikVOz9ecePRc9oMIY4zzld0YcCt+FbfGWw==}
     engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
 
   defuss-runtime@1.0.1:
@@ -2393,6 +2400,10 @@ packages:
 
   defuss-runtime@1.0.4:
     resolution: {integrity: sha512-DZMpXLioM5Bje79l/8TlZz8tVgjo/bG0B6kAWCgai25zB0b3sQMIiaU/LQMdRAYwn25OKMh9SjU8rCzR1DqGJw==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-runtime@1.2.0:
+    resolution: {integrity: sha512-ZHMXXz0vCBEWHADB9FEaAYlBgM7I8Ri8wuPtG+oC7EudB8KRie9sPld0q63zoHNsoLHV41zTWs/6fBicieSgVQ==}
     engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
 
   defuss-squeezy-reset@0.0.2:
@@ -2435,6 +2446,9 @@ packages:
 
   defuss@2.0.7:
     resolution: {integrity: sha512-YCAtBINowLo+3+3fgY3VGh00oWHzM46zMvWvpQa8vybNzQobZEGDn2O3skTtp1WsouzNvilspBo6Kp9a6VJBlQ==}
+
+  defuss@2.1.0:
+    resolution: {integrity: sha512-7wmDD4K5/BR6OcSi7Cum9zFLCHIzsAfOBnOVHrr4DGSxPBTQgqz52Y1gWyHbrfyh6rGBuJwiOdPHezMFN7YEPw==}
 
   degenerator@5.0.1:
     resolution: {integrity: sha512-TllpMR/t0M5sqCXfj85i4XaAzxmS5tVA16dqvdkMwGmzI+dXLXnw3J+3Vdv7VKw+ThlTMboK6i9rnZ6Nntj5CQ==}
@@ -6665,13 +6679,15 @@ snapshots:
       - uploadthing
       - yaml
 
-  defuss-dson@1.0.1: {}
+  defuss-dson@1.1.0: {}
 
   defuss-runtime@1.0.1: {}
 
   defuss-runtime@1.0.3: {}
 
   defuss-runtime@1.0.4: {}
+
+  defuss-runtime@1.2.0: {}
 
   defuss-squeezy-reset@0.0.2: {}
 
@@ -6754,6 +6770,14 @@ snapshots:
       '@types/w3c-xmlserializer': 2.0.4
       csstype: 3.1.3
       defuss-runtime: 1.0.3
+      happy-dom: 15.11.7
+      w3c-xmlserializer: 5.0.0
+
+  defuss@2.1.0:
+    dependencies:
+      '@types/w3c-xmlserializer': 2.0.4
+      csstype: 3.1.3
+      defuss-runtime: 1.2.0
       happy-dom: 15.11.7
       w3c-xmlserializer: 5.0.0
 

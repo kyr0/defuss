@@ -12,8 +12,8 @@
   "dependencies": {
     "@monaco-editor/loader": "^1.5.0",
     "browserslist": "^4.24.3",
-    "defuss": "^2.0.7",
-    "defuss-dson": "^1.0.1",
+    "defuss": "^2.1.0",
+    "defuss-dson": "^1.1.0",
     "defuss-ui": "^0.0.2",
     "defuss-vite": "^1.1.1",
     "defuss-squeezy": "^0.0.3",

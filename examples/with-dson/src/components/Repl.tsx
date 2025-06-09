@@ -1,4 +1,4 @@
-import { createRef, $, type CSSProperties } from "defuss";
+import { createRef, type CSSProperties } from "defuss";
 import { DSON } from "defuss-dson";
 import { MonacoEditor } from "./MonacoEditor";
 
@@ -41,14 +41,13 @@ const everything = {
   sets: [set],
   arrays: [arrayOfRegexes],
   regex: /[a-zA-Z0-9]/,
-  objects: [objects, new Foo(345)],
-  dom: document.querySelectorAll("h4"),
+  objects: [objects, new Foo(345)]
 };
 
 const serialized = await DSON.stringify(everything); 
 
 // pass custom class constructor functions if used
-const parsed = await DSON.parse(serialized, { Foo });
+const parsed = await DSON.parse(serialized);
 
 const isEqual = await DSON.isEqual(
   { ...everything },
@@ -71,10 +70,10 @@ window.DSON = DSON;
 
 export const Repl = () => {
   const codeRef = createRef<string, HTMLTextAreaElement>();
-  const serializatonRef = createRef<string, HTMLTextAreaElement>();
+  const serializationRef = createRef<string, HTMLTextAreaElement>();
 
   // co-routine to run when ready
-  $(() => {
+  const onMount = async () => {
     const codeEditor = new MonacoEditor(
       {
         language: "javascript",
@@ -93,6 +92,7 @@ export const Repl = () => {
       },
       false,
     );
+
     codeRef.update(codeEditor.getDomNode());
 
     const resultEditor = new MonacoEditor(
@@ -106,7 +106,7 @@ export const Repl = () => {
       },
       true,
     );
-    serializatonRef.update(resultEditor.getDomNode());
+    serializationRef.update(resultEditor.getDomNode());
 
     const updateResultEditor = (value: string) => {
       resultEditor.setValue({
@@ -118,10 +118,10 @@ export const Repl = () => {
     queueMicrotask(() => {
       codeEditor.executeCode(codeEditor.getValue());
     });
-  });
+  };
 
   return (
-    <div class={"vbox"}>
+    <div class={"vbox"} onMount={onMount}>
       <div>
         <h4>JavaScript</h4>
 
@@ -141,7 +141,7 @@ export const Repl = () => {
             ...textareaStyle,
             marginLeft: "1rem",
           }}
-          ref={serializatonRef}
+          ref={serializationRef}
         ></div>
       </div>
     </div>
