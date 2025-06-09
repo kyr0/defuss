@@ -5,7 +5,7 @@ import { Async, createRef, $, type Ref } from "defuss";
 import type { Notebook, NotebookFileEntry } from "../models/Notebook.js";
 import { Editor } from "./Editor.js";
 import type { RpcApi } from "../rpc.js";
-import { getRpcClient } from "../lib/rpc-client.js";
+import { getRpcClient } from "defuss-rpc/client.js";
 
 const loadNotebooks = async (): Promise<Array<NotebookFileEntry>> => {
   const rpc = await getRpcClient<RpcApi>();

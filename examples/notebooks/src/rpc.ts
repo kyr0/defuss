@@ -1,4 +1,4 @@
-import { createRpcServer, setGuardFunction } from "./lib/rpc-server";
+import { createRpcServer, setGuardFunction } from "defuss-rpc/server.js";
 import { BarApi } from "./rpc/bar-api";
 import { FooApi } from "./rpc/foo-api";
 

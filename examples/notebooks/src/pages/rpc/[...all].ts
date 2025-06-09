@@ -1,4 +1,4 @@
-import { rpcRoute } from "../../lib/rpc-server.js";
+import { rpcRoute } from "defuss-rpc/server.js";
 import "../../rpc.js";
 
 // export * from "defuss-rpc/api" which does this
