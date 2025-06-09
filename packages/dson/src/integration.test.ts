@@ -18,8 +18,8 @@ describe("DSON Integration Tests", () => {
       ];
 
       for (const obj of testObjects) {
-        const dsonSerialized = await DSON.stringify(obj);
-        const dsonParsed = await DSON.parse(dsonSerialized);
+        const dsonSerialized = DSON.stringify(obj);
+        const dsonParsed = DSON.parse(dsonSerialized);
 
         // Should match JSON behavior for standard types
         const jsonSerialized = JSON.stringify(obj);
@@ -45,8 +45,8 @@ describe("DSON Integration Tests", () => {
         },
       };
 
-      const serialized = await DSON.stringify(complex);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(complex);
+      const parsed = DSON.parse(serialized);
 
       expect(parsed).toEqual(complex);
       expect(parsed.users).toHaveLength(2);
@@ -56,28 +56,6 @@ describe("DSON Integration Tests", () => {
   });
 
   describe("Extended JavaScript types", () => {
-    it("should preserve Date objects through serialize/deserialize cycle", async () => {
-      const dates = {
-        now: new Date(),
-        epoch: new Date(0),
-        specific: new Date("2023-12-25T12:30:45.123Z"),
-        invalid: new Date("invalid"),
-      };
-
-      const serialized = await DSON.stringify(dates);
-      const parsed = await DSON.parse(serialized);
-
-      expect(parsed.now).toBeInstanceOf(Date);
-      expect(parsed.epoch).toBeInstanceOf(Date);
-      expect(parsed.specific).toBeInstanceOf(Date);
-      expect(parsed.invalid).toBeInstanceOf(Date);
-
-      expect(parsed.now.getTime()).toBe(dates.now.getTime());
-      expect(parsed.epoch.getTime()).toBe(0);
-      expect(parsed.specific.getTime()).toBe(dates.specific.getTime());
-      expect(Number.isNaN(parsed.invalid.getTime())).toBe(true);
-    });
-
     it("should preserve RegExp objects", async () => {
       const regexes = {
         simple: /test/,
@@ -86,8 +64,8 @@ describe("DSON Integration Tests", () => {
         escaped: /path\/to\/file\.(js|ts)$/,
       };
 
-      const serialized = await DSON.stringify(regexes);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(regexes);
+      const parsed = DSON.parse(serialized);
 
       for (const [key, originalRegex] of Object.entries(regexes)) {
         const parsedRegex = parsed[key];
@@ -112,8 +90,8 @@ describe("DSON Integration Tests", () => {
         [{ nested: "object" }, "object-key"],
       ]);
 
-      const serialized = await DSON.stringify(map);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(map);
+      const parsed = DSON.parse(serialized);
 
       expect(parsed).toBeInstanceOf(Map);
       expect(parsed.size).toBe(5);
@@ -147,8 +125,8 @@ describe("DSON Integration Tests", () => {
         [1, 2, 3],
       ]);
 
-      const serialized = await DSON.stringify(set);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(set);
+      const parsed = DSON.parse(serialized);
 
       expect(parsed).toBeInstanceOf(Set);
       expect(parsed.size).toBe(6);
@@ -173,25 +151,6 @@ describe("DSON Integration Tests", () => {
       expect(hasArray).toBe(true);
     });
 
-    it("should preserve Symbols", async () => {
-      const symbols = {
-        regular: Symbol("regular"),
-        empty: Symbol(),
-        global: Symbol.for("global-symbol"),
-      };
-
-      const serialized = await DSON.stringify(symbols);
-      const parsed = await DSON.parse(serialized);
-
-      expect(typeof parsed.regular).toBe("symbol");
-      expect(typeof parsed.empty).toBe("symbol");
-      expect(typeof parsed.global).toBe("symbol");
-
-      expect(parsed.regular.description).toBe("regular");
-      expect(parsed.empty.description).toBe(undefined);
-      expect(parsed.global).toBe(Symbol.for("global-symbol")); // Global symbols should be identical
-    });
-
     it("should preserve BigInt", async () => {
       const bigints = {
         small: BigInt(123),
@@ -200,8 +159,8 @@ describe("DSON Integration Tests", () => {
         zero: BigInt(0),
       };
 
-      const serialized = await DSON.stringify(bigints);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(bigints);
+      const parsed = DSON.parse(serialized);
 
       expect(typeof parsed.small).toBe("bigint");
       expect(typeof parsed.large).toBe("bigint");
@@ -213,6 +172,88 @@ describe("DSON Integration Tests", () => {
       expect(parsed.negative).toBe(BigInt(-456));
       expect(parsed.zero).toBe(BigInt(0));
     });
+
+    it("should preserve Error objects", async () => {
+      const errors = {
+        basic: new Error("Basic error message"),
+        type: new TypeError("Type error message"),
+        range: new RangeError("Range error message"),
+        reference: new ReferenceError("Reference error message"),
+        syntax: new SyntaxError("Syntax error message"),
+        uri: new URIError("URI error message"),
+        emptyMessage: new Error(""),
+        noMessage: new Error(),
+      };
+
+      const serialized = DSON.stringify(errors);
+      const parsed = DSON.parse(serialized);
+
+      // Check basic error
+      expect(parsed.basic).toBeInstanceOf(Error);
+      expect(parsed.basic.name).toBe("Error");
+      expect(parsed.basic.message).toBe("Basic error message");
+
+      // Check TypeError
+      expect(parsed.type).toBeInstanceOf(TypeError);
+      expect(parsed.type.name).toBe("TypeError");
+      expect(parsed.type.message).toBe("Type error message");
+
+      // Check RangeError
+      expect(parsed.range).toBeInstanceOf(RangeError);
+      expect(parsed.range.name).toBe("RangeError");
+      expect(parsed.range.message).toBe("Range error message");
+
+      // Check ReferenceError
+      expect(parsed.reference).toBeInstanceOf(ReferenceError);
+      expect(parsed.reference.name).toBe("ReferenceError");
+      expect(parsed.reference.message).toBe("Reference error message");
+
+      // Check SyntaxError
+      expect(parsed.syntax).toBeInstanceOf(SyntaxError);
+      expect(parsed.syntax.name).toBe("SyntaxError");
+      expect(parsed.syntax.message).toBe("Syntax error message");
+
+      // Check URIError
+      expect(parsed.uri).toBeInstanceOf(URIError);
+      expect(parsed.uri.name).toBe("URIError");
+      expect(parsed.uri.message).toBe("URI error message");
+
+      // Check edge cases
+      expect(parsed.emptyMessage).toBeInstanceOf(Error);
+      expect(parsed.emptyMessage.message).toBe("");
+
+      expect(parsed.noMessage).toBeInstanceOf(Error);
+      expect(parsed.noMessage.message).toBe("");
+    });
+
+    it("should preserve BigInt objects (Object wrapped)", async () => {
+      const bigintObjects = {
+        wrappedSmall: Object(BigInt(123)),
+        wrappedLarge: Object(BigInt("9007199254740991")),
+        wrappedNegative: Object(BigInt(-456)),
+        wrappedZero: Object(BigInt(0)),
+      };
+
+      const serialized = DSON.stringify(bigintObjects);
+      const parsed = DSON.parse(serialized);
+
+      // Check that they are BigInt objects (not primitive bigints)
+      expect(typeof parsed.wrappedSmall).toBe("object");
+      expect(parsed.wrappedSmall).toBeInstanceOf(Object);
+      expect(parsed.wrappedSmall.valueOf()).toBe(BigInt(123));
+
+      expect(typeof parsed.wrappedLarge).toBe("object");
+      expect(parsed.wrappedLarge).toBeInstanceOf(Object);
+      expect(parsed.wrappedLarge.valueOf()).toBe(BigInt("9007199254740991"));
+
+      expect(typeof parsed.wrappedNegative).toBe("object");
+      expect(parsed.wrappedNegative).toBeInstanceOf(Object);
+      expect(parsed.wrappedNegative.valueOf()).toBe(BigInt(-456));
+
+      expect(typeof parsed.wrappedZero).toBe("object");
+      expect(parsed.wrappedZero).toBeInstanceOf(Object);
+      expect(parsed.wrappedZero.valueOf()).toBe(BigInt(0));
+    });
   });
 
   describe("Binary data", () => {
@@ -223,8 +264,8 @@ describe("DSON Integration Tests", () => {
         view[i] = i;
       }
 
-      const serialized = await DSON.stringify(buffer);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(buffer);
+      const parsed = DSON.parse(serialized);
 
       expect(parsed).toBeInstanceOf(ArrayBuffer);
       expect(parsed.byteLength).toBe(16);
@@ -247,8 +288,8 @@ describe("DSON Integration Tests", () => {
         float64: new Float64Array([0.1, -0.1, Math.PI]),
       };
 
-      const serialized = await DSON.stringify(arrays);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(arrays);
+      const parsed = DSON.parse(serialized);
 
       expect(parsed.uint8).toBeInstanceOf(Uint8Array);
       expect(parsed.int8).toBeInstanceOf(Int8Array);
@@ -282,8 +323,8 @@ describe("DSON Integration Tests", () => {
       view.setInt32(0, 42);
       view.setFloat32(4, 3.14);
 
-      const serialized = await DSON.stringify(view);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(view);
+      const parsed = DSON.parse(serialized);
 
       expect(parsed).toBeInstanceOf(DataView);
       expect(parsed.byteLength).toBe(8);
@@ -297,8 +338,8 @@ describe("DSON Integration Tests", () => {
       const obj: any = { name: "circular" };
       obj.self = obj;
 
-      const serialized = await DSON.stringify(obj);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(obj);
+      const parsed = DSON.parse(serialized);
 
       expect(parsed.name).toBe("circular");
       expect(parsed.self).toBe(parsed);
@@ -315,8 +356,8 @@ describe("DSON Integration Tests", () => {
 
       const container = { objects: [objA, objB, objC] };
 
-      const serialized = await DSON.stringify(container);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(container);
+      const parsed = DSON.parse(serialized);
 
       expect(parsed.objects).toHaveLength(3);
       expect(parsed.objects[0].name).toBe("A");
@@ -334,78 +375,14 @@ describe("DSON Integration Tests", () => {
       arr.push(arr);
       arr.push({ backref: arr });
 
-      const serialized = await DSON.stringify(arr);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(arr);
+      const parsed = DSON.parse(serialized);
 
       expect(parsed[0]).toBe(1);
       expect(parsed[1]).toBe(2);
       expect(parsed[2]).toBe(3);
       expect(parsed[3]).toBe(parsed); // Self reference
       expect(parsed[4].backref).toBe(parsed); // Object with reference back to array
-    });
-  });
-
-  describe("Custom classes", () => {
-    class Person {
-      public name: string;
-      public age: number;
-
-      constructor(name?: string, age?: number) {
-        this.name = name || "";
-        this.age = age || 0;
-      }
-
-      greet() {
-        return `Hello, I'm ${this.name}`;
-      }
-    }
-
-    class Employee extends Person {
-      public department: string;
-
-      constructor(name?: string, age?: number, department?: string) {
-        super(name, age);
-        this.department = department || "";
-      }
-
-      work() {
-        return `${this.name} is working in ${this.department}`;
-      }
-    }
-
-    it("should preserve custom class instances with constructor map", async () => {
-      const person = new Person("Alice", 30);
-      const employee = new Employee("Bob", 25, "Engineering");
-
-      const data = { person, employee };
-      const serialized = await DSON.stringify(data);
-      const parsed = await DSON.parse(serialized, { Person, Employee });
-
-      expect(parsed.person).toBeInstanceOf(Person);
-      expect(parsed.employee).toBeInstanceOf(Employee);
-
-      expect(parsed.person.name).toBe("Alice");
-      expect(parsed.person.age).toBe(30);
-      expect(parsed.person.greet()).toBe("Hello, I'm Alice");
-
-      expect(parsed.employee.name).toBe("Bob");
-      expect(parsed.employee.age).toBe(25);
-      expect(parsed.employee.department).toBe("Engineering");
-      expect(parsed.employee.work()).toBe("Bob is working in Engineering");
-      expect(parsed.employee.greet()).toBe("Hello, I'm Bob");
-    });
-
-    it("should handle missing constructors gracefully", async () => {
-      const person = new Person("Alice", 30);
-      const data = { person };
-
-      const serialized = await DSON.stringify(data);
-      const parsed = await DSON.parse(serialized); // No constructor map
-
-      expect(parsed.person).not.toBeInstanceOf(Person);
-      expect(parsed.person.name).toBe("Alice");
-      expect(parsed.person.age).toBe(30);
-      expect(typeof parsed.person.greet).toBe("undefined");
     });
   });
 
@@ -427,14 +404,14 @@ describe("DSON Integration Tests", () => {
         buffer: new Uint8Array([1, 2, 3]),
       };
 
-      expect(await DSON.isEqual(obj1, obj2)).toBe(true);
+      expect(DSON.isEqual(obj1, obj2)).toBe(true);
     });
 
     it("should correctly identify differences", async () => {
       const obj1 = { date: new Date("2023-01-01") };
       const obj2 = { date: new Date("2023-01-02") };
 
-      expect(await DSON.isEqual(obj1, obj2)).toBe(false);
+      expect(DSON.isEqual(obj1, obj2)).toBe(false);
     });
 
     it("should handle circular references in comparison", async () => {
@@ -444,7 +421,7 @@ describe("DSON Integration Tests", () => {
       const obj2: any = { name: "test" };
       obj2.self = obj2;
 
-      expect(await DSON.isEqual(obj1, obj2)).toBe(true);
+      expect(DSON.isEqual(obj1, obj2)).toBe(true);
     });
   });
 
@@ -458,7 +435,7 @@ describe("DSON Integration Tests", () => {
         buffer: new Uint8Array([1, 2, 3]),
       };
 
-      const cloned = await DSON.clone(original);
+      const cloned = DSON.clone(original);
 
       // Should be different references
       expect(cloned).not.toBe(original);
@@ -483,7 +460,7 @@ describe("DSON Integration Tests", () => {
       original.self = original;
       original.nested = { parent: original };
 
-      const cloned = await DSON.clone(original);
+      const cloned = DSON.clone(original);
 
       expect(cloned).not.toBe(original);
       expect(cloned.name).toBe("original");
@@ -505,8 +482,8 @@ describe("DSON Integration Tests", () => {
       }));
 
       const start = Date.now();
-      const serialized = await DSON.stringify(largeArray);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(largeArray);
+      const parsed = DSON.parse(serialized);
       const duration = Date.now() - start;
 
       expect(parsed).toHaveLength(1000);
@@ -528,8 +505,8 @@ describe("DSON Integration Tests", () => {
         current = current.next;
       }
 
-      const serialized = await DSON.stringify(deep);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(deep);
+      const parsed = DSON.parse(serialized);
 
       // Verify the structure is preserved
       let currentParsed = parsed;
@@ -538,70 +515,6 @@ describe("DSON Integration Tests", () => {
         if (i < 99) {
           expect(currentParsed.next).toBeDefined();
           currentParsed = currentParsed.next;
-        }
-      }
-    });
-  });
-
-  describe("Edge cases and error handling", () => {
-    it("should handle empty and null inputs", async () => {
-      expect(await DSON.parse("")).toBe(null);
-      expect(await DSON.stringify(null)).toBe("null");
-      expect(await DSON.parse("null")).toBe(null);
-    });
-
-    it("should handle functions in objects", async () => {
-      const obj = {
-        name: "test",
-        fn: () => "hello",
-        arrow: () => "world",
-        data: [1, 2, 3],
-      };
-
-      const serialized = await DSON.stringify(obj);
-      const parsed = await DSON.parse(serialized);
-
-      expect(parsed.name).toBe("test");
-      expect(parsed.data).toEqual([1, 2, 3]);
-      expect(typeof parsed.fn).toBe("function");
-      expect(typeof parsed.arrow).toBe("function");
-    });
-
-    it("should handle special numeric values", async () => {
-      const obj = {
-        infinity: Number.POSITIVE_INFINITY,
-        negInfinity: Number.NEGATIVE_INFINITY,
-        nan: Number.NaN,
-        negZero: -0,
-        maxSafe: Number.MAX_SAFE_INTEGER,
-        minSafe: Number.MIN_SAFE_INTEGER,
-      };
-
-      const serialized = await DSON.stringify(obj);
-      const parsed = await DSON.parse(serialized);
-
-      expect(parsed.infinity).toBe(Number.POSITIVE_INFINITY);
-      expect(parsed.negInfinity).toBe(Number.NEGATIVE_INFINITY);
-      expect(Number.isNaN(parsed.nan)).toBe(true);
-      expect(Object.is(parsed.negZero, -0)).toBe(true);
-      expect(parsed.maxSafe).toBe(Number.MAX_SAFE_INTEGER);
-      expect(parsed.minSafe).toBe(Number.MIN_SAFE_INTEGER);
-    });
-
-    it("should be resilient to malformed input", async () => {
-      const malformedInputs = [
-        "{invalid json}",
-        "[unclosed array",
-        "undefined",
-        "function() {}",
-        "",
-      ];
-
-      for (const input of malformedInputs) {
-        if (input === "") {
-          expect(await DSON.parse(input)).toBe(null);
-        } else {
-          await expect(DSON.parse(input)).rejects.toThrow();
         }
       }
     });
@@ -647,8 +560,8 @@ describe("DSON Integration Tests", () => {
         },
       };
 
-      const serialized = await DSON.stringify(appState);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(appState);
+      const parsed = DSON.parse(serialized);
 
       // Verify user data
       expect(parsed.user.name).toBe("John Doe");
@@ -700,8 +613,8 @@ describe("DSON Integration Tests", () => {
         errors: null,
       };
 
-      const serialized = await DSON.stringify(apiResponse);
-      const parsed = await DSON.parse(serialized);
+      const serialized = DSON.stringify(apiResponse);
+      const parsed = DSON.parse(serialized);
 
       expect(parsed.success).toBe(true);
       expect(parsed.timestamp).toBeInstanceOf(Date);

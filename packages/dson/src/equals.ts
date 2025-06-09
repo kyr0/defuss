@@ -1,12 +1,12 @@
-import { parse } from "./parse.js";
-import { stringify } from "./stringify.js";
+import { parse } from "./json.js";
+import { stringify } from "./json.js";
 
-export async function isEqual(objectA: any, objectB: any): Promise<boolean> {
-  const serializedA = await stringify(objectA);
-  const normalizedA = await parse(serializedA);
+export function isEqual(objectA: any, objectB: any): boolean {
+  const serializedA = stringify(objectA);
+  const normalizedA = parse(serializedA);
 
-  const serializedB = await stringify(objectB);
-  const normalizedB = await parse(serializedB);
+  const serializedB = stringify(objectB);
+  const normalizedB = parse(serializedB);
 
-  return (await stringify(normalizedA)) === (await stringify(normalizedB));
+  return stringify(normalizedA) === stringify(normalizedB);
 }
