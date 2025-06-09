@@ -8,4 +8,3 @@ export const MAP = 5;
 export const SET = 6;
 export const ERROR = 7;
 export const BIGINT = 8;
-// export const SYMBOL = 9;
