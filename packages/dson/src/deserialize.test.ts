@@ -205,7 +205,9 @@ describe("deserialize", () => {
       expect(deserialized.wrappedBigInt.valueOf()).toBe(BigInt(999));
 
       expect(Array.isArray(deserialized.array)).toBe(true);
-      expect(deserialized.array.every((item: any) => typeof item === "bigint")).toBe(true);
+      expect(
+        deserialized.array.every((item: any) => typeof item === "bigint"),
+      ).toBe(true);
 
       expect(deserialized.map).toBeInstanceOf(Map);
       expect(typeof deserialized.map.get("key")).toBe("bigint");
@@ -280,7 +282,9 @@ describe("deserialize", () => {
 
       // Fake errors should be plain objects
       expect(deserialized.fakeErrors[0]).not.toBeInstanceOf(Error);
-      expect(deserialized.fakeErrors[0].message).toBe("I look like an error but I'm not");
+      expect(deserialized.fakeErrors[0].message).toBe(
+        "I look like an error but I'm not",
+      );
       expect(deserialized.fakeErrors[0].type).toBe("fake");
       expect(deserialized.fakeErrors[1].message).toBe("Another fake");
       expect(deserialized.fakeErrors[1].severity).toBe("low");
