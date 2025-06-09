@@ -16,6 +16,7 @@ const createClone = (
 ): any => {
   // Use serialize/deserialize if special options are requested
   if (options.json || options.lossy) {
+    /* c8 ignore next */
     return deserialize(serialize(value, options));
   }
 

@@ -17,73 +17,72 @@ const env = typeof self === "object" ? self : globalThis;
 
 type SerializedRecord = [string | number, any];
 
-const deserializer = ($: Map<number, any>, _: SerializedRecord[]) => {
-  const as = (out: any, index: number): any => {
-    $.set(index, out);
+const deserializer = (input: Map<number, any>, result: SerializedRecord[]) => {
+  const getValue = (out: any, index: number): any => {
+    input.set(index, out);
     return out;
   };
 
-  const unpair = (index: number): any => {
-    if ($.has(index)) return $.get(index);
+  const decoder = (index: number): any => {
+    if (input.has(index)) return input.get(index);
 
-    const [type, value] = _[index];
+    const [type, value] = result[index];
     switch (type) {
       case PRIMITIVE:
       case VOID:
-        return as(value, index);
+        return getValue(value, index);
       case ARRAY: {
-        const arr = as([], index);
-        for (const index of value) arr.push(unpair(index));
+        const arr = getValue([], index);
+        for (const index of value) arr.push(decoder(index));
         return arr;
       }
       case OBJECT: {
-        const object = as({}, index);
-        for (const [key, index] of value) object[unpair(key)] = unpair(index);
+        const object = getValue({}, index);
+        for (const [key, index] of value) object[decoder(key)] = decoder(index);
         return object;
       }
       case DATE:
-        return as(new Date(value), index);
+        return getValue(new Date(value), index);
       case REGEXP: {
         const { source, flags } = value;
-        return as(new RegExp(source, flags), index);
+        return getValue(new RegExp(source, flags), index);
       }
       case MAP: {
-        const map = as(new Map(), index);
-        for (const [key, index] of value) map.set(unpair(key), unpair(index));
+        const map = getValue(new Map(), index);
+        for (const [key, index] of value) map.set(decoder(key), decoder(index));
         return map;
       }
       case SET: {
-        const set = as(new Set(), index);
-        for (const index of value) set.add(unpair(index));
+        const set = getValue(new Set(), index);
+        for (const index of value) set.add(decoder(index));
         return set;
       }
       case ERROR: {
         const { name, message } = value;
         try {
-          return as(new (env as any)[name](message), index);
+          return getValue(new (env as any)[name](message), index);
         } catch (e) {
           // If the error constructor doesn't exist in the global scope,
           // create a generic Error with the original name preserved
           const error = new Error(message);
           error.name = name;
-          return as(error, index);
+          return getValue(error, index);
         }
       }
       case BIGINT:
-        return as(BigInt(value), index);
+        return getValue(BigInt(value), index);
       case "BigInt":
-        return as(Object(BigInt(value)), index);
+        return getValue(Object(BigInt(value)), index);
       case "ArrayBuffer":
-        return as(new Uint8Array(value).buffer, value);
+        return getValue(new Uint8Array(value).buffer, value);
       case "DataView": {
         const { buffer } = new Uint8Array(value);
-        return as(new DataView(buffer), value);
+        return getValue(new DataView(buffer), value);
       }
     }
-    return as(new (env as any)[type](value), index);
+    return getValue(new (env as any)[type](value), index);
   };
-
-  return unpair;
+  return decoder;
 };
 
 /**

@@ -13,17 +13,16 @@ import {
 
 const EMPTY = "";
 
-// biome-ignore lint/suspicious/noShadowRestrictedNames: <explanation>
-const { toString } = {};
-const { keys } = Object;
+const { toString: objectToString } = {};
+const { keys: objectKeys } = Object;
 
 type TypeResult = [number, string];
 
-const typeOf = (value: any): TypeResult => {
+const getType = (value: any): TypeResult => {
   const type = typeof value;
   if (type !== "object" || !value) return [PRIMITIVE, type];
 
-  const asString = toString.call(value).slice(8, -1);
+  const asString = objectToString.call(value).slice(8, -1);
   switch (asString) {
     case "Array":
       return [ARRAY, EMPTY];
@@ -48,7 +47,7 @@ const typeOf = (value: any): TypeResult => {
   return [OBJECT, asString];
 };
 
-const shouldSkip = ([TYPE, type]: TypeResult): boolean =>
+const isIgnoredType = ([TYPE, type]: TypeResult): boolean =>
   TYPE === PRIMITIVE && (type === "function" || type === "symbol");
 
 type SerializedRecord = [string | number, any];
@@ -56,19 +55,19 @@ type SerializedRecord = [string | number, any];
 const serializer = (
   strict: boolean,
   json: boolean,
-  $: Map<any, number>,
-  _: SerializedRecord[],
+  input: Map<any, number>,
+  result: SerializedRecord[],
 ) => {
-  const as = (out: SerializedRecord, value: any): number => {
-    const index = _.push(out) - 1;
-    $.set(value, index);
+  const getIndex = (out: SerializedRecord, value: any): number => {
+    const index = result.push(out) - 1;
+    input.set(value, index);
     return index;
   };
 
-  const pair = (value: any): number => {
-    if ($.has(value)) return $.get(value)!;
+  const encoder = (value: any): number => {
+    if (input.has(value)) return input.get(value)!;
 
-    let [TYPE, type] = typeOf(value);
+    let [TYPE, type] = getType(value);
     switch (TYPE) {
       case PRIMITIVE: {
         let entry = value;
@@ -85,9 +84,9 @@ const serializer = (
             break;
           /* c8 ignore stop */
           case "undefined":
-            return as([VOID, undefined], value);
+            return getIndex([VOID, undefined], value);
         }
-        return as([TYPE, entry], value);
+        return getIndex([TYPE, entry], value);
       }
       case ARRAY: {
         if (type) {
@@ -97,70 +96,74 @@ const serializer = (
           } else if (type === "ArrayBuffer") {
             spread = new Uint8Array(value);
           }
-          return as([type, [...spread]], value);
+          return getIndex([type, [...spread]], value);
         }
 
         const arr: number[] = [];
-        const index = as([TYPE, arr], value);
-        for (const entry of value) arr.push(pair(entry));
+        const index = getIndex([TYPE, arr], value);
+        for (const entry of value) arr.push(encoder(entry));
         return index;
       }
       case OBJECT: {
         if (type) {
           switch (type) {
             case "BigInt":
-              return as([type, value.toString()], value);
+              return getIndex([type, value.toString()], value);
             case "Boolean":
             case "Number":
             case "String":
-              return as([type, value.valueOf()], value);
+              return getIndex([type, value.valueOf()], value);
           }
         }
 
-        if (json && "toJSON" in value) return pair(value.toJSON());
+        if (json && "toJSON" in value) return encoder(value.toJSON());
 
         const entries: [number, number][] = [];
-        const index = as([TYPE, entries], value);
-        for (const key of keys(value)) {
-          if (strict || !shouldSkip(typeOf(value[key])))
-            entries.push([pair(key), pair(value[key])]);
+        const index = getIndex([TYPE, entries], value);
+        for (const key of objectKeys(value)) {
+          if (strict || !isIgnoredType(getType(value[key])))
+            entries.push([encoder(key), encoder(value[key])]);
         }
         return index;
       }
       case DATE:
-        return as([TYPE, value.toISOString()], value);
+        return getIndex([TYPE, value.toISOString()], value);
       case REGEXP: {
         const { source, flags } = value;
-        return as([TYPE, { source, flags }], value);
+        return getIndex([TYPE, { source, flags }], value);
       }
       case MAP: {
         const entries: [number, number][] = [];
-        const index = as([TYPE, entries], value);
+        const index = getIndex([TYPE, entries], value);
         for (const [key, entry] of value) {
-          if (strict || !(shouldSkip(typeOf(key)) || shouldSkip(typeOf(entry))))
-            entries.push([pair(key), pair(entry)]);
+          if (
+            strict ||
+            !(isIgnoredType(getType(key)) || isIgnoredType(getType(entry)))
+          )
+            entries.push([encoder(key), encoder(entry)]);
         }
         return index;
       }
       case SET: {
         const entries: number[] = [];
-        const index = as([TYPE, entries], value);
+        const index = getIndex([TYPE, entries], value);
         for (const entry of value) {
-          if (strict || !shouldSkip(typeOf(entry))) entries.push(pair(entry));
+          if (strict || !isIgnoredType(getType(entry)))
+            entries.push(encoder(entry));
         }
         return index;
       }
       case ERROR: {
         const { name, message } = value;
-        return as([TYPE, { name, message }], value);
+        return getIndex([TYPE, { name, message }], value);
       }
     }
-
+    /* c8 ignore next */
     const { message } = value;
-    return as([TYPE, { name: type, message }], value);
+    /* c8 ignore next */
+    return getIndex([TYPE, { name: type, message }], value);
   };
-
-  return pair;
+  return encoder;
 };
 
 interface SerializeOptions {
@@ -181,7 +184,7 @@ export const serialize = (
   options: SerializeOptions = {},
 ): SerializedRecord[] => {
   const { json, lossy } = options;
-  const _: SerializedRecord[] = [];
-  serializer(!(json || lossy), !!json, new Map(), _)(value);
-  return _;
+  const result: SerializedRecord[] = [];
+  serializer(!(json || lossy), !!json, new Map(), result)(value);
+  return result;
 };

@@ -1,156 +1,150 @@
-<h1 align="center">
-
-<img src="assets/defuss_mascott.png" width="100px" />
-
-<p align="center">
-  <code>defuss</code>
-</p>
-
-<sup align="center">
+# defuss-dson
 
 *D*efinitely-typed *S*erialized *O*bject *N*otation (DSON)
 
-</sup>
+A TypeScript-first serialization library that extends JSON to support complex JavaScript data types while preserving type information and prototype chains.
 
-</h1>
+## Overview
 
+`defuss-dson` serializes JavaScript data structures into JSON while preserving metadata about their original types. It's a superset of JSON, meaning any valid JSON is also valid DSON. However, with DSON, when you serialize complex types like `Map`, `Set`, `Date`, `RegExp`.
 
-> `defuss-dson` serializes JavaScript-datastructures into JSON while preserving metadata about their original types. It is a superset of JSON, meaning that any valid JSON is also valid DSON. However, with DSON, if you're serializing a `Map`, `Set`, `Date`, `RegExp` or custom class, 
-you'll get the same protoype-backed representation in return when  deserialized. The API is compatible to JSON: `const object = DSON.parse(serializedDson)`, `const serializedDson = JSON.stringify(object)`.
+## Features
 
-<h3 align="center">
+- 🔄 **Bidirectional serialization** - Parse and stringify with full type preservation
+- 🧬 **Deep cloning** - Create deep copies of complex objects with async support
+- ⚖️ **Equality comparison** - Smart comparison that handles complex nested structures
+- 🔗 **Circular reference support** - Handles circular references safely
+- 🌐 **Universal compatibility** - Works in browsers, Node.js, and other JavaScript environments
 
-Supported datatypes
+## Installation
 
-</h3>
-
-- `RegExp`
-- `Date`
-- `Symbol`
-- `Map`
-- `Set`
-- `ArrayBuffer` (any typed array)
-- `DataView`
-- 
-
-
-<h3 align="center">
-
-Integrating `defuss-dson` in an existing defuss project
-
-</h3>
-
-TODO:
-
-**🚀 Looking for a template to start from?** `examples/notebooks` is an Astro project pre-configured to work with `defuss-db` out-of-the-box.
-
-#### 2. Integrate `defuss-db`:
-
-Just import `Table` from `defuss-db` and use it in your project:
-
-```ts
-import { Table } from 'defuss-db';
+```bash
+npm install defuss-dson
 ```
 
-A table needs a database storage provider:
+## Supported Data Types
 
-In-browser (client-side/frontend) use-case:
+DSON supports serialization of:
 
-```ts
-import { DexieProvider } from "defuss-db";
+### Primitives
+- `string`, `number`, `boolean`, `null`, `undefined`
+- `bigint`
+
+### Built-in Objects
+- `Date`, `RegExp`, `Error`
+- `Map`, `Set`, `WeakMap`, `WeakSet`
+- `ArrayBuffer`, `DataView`
+- Typed arrays (`Uint8Array`, `Int32Array`, etc.)
+
+## API Reference
+
+DSON provides two API layers:
+
+### 1. JSON-Compatible Synchronous API
+
+Perfect for simple use cases and JSON replacement:
+
+```typescript
+import DSON from 'defuss-dson';
+
+// Synchronous API - works like JSON
+const data = new Map([['key', 'value']]);
+const serialized = DSON.stringify(data);
+const parsed = DSON.parse(serialized);
+
+// Additional utilities
+const isEqual = DSON.isEqual(data, parsed); // true
+const cloned = DSON.clone(data);
 ```
 
-Using the database is as easy as wiring them up:
+## Usage Examples
 
-```ts
-// define a model
-interface User {
-  name: string;
-  age: number;
-  email: string;
-}
+### Basic Data Types
 
-const dexieProvider = new DexieProvider(TEST_DB_NAME);
-await dexieProvider.connect(); // connects to the database
+```typescript
+import DSON from 'defuss-dson';
 
-const myTable = new DefussTable<User>(provider, "my-table");
-await myTable.init(); // runs a schema update
+// Dates
+const date = new Date();
+const serialized = DSON.stringify(date);
+const parsed = DSON.parse(serialized);
+console.log(parsed instanceof Date); // true
+
+// RegExp
+const regex = /test/gi;
+const serializedRegex = DSON.stringify(regex);
+const parsedRegex = DSON.parse(serializedRegex);
+console.log(parsedRegex instanceof RegExp); // true
+console.log(parsedRegex.source); // "test"
+console.log(parsedRegex.flags); // "gi"
+
+// Maps and Sets
+const map = new Map([['a', 1], ['b', 2]]);
+const set = new Set([1, 2, 3]);
+const data = { map, set };
+
+const serialized = DSON.stringify(data);
+const parsed = DSON.parse(serialized);
+console.log(parsed.map instanceof Map); // true
+console.log(parsed.set instanceof Set); // true
 ```
 
+### Circular References
 
-#### 3. Use the API of `defuss-db`:
+```typescript
+const obj = { name: 'parent' };
+obj.self = obj; // circular reference
 
-To interact with the table, create, read, update, and delete records:
+const serialized = DSON.stringify(obj);
+const parsed = DSON.parse(serialized);
+console.log(parsed.self === parsed); // true
+```
 
-```ts
-const user: User = {
-  name: "Alice",
-  age: 30,
-  email: "alice@example.com",
+### Deep Cloning
+
+```typescript
+import { clone } from 'defuss-dson';
+
+const complex = {
+  date: new Date(),
+  map: new Map([['key', 'value']]),
+  nested: {
+    array: [1, 2, { deep: true }]
+  }
 };
 
-// in defuss-db, indices are added explicitly, this allows for indices to diverge from the underlying from the data stored. This separation solves a common issue with performance in speed and size dimensions.
-const indexData = { email: user.email }; // data to find the user by later-on
-
-// returns the primary key of the inserted user
-const pk = await table.insert(/* data */ user, /* indices */ indexData);
-
-// find a specific user
-const user = await table.findOne(/* indices */ { email: "alice@example.com" });
-
-// find many users of a specific TLD
-const users = await table.find(/* indices */ { email: "*@example.com" });
-
-// updates the user
-await table.update(/* update indices */ { email: user.email }, /* paertial data */ { age: 29 });
-
-// deletes the user
-await table.delete(/* indices */ { email: user.email });
+const cloned = await clone(complex);
+console.log(DSON.isEqual(complex, cloned)); // true
+console.log(complex !== cloned); // true (different object)
 ```
 
-Due to the nature of `defuss-db`, bridging the gap beween different database architectures and even between frontend and backend, the API cannot feature all the specific functionality of each underlaying provider. It is designed to simply provide the intersection feature-set. There are no foreign keys, no transactions, no joins, and no complex queries. You are supposed to design your data model in a semi-normalized way and use smart indices and data access patterns to get the most out of this.
+### Equality Comparison
 
-<h3 align="center">
+```typescript
+const obj1 = {
+  date: new Date('2023-01-01'),
+  map: new Map([['a', 1]]),
+  set: new Set([1, 2, 3])
+};
 
-🚀 How does `defuss-db` work?
+const obj2 = {
+  date: new Date('2023-01-01'),
+  map: new Map([['a', 1]]),
+  set: new Set([1, 2, 3])
+};
 
-</h3>
-
-Inside this package, you'll find the following relevant folders and files:
-
-```text
-/
-├── provider/dexie.ts
-├── provider/libsql.ts
-├── provider/mongodb.ts
-├── src/index.ts
-├── src/types.ts
-├── src/env.ts
-├── src/table.ts
-├── src/client.ts
-├── src/server.ts
-├── tsconfig.json
-├── LICENSE
-├── package.json
+console.log(DSON.isEqual(obj1, obj2)); // true
+console.log(obj1 === obj2); // false
 ```
 
-The `src/index.ts` file is the "entry point" for general and type imports, while `server.ts` and `client.ts` are the respective imports to use whenever a specific runtime environment implement is desired to be used. The `defuss-db/client` and `defuss-db/server` imports will resolve to these files automatically.
+## License
 
-You'll find each specific provider implementation in the `provider` folder.
+MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🧞 Commands
+## Contributing
 
-All commands are run from the root of the project, from a terminal:
-
-| Command       | Action                                                                                                                                                                                                                           |
-| :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm build`    | Build a new version of the integration. |
-| `npm mongodb:start`    | Start the MongoDB server (requires Docker). |
-| `npm mongodb:stop`    | Stop the MongoDB server (requires Docker). |
-| `npm test:integration`    | Run the integration tests for the `defuss-db` package. |
+Contributions are welcome! Please read our contributing guidelines and submit pull requests to our [GitHub repository](https://github.com/kyr0/defuss).
 
 ---
 
-<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/assets/defuss_comic.png" />
-
-<caption><i><b>Come visit us on defuss island!</b></i></caption>
+Part of the [defuss](https://github.com/kyr0/defuss) ecosystem.

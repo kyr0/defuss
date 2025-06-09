@@ -1,7 +1,6 @@
 import { deserialize } from "./deserialize.js";
 import { serialize } from "./serialize.js";
 
-const { parse: $parse, stringify: $stringify } = JSON;
 const options = { json: true, lossy: true };
 
 /**
@@ -9,7 +8,7 @@ const options = { json: true, lossy: true };
  * @param str previously stringified data as string.
  * @returns whatever was previously stringified as clone.
  */
-export const parse = (str: string): any => deserialize($parse(str));
+export const parse = (str: string): any => deserialize(JSON.parse(str));
 
 /**
  * Represent a structured clone value as string.
@@ -17,4 +16,4 @@ export const parse = (str: string): any => deserialize($parse(str));
  * @returns the value stringified.
  */
 export const stringify = (any: any): string =>
-  $stringify(serialize(any, options));
+  JSON.stringify(serialize(any, options));
