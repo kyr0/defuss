@@ -34,8 +34,10 @@ function App() {
           RouterOutlet={RouterOutlet}
           // default transitionConfig
           transitionConfig={{
-            type: "fade", // default transition type: "fade", can also be "slide-left", "slide-right", "shake"
-            duration: 50, // set to > 200ms for slide-left etc.; > 400ms for shake
+            delay: 0, // delay before the transition starts, in ms
+            easing: "linear", // default easing function, can also be "linear", "ease-in", "ease-out", or complex
+            type: "slide-right", // default transition type: "fade", can also be "slide-left", "slide-right", "shake"
+            duration: 150, // set to > 200ms for slide-left etc.; > 400ms for shake
             target: "self", // can also be "parent" to apply the transition to the parent element
           }}
         />
