@@ -289,7 +289,7 @@ Failed prompts leave counters unchanged, set `error` with the raised exception t
 ### 2.3 Variable Lifecycle
 
 * All phases share one mutable Jinja context.
-* `error` is reset to `None` **before** each *prompt* phase (are accessible in **pre** and **post** phases).
+* `error` is reset to `None` **before** each *prompt* phase (`error` is accessible in **pre** and **post** phases).
 * `time_elapsed` and `time_elapsed_global` are monotonic floats in **milliseconds**.
 * Executor MAY expose a `max_runs` option (default ∞). Exceeding it raises `"Run budget exceeded"` at runtime.
 
@@ -312,7 +312,7 @@ Failed prompts leave counters unchanged, set `error` with the raised exception t
 | `error`               | `str \| None` | start to finish of step | Error text from previous step    |
 | `prompts`             | `list`        | before provider call    | Chat history in provider schema  |
 
-### 2.5 Allowed / Reserved User Variables
+### 2.5 Allowed / Reserved User Variables
 
 | Variable                                      | Setter           | Default value                                                                                 |
 | --------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------- |
