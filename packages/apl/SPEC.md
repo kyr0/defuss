@@ -2,7 +2,7 @@
 
 > Version: 1.0
 
-APL is a Turing-complete, domain-specific language for writing multi‑step, branching LLM workflows (*Agentic Workflows*) in a **Markdown‑flavoured Jinja-syntax**. It gives you program‑level flow control, native tool invocation, and memory without any boilerplate code or third‑party framework. Run any agent on the server, or even in-browser. Python or TypeScript/JavaScript, locally or in the cloud, on-premise, on the edge and with any LLM provider or model.
+APL is a Turing-complete, domain-specific language for writing multi‑step, branching LLM workflows (*Agentic Workflows*) in a **Markdown‑flavoured Jinja-syntax**. It gives you program‑level flow control, native tool invocation, and memory without any boilerplate code or third‑party framework. Run any agent on the server, or even in-browser. Python or TypeScript/JavaScript, locally or in the cloud, on-premise, on the edge and with any LLM provider and model.
 
 ---
 
