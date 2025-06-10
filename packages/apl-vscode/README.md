@@ -12,7 +12,7 @@ VS Code extension for APL (Agentic Prompting Language)
 
 </h1>
 
-![IDE](https://raw.githubusercontent.com/defuss/packages/apl-vscode/main/preview.png)
+![IDE](https://raw.githubusercontent.com/kyr0/defuss/main/packages/apl-vscode/preview.png)
 
 > `apl-vscode` is a Visual Studio Code extension that provides syntax highlighting for APL (Agentic Prompting Language), a domain-specific language designed for building agentic AI applications.
 
