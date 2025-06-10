@@ -1,485 +1,533 @@
-# Agentic Programming Language (APL) - v0.1
+# Agentic Programming Language (APL)
 
-APL is a **paper-thin wrapper around plain Jinja** that lets you script multi-step, branching LLM workflows (marketing speech: `Agentic Workflows`) in one (or many) plain text files:
+> Version: 1.0
 
-```
-# pre: stepName   ── optional Jinja pre-logic
-# prompt: stepName
-## system         ── system prompt text
-## user           ── user  prompt text
-# post: stepName  ── optional Jinja post-logic
-```
-
-* **No new grammar inside blocks.** You keep full Jinja (loops, filters, custom tags).
-* **Flow execution with program control:** APL comes with a built-in workflow executor. It orchestrates the execution flow like walking down an ever-changing AST. Simply set `next_step` in a *post* block to jump to some next step.
-* **State access:** last outputs, run counters, time measurements and error states are injected as flat variables (`result`, `prev_step`, `runs`, `global_runs`, `time_elapsed`, `error` etc.) so you can introspect, branch and circuit-break. Create the most decent, cyclic or acyclic agentic workflows.
-* **LLM provider agnostic:** APL comes with one built-in provider for calling OpenAI-compatible LLM endpoints via HTTP(S). If you need anything else, the APL Executor API provides a `providers` option to add your own provider executor function - it's a single async function that takes the variable context and returns the LLM response as text. This way you can use any LLM provider, or even a local model.
-* **Native tools support:** APL comes with a built-in tool executor that can call any async function you registered using the `tools` option of the Executor API. This way you can use any Python function as a tool, or even register an LLM provider as a tool. Tools are called when the LLM response contains a tool call, and the executor will automatically handle the tool execution and return the result to the LLM.
-* **Standard Jinja template context**: Pass an existing Jinja2 environment and variables to the executor, and it will be used in all APL steps. This allows you to use existing, pre-configured Jinja variables, filters, and functions in your APL templates.
-* **Tiny runtime:** a regex parser + sandboxed Jinja loop gives you LangChain-class power without the bloat.
-* **Cross-platform:** APL isn't platform or language-specific. So far it comes with ready-made packages for Python 3.11+, TypeScript 5+ and JavaScript. Both server-side and client-side (browser) execution is supported.
-
-Think of APL as *Markdown-flavoured Jinja on rails*: just enough structure to orchestrate complex agent behaviour, zero ceremony beyond that.
-
-## Syntax Specification for APL (Agentic Programming Language)
-
-This specification covers the APL domain-specific language (DSL). 
-APL is a superset of Jinja. It covers only the top-level markup that wraps plain Jinja. 
-Everything inside an APL step phase body is normal Jinja.
-
-### Step
-
-There are one or more steps in an APL template.
-Each step consists of a *pre*, *prompt*, and *post* phase, where the *pre* phase is optional, the *prompt* phase is required, and the *post* phase is optional.
-
-Step phases are introduced by the phase heading character `#` (like Markdown heading 1), followed by the  `<phase>` label `pre:`, `prompt:`, or `post:` and concluded with the `<step-name>`.
-
-```md
-# <phase> : <step-name>
-
-<phase-body>
-```
-
-- `<phase>` ∈ `{pre, prompt, post}` (case-insensitive, surrounding spaces ignored).
-- `<phase>` are case-insensitive; extra spaces are ignored (`#  pre:`, `# PRE:  ` are fine).
-- `<step-name>`: any printable text; executor slugifies it (`a-z`, `0-9`, `_`).
-- A step may omit `pre` or `post` but at least one prompt block is required.
-- `<phase-body>`: the content of the phase is is a Jinja template block, which can contain any valid Jinja syntax.
-
-### Prompt phase
-
-Inside `# prompt : <step-name>` the body is split into two sub-sections by level-2 headings:
-
-```md
-## system
-<jinja lines …>
-
-## user
-<jinja lines …>
-```
-
-- `<prompt-phase>` ∈ `{system, user}` (case-insensitive, surrounding spaces and characters ignored, `## system  `, `## system:`, `## SYSTEM:` are fine).
-- If one of the sub-sections is missing, its text is taken as empty.
-
-### Whitespace & robustness rules
-
-| Rule                                                                    | Effect                           |
-| ----------------------------------------------------------------------- | -------------------------------- |
-| Heading prefix may have leading spaces.                                 | `   #  pRomPt :   greet   ` is valid. |
-| Heading keyword & colon can be padded.                                  | Same as above.                   |
-| Blank lines anywhere are allowed and preserved inside bodies.           |                                  |
-| Content of a phase ends at the *next* line that matches a level-1 phase-introducing heading (`# <phase> : <step-name>`). |
-| Content of a prompt phase ends at the *next* line that matches a level-2 prompt-phase-introducing heading (`## <prompt-phase>`). |
-
-
-### Comments
-
-No dedicated comment token; just embed comments inside Jinja (`{# … #}`) or in Markdown paragraphs between phases.
-
-
-### Reserved variable namespace (for completeness of syntax)
-
-In templates you must not create variables that collide with any of the patterns that are described in section **APL dynamic flow-state variables** below.
-This is enforced by the executor, not the parser.
-
-### Example APL template
-
-Here's a fully valid APL DSL template that demonstrates the syntax:
-
-```apl
-# pre: greet
-
-{# for the executor #}
-{% set model = "gpt-4o" %}
-{% set temperature = 0.7 %}
-{% set allowed_tools = ["calc", "google"] %}
-{% set output_mode = "json" %}
-
-{# for the prompt #}
-{% set customer = customer_name|upper %}
-
-# prompt: greet           
-
-## system
-You are a polite agent.
-
-## user
-Write a greeting for {{ customer }}.
-
-# post: greet
-{% if "angry" in result %}
-    {% set next_step = "apologize" %}
-{% endif %}
-
-# PRE: apologize
-
-{# for the executor #}
-{% set model = "gpt-o3" %}
-{% set temperature = 0.1 %}
-{% set output_mode = "text" %}
-
-# PROMPT: apologize           
-
-## system:
-You are a polite agent.
-
-## user:
-Write an apologize for {{ customer }}.
-```
-
-## APL dynamic flow-state variables
-
-These following patterns cover branching (`next_step`), introspection of recent outputs across all three phases *pre*, *main*, *post*, both local & global retry/budget logic, time tracking, and runtime errors all without requiring complex syntax.
-
-**`<step_name_slug>`:**  is the sluggified version of a specific step's name. The slugify algorithm works like this: we take the step name → lower-case → keep ASCII letters & digits → replace everything else with an underscore (`_`).
-
-**History/Backtrack depth:** configurable via executor option `backtrack_depth` (default 3). Only the most-recent *N* records per step & phase are exposed; older ones are dropped with each step (rolling history).
-
-### Dynamic flow-state variable logic
-
-The executor calls each step in three phases: 1. *pre*, 2. *main*, and 3. *post*. 
-As long as no runtime error occurs and no `next_step` variable was set in the most recent *post* phase execution, 
-each step is called in the natural order of the `.apl` file content (APL template) provided.
-
-However, if a step’s *post* phase sets `next_step`, the executor will continue with that step instead. 
-After finishing that step, it will continue from that step’s natural position, or, if the step has a *post* phase that sets `next_step`, 
-it will continue with that step instead.
-
-### Variable state persistency across phases and steps
-
-The executor makes sure that while Jinja templates are executed in isolation, they have access to all variables that have been set before.
-This allows the developer to set variables for global flow control, introspection, and state tracking.
-
-### Executor-maintained main-phase flow control and state tracking
-
-After the *post* phase of the `greet` step, the executor updates the following variables:
-
-```jinja
-prev_step            = "greet"  # may or may not be present
-prev_step_greet      = "...main reply of greet..."
-prev_step_pre_greet  = ""
-prev_step_post_greet = ""
-next_step           = "apologize"  # only if "angry" in result (Jinja template logic)
-```
-
-With this a template can branch like:
-
-```jinja
-{% if "angry" in result %}
-    {% set next_step = "apologize" %}
-{% endif %}
-```
-
-…and still reach any recent *pre*/*post* outputs when necessary, without ever touching dict syntax.
-
-### Executor-maintained bookkeeping with backtracking
-
-```text
-on step start:
-    ctx.runs           = step_stats[slug] + 1
-    ctx.global_runs    = total_runs + 1
-    ctx.runs_<step_name_slug>    = ctx.runs            # also inject for every known slug
-
-after main phase succeeds:
-    step_stats[slug] += 1
-    total_runs      += 1
-```
-
-*Only main-phase completions increment the counters.*
-Pre/Post code runs do **not** touch them, keeping semantics simple.
+APL is a domain-specific language for writing multi‑step, branching LLM workflows (*Agentic Workflows*) in a **Markdown‑flavoured Jinja-syntax**. It gives you program‑level flow control, native tool invocation, and memory without any boilerplate code or third‑party framework.
 
 ---
 
-### Example variable context after three loops of “greet”
+## 0 - Feature Highlights
 
-```jinja
-global_runs = 3
+* **Full Jinja inside every block** — loops, filters, tags, environments. Ship your own extensions (think: *vector database memory* etc.) simply via custom tags and simple Jinja control logic to create the optimal   prompt context.
+* **Graph‑like flow control** — set `next_step` in *post* to jump anywhere (cycles allowed); default is fall‑through order.
+* **Built‑in state** — flat vars (`result_text`, `runs`, `global_runs`, `time_elapsed`, `error`, …) enable branching, throttling, circuit‑breaking.
+* **Provider‑agnostic** — ships with an OpenAI‑style HTTP provider; register any async function in `providers` to work with any local/cloud/API/on-premise  model.
+* **Native tool calling** — when the LLM emits a JSON tool‑call, the executor runs your async Python / TS function and returns the result back to the LLM.
+* **Cross‑platform** — ships with several reference implementations: Python 3.11+ and TypeScript 5+ / modern JavaScript (Node & browser).
+* **Tiny parser & runtime** — APL is driven by simple regexp parsing, a trivial dynamic executor, paired with Jinja template evaluation → LangChain‑class power without the bloat.
 
-# in greet (slug = greet)
-runs_greet        = 3
-runs_apologize = 0          # others still present
+---
 
-prev_step         = "greet"
-prev_step_greet   = "...last greet reply..."
-prev_step_pre_greet  = ""
-prev_step_post_greet = ""
+## 1 - Syntax Specification
 
-2nd_prev_step_greet          # history if backtrack_depth ≥ 2
-...
+Any APL template is a sequence of **steps**. Each step has a `pre`, `prompt`, and optional `post` phase. The `prompt` phase contains the actual prompt messages for the LLM to process, while `pre` and `post` are used for variable setup and control logic (processing the `result_text`, setting variables and deciding what `next_step` to call).
+
+### 1.1 Step Heading
+
+Each **step** comprises up to three **phases** in strict order `pre → prompt → post`. `pre` and `post` are optional; `prompt` is required. A step ends at the first level‑1 heading whose identifier differs.
+
+A phase starts with a level‑1 heading **with `#` at column 0** (no leading spaces):
+
+```
+# <phase> : <step-name>
 ```
 
-This means, that any APL step phases templates can access any variable and branch or throttle like e.g.:
+* `<phase>` ∈ `{pre, prompt, post}` (case‑insensitive; internal whitespace ignored).
+* `<step-name>` (identifier, optional) — any printable chars except line‑breaks, `#`, or `:`. Pre-/ postfix spaces are trimmed.
 
-```jinja
-{% if runs > 5 %}
-    {% set next_step = "fallback" %}
-{% endif %}
+  * After trimming surrounding whitespace a step identifier must match `^[^\n\r#:]+$`.
+  * If the identifier is missing (an empty string), it's identifier defaults to `default`.
+  * Identifiers are **case‑sensitive** and **unique within the template** (no other step with the same identifier can exist).
+  * Duplicate identifiers in the same template raise an `Duplicate step identifier: <step-name>` validation error at validation time.
+* The identifier **`return`** (case‑insensitive) is reserved; user templates may not redeclare it. Doing so raises `Reserved step identifier: return` at validation time.
+* Headings cannot contain Jinja expressions, it raises `Invalid step heading: <heading>` at validation time.
 
-{% if global_runs > 50 %}
-    The agent has reached the maximum budget; summarise and stop.
-{% endif %}
+### 1.2 Prompt Phase Sub‑sections
+
+Inside a `# prompt:` block the body is divided by level‑2 headings (starting at column 0):
+
+```
+## system
+<jinja …>
+## user
+<jinja …>
+## assistant
+<jinja …>
+## developer
+<jinja …>
+## tool_result
+<jinja …>
 ```
 
-### Variable context (reserved variables)
+* `<prompt-role>` ∈ `{system, user, assistant, developer, tool_result}` (case‑insensitive; postfix spaces/colons tolerated).
+* Duplicate role headings are **concatenated in template order**, separated by a newline. They become distinct messages in the final `prompts` list the executor creates at runtime (for the provider to pass to the LLM for processing).
+* Missing roles default to the `user` role.
 
-Each step can set variables in it's *pre* phase. These will be used by the selected execution provider when the step is executed.
-The following variables are reserved for specific purposes, but can be overridden in any phase of a step as Jinja variable context is preserved across phases and steps.
 
-| **Variable / Pattern** | **Who sets it**  | **Example value**        | **Purpose**                                       |       |                                                |
-| ---------------------- | ---------------- | ------------------------ | ------------------------------------------------- | ----- | ---------------------------------------------- |
-| `variables`                 | template (*pre*), executor                      | `{"var1": "value1", "var2": "value2"}` | Bulk (Jinja) variables to use. If not set, the executor uses the default Jinja variables configured in the executor options. This dict can contain any of the variables below. |
-| `model`                       | template (*pre*)                      | `"gpt-4o"`                               | Name of the LLM model to use. If not set, the executor uses the default model configured in the executor options. |
-| `jinja2_env`                  | executor                              | `jinja2.Environment(...)`                 | Jinja environment to use. If not set, the executor uses the default Jinja environment configured in the executor options. |
-| `temperature`                 | template (*pre*)                      | `0.7`                                    | Temperature for the LLM model, controlling randomness. If not set, the executor uses the default temperature configured in the executor options. |
-| `allowed_tools`               | template (*pre*)                      | `["calc", "google"]`                     | List of tools that are allowed to be used. If not set, the executor uses the default tools configured in the executor options. |
-| `output_mode`                 | template (*pre*)                      | `"json"`                                 | Output mode for the LLM model, e.g. `"text"` or `"json"`. If not set, the executor uses the default output mode configured in the executor options. |
-| `max_tokens`           | template (*pre*) | `256`                    | Hard cap on tokens returned by the model.         |       |                                                |
-| `top_p`                | template (*pre*) | `0.95`                   | Nucleus-sampling cutoff (probability mass).       |       |                                                |
-| `presence_penalty`     | template (*pre*) | `0.6`                    | Encourages introduction of *new* tokens.          |       |                                                |
-| `frequency_penalty`    | template (*pre*) | `-0.4`                   | Discourages repeating tokens.                     |       |                                                |
-| `top_k`                | template (*pre*) | `40`                     | Top-k filtering (when supported).                 |       |                                                |
-| `repetition_penalty`   | template (*pre*) | `1.15`                   | Generic repetition dampening (non-OpenAI models). |       |                                                |
-| `stop_sequences`       | template (*pre*) | `["\n\nUser:", "<END>"]` | Array of strings that force the model to stop. |
-| `seed`                 | template (*pre*) | `12345`                  | Fixed RNG seed for reproducible sampling.         |       |                                                |
-| `logit_bias`           | template (*pre*) | `{"198":-100, "823":10}` | Bias map applied to token logits (OpenAI style).  |       |                                                |
+#### 1.2.1 Inline Attachments
 
-> **Provider mapping:** the executor **does not** convert these generic names to provider-specific fields (e.g. `max_tokens` → `max_output_tokens` for Google, `repetition_penalty` → `no_repeat_ngram_size` for HF models). This is the responsibility of the provider executor function you register with the `providers` option in the Executor API.
+Modern models accept images, files, audio attachments as messages as input. The template author can embed these inline in the template using special directives.
 
-### Variable tracking
+The following directives are detected **after final Jinja rendering** via a line‑scan regex:
 
-All of the variables that are described in all sections are available in the variable context and can be introspected, set, or modified in any phase of a step,
-read and modified by the executor, tools, and execution providers. The following variables are set by the executor as part of the backtracking algorithm, and are available for introspection and use in the templates, but also useful for mock providers and tools to introspect the state of the execution flow.
+```regexp
+^@(?P<kind>image_url|audio_input|file)\s+(?P<url>https://\S+)\s*$
+```
 
-| **Variable / Pattern** | **Who sets it**  | **Example value**        | **Purpose**                                       |       |                                                |
-| ---------------------- | ---------------- | ------------------------ | ------------------------------------------------- | ----- | ---------------------------------------------- |
-| `{k}th_<variable>`            | executor                              | `"gpt-4o"`                               | `<variable>` value used in the same step `k` completions ago (rolling history, depth =`backtrack_depth`, default 3). |
-| `{k}th_<step_name_slug>_<variable>`            | executor                              | `"gpt-4o"`                               | `<variable>` of the step `<step_name_slug>` value used in the same step `k` completions ago (rolling history, depth =`backtrack_depth`, default 3). |
+* Executed on every rendered line; loop‑generated directives are fully supported.
+* Must start at column 0 (no leading spaces).
+* Ignored inside Jinja comments `{# … #}`.
+* Each match appends the URL to the current message’s `image_urls`, `audio_inputs`, or `files` array.
 
-### Prompt tracking
+##### Schematics:
+```
+@image_url     <absolute-URL>
+@audio_input   <absolute-URL>   # optional – for audio  recordings
+@file          <absolute-URL>   # optional – for PDFs, CSVs, etc.
+```
 
-The executor tracks the prompt text for each step, allowing you to introspect the prompt that was sent to the LLM.
+#### 1.2.2 Simple Example
 
-| **Variable / Pattern**        | **Who sets it**                       | **Example (step name = `greet`, k = 2)** | **Meaning / When it is updated**                                                                                                     |
-| ----------------------------- | ------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `system_prompt`                      | executor, after Jinja-evaluation but before *main* provider invocation     | `You are a helpful assistant.` | System prompt of the  *main* phase, evaluated, so the provider execution function and the *post* phase can access it.                                |
-| `user_prompt`                       | executor, after  Jinja-evaluation but before *main* provider invocation     | `Please write a greeting.` | User prompt of the  *main* phase, evaluated, so the provider execution function and the *post* phase can access it.                                  |
-| `system_prompt_<step_name_slug>`               | executor                              | `You are a helpful assistant.`                           | System prompt of a specific previous step, evaluated, so the provider execution function and the *post* phase can access it.                            |
-| `user_prompt_<step_name_slug>`               | executor                              | `Please write a greeting.`                           | User prompt of a specific previous step, evaluated, so the provider execution function and the *post* phase can access it.                            |
-| `{k}th_system_prompt_<step_name_slug>`         | executor                              | `2nd_system_prompt_greet`                       | System prompt of the same step `k` completions ago (rolling history, depth =`backtrack_depth`, default 3).                 |
-| `{k}th_user_prompt_<step_name_slug>`         | executor                              | `2nd_user_prompt_greet`                       | User prompt of the same step `k` completions ago (rolling history, depth =`backtrack_depth`, default 3).                 |
+The simplest valid APL template therefore is:
 
-### Flow control
+```apl
+# prompt: 
+How are you?
+```
 
-The executor allows you to control the flow of the execution by setting the `next_step` variable in the *post* phase of a step.
-This variable determines which step will be executed next, allowing for dynamic branching in the workflow. With the `prev_step` variable, you can also introspect what the previous step was, and react accordingly (e.g. in an error recovery step).
-
-| **Variable / Pattern**        | **Who sets it**                       | **Example (step name = `greet`, k = 2)** | **Meaning / When it is updated**                                                                                                     |
-| ----------------------------- | ------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `next_step`                   | template (*post*) or executor default | `"apologize"`                            | Name of the step the executor will run next. If not set by *post*, executor falls back to template (natural) order. Reserved name: `return` - this step is specially treated by the executor, stops the execution and returns control to the caller.                              |
-| `prev_step`                   | executor                              | `"greet"`                                | Name of the step that has just completed (whatever phase finished last).  
-| `{k}th_prev_step_<step_name_slug>`      | executor                              | `"greet"`                                | Name of the step that was the prev step for the step `<step_name_slug>` `k` runs ago (rolling history, depth =`backtrack_depth`, default 3).                 |
-
-### Result tracking
-
-Usually, when refining a result over multiple steps, you want to introspect the previous step's result to decide what to do next.
-However, we sometimes branch or loop, and therefore need to account for multiple possible previous results.
-
-| **Variable / Pattern**        | **Who sets it**                       | **Example (step name = `greet`, k = 2)** | **Meaning / When it is updated**                                                                                                     |
-| ----------------------------- | ------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `result`                      | previous step’s *main* completion     | `Hello Mr. Foo, I'm sorry you are angry` | Text content of the step that has just completed. Set by the executor after the *main* phase, so the *post* phase can access it.                                |
-| `result_<step_name_slug>`               | executor                              | `result_greet`                           | **Main** result string of a specific previous step. Set by the executor after the *main* phase of that step.                            |
-| `result_pre_<step_name_slug>`           | executor                              | `result_pre_greet`                       | *Pre*-phase output of a specific `prev_step`.                                                                                                   |
-| `result_post_<step_name_slug>`          | executor                              | `result_post_greet`                      | *Post*-phase output of a specific `prev_step`.                                                                                                  |
-| `{k}th_result_<step_name_slug>`         | executor                              | `2nd_result_greet`                       | **Main** result of the same step `k` completions ago (rolling history, depth =`backtrack_depth`, default 3).                 |
-| `{k}th_result_pre_<step_name_slug>`     | executor                              | `3rd_result_pre_greet`                   | Older *pre*-phase output, same depth rule.                                                                                           |
-| `{k}th_result_post_<step_name_slug>`    | executor                              | `2nd_result_post_greet`                  | Older *post*-phase output, same depth rule.                                                                                          |
-
-### Retry/Budget logic
-
-When agentic workflows recurse or loop, the executor tracks how many times each step has been run, both globally and per step. 
-This allows your to branch, throttle, or stop execution (circuit breaker) based on how many times a step has been run, or how many main-phase LLM calls have been made so far.
-
-| **Variable / Pattern**        | **Who sets it**                       | **Example (step name = `greet`, k = 2)** | **Meaning / When it is updated**                                                                                                     |
-| ----------------------------- | ------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `global_runs`                 | executor                              | `42`                                     | Total number of **main-phase** LLM calls made so far across the whole run. Incremented immediately after every main call. |
-| `runs`                        | executor                              | `3`                                      | How many times the **current** step’s main has run. Available inside that step’s templates (*pre*, *main*, *post*).                                          |
-| `runs_<step_name_slug>`                 | executor                              | `runs_greet = 7`                         | Per-step main-phase call counter (always available for *every* known `<step_name_slug>`).                                                          |
-
-### Time tracking
-
-Sometimes, you may want to track how long a step takes to complete, or how long the whole run takes. This allows you to break the execution if it takes too long, or to log the time taken for each step.
-
-| **Variable / Pattern**        | **Who sets it**                       | **Example (step name = `greet`, k = 2)** | **Meaning / When it is updated**                                                                                                     |
-| ----------------------------- | ------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `time_elapsed`                    | executor                               | `59`                                     | Total time elapsed seconds since the start of the current step.                                                              |
-| `time_elapsed_global`             | executor                              | `121`                                    | Total time elapsed seconds since the start of the whole run.                                                                 |
-| `time_elapsed_<step_name_slug>`             | executor                              | `time_elapsed_greet = 12`                     | Time elapsed seconds since the start of the current step, for a specific step.                                                      |
-| `{k}th_time_elapsed_<step_name_slug>`       | executor                              | `2nd_time_elapsed_greet = 8`                  | Time elapsed seconds since the start of the same step `k` completions ago (rolling history, depth =`backtrack_depth`, default 3). |
-
-### Runtime error tracking and handling
-
-Sometimes, a step may fail to complete successfully due to various reasons (e.g., LLM API errors, network issues, etc.).
-In such cases, the executor will catch the error and set the following variables to track the error state, allowing for introspection and handling steps to catch and respond to errors gracefully (e.g. by checking the `error` variable in *post* and setting `next_step` together with the planned step name to run after error recovery).
-
-| **Variable / Pattern**        | **Who sets it**                       | **Example (step name = `greet`, k = 2)** | **Meaning / When it is updated**                                                                                                     |
-| ----------------------------- | ------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `error`                       | executor                              | `Runtime error: <error_message>`         | previous step’s runtime error                               |
-| `error_<step_name_slug>`                | executor                              | `error_greet`                            | Runtime error of a specific previous step, if any.                                                                                  |
-| `{k}th_error_<step_name_slug>`          | executor                              | `2nd_error_greet`                        | Runtime error of the same step `k` completions ago (rolling history, depth =`backtrack_depth`, default 3).                 |
-
-## APL Executor API
-
-The APL executor API offers functions to `validate`, `execute` APL templates. Using executor options like `timeout`, `providers`, `tools` and `backtrack_depth`, you can configure the executor to use different LLM providers, tools, and other settings that are relevant for global flow control.
-
-### Functions
-
-| **Function** | **Description** |
-| ------------- | ---------------- |
-| `validate(apl_template: str) -> bool` | Validates the APL template syntax and returns `True` if valid. Throws specific validation errors if invalid. |
-| `execute(apl_template: str, options: dict = {}) -> dict` | Executes the APL template with the provided options and returns the final result as the final variable context as a dictionary. |
-
-### Testing and Mocking
-
-The executor API allows to set providers and tools. This enables you to mock external dependencies and control the execution environment for testing purposes 
-by implementing a mock provider or tool function that simulates the behavior of an LLM provider or tool at any point in the execution flow (see below for examples).
-
-### Example
-
-#### Execute an APL template
-
-To run an APL template, you can use the `execute` function from the APL executor API.
+To run the APL template, you can use the `start()` function from the APL runtime API. Here’s how you can run this template in Python:
 
 ```python
-from defuss_apl import execute
-execute(open("workflow.apl").read(), options={...})
+from defuss_apl import start
+
+agent = """
+# prompt: 
+How are you?
+"""
+
+status = await start(agent)
+
+print(status["result_text"]) 
+# "I'm doing well, thank you!"
 ```
-Without specific options, the executor uses the default OpenAI provider, default base URL and model - therefore choosing OpenAI and the gpt-4o model.
 
-### Executor Options
+Rules applied:
+* Step name identifier defaults to `default`.
+* The executor will create a single prompt message with role `user` and content `How are you?` in variable  `prompts`.
+* The `pre` and `post` phases are empty, so the executor will call the LLM provider directly and without any pre- or post-processing.
+* Therefore, the default model `gpt-4o`, temperature `0.7`, and other variables are used by the default LLM provider (OpenAI) as set in the executor options (see below) and the default endpoint (OpenAI API) is used to start the prompt.
 
-All options are optional, and the executor will use sensible defaults if not provided. The options can be passed as a dictionary to the `execute` function.
+#### 1.2.3 Multimodal example
 
-| **Option**          | **Type**            | **Default** | **Description**                                                                                     |
-| ------------------- | ------------------ | ----------- | --------------------------------------------------------------------------------------------------- |
-| `timeout`           | `number` (ms)      | `30000`     | Maximum time to wait for the global LLM response. If exceeded, the executor will throw a RuntimeError with message: "Timeout error after <timeout> ms."   |
-| `providers`         | `Record<string, Function>` | `{}`        | Map of model names to provider executor functions. Each function takes the variable context and returns the LLM response as text. |
-| `base_url`           | `string` (URL)      | `https://api.openai.com`     | Base URL for the default provider (OpenAI compatible HTTP client)  |
-| `api_key`           | `string` (secret)      | `"<API_KEY>"`     | API key for the default provider (OpenAI compatible HTTP client)  |
-| `tools`             | `Record<string, Function>` | `{}`        | Map of tool names to tool executor functions. Each function takes the variable context and returns the tool response as text. |
-| `backtrack_depth`   | `number`           | `3`         | Maximum depth of history for backtracking. This controls how many previous results are kept for introspection. |
-| `debug`             | `boolean`          | `false`     | If true, the executor will log debug information to the console. Useful for development and debugging. |
-| `model`             | `string`           | `"gpt-4o"`  | Default LLM model to use for the main phase of steps. Can be overridden in the *pre* phase of each step. |
-| `temperature`       | `number`           | `0.7`       | Default temperature for the LLM model. Can be overridden in the *pre* phase of each step.          |
-| `allowed_tools`     | `string[]`         | `[]`        | Default list of tools that are allowed to be used in the main phase of steps. Can be overridden in the *pre* phase of each step. |
-| `output_mode`       | `string`           | `"json"`    | Default output mode for the LLM model. Can be overridden in the *pre* phase of each step.          |
-| `max_tokens`        | `number`           | `256`       | Default maximum number of tokens to return from the LLM model. Can be overridden in the *pre* phase of each step. |
-| `top_p`             | `number`           | `0.95`      | Default nucleus sampling cutoff for the LLM model. Can be overridden in the *pre* phase of each step. |
-| `presence_penalty`  | `number`           | `0.6`       | Default presence penalty for the LLM model. Can be overridden in the *pre* phase of each step.      |
-| `frequency_penalty` | `number`           | `-0.4`      | Default frequency penalty for the LLM model. Can be overridden in the *pre* phase of each step.     |
-| `top_k`             | `number`           | `40`        | Default top-k filtering for the LLM model. Can be overridden in the *pre* phase of each step.       |
-| `repetition_penalty`| `number`          | `1.15`      | Default repetition penalty for the LLM model. Can be overridden in the *pre* phase of each step.    |
-| `stop_sequences`    | `string[]`         | `[]`        | Default list of stop sequences for the LLM model. Can be overridden in the *pre* phase of each step. | 
-| `seed`               | `number`           | `null`      | Default RNG seed for reproducible sampling. Can be overridden in the *pre* phase of each step.      |
-| `logit_bias`        | `Record<string, number>` | `{}`    | Default logit bias map for the LLM model. Can be overridden in the *pre* phase of each step.        |
+The following template shows how to use the `image_url` directive to attach an image to the prompt:
 
-#### Example Tool Registration
 
 ```python
-from defuss_apl import execute
+from defuss_apl import start
 
-def my_tool(num1, num2):
-    """
-    A simple tool that takes two numeric arguments and returns their sum.
-    :param num1: First number
-    :param num2: Second number
-    :return: Sum of num1 and num2
-    """
-    # Your tool logic here
+agent = """
+# pre: greet me
+{% set model = "o4-mini" %}
+{% set temperature = 0.1 %}
+{% set customer_name = "Aron Homberg" %}
+
+# prompt: greet me
+
+## system:
+You are a friendly assistant and a ghibli-style artist.
+
+## user:
+Write a greeting for {{ customer_name|upper }} and come up with a beautiful picture for me - influenced by the image attached.
+@image_url https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Sunrise.PNG/330px-Sunrise.PNG
+"""
+
+status = await start(agent)
+
+print(status["result_text"]) 
+# "Good morning ARON HOMBERG! Here's a beautiful picture inspired by the sunrise you attached."
+
+print(status["result_image_urls"][0]) 
+# "https://sdmntpritalynorth.oaiusercontent.com/..."
+```
+
+### 1.3 Whitespace & Comment Rules
+
+* Heading keyword and colon may carry arbitrary surrounding spaces.
+* A phase body ends at the next level‑1 heading (`#` column 0).
+* A role body ends at the next level‑2 heading (`##` column 0).
+* To show a literal heading inside Markdown, indent it or use a fenced code‑block.
+* Use Jinja `{# … #}` or Markdown comments for annotations.
+
+---
+
+## 2 - Executor Semantics
+
+### 2.1 Phase Flow, Default Jump, and implicit return
+
+```
+pre → prompt → post →   {
+  if next_step set → jump;
+  else if more steps → first phase of next step in template order;
+  else → implicit return.
+}
+```
+
+* If `next_step` is explicitly set in the *post* phase, the executor jumps to the step with that identifier.
+* If `next_step` is not explicitly set in the *post* phase, the executor jumps to the next natural-order step in template.
+* If `next_step` is set to the sentinel `return` (any case), the executor terminates execution and returns the final context.
+* If `next_step` is not set and there are no more steps, the executor implicitly returns the final context as a status.
+* If `next_step` is set to any non-existing step name, the executor raises `"Unknown step: <step_name>"` at runtime.
+* `next_step` is case‑sensitive **except** the sentinel `return` (any case), which terminates execution.
+
+### 2.2 Prompt Success & Retry Logic
+
+A prompt is deemed *successful* if:
+
+1. Provider does not raise an exception.
+2. Provider returns a valid response.
+
+A provider is supposed to:
+
+#### 2.2.1 Call the LLM:
+
+Read the `prompts` variable, which is a list of message dicts (see §3). Call the LLM in it's native protocol:
+
+* Generate tool descriptions from the `tools` variable  mapping, filtered by `allowed_tools`, and append them to the `system` and `developer` messages in `prompts`.
+* Parse and validate attachment (`@image_url`, `@audio_input`, `@file`) annotations URLs should they appear in any prompt message content. Translate to the native provider format.
+* Pass the final pre-processed prompts and hyperparameters to the LLM provider.
+
+#### 2.2.2 Process the LLM response:
+
+Read and validate the response from the LLM provider and call native tools, selected by the LLM:
+
+* Process the response messages from the LLM.
+* Parse tool calls from the response and execute them looking up the `tools` variable mapping and calling the respective async functions, interpolating the return value.
+* Parse and validate attachment (`@image_url`, `@audio_input`, `@file`) annotations URLs should they appear in the text content of a response message.
+* Parse each response message for non-text content (e.g., tool calls, images, audio) and turn them into valid attachment annotations.
+
+#### 2.2.3 Provider Tool Call Format (default)
+
+The LLM *should* emit standard OpenAI tool call objects in JSON format:
+
+```jsonc
+{
+  "id": "call_1",              // tool call ID, unique per step
+  "type": "function",               // still uses "function" here
+  "function": {
+    "name": "calc",
+    "arguments": "{ \"num1\": 40, \"num2\": 2 }"
+  }
+}
+```
+
+However, it is up to the LLM provider to parse the response and extract tool calls. Therefore APL supports any tool call format as long as there is an LLM provider function implementing the parsing logic.
+
+#### 2.2.4 Provider Tool Contract
+
+The LLM provider looks up the async function in `tools` and calls:
+
+Python example:
+
+```python
+await tools[name](**arguments, context=context)
+```
+
+* `arguments` are expanded as keyword args.
+* A **second kwarg** `context` receives the current mutable context dict (providers & tools share the same view).
+
+TypeScript example:
+
+```typescript
+await tools[name](arguments, context);
+```
+* `arguments` is a plain object.
+* A **second argument** `context` receives the current mutable context object (providers & tools share the same view).
+
+#### 2.2.5 Tool Return Value
+
+Return value is JSON‑serialisable (`str`, `dict`, …) and returned as a message with role `tool_result`:
+
+```jsonc
+{
+  "role": "tool_result",
+  "content": "<return‑value‑serialised‑as‑str>"
+}
+```
+#### 2.2.6 Result Format
+
+LLM provider functions must return a dict in the following format:
+
+```jsonc
+{
+  "result_role": "assistant",         // system, user, assistant, developer, tool_result
+  "result_text": "...",               // text-based response
+  "result_json": {},                  // optional, JSON object, only if `output_mode` is `json` or `structured_output`
+  "result_tool_calls": [              // optional, list of tool call objects
+    {
+      "role": "tool",
+      "tool_call_id": "call_1",
+      "content": 42,                  // tool call result content
+    },
+    ...
+  ],           
+  "result_image_urls": [],            // optional, list of image URLs
+  "result_audio_inputs": [],          // optional, list of audio input URLs
+  "result_files": []                  // optional, list of file URLs
+}
+```
+
+Immediately **after** the LLM provider function returns  the executor:
+
+* increments `runs` (for this step) and `global_runs`;
+* stores the provider’s return values as variables  `result_text`, `result_json`, `result_tool_calls`, `result_image_urls`, `result_audio_inputs`, and `result_files`;
+* evaluates the **post** phase of the step if it exists or jumps to the next step (as per §2.1).
+
+#### 2.2.7 Runtime Error Handling
+
+Failed prompts leave counters unchanged, set `error` with the raised exception text, and skip directly to the step’s *post* phase (if it exists) or jump to the next step (as per §2.1).
+
+### 2.3 Variable Lifecycle
+
+* All phases share one mutable Jinja context.
+* `error` is reset to `None` **before** each *prompt* phase (are accessible in **pre** and **post** phases).
+* `time_elapsed` and `time_elapsed_global` are monotonic floats in **milliseconds**.
+* Executor MAY expose a `max_runs` option (default ∞). Exceeding it raises `"Run budget exceeded"` at runtime.
+
+### 2.4 Executor‑maintained Variables
+
+| Name                  | Type          | When set                | Meaning                          |
+| --------------------- | ------------- | ----------------------- | -------------------------------- |
+| `prev_step`           | `str \| None` | start of step           | Identifier that just finished    |
+| `next_step`           | `str`         | in *post*               | Branch target (`return` ends), only effective in *post*.    |
+| `result_text`         | `str`         | after successful prompt | Provider + tool chain output     |
+| `result_json`         | `dict \| None` | after successful prompt | JSON object from provider        |
+| `result_tool_calls`   | `list`        | after successful prompt | List of tool calls from provider |
+| `result_image_urls`   | `list[str]`   | after successful prompt | List of image URLs from provider |
+| `result_audio_inputs` | `list[str]`   | after successful prompt | List of audio input URLs from provider |
+| `result_files`        | `list[str]`   | after successful prompt | List of file URLs from provider  |
+| `runs`                | `int`         | after successful prompt | Count for current step           |
+| `global_runs`         | `int`         | after successful prompt | Total successful prompts         |
+| `time_elapsed`        | `float` ms    | each phase entry        | Milliseconds since current step began |
+| `time_elapsed_global` | `float` ms    | each phase entry        | Milliseconds since workflow start     |
+| `error`               | `str \| None` | start to finish of step | Error text from previous step    |
+| `prompts`             | `list`        | before provider call    | Chat history in provider schema  |
+
+### 2.5 Allowed / Reserved User Variables
+
+| Variable                                      | Setter           | Default value                                                                                 |
+| --------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------- |
+| `model`                     | `str`                   | `"gpt-4o"`               | Default model when none set in *pre*.                                                                 |
+| `temperature`               | `float`                 | `0.7`                    | Default temperature.                                                                                  |
+| `allowed_tools`             | `list[str]`             | `[]`                     | If non‑empty, only these tools may be invoked.                                                     |
+| `output_mode`               | `str`                   |  `"text"`                | Output format: `text`, `json`, or `structured_output` |
+| `output_structure`          | `str`                   | None                     | JSON Schema definition for when `output_mode` is `structured_output` |
+| `max_tokens`                | `int`                   | `256`                    | Response token cap.                                                                                   |
+| `top_p`                     | `float`                 | `0.95`                   | Nucleus sampling cutoff.                                                                              |
+| `presence_penalty`          | `float`                 | `0.6`                    | Encourage new topics.                                                                                 |
+| `frequency_penalty`         | `float`                 | `-0.4`                   | Discourage repetition.                                                                                |
+| `top_k`                     | `int`                   | `40`                     | Top‑k sampling.                                                                                       |
+| `repetition_penalty`        | `float`                 | `1.15`                   | HF‑style repetition dampening.                                                                        |
+| `stop_sequences`            | `list[str]`             | `[]`                     | Hard‑stop strings.                                                                                    |
+| `seed`                      | `int \| null`           | `null`                   | Fixed RNG seed.                                                                                       |
+| `logit_bias`                | `dict[str,int]`         | `{}`                     | OpenAI token‑bias map.                                                                                |
+
+---
+
+## 3 - Prompt Message Schema
+
+Right after evaluating the **prompt** as a Jinja template, the executor transforms it into a structured format and stores it in the `prompts` variable. 
+
+The Provider receives the executor `context` as first argument and can access it. 
+
+The format of each message in the `prompts` **list** is:
+
+```jsonc
+{
+  "role": "system",          // system, user, assistant, developer, tool_result
+  "content": "<jinja template rendered text>", // rendered text content
+  "image_urls": [            // optional, list of image URLs
+    "https://example.com/image1.png"
+  ],
+  "audio_inputs": [          // optional, list of audio input URLs
+    "https://example.com/audio1.mp3"
+  ],
+  "files": [                 // optional, list of file URLs
+    "https://example.com/file1.pdf"
+  ]
+}
+```
+
+---
+
+## 4 - Provider Contract
+
+A provider function is registered via the `providers` option with key equal to the model name.
+
+### 4.1 Python example
+
+```python
+from defuss_apl import start
+
+agent = """
+# prompt:
+Mock a provider function that returns a greeting.
+"""
+
+async def provider(context: dict) -> any:
+    prompts      = context["prompts"]   # list of message dicts (schema §3)
+    model        = context.get("model", "gpt-4o")
+    temperature  = context.get("temperature", 0.7)
+    # ... other user vars ...
+    # Do steps described in §2.2.*  
+    # Then return a dict in the following format:
+    return {
+        "result_role": "assistant",  # role of the result message
+        "result_text": "Mocked response",       # text response
+        "result_json": {},          # optional, JSON object
+        "result_tool_calls": [],    # optional, list of tool call objects
+        "result_image_urls": [],    # optional, list of image URLs
+        "result_audio_inputs": [],  # optional, list of audio input URLs
+        "result_files": []          # optional, list of file URLs
+    }
+
+status = await start(agent, options={
+    "providers": {"gpt-4o": provider},
+})
+
+print(status["result_text"])  # "Mocked response"
+```
+
+### 4.2 TypeScript example
+
+```typescript
+import { start } from "defuss-apl";
+import { Context, ProviderResult } from "defuss-apl";
+
+async function provider(context: Context): Promise<ProviderResult> {
+    const prompts = context.prompts; // list of message dicts (schema §3)
+    const model = context.model || "gpt-4o";
+    const temperature = context.temperature || 0.7;
+    // ... other user vars ...
+    // Do steps described in §2.2.*
+    // Then return a dict in the following format:
+    return {
+        result_role: "assistant",  // role of the result message
+        result_text: "...",       // text response
+        result_json: {},          // optional, JSON object
+        result_tool_calls: [],    // optional, list of tool call objects
+        result_image_urls: [],    // optional, list of image URLs
+        result_audio_inputs: [],  // optional, list of audio input URLs
+        result_files: []          // optional, list of file URLs
+    };
+}
+
+const agent = `
+# prompt:
+Mock a provider function that returns a greeting.
+`;
+const status = await start(agent, {
+    providers: { "gpt-4o": provider },
+});
+console.log(status.result_text); // "Mocked response"
+```
+
+---
+
+## 5 - Native Tool Contract
+
+A tool function is registered via the `tools` option with key equal to the tool name.
+
+### 5.1 Python example
+
+```python
+from defuss_apl import start
+
+agent = """
+# pre: greet
+{% set model = "gpt-4o" %}
+{% set temperature = 0.7 %}
+{% set allowed_tools = ["calc"] %}
+
+# prompt: greet
+## system
+You can use the calc tool to add two numbers.
+## user
+What's the sum of 40 and 2?
+"""
+
+async def calc(num1: int, num2: int, context=None):
+    """Return the arithmetic sum of two numbers."""
     return num1 + num2
 
-# Register the tool with the executor
-tools = {
-    "calc_tool": my_tool
-}
-# Execute the APL template with the tool registered
-result = execute(open("workflow.apl").read(), options={"tools": tools})
-print(result)
+status = await start(agent, options={
+    "tools": {"calc": calc}
+})
+
+print(status["result_tool_calls"][0]["content"]) # 42
 ```
 
-```typescript
-import { execute } from 'defuss-apl';
+### 5.2 TypeScript example
 
-async function myTool(num1: number, num2: number): Promise<number> {
-    // Your tool logic here
-    return num1 + num2;
+```ts
+import { start } from "defuss-apl";
+import { Context } from "defuss-apl";
+
+async function calc(num1: number, num2: number, context?: Context) {
+  return num1 + num2;
 }
 
-// Register the tool with the executor
-const tools = {
-    calc_tool: myTool
-};
-// Execute the APL template with the tool registered
-const result = await execute(open("workflow.apl").read(), { tools });
-console.log(result);
+const agent = `
+# pre: greet
+{% set model = "gpt-4o" %}
+{% set temperature = 0.7 %}
+{% set allowed_tools = ["calc"] %}
+
+# prompt: greet
+## system
+You can use the calc tool to add two numbers.
+## user
+What's the sum of 40 and 2?
+`
+const status = await start(agent, {
+  tools: { calc },
+});
+console.log(status["result_tool_calls"][0]["content"]); // 42
 ```
 
-### Example Provider Registration
+---
 
-You can register your own LLM provider by implementing a function that takes the variable context and returns the LLM response as text. This allows you to use any LLM provider, or even a local model. A mock provider example is shown below, but you can implement any logic you need to call your LLM provider. It can be used in the `execute` function to simulate the execution environment and provide controlled inputs and outputs.
+## 6 - Runtime API
 
-```python
-from defuss_apl import execute
-def mock_openai_provider(context):
-    """
-    A simple provider that takes the variable context and returns a mock LLM response.
-    :param context: Variable context
-    :return: Mock LLM response
-    """
+| Function                                        | Purpose |                                                 
+| ----------------------------------------------- | ------- | 
+| `check(apl: str) -> bool` | Returns `True` on success or raises `ValidationError` with location‑specific details.                   |
+| `start(apl: str, options: dict = {}) -> dict` | Validate then run template(s); returns the **final mutable context** (all variables) after termination. |
 
-    user_prompt = context.get('user_prompt', '')
-    system_prompt = context.get('system_prompt', '')
 
-    # Your provider logic here
-    return "Mock LLM response based on context"
+### 6.1 `start()` Options
 
-# Register the provider with the executor
-providers = {
-    # model name to provider function mapping
-    "gpt-4o": mock_openai_provider
-}
+The `start()` function accepts an optional `options` dict to configure the executor.
 
-# Execute the APL template with the provider registered
-result = execute(open("workflow.apl").read(), options={"providers": providers})
-print(result)
-```
+| Option                      | Type                    | Default                  | Description                                                                                           |
+| --------------------------- | ----------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `timeout`                   | `int`                   | `30000` (ms)             | Wall‑clock timeout for entire run; `RuntimeError` on expiry.                                          |
+| `providers`                 | `dict[str, async func]` | `{}`                     | Model‑name → provider function (`context` dict) mapping.                                              |
+| `base_url`                  | `str`                   | `https://api.openai.com` | Base URL for the default HTTP provider.                                                               |
+| `api_key`                   | `str`                   | `"<API_KEY>"`            | Secret for default provider.                                                                          |
+| `tools`                     | `dict[str, async func]` | `{}`                     | Tool‑name → async function mapping (signature §4.2).                                                  |
+| `variables`                 | `dict[str, any]`        | `{}`                     | Top‑level variables injected into **every** step.                                                     |
+| `debug`                     | `bool`                  | `false`                  | Emit verbose logs to stderr.                                                                          |
+| `max_runs`                  | `int \| null`           | `null` (∞)               | Hard cap for `global_runs`.                                                                           |
+| `jinja2_env`                | `jinja2.Environment`    | *auto*                   | Custom sandboxed env shared across steps (read‑only in templates).                                    |
 
-```typescript
-import { execute } from 'defuss-apl';
-async function mockOpenAIProvider(context: Record<string, any>): Promise<string> {
-    const userPrompt = context.user_prompt || '';
-    const systemPrompt = context.system_prompt || '';
 
-    // Your provider logic here
-    return `Mock LLM response based on context: ${userPrompt} ${systemPrompt}`;
-}
-// Register the provider with the executor
-const providers = {
-    // model name to provider function mapping
-    'gpt-4o': mockOpenAIProvider
-};
-// Execute the APL template with the provider registered
-const result = await execute(open("workflow.apl").read(), { providers });
-console.log(result);
-```
-
-### Example of passing a custom Jinja2 Environment
+### 6.2 Custom Jinja2 Environment Example
 
 You can pass a custom Jinja2 environment to the executor, allowing you to customize the Jinja2 rendering behavior, such as adding custom filters or globals.
 
 ```python 
-from defuss_apl import execute
+from defuss_apl import start
 from jinja2 import Environment, FileSystemLoader
-
 
 def greet(name):
     return f"Hello, {name}!"
@@ -504,12 +552,13 @@ options = {
 }
 
 # Execute the APL template with the custom Jinja2 environment
-result = execute(open("workflow.apl").read(), options=options)
-print(result)
+status = start(open("agent.apl").read(), options=options)
+print(status)
 ```
 
 ```typescript
-import { execute } from 'defuss-apl';
+import { start } from 'defuss-apl';
+import { readFileSync } from 'node:fs';
 import { Environment, FileSystemLoader } from 'defuss-jinja2';
 
 async function greet(name: string): Promise<string> {
@@ -537,6 +586,6 @@ const options = {
 };
 
 // Execute the APL template with the custom Jinja2 environment
-const result = await execute(open("workflow.apl").read(), options);
-console.log(result);
+const status = await start(readFileSync("agent.apl", "utf-8"), options);
+console.log(status);
 ```
