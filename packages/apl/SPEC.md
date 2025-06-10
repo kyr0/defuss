@@ -1,4 +1,4 @@
-# Agentic Programming Language (APL)
+# Agentic Prompting Language (APL)
 
 > Version: 1.0
 
