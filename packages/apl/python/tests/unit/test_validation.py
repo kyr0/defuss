@@ -51,7 +51,7 @@ Hello
 """
         with pytest.raises(ValidationError) as exc_info:
             check(template)
-        assert "Missing required prompt phase" in str(exc_info.value)
+        assert "missing required prompt phase" in str(exc_info.value)
 
 
 class TestStepIdentifierValidation:
@@ -179,7 +179,7 @@ Setup only
 """
         with pytest.raises(ValidationError) as exc_info:
             check(template)
-        assert "Missing required prompt phase" in str(exc_info.value)
+        assert "missing required prompt phase" in str(exc_info.value)
 
     def test_invalid_phase_names(self):
         """Test that invalid phase names are rejected"""

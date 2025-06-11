@@ -148,4 +148,4 @@ class TestValidationErrors:
 """
         with pytest.raises(ValidationError) as exc_info:
             parse_apl(template)
-        assert "Missing required prompt phase" in str(exc_info.value)
+        assert "missing required prompt phase" in str(exc_info.value)
