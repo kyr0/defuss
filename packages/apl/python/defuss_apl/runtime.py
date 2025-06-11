@@ -69,6 +69,20 @@ def set_context(var_name: str, value: Any) -> str:
         return ""
 
 
+def get_context(var_name: str, default: Any = None) -> Any:
+    """Get a context variable (§7.4 helper function)"""
+    runtime = APLRuntime._current_instance
+    if runtime and runtime.current_context is not None:
+        value = runtime.current_context.get(var_name, default)
+        if runtime.debug:
+            print(f"[APL DEBUG] get_context: {var_name} = {value} (type: {type(value)})", file=sys.stderr)
+        return value
+    else:
+        if runtime and runtime.debug:
+            print(f"[APL DEBUG] get_context called but no active context: {var_name}", file=sys.stderr)
+        return default
+
+
 class RuntimeError(Exception):
     """Raised when APL template execution fails"""
     pass
@@ -235,6 +249,7 @@ class APLRuntime:
         # Add built-in helper functions (§7.4)
         context["get_json_path"] = get_json_path
         context["set_context"] = set_context
+        context["get_context"] = get_context
         
         return context
         

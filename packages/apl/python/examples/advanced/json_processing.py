@@ -76,19 +76,19 @@ Please get user data for users 123 and 456, then create a JSON summary with thei
 
 {% for tool_call in result_tool_calls %}
   {% if "get_user_data" in tool_call.tool_call_id and not tool_call.with_error %}
-    {{ set_context('user_count', user_count + 1) }}
+    {{ set_context('user_count', get_context('user_count', 0) + 1) }}
     {{ set_context('name', get_json_path(tool_call.content, 'name', 'Unknown')) }}
     {{ set_context('city', get_json_path(tool_call.content, 'profile.city', 'Unknown')) }}
     {{ set_context('followers', get_json_path(tool_call.content, 'stats.followers', 0)) }}
-    {{ set_context('total_followers', total_followers + followers) }}
-    {{ set_context('cities', cities + [city]) }}
+    {{ set_context('total_followers', get_context('total_followers', 0) + get_context('followers', 0)) }}
+    {{ set_context('cities', get_context('cities', []) + [get_context('city', 'Unknown')]) }}
     
-    User processed: {{ name }} from {{ city }} ({{ followers }} followers)
+    User processed: {{ get_context('name', 'Unknown') }} from {{ get_context('city', 'Unknown') }} ({{ get_context('followers', 0) }} followers)
   {% endif %}
 {% endfor %}
 
-Summary: {{ user_count }} users processed, {{ total_followers }} total followers
-Cities: {{ cities | join(", ") }}
+Summary: {{ get_context('user_count', 0) }} users processed, {{ get_context('total_followers', 0) }} total followers
+Cities: {{ get_context('cities', []) | join(", ") }}
 
 {{ set_context('next_step', 'return') }}
 """
@@ -97,6 +97,7 @@ Cities: {{ cities | join(", ") }}
     print(template)
     
     options = {
+        "debug": True,
         "with_tools": {
             "get_user_data": {"fn": get_user_data}
         }

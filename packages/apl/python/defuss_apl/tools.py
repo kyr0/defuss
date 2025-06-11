@@ -170,8 +170,8 @@ async def call_tool(tool_call: Dict[str, Any], context: Dict[str, Any]) -> Dict[
             else:
                 result = tool_fn(**arguments)
                 
-        # Format result
-        content = str(result) if result is not None else ""
+        # Format result - preserve original data type per SPEC §2.2.6
+        content = result
         
         return {
             "role": "tool",

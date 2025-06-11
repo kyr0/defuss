@@ -45,6 +45,28 @@ def create_mock_provider(echo_prompt: bool = False):
                 
                 # Get the actual function to inspect its signature
                 tool_fn = with_tools.get(tool_name, {}).get("fn")
+                
+                # Special handling for get_user_data - create multiple calls for multiple user IDs
+                if tool_name == "get_user_data" and tool_fn:
+                    import re
+                    # Extract user IDs from the prompt
+                    user_ids = re.findall(r'\b\d{3,}\b', user_message or "")
+                    if not user_ids:
+                        user_ids = ["123"]  # default
+                    
+                    # Create one call per user ID
+                    for user_id in user_ids:
+                        tool_calls.append({
+                            "id": f"call_mock_{tool_name}_{len(tool_calls)}",
+                            "type": "function", 
+                            "function": {
+                                "name": tool_name,
+                                "arguments": json.dumps({"user_id": user_id})
+                            }
+                        })
+                    continue
+                
+                # Standard single-call handling for other tools
                 mock_args = {}
                 
                 if tool_fn:
