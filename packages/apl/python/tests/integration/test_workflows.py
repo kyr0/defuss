@@ -18,7 +18,7 @@ class TestBasicWorkflows:
 
 # prompt: conversation
 ## system
-You are a helpful assistant talking to {{ user_name }}.
+You are a helpful assistant talking to {{ get_context('user_name', 'User') }}.
 
 ## user
 Hello, can you help me?
@@ -42,13 +42,13 @@ Hello, can you help me?
 ]) }}
 {{ set_context('total_age', 0) }}
 {% for person in data %}
-{{ set_context('total_age', total_age + person.age) }}
+{{ set_context('total_age', get_context('total_age', 0) + person.age) }}
 {% endfor %}
-{{ set_context('avg_age', total_age / (data | length)) }}
+{{ set_context('avg_age', get_context('total_age', 0) / (data | length)) }}
 
 # prompt: process_data
 ## user
-The average age is {{ avg_age }}. Analyze this data.
+The average age is {{ get_context('avg_age', 0) }}. Analyze this data.
 """
         
         context = await start(template, basic_options)
@@ -70,7 +70,7 @@ The average age is {{ avg_age }}. Analyze this data.
 Check my access
 
 # post: check_conditions
-{% if user_level == 'premium' and feature_enabled %}
+{% if get_context('user_level', '') == 'premium' and get_context('feature_enabled', False) %}
 {{ set_context('next_step', 'premium_features') }}
 {% else %}
 {{ set_context('next_step', 'basic_features') }}
@@ -80,9 +80,15 @@ Check my access
 ## user
 Access premium features
 
+# post: premium_features
+{{ set_context('next_step', 'return') }}
+
 # prompt: basic_features
 ## user
 Access basic features
+
+# post: basic_features
+{{ set_context('next_step', 'return') }}
 """
         
         context = await start(template, basic_options)
@@ -101,11 +107,11 @@ Access basic features
 
 # prompt: iterate
 ## user
-Iteration {{ counter + 1 }}
+Iteration {{ get_context('counter', 0) + 1 }}
 
 # post: iterate
-{{ set_context('counter', counter + 1) }}
-{% if counter < max_iterations %}
+{{ set_context('counter', get_context('counter', 0) + 1) }}
+{% if get_context('counter', 0) < get_context('max_iterations', 3) %}
 {{ set_context('next_step', 'iterate') }}
 {% else %}
 {{ set_context('next_step', 'complete') }}
@@ -113,7 +119,7 @@ Iteration {{ counter + 1 }}
 
 # prompt: complete
 ## user
-Completed {{ counter }} iterations
+Completed {{ get_context('counter', 0) }} iterations
 """
         
         context = await start(template, basic_options)
@@ -162,7 +168,7 @@ Validate results
 
 # prompt: finish
 ## user
-System ready. State: {{ state }}
+System ready. State: {{ get_context('state', 'unknown') }}
 """
         
         context = await start(template, basic_options)
@@ -182,11 +188,11 @@ System ready. State: {{ state }}
 
 # prompt: main_operation
 ## user
-Perform main operation (attempt {{ attempt }})
+Perform main operation (attempt {{ get_context('attempt', 1) }})
 
 # post: main_operation
-{% if errors and attempt < max_attempts %}
-{{ set_context('attempt', attempt + 1) }}
+{% if errors and get_context('attempt', 1) < get_context('max_attempts', 3) %}
+{{ set_context('attempt', get_context('attempt', 1) + 1) }}
 {{ set_context('next_step', 'main_operation') }}
 {% elif errors %}
 {{ set_context('next_step', 'failure') }}
@@ -196,11 +202,11 @@ Perform main operation (attempt {{ attempt }})
 
 # prompt: success
 ## user
-Operation succeeded after {{ attempt }} attempts
+Operation succeeded after {{ get_context('attempt', 1) }} attempts
 
 # prompt: failure
 ## user
-Operation failed after {{ max_attempts }} attempts
+Operation failed after {{ get_context('max_attempts', 3) }} attempts
 """
         
         context = await start(template, basic_options)
@@ -219,26 +225,26 @@ Operation failed after {{ max_attempts }} attempts
 
 # prompt: step1
 ## user
-Step 1: Clean {{ input_data }}
+Step 1: Clean {{ get_context('input_data', 'data') }}
 
 # post: step1
-{{ set_context('cleaned_data', 'cleaned ' + input_data) }}
+{{ set_context('cleaned_data', 'cleaned ' + get_context('input_data', 'data')) }}
 {{ set_context('next_step', 'step2') }}
 
 # prompt: step2
 ## user
-Step 2: Transform {{ cleaned_data }}
+Step 2: Transform {{ get_context('cleaned_data', 'data') }}
 
 # post: step2
-{{ set_context('transformed_data', 'transformed ' + cleaned_data) }}
+{{ set_context('transformed_data', 'transformed ' + get_context('cleaned_data', 'data')) }}
 {{ set_context('next_step', 'step3') }}
 
 # prompt: step3
 ## user
-Step 3: Output {{ transformed_data }}
+Step 3: Output {{ get_context('transformed_data', 'data') }}
 
 # post: step3
-{{ set_context('final_result', 'final ' + transformed_data) }}
+{{ set_context('final_result', 'final ' + get_context('transformed_data', 'data')) }}
 """
         
         context = await start(template, basic_options)
@@ -261,8 +267,8 @@ Step 3: Output {{ transformed_data }}
 Route user request
 
 # post: decision_point
-{% if user_type == 'premium' %}
-  {% if region == 'US' %}
+{% if get_context('user_type', '') == 'premium' %}
+  {% if get_context('region', '') == 'US' %}
     {{ set_context('next_step', 'premium_us') }}
   {% else %}
     {{ set_context('next_step', 'premium_intl') }}
@@ -320,7 +326,7 @@ What's 25 + 17?
 
 # prompt: report
 ## user
-The calculation result is {{ calculation_result }}
+The calculation result is {{ get_context('calculation_result', 'unknown') }}
 """
         
         context = await start(template, tool_options)
@@ -389,15 +395,15 @@ class TestDataFlowWorkflows:
 {{ set_context('active_users', []) }}
 {% for user in api_response.users %}
   {% if user.status == 'active' %}
-    {{ set_context('active_users', active_users + [user.name]) }}
+    {{ set_context('active_users', get_context('active_users', []) + [user.name]) }}
   {% endif %}
 {% endfor %}
 
-{{ set_context('active_count', active_users | length) }}
+{{ set_context('active_count', get_context('active_users', []) | length) }}
 
 # prompt: json_process
 ## user
-Found {{ active_count }} active users: {{ active_users | join(', ') }}
+Found {{ get_context('active_count', 0) }} active users: {{ get_context('active_users', []) | join(', ') }}
 """
         
         context = await start(template, basic_options)
@@ -414,15 +420,15 @@ Found {{ active_count }} active users: {{ active_users | join(', ') }}
 # pre: compose
 {{ set_context('base_template', 'Hello {name}') }}
 {{ set_context('user_data', {'name': 'World'}) }}
-{{ set_context('composed_message', base_template.format(**user_data)) }}
+{{ set_context('composed_message', get_context('base_template', '').format(**get_context('user_data', {}))) }}
 
 # prompt: compose
 ## user
-Generated message: {{ composed_message }}
+Generated message: {{ get_context('composed_message', '') }}
 
 # post: compose
-{{ set_context('message_length', composed_message | length) }}
-{{ set_context('word_count', composed_message.split() | length) }}
+{{ set_context('message_length', get_context('composed_message', '') | length) }}
+{{ set_context('word_count', get_context('composed_message', '').split() | length) }}
 """
         
         context = await start(template, basic_options)
@@ -448,17 +454,17 @@ Generated message: {{ composed_message }}
 {{ set_context('region_totals', {}) }}
 
 {% for sale in sales_data %}
-  {{ set_context('total_sales', total_sales + sale.amount) }}
-  {% if sale.region in region_totals %}
-    {{ set_context('region_totals', region_totals | combine({sale.region: region_totals[sale.region] + sale.amount})) }}
+  {{ set_context('total_sales', get_context('total_sales', 0) + sale.amount) }}
+  {% if sale.region in get_context('region_totals', {}) %}
+    {{ set_context('region_totals', get_context('region_totals', {}) | combine({sale.region: get_context('region_totals', {})[sale.region] + sale.amount})) }}
   {% else %}
-    {{ set_context('region_totals', region_totals | combine({sale.region: sale.amount})) }}
+    {{ set_context('region_totals', get_context('region_totals', {}) | combine({sale.region: sale.amount})) }}
   {% endif %}
 {% endfor %}
 
 # prompt: aggregate
 ## user
-Total sales: {{ total_sales }}. By region: {{ region_totals }}
+Total sales: {{ get_context('total_sales', 0) }}. By region: {{ get_context('region_totals', {}) }}
 """
         
         context = await start(template, basic_options)

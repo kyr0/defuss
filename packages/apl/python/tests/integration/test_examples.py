@@ -36,7 +36,7 @@ Hello, how are you?
 You are a friendly assistant.
 
 ## user
-Good {{ time_of_day }}, my name is {{ user_name }}. How are you?
+Good {{ get_context('time_of_day', 'day') }}, my name is {{ get_context('user_name', 'User') }}. How are you?
 """
         
         context = await start(template, basic_options)
@@ -55,14 +55,14 @@ Good {{ time_of_day }}, my name is {{ user_name }}. How are you?
 
 # prompt: intro
 ## user
-Let's talk about {{ topic }}
+Let's talk about {{ get_context('topic', 'general') }}
 
 # post: intro
 {{ set_context('next_step', 'followup') }}
 
 # prompt: followup
 ## user
-What do you think about today's {{ topic }}?
+What do you think about today's {{ get_context('topic', 'general') }}?
 """
         
         context = await start(template, basic_options)
@@ -82,9 +82,9 @@ What do you think about today's {{ topic }}?
 What time is it?
 
 # post: check_time
-{% if hour < 12 %}
+{% if get_context('hour', 0) < 12 %}
 {{ set_context('greeting', 'Good morning') }}
-{% elif hour < 18 %}
+{% elif get_context('hour', 0) < 18 %}
 {{ set_context('greeting', 'Good afternoon') }}
 {% else %}
 {{ set_context('greeting', 'Good evening') }}
@@ -93,7 +93,7 @@ What time is it?
 
 # prompt: respond
 ## user
-{{ greeting }}! It's {{ hour }}:00.
+{{ get_context('greeting', 'Hello') }}! It's {{ get_context('hour', 0) }}:00.
 """
         
         context = await start(template, basic_options)
@@ -116,15 +116,15 @@ class TestDataProcessingExamples:
 {{ set_context('even_numbers', []) }}
 
 {% for num in numbers %}
-  {{ set_context('sum_total', sum_total + num) }}
+  {{ set_context('sum_total', get_context('sum_total', 0) + num) }}
   {% if num % 2 == 0 %}
-    {{ set_context('even_numbers', even_numbers + [num]) }}
+    {{ set_context('even_numbers', get_context('even_numbers', []) + [num]) }}
   {% endif %}
 {% endfor %}
 
 # prompt: process_list
 ## user
-Sum: {{ sum_total }}, Even numbers: {{ even_numbers }}
+Sum: {{ get_context('sum_total', 0) }}, Even numbers: {{ get_context('even_numbers', []) }}
 """
         
         context = await start(template, basic_options)
@@ -147,13 +147,13 @@ Sum: {{ sum_total }}, Even numbers: {{ even_numbers }}
     "history": ["login", "view_profile", "logout"]
 }) }}
 
-{{ set_context('user_name', get_json_path(user_data, "name", "Unknown")) }}
-{{ set_context('theme', get_json_path(user_data, "preferences.theme", "light")) }}
-{{ set_context('last_action', get_json_path(user_data, "history.-1", "none")) }}
+{{ set_context('user_name', get_json_path(get_context('user_data', {}), "name", "Unknown")) }}
+{{ set_context('theme', get_json_path(get_context('user_data', {}), "preferences.theme", "light")) }}
+{{ set_context('last_action', get_json_path(get_context('user_data', {}), "history.-1", "none")) }}
 
 # prompt: process_json
 ## user
-User {{ user_name }} prefers {{ theme }} theme. Last action: {{ last_action }}
+User {{ get_context('user_name', 'Unknown') }} prefers {{ get_context('theme', 'light') }} theme. Last action: {{ get_context('last_action', 'none') }}
 """
         
         context = await start(template, basic_options)
@@ -180,12 +180,12 @@ User {{ user_name }} prefers {{ theme }} theme. Last action: {{ last_action }}
 ) }}
 
 {{ set_context('generated_message', 
-    message_template.format(**template_vars)
+    get_context('message_template', '').format(**get_context('template_vars', {}))
 ) }}
 
 # prompt: generate_template
 ## user
-{{ generated_message }}
+{{ get_context('generated_message', '') }}
 """
         
         context = await start(template, basic_options)
@@ -216,7 +216,7 @@ Perform main task
 
 # prompt: error_recovery
 ## user
-Encountered {{ error_count }} errors. Attempting recovery.
+Encountered {{ get_context('error_count', 0) }} errors. Attempting recovery.
 
 # prompt: success
 ## user
@@ -240,13 +240,13 @@ Task completed successfully.
 
 # prompt: retry_task
 ## user
-Attempt {{ attempt }} of {{ max_attempts }}
+Attempt {{ get_context('attempt', 1) }} of {{ get_context('max_attempts', 3) }}
 
 # post: retry_task
-{% if not success and attempt < max_attempts %}
-{{ set_context('attempt', attempt + 1) }}
+{% if not get_context('success', False) and get_context('attempt', 1) < get_context('max_attempts', 3) %}
+{{ set_context('attempt', get_context('attempt', 1) + 1) }}
 {{ set_context('next_step', 'retry_task') }}
-{% elif success %}
+{% elif get_context('success', False) %}
 {{ set_context('next_step', 'success') }}
 {% else %}
 {{ set_context('next_step', 'failure') }}
@@ -254,11 +254,11 @@ Attempt {{ attempt }} of {{ max_attempts }}
 
 # prompt: success
 ## user
-Succeeded after {{ attempt }} attempts
+Succeeded after {{ get_context('attempt', 1) }} attempts
 
 # prompt: failure
 ## user
-Failed after {{ max_attempts }} attempts
+Failed after {{ get_context('max_attempts', 3) }} attempts
 """
         
         # Mock a scenario where we succeed on attempt 2
@@ -297,28 +297,28 @@ class TestWorkflowPatterns:
 
 # prompt: step1
 ## user
-Step {{ current_step }} of {{ total_steps }}: Enter your name
+Step {{ get_context('current_step', 1) }} of {{ get_context('total_steps', 3) }}: Enter your name
 
 # post: step1
-{{ set_context('collected_data', collected_data | combine({'name': 'Alice'})) }}
+{{ set_context('collected_data', get_context('collected_data', {}) | combine({'name': 'Alice'})) }}
 {{ set_context('current_step', 2) }}
 {{ set_context('next_step', 'step2') }}
 
 # prompt: step2
 ## user
-Step {{ current_step }} of {{ total_steps }}: Enter your age
+Step {{ get_context('current_step', 1) }} of {{ get_context('total_steps', 3) }}: Enter your age
 
 # post: step2
-{{ set_context('collected_data', collected_data | combine({'age': 25})) }}
+{{ set_context('collected_data', get_context('collected_data', {}) | combine({'age': 25})) }}
 {{ set_context('current_step', 3) }}
 {{ set_context('next_step', 'step3') }}
 
 # prompt: step3
 ## user
-Step {{ current_step }} of {{ total_steps }}: Confirm your details
+Step {{ get_context('current_step', 1) }} of {{ get_context('total_steps', 3) }}: Confirm your details
 
 # post: step3
-{{ set_context('next_step', 'complete') }}
+{{ set_context('next_step', 'return') }}
 
 # prompt: complete
 ## user
@@ -345,7 +345,7 @@ Wizard complete! Data: {{ collected_data }}
 Current state: {{ state }}, Event: {{ event }}
 
 # post: state_handler
-{% if state == 'idle' and event == 'start' %}
+{% if get_context('state', '') == 'idle' and get_context('event', '') == 'start' %}
   {{ set_context('state', 'processing') }}
   {{ set_context('event', 'process') }}
   {{ set_context('next_step', 'state_handler') }}
@@ -432,7 +432,7 @@ You are a customer support agent.
 Customer type: {{ customer_type }}, Issue: {{ issue_category }}, Priority: {{ priority }}
 
 # post: triage
-{% if customer_type == 'premium' and priority == 'high' %}
+{% if get_context('customer_type', '') == 'premium' and get_context('priority', '') == 'high' %}
 {{ set_context('next_step', 'escalate') }}
 {% elif issue_category == 'technical' %}
 {{ set_context('next_step', 'technical_support') }}
@@ -478,7 +478,7 @@ Handling with general support
 Moderating content: {{ content }}
 
 # post: moderate
-{% if content_safe %}
+{% if get_context('content_safe', False) %}
 {{ set_context('next_step', 'approve') }}
 {% else %}
 {{ set_context('next_step', 'review') }}
@@ -512,17 +512,17 @@ Content flagged for manual review
 {{ set_context('validation_errors', []) }}
 
 # Email validation
-{% if '@' not in user_input.email %}
+{% if '@' not in get_context('user_input', {}).email %}
 {{ set_context('validation_errors', validation_errors + ['Invalid email format']) }}
 {% endif %}
 
 # Age validation
-{% if user_input.age < 18 or user_input.age > 120 %}
+{% if get_context('user_input', {}).age < 18 or get_context('user_input', {}).age > 120 %}
 {{ set_context('validation_errors', validation_errors + ['Invalid age range']) }}
 {% endif %}
 
 # Name validation
-{% if user_input.name | length < 2 %}
+{% if get_context('user_input', {}).name | length < 2 %}
 {{ set_context('validation_errors', validation_errors + ['Name too short']) }}
 {% endif %}
 
@@ -531,7 +531,7 @@ Content flagged for manual review
 Validating user data
 
 # post: validate
-{% if validation_errors | length == 0 %}
+{% if get_context('validation_errors', []) | length == 0 %}
 {{ set_context('next_step', 'process') }}
 {% else %}
 {{ set_context('next_step', 'reject') }}

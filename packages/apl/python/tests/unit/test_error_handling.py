@@ -132,9 +132,15 @@ Use the failing tool with x=5
 ## user
 Step 1
 
+# post: step1
+{{ set_context('next_step', 'step2') }}
+
 # prompt: step2
 ## user
 Step 2
+
+# post: step2
+{{ set_context('next_step', 'return') }}
 """
         
         options = basic_options.copy()
@@ -331,9 +337,15 @@ Test message
 ## user
 Step 1
 
+# post: step1
+{{ set_context('next_step', 'step2') }}
+
 # prompt: step2  
 ## user
 Step 2
+
+# post: step2
+{{ set_context('next_step', 'return') }}
 """
         
         options = basic_options.copy()

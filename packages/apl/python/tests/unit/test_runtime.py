@@ -35,7 +35,7 @@ class TestRuntimeExecution:
 
 # prompt: test
 ## user
-Variable value: {{ test_var }}
+Variable value: {{ get_context('test_var', 'default') }}
 
 # post: test
 {{ set_context('post_var', 'from_post') }}
@@ -67,6 +67,9 @@ Step 2 (should be skipped)
 # prompt: step3
 ## user
 Step 3
+
+# post: step3
+{{ set_context('next_step', 'return') }}
 """
         context = await start(template, basic_options)
         
@@ -151,9 +154,15 @@ Test
 ## user
 Step 1
 
+# post: step1
+{{ set_context('next_step', 'step2') }}
+
 # prompt: step2
 ## user
 Step 2
+
+# post: step2
+{{ set_context('next_step', 'return') }}
 """
         context = await start(template, basic_options)
         

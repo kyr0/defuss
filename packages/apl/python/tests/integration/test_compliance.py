@@ -105,9 +105,15 @@ And some text after.
 ## user
 Test message 1
 
+# post: step1
+{{ set_context('next_step', 'step2') }}
+
 # prompt: step2
 ## user
 Test message 2
+
+# post: step2
+{{ set_context('next_step', 'return') }}
 """
         
         context = await start(template, {"debug": False})
@@ -160,9 +166,9 @@ Test message 2
         template = """
 # pre: test
 {{ set_context('test_data', {"user": {"name": "Alice", "items": [1, 2, 3]}}) }}
-{{ set_context('name', get_json_path(test_data, "user.name", "unknown")) }}
-{{ set_context('missing', get_json_path(test_data, "user.missing", "default")) }}
-{{ set_context('item', get_json_path(test_data, "user.items.1", "none")) }}
+{{ set_context('name', get_json_path(get_context('test_data', {}), "user.name", "unknown")) }}
+{{ set_context('missing', get_json_path(get_context('test_data', {}), "user.missing", "default")) }}
+{{ set_context('item', get_json_path(get_context('test_data', {}), "user.items.1", "none")) }}
 
 # prompt: test
 ## user
@@ -295,32 +301,32 @@ class TestWorkflowExecution:
 
 # prompt: setup
 ## user
-Initialize with name {{ user_name }}
+Initialize with name {{ get_context('user_name', 'User') }}
 
 # post: setup
-{{ set_context('step_count', step_count + 1) }}
+{{ set_context('step_count', get_context('step_count', 0) + 1) }}
 {{ set_context('next_step', 'process') }}
 
 # pre: process
-{{ set_context('step_count', step_count + 1) }}
+{{ set_context('step_count', get_context('step_count', 0) + 1) }}
 
 # prompt: process
 ## user
-Process data for {{ user_name }}
+Process data for {{ get_context('user_name', 'User') }}
 
 # post: process
-{{ set_context('step_count', step_count + 1) }}
+{{ set_context('step_count', get_context('step_count', 0) + 1) }}
 {{ set_context('next_step', 'finalize') }}
 
 # pre: finalize
-{{ set_context('step_count', step_count + 1) }}
+{{ set_context('step_count', get_context('step_count', 0) + 1) }}
 
 # prompt: finalize
 ## user
-Finalize for {{ user_name }}
+Finalize for {{ get_context('user_name', 'User') }}
 
 # post: finalize
-{{ set_context('step_count', step_count + 1) }}
+{{ set_context('step_count', get_context('step_count', 0) + 1) }}
 """
         
         context = await start(template, {"debug": False})
@@ -332,6 +338,8 @@ Finalize for {{ user_name }}
     @pytest.mark.asyncio
     async def test_conditional_branching(self):
         """Test conditional step branching"""
+        from defuss_apl.test_utils import create_echo_provider
+        
         template = """
 # pre: start
 {{ set_context('condition', True) }}
@@ -341,7 +349,7 @@ Finalize for {{ user_name }}
 Start
 
 # post: start
-{% if condition %}
+{% if get_context('condition', False) %}
 {{ set_context('next_step', 'success_path') }}
 {% else %}
 {{ set_context('next_step', 'failure_path') }}
@@ -351,12 +359,21 @@ Start
 ## user
 Success path taken
 
+# post: success_path
+{{ set_context('next_step', 'return') }}
+
 # prompt: failure_path
 ## user
 Failure path taken
+
+# post: failure_path
+{{ set_context('next_step', 'return') }}
 """
         
-        context = await start(template, {"debug": False})
+        context = await start(template, {
+            "debug": False,
+            "with_providers": {"gpt-4o": create_echo_provider()}
+        })
         
         assert "Success path taken" in context["result_text"]
         assert "Failure path taken" not in context["result_text"]
@@ -364,6 +381,8 @@ Failure path taken
     @pytest.mark.asyncio
     async def test_error_recovery_workflow(self):
         """Test error recovery in workflows"""
+        from defuss_apl.test_utils import create_echo_provider
+        
         template = """
 # prompt: main
 ## user
@@ -385,7 +404,10 @@ Handle errors
 Success
 """
         
-        context = await start(template, {"debug": False})
+        context = await start(template, {
+            "debug": False,
+            "with_providers": {"gpt-4o": create_echo_provider()}
+        })
         
         # Should complete successfully
         assert context["result_text"] is not None
@@ -452,17 +474,24 @@ Assistant message
     @pytest.mark.asyncio
     async def test_implicit_return(self):
         """Test implicit return at end of template"""
+        from defuss_apl.test_utils import create_echo_provider
+        
         template = """
 # prompt: only_step
 ## user
 Single step
 """
         
-        context = await start(template, {"debug": False})
+        context = await start(template, {
+            "debug": False,
+            "with_providers": {"gpt-4o": create_echo_provider()}
+        })
         
         # Should complete without explicit return
         assert context["result_text"] is not None
-        assert context["prev_step"] == "only_step"
+        # For a single step, prev_step should be None and current_step should be the step name
+        assert context["prev_step"] is None
+        assert context["current_step"] == "only_step"
 
     @pytest.mark.asyncio
     async def test_circular_reference_detection(self):

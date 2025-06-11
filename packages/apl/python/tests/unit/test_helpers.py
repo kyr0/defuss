@@ -21,7 +21,7 @@ class TestSetContextFunction:
 
 # prompt: test
 ## user
-Variables: {{ test_var }}, {{ number_var }}, {{ bool_var }}
+Variables: {{ get_context('test_var', 'default') }}, {{ get_context('number_var', 0) }}, {{ get_context('bool_var', False) }}
 """
         context = await start(template, basic_options)
         
@@ -58,12 +58,12 @@ Test message
         template = """
 # pre: test
 {{ set_context('base_value', 10) }}
-{{ set_context('computed_value', base_value * 2 + 5) }}
+{{ set_context('computed_value', get_context('base_value', 0) * 2 + 5) }}
 {{ set_context('string_concat', 'prefix_' + 'suffix') }}
 
 # prompt: test
 ## user
-Computed: {{ computed_value }}, String: {{ string_concat }}
+Computed: {{ get_context('computed_value', 0) }}, String: {{ get_context('string_concat', '') }}
 """
         context = await start(template, basic_options)
         
@@ -78,11 +78,11 @@ Computed: {{ computed_value }}, String: {{ string_concat }}
 # pre: test
 {{ set_context('test_list', [1, 2, 3]) }}
 {{ set_context('test_dict', {"key": "value", "num": 42}) }}
-{{ set_context('list_length', test_list | length) }}
+{{ set_context('list_length', get_context('test_list', []) | length) }}
 
 # prompt: test
 ## user
-List: {{ test_list }}, Dict: {{ test_dict }}, Length: {{ list_length }}
+List: {{ get_context('test_list', []) }}, Dict: {{ get_context('test_dict', {}) }}, Length: {{ get_context('list_length', 0) }}
 """
         context = await start(template, basic_options)
         
@@ -96,13 +96,13 @@ List: {{ test_list }}, Dict: {{ test_dict }}, Length: {{ list_length }}
         template = """
 # pre: test
 {{ set_context('counter', 0) }}
-{{ set_context('counter', counter + 1) }}
-{{ set_context('counter', counter + 1) }}
-{{ set_context('counter', counter + 1) }}
+{{ set_context('counter', get_context('counter', 0) + 1) }}
+{{ set_context('counter', get_context('counter', 0) + 1) }}
+{{ set_context('counter', get_context('counter', 0) + 1) }}
 
 # prompt: test
 ## user
-Counter: {{ counter }}
+Counter: {{ get_context('counter', 0) }}
 """
         context = await start(template, basic_options)
         
@@ -137,13 +137,13 @@ class TestGetJsonPathFunction:
         }
     }
 }) }}
-{{ set_context('name', get_json_path(data, "user.profile.name", "unknown")) }}
-{{ set_context('theme', get_json_path(data, "user.profile.settings.theme", "light")) }}
-{{ set_context('invalid', get_json_path(data, "user.profile.invalid", "default")) }}
+{{ set_context('name', get_json_path(get_context('data', {}), "user.profile.name", "unknown")) }}
+{{ set_context('theme', get_json_path(get_context('data', {}), "user.profile.settings.theme", "light")) }}
+{{ set_context('invalid', get_json_path(get_context('data', {}), "user.profile.invalid", "default")) }}
 
 # prompt: test
 ## user
-Name: {{ name }}, Theme: {{ theme }}, Invalid: {{ invalid }}
+Name: {{ get_context('name', 'unknown') }}, Theme: {{ get_context('theme', 'light') }}, Invalid: {{ get_context('invalid', 'default') }}
 """
         context = await start(template, basic_options)
         
@@ -163,13 +163,13 @@ Name: {{ name }}, Theme: {{ theme }}, Invalid: {{ invalid }}
         {"name": "third", "value": 3}
     ]
 }) }}
-{{ set_context('first_name', get_json_path(data, "items.0.name", "none")) }}
-{{ set_context('second_value', get_json_path(data, "items.1.value", 0)) }}
-{{ set_context('invalid_index', get_json_path(data, "items.10.name", "missing")) }}
+{{ set_context('first_name', get_json_path(get_context('data', {}), "items.0.name", "none")) }}
+{{ set_context('second_value', get_json_path(get_context('data', {}), "items.1.value", 0)) }}
+{{ set_context('invalid_index', get_json_path(get_context('data', {}), "items.10.name", "missing")) }}
 
 # prompt: test
 ## user
-First: {{ first_name }}, Second: {{ second_value }}, Invalid: {{ invalid_index }}
+First: {{ get_context('first_name', 'none') }}, Second: {{ get_context('second_value', 0) }}, Invalid: {{ get_context('invalid_index', 'missing') }}
 """
         context = await start(template, basic_options)
         
@@ -183,13 +183,13 @@ First: {{ first_name }}, Second: {{ second_value }}, Invalid: {{ invalid_index }
         template = """
 # pre: test
 {{ set_context('data', {"existing": "value"}) }}
-{{ set_context('existing', get_json_path(data, "existing", "default")) }}
-{{ set_context('missing_with_default', get_json_path(data, "missing", "default_value")) }}
-{{ set_context('missing_no_default', get_json_path(data, "missing")) }}
+{{ set_context('existing', get_json_path(get_context('data', {}), "existing", "default")) }}
+{{ set_context('missing_with_default', get_json_path(get_context('data', {}), "missing", "default_value")) }}
+{{ set_context('missing_no_default', get_json_path(get_context('data', {}), "missing")) }}
 
 # prompt: test
 ## user
-Existing: {{ existing }}, Missing with default: {{ missing_with_default }}, Missing no default: {{ missing_no_default }}
+Existing: {{ get_context('existing', 'default') }}, Missing with default: {{ get_context('missing_with_default', 'default_value') }}, Missing no default: {{ get_context('missing_no_default', None) }}
 """
         context = await start(template, basic_options)
         

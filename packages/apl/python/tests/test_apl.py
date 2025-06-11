@@ -35,7 +35,7 @@ async def test_legacy_mock_provider_tool_execution():
         
     template = """
 # pre: setup
-{% set allowed_tools = ["add_numbers"] %}
+{{ set_context('allowed_tools', ['add_numbers']) }}
 
 # prompt: setup
 ## user

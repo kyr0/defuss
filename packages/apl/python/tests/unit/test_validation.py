@@ -274,13 +274,13 @@ class TestJinjaValidation:
         template = """
 # pre: test
 {{ set_context('var', 'value') }}
-{% if condition %}
+{% if get_context('condition', False) %}
 Content
 {% endif %}
 
 # prompt: test
 ## user
-Hello {{ var }}
+Hello {{ get_context('var', 'default') }}
 """
         result = check(template)
         assert result is True
@@ -295,8 +295,8 @@ Hello {{ var }}
 
 # prompt: test
 ## user
-{% if user_name %}
-Hello {{ user_name }}
+{% if get_context('user_name', '') %}
+Hello {{ get_context('user_name', 'stranger') }}
 {% else %}
 Hello stranger
 {% endif %}
