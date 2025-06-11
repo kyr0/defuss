@@ -42,90 +42,6 @@ A phase starts with a level‑1 heading **with `#` at column 0** (no leading spa
 * The reserved identifier **`return`** (case‑sensitive) terminates execution when used as `next_step`. User templates may not declare a step with this identifier. Doing so raises `Reserved step identifier: return` at validation time.
 * Headings cannot contain Jinja expressions, it raises `Invalid step heading: <heading>` at validation time.
 
-#### 1.1.1 Future Reserved Variables
-
-The following variable names are reserved for future language enhancements and will raise a `Reserved variable: <variable_name>` validation error if accessed in templates:
-
-**Parallel Execution & Synchronization:**
-* `next_steps` - Reserved for parallel step execution
-* `await_steps` - Reserved for step synchronization
-* `parallel_results` - Reserved for parallel execution results
-* `race_winner` - Reserved for first-completed parallel step results
-* `concurrent_limit` - Reserved for controlling parallel execution concurrency
-
-**Workflow Management:**
-* `step_graph` - Reserved for workflow graph introspection
-* `workflow_state` - Reserved for advanced workflow state management
-* `checkpoint` - Reserved for workflow checkpointing
-* `rollback` - Reserved for workflow rollback functionality
-* `snapshot` - Reserved for context snapshots
-* `resume_from` - Reserved for workflow resumption
-
-**Advanced Tool Capabilities:**
-* `tool_registry` - Reserved for dynamic tool registration
-* `tool_dependencies` - Reserved for tool dependency management
-* `tool_cache` - Reserved for tool result caching
-* `streaming_tools` - Reserved for streaming tool responses
-* `tool_timeout` - Reserved for per-tool timeout configuration
-
-**Memory & State Management:**
-* `memory` - Reserved for persistent memory across workflow runs
-* `shared_state` - Reserved for state sharing between workflow instances
-* `session` - Reserved for session-scoped data
-* `workspace` - Reserved for workspace-scoped persistence
-* `vector_store` - Reserved for vector database integration
-
-**Observability & Debugging:**
-* `trace` - Reserved for execution tracing
-* `metrics` - Reserved for workflow metrics collection
-* `profiler` - Reserved for performance profiling
-* `debug_info` - Reserved for enhanced debugging information
-* `audit_log` - Reserved for audit trail functionality
-
-**Advanced Flow Control:**
-* `conditions` - Reserved for advanced conditional logic
-* `loops` - Reserved for loop constructs
-* `break_points` - Reserved for debugging breakpoints
-* `event_triggers` - Reserved for event-driven workflow execution
-* `webhooks` - Reserved for webhook integration
-
-**Provider & Model Management:**
-* `model_fallbacks` - Reserved for automatic model fallback chains
-* `provider_pool` - Reserved for provider load balancing
-* `cost_tracking` - Reserved for cost monitoring
-* `rate_limits` - Reserved for rate limiting configuration
-* `model_routing` - Reserved for intelligent model routing
-
-**Security & Validation:**
-* `permissions` - Reserved for permission management
-* `sandbox` - Reserved for sandboxed execution
-* `input_validation` - Reserved for input validation rules
-* `output_sanitization` - Reserved for output sanitization
-* `security_context` - Reserved for security context management
-
-**Integration & Extensions:**
-* `plugins` - Reserved for plugin system
-* `extensions` - Reserved for language extensions
-* `middleware` - Reserved for middleware functions
-* `interceptors` - Reserved for request/response interception
-* `transformers` - Reserved for data transformation pipelines
-
-**Workflow Composition:**
-* `sub_workflows` - Reserved for nested workflow execution
-* `workflow_imports` - Reserved for workflow composition
-* `macro_steps` - Reserved for step macros/templates
-* `step_library` - Reserved for reusable step libraries
-* `template_inheritance` - Reserved for template inheritance
-
-**Real-time & Streaming:**
-* `streaming_mode` - Reserved for streaming execution
-* `real_time_updates` - Reserved for real-time state updates
-* `push_notifications` - Reserved for push notification integration
-* `websocket_handlers` - Reserved for WebSocket integration
-* `sse_streams` - Reserved for Server-Sent Events
-
-**Note**: These variables are not implemented in version 1.1 but are reserved to ensure forward compatibility. Future versions of APL may implement these features without breaking existing templates.
-
 ### 1.2 Prompt Phase Sub‑sections
 
 Inside a `# prompt:` block the body is divided by level‑2 headings (starting at column 0):
@@ -1159,3 +1075,87 @@ APL automatically provides a `get_json_path` helper function in the context for 
   {% set next_step = "summary" %}
 {% endif %}
 ```
+
+#### 8 - Future Reserved Variables
+
+The following variable names are reserved for future language enhancements and will raise a `Reserved variable: <variable_name>` validation error if accessed in templates:
+
+**Parallel Execution & Synchronization:**
+* `next_steps` - Reserved for parallel step execution
+* `await_steps` - Reserved for step synchronization
+* `parallel_results` - Reserved for parallel execution results
+* `race_winner` - Reserved for first-completed parallel step results
+* `concurrent_limit` - Reserved for controlling parallel execution concurrency
+
+**Workflow Management:**
+* `step_graph` - Reserved for workflow graph introspection
+* `workflow_state` - Reserved for advanced workflow state management
+* `checkpoint` - Reserved for workflow checkpointing
+* `rollback` - Reserved for workflow rollback functionality
+* `snapshot` - Reserved for context snapshots
+* `resume_from` - Reserved for workflow resumption
+
+**Advanced Tool Capabilities:**
+* `tool_registry` - Reserved for dynamic tool registration
+* `tool_dependencies` - Reserved for tool dependency management
+* `tool_cache` - Reserved for tool result caching
+* `streaming_tools` - Reserved for streaming tool responses
+* `tool_timeout` - Reserved for per-tool timeout configuration
+
+**Memory & State Management:**
+* `memory` - Reserved for persistent memory across workflow runs
+* `shared_state` - Reserved for state sharing between workflow instances
+* `session` - Reserved for session-scoped data
+* `workspace` - Reserved for workspace-scoped persistence
+* `vector_store` - Reserved for vector database integration
+
+**Observability & Debugging:**
+* `trace` - Reserved for execution tracing
+* `metrics` - Reserved for workflow metrics collection
+* `profiler` - Reserved for performance profiling
+* `debug_info` - Reserved for enhanced debugging information
+* `audit_log` - Reserved for audit trail functionality
+
+**Advanced Flow Control:**
+* `conditions` - Reserved for advanced conditional logic
+* `loops` - Reserved for loop constructs
+* `break_points` - Reserved for debugging breakpoints
+* `event_triggers` - Reserved for event-driven workflow execution
+* `webhooks` - Reserved for webhook integration
+
+**Provider & Model Management:**
+* `model_fallbacks` - Reserved for automatic model fallback chains
+* `provider_pool` - Reserved for provider load balancing
+* `cost_tracking` - Reserved for cost monitoring
+* `rate_limits` - Reserved for rate limiting configuration
+* `model_routing` - Reserved for intelligent model routing
+
+**Security & Validation:**
+* `permissions` - Reserved for permission management
+* `sandbox` - Reserved for sandboxed execution
+* `input_validation` - Reserved for input validation rules
+* `output_sanitization` - Reserved for output sanitization
+* `security_context` - Reserved for security context management
+
+**Integration & Extensions:**
+* `plugins` - Reserved for plugin system
+* `extensions` - Reserved for language extensions
+* `middleware` - Reserved for middleware functions
+* `interceptors` - Reserved for request/response interception
+* `transformers` - Reserved for data transformation pipelines
+
+**Workflow Composition:**
+* `sub_workflows` - Reserved for nested workflow execution
+* `workflow_imports` - Reserved for workflow composition
+* `macro_steps` - Reserved for step macros/templates
+* `step_library` - Reserved for reusable step libraries
+* `template_inheritance` - Reserved for template inheritance
+
+**Real-time & Streaming:**
+* `streaming_mode` - Reserved for streaming execution
+* `real_time_updates` - Reserved for real-time state updates
+* `push_notifications` - Reserved for push notification integration
+* `websocket_handlers` - Reserved for WebSocket integration
+* `sse_streams` - Reserved for Server-Sent Events
+
+**Note**: These variables are not implemented in version 1.1 but are reserved to ensure forward compatibility. Future versions of APL may implement these features without breaking existing templates.
