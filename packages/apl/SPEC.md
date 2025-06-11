@@ -1,6 +1,6 @@
 # Agentic Prompting Language (APL)
 
-> Version: 1.0
+> Version: 1.1
 
 APL is a Turing-complete, domain-specific language for writing multi‑step, branching LLM workflows (*Agentic Workflows*) in a **Markdown‑flavoured Jinja-syntax**. It gives you program‑level flow control, native tool invocation, and memory without any boilerplate code or third‑party framework. Run any agent on the server, or even in-browser. Python or TypeScript/JavaScript, locally or in the cloud, on-premise, on the edge and with any LLM provider and model.
 
@@ -9,11 +9,11 @@ APL is a Turing-complete, domain-specific language for writing multi‑step, bra
 ## 0 - Feature Highlights
 
 * **Full Jinja inside every block** — loops, filters, tags, environments. Ship your own extensions (think: *vector database memory* etc.) simply via custom tags and simple Jinja control logic to create the optimal   prompt context.
-* **Graph‑like flow control** — set `next_step` in *post* to jump anywhere (cycles allowed); default is fall‑through order.
-* **Built‑in state** — flat vars (`result_text`, `runs`, `global_runs`, `time_elapsed`, `error`, …) enable branching, throttling, circuit‑breaking.
+* **Graph‑like flow control** — set `next_step` in *post* to jump anywhere (cycles allowed); default is fall‑through order.
+* **Built‑in state** — flat vars (`result_text`, `runs`, `global_runs`, `time_elapsed`, `errors`, …) enable branching, throttling, circuit‑breaking.
 * **Provider‑agnostic** — ships with an OpenAI‑style HTTP provider; register any async function in `providers` to work with any local/cloud/API/on-premise  model.
-* **Native tool calling** — when the LLM emits a JSON tool‑call, the executor runs your async Python / TS function and returns the result back to the LLM.
-* **Cross‑platform** — ships with several reference implementations: Python 3.11+ and TypeScript 5+ / modern JavaScript (Node & browser).
+* **Native tool calling** — when the LLM emits a JSON tool‑call, the executor runs your async Python / TS function and returns the result back to the LLM.
+* **Cross‑platform** — ships with several reference implementations: Python 3.11+ and TypeScript 5+ / modern JavaScript (Node & browser).
 * **Tiny parser & runtime** — APL is driven by simple regexp parsing, a trivial dynamic executor, paired with Jinja template evaluation → LangChain‑class power without the bloat.
 
 ---
@@ -24,23 +24,107 @@ Any APL template is a sequence of **steps**. Each step has a `pre`, `prompt`, an
 
 ### 1.1 Step Heading
 
-Each **step** comprises up to three **phases** in strict order `pre → prompt → post`. `pre` and `post` are optional; `prompt` is required. A step ends at the first level‑1 heading whose identifier differs.
+Each **step** comprises up to three **phases** in strict order `pre → prompt → post`. `pre` and `post` are optional; `prompt` is required. A step ends at the first level‑1 heading whose identifier differs.
 
-A phase starts with a level‑1 heading **with `#` at column 0** (no leading spaces):
+A phase starts with a level‑1 heading **with `#` at column 0** (no leading spaces):
 
 ```
 # <phase> : <step-name>
 ```
 
-* `<phase>` ∈ `{pre, prompt, post}` (case‑insensitive; internal whitespace ignored).
+* `<phase>` ∈ `{pre, prompt, post}` (case‑insensitive; internal whitespace ignored).
 * `<step-name>` (identifier, optional) — any printable chars except line‑breaks, `#`, or `:`. Pre-/ postfix spaces are trimmed.
 
-  * After trimming surrounding whitespace a step identifier must match `^[^\n\r#:]+$`.
+  * After trimming surrounding whitespace a step identifier must match `^[^\n\r#:]+$`.
   * If the identifier is missing (an empty string), it's identifier defaults to `default`.
   * Identifiers are **case‑sensitive** and **unique within the template** (no other step with the same identifier can exist).
   * Duplicate identifiers in the same template raise an `Duplicate step identifier: <step-name>` validation error at validation time.
-* The identifier **`return`** (case‑insensitive) is reserved; user templates may not redeclare it. Doing so raises `Reserved step identifier: return` at validation time.
+* The reserved identifier **`return`** (case‑sensitive) terminates execution when used as `next_step`. User templates may not declare a step with this identifier. Doing so raises `Reserved step identifier: return` at validation time.
 * Headings cannot contain Jinja expressions, it raises `Invalid step heading: <heading>` at validation time.
+
+#### 1.1.1 Future Reserved Variables
+
+The following variable names are reserved for future language enhancements and will raise a `Reserved variable: <variable_name>` validation error if accessed in templates:
+
+**Parallel Execution & Synchronization:**
+* `next_steps` - Reserved for parallel step execution
+* `await_steps` - Reserved for step synchronization
+* `parallel_results` - Reserved for parallel execution results
+* `race_winner` - Reserved for first-completed parallel step results
+* `concurrent_limit` - Reserved for controlling parallel execution concurrency
+
+**Workflow Management:**
+* `step_graph` - Reserved for workflow graph introspection
+* `workflow_state` - Reserved for advanced workflow state management
+* `checkpoint` - Reserved for workflow checkpointing
+* `rollback` - Reserved for workflow rollback functionality
+* `snapshot` - Reserved for context snapshots
+* `resume_from` - Reserved for workflow resumption
+
+**Advanced Tool Capabilities:**
+* `tool_registry` - Reserved for dynamic tool registration
+* `tool_dependencies` - Reserved for tool dependency management
+* `tool_cache` - Reserved for tool result caching
+* `streaming_tools` - Reserved for streaming tool responses
+* `tool_timeout` - Reserved for per-tool timeout configuration
+
+**Memory & State Management:**
+* `memory` - Reserved for persistent memory across workflow runs
+* `shared_state` - Reserved for state sharing between workflow instances
+* `session` - Reserved for session-scoped data
+* `workspace` - Reserved for workspace-scoped persistence
+* `vector_store` - Reserved for vector database integration
+
+**Observability & Debugging:**
+* `trace` - Reserved for execution tracing
+* `metrics` - Reserved for workflow metrics collection
+* `profiler` - Reserved for performance profiling
+* `debug_info` - Reserved for enhanced debugging information
+* `audit_log` - Reserved for audit trail functionality
+
+**Advanced Flow Control:**
+* `conditions` - Reserved for advanced conditional logic
+* `loops` - Reserved for loop constructs
+* `break_points` - Reserved for debugging breakpoints
+* `event_triggers` - Reserved for event-driven workflow execution
+* `webhooks` - Reserved for webhook integration
+
+**Provider & Model Management:**
+* `model_fallbacks` - Reserved for automatic model fallback chains
+* `provider_pool` - Reserved for provider load balancing
+* `cost_tracking` - Reserved for cost monitoring
+* `rate_limits` - Reserved for rate limiting configuration
+* `model_routing` - Reserved for intelligent model routing
+
+**Security & Validation:**
+* `permissions` - Reserved for permission management
+* `sandbox` - Reserved for sandboxed execution
+* `input_validation` - Reserved for input validation rules
+* `output_sanitization` - Reserved for output sanitization
+* `security_context` - Reserved for security context management
+
+**Integration & Extensions:**
+* `plugins` - Reserved for plugin system
+* `extensions` - Reserved for language extensions
+* `middleware` - Reserved for middleware functions
+* `interceptors` - Reserved for request/response interception
+* `transformers` - Reserved for data transformation pipelines
+
+**Workflow Composition:**
+* `sub_workflows` - Reserved for nested workflow execution
+* `workflow_imports` - Reserved for workflow composition
+* `macro_steps` - Reserved for step macros/templates
+* `step_library` - Reserved for reusable step libraries
+* `template_inheritance` - Reserved for template inheritance
+
+**Real-time & Streaming:**
+* `streaming_mode` - Reserved for streaming execution
+* `real_time_updates` - Reserved for real-time state updates
+* `push_notifications` - Reserved for push notification integration
+* `websocket_handlers` - Reserved for WebSocket integration
+* `sse_streams` - Reserved for Server-Sent Events
+
+**Note**: These variables are not implemented in version 1.1 but are reserved to ensure forward compatibility. Future versions of APL may implement these features without breaking existing templates.
 
 ### 1.2 Prompt Phase Sub‑sections
 
@@ -115,7 +199,7 @@ Rules applied:
 * Step name identifier defaults to `default`.
 * The executor will create a single prompt message with role `user` and content `How are you?` in variable  `prompts`.
 * The `pre` and `post` phases are empty, so the executor will call the LLM provider directly and without any pre- or post-processing.
-* Therefore, the default model `gpt-4o`, temperature `0.7`, and other variables are used by the default LLM provider (OpenAI) as set in the executor options (see below) and the default endpoint (OpenAI API) is used to start the prompt.
+* Therefore, the default model `gpt-4o` and other variables are used by the default LLM provider (OpenAI) as set in the executor options (see below) and the default endpoint (OpenAI API) is used to start the prompt.
 
 #### 1.2.3 Multimodal example
 
@@ -174,10 +258,10 @@ pre → prompt → post →   {
 
 * If `next_step` is explicitly set in the *post* phase, the executor jumps to the step with that identifier.
 * If `next_step` is not explicitly set in the *post* phase, the executor jumps to the next natural-order step in template.
-* If `next_step` is set to the sentinel `return` (any case), the executor terminates execution and returns the final context.
+* If `next_step` is set to the reserved identifier `return` (case‑sensitive), the executor terminates execution and returns the final context.
 * If `next_step` is not set and there are no more steps, the executor implicitly returns the final context as a status.
 * If `next_step` is set to any non-existing step name, the executor raises `"Unknown step: <step_name>"` at runtime.
-* `next_step` is case‑sensitive **except** the sentinel `return` (any case), which terminates execution.
+* `next_step` is case‑sensitive including the reserved identifier `return`, which terminates execution.
 * **Circular References**: Circular `next_step` references are allowed. The template author is responsible for implementing circuit-breaking logic. Without proper circuit-breaking, the default timeout (120 seconds) will raise a timeout error at runtime.
 
 ### 2.2 Prompt Success & Retry Logic
@@ -193,22 +277,24 @@ A provider is supposed to:
 
 Read the `prompts` variable, which is a list of message dicts in OpenAI-standard format (see §3). Call the LLM in its native protocol:
 
-* Use `describeTools(context)` to generate tool descriptions from the `with_tools` variable mapping, filtered by `allowed_tools`, and store in the `tools` context variable. This can be passed directly as a hyperparameter to the LLM provider.
+* Use `describe_tools(context)` to generate tool descriptions from the `with_tools` mapping of the executor options, filtered by `allowed_tools` from context, and store in the `tools` context variable. This can be passed directly as a hyperparameter to the LLM provider.
 * The `prompts` variable is already pre-processed by the executor with all attachments converted to OpenAI-standard format. Providers can use this directly or transform it to their native format as needed.
 * Pass the final prompts and hyperparameters to the LLM provider.
+* Provider functions MUST allow exceptions to bubble up to the executor, which will catch them and append error messages to the `errors` list.
 
 #### 2.2.2 Process the LLM response:
 
 Read and validate the response from the LLM provider and call native tools, selected by the LLM:
 
 * Process the response messages from the LLM.
-* **Tool Call Execution**: If the LLM response contains tool calls, they are executed immediately using `callTools(context)`. The executor looks up functions in the `with_tools` variable mapping and calls the respective async functions. Tool calls are processed in the order they appear in the LLM response.
+* **Tool Call Execution**: If the LLM response contains tool calls, they are executed immediately using `call_tools(context)`. The executor looks up functions in the `with_tools` variable mapping and calls the respective async functions. Tool calls are processed in the order they appear in the LLM response.
+* **Tool Call Error Handling**: If any tool execution raises an exception, the error is appended to the `errors` list but execution continues. Failed tool calls are recorded in `result_tool_calls` with their error message as the `content` and the `with_error` flag set to `true`.
 * **Tool Call Results**: The results of all tool executions are automatically stored in the `result_tool_calls` context variable as a list of tool call result objects.
 * Return the response in OpenAI-standard format for the executor to process.
 
 #### 2.2.3 Standard Tool Calling
 
-In case the LLM supports standard OpenAI tool calling (see §5), the LLM provider can use the standard runtime functions `describeTools(context)` and `callTools(context)` to handle tool calling. 
+In case the LLM supports standard OpenAI tool calling (see §5), the LLM provider can use the standard runtime functions `describe_tools(context)` and `call_tools(context)` to handle tool calling. 
 
 #### 2.2.4 Custom Tool Calling
 
@@ -235,20 +321,35 @@ Example of a valid `tool_description`:
 
 Tool descriptions are transmitted to the LLM provider as per the LLM providers defined protocol or prompt template format.
 
-When the LLM responds with custom tool calls, the provider function must parse the tool call messages, transform them into OpenAI format and execute each using the `callTool(tool_call)` runtime function. 
+When the LLM responds with custom tool calls, the provider function must parse the tool call messages, transform them into OpenAI format and execute each using the `call_tool(tool_call)` runtime function. 
 
 Example of a valid `tool_call`:
 
 ```jsonc
 {
-  "id": "call_1",              // tool call ID, unique per step
-  "type": "function",          // still uses "function" here
+  "id": "call_abc123",             // tool call ID, any string generated by LLM
+  "type": "function",              // still uses "function" here
   "function": {
     "name": "calc",
     "arguments": "{ \"num1\": 40, \"num2\": 2 }"
   }
 }
 ```
+
+The `call_tool(tool_call)` function returns the result of the tool execution, which is then stored in the `result_tool_calls` context variable.
+
+Example of a valid tool call result:
+
+```jsonc
+{
+  "role": "tool",                  // role of the tool call result
+  "tool_call_id": "call_abc123",  // exact ID from LLM tool call
+  "content": 42,                   // actual tool execution result
+  "with_error": false              // true if tool execution failed, false otherwise
+}
+```
+
+**Note**: Tool call IDs are generated by the LLM and can be any string format. The executor accepts whatever ID the LLM provides without validation or uniqueness enforcement.
 
 #### 2.2.5 Provider Result
 
@@ -295,59 +396,58 @@ The executor automatically parses the provider response and sets the following c
   "result_tool_calls": [              // processed tool call results
     {
       "role": "tool",                 
-      "tool_call_id": "call_1",       // mapping to the tool call ID
-      "content": 42,                  // actual tool execution result
+      "tool_call_id": "call_abc123",  // exact ID from LLM tool call
+      "content": 42,                  // actual tool execution result, or error message if failed
+      "with_error": false              // true if tool execution failed, false otherwise
     }
   ],           
-  "result_image_urls": [],            // extracted from message.content (image_url parts)
-  "result_audio_inputs": [],          // extracted from message.content (audio_input parts)
-  "result_files": []                  // extracted from message.content (file parts)
+  "result_image_urls": [],            // extracted from message.content (image_url content parts)
+  "result_audio_inputs": [],          // extracted from message.content (audio_input content parts)
+  "result_files": []                  // extracted from message.content (file content parts)
 }
 ```
 
 The executor automatically continues to:
 1. Extracts text content from `message.content` (string or text parts of array)
 2. Parse and store any `image_url`, `audio_input`, or `file` content parts in their respective result arrays
-3. Execute any tool calls and stores results in `result_tool_calls`
+3. Execute any tool calls and stores results in `result_tool_calls`. Failed tool executions have their error messages appended to the `errors` list, but execution continues.
 4. Set the `prompt_tokens`, `completion_tokens`, and `total_tokens` in the `usage` variable if present in the provider response.
-5. Validate structured JSON output when `output_mode` is set appropriately and `output_structure` is defined.
+5. When `output_mode` is set to `json` or `structured_output`, validate structured JSON output using `validate_schema(result_json, context)`. Schema validation errors are appended to the `errors` list but execution continues.
 6. Set the `result_role` to the role of the primary return message (e.g., `assistant`), excluding tool call roles.
 7. Set the `result_json` variable if the provider response contains a valid JSON object and `output_mode` is set to `json` or `structured_output`.
 8. Increment the `runs` counter for the current step and `global_runs` for the entire workflow
-9. Set the `error` variable if an error occurred during the provider call or any tool call.
+9. Catch any errors during provider call or tool execution and append them to the `errors` list for the *post* phase to process.
 10. Proceed to evaluate the *post* phase of the step, where the `next_step` can be set.
 
 ### 2.3 Variable Lifecycle
 
 All phases share one mutable Jinja context.
 
-* `error` is reset to `None` **before** each *prompt* phase. Therefore, `error` is accessible in **pre** and **post** phases.
+* `errors` is reset to `[]` **before** each *prompt* phase, making it available in *pre* (from previous step) and *post* (from current step if any errors occurred). Therefore, `errors` is accessible in **pre** and **post** phases.
 * `time_elapsed` and `time_elapsed_global` are monotonic floats in **milliseconds**.
 * Executor MAY expose a `max_runs` option (default ∞). Exceeding it raises `"Run budget exceeded"` at runtime.
 
 ### 2.4 Executor‑maintained Variables
 
-Variables in the executor context are shared between the Jinja templates, provider functions, and tool functions (when `with_context` is enabled for `with_tools`). The executor automatically maintains these variables:
-
 | Name                  | Type          | When set                | Meaning                          |
 | --------------------- | ------------- | ----------------------- | -------------------------------- |
 | `prev_step`           | `str \| None` | start of step           | Identifier that just finished    |
 | `next_step`           | `str`         | in *post*               | Branch target (`return` ends), only effective in *post*.    |
-| `result_text`         | `str`         | after successful provider call     | Provider + tool chain output     |
+| `result_text`         | `str`         | after successful provider call     | Provider + tool chain output  (empty string if no text content)    |
 | `result_json`         | `dict \| None` | after successful provider call     | JSON object from provider        |
 | `result_tool_calls`   | `list`        | after successful provider call     | List of executed tool call results |
 | `result_image_urls`   | `list[str]`   | after successful provider call     | List of image URLs from provider |
 | `result_audio_inputs` | `list[str]`   | after successful provider call     | List of audio input URLs from provider |
 | `result_files`        | `list[str]`   | after successful provider call     | List of file URLs from provider  |
-| `result_role`         | `str`         | after successful provider call     | Role of the result message       |
+| `result_role`         | `str`         | after successful provider call     | Role of the result message (empty string if no message)      |
 | `usage`               | `dict \| None` | after successful provider call     | Token usage stats from provider response    |
 | `runs`                | `int`         | after successful provider call     | Count for current step           |
 | `global_runs`         | `int`         | after successful provider call     | Total successful prompts         |
 | `time_elapsed`        | `float` ms    | each phase entry        | Milliseconds since current step began |
 | `time_elapsed_global` | `float` ms    | each phase entry        | Milliseconds since workflow start     |
-| `error`               | `str \| None` | start to finish of step | Error text from previous step      |
+| `errors`              | `list[str]`   | start to finish of step | Error messages from previous step (in *pre*) or current step (in *post*). Reset to empty list before each prompt phase.      |
 | `prompts`             | `list`        | before provider call    | Chat history in provider schema  |
-| `tools`               | `list`        | after `describeTools()` or custom tool definitions | List of tool descriptions for LLM provider in OpenAI format |
+| `tools`               | `list`        | after `describe_tools()` or custom tool definitions | List of tool descriptions for LLM provider in OpenAI format |
 | `context`             | `dict`        | updated after every phase of every step    | Holds the union of executor-maintained variables (§2.4) and all user-settable variables (§2.5) and options (§6.1) |
 | `context_history`     | `list`        | updated after each *post* phase    | List of immutable entries of all previous step's contexts. Used by APL Jinja extensions described in §7 |
 
@@ -455,7 +555,7 @@ Mock a provider function that returns a greeting.
 async def provider(context: dict) -> dict:
     prompts      = context["prompts"]   # list of message dicts (schema §3)
     model        = context.get("model", "gpt-4o")
-    temperature  = context.get("temperature", 0.7)
+    temperature  = context.get("temperature")  # None if not set
     # ... other user vars ...
     # Do steps described in §2.2.*  
     # Then return OpenAI-standard format:
@@ -487,12 +587,95 @@ print(status["result_text"])  # "Mocked response"
 
 ```typescript
 import { start } from "defuss-apl";
-import type { Context, ProviderResponse } from "defuss-apl";
+
+// Type definitions
+interface Context {
+  // Executor-maintained variables (§2.4)
+  prev_step: string | null;
+  next_step: string;
+  result_text: string;
+  result_json: Record<string, any> | null;
+  result_tool_calls: Array<{
+    role: "tool";
+    tool_call_id: string;
+    content: any;
+    with_error: boolean;
+  }>;
+  result_image_urls: string[];
+  result_audio_inputs: string[];
+  result_files: string[];
+  result_role: string;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  } | null;
+  runs: number;
+  global_runs: number;
+  time_elapsed: number;
+  time_elapsed_global: number;
+  errors: string[];
+  prompts: Array<{
+    role: "system" | "user" | "assistant" | "developer" | "tool_result";
+    content: string | Array<{
+      type: "text" | "image_url" | "audio_input" | "file";
+      text?: string;
+      image_url?: { url: string };
+      audio_input?: { url: string };
+      file?: { url: string };
+    }>;
+  }>;
+  tools: Array<{
+    name: string;
+    description: string;
+    parameters: Record<string, any>;
+  }>;
+  context: Record<string, any>;
+  context_history: Array<Context>;
+  
+  // User-settable variables (§2.5)
+  model: string;
+  temperature: number | null;
+  allowed_tools: string[];
+  output_mode: "text" | "json" | "structured_output" | null;
+  output_structure: string | null;
+  max_tokens: number | null;
+  top_p: number | null;
+  repetition_penalty: number | null;
+  stop_sequences: string[];
+  seed: number | null;
+  logit_bias: Record<string, number>;
+  
+  // Allow additional custom properties
+  [key: string]: any;
+}
+
+interface ProviderResponse {
+  choices: Array<{
+    message: {
+      role: "assistant";
+      content: string;
+      tool_calls?: Array<{
+        id: string;
+        type: "function";
+        function: {
+          name: string;
+          arguments: string;
+        };
+      }>;
+    };
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
 
 async function provider(context: Context): Promise<ProviderResponse> {
     const prompts = context.prompts; // list of message dicts (schema §3)
     const model = context.model || "gpt-4o";
-    const temperature = context.temperature || 0.7;
+    const temperature = context.temperature; // undefined if not set
     // ... other user vars ...
     // Do steps described in §2.2.*
     // Then return OpenAI-standard format:
@@ -573,7 +756,7 @@ def add(x: int, y: int) -> int:
     return x + y
 ```
 
-When `describeTools()` is called, it automatically generates:
+When `describe_tools()` is called, it automatically generates:
 
 ```jsonc
 {
@@ -632,8 +815,7 @@ print(status["result_tool_calls"][0]["content"]) # 42
 ### 5.3 TypeScript example
 
 ```ts
-import { start } from "defuss-apl";
-import { Context } from "defuss-apl";
+import { start, type Context } from "defuss-apl";
 
 async function calc(num1: number, num2: number, context?: Context) {
   return num1 + num2;
@@ -690,9 +872,10 @@ console.log(status["result_tool_calls"][0]["content"]); // 42
 | ----------------------------------------------- | ------- | 
 | `check(apl: str) -> bool` | Returns `True` on success or raises `ValidationError` with location‑specific details.                   |
 | `start(apl: str, options: dict = {}) -> dict` | Validate then run template(s); returns the **final mutable context** (all variables) after termination. |
-| `describeTools(context: dict) -> list` | Filtered by `allowed_tools` it returns a list of tool descriptions from `with_tools` and sets the `tools` variable context. |
-| `callTool(tool_call: dict, context: dict) -> dict` | Executes a single tool call and returns the result in OpenAI tool call response format. |
-| `callTools(pending_tool_calls: list, context: dict) -> list` | Executes pending tool calls and returns results in OpenAI tool call response format. |
+| `describe_tools(context: dict) -> list` | Filtered by `allowed_tools` it returns a list of tool descriptions from `with_tools` and sets the `tools` variable context. |
+| `call_tool(tool_call: dict, context: dict) -> dict` | Executes a single tool call and returns the OpenAI-standard tool call result format. |
+| `call_tools(pending_tool_calls: list, context: dict) -> list` | Executes pending tool calls and returns a list of OpenAI-standard tool call results. |
+| `validate_schema(result_json: dict, context: dict) -> bool` | Validates `result_json` against the JSON schema defined in `output_structure`. Returns `True` if valid, raises schema validation error if invalid (error gets appended to `errors` list). |
 
 ### 6.1 `start()` Options
 
@@ -780,148 +963,192 @@ const status = await start(readFileSync("agent.apl", "utf-8"), options);
 console.log(status);
 ```
 
+### 6.3 Built-in Helper Functions
+
+The APL runtime automatically adds the following helper functions to every template's context:
+
+#### 6.3.1 `get_json_path(obj, path, default=None)`
+
+Extract data using dot notation (e.g., `"user.profile.name"`)
+
+**Function Signature:**
+
+```python
+def get_json_path(obj: dict, path: str, default=None) -> any:
+    """Extract data using dot notation. Supports array access with brackets.
+    
+    Examples:
+    - get_json_path(data, "user.name") 
+    - get_json_path(data, "items.0.title")
+    - get_json_path(data, "nested.array.1.property", "fallback")
+    """
+```
+
 ---
 
-## 7 - Built-in Jinja Extensions provided by the APL Runtime
+## 7 - Common Jinja Patterns
 
-The APL runtime provides custom Jinja tags and filters to simplify common patterns in *post* phases, especially for accessing tool call results and making control flow decisions.
+APL uses standard Jinja2 templating. The APL runtime automatically provides a `get_json_path` helper function in the context for extracting data from JSON results and accessing nested data structures.
 
-### 7.1 Tool Result Filters
-
-Since `tools` and `result_tool_calls` are linked by `call_id` but stored as separate lists, these filters provide convenient access patterns:
-
-#### 7.1.1 `tool_result` Filter
-
-Access tool call results by function name, returning the first result or a list of all results.
+### 7.1 Working with Tool Results
 
 ```jinja
-{{ "calc" | tool_result }}              {# First result from calc tool #}
-{{ "calc" | tool_result("all") }}       {# List of all calc results #}
-{{ "calc" | tool_result(0) }}           {# First result (explicit index of current step) #}
-{{ "calc" | tool_result(-1) }}          {# Last result (of current step) #}
-```
+{# Iterate over all tool call results #}
+{% for tool_call in result_tool_calls %}
+  Tool {{ tool_call.tool_call_id }}: {{ tool_call.content }}
+  {% if tool_call.with_error %}(ERROR){% endif %}
+{% endfor %}
 
-#### 7.1.2 `tool_called` Filter
+{# Filter successful results #}
+{% for tool_call in result_tool_calls if not tool_call.with_error %}
+  Success: {{ tool_call.content }}
+{% endfor %}
 
-Check if a specific tool was called in the current step.
-
-```jinja
-{% if "calc" | tool_called %}
-  Calculator was used in this step.
+{# Check if any tools failed #}
+{% if result_tool_calls | selectattr('with_error') | list %}
+  Some tools failed!
 {% endif %}
 
-{% if "image_gen" | tool_called %}
-  Image generation was triggered.
+{# Get first result from a specific tool by name #}
+{% for tool_call in result_tool_calls %}
+  {% if "calc" in tool_call.tool_call_id %}
+    First calc result: {{ tool_call.content }}
+    {% break %}
+  {% endif %}
+{% endfor %}
+
+{# Count tool calls by type #}
+{% set api_call_count = 0 %}
+{% for tool_call in result_tool_calls %}
+  {% if "api" in tool_call.tool_call_id %}
+    {% set api_call_count = api_call_count + 1 %}
+  {% endif %}
+{% endfor %}
+{% if api_call_count > 3 %}
+  Too many API calls: {{ api_call_count }}
 {% endif %}
 ```
 
-#### 7.1.3 `tool_count` Filter
-
-Count how many times a tool was called.
+### 7.2 Error Handling
 
 ```jinja
-{% if "api_call" | tool_count > 3 %}
-  Too many API calls, implement throttling.
+{# Check for errors #}
+{% if errors %}
+  {% set next_step = "error_handler" %}
+  Error details: {{ errors | join(" | ") }}
+{% endif %}
+
+{# Check for specific error types #}
+{% for error in errors %}
+  {% if "schema validation" in error %}
+    Schema error: {{ error }}
+  {% elif "tool execution" in error %}
+    Tool error: {{ error }}
+  {% elif "provider" in error %}
+    Provider error: {{ error }}
+  {% endif %}
+{% endfor %}
+
+{# Count total errors across workflow #}
+{% set total_errors = context_history | map(attribute='errors') | map('length') | sum %}
+{% if total_errors > 5 %}
+  Too many errors: {{ total_errors }}
 {% endif %}
 ```
 
-### 7.2 Control Flow Tags
-
-#### 7.2.1 `{% for_tools %}` Iteration Tag
-
-Iterate over tool results with automatic filtering.
+### 7.3 Previous Step Access
 
 ```jinja
-{# Iterate over all tool results #}
-{% for_tool_results as tool_name, result %}
-  Tool {{ tool_name }} returned: {{ result }}
-{% endfor_tool_results %}
-
-{# Iterate over specific tool results #}
-{% for_tool_results "api_call" as result %}
-  Processing API result {{ loop.index }}: {{ result }}
-{% endfor_tool_results %}
-
-{# Iterate with filtering #}
-{% for_tool_results as tool_name, result if result.status == "success" %}
-  Successful tool: {{ tool_name }} -> {{ result.data }}
-{% endfor_tool_results %}
-```
-
-### 7.3 State and Error Handling Filters
-
-#### 7.3.1 `prev` Filter
-
-Access information about previous steps.
-
-```jinja
-{# Get result from specific previous step #}
-Previous calculation LLM text result: {{ "calc_step" | prev("result_text") }}
-
-{# Checking if a step was executed does not need the prev() filter #}
-{% if "validation" eq prev_step %}
+{# Check if a specific step was the previous one #}
+{% if prev_step == "validation" %}
   Validation step was completed.
 {% endif %}
 
-{# Checking if a step was executed before the previous step (prev-prev) can be done using the prev() filter #}
-{% if "validation" | prev("prev_step") %}
-  Validation step was completed before the previous step.
-{% endif %}
+{# Get data from a specific previous step #}
+{% for step_context in context_history %}
+  {% if step_context.prev_step == "calc_step" %}
+    Previous calc result: {{ step_context.result_text }}
+    {% break %}
+  {% endif %}
+{% endfor %}
 
-{# Get execution count for a step #}
-Cycles/retries: {{ "some_step" | prev("runs") }}
+{# Get execution count for current step #}
+Current step retries: {{ runs }}
+Total workflow runs: {{ global_runs }}
 ```
 
-This filter uses the `context_history` variable to access previous step data, which is automatically maintained by the executor.
+### 7.4 JSON Data Access
 
-### 7.4 Data Transformation Filters
-
-#### 7.4.1 `json_get` Filter
-
-Extract data from JSON results using JSONPath syntax.
+APL automatically provides a `get_json_path` helper function in the context for extracting data from JSON results:
 
 ```jinja
 {# Extract nested data from tool results #}
-{% set user_id = "some_api_call" | tool_result | json_get("$.user.id") %}
-{% set items = "list_data" | tool_result | json_get("$.items[*].name") %}
+{% for tool_call in result_tool_calls if not tool_call.with_error %}
+  {% set user_id = get_json_path(tool_call.content, "user.id", "unknown") %}
+  {% set items = get_json_path(tool_call.content, "items") %}
+  {% set count = get_json_path(tool_call.content, "count", 0) %}
+  
+  User: {{ user_id }}, Items: {{ items | length }}, Count: {{ count }}
+{% endfor %}
 
-{# With fallback values #}
-{% set count = "stats" | tool_result | json_get("$.count", default=0) %}
-```
-
-### 7.5 Example Usage Patterns
-
-#### 7.5.1 Complex Decision Logic
-
-```jinja
-# post: analysis
-{% set score = "calculate_score" | tool_result %}
-{% set validation = "validate_data" | tool_result %}
-
-{% if score > 0.8 and validation.status == "passed" %}
-  {% set next_step = "finalize" %}
-  {% set confidence = "high" %}
-{% elif score > 0.5 %}
-  {% if "refine" | prev("runs") < 3 %}
-    {%# let's refine some more #%}
-    {% set next_step = "refine" %}
-  {% else %}
-    {% set next_step = "manual_review" %}
+{# Extract data from specific tool results #}
+{% for tool_call in result_tool_calls %}
+  {% if "api_call" in tool_call.tool_call_id and not tool_call.with_error %}
+    {% set status = get_json_path(tool_call.content, "status") %}
+    {% set data = get_json_path(tool_call.content, "data.items.0.name") %}
+    API Status: {{ status }}, First Item: {{ data }}
   {% endif %}
-{% else %}
-  {% set next_step = "error_handler" %}
-  {% set error_reason = "Score too low: " ~ score %}
-{% endif %}
+{% endfor %}
 ```
 
-#### 7.5.2 Batch Processing Logic
+### 7.5 Control Flow Patterns
 
 ```jinja
-# post: batch_process
+{# Error-first decision making #}
+{% if errors %}
+  {% set next_step = "error_handler" %}
+{% elif time_elapsed > 5000 %}
+  {% set next_step = "timeout_handler" %}
+{% elif runs > 3 %}
+  {% set next_step = "retry_limit_reached" %}
+{% else %}
+  {% set next_step = "continue_processing" %}
+{% endif %}
+
+{# Complex scoring logic using tool results #}
+{% for tool_call in result_tool_calls %}
+  {% if "calculate_score" in tool_call.tool_call_id and not tool_call.with_error %}
+    {% set score = get_json_path(tool_call.content, "score", 0) %}
+    {% if score > 0.8 %}
+      {% set next_step = "finalize" %}
+    {% elif score > 0.5 and runs < 3 %}
+      {% set next_step = "refine" %}
+    {% else %}
+      {% set next_step = "manual_review" %}
+    {% endif %}
+    {% break %}
+  {% endif %}
+{% endfor %}
+
+{# Circuit breaker with global error tracking #}
+{% set global_errors = context_history | map(attribute='errors') | map('length') | sum %}
+{% if global_errors > 10 %}
+  Global error threshold exceeded: {{ global_errors }}
+  {% set next_step = "return" %}
+{% elif time_elapsed_global > 30000 %}
+  Workflow timeout exceeded
+  {% set next_step = "return" %}
+{% endif %}
+
+{# Batch processing with JSON extraction #}
 {% set failed_items = [] %}
-{% for result in "process_item" | tool_result("all") %}
-  {% if result.status == "failed" %}
-    {% set failed_items = failed_items + [result.item_id] %}
+{% for tool_call in result_tool_calls %}
+  {% if "process_item" in tool_call.tool_call_id %}
+    {% set status = get_json_path(tool_call.content, "status") %}
+    {% set item_id = get_json_path(tool_call.content, "item_id") %}
+    {% if status == "failed" %}
+      {% set failed_items = failed_items + [item_id] %}
+    {% endif %}
   {% endif %}
 {% endfor %}
 
@@ -930,21 +1157,5 @@ Extract data from JSON results using JSONPath syntax.
   {% set retry_items = failed_items %}
 {% else %}
   {% set next_step = "summary" %}
-{% endif %}
-```
-
-#### 7.5.3 Circuit Breaker Pattern
-
-Time-based conditional logic for circuit breaking:
-
-```jinja
-{% if time_elapsed > 5000 %}
-  Step has been running for more than 5 seconds.
-  {% set next_step = "graceful_timeout_handler" %}
-{% endif %}
-
-{% if time_elapsed_global > 30000 %}
-  Total workflow time exceeded 30 seconds.
-  {% set next_step = "return" %}
 {% endif %}
 ```
