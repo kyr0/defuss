@@ -66,7 +66,7 @@ async def main():
 You are a content validation assistant. Use the validate_input tool to analyze the following text.
 
 ## user
-Please validate this input: "{{ user_input }}"
+Please validate this input: "{{ get_context('user_input', 'default text') }}"
 
 # post: input_validation
 {% for tool_call in result_tool_calls %}
@@ -89,7 +89,7 @@ Please validate this input: "{{ user_input }}"
 You are a content processing assistant. The input validation passed. Now process the content.
 
 ## user
-Input validation successful! Words: {{ word_count }}, Sentiment: {{ sentiment }}
+Input validation successful! Words: {{ get_context('word_count', 0) }}, Sentiment: {{ get_context('sentiment', 'neutral') }}
 Please use the process_content tool to process the validated content.
 
 # post: content_processing
@@ -116,7 +116,7 @@ Please use the process_content tool to process the validated content.
 You are a summary assistant. The content processing was successful.
 
 ## user
-Excellent! Processing completed successfully with score {{ processing_score }}.
+Excellent! Processing completed successfully with score {{ get_context('processing_score', 0) }}.
 Create a success summary.
 
 # post: success_summary
@@ -128,8 +128,8 @@ Create a success summary.
 You are an improvement assistant. The content needs some improvements.
 
 ## user
-Content processing completed with score {{ processing_score }}. 
-Recommendations: {{ recommendations | join(", ") }}
+Content processing completed with score {{ get_context('processing_score', 0) }}. 
+Recommendations: {{ get_context('recommendations', []) | join(", ") }}
 Please suggest specific improvements.
 
 # post: improvement_needed
@@ -141,8 +141,8 @@ Please suggest specific improvements.
 You are a revision assistant. The content needs major revision.
 
 ## user
-Content processing score was low ({{ processing_score }}). 
-Major revision needed. Recommendations: {{ recommendations | join(", ") }}
+Content processing score was low ({{ get_context('processing_score', 0) }}). 
+Major revision needed. Recommendations: {{ get_context('recommendations', []) | join(", ") }}
 
 # post: major_revision
 {{ set_context('workflow_status', 'requires_major_revision') }}

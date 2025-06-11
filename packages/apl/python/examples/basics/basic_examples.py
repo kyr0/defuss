@@ -33,10 +33,10 @@ async def example_overview():
 
 # prompt: demo
 ## system
-You are demonstrating {{ framework }} version {{ version }}.
+You are demonstrating {{ get_context('framework', 'APL') }} version {{ get_context('version', '1.1') }}.
 
 ## user
-Show how the new {{ syntax }} syntax improves APL templates.
+Show how the new {{ get_context('syntax', 'set_context') }} syntax improves APL templates.
 
 # post: demo
 {{ set_context('demo_complete', true) }}

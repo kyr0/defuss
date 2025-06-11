@@ -38,7 +38,7 @@ async def example_variables():
 You are a friendly assistant.
 
 ## user
-{{ greeting }}, {{ user_name }}! How are you doing today?
+{{ get_context('greeting', 'Hello') }}, {{ get_context('user_name', 'User') }}! How are you doing today?
 
 # post: setup
 {{ set_context('next_step', 'return') }}
@@ -60,22 +60,22 @@ async def example_control_flow():
 {{ set_context('counter', 1) }}
 
 # prompt: first
-This is step {{ counter }}.
+This is step {{ get_context('counter', 0) }}.
 
 # post: first
-{{ set_context('counter', counter + 1) }}
-{% if counter <= 3 %}
+{{ set_context('counter', get_context('counter', 0) + 1) }}
+{% if get_context('counter', 0) <= 3 %}
     {{ set_context('next_step', 'second') }}
 {% else %}
     {{ set_context('next_step', 'return') }}
 {% endif %}
 
 # prompt: second
-This is step {{ counter }}.
+This is step {{ get_context('counter', 0) }}.
 
 # post: second
-{{ set_context('counter', counter + 1) }}
-{% if counter <= 3 %}
+{{ set_context('counter', get_context('counter', 0) + 1) }}
+{% if get_context('counter', 0) <= 3 %}
     {{ set_context('next_step', 'first') }}
 {% else %}
     {{ set_context('next_step', 'return') }}
@@ -172,10 +172,10 @@ async def example_error_handling():
 {{ set_context('max_retries', 2) }}
 
 # prompt: setup
-This is attempt #{{ runs + 1 }}. Please respond with something.
+This is attempt #{{ get_context('runs', 0) + 1 }}. Please respond with something.
 
 # post: setup
-{% if errors and runs < max_retries %}
+{% if errors and get_context('runs', 0) < get_context('max_retries', 2) %}
     {{ set_context('next_step', 'setup') }}
 {% else %}
     {{ set_context('next_step', 'return') }}

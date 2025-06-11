@@ -47,7 +47,7 @@ Hello! How can I help you today?
 You are a friendly assistant.
 
 ## user
-{{ greeting }}, {{ user_name }}! How are you doing today?
+{{ get_context('greeting', 'Hello') }}, {{ get_context('user_name', 'User') }}! How are you doing today?
 
 # post: setup
 {{ set_context('next_step', 'return') }}

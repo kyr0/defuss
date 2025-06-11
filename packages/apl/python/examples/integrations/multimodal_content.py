@@ -72,14 +72,14 @@ Use your tools to analyze both the image and document, then provide a summary.
 {% for tool_call in result_tool_calls %}
   {% if "analyze_image" in tool_call.tool_call_id and not tool_call.with_error %}
     {{ set_context('image_analysis', tool_call.content) }}
-    {{ set_context('total_attachments', total_attachments + 1) }}
+    {{ set_context('total_attachments', get_context('total_attachments', 0) + 1) }}
     
     Image analyzed: {{ get_json_path(tool_call.content, 'format', 'unknown') }} format
     Objects detected: {{ get_json_path(tool_call.content, 'detected_objects', []) | join(", ") }}
     
   {% elif "process_document" in tool_call.tool_call_id and not tool_call.with_error %}
     {{ set_context('document_analysis', tool_call.content) }}
-    {{ set_context('total_attachments', total_attachments + 1) }}
+    {{ set_context('total_attachments', get_context('total_attachments', 0) + 1) }}
     
     Document processed: {{ get_json_path(tool_call.content, 'detected_type', 'unknown') }}
     Topics: {{ get_json_path(tool_call.content, 'key_topics', []) | join(", ") }}
@@ -122,7 +122,7 @@ You are an analytical assistant. Only partial content was processed.
 
 ## user
 Some content was processed but not all attachments were successfully analyzed.
-Processed: {{ total_attachments }} out of 2 attachments.
+Processed: {{ get_context('total_attachments', 0) }} out of 2 attachments.
 
 Please provide analysis based on what was successfully processed.
 

@@ -26,10 +26,10 @@ async def main():
 {{ set_context('max_retries', 2) }}
 
 # prompt: setup
-This is attempt #{{ runs + 1 }}. Please respond with something meaningful.
+This is attempt #{{ get_context('runs', 0) + 1 }}. Please respond with something meaningful.
 
 # post: setup
-{% if errors and runs < max_retries %}
+{% if errors and get_context('runs', 0) < get_context('max_retries', 2) %}
     {{ set_context('next_step', 'setup') }}
 {% else %}
     {{ set_context('next_step', 'return') }}
@@ -61,15 +61,15 @@ This is attempt #{{ runs + 1 }}. Please respond with something meaningful.
 {{ set_context('attempt', 1) }}
 
 # prompt: setup
-{% if attempt == 1 %}
+{% if get_context('attempt', 1) == 1 %}
 Please use the failing tool with message "This should fail".
 {% else %}
 Please use the failing tool with message "This should work".
 {% endif %}
 
 # post: setup
-{% if errors and attempt < 2 %}
-    {{ set_context('attempt', attempt + 1) }}
+{% if errors and get_context('attempt', 1) < 2 %}
+    {{ set_context('attempt', get_context('attempt', 1) + 1) }}
     {{ set_context('next_step', 'setup') }}
 {% else %}
     {{ set_context('next_step', 'return') }}
