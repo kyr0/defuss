@@ -182,7 +182,8 @@ async def call_tool(tool_call: Dict[str, Any], context: Dict[str, Any]) -> Dict[
         
     except Exception as e:
         error_msg = str(e)
-        context["errors"].append(f"Tool call error: {error_msg}")
+        if "errors" in context:
+            context["errors"].append(f"Tool call error: {error_msg}")
         
         return {
             "role": "tool", 

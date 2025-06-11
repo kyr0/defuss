@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Any, Callable, Union
 from dataclasses import asdict
 import copy
 
-from jinja2 import Environment, BaseLoader
+from jinja2 import Environment, BaseLoader, StrictUndefined
 
 from .parser import parse_apl, ValidationError
 from .tools import describe_tools, call_tools, validate_schema
@@ -96,7 +96,6 @@ class APLRuntime:
     
     def __init__(self, options: Optional[Dict[str, Any]] = None):
         self.options = options or {}
-        self.jinja_env = Environment(loader=BaseLoader())
         self.current_context = None  # Reference to the current execution context
         
         # Default options per §6.1
@@ -113,7 +112,7 @@ class APLRuntime:
         # Jinja2 environment
         self.jinja_env = self.options.get('jinja2_env')
         if self.jinja_env is None:
-            self.jinja_env = Environment(loader=BaseLoader())
+            self.jinja_env = Environment(loader=BaseLoader(), undefined=StrictUndefined)
             self.jinja_env.enable_async = True  # Enable auto-await for custom coroutines
         
         # Attachment processing regex (§1.2.1)
@@ -259,8 +258,9 @@ class APLRuntime:
         # Track step runs (§2.4)
         current_step = context.get("current_step")
         if current_step != context.get("prev_step"):
-            # Starting a new step, reset runs counter
+            # Starting a new step, reset runs counter and errors from previous step
             context["runs"] = 0
+            context["errors"] = []
         
         # Increment run counters (§2.4)
         context["runs"] += 1
@@ -271,17 +271,20 @@ class APLRuntime:
             context["time_elapsed"] = time.time() * 1000 - step_start_time
             await self._execute_pre_phase(step.pre.content, context)
             
-        # Reset errors before prompt phase (§2.3)
-        context["errors"] = []
-        
         # PROMPT phase  
         context["time_elapsed"] = time.time() * 1000 - step_start_time
         await self._execute_prompt_phase(step.prompt, context)
         
         # POST phase
+        post_executed = False
         if step.post.content.strip():
             context["time_elapsed"] = time.time() * 1000 - step_start_time
             await self._execute_post_phase(step.post.content, context)
+            post_executed = True
+        
+        # Only reset errors if post phase was actually executed (allowing error handling)
+        if post_executed:
+            context["errors"] = []
             
         # Save context snapshot after post phase (§2.4)
         context_snapshot = {k: v for k, v in context.items() 

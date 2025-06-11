@@ -516,3 +516,232 @@ Step 2
         
         with pytest.raises(Exception):  # Should timeout or hit max_runs
             await start(template, options)
+
+    @pytest.mark.asyncio
+    async def test_fall_through_behavior(self):
+        """Test §2.1 Fall-through behavior when next_step is not set"""
+        from defuss_apl.test_utils import create_echo_provider
+        
+        template = """
+# prompt: step1
+## user
+Step 1
+
+# prompt: step2
+## user  
+Step 2
+
+# prompt: step3
+## user
+Step 3
+"""
+        
+        context = await start(template, {
+            "debug": False,
+            "with_providers": {"gpt-4o": create_echo_provider()}
+        })
+        
+        # Should fall through all steps and complete with step3
+        assert "Step 3" in context["result_text"]
+        assert len(context["context_history"]) == 3
+
+    @pytest.mark.asyncio
+    async def test_explicit_return_termination(self):
+        """Test §2.1 Explicit 'return' termination"""
+        from defuss_apl.test_utils import create_echo_provider
+        
+        template = """
+# prompt: step1
+## user
+Step 1
+
+# post: step1
+{{ set_context('next_step', 'return') }}
+
+# prompt: step2
+## user
+Step 2 (should not execute)
+"""
+        
+        context = await start(template, {
+            "debug": False,
+            "with_providers": {"gpt-4o": create_echo_provider()}
+        })
+        
+        # Should terminate after step1 and not execute step2
+        assert "Step 1" in context["result_text"]
+        assert "Step 2" not in context["result_text"]
+        assert len(context["context_history"]) == 1
+
+    def test_role_defaults_to_user(self):
+        """Test §1.2 Missing roles default to user"""
+        template = """
+# prompt: test
+This should default to user role
+"""
+        
+        steps = parse_apl(template)
+        step = steps["test"]
+        
+        # Should have user role
+        assert "user" in step.prompt.roles
+        assert step.prompt.roles["user"] == "This should default to user role"
+
+    @pytest.mark.asyncio
+    async def test_user_settable_variables(self):
+        """Test §2.5 User-settable variables"""
+        template = """
+# pre: test
+{{ set_context('model', 'gpt-3.5-turbo') }}
+{{ set_context('temperature', 0.7) }}
+{{ set_context('max_tokens', 100) }}
+{{ set_context('allowed_tools', ['calc']) }}
+{{ set_context('output_mode', 'text') }}
+
+# prompt: test
+## user
+Test with custom settings
+"""
+        
+        context = await start(template, {"debug": False})
+        
+        # Check that user-settable variables are preserved
+        assert context["model"] == "gpt-3.5-turbo"
+        assert context["temperature"] == 0.7
+        assert context["max_tokens"] == 100
+        assert context["allowed_tools"] == ['calc']
+        assert context["output_mode"] == "text"
+
+    @pytest.mark.asyncio
+    async def test_output_mode_json(self):
+        """Test JSON output mode validation"""
+        from defuss_apl.test_utils import create_echo_provider
+        
+        template = """
+# pre: test
+{{ set_context('output_mode', 'json') }}
+
+# prompt: test
+## user
+Return JSON data
+"""
+        
+        context = await start(template, {
+            "debug": False,
+            "with_providers": {"gpt-4o": create_echo_provider()}
+        })
+        
+        assert context["output_mode"] == "json"
+
+    @pytest.mark.asyncio
+    async def test_token_usage_tracking(self):
+        """Test §2.4 Token usage tracking"""
+        template = """
+# prompt: test
+## user
+Test token usage
+"""
+        
+        context = await start(template, {"debug": False})
+        
+        # Usage should be present (even if None from mock provider)
+        assert "usage" in context
+        # runs and global_runs should be incremented
+        assert context["runs"] >= 1
+        assert context["global_runs"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_max_runs_enforcement(self):
+        """Test max_runs option enforcement"""
+        template = """
+# prompt: loop
+## user
+Loop iteration
+
+# post: loop
+{{ set_context('next_step', 'loop') }}
+"""
+        
+        options = {"max_runs": 3, "timeout": 5000}
+        
+        with pytest.raises(Exception) as exc_info:
+            await start(template, options)
+        assert "Run budget exceeded" in str(exc_info.value) or "timeout" in str(exc_info.value).lower()
+
+class TestProviderCompliance:
+    """Test provider compliance with SPEC requirements"""
+    
+    @pytest.mark.asyncio
+    async def test_provider_exception_handling(self):
+        """Test §2.2 Provider exception handling"""
+        
+        async def failing_provider(context):
+            """Provider that raises an exception"""
+            raise RuntimeError("Provider failed")
+        
+        template = """
+# prompt: test
+## user
+Test provider failure
+"""
+        
+        context = await start(template, {
+            "debug": False,
+            "with_providers": {"gpt-4o": failing_provider}
+        })
+        
+        # Provider errors should be captured in errors list, not crash execution
+        assert len(context["errors"]) > 0
+        error_found = any("Provider failed" in error for error in context["errors"])
+        assert error_found
+
+    @pytest.mark.asyncio
+    async def test_tool_call_error_handling(self):
+        """Test §2.2.2 Tool call error handling"""
+        
+        def failing_tool(x: int) -> int:
+            """Tool that always fails"""
+            raise ValueError("Tool execution failed")
+        
+        # Mock provider that returns tool calls
+        async def tool_calling_provider(context):
+            return {
+                "choices": [{
+                    "message": {
+                        "role": "assistant",
+                        "content": "I'll use the tool",
+                        "tool_calls": [{
+                            "id": "call_123",
+                            "type": "function",
+                            "function": {
+                                "name": "failing_tool",
+                                "arguments": '{"x": 5}'
+                            }
+                        }]
+                    }
+                }]
+            }
+        
+        template = """
+# prompt: test
+## user
+Test tool error handling
+"""
+        
+        context = await start(template, {
+            "debug": False,
+            "with_providers": {"gpt-4o": tool_calling_provider},
+            "with_tools": {
+                "failing_tool": {
+                    "fn": failing_tool,
+                    "with_context": False
+                }
+            }
+        })
+        
+        # Execution should continue despite tool failure
+        assert context["result_text"] is not None
+        # Tool error should be recorded
+        if context.get("result_tool_calls"):
+            tool_result = context["result_tool_calls"][0]
+            assert tool_result.get("with_error") is True

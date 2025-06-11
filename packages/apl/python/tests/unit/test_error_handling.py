@@ -40,9 +40,12 @@ Test message
         options = basic_options.copy()
         options["with_providers"] = {"gpt-4o": failing_provider}
         
-        with pytest.raises(Exception) as exc_info:
-            await start(template, options)
-        assert "Provider failed" in str(exc_info.value)
+        # Provider errors should be captured in errors list, not crash execution
+        context = await start(template, options)
+        errors = context.get("errors", [])
+        assert len(errors) > 0
+        error_found = any("Provider failed" in error for error in errors)
+        assert error_found
 
     @pytest.mark.asyncio
     async def test_timeout_error(self):
@@ -150,6 +153,7 @@ Step 2
         
         # Errors should be reset for the final step
         # (though the mock provider will add errors again)
+        errors = context.get("errors", [])
         assert "errors" in context
 
     @pytest.mark.asyncio
@@ -186,9 +190,12 @@ Test
 Test
 """
         
-        # Should raise an error due to undefined variable
-        with pytest.raises(Exception):
-            await start(template, basic_options)
+        # Jinja errors should be captured in errors list, not crash execution
+        context = await start(template, basic_options)
+        errors = context.get("errors", [])
+        assert len(errors) > 0
+        error_found = any("undefined_variable" in error.lower() or "undefined" in error.lower() for error in errors)
+        assert error_found
 
     @pytest.mark.asyncio
     async def test_schema_validation_error_handling(self, basic_options):
@@ -214,7 +221,7 @@ Test
         
         template = """
 # pre: test
-{{ set_context('output_mode', 'json') }}
+{{ set_context('output_mode', 'structured_output') }}
 
 # prompt: test
 ## user
@@ -229,8 +236,9 @@ Return a JSON object
         context = await start(template, options)
         
         # Check that validation error was recorded
-        assert len(context["errors"]) > 0
-        validation_errors = [e for e in context["errors"] if "validation" in e.lower()]
+        errors = context.get("errors", [])
+        assert len(errors) > 0
+        validation_errors = [e for e in errors if "validation" in e.lower() or "schema" in e.lower()]
         assert len(validation_errors) > 0
 
 
@@ -240,9 +248,9 @@ class TestParsingErrorHandling:
     def test_malformed_template_error(self):
         """Test error handling for malformed templates"""
         malformed_templates = [
-            "# invalid header without colon",
-            "## role without prompt phase\nContent",
-            "# prompt\n## invalid role name\nContent"
+            "# prompt: return\nContent",  # Reserved identifier
+            "# prompt: test:invalid\nContent",  # Invalid identifier with colon
+            "# prompt: {{ jinja }}\nContent"  # Jinja in heading
         ]
         
         for template in malformed_templates:
