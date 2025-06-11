@@ -11,8 +11,7 @@ from typing import Dict, List, Optional, Any, Callable, Union
 from dataclasses import asdict
 import copy
 
-from jinja2 import Environment, BaseLoader, meta, nodes
-from jinja2.ext import Extension
+from jinja2 import Environment, BaseLoader
 
 from .parser import parse_apl, ValidationError
 from .tools import describe_tools, call_tools, validate_schema
@@ -73,23 +72,6 @@ def set_context(var_name: str, value: Any) -> str:
 class RuntimeError(Exception):
     """Raised when APL template execution fails"""
     pass
-
-
-class ContextCapturingExtension(Extension):
-    """Jinja2 extension to capture variable assignments"""
-    
-    def __init__(self, environment):
-        super().__init__(environment)
-        self.captured_vars = {}
-        self.context_ref = None
-        
-    def set_context_ref(self, context_ref):
-        """Set reference to the context dict to update"""
-        self.context_ref = context_ref
-        
-    def parse(self, parser):
-        # We don't add new syntax, just capture existing {% set %} statements
-        return super().parse(parser)
 
 
 class APLRuntime:
@@ -259,12 +241,22 @@ class APLRuntime:
     async def _execute_step(self, step, context: Dict[str, Any], start_time: float, step_start_time: float):
         """Execute a single step (pre -> prompt -> post)"""
         
+        # Track step runs (§2.4)
+        current_step = context.get("current_step")
+        if current_step != context.get("prev_step"):
+            # Starting a new step, reset runs counter
+            context["runs"] = 0
+        
+        # Increment run counters (§2.4)
+        context["runs"] += 1
+        context["global_runs"] += 1
+        
         # PRE phase
         if step.pre.content.strip():
             context["time_elapsed"] = time.time() * 1000 - step_start_time
             await self._execute_pre_phase(step.pre.content, context)
             
-        # Reset errors before prompt phase
+        # Reset errors before prompt phase (§2.3)
         context["errors"] = []
         
         # PROMPT phase  
@@ -287,7 +279,7 @@ class APLRuntime:
             # Update context reference
             context["context"] = context
             
-            # Process template line by line to handle sequential variable assignments
+            # Process template with Jinja handling all control flow naturally
             self._execute_template_sequentially(content, context)
             
             # Update context reference after all variable updates (§2.3)
@@ -297,203 +289,22 @@ class APLRuntime:
             context["errors"].append(f"Pre phase error: {str(e)}")
     
     def _execute_template_sequentially(self, content: str, context: Dict[str, Any]):
-        """Execute template with proper handling of both single lines and control blocks"""
+        """Execute template with proper Jinja rendering"""
         try:
             if self.debug:
-                print(f"[APL DEBUG] Executing template sequentially: {repr(content)}", file=sys.stderr)
+                print(f"[APL DEBUG] Executing template: {repr(content)}", file=sys.stderr)
             
-            # Check if the content uses {% set %} syntax or set_context() functions
-            uses_old_syntax = '{% set ' in content or '{%set ' in content
-            uses_new_syntax = 'set_context(' in content
+            # Simply render the entire template at once - let Jinja handle everything
+            template = self.jinja_env.from_string(content)
+            result = template.render(**context)
             
-            if uses_old_syntax and not uses_new_syntax:
-                # Use the old sequential parsing approach for {% set %} syntax
-                self._execute_template_with_old_syntax(content, context)
-            else:
-                # Parse the content into chunks - single lines and complete control blocks
-                chunks = self._parse_template_chunks(content)
-                
-                for chunk in chunks:
-                    if self.debug:
-                        print(f"[APL DEBUG] Processing chunk: {repr(chunk)}", file=sys.stderr)
-                    
-                    try:
-                        # Render each chunk with current context
-                        template = self.jinja_env.from_string(chunk)
-                        result = template.render(**context)
-                        
-                        if self.debug and result.strip():
-                            print(f"[APL DEBUG] Chunk result: {repr(result)}", file=sys.stderr)
-                            
-                    except Exception as e:
-                        if self.debug:
-                            print(f"[APL DEBUG] Error processing chunk '{chunk}': {e}", file=sys.stderr)
-                        context["errors"].append(f"Error processing chunk '{chunk}': {str(e)}")
+            if self.debug and result.strip():
+                print(f"[APL DEBUG] Template result: {repr(result)}", file=sys.stderr)
                         
         except Exception as e:
             if self.debug:
-                print(f"[APL DEBUG] Error in sequential template execution: {e}", file=sys.stderr)
-            context["errors"].append(f"Error executing template: {str(e)}")
-    
-    def _execute_template_with_old_syntax(self, content: str, context: Dict[str, Any]):
-        """Execute template with {% set %} syntax using sequential parsing"""
-        try:
-            if self.debug:
-                print(f"[APL DEBUG] Executing template with old {{%% set %%}} syntax: {repr(content)}", file=sys.stderr)
-            
-            # Create a mutable execution context
-            exec_context = dict(context)
-            exec_context['get_json_path'] = get_json_path
-            
-            # Split template into individual statements and process them sequentially
-            import re
-            
-            # Find all {% set %} statements with their complete content
-            statements = []
-            current_pos = 0
-            
-            # Pattern to match {% set var = expression %}
-            set_pattern = re.compile(r'{%\s*set\s+(\w+)\s*=\s*(.+?)\s*%}', re.DOTALL)
-            
-            for match in set_pattern.finditer(content):
-                # Add any non-set content before this match
-                if match.start() > current_pos:
-                    non_set_content = content[current_pos:match.start()].strip()
-                    if non_set_content:
-                        statements.append(('content', non_set_content))
-                
-                # Add the set statement
-                var_name = match.group(1)
-                var_expr = match.group(2).strip()
-                statements.append(('set', var_name, var_expr))
-                current_pos = match.end()
-            
-            # Add any remaining content
-            if current_pos < len(content):
-                remaining_content = content[current_pos:].strip()
-                if remaining_content:
-                    statements.append(('content', remaining_content))
-            
-            if self.debug:
-                print(f"[APL DEBUG] Parsed statements: {statements}", file=sys.stderr)
-            
-            # Execute statements sequentially
-            for stmt in statements:
-                if stmt[0] == 'set':
-                    var_name, var_expr = stmt[1], stmt[2]
-                    
-                    if self.debug:
-                        print(f"[APL DEBUG] Executing set: {var_name} = {var_expr}", file=sys.stderr)
-                    
-                    try:
-                        # Create a template for the expression and evaluate it
-                        expr_template = self.jinja_env.from_string(f"{{{{ {var_expr} }}}}")
-                        result = expr_template.render(**exec_context)
-                        
-                        # Parse the result to the appropriate type
-                        try:
-                            import ast
-                            parsed_value = ast.literal_eval(result)
-                        except (ValueError, SyntaxError):
-                            # Handle non-literal values (like function results)
-                            if result.lower() == 'true':
-                                parsed_value = True
-                            elif result.lower() == 'false':
-                                parsed_value = False
-                            elif result == 'None':
-                                parsed_value = None
-                            elif result.isdigit():
-                                parsed_value = int(result)
-                            elif '.' in result and result.replace('.', '').replace('-', '').isdigit():
-                                parsed_value = float(result)
-                            else:
-                                parsed_value = result
-                        
-                        exec_context[var_name] = parsed_value
-                        context[var_name] = parsed_value  # Also update the original context
-                        
-                        if self.debug:
-                            print(f"[APL DEBUG] Set {var_name} = {parsed_value} (type: {type(parsed_value)})", file=sys.stderr)
-                    
-                    except Exception as e:
-                        context["errors"].append(f"Error setting variable {var_name}: {str(e)}")
-                        if self.debug:
-                            print(f"[APL DEBUG] Error setting {var_name}: {e}", file=sys.stderr)
-                
-                elif stmt[0] == 'content':
-                    # Render any non-set content (for side effects)
-                    try:
-                        template = self.jinja_env.from_string(stmt[1])
-                        template.render(**exec_context)
-                    except Exception as e:
-                        if self.debug:
-                            print(f"[APL DEBUG] Error rendering content: {e}", file=sys.stderr)
-                        
-        except Exception as e:
-            if self.debug:
-                print(f"[APL DEBUG] Error in old syntax template execution: {e}", file=sys.stderr)
-            context["errors"].append(f"Error executing template: {str(e)}")
-    
-    def _parse_template_chunks(self, content: str) -> List[str]:
-        """Parse template content into executable chunks (lines or complete control blocks)"""
-        chunks = []
-        lines = content.split('\n')
-        i = 0
-        
-        while i < len(lines):
-            line = lines[i].strip()
-            
-            if not line:
-                i += 1
-                continue
-            
-            # Check if this line starts a control block
-            if line.startswith('{% if ') or line.startswith('{%if '):
-                # Find the complete if/endif block
-                block_lines = [lines[i]]
-                i += 1
-                if_depth = 1
-                
-                while i < len(lines) and if_depth > 0:
-                    current_line = lines[i].strip()
-                    block_lines.append(lines[i])
-                    
-                    if current_line.startswith('{% if ') or current_line.startswith('{%if '):
-                        if_depth += 1
-                    elif current_line.startswith('{% endif') or current_line.startswith('{%endif'):
-                        if_depth -= 1
-                    
-                    i += 1
-                
-                # Add the complete block as one chunk
-                chunks.append('\n'.join(block_lines))
-            
-            elif line.startswith('{% for ') or line.startswith('{%for '):
-                # Find the complete for/endfor block
-                block_lines = [lines[i]]
-                i += 1
-                for_depth = 1
-                
-                while i < len(lines) and for_depth > 0:
-                    current_line = lines[i].strip()
-                    block_lines.append(lines[i])
-                    
-                    if current_line.startswith('{% for ') or current_line.startswith('{%for '):
-                        for_depth += 1
-                    elif current_line.startswith('{% endfor') or current_line.startswith('{%endfor'):
-                        for_depth -= 1
-                    
-                    i += 1
-                
-                # Add the complete block as one chunk
-                chunks.append('\n'.join(block_lines))
-                
-            else:
-                # Single line - add as individual chunk
-                chunks.append(lines[i])
-                i += 1
-        
-        return chunks
+                print(f"[APL DEBUG] Error executing template: {e}", file=sys.stderr)
+            context["errors"].append(f"Template execution error: {str(e)}")
     
     async def _execute_post_phase(self, content: str, context: Dict[str, Any]):
         """Execute post phase - result processing and control flow"""

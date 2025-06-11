@@ -30,8 +30,8 @@ async def example_variables():
     
     agent = """
 # pre: setup
-{% set user_name = "Alice" %}
-{% set greeting = "Hello" %}
+{{ set_context('user_name', 'Alice') }}
+{{ set_context('greeting', 'Hello') }}
 
 # prompt: setup
 ## system
@@ -41,7 +41,7 @@ You are a friendly assistant.
 {{ greeting }}, {{ user_name }}! How are you doing today?
 
 # post: setup
-{% set next_step = "return" %}
+{{ set_context('next_step', 'return') }}
 """
     
     result = await start(agent)
@@ -57,28 +57,28 @@ async def example_control_flow():
     
     agent = """
 # pre: first
-{% set counter = 1 %}
+{{ set_context('counter', 1) }}
 
 # prompt: first
 This is step {{ counter }}.
 
 # post: first
-{% set counter = counter + 1 %}
+{{ set_context('counter', counter + 1) }}
 {% if counter <= 3 %}
-    {% set next_step = "second" %}
+    {{ set_context('next_step', 'second') }}
 {% else %}
-    {% set next_step = "return" %}
+    {{ set_context('next_step', 'return') }}
 {% endif %}
 
 # prompt: second
 This is step {{ counter }}.
 
 # post: second
-{% set counter = counter + 1 %}
+{{ set_context('counter', counter + 1) }}
 {% if counter <= 3 %}
-    {% set next_step = "first" %}
+    {{ set_context('next_step', 'first') }}
 {% else %}
-    {% set next_step = "return" %}
+    {{ set_context('next_step', 'return') }}
 {% endif %}
 """
     
@@ -112,7 +112,7 @@ async def example_tools():
     
     agent = """
 # pre: setup
-{% set allowed_tools = ["calculator", "get_weather"] %}
+{{ set_context('allowed_tools', ['calculator', 'get_weather']) }}
 
 # prompt: setup
 Please calculate 15 + 25, then multiply the result by 2. 
@@ -169,16 +169,16 @@ async def example_error_handling():
     
     agent = """
 # pre: setup
-{% set max_retries = 2 %}
+{{ set_context('max_retries', 2) }}
 
 # prompt: setup
 This is attempt #{{ runs + 1 }}. Please respond with something.
 
 # post: setup
 {% if errors and runs < max_retries %}
-    {% set next_step = "setup" %}
+    {{ set_context('next_step', 'setup') }}
 {% else %}
-    {% set next_step = "return" %}
+    {{ set_context('next_step', 'return') }}
 {% endif %}
 """
     

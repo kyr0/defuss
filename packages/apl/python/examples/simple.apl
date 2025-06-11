@@ -1,6 +1,6 @@
 # pre: greet
-{% set user_name = "World" %}
-{% set greeting = "Hello" %}
+{{ set_context('user_name', 'World') }}
+{{ set_context('greeting', 'Hello') }}
 
 # prompt: greet
 ## system
@@ -11,7 +11,7 @@ You are a friendly assistant.
 
 # post: greet
 {% if global_runs < 2 and not result_text %}
-    {% set next_step = "greet" %}
+    {{ set_context('next_step', 'greet') }}
 {% else %}
-    {% set next_step = "return" %}
+    {{ set_context('next_step', 'return') }}
 {% endif %}

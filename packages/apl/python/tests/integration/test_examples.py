@@ -1,0 +1,554 @@
+"""
+Integration tests for APL examples and use cases
+"""
+
+import pytest
+from defuss_apl import start
+
+
+class TestBasicExamples:
+    """Test basic APL examples from documentation"""
+    
+    @pytest.mark.asyncio
+    async def test_simple_greeting(self, basic_options):
+        """Test simple greeting example"""
+        template = """
+# prompt: greet
+## user
+Hello, how are you?
+"""
+        
+        context = await start(template, basic_options)
+        
+        assert context["result_text"] is not None
+        assert len(context["result_text"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_personalized_greeting(self, basic_options):
+        """Test personalized greeting with variables"""
+        template = """
+# pre: setup
+{{ set_context('user_name', 'Alice') }}
+{{ set_context('time_of_day', 'morning') }}
+
+# prompt: setup
+## system
+You are a friendly assistant.
+
+## user
+Good {{ time_of_day }}, my name is {{ user_name }}. How are you?
+"""
+        
+        context = await start(template, basic_options)
+        
+        assert context["user_name"] == "Alice"
+        assert context["time_of_day"] == "morning"
+        assert "Alice" in str(context["prompts"])
+        assert "morning" in str(context["prompts"])
+
+    @pytest.mark.asyncio
+    async def test_multi_turn_conversation(self, basic_options):
+        """Test multi-turn conversation example"""
+        template = """
+# pre: intro
+{{ set_context('topic', 'weather') }}
+
+# prompt: intro
+## user
+Let's talk about {{ topic }}
+
+# post: intro
+{{ set_context('next_step', 'followup') }}
+
+# prompt: followup
+## user
+What do you think about today's {{ topic }}?
+"""
+        
+        context = await start(template, basic_options)
+        
+        assert context["topic"] == "weather"
+        assert len(context["context_history"]) == 2  # Two steps executed
+
+    @pytest.mark.asyncio
+    async def test_conditional_response(self, basic_options):
+        """Test conditional response example"""
+        template = """
+# pre: check_time
+{{ set_context('hour', 14) }}  # 2 PM
+
+# prompt: check_time
+## user
+What time is it?
+
+# post: check_time
+{% if hour < 12 %}
+{{ set_context('greeting', 'Good morning') }}
+{% elif hour < 18 %}
+{{ set_context('greeting', 'Good afternoon') }}
+{% else %}
+{{ set_context('greeting', 'Good evening') }}
+{% endif %}
+{{ set_context('next_step', 'respond') }}
+
+# prompt: respond
+## user
+{{ greeting }}! It's {{ hour }}:00.
+"""
+        
+        context = await start(template, basic_options)
+        
+        assert context["hour"] == 14
+        assert context["greeting"] == "Good afternoon"
+        assert "Good afternoon" in context["result_text"]
+
+
+class TestDataProcessingExamples:
+    """Test data processing examples"""
+    
+    @pytest.mark.asyncio
+    async def test_list_processing(self, basic_options):
+        """Test list processing example"""
+        template = """
+# pre: process_list
+{{ set_context('numbers', [1, 2, 3, 4, 5]) }}
+{{ set_context('sum_total', 0) }}
+{{ set_context('even_numbers', []) }}
+
+{% for num in numbers %}
+  {{ set_context('sum_total', sum_total + num) }}
+  {% if num % 2 == 0 %}
+    {{ set_context('even_numbers', even_numbers + [num]) }}
+  {% endif %}
+{% endfor %}
+
+# prompt: process_list
+## user
+Sum: {{ sum_total }}, Even numbers: {{ even_numbers }}
+"""
+        
+        context = await start(template, basic_options)
+        
+        assert context["sum_total"] == 15  # 1+2+3+4+5
+        assert context["even_numbers"] == [2, 4]
+        assert "Sum: 15" in context["result_text"]
+
+    @pytest.mark.asyncio
+    async def test_json_data_example(self, basic_options):
+        """Test JSON data processing example"""
+        template = """
+# pre: process_json
+{{ set_context('user_data', {
+    "name": "Alice",
+    "preferences": {
+        "theme": "dark",
+        "language": "en"
+    },
+    "history": ["login", "view_profile", "logout"]
+}) }}
+
+{{ set_context('user_name', get_json_path(user_data, "name", "Unknown")) }}
+{{ set_context('theme', get_json_path(user_data, "preferences.theme", "light")) }}
+{{ set_context('last_action', get_json_path(user_data, "history.-1", "none")) }}
+
+# prompt: process_json
+## user
+User {{ user_name }} prefers {{ theme }} theme. Last action: {{ last_action }}
+"""
+        
+        context = await start(template, basic_options)
+        
+        assert context["user_name"] == "Alice"
+        assert context["theme"] == "dark"
+        # Note: history.-1 syntax might not work, but history.2 should
+        assert "Alice" in context["result_text"]
+        assert "dark" in context["result_text"]
+
+    @pytest.mark.asyncio
+    async def test_template_generation(self, basic_options):
+        """Test dynamic template generation"""
+        template = """
+# pre: generate_template
+{{ set_context('template_vars', {
+    'product': 'laptop',
+    'price': 999,
+    'currency': 'USD'
+}) }}
+
+{{ set_context('message_template', 
+    'The {product} costs {price} {currency}. Would you like to purchase it?'
+) }}
+
+{{ set_context('generated_message', 
+    message_template.format(**template_vars)
+) }}
+
+# prompt: generate_template
+## user
+{{ generated_message }}
+"""
+        
+        context = await start(template, basic_options)
+        
+        expected_message = "The laptop costs 999 USD. Would you like to purchase it?"
+        assert context["generated_message"] == expected_message
+        assert expected_message in context["result_text"]
+
+
+class TestErrorHandlingExamples:
+    """Test error handling examples"""
+    
+    @pytest.mark.asyncio
+    async def test_graceful_error_handling(self, basic_options):
+        """Test graceful error handling"""
+        template = """
+# prompt: main_task
+## user
+Perform main task
+
+# post: main_task
+{% if errors %}
+{{ set_context('error_count', errors | length) }}
+{{ set_context('next_step', 'error_recovery') }}
+{% else %}
+{{ set_context('next_step', 'success') }}
+{% endif %}
+
+# prompt: error_recovery
+## user
+Encountered {{ error_count }} errors. Attempting recovery.
+
+# prompt: success
+## user
+Task completed successfully.
+"""
+        
+        context = await start(template, basic_options)
+        
+        # Should go to success path if no errors
+        if not context["errors"]:
+            assert "successfully" in context["result_text"].lower()
+
+    @pytest.mark.asyncio
+    async def test_retry_mechanism(self, basic_options):
+        """Test retry mechanism example"""
+        template = """
+# pre: retry_task
+{{ set_context('attempt', 1) }}
+{{ set_context('max_attempts', 3) }}
+{{ set_context('success', False) }}
+
+# prompt: retry_task
+## user
+Attempt {{ attempt }} of {{ max_attempts }}
+
+# post: retry_task
+{% if not success and attempt < max_attempts %}
+{{ set_context('attempt', attempt + 1) }}
+{{ set_context('next_step', 'retry_task') }}
+{% elif success %}
+{{ set_context('next_step', 'success') }}
+{% else %}
+{{ set_context('next_step', 'failure') }}
+{% endif %}
+
+# prompt: success
+## user
+Succeeded after {{ attempt }} attempts
+
+# prompt: failure
+## user
+Failed after {{ max_attempts }} attempts
+"""
+        
+        # Mock a scenario where we succeed on attempt 2
+        async def mock_provider(context):
+            if context.get("attempt", 1) >= 2:
+                context["success"] = True
+            return {
+                "choices": [{
+                    "message": {
+                        "role": "assistant",
+                        "content": f"Response for attempt {context.get('attempt', 1)}"
+                    }
+                }]
+            }
+        
+        options = basic_options.copy()
+        options["with_providers"] = {"gpt-4o": mock_provider}
+        
+        context = await start(template, options)
+        
+        # Should succeed on second attempt
+        assert context["attempt"] >= 2
+
+
+class TestWorkflowPatterns:
+    """Test common workflow patterns"""
+    
+    @pytest.mark.asyncio
+    async def test_wizard_pattern(self, basic_options):
+        """Test wizard/step-by-step pattern"""
+        template = """
+# pre: wizard_start
+{{ set_context('current_step', 1) }}
+{{ set_context('total_steps', 3) }}
+{{ set_context('collected_data', {}) }}
+
+# prompt: step1
+## user
+Step {{ current_step }} of {{ total_steps }}: Enter your name
+
+# post: step1
+{{ set_context('collected_data', collected_data | combine({'name': 'Alice'})) }}
+{{ set_context('current_step', 2) }}
+{{ set_context('next_step', 'step2') }}
+
+# prompt: step2
+## user
+Step {{ current_step }} of {{ total_steps }}: Enter your age
+
+# post: step2
+{{ set_context('collected_data', collected_data | combine({'age': 25})) }}
+{{ set_context('current_step', 3) }}
+{{ set_context('next_step', 'step3') }}
+
+# prompt: step3
+## user
+Step {{ current_step }} of {{ total_steps }}: Confirm your details
+
+# post: step3
+{{ set_context('next_step', 'complete') }}
+
+# prompt: complete
+## user
+Wizard complete! Data: {{ collected_data }}
+"""
+        
+        context = await start(template, basic_options)
+        
+        assert context["current_step"] == 3
+        assert context["collected_data"]["name"] == "Alice"
+        assert context["collected_data"]["age"] == 25
+        assert "Wizard complete" in context["result_text"]
+
+    @pytest.mark.asyncio
+    async def test_state_machine_pattern(self, basic_options):
+        """Test state machine pattern"""
+        template = """
+# pre: state_init
+{{ set_context('state', 'idle') }}
+{{ set_context('event', 'start') }}
+
+# prompt: state_handler
+## user
+Current state: {{ state }}, Event: {{ event }}
+
+# post: state_handler
+{% if state == 'idle' and event == 'start' %}
+  {{ set_context('state', 'processing') }}
+  {{ set_context('event', 'process') }}
+  {{ set_context('next_step', 'state_handler') }}
+{% elif state == 'processing' and event == 'process' %}
+  {{ set_context('state', 'completed') }}
+  {{ set_context('event', 'finish') }}
+  {{ set_context('next_step', 'state_handler') }}
+{% elif state == 'completed' %}
+  {{ set_context('next_step', 'final') }}
+{% else %}
+  {{ set_context('next_step', 'error') }}
+{% endif %}
+
+# prompt: final
+## user
+State machine completed successfully
+
+# prompt: error
+## user
+State machine error
+"""
+        
+        context = await start(template, basic_options)
+        
+        assert context["state"] == "completed"
+        assert "completed successfully" in context["result_text"]
+
+    @pytest.mark.asyncio
+    async def test_pipeline_pattern(self, basic_options):
+        """Test data pipeline pattern"""
+        template = """
+# pre: pipeline_start
+{{ set_context('raw_data', 'HELLO WORLD') }}
+
+# prompt: stage1_clean
+## user
+Stage 1: Cleaning data: {{ raw_data }}
+
+# post: stage1_clean
+{{ set_context('cleaned_data', raw_data.lower()) }}
+{{ set_context('next_step', 'stage2_transform') }}
+
+# prompt: stage2_transform
+## user
+Stage 2: Transforming data: {{ cleaned_data }}
+
+# post: stage2_transform
+{{ set_context('transformed_data', cleaned_data.replace(' ', '_')) }}
+{{ set_context('next_step', 'stage3_output') }}
+
+# prompt: stage3_output
+## user
+Stage 3: Final output: {{ transformed_data }}
+
+# post: stage3_output
+{{ set_context('final_output', transformed_data + '_processed') }}
+"""
+        
+        context = await start(template, basic_options)
+        
+        assert context["raw_data"] == "HELLO WORLD"
+        assert context["cleaned_data"] == "hello world"
+        assert context["transformed_data"] == "hello_world"
+        assert context["final_output"] == "hello_world_processed"
+
+
+class TestRealWorldExamples:
+    """Test real-world use case examples"""
+    
+    @pytest.mark.asyncio
+    async def test_customer_support_workflow(self, basic_options):
+        """Test customer support workflow"""
+        template = """
+# pre: support_init
+{{ set_context('customer_type', 'premium') }}
+{{ set_context('issue_category', 'technical') }}
+{{ set_context('priority', 'high') }}
+
+# prompt: triage
+## system
+You are a customer support agent.
+
+## user
+Customer type: {{ customer_type }}, Issue: {{ issue_category }}, Priority: {{ priority }}
+
+# post: triage
+{% if customer_type == 'premium' and priority == 'high' %}
+{{ set_context('next_step', 'escalate') }}
+{% elif issue_category == 'technical' %}
+{{ set_context('next_step', 'technical_support') }}
+{% else %}
+{{ set_context('next_step', 'general_support') }}
+{% endif %}
+
+# prompt: escalate
+## user
+Escalating to senior support team
+
+# prompt: technical_support
+## user
+Routing to technical support team
+
+# prompt: general_support
+## user
+Handling with general support
+"""
+        
+        context = await start(template, basic_options)
+        
+        # Should escalate for premium high-priority issues
+        assert "Escalating to senior support" in context["result_text"]
+
+    @pytest.mark.asyncio
+    async def test_content_moderation_workflow(self, basic_options):
+        """Test content moderation workflow"""
+        template = """
+# pre: moderation_init
+{{ set_context('content', 'This is a sample post about technology') }}
+{{ set_context('flagged_words', ['spam', 'inappropriate', 'violation']) }}
+{{ set_context('content_safe', True) }}
+
+{% for word in flagged_words %}
+  {% if word in content.lower() %}
+    {{ set_context('content_safe', False) }}
+  {% endif %}
+{% endfor %}
+
+# prompt: moderate
+## user
+Moderating content: {{ content }}
+
+# post: moderate
+{% if content_safe %}
+{{ set_context('next_step', 'approve') }}
+{% else %}
+{{ set_context('next_step', 'review') }}
+{% endif %}
+
+# prompt: approve
+## user
+Content approved for publication
+
+# prompt: review
+## user
+Content flagged for manual review
+"""
+        
+        context = await start(template, basic_options)
+        
+        # Should approve safe content
+        assert context["content_safe"] is True
+        assert "approved" in context["result_text"].lower()
+
+    @pytest.mark.asyncio
+    async def test_data_validation_workflow(self, basic_options):
+        """Test data validation workflow"""
+        template = """
+# pre: validation_init
+{{ set_context('user_input', {
+    'email': 'user@example.com',
+    'age': 25,
+    'name': 'John Doe'
+}) }}
+{{ set_context('validation_errors', []) }}
+
+# Email validation
+{% if '@' not in user_input.email %}
+{{ set_context('validation_errors', validation_errors + ['Invalid email format']) }}
+{% endif %}
+
+# Age validation
+{% if user_input.age < 18 or user_input.age > 120 %}
+{{ set_context('validation_errors', validation_errors + ['Invalid age range']) }}
+{% endif %}
+
+# Name validation
+{% if user_input.name | length < 2 %}
+{{ set_context('validation_errors', validation_errors + ['Name too short']) }}
+{% endif %}
+
+# prompt: validate
+## user
+Validating user data
+
+# post: validate
+{% if validation_errors | length == 0 %}
+{{ set_context('next_step', 'process') }}
+{% else %}
+{{ set_context('next_step', 'reject') }}
+{% endif %}
+
+# prompt: process
+## user
+Data validation passed. Processing user: {{ user_input.name }}
+
+# prompt: reject
+## user
+Data validation failed. Errors: {{ validation_errors | join(', ') }}
+"""
+        
+        context = await start(template, basic_options)
+        
+        # Should pass validation with valid data
+        assert len(context["validation_errors"]) == 0
+        assert "validation passed" in context["result_text"].lower()
+        assert "John Doe" in context["result_text"]

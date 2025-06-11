@@ -52,8 +52,8 @@ async def demo_basic_tool_execution():
     
     template = """
 # pre: setup
-{% set user_name = "Alice" %}
-{% set allowed_tools = ["calculator", "get_weather"] %}
+{{ set_context('user_name', 'Alice') }}
+{{ set_context('allowed_tools', ['calculator', 'get_weather']) }}
 
 # prompt: setup
 ## system
@@ -63,7 +63,7 @@ You are a helpful assistant with access to tools.
 Hello! Please calculate 15 + 25 and tell me the weather in Paris.
 
 # post: setup
-{% set next_step = "return" %}
+{{ set_context('next_step', 'return') }}
 """
 
     with_tools = {
@@ -98,15 +98,15 @@ async def demo_context_aware_tools():
     
     template = """
 # pre: setup
-{% set user_name = "Bob" %}
-{% set allowed_tools = ["context_aware_tool"] %}
+{{ set_context('user_name', 'Bob') }}
+{{ set_context('allowed_tools', ['context_aware_tool']) }}
 
 # prompt: setup
 ## user
 Use the context tool with the message "Hello from APL!"
 
 # post: setup
-{% set next_step = "return" %}
+{{ set_context('next_step', 'return') }}
 """
 
     with_tools = {
@@ -131,14 +131,14 @@ async def demo_intelligent_arguments():
     
     template = """
 # pre: setup
-{% set allowed_tools = ["calculator"] %}
+{{ set_context('allowed_tools', ['calculator']) }}
 
 # prompt: setup
 ## user
 Please multiply 7 by 8.
 
 # post: setup
-{% set next_step = "return" %}
+{{ set_context('next_step', 'return') }}
 """
 
     with_tools = {
@@ -168,14 +168,14 @@ async def demo_error_handling():
     
     template = """
 # pre: setup
-{% set allowed_tools = ["failing_tool"] %}
+{{ set_context('allowed_tools', ['failing_tool']) }}
 
 # prompt: setup
 ## user
 Use the failing tool.
 
 # post: setup
-{% set next_step = "return" %}
+{{ set_context('next_step', 'return') }}
 """
 
     with_tools = {
