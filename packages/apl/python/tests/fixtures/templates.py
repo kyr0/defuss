@@ -55,9 +55,15 @@ Test message
 ## user
 Success path
 
+# post: success
+{{ set_context('next_step', 'return') }}
+
 # prompt: retry
 ## user
 Retry path
+
+# post: retry
+{{ set_context('next_step', 'return') }}
 """
 
 ROLE_CONCATENATION_TEMPLATE = """

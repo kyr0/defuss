@@ -80,12 +80,23 @@ Step 3
     @pytest.mark.asyncio
     async def test_conditional_execution(self, basic_options):
         """Test conditional logic in templates"""
-        context = await start(CONDITIONAL_TEMPLATE, basic_options)
+        from defuss_apl.test_utils import create_mock_provider
         
-        # Should have executed conditional logic
+        # Use the mock provider that returns text with "helpful"
+        test_options = basic_options.copy()
+        test_options["with_providers"] = {
+            "gpt-4o": create_mock_provider()
+        }
+        
+        context = await start(CONDITIONAL_TEMPLATE, test_options)
+        
+        # Should have executed conditional logic correctly
         assert "next_step" in context
-        # The next_step should be set based on result_text content
-        assert context["next_step"] in ["success", "retry"]
+        assert context["next_step"] is None  # Cleared after jumping to "return"
+        
+        # The mock provider returns "helpful" so it should take the success branch
+        assert context["current_step"] == "success"
+        assert len(context["context_history"]) == 2  # test, success
 
     @pytest.mark.asyncio
     async def test_error_reset_between_steps(self, basic_options):

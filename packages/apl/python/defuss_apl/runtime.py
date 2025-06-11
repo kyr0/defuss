@@ -169,27 +169,40 @@ class APLRuntime:
                 # Update context for this step
                 context["prev_step"] = context.get("current_step")
                 context["current_step"] = current_step
-                context["next_step"] = None
                 context["time_elapsed_global"] = elapsed
+                
+                # Reset next_step at the beginning of each step (SPEC § 2.1)
+                # This allows the post phase to set a new next_step value
+                context["next_step"] = None
                 
                 # Execute step phases
                 await self._execute_step(step, context, start_time, step_start_time)
                 
-                # Determine next step
+                # Determine next step according to SPEC § 2.1
                 if context.get("next_step"):
-                    current_step = context["next_step"]
+                    next_step_value = context["next_step"]
+                    self._debug_log(f"Found next_step in context: {next_step_value}")
+                    current_step = next_step_value
+                    self._debug_log(f"Jumping to: {current_step}")
                 else:
                     # Find next step in template order
                     step_keys = list(steps.keys())
                     try:
                         current_idx = step_keys.index(current_step)
-                        current_step = step_keys[current_idx + 1] if current_idx + 1 < len(step_keys) else "return"
+                        next_step_by_order = step_keys[current_idx + 1] if current_idx + 1 < len(step_keys) else "return"
+                        self._debug_log(f"No next_step set, proceeding to next in order: {next_step_by_order}")
+                        current_step = next_step_by_order
                     except ValueError:
+                        self._debug_log(f"Unknown current step {current_step}, returning")
                         current_step = "return"
                         
         except Exception as e:
             context["errors"].append(str(e))
             raise RuntimeError(f"Execution failed: {str(e)}")
+            
+        # TODO: clarify in SPEC.md because this is interpretation-specific
+        # Clear next_step when execution terminates
+        context["next_step"] = None
             
         # Update final times
         context["time_elapsed_global"] = time.time() * 1000 - start_time

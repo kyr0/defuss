@@ -34,6 +34,9 @@ def basic_options() -> Dict[str, Any]:
     return {
         "debug": False,
         "timeout": 5000,  # 5 seconds for tests
+        "with_providers": {
+            "gpt-4o": create_echo_provider()
+        }
     }
 
 
