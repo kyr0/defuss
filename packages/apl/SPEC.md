@@ -38,7 +38,7 @@ A phase starts with a level‑1 heading **with `#` at column 0** (no leading spa
   * After trimming surrounding whitespace a step identifier must match `^[^\n\r#:]+$`.
   * If the identifier is missing (an empty string), it's identifier defaults to `default`.
   * Identifiers are **case‑sensitive** and **unique within the template** (no other step with the same identifier can exist).
-  * Duplicate identifiers in the same template raise an `Duplicate step identifier: <step-name>` validation error at validation time.
+  * Duplicate identifiers in the same template raise a `Duplicate step identifier: <step-name>` validation error at validation time.
 * The reserved identifier **`return`** (case‑sensitive) terminates execution when used as `next_step`. User templates may not declare a step with this identifier. Doing so raises `Reserved step identifier: return` at validation time.
 * Headings cannot contain Jinja expressions, it raises `Invalid step heading: <heading>` at validation time.
 
@@ -191,7 +191,7 @@ A provider is supposed to:
 
 Read the `prompts` variable, which is a list of message dicts in OpenAI-standard format (see §3). Call the LLM in its native protocol:
 
-* Use `describe_tools(context)` to generate tool descriptions from the `with_tools` mapping of the executor options, filtered by `allowed_tools` from context, and store in the `tools` context variable. This can be passed directly as a hyperparameter to the LLM provider.
+* If `with_tools` is present, use `describe_tools(context)` to generate tool descriptions from the `with_tools` mapping of the executor options, filtered by `allowed_tools` from context, and store in the `tools` context variable. This can be passed directly as a hyperparameter to the LLM provider.
 * The `prompts` variable is already pre-processed by the executor with all attachments converted to OpenAI-standard format. Providers can use this directly or transform it to their native format as needed.
 * Pass the final prompts and hyperparameters to the LLM provider.
 * Provider functions MUST allow exceptions to bubble up to the executor, which will catch them and append error messages to the `errors` list.
@@ -343,6 +343,8 @@ All phases share one mutable Jinja context.
 
 ### 2.4 Executor‑maintained Variables
 
+All executor‑maintained variables except `next_step` are _reserved_ and **not** user‑settable. 
+
 | Name                  | Type          | When set                | Meaning                          |
 | --------------------- | ------------- | ----------------------- | -------------------------------- |
 | `prev_step`           | `str \| None` | start of step           | Identifier that just finished    |
@@ -359,13 +361,15 @@ All phases share one mutable Jinja context.
 | `global_runs`         | `int`         | after successful provider call     | Total successful prompts         |
 | `time_elapsed`        | `float` ms    | each phase entry        | Milliseconds since current step began |
 | `time_elapsed_global` | `float` ms    | each phase entry        | Milliseconds since workflow start     |
-| `errors`              | `list[str]`   | throughout entire step | Error messages from all phases of the current step. Accumulates during *pre*, *prompt*, and *post* phases. Reset to empty list after each *post* phase.      |
+| `errors`              | `list[str]`   | throughout entire step | Errors are accumulated across *pre*, *prompt*, and *post* phases, and are reset only **after** a step's post phase completes.
 | `prompts`             | `list`        | before provider call    | Chat history in provider schema  |
 | `tools`               | `list`        | after `describe_tools()` or custom tool definitions | List of tool descriptions for LLM provider in OpenAI format |
 | `context`             | `dict`        | updated after every phase of every step    | Holds the union of executor-maintained variables (§2.4) and all user-settable variables (§2.5) and options (§6.1) |
 | `context_history`     | `list`        | updated after each *post* phase    | List of immutable entries of all previous step's contexts. Used by APL Jinja extensions described in §7 |
 
 **Variable Availability**: All `result_*` variables are available in *post* phases and subsequent steps after a successful provider call. They are reset/updated on each new provider call.
+
+**Note**: `result_text` is always a string, even if empty or if the provider only emits tool calls.
 
 #### 2.4.1 `usage` dict 
 
@@ -802,20 +806,18 @@ The `start()` function accepts an optional `options` dict to configure the execu
 | `base_url`                  | `str`                   | `https://api.openai.com` | Base URL for the default HTTP provider.                                                               |
 | `api_key`                   | `str`                   | `"<API_KEY>"`            | Secret for default provider.                                                                          |
 | `with_tools`                | `dict[str, dict]`       | `{}`                     | Tool‑name → tool configuration mapping (structure §5.1).                                             |
-| `with_context`                 | `dict[str, any]`        | `{}`                     | Top‑level variables initially injected and available from for the first step's *pre* phase. Add your custom async functions here, as the context is flattened and passed down to the Jinja templates `render_async` function.                                                     |
+| `with_context`                 | `dict[str, any]`        | `{}`                     | Top‑level variables initially injected and available for the first step's *pre* phase. Add your custom async functions here, as the context is flattened and passed down to the Jinja templates `render_async` function.                                                     |
 | `debug`                     | `bool`                  | `false`                  | Emit verbose logs to stderr.                                                                          |
 | `max_runs`                  | `int \| null`           | `null` (∞)               | Hard cap for `global_runs`.                                                                           |
-| `relaxed`                   | `bool`                  | `false`                  | Enable relaxed syntax mode for *pre* and *post* phases (§6.1.1).                                        |
+| `relaxed`                   | `bool`                  | `true`                   | Toggles relaxed syntax mode for *pre* and *post* phases (§6.1.1).                                        |
 | `jinja2_env`                | `jinja2.Environment`    | *auto*                   | Pass a custom Jinja2 environment (else APL creates one internally). The executor will switches  `enable_async` on for auto-await on custom coroutines.                                   |
 
 #### 6.1.1 Relaxed Syntax Mode
 
-When the `relaxed: True` option is enabled, *pre* and *post* phases support a simplified syntax that omits Jinja2 delimiters (`{{ }}` and `{% %}`). The executor automatically transforms relaxed syntax into valid Jinja2 before parsing.
+When the `relaxed: True` option is enabled, *pre* and *post* phases support a simplified syntax that omits Jinja2 delimiters (`{{ }}` and `{% %}`). The executor automatically transforms relaxed syntax into valid Jinja2 before parsing. Multi-line expressions are supported. 
 
-**Relaxed mode applies only to *pre* and *post* phases**. Prompt phases maintain full Jinja2 syntax for precise text output control.
-
- The relaxed mode preprocessor runs before Jinja2 parsing and transforms the simplified syntax into valid Jinja2 templates line-by-line. Complex multi-line expressions are not supported and require traditional Jinja2 syntax. If multi-line expressions are needed,
- the relaxed mode can be disabled by setting `relaxed: false` in the options (see §6.1.1.4).
+**Relaxed mode applies only to *pre* and *post* phases**. Prompt phases maintain full Jinja2 syntax as 
+it's not possible to distinguish between text generation and control flow without delimiters.
 
 ##### 6.1.1.1 Transformation Rules
 
@@ -835,11 +837,11 @@ The relaxed mode preprocessor processes each line in *pre* and *post* phases:
 
 ##### 6.1.1.2 Mixed Syntax
 
-It is possible to mix relaxed syntax with traditional Jinja2 syntax in the same *pre* or *post* phase. The executor will process both styles correctly, allowing for flexibility in template design. The only requirement is that when using Jinja2 delimiters (`{{ }}` or `{% %}`), they must be present in the same line.
+You **MUST NOT** mix relaxed and traditional Jinja2 syntax in the same *pre* or *post* phase. The relaxed mode preprocessor wraps lines naively, which would cause malformed templates if traditional syntax was used alongside relaxed syntax.
 
 ##### 6.1.1.3 Relaxed Syntax Examples
 
-**Traditional syntax:**
+**Valid Traditional-mode syntax:**
 
 ```apl
 # pre: greet
@@ -854,7 +856,7 @@ It is possible to mix relaxed syntax with traditional Jinja2 syntax in the same 
 {% endif %}
 ```
 
-**Relaxed syntax:**
+**Valid Relaxed-mode syntax:**
 
 ```apl
 # pre: greet
@@ -869,45 +871,15 @@ else
 endif
 ```
 
-**Mixed mode syntax:**
+##### 6.1.1.4 Disabling Relaxed-mode
 
-```apl
-# pre: greet
-set_context('user_name', 'World')
-set_context('greeting', 'Hello')
-
-# post: greet
-{% if global_runs < 2 and not result_text %}
-    set_context('next_step', 'greet')
-else
-    set_context('next_step', 'return')
-endif
-```
-
-##### 6.1.1.4 Disabling Relaxed Mode
+You may disable relaxed mode by setting the `relaxed` option to `False` in the `start()` function call. This will enforce traditional Jinja2 syntax for all *pre* and *post* phases, ensuring strict adherence to Jinja2 formatting rules.
 
 ```python
 from defuss_apl import start
 
-agent = """
-# pre: greet
-set_context('user_name', 'Alice')
-set_context('greeting', 'Hello')
-
-# prompt: greet
-## user
-{{ greeting }}, {{ user_name }}! How are you?
-
-# post: greet
-if "good" in result_text.lower()
-    set_context('next_step', 'return')
-else
-    set_context('next_step', 'retry')
-endif
-"""
-
 # Disable relaxed mode
-status = await start(agent, {"relaxed": false})
+status = await start(agent, {"relaxed": False})
 ```
 
 ### 6.2 Custom Jinja2 Environment Example
