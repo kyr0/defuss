@@ -6,7 +6,7 @@
   "foldingStopMarker": "({%\\s*(endblock|endfilter|endfor|endif|endmacro|endraw)\\s*%})|^\\s*(endif|endfor|endwith|endset)\\b",
   "patterns": [
     { "include": "#mdBlock" },
-    { "include": "#promptPhase" },
+    { "include": "#aplDirectives" },
     { "include": "#jinjaDelimited" },
     { "include": "#lazySyntaxGlobal" },
     { "include": "#comments" },
@@ -68,47 +68,17 @@
     }
   ],
   "repository": {
-    "promptPhase": {
-      "begin": "^(#\\s+prompt\\s*:.*)$",
-      "beginCaptures": {
-        "1": { "name": "markup.heading.markdown" }
-      },
-      "end": "(?=^#\\s+(?:pre|post|prompt)\\s*:|\\z)",
-      "name": "meta.apl.phase.prompt",
+    "aplDirectives": {
       "patterns": [
         {
-          "begin": "{{",
-          "end": "}}",
-          "name": "meta.scope.jinja.variable",
-          "beginCaptures": [{ "name": "entity.other.jinja.delimiter.variable" }],
-          "endCaptures": [{ "name": "entity.other.jinja.delimiter.variable" }],
-          "patterns": [{ "include": "#expression" }]
-        },
-        {
-          "begin": "{%",
-          "end": "%}",
-          "name": "meta.scope.jinja.tag",
-          "beginCaptures": [{ "name": "entity.other.jinja.delimiter.tag" }],
-          "endCaptures": [{ "name": "entity.other.jinja.delimiter.tag" }],
-          "patterns": [{ "include": "#expression" }]
-        },
-        {
-          "begin": "{#",
-          "end": "#}",
-          "name": "comment.block.jinja",
-          "beginCaptures": [{ "name": "entity.other.jinja.delimiter.comment" }],
-          "endCaptures": [{ "name": "entity.other.jinja.delimiter.comment" }]
-        },
-        {
-          "match": "^@(image_url|audio_input|file)\\s+https://\\S+\\s*$",
+          "match": "^(@)(image_url|audio_input|file)(\\s+)(https://\\S+)\\s*$",
           "name": "meta.directive.apl",
           "captures": {
-            "1": { "name": "keyword.other.apl.directive" }
+            "1": { "name": "punctuation.definition.directive.apl" },
+            "2": { "name": "keyword.other.apl.directive" },
+            "3": { "name": "text.apl" },
+            "4": { "name": "markup.underline.link.apl" }
           }
-        },
-        {
-          "match": ".*",
-          "name": "text.apl"
         }
       ]
     },
