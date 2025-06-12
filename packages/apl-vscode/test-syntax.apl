@@ -1,7 +1,6 @@
 # pre: greet
 set_context('user_name', 'World')
 set_context('greeting', 'Hello')
-counter = 0
 
 # prompt: greet me
 ## system
