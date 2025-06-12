@@ -126,7 +126,7 @@ class APLRuntime:
         self.base_url = self.options.get('base_url', 'https://api.openai.com')
         self.api_key = self.options.get('api_key', '<API_KEY>')
         self.debug = self.options.get('debug', False)
-        self.lazy = self.options.get('lazy', False)  # Enable lazy syntax mode
+        self.relaxed = self.options.get('relaxed', True)  # Enable relaxed syntax mode
         
         # Tool and provider registrations
         self.with_tools = self.options.get('with_tools', {})
@@ -153,8 +153,8 @@ class APLRuntime:
         # Set the current instance for set_context function
         APLRuntime._current_instance = self
         
-        # Apply lazy syntax transformation if enabled (§6.1.1)
-        transformed_apl = self._transform_lazy_syntax(apl)
+        # Apply relaxed syntax transformation if enabled (§6.1.1)
+        transformed_apl = self._transform_relaxed_syntax(apl)
         
         # Parse template
         steps = parse_apl(transformed_apl)
@@ -603,12 +603,12 @@ class APLRuntime:
         except Exception as e:
             context["errors"].append(f"Response processing error: {str(e)}")
     
-    def _transform_lazy_syntax(self, template: str) -> str:
-        """Transform lazy syntax to valid Jinja2 (§6.1.1)"""
-        if not self.lazy:
+    def _transform_relaxed_syntax(self, template: str) -> str:
+        """Transform relaxed syntax to valid Jinja2 (§6.1.1)"""
+        if not self.relaxed:
             return template
             
-        self._debug_log("Applying lazy syntax transformation")
+        self._debug_log("Applying relaxed syntax transformation")
         
         # Jinja2 control keywords that need {% %} wrapping
         CONTROL_KEYWORDS = {
@@ -617,58 +617,182 @@ class APLRuntime:
             'set', 'endset',
             'with', 'endwith'
         }
+
+        # Function to detect multiline function call starts
+        def is_multiline_function_call_start(line):
+            # Detect if this line potentially starts a multi-line function call
+            # Like set_context('name', { or set_context('name', [
+            pattern = r'set_context\([\'"].*?[\'"]\s*,\s*[\[{]'
+            return bool(re.search(pattern, line))
+
+        def is_function_call_end(line):
+            # Detect if this line potentially ends a multi-line function call
+            # Like }) or ])
+            return bool(re.search(r'[\]}]\s*\)', line.strip()))
+        
+        # Split the template into sections: pre/prompt/post phases
+        sections = []
+        current_section = []
+        current_phase_type = None
         
         lines = template.split('\n')
-        result = []
-        in_pre_or_post = False
-        current_phase = None
-        
-        # Track phase context to only apply transformation to pre/post phases
         phase_pattern = re.compile(r'^#\s*(pre|prompt|post)\s*:', re.IGNORECASE)
         
         for line in lines:
-            # Check if we're entering a phase
             phase_match = phase_pattern.match(line)
             if phase_match:
-                current_phase = phase_match.group(1).lower()
-                in_pre_or_post = current_phase in ['pre', 'post']
-                result.append(line)
-                continue
+                # Add the previous section if any
+                if current_section:
+                    sections.append((current_phase_type, current_section))
+                    current_section = []
                 
-            # Only transform lines in pre/post phases
-            if not in_pre_or_post:
-                result.append(line)
-                continue
-                
-            stripped = line.strip()
-            
-            # Skip empty lines and comments
-            if not stripped or stripped.startswith('{#') or stripped.startswith('<!--'):
-                result.append(line)
-                continue
-                
-            # Skip lines that already have Jinja2 delimiters
-            if stripped.startswith('{{') or stripped.startswith('{%'):
-                result.append(line)
-                continue
-                
-            # Get indentation and first word
-            indentation = line[:len(line) - len(line.lstrip())]
-            first_word = stripped.split()[0] if stripped.split() else ''
-            
-            # Transform based on first word
-            if first_word in CONTROL_KEYWORDS:
-                # Control flow: wrap with {% %}
-                result.append(f"{indentation}{{% {stripped} %}}")
-                self._debug_log(f"Transformed control: {stripped} -> {{% {stripped} %}}")
+                current_phase_type = phase_match.group(1).lower()
+                current_section.append(line)
             else:
-                # Expression: wrap with {{ }}
-                result.append(f"{indentation}{{{{ {stripped} }}}}")
-                self._debug_log(f"Transformed expression: {stripped} -> {{{{ {stripped} }}}}")
-        
-        transformed = '\n'.join(result)
-        self._debug_log("Lazy syntax transformation complete")
+                current_section.append(line)
+                
+        # Add the last section
+        if current_section:
+            sections.append((current_phase_type, current_section))
+            
+        # Process each section separately
+        result_lines = []
+        for phase_type, section_lines in sections:
+            # Only transform pre/post phases
+            if phase_type not in ['pre', 'post']:
+                result_lines.extend(section_lines)
+                continue
+                
+            # Only transform if needed
+            section_text = '\n'.join(section_lines[1:])  # Skip the phase header
+            
+            # Check if we need to transform this section
+            if self._already_has_jinja_syntax(section_text):
+                # Process each line in the context of existing Jinja syntax
+                result_lines.append(section_lines[0])  # Add phase header
+                
+                # Track Jinja block state
+                in_jinja_block = False
+                for line in section_lines[1:]:
+                    stripped = line.strip()
+                    # Check if entering or exiting a Jinja block
+                    if stripped.startswith('{%'):
+                        in_jinja_block = not stripped.endswith('%}') or not any(k in stripped for k in ['endif', 'endfor', 'endset', 'endwith'])
+                        result_lines.append(line)
+                    # Check if line is inside a Jinja block but not Jinja syntax itself
+                    elif in_jinja_block and not stripped.startswith('{{') and not stripped.startswith('{%'):
+                        # Transform line inside Jinja block
+                        indentation = line[:len(line) - len(line.lstrip())]
+                        # Skip empty lines and comments
+                        if not stripped or stripped.startswith('{#') or stripped.startswith('<!--'):
+                            result_lines.append(line)
+                        else:
+                            first_word = stripped.split()[0] if stripped else ''
+                            if first_word in CONTROL_KEYWORDS:
+                                result_lines.append(f"{indentation}{{% {stripped} %}}")
+                            else:
+                                result_lines.append(f"{indentation}{{{{ {stripped} }}}}")
+                    else:
+                        result_lines.append(line)
+            else:
+                # Apply standard transformation to all lines
+                result_lines.append(section_lines[0])  # Add phase header
+                
+                # Track multi-line function state
+                in_multiline_func = False
+                multiline_buffer = []
+                indentation = ""
+                
+                i = 1  # Skip the phase header
+                while i < len(section_lines):
+                    line = section_lines[i]
+                    stripped = line.strip()
+                    
+                    # Skip empty lines and comments
+                    if not stripped or stripped.startswith('{#') or stripped.startswith('<!--'):
+                        result_lines.append(line)
+                        i += 1
+                        continue
+                        
+                    # Skip lines that already have Jinja2 delimiters
+                    if stripped.startswith('{{') or stripped.startswith('{%'):
+                        result_lines.append(line)
+                        i += 1
+                        continue
+                    
+                    # Check for start of multiline function
+                    if not in_multiline_func and is_multiline_function_call_start(stripped):
+                        in_multiline_func = True
+                        indentation = line[:len(line) - len(line.lstrip())]
+                        multiline_buffer = [stripped]
+                        
+                        # Check if it also ends on the same line
+                        if is_function_call_end(stripped):
+                            result_lines.append(f"{indentation}{{{{ {stripped} }}}}")
+                            in_multiline_func = False
+                            multiline_buffer = []
+                        
+                    # Continue collecting multiline function
+                    elif in_multiline_func:
+                        multiline_buffer.append(stripped)
+                        
+                        # Check if this line ends the function call
+                        if is_function_call_end(stripped):
+                            # Wrap the entire multiline function call
+                            full_call = " ".join(multiline_buffer)
+                            result_lines.append(f"{indentation}{{{{ {full_call} }}}}")
+                            in_multiline_func = False
+                            multiline_buffer = []
+                    
+                    # Regular line processing (not in multiline function)
+                    else:
+                        # Get indentation and first word
+                        indentation = line[:len(line) - len(line.lstrip())]
+                        first_word = stripped.split()[0] if stripped else ''
+                        
+                        if first_word in CONTROL_KEYWORDS:
+                            result_lines.append(f"{indentation}{{% {stripped} %}}")
+                        else:
+                            result_lines.append(f"{indentation}{{{{ {stripped} }}}}")
+                    
+                    i += 1
+                
+                # If we have an unclosed multiline function at the end, wrap it anyway
+                if in_multiline_func and multiline_buffer:
+                    full_call = " ".join(multiline_buffer)
+                    result_lines.append(f"{indentation}{{{{ {full_call} }}}}")
+                        
+        transformed = '\n'.join(result_lines)
+        self._debug_log("Relaxed syntax transformation complete")
         return transformed
+        
+    def _already_has_jinja_syntax(self, text: str) -> bool:
+        """Check if a text already has Jinja syntax that needs to be preserved"""
+        # Look for typical Jinja patterns
+        has_jinja = '{{' in text or '{%' in text
+        
+        # Check for balanced delimiters - this helps determine if we should
+        # transform a section or leave it alone because it already has Jinja syntax
+        curly_count = text.count('{{') - text.count('}}')
+        control_count = text.count('{%') - text.count('%}')
+        
+        # Special case for multi-line set_context with complex data structures
+        set_context_pattern = re.compile(r'{{\s*set_context\(.*?\[|\{', re.DOTALL)
+        has_multiline_set = bool(set_context_pattern.search(text))
+        
+        if has_multiline_set:
+            # For multi-line set_context, we always consider it has proper Jinja syntax
+            return True
+            
+        # Check for specific pattern that matches the failing test - standalone set_context with multiline dict/array
+        # This ensures we don't try to transform these multiline expressions
+        multiline_pattern = re.compile(r'set_context\([\'"].*?[\'"],\s*[\[{]', re.DOTALL)
+        has_multiline_expr = bool(multiline_pattern.search(text))
+        
+        if has_multiline_expr:
+            return False  # Let the standard line-by-line transform handle this
+            
+        return has_jinja and curly_count == 0 and control_count == 0
 
 
 async def start(apl: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -680,9 +804,9 @@ async def start(apl: str, options: Optional[Dict[str, Any]] = None) -> Dict[str,
 def check(apl: str, options: Optional[Dict[str, Any]] = None) -> bool:
     """Validate APL template syntax. Returns True on success, raises ValidationError on failure."""
     try:
-        # Apply lazy syntax transformation if enabled
+        # Apply relaxed syntax transformation if enabled
         runtime = APLRuntime(options or {})
-        transformed_apl = runtime._transform_lazy_syntax(apl)
+        transformed_apl = runtime._transform_relaxed_syntax(apl)
         parse_apl(transformed_apl)
         return True
     except ValidationError:

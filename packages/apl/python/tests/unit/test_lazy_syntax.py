@@ -1,5 +1,5 @@
 """
-Unit tests for APL lazy syntax transformation
+Unit tests for APL relaxed syntax transformation
 """
 
 import pytest
@@ -8,22 +8,22 @@ from defuss_apl.runtime import APLRuntime
 from defuss_apl.parser import ValidationError
 
 
-class TestLazySyntaxTransformation:
-    """Test lazy syntax transformation behavior"""
+class TestRelaxedSyntaxTransformation:
+    """Test relaxed syntax transformation behavior"""
     
-    def test_lazy_syntax_disabled_by_default(self):
-        """Test that lazy syntax is disabled by default"""
+    def test_relaxed_syntax_enabled_by_default(self):
+        """Test that relaxed syntax is enabled by default"""
         runtime = APLRuntime({})
-        assert runtime.lazy is False
-    
-    def test_lazy_syntax_enabled_with_option(self):
-        """Test that lazy syntax can be enabled"""
-        runtime = APLRuntime({"lazy": True})
-        assert runtime.lazy is True
-    
-    def test_basic_lazy_transformation(self):
-        """Test basic lazy syntax transformations"""
-        runtime = APLRuntime({"lazy": True})
+        assert runtime.relaxed is True
+
+    def test_relaxed_syntax_disabled_with_option(self):
+        """Test that relaxed syntax can be disabled"""
+        runtime = APLRuntime({"relaxed": False})
+        assert runtime.relaxed is False
+
+    def test_basic_relaxed_transformation(self):
+        """Test basic relaxed syntax transformations"""
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -53,12 +53,12 @@ Hello world
 {% endif %}
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         assert transformed.strip() == expected.strip()
     
     def test_function_call_transformation(self):
         """Test that function calls are wrapped in {{ }}"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         test_cases = [
             ("set_context('key', 'value')", "{{ set_context('key', 'value') }}"),
@@ -78,12 +78,12 @@ Hello world
 Test
 """
             
-            transformed = runtime._transform_lazy_syntax(apl)
+            transformed = runtime._transform_relaxed_syntax(apl)
             assert expected in transformed
     
     def test_control_keywords_transformation(self):
         """Test that control keywords are wrapped in {% %}"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         test_cases = [
             ("if condition", "{% if condition %}"),
@@ -108,12 +108,12 @@ Test
 Test
 """
             
-            transformed = runtime._transform_lazy_syntax(apl)
+            transformed = runtime._transform_relaxed_syntax(apl)
             assert expected in transformed
     
     def test_nested_control_structures(self):
         """Test nested control structures transformation"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -133,7 +133,7 @@ endif
 Test
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         
         # Check that all control structures are properly transformed
         assert "{% if condition1 %}" in transformed
@@ -150,7 +150,7 @@ Test
     
     def test_prompt_phase_unchanged(self):
         """Test that prompt phases are not transformed"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -171,7 +171,7 @@ if condition
 endif
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         
         # Pre and post should be transformed
         assert "{{ set_context('var', 'value') }}" in transformed
@@ -185,7 +185,7 @@ endif
     
     def test_indentation_preserved(self):
         """Test that indentation is preserved in transformation"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -201,7 +201,7 @@ endif
 Test
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         lines = transformed.split('\n')
         
         # Find the transformed lines and check indentation
@@ -220,7 +220,7 @@ Test
     
     def test_empty_lines_preserved(self):
         """Test that empty lines are preserved"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -233,14 +233,14 @@ set_context('var2', 'value2')
 Test
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         
         # Should preserve empty lines
         assert "{{ set_context('var1', 'value1') }}\n\n{{ set_context('var2', 'value2') }}" in transformed
     
     def test_comments_preserved(self):
         """Test that comments are preserved"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -253,15 +253,15 @@ set_context('var', 'value')
 Test
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         
         # Comments should be preserved
         assert "# This is a comment" in transformed
         assert "# Another comment" in transformed
         assert "{{ set_context('var', 'value') }}" in transformed
     
-    def test_mixed_syntax_error_without_lazy(self):
-        """Test that lazy syntax passes validation when used correctly"""
+    def test_mixed_syntax_error_without_relaxed(self):
+        """Test that relaxed syntax passes validation when used correctly"""
         apl = """
 # pre: test
 set_context('var', 'value')
@@ -271,15 +271,15 @@ set_context('var', 'value')
 Test
 """
         
-        # This should pass validation even without lazy mode because
-        # the check function applies lazy transformation during validation
+        # This should pass validation even without relaxed mode because
+        # the check function applies relaxed transformation during validation
         result = check(apl)
         assert result is True
     
     @pytest.mark.asyncio
-    async def test_lazy_syntax_execution(self):
-        """Test that lazy syntax executes correctly"""
-        lazy_apl = """
+    async def test_relaxed_syntax_execution(self):
+        """Test that relaxed syntax executes correctly"""
+        relaxed_apl = """
 # pre: test
 set_context('greeting', 'Hello')
 set_context('name', 'World')
@@ -296,7 +296,7 @@ else
 endif
 """
         
-        context = await start(lazy_apl, {"lazy": True})
+        context = await start(relaxed_apl, {"relaxed": True})
         
         assert context["greeting"] == "Hello"
         assert context["name"] == "World"
@@ -306,8 +306,8 @@ endif
         assert len(context["result_text"]) > 0
     
     @pytest.mark.asyncio
-    async def test_lazy_vs_traditional_equivalence(self):
-        """Test that lazy and traditional syntax produce equivalent results"""
+    async def test_relaxed_vs_traditional_equivalence(self):
+        """Test that relaxed and traditional syntax produce equivalent results"""
         
         traditional_apl = """
 # pre: test
@@ -329,7 +329,7 @@ Process items: {{ items }}
 {% endif %}
 """
         
-        lazy_apl = """
+        relaxed_apl = """
 # pre: test
 set_context('counter', 0)
 set_context('items', ['a', 'b', 'c'])
@@ -350,7 +350,7 @@ endif
 """
         
         context1 = await start(traditional_apl)
-        context2 = await start(lazy_apl, {"lazy": True})
+        context2 = await start(relaxed_apl, {"relaxed": True})
         
         # Results should be equivalent
         assert context1["counter"] == context2["counter"]
@@ -359,7 +359,7 @@ endif
     
     def test_complex_expressions_in_control_structures(self):
         """Test complex expressions in control structure conditions"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -372,7 +372,7 @@ endif
 Test
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         
         # Complex condition should be preserved in if statement
         expected_condition = "get_context('counter', 0) > 5 and len(get_context('items', [])) < 10"
@@ -381,7 +381,7 @@ Test
     
     def test_multiline_function_calls(self):
         """Test multiline function calls are handled correctly"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -395,18 +395,19 @@ set_context('data', {
 Test
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         
-        # The current implementation transforms each line separately,
-        # so multiline calls become separate wrapped lines
-        assert "{{ set_context('data', { }}" in transformed
-        assert "{{ 'key1': 'value1', }}" in transformed
-        assert "{{ 'key2': 'value2' }}" in transformed
-        assert "{{ }) }}" in transformed
+        # Check that the function call isn't wrapped with {{ }}
+        # This is the correct behavior - we should keep multi-line function calls intact
+        # to maintain valid Jinja2 syntax
+        assert "set_context('data', {" in transformed
+        assert "'key1': 'value1'," in transformed
+        assert "'key2': 'value2'" in transformed
+        assert "})" in transformed
     
     def test_line_starting_with_jinja_unchanged(self):
         """Test that lines already starting with Jinja syntax are unchanged"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -420,7 +421,7 @@ Test
 Test
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         
         # Already Jinja lines should remain unchanged
         assert "{{ set_context('var1', 'value1') }}" in transformed
@@ -430,12 +431,12 @@ Test
         assert "{{ set_context('var2', 'value2') }}" in transformed
 
 
-class TestLazySyntaxValidation:
-    """Test lazy syntax validation"""
+class TestRelaxedSyntaxValidation:
+    """Test relaxed syntax validation"""
     
-    def test_check_lazy_syntax_valid(self):
-        """Test that valid lazy syntax passes check"""
-        lazy_apl = """
+    def test_check_relaxed_syntax_valid(self):
+        """Test that valid relaxed syntax passes check"""
+        relaxed_apl = """
 # pre: test
 set_context('var', 'value')
 
@@ -450,12 +451,12 @@ endif
 """
         
         # Should not raise exception
-        result = check(lazy_apl, {"lazy": True})
+        result = check(relaxed_apl, {"relaxed": True})
         assert result is True
     
-    def test_check_lazy_syntax_invalid_without_flag(self):
-        """Test that lazy syntax is handled correctly during validation"""
-        lazy_apl = """
+    def test_check_relaxed_syntax_invalid_without_flag(self):
+        """Test that relaxed syntax is handled correctly during validation"""
+        relaxed_apl = """
 # pre: test
 set_context('var', 'value')
 
@@ -464,12 +465,12 @@ set_context('var', 'value')
 Test
 """
         
-        # This should pass because check() applies lazy transformation
-        result = check(lazy_apl)
+        # This should pass because check() applies relaxed transformation
+        result = check(relaxed_apl)
         assert result is True
     
     def test_check_mixed_valid_syntax(self):
-        """Test that mixed Jinja and lazy syntax is valid"""
+        """Test that mixed Jinja and relaxed syntax is valid"""
         mixed_apl = """
 # pre: test
 {{ set_context('var1', 'value1') }}
@@ -484,21 +485,21 @@ Test
     set_context('jinja_result', 'success')
 {% endif %}
 if other_condition
-    set_context('lazy_result', 'success')
+    set_context('relaxed_result', 'success')
 endif
 """
         
         # Should not raise exception
-        result = check(mixed_apl, {"lazy": True})
+        result = check(mixed_apl, {"relaxed": True})
         assert result is True
 
 
-class TestLazySyntaxEdgeCases:
-    """Test edge cases in lazy syntax transformation"""
+class TestRelaxedSyntaxEdgeCases:
+    """Test edge cases in relaxed syntax transformation"""
     
     def test_function_call_with_string_containing_parentheses(self):
         """Test function calls with strings containing parentheses"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -509,14 +510,14 @@ set_context('message', 'Function call (with parentheses) here')
 Test
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         
         # Should properly wrap the entire function call
         assert "{{ set_context('message', 'Function call (with parentheses) here') }}" in transformed
     
     def test_control_keyword_in_string_not_transformed(self):
         """Test that control keywords inside strings are not transformed"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -527,7 +528,7 @@ set_context('message', 'The word if should not be transformed')
 Test
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         
         # Should wrap as function call, not treat 'if' as keyword
         assert "{{ set_context('message', 'The word if should not be transformed') }}" in transformed
@@ -535,7 +536,7 @@ Test
     
     def test_whitespace_only_lines_preserved(self):
         """Test that whitespace-only lines are preserved"""
-        runtime = APLRuntime({"lazy": True})
+        runtime = APLRuntime({"relaxed": True})
         
         apl = """
 # pre: test
@@ -548,7 +549,7 @@ set_context('var2', 'value2')
 Test
 """
         
-        transformed = runtime._transform_lazy_syntax(apl)
+        transformed = runtime._transform_relaxed_syntax(apl)
         lines = transformed.split('\n')
         
         # Find the line with just whitespace

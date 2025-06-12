@@ -1,19 +1,19 @@
 """
-Integration tests for APL lazy syntax feature
+Integration tests for APL relaxed syntax feature
 """
 
 import pytest
 from defuss_apl import start, check
 
 
-class TestLazySyntaxIntegration:
-    """Test lazy syntax in realistic scenarios"""
+class TestRelaxedSyntaxIntegration:
+    """Test relaxed syntax in realistic scenarios"""
     
     @pytest.mark.asyncio
-    async def test_complete_lazy_workflow(self):
-        """Test a complete workflow using lazy syntax"""
+    async def test_complete_relaxed_workflow(self):
+        """Test a complete workflow using relaxed syntax"""
         
-        lazy_template = """
+        relaxed_template = """
 # pre: greet
 set_context('user_name', 'Alice')
 set_context('max_attempts', 3)
@@ -42,10 +42,10 @@ endif
 """
         
         # Test validation
-        assert check(lazy_template, {"lazy": True}) is True
+        assert check(relaxed_template, {"relaxed": True}) is True
         
         # Test execution
-        result = await start(lazy_template, {"lazy": True})
+        result = await start(relaxed_template, {"relaxed": True})
         
         # Verify context variables were set correctly
         assert result["user_name"] == "Alice"
@@ -56,8 +56,8 @@ endif
         assert len(result["result_text"]) > 0
     
     @pytest.mark.asyncio
-    async def test_lazy_vs_traditional_equivalence(self):
-        """Test that lazy and traditional syntax produce identical results"""
+    async def test_relaxed_vs_traditional_equivalence(self):
+        """Test that relaxed and traditional syntax produce identical results"""
         
         # Traditional Jinja syntax
         traditional = """
@@ -78,8 +78,8 @@ endif
 {% endif %}
 """
         
-        # Equivalent lazy syntax
-        lazy = """
+        # Equivalent relaxed syntax
+        relaxed = """
 # pre: test
 set_context('counter', 1)
 set_context('message', 'Hello World')
@@ -99,21 +99,21 @@ endif
         
         # Execute both
         result1 = await start(traditional)
-        result2 = await start(lazy, {"lazy": True})
+        result2 = await start(relaxed, {"relaxed": True})
         
         # Compare results (excluding run-specific fields)
         compare_fields = ['counter', 'message', 'response_received']
         for field in compare_fields:
             assert result1[field] == result2[field], f"Mismatch in {field}: {result1[field]} != {result2[field]}"
     
-    def test_lazy_syntax_validation_edge_cases(self):
-        """Test edge cases in lazy syntax validation"""
+    def test_relaxed_syntax_validation_edge_cases(self):
+        """Test edge cases in relaxed syntax validation"""
         
-        # Mixed Jinja and lazy syntax should work
+        # Mixed Jinja and relaxed syntax should work
         mixed_syntax = """
 # pre: test
 {{ set_context('traditional', 'value') }}
-set_context('lazy', 'value')
+set_context('relaxed', 'value')
 
 # prompt: test
 ## user
@@ -128,7 +128,7 @@ if other_condition
 endif
 """
         
-        assert check(mixed_syntax, {"lazy": True}) is True
+        assert check(mixed_syntax, {"relaxed": True}) is True
         
         # Empty pre/post phases should work
         empty_phases = """
@@ -141,7 +141,7 @@ Test
 # post: test
 """
         
-        assert check(empty_phases, {"lazy": True}) is True
+        assert check(empty_phases, {"relaxed": True}) is True
         
         # Comments and empty lines should be preserved
         with_comments = """
@@ -162,11 +162,11 @@ if condition
 endif
 """
         
-        assert check(with_comments, {"lazy": True}) is True
+        assert check(with_comments, {"relaxed": True}) is True
     
     @pytest.mark.asyncio
-    async def test_complex_control_flow_lazy(self):
-        """Test complex control flow using lazy syntax"""
+    async def test_complex_control_flow_relaxed(self):
+        """Test complex control flow using relaxed syntax"""
         
         complex_template = """
 # pre: process
@@ -190,14 +190,14 @@ else
 endif
 """
         
-        result = await start(complex_template, {"lazy": True})
+        result = await start(complex_template, {"relaxed": True})
         
         assert result["items"] == ['apple', 'banana', 'cherry']
         assert result["index"] >= 1  # At least one iteration
         assert len(result["processed"]) >= 1
         assert result["result_text"] is not None
     
-    def test_lazy_syntax_documentation_examples(self):
+    def test_relaxed_syntax_documentation_examples(self):
         """Test the examples from the specification"""
         
         # Example from SPEC.md
@@ -218,7 +218,7 @@ else
 endif
 """
         
-        assert check(spec_example, {"lazy": True}) is True
+        assert check(spec_example, {"relaxed": True}) is True
         
         # Complex nested example
         nested_example = """
@@ -248,4 +248,4 @@ else
 endif
 """
         
-        assert check(nested_example, {"lazy": True}) is True
+        assert check(nested_example, {"relaxed": True}) is True

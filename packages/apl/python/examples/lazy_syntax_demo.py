@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Example demonstrating APL lazy syntax mode.
+Example demonstrating APL relaxed syntax mode.
 
-This example shows how to use the simplified lazy syntax for pre/post phases
+This example shows how to use the simplified relaxed syntax for pre/post phases
 while maintaining full Jinja2 syntax in prompt phases.
 """
 
@@ -11,7 +11,7 @@ from defuss_apl import start
 
 
 async def main():
-    """Run the lazy syntax example"""
+    """Run the relaxed syntax example"""
     
     # Traditional Jinja APL syntax
     traditional_template = """
@@ -39,8 +39,8 @@ You are a friendly assistant.
 {% endif %}
 """
 
-    # Lazy APL-Jinja syntax (requires lazy: true option)
-    lazy_template = """
+    # Relaxed APL-Jinja syntax (requires relaxed: true option)
+    relaxed_template = """
 # pre: greet
 set_context('user_name', 'Alice')
 set_context('greeting', 'Hello')
@@ -71,15 +71,15 @@ endif
     print(f"Result: {result1['result_text']}")
     print(f"Runs: {result1['global_runs']}")
     
-    print("\n=== Lazy Syntax Example ===")
-    result2 = await start(lazy_template, {"lazy": True})
+    print("\n=== Relaxed Syntax Example ===")
+    result2 = await start(relaxed_template, {"relaxed": True})
     print(f"User: {result2['user_name']}")
     print(f"Result: {result2['result_text']}")
     print(f"Runs: {result2['global_runs']}")
     
     print("\n=== Comparison ===")
     print("Both examples produce identical results!")
-    print("Lazy syntax is more concise for pre/post phases.")
+    print("Relaxed syntax is more concise for pre/post phases.")
 
 
 if __name__ == "__main__":
