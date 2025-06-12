@@ -18,30 +18,21 @@ import os
 from defuss_apl import start
 
 
+def load_template(file_path):
+    """Load an APL template from a file"""
+    with open(file_path, 'r') as f:
+        return f.read()
+
+
 async def example_overview():
     """Quick overview of APL capabilities"""
     print("=== APL Python - Quick Overview ===")
     print("Demonstrates: Core APL features with new set_context syntax")
     print()
     
-    # Simple example showing new syntax
-    template = """
-# pre: demo
-{{ set_context('framework', 'APL') }}
-{{ set_context('version', '1.1') }}
-{{ set_context('syntax', 'set_context') }}
-
-# prompt: demo
-## system
-You are demonstrating {{ get_context('framework', 'APL') }} version {{ get_context('version', '1.1') }}.
-
-## user
-Show how the new {{ get_context('syntax', 'set_context') }} syntax improves APL templates.
-
-# post: demo
-{{ set_context('demo_complete', true) }}
-{{ set_context('next_step', 'return') }}
-"""
+    # Load template from .apl file
+    template_path = os.path.join(os.path.dirname(__file__), "basic_examples.apl")
+    template = load_template(template_path)
     
     print("📝 New set_context syntax example:")
     print(template)

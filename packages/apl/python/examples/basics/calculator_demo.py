@@ -7,11 +7,18 @@ This example demonstrates:
 - Function introspection
 - Tool result processing
 - Context-aware tools
+- Loading templates from .apl files
 """
 
 import asyncio
 import os
 from defuss_apl import start
+
+
+def load_template(file_path):
+    """Load an APL template from a file"""
+    with open(file_path, 'r') as f:
+        return f.read()
 
 
 def calculator(operation: str, a: float, b: float) -> float:
@@ -45,21 +52,9 @@ async def main():
     print("Demonstrates: Tool calling, function introspection, intelligent arguments")
     print()
     
-    template = """
-# pre: setup
-{{ set_context('allowed_tools', ['calculator', 'get_weather']) }}
-
-# prompt: setup
-## system
-You are a helpful assistant with access to tools.
-
-## user
-Please calculate 15 + 25, then multiply the result by 2. 
-Also, what's the weather like in Paris?
-
-# post: setup
-{{ set_context('next_step', 'return') }}
-"""
+    # Load the template from external .apl file
+    template_path = os.path.join(os.path.dirname(__file__), "calculator_demo.apl")
+    template = load_template(template_path)
     
     print("📝 Template:")
     print(template)

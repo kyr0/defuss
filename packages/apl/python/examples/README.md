@@ -25,8 +25,9 @@ This directory contains comprehensive examples demonstrating APL (Agentic Prompt
 Run any example:
 
 ```bash
-# Basic example
+# Basic examples
 python basics/simple_greeting.py
+python basic_examples_with_files.py
 
 # Tool usage
 python basics/calculator_demo.py
@@ -36,6 +37,10 @@ python basics/run_accumulator_examples.py
 
 # Advanced features  
 python advanced/enhanced_features.py
+python enhanced_features_with_files.py
+
+# Syntax styles comparison
+python lazy_syntax_demo_with_files.py
 ```
 
 ## 📚 Key Changes from Legacy Syntax
@@ -81,14 +86,34 @@ See `basics/run_accumulator_examples.py` for comprehensive demonstrations.
 ## 🔧 APL Template Files (.apl)
 
 - `simple.apl` - Basic template example
+- `simple_greeting.apl` - Basic greeting example
+- `variables_example.apl` - Variables and multi-phase example
+- `control_flow_example.apl` - Control flow and multiple steps example
+- `tools_example.apl` - Tool calling example
+- `multimodal_example.apl` - Multimodal attachments example
+- `error_handling_example.apl` - Error handling example
+- `basic_tool_execution.apl` - Tool execution example
+- `context_aware_tools.apl` - Context-aware tools example
+- `intelligent_arguments.apl` - Intelligent argument generation example
+- `error_handling_tools.apl` - Error handling with tools example
+- `traditional_syntax.apl` - Traditional Jinja syntax example
+- `relaxed_syntax.apl` - Relaxed APL-Jinja syntax example
 - `with_tools.apl` - Tool calling example
+
+## 🗂️ Examples with External Template Files
+
+- `basic_examples_with_files.py` - Shows how to load templates from .apl files
+- `enhanced_features_with_files.py` - Enhanced features using external templates
+- `lazy_syntax_demo_with_files.py` - Demonstrates the two syntax styles using external templates
 
 ## 📖 Learning Path
 
 1. Start with `basics/simple_greeting.py` for core concepts
-2. Try `basics/calculator_demo.py` for tool usage
-3. Explore `advanced/enhanced_features.py` for advanced features
-4. Check `integrations/` for real-world patterns
+2. Try `basic_examples_with_files.py` to see how to load templates from files
+3. Try `basics/calculator_demo.py` for tool usage
+4. Explore `enhanced_features_with_files.py` for advanced features
+5. Compare syntax styles with `lazy_syntax_demo_with_files.py`
+6. Check `integrations/` for real-world patterns
 
 ## 🎯 Features Demonstrated
 

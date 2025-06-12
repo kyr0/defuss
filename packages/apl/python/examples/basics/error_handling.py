@@ -7,11 +7,18 @@ This example demonstrates:
 - Retry logic with max attempts
 - Error state management
 - Circuit breaking patterns
+- Loading templates from .apl files
 """
 
 import asyncio
 import os
 from defuss_apl import start
+
+
+def load_template(file_path):
+    """Load an APL template from a file"""
+    with open(file_path, 'r') as f:
+        return f.read()
 
 
 async def main():
@@ -20,21 +27,9 @@ async def main():
     print("Demonstrates: Error detection, retry logic, circuit breaking")
     print()
     
-    # Basic error handling
-    template_basic = """
-# pre: setup
-{{ set_context('max_retries', 2) }}
-
-# prompt: setup
-This is attempt #{{ get_context('runs', 0) + 1 }}. Please respond with something meaningful.
-
-# post: setup
-{% if errors and get_context('runs', 0) < get_context('max_retries', 2) %}
-    {{ set_context('next_step', 'setup') }}
-{% else %}
-    {{ set_context('next_step', 'return') }}
-{% endif %}
-"""
+    # Basic error handling - load template from file
+    template_basic_path = os.path.join(os.path.dirname(__file__), "error_handling_basic.apl")
+    template_basic = load_template(template_basic_path)
     
     print("📝 Basic Error Handling Template:")
     print(template_basic)
@@ -55,26 +50,9 @@ This is attempt #{{ get_context('runs', 0) + 1 }}. Please respond with something
             raise ValueError("Tool intentionally failed")
         return f"Successfully processed: {message}"
     
-    template_tools = """
-# pre: setup
-{{ set_context('allowed_tools', ['failing_tool']) }}
-{{ set_context('attempt', 1) }}
-
-# prompt: setup
-{% if get_context('attempt', 1) == 1 %}
-Please use the failing tool with message "This should fail".
-{% else %}
-Please use the failing tool with message "This should work".
-{% endif %}
-
-# post: setup
-{% if errors and get_context('attempt', 1) < 2 %}
-    {{ set_context('attempt', get_context('attempt', 1) + 1) }}
-    {{ set_context('next_step', 'setup') }}
-{% else %}
-    {{ set_context('next_step', 'return') }}
-{% endif %}
-"""
+    # Tool error handling - load template from file
+    template_tools_path = os.path.join(os.path.dirname(__file__), "error_handling_tools.apl")
+    template_tools = load_template(template_tools_path)
     
     print("📝 Tool Error Handling Template:")
     print(template_tools)

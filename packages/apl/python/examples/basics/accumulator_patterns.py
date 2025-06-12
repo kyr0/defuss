@@ -3,6 +3,7 @@
 Comprehensive Accumulator Patterns Example
 
 This example demonstrates all accumulator helper functions:
+- Loading templates from .apl files
 - inc_context() for counting
 - add_context() for sums, strings, and lists
 - Multiple accumulator patterns in complex workflows
@@ -18,6 +19,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from defuss_apl import start
 
 
+def load_template(file_path):
+    """Load an APL template from a file"""
+    with open(file_path, 'r') as f:
+        return f.read()
+
+
 async def run_comprehensive_example():
     """Comprehensive example showing all accumulator patterns"""
     
@@ -25,86 +32,9 @@ async def run_comprehensive_example():
     print("Demonstrating all accumulator functions in a data processing workflow")
     print()
     
-    template = """
-# pre: process_data
-{# Initialize dataset if not exists #}
-{% if get_context('dataset') is none %}
-{{ set_context('dataset', [
-    {"name": "Alice", "score": 85, "category": "A"},
-    {"name": "Bob", "score": 92, "category": "A"}, 
-    {"name": "Charlie", "score": 78, "category": "B"},
-    {"name": "Diana", "score": 96, "category": "A"},
-    {"name": "Eve", "score": 88, "category": "B"}
-]) }}
-{{ set_context('index', 0) }}
-{% endif %}
-
-{# Get current item #}
-{% set current_item = get_context('dataset', [])[get_context('index', 0)] %}
-{% set name = current_item.name %}
-{% set score = current_item.score %}
-{% set category = current_item.category %}
-
-{# Count total processed #}
-{{ inc_context('total_processed') }}
-
-{# Sum all scores #}
-{{ add_context('score_sum', score) }}
-
-{# Count by category #}
-{% if category == 'A' %}
-{{ inc_context('category_a_count') }}
-{{ add_context('category_a_scores', score) }}
-{% else %}
-{{ inc_context('category_b_count') }}
-{{ add_context('category_b_scores', score) }}
-{% endif %}
-
-{# Build lists #}
-{{ add_context('all_names', [name], []) }}
-{% if score >= 90 %}
-{{ add_context('high_performers', [name], []) }}
-{% endif %}
-
-{# Build report string #}
-{{ add_context('report', name + ' (' + category + '): ' + score|string, '') }}
-{% if get_context('index', 0) < get_context('dataset', [])|length - 1 %}
-{{ add_context('report', ', ') }}
-{% endif %}
-
-{# Next iteration #}
-{{ inc_context('index') }}
-
-# prompt: process_data
-## user
-Processing {{ name }}: Score={{ score }}, Category={{ category }}
-Progress: {{ get_context('total_processed', 0) }}/{{ get_context('dataset', [])|length }}
-
-# post: process_data
-{% if get_context('index', 0) < get_context('dataset', [])|length %}
-{{ set_context('next_step', 'process_data') }}
-{% else %}
-{{ set_context('next_step', 'analytics') }}
-{% endif %}
-
-# prompt: analytics
-## user
-Data Processing Complete! 📊
-
-=== SUMMARY STATISTICS ===
-Total Records: {{ get_context('total_processed', 0) }}
-Average Score: {{ (get_context('score_sum', 0) / get_context('total_processed', 1))|round(2) }}
-
-=== BY CATEGORY ===
-Category A: {{ get_context('category_a_count', 0) }} people, avg {{ (get_context('category_a_scores', 0) / get_context('category_a_count', 1))|round(2) if get_context('category_a_count', 0) > 0 else 'N/A' }}
-Category B: {{ get_context('category_b_count', 0) }} people, avg {{ (get_context('category_b_scores', 0) / get_context('category_b_count', 1))|round(2) if get_context('category_b_count', 0) > 0 else 'N/A' }}
-
-=== HIGH PERFORMERS (≥90) ===
-{{ get_context('high_performers', [])|join(', ') if get_context('high_performers', []) else 'None' }}
-
-=== PROCESSED DATA ===
-{{ get_context('report', '') }}
-"""
+    # Load template from .apl file
+    template_path = os.path.join(os.path.dirname(__file__), "accumulator_patterns.apl")
+    template = load_template(template_path)
     
     try:
         context = await start(template, {'debug': False})
@@ -126,6 +56,7 @@ Category B: {{ get_context('category_b_count', 0) }} people, avg {{ (get_context
         print(f"📈 Category A: {cat_a_count}, Category B: {cat_b_count}")
         print()
         print("📝 This example demonstrates:")
+        print("   ✓ Loading templates from .apl files")
         print("   ✓ inc_context() for counting (total_processed, category counts)")
         print("   ✓ add_context() for sums (score_sum, category_scores)")
         print("   ✓ add_context() for lists (all_names, high_performers)")

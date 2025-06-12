@@ -6,11 +6,18 @@ This example demonstrates:
 - Basic APL template structure
 - Variable assignment with set_context
 - Simple prompt execution
+- Loading templates from .apl files
 """
 
 import asyncio
 import os
 from defuss_apl import start
+
+
+def load_template(file_path):
+    """Load an APL template from a file"""
+    with open(file_path, 'r') as f:
+        return f.read()
 
 
 async def main():
@@ -19,10 +26,9 @@ async def main():
     print("Demonstrates: Basic APL structure and variable assignment")
     print()
     
-    template = """
-# prompt: greet
-Hello! How can I help you today?
-"""
+    # Load the template from external .apl file
+    template_path = os.path.join(os.path.dirname(__file__), "simple_greeting.apl")
+    template = load_template(template_path)
     
     print("📝 Template:")
     print(template)
@@ -37,21 +43,9 @@ Hello! How can I help you today?
     # Example with variables
     print("=== With Variables ===")
     
-    template_with_vars = """
-# pre: setup
-{{ set_context('user_name', 'Alice') }}
-{{ set_context('greeting', 'Hello') }}
-
-# prompt: setup
-## system
-You are a friendly assistant.
-
-## user
-{{ get_context('greeting', 'Hello') }}, {{ get_context('user_name', 'User') }}! How are you doing today?
-
-# post: setup
-{{ set_context('next_step', 'return') }}
-"""
+    # Load the template with variables from external .apl file
+    template_with_vars_path = os.path.join(os.path.dirname(__file__), "simple_greeting_with_vars.apl")
+    template_with_vars = load_template(template_with_vars_path)
     
     print("📝 Template with variables:")
     print(template_with_vars)
@@ -66,6 +60,8 @@ You are a friendly assistant.
     if not os.getenv("OPENAI_API_KEY"):
         print()
         print("💡 Note: Using mock provider (set OPENAI_API_KEY for real LLM)")
+    else:
+        print("🔑 Using OpenAI as LLM provider (OPENAI_API_KEY is set)")
 
 
 if __name__ == "__main__":

@@ -10,36 +10,21 @@ import os
 from defuss_apl import start
 
 
+def load_template(file_path):
+    """Load an APL template from a file"""
+    with open(file_path, 'r') as f:
+        return f.read()
+
+
 async def main():
     """Debug control flow execution"""
     print("=== Debug Control Flow ===")
     print("Testing set_context in conditionals")
     print()
     
-    template = """
-# pre: test
-{{ set_context('counter', 1) }}
-
-# prompt: test
-Starting with counter: {{ get_context('counter', 1) }}
-
-# post: test
-{{ set_context('counter', get_context('counter', 1) + 1) }}
-Counter after increment: {{ get_context('counter', 1) }}
-{% if get_context('counter', 1) >= 3 %}
-Next step will be: final
-{{ set_context('next_step', 'final') }}
-{% else %}
-Next step will be: test
-{{ set_context('next_step', 'test') }}
-{% endif %}
-
-# prompt: final
-Final step reached with counter: {{ get_context('counter', 1) }}
-
-# post: final
-{{ set_context('next_step', 'return') }}
-"""
+    # Load the template from external .apl file
+    template_path = os.path.join(os.path.dirname(__file__), "debug_control_flow.apl")
+    template = load_template(template_path)
     
     print("📝 Template:")
     print(template)
