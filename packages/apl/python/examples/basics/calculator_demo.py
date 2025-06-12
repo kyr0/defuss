@@ -51,6 +51,12 @@ async def main():
     print("=== Calculator & Weather Demo ===")
     print("Demonstrates: Tool calling, function introspection, intelligent arguments")
     print()
+
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Note: Using mock provider (set OPENAI_API_KEY for real LLM)")
+        print()
+    else:
+        print("🔑 Using OpenAI as LLM provider (OPENAI_API_KEY is set)")
     
     # Load the template from external .apl file
     template_path = os.path.join(os.path.dirname(__file__), "calculator_demo.apl")

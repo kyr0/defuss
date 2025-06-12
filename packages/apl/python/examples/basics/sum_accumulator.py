@@ -31,6 +31,12 @@ async def run_sum_example():
     print("=== Sum Accumulator Example ===")
     print("Using add_context() to sum numbers: [10, 20, 30, 40, 50]")
     print()
+
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Note: Using mock provider (set OPENAI_API_KEY for real LLM)")
+        print()
+    else:
+        print("🔑 Using OpenAI as LLM provider (OPENAI_API_KEY is set)")
     
     # Load template from .apl file
     template_path = os.path.join(os.path.dirname(__file__), "sum_accumulator.apl")

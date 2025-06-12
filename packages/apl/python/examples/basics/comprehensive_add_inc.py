@@ -19,7 +19,13 @@ def load_template(file_path):
 async def run_comprehensive_add_inc_example():
     """Demonstrate improved APL features"""
     
-    print("=== APL Improvements Demo ===\n")
+    print("=== APL Demo ===\n")
+
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Note: Using mock provider (set OPENAI_API_KEY for real LLM)")
+        print()
+    else:
+        print("🔑 Using OpenAI as LLM provider (OPENAI_API_KEY is set)")
     
     # Example 1: Explicit termination - single step terminates automatically
     print("1. Explicit Termination Behavior:")

@@ -27,6 +27,12 @@ async def main():
     print("Demonstrates: Error detection, retry logic, circuit breaking")
     print()
     
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Note: Using mock provider (set OPENAI_API_KEY for real LLM)")
+        print()
+    else:
+        print("🔑 Using OpenAI as LLM provider (OPENAI_API_KEY is set)")
+        
     # Basic error handling - load template from file
     template_basic_path = os.path.join(os.path.dirname(__file__), "error_handling_basic.apl")
     template_basic = load_template(template_basic_path)

@@ -31,6 +31,12 @@ async def run_comprehensive_example():
     print("=== Comprehensive Accumulator Patterns ===")
     print("Demonstrating all accumulator functions in a data processing workflow")
     print()
+
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Note: Using mock provider (set OPENAI_API_KEY for real LLM)")
+        print()
+    else:
+        print("🔑 Using OpenAI as LLM provider (OPENAI_API_KEY is set)")
     
     # Load template from .apl file
     template_path = os.path.join(os.path.dirname(__file__), "accumulator_patterns.apl")

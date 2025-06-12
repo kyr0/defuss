@@ -108,6 +108,8 @@ async def main():
     if not os.getenv("OPENAI_API_KEY"):
         print("Note: Using mock provider (set OPENAI_API_KEY for real LLM)")
         print()
+    else:
+        print("🔑 Using OpenAI as LLM provider (OPENAI_API_KEY is set)")
     
     await example_overview()
     

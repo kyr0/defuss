@@ -31,6 +31,12 @@ async def run_string_builder_example():
     print("=== String Builder Example ===")
     print("Using add_context() to build strings from word lists")
     print()
+
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Note: Using mock provider (set OPENAI_API_KEY for real LLM)")
+        print()
+    else:
+        print("🔑 Using OpenAI as LLM provider (OPENAI_API_KEY is set)")
     
     # Load template from .apl file
     template_path = os.path.join(os.path.dirname(__file__), "string_builder.apl")

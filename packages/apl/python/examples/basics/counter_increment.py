@@ -31,6 +31,12 @@ async def run_counter_example():
     print("=== Simple Counter Example ===")
     print("Using inc_context() to create a counter that increments until 5")
     print()
+
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Note: Using mock provider (set OPENAI_API_KEY for real LLM)")
+        print()
+    else:
+        print("🔑 Using OpenAI as LLM provider (OPENAI_API_KEY is set)")
     
     # Load template from .apl file
     template_path = os.path.join(os.path.dirname(__file__), "counter_increment.apl")
