@@ -233,3 +233,478 @@ Processing tool results...
         
         assert context["success_status"] == "success"
         assert context["result_value"] == 42
+
+
+class TestGetFunction:
+    """Test the get helper function that combines get_context and get_json_path"""
+    
+    @pytest.mark.asyncio
+    async def test_basic_variable_retrieval(self, basic_options):
+        """Test basic variable retrieval with get"""
+        template = """
+# pre: test
+{{ set_context('string_var', 'hello') }}
+{{ set_context('num_var', 42) }}
+{{ set_context('retrieved_string', get('string_var', 'default')) }}
+{{ set_context('retrieved_num', get('num_var', 0)) }}
+{{ set_context('missing_var', get('does_not_exist', 'missing')) }}
+
+# prompt: test
+## user
+Retrieved: {{ get('retrieved_string', '') }}, {{ get('retrieved_num', 0) }}, {{ get('missing_var', '') }}
+"""
+        context = await start(template, basic_options)
+        
+        assert context["retrieved_string"] == "hello"
+        assert context["retrieved_num"] == 42
+        assert context["missing_var"] == "missing"
+
+
+class TestSetFunction:
+    """Test the set helper function that combines set_context and json path setting"""
+    
+    @pytest.mark.asyncio
+    async def test_basic_variable_setting(self, basic_options):
+        """Test basic variable setting with set"""
+        template = """
+# pre: test
+{{ set('string_var', 'hello') }}
+{{ set('num_var', 42) }}
+{{ set('bool_var', True) }}
+
+# prompt: test
+## user
+Variables: {{ get('string_var', '') }}, {{ get('num_var', 0) }}, {{ get('bool_var', False) }}
+"""
+        context = await start(template, basic_options)
+        
+        assert context["string_var"] == "hello"
+        assert context["num_var"] == 42
+        assert context["bool_var"] is True
+        assert "Variables: hello, 42, True" in context["result_text"]
+
+    @pytest.mark.asyncio
+    async def test_json_path_setting(self, basic_options):
+        """Test setting values via JSON path"""
+        template = """
+# pre: test
+{{ set('user', {
+    "name": "Alice",
+    "profile": {
+        "age": 30,
+        "settings": {
+            "theme": "light"
+        }
+    },
+    "posts": [
+        {"id": 1, "title": "First post"},
+        {"id": 2, "title": "Second post"}
+    ]
+}) }}
+
+{{ set('user.name', 'Bob') }}
+{{ set('user.profile.age', 35) }}
+{{ set('user.profile.settings.theme', 'dark') }}
+{{ set('user.posts.0.title', 'Updated first post') }}
+{{ set('user.profile.location', 'New York') }}
+{{ set('user.interests', ['coding', 'reading']) }}
+
+# prompt: test
+## user
+User: {{ get('user.name') }}, Age: {{ get('user.profile.age') }}
+Theme: {{ get('user.profile.settings.theme') }}
+Location: {{ get('user.profile.location') }}
+First post: {{ get('user.posts.0.title') }}
+Interests: {{ get('user.interests') }}
+"""
+        context = await start(template, basic_options)
+        
+        # Check that values were updated correctly
+        assert context["user"]["name"] == "Bob"
+        assert context["user"]["profile"]["age"] == 35
+        assert context["user"]["profile"]["settings"]["theme"] == "dark"
+        assert context["user"]["posts"][0]["title"] == "Updated first post"
+        assert context["user"]["profile"]["location"] == "New York"
+        assert context["user"]["interests"] == ["coding", "reading"]
+
+    @pytest.mark.asyncio
+    async def test_creating_nested_structures(self, basic_options):
+        """Test creating nested structures with set"""
+        template = """
+# pre: test
+{{ set('data', {}) }}
+{{ set('data.user.name', 'Alice') }}
+{{ set('data.user.profile.age', 30) }}
+{{ set('data.items.0.name', 'First Item') }}
+{{ set('data.items.1.name', 'Second Item') }}
+
+# prompt: test
+## user
+Data: {{ get('data') }}
+"""
+        context = await start(template, basic_options)
+        
+        # Check that nested structure was created correctly
+        assert context["data"]["user"]["name"] == "Alice"
+        assert context["data"]["user"]["profile"]["age"] == 30
+        assert context["data"]["items"][0]["name"] == "First Item"
+        assert context["data"]["items"][1]["name"] == "Second Item"
+
+    @pytest.mark.asyncio
+    async def test_set_vs_set_context(self, basic_options):
+        """Test that set function works the same as set_context for simple variables"""
+        template = """
+# pre: test
+{{ set('var1', 'value1') }}
+{{ set_context('var2', 'value2') }}
+
+# prompt: test
+## user
+Comparison: {{ get('var1') }} vs {{ get_context('var2') }}
+"""
+        context = await start(template, basic_options)
+        
+        # Both ways should work the same for simple variables
+        assert context["var1"] == "value1"
+        assert context["var2"] == "value2"
+        assert context["var1"] == context["var2"].replace("2", "1")
+
+
+class TestAddFunction:
+    """Test the add helper function that is an alias for add_context"""
+    
+    @pytest.mark.asyncio
+    async def test_add_vs_add_context(self, basic_options):
+        """Test that add function works the same as add_context"""
+        template = """
+# pre: test
+{{ set('counter1', 5) }}
+{{ set('counter2', 5) }}
+{{ add('counter1', 3) }}
+{{ add_context('counter2', 3) }}
+
+# prompt: test
+## user
+Counter 1: {{ get('counter1') }}, Counter 2: {{ get('counter2') }}
+"""
+        context = await start(template, basic_options)
+        
+        assert context["counter1"] == 8
+        assert context["counter2"] == 8
+        assert context["counter1"] == context["counter2"]
+
+    @pytest.mark.asyncio
+    async def test_add_with_default(self, basic_options):
+        """Test that add function correctly uses default value"""
+        template = """
+# pre: test
+{{ add('new_counter', 5, 10) }}
+{{ add('new_counter', 7) }}
+
+# prompt: test
+## user
+New counter: {{ get('new_counter') }}
+"""
+        context = await start(template, basic_options)
+        
+        # First call should set new_counter to 10 + 5 = 15
+        # Second call should add 7 to get 22
+        assert context["new_counter"] == 22
+
+
+class TestIncFunction:
+    """Test the inc helper function that is an alias for inc_context"""
+    
+    @pytest.mark.asyncio
+    async def test_inc_vs_inc_context(self, basic_options):
+        """Test that inc function works the same as inc_context"""
+        template = """
+# pre: test
+{{ set('counter1', 5) }}
+{{ set('counter2', 5) }}
+{{ inc('counter1') }}
+{{ inc_context('counter2') }}
+
+# prompt: test
+## user
+Counter 1: {{ get('counter1') }}, Counter 2: {{ get('counter2') }}
+"""
+        context = await start(template, basic_options)
+        
+        assert context["counter1"] == 6
+        assert context["counter2"] == 6
+        assert context["counter1"] == context["counter2"]
+
+
+class TestRemContextFunction:
+    """Test the rem_context helper function"""
+    
+    @pytest.mark.asyncio
+    async def test_basic_subtraction(self, basic_options):
+        """Test basic subtraction with rem_context"""
+        template = """
+# pre: test
+{{ set_context('num_value', 10) }}
+{{ rem_context('num_value', 3) }}
+{{ set_context('float_value', 5.5) }}
+{{ rem_context('float_value', 1.5) }}
+
+# prompt: test
+## user
+Num value: {{ get_context('num_value', 0) }}, Float value: {{ get_context('float_value', 0.0) }}
+"""
+        context = await start(template, basic_options)
+        
+        assert context["num_value"] == 7  # 10 - 3
+        assert context["float_value"] == 4.0  # 5.5 - 1.5
+    
+    @pytest.mark.asyncio
+    async def test_with_default_value(self, basic_options):
+        """Test rem_context with default value for non-existent variables"""
+        template = """
+# pre: test
+{{ rem_context('new_counter', 5, 20) }}
+
+# prompt: test
+## user
+New counter: {{ get_context('new_counter', 0) }}
+"""
+        context = await start(template, basic_options)
+        
+        # Should initialize with 20 and then subtract 5
+        assert context["new_counter"] == 15
+        
+    @pytest.mark.asyncio
+    async def test_sequential_operations(self, basic_options):
+        """Test sequential subtraction operations"""
+        template = """
+# pre: test
+{{ set_context('counter', 100) }}
+{{ rem_context('counter', 20) }}
+{{ rem_context('counter', 30) }}
+{{ rem_context('counter', 10) }}
+
+# prompt: test
+## user
+Counter value: {{ get_context('counter', 0) }}
+"""
+        context = await start(template, basic_options)
+        
+        # 100 - 20 - 30 - 10 = 40
+        assert context["counter"] == 40
+
+
+class TestRemFunction:
+    """Test the rem helper function that is an alias for rem_context"""
+    
+    @pytest.mark.asyncio
+    async def test_rem_vs_rem_context(self, basic_options):
+        """Test that rem function works the same as rem_context"""
+        template = """
+# pre: test
+{{ set('counter1', 20) }}
+{{ set('counter2', 20) }}
+{{ rem('counter1', 7) }}
+{{ rem_context('counter2', 7) }}
+
+# prompt: test
+## user
+Counter 1: {{ get('counter1') }}, Counter 2: {{ get('counter2') }}
+"""
+        context = await start(template, basic_options)
+        
+        assert context["counter1"] == 13  # 20 - 7
+        assert context["counter2"] == 13  # 20 - 7
+        assert context["counter1"] == context["counter2"]
+    
+    @pytest.mark.asyncio
+    async def test_rem_with_default(self, basic_options):
+        """Test that rem function correctly uses default value"""
+        template = """
+# pre: test
+{{ rem('new_counter', 5, 25) }}
+{{ rem('new_counter', 10) }}
+
+# prompt: test
+## user
+New counter: {{ get('new_counter') }}
+"""
+        context = await start(template, basic_options)
+        
+        # First call should set new_counter to 25 - 5 = 20
+        # Second call should subtract 10 to get 10
+        assert context["new_counter"] == 10
+        
+    @pytest.mark.asyncio
+    async def test_rem_with_various_types(self, basic_options):
+        """Test rem with different numeric types"""
+        template = """
+# pre: test
+{{ set('int_val', 100) }}
+{{ rem('int_val', 50) }}
+{{ set('float_val', 10.5) }}
+{{ rem('float_val', 3.5) }}
+
+# prompt: test
+## user
+Values: {{ get('int_val') }}, {{ get('float_val') }}
+"""
+        context = await start(template, basic_options)
+        
+        assert context["int_val"] == 50
+        assert context["float_val"] == 7.0
+
+    @pytest.mark.asyncio
+    async def test_inc_with_default(self, basic_options):
+        """Test that inc function correctly uses default value"""
+        template = """
+# pre: test
+{{ inc('new_counter', 10) }}
+{{ inc('new_counter') }}
+
+# prompt: test
+## user
+New counter: {{ get('new_counter') }}
+"""
+        context = await start(template, basic_options)
+        
+        # First call should set new_counter to 10 + 1 = 11
+        # Second call should increment to get 12
+        assert context["new_counter"] == 12
+    
+    @pytest.mark.asyncio
+    async def test_json_path_navigation(self, basic_options):
+        """Test JSON path navigation with get"""
+        template = """
+# pre: test
+{{ set_context('user', {
+    "name": "Alice",
+    "profile": {
+        "age": 30,
+        "preferences": {
+            "theme": "dark",
+            "notifications": True
+        }
+    },
+    "posts": [
+        {"id": 1, "title": "First post"},
+        {"id": 2, "title": "Second post"}
+    ]
+}) }}
+
+{{ set_context('user_name', get('user.name', 'unknown')) }}
+{{ set_context('user_age', get('user.profile.age', 0)) }}
+{{ set_context('user_theme', get('user.profile.preferences.theme', 'light')) }}
+{{ set_context('first_post_title', get('user.posts.0.title', 'no title')) }}
+{{ set_context('missing_property', get('user.profile.missing', 'not found')) }}
+{{ set_context('invalid_path', get('user.invalid.path', 'invalid')) }}
+
+# prompt: test
+## user
+User info: {{ get('user_name', '') }}, {{ get('user_age', 0) }}, {{ get('user_theme', '') }}
+Post: {{ get('first_post_title', '') }}
+Missing: {{ get('missing_property', '') }}, {{ get('invalid_path', '') }}
+"""
+        context = await start(template, basic_options)
+        
+        assert context["user_name"] == "Alice"
+        assert context["user_age"] == 30
+        assert context["user_theme"] == "dark"
+        assert context["first_post_title"] == "First post"
+        assert context["missing_property"] == "not found"
+        assert context["invalid_path"] == "invalid"
+    
+    @pytest.mark.asyncio
+    async def test_comparison_with_individual_functions(self, basic_options):
+        """Test that get function works the same as calling get_context and get_json_path separately"""
+        template = """
+# pre: test
+{{ set_context('data', {
+    "items": [
+        {"name": "first", "value": 1},
+        {"name": "second", "value": 2}
+    ]
+}) }}
+
+# Using get function for path navigation
+{{ set_context('path_with_get', get('data.items.1.name', 'default')) }}
+
+# Using the separate functions (get_context + get_json_path)
+{{ set_context('path_with_separate', get_json_path(get_context('data', {}), 'items.1.name', 'default')) }}
+
+# Simple variable access
+{{ set_context('var_with_get', get('data', {})) }}
+{{ set_context('var_with_get_context', get_context('data', {})) }}
+
+# prompt: test
+## user
+Comparison test
+"""
+        context = await start(template, basic_options)
+        
+        # Check that unified get function works the same as separate functions
+        assert context["path_with_get"] == "second"
+        assert context["path_with_get"] == context["path_with_separate"]
+        
+        # Check simple variable access
+        assert context["var_with_get"] == context["var_with_get_context"]
+
+
+class TestDecFunction:
+    """Test the dec helper function that decrements a context variable by 1"""
+    
+    @pytest.mark.asyncio
+    async def test_basic_decrement(self, basic_options):
+        """Test basic decrement functionality"""
+        template = """
+# pre: test
+{{ set('counter', 10) }}
+{{ dec('counter') }}
+{{ dec('counter') }}
+
+# prompt: test
+## user
+Counter value: {{ get('counter') }}
+"""
+        context = await start(template, basic_options)
+        
+        # 10 - 1 - 1 = 8
+        assert context["counter"] == 8
+    
+    @pytest.mark.asyncio
+    async def test_dec_with_default(self, basic_options):
+        """Test dec with default value initialization"""
+        template = """
+# pre: test
+{{ dec('new_counter', 20) }}
+{{ dec('new_counter') }}
+
+# prompt: test
+## user
+New counter: {{ get('new_counter') }}
+"""
+        context = await start(template, basic_options)
+        
+        # First call should initialize with 20 - 1 = 19
+        # Second call should decrement to get 18
+        assert context["new_counter"] == 18
+    
+    @pytest.mark.asyncio
+    async def test_dec_vs_rem(self, basic_options):
+        """Test that dec is equivalent to rem with value 1"""
+        template = """
+# pre: test
+{{ set('counter1', 15) }}
+{{ set('counter2', 15) }}
+{{ dec('counter1') }}
+{{ rem('counter2', 1) }}
+
+# prompt: test
+## user
+Counter values: {{ get('counter1') }}, {{ get('counter2') }}
+"""
+        context = await start(template, basic_options)
+        
+        assert context["counter1"] == 14
+        assert context["counter2"] == 14
+        assert context["counter1"] == context["counter2"]

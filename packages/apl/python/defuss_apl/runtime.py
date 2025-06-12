@@ -70,6 +70,169 @@ def set_context(var_name: str, value: Any) -> str:
         return ""
 
 
+def get(var_name_or_path: str, default: Any = None) -> Any:
+    """Get a variable from context or navigate a JSON path (§7.4 helper function)
+    
+    If var_name_or_path contains a dot ('.'), it will be treated as a JSON path:
+    - The part before the first dot is the variable name to look up in the context
+    - The remaining path is used to navigate the variable's value as a JSON structure
+    
+    Otherwise, it's treated as a simple context variable lookup.
+    """
+    runtime = APLRuntime._current_instance
+    if not runtime or runtime.current_context is None:
+        if runtime and runtime.debug:
+            print(f"[APL DEBUG] get called but no active context: {var_name_or_path}", file=sys.stderr)
+        return default
+    
+    # Check if this is a JSON path (contains dot notation)
+    if '.' in var_name_or_path:
+        # Get the base variable name (part before first dot)
+        var_name = var_name_or_path.split('.', 1)[0]
+        
+        # Get the data from context
+        data = runtime.current_context.get(var_name)
+        
+        # Use get_json_path to navigate the rest of the path
+        result = get_json_path(data, var_name_or_path[len(var_name)+1:], default)
+        
+        if runtime.debug:
+            print(f"[APL DEBUG] get (json_path): {var_name_or_path} = {result} (type: {type(result)})", file=sys.stderr)
+            
+        return result
+    else:
+        # Simple variable lookup
+        result = runtime.current_context.get(var_name_or_path, default)
+        
+        if runtime.debug:
+            print(f"[APL DEBUG] get (context): {var_name_or_path} = {result} (type: {type(result)})", file=sys.stderr)
+            
+        return result
+
+
+def set(var_name_or_path: str, value: Any) -> str:
+    """Set a variable in context or at a specific JSON path (§7.4 helper function)
+    
+    If var_name_or_path contains a dot ('.'), it will be treated as a JSON path:
+    - The part before the first dot is the variable name to look up in the context
+    - The remaining path is used to navigate and set the value in that JSON structure
+    
+    Otherwise, it's treated as a simple context variable assignment.
+    """
+    runtime = APLRuntime._current_instance
+    if not runtime or runtime.current_context is None:
+        if runtime and runtime.debug:
+            print(f"[APL DEBUG] set called but no active context: {var_name_or_path} = {value}", file=sys.stderr)
+        return ""
+    
+    # Check if this is a JSON path (contains dot notation)
+    if '.' in var_name_or_path:
+        # Get the base variable name (part before first dot)
+        var_name = var_name_or_path.split('.', 1)[0]
+        path = var_name_or_path[len(var_name)+1:]
+        
+        # Get the data from context, defaulting to empty dict if not exists
+        data = runtime.current_context.get(var_name)
+        if data is None:
+            data = {}
+            
+        # Navigate the path and set the value
+        if not set_json_path(data, path, value):
+            if runtime.debug:
+                print(f"[APL DEBUG] set failed for path: {path} in {var_name}", file=sys.stderr)
+            return ""
+            
+        # Update the context with modified data
+        runtime.current_context[var_name] = data
+        
+        if runtime.debug:
+            print(f"[APL DEBUG] set (json_path): {var_name_or_path} = {value} (type: {type(value)})", file=sys.stderr)
+    else:
+        # Simple variable assignment
+        runtime.current_context[var_name_or_path] = value
+        
+        if runtime.debug:
+            print(f"[APL DEBUG] set (context): {var_name_or_path} = {value} (type: {type(value)})", file=sys.stderr)
+    
+    return ""  # Return empty string to avoid output in templates
+
+
+def set_json_path(data: Any, path: str, value: Any) -> bool:
+    """Helper function to set a value at a specific JSON path
+    
+    Returns True if successful, False if path cannot be navigated
+    """
+    try:
+        # Handle simple key access
+        if '.' not in path:
+            if isinstance(data, dict):
+                data[path] = value
+                return True
+            elif isinstance(data, list) and path.isdigit():
+                idx = int(path)
+                if 0 <= idx < len(data):
+                    data[idx] = value
+                    return True
+                else:
+                    return False  # Index out of range
+            else:
+                return False  # Can't set property on non-dict/non-list
+        
+        # Handle nested path
+        keys = path.split('.')
+        current = data
+        
+        # Navigate to the parent of the target property
+        for i, key in enumerate(keys[:-1]):
+            if current is None:
+                return False
+            
+            if isinstance(current, dict):
+                # Create intermediate objects if they don't exist
+                if key not in current or current[key] is None:
+                    # Determine if next key is a number (for array) or string (for object)
+                    next_key = keys[i + 1]
+                    if next_key.isdigit():
+                        current[key] = []  # Next level should be an array
+                    else:
+                        current[key] = {}  # Next level should be an object
+                current = current[key]
+            elif isinstance(current, list) and key.isdigit():
+                idx = int(key)
+                # Extend the list if index is out of range
+                while idx >= len(current):
+                    current.append(None)
+                # Create intermediate objects if they don't exist
+                if current[idx] is None:
+                    # Determine if next key is a number (for array) or string (for object)
+                    next_key = keys[i + 1]
+                    if next_key.isdigit():
+                        current[idx] = []  # Next level should be an array
+                    else:
+                        current[idx] = {}  # Next level should be an object
+                current = current[idx]
+            else:
+                return False  # Can't navigate path
+        
+        # Set the value on the final object
+        last_key = keys[-1]
+        if isinstance(current, dict):
+            current[last_key] = value
+            return True
+        elif isinstance(current, list) and last_key.isdigit():
+            idx = int(last_key)
+            # Extend the list if index is out of range
+            while idx >= len(current):
+                current.append(None)
+            current[idx] = value
+            return True
+        else:
+            return False  # Can't set property on non-dict/non-list
+            
+    except (KeyError, IndexError, ValueError, TypeError):
+        return False
+
+
 def get_context(var_name: str, default: Any = None) -> Any:
     """Get a context variable (§7.4 helper function)"""
     runtime = APLRuntime._current_instance
@@ -103,6 +266,42 @@ def add_context(var_name: str, value: Any, default: Any = 0) -> str:
 def inc_context(var_name: str, default: Any = 0) -> str:
     """Increment a context variable by 1, initializing with default if not exists (§7.4 helper function)"""
     return add_context(var_name, 1, default)
+
+
+def rem_context(var_name: str, value: Any, default: Any = 0) -> str:
+    """Subtract a value from a context variable, initializing with default if not exists (§7.4 helper function)"""
+    runtime = APLRuntime._current_instance
+    if runtime and runtime.current_context is not None:
+        current_value = runtime.current_context.get(var_name, default)
+        new_value = current_value - value
+        runtime.current_context[var_name] = new_value
+        if runtime.debug:
+            print(f"[APL DEBUG] rem_context: {var_name} = {current_value} - {value} = {new_value}", file=sys.stderr)
+        return ""  # Return empty string to avoid output in templates
+    else:
+        if runtime and runtime.debug:
+            print(f"[APL DEBUG] rem_context called but no active context: {var_name}", file=sys.stderr)
+        return ""
+
+
+def add(var_name: str, value: Any, default: Any = 0) -> str:
+    """Add a value to a context variable, shorter alias for add_context (§7.4 helper function)"""
+    return add_context(var_name, value, default)
+
+
+def rem(var_name: str, value: Any, default: Any = 0) -> str:
+    """Subtract a value from a context variable, shorter alias for rem_context (§7.4 helper function)"""
+    return rem_context(var_name, value, default)
+
+
+def inc(var_name: str, default: Any = 0) -> str:
+    """Increment a context variable by 1, shorter alias for inc_context (§7.4 helper function)"""
+    return inc_context(var_name, default)
+
+
+def dec(var_name: str, default: Any = 0) -> str:
+    """Decrement a context variable by 1, inverse of inc() (§7.4 helper function)"""
+    return rem_context(var_name, 1, default)
 
 
 class RuntimeError(Exception):
@@ -279,10 +478,18 @@ class APLRuntime:
         
         # Add built-in helper functions (§7.4)
         context["get_json_path"] = get_json_path
+        context["set_json_path"] = set_json_path
         context["set_context"] = set_context
         context["get_context"] = get_context
         context["add_context"] = add_context
+        context["rem_context"] = rem_context
         context["inc_context"] = inc_context
+        context["get"] = get
+        context["set"] = set
+        context["add"] = add
+        context["rem"] = rem
+        context["inc"] = inc
+        context["dec"] = dec
         
         return context
         
