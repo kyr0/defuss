@@ -112,13 +112,11 @@ class TestDataProcessingExamples:
         template = """
 # pre: process_list
 {{ set_context('numbers', [1, 2, 3, 4, 5]) }}
-{{ set_context('sum_total', 0) }}
-{{ set_context('even_numbers', []) }}
 
-{% for num in numbers %}
-  {{ set_context('sum_total', get_context('sum_total', 0) + num) }}
+{% for num in get_context('numbers', []) %}
+  {{ add_context('sum_total', num) }}
   {% if num % 2 == 0 %}
-    {{ set_context('even_numbers', get_context('even_numbers', []) + [num]) }}
+    {{ add_context('even_numbers', [num], []) }}
   {% endif %}
 {% endfor %}
 
@@ -233,10 +231,17 @@ Task completed successfully.
     async def test_retry_mechanism(self, basic_options):
         """Test retry mechanism example"""
         template = """
-# pre: retry_task
+# pre: init_retry
 {{ set_context('attempt', 1) }}
 {{ set_context('max_attempts', 3) }}
 {{ set_context('success', False) }}
+
+# prompt: init_retry
+## user
+Starting retry mechanism...
+
+# post: init_retry
+{{ set_context('next_step', 'retry_task') }}
 
 # prompt: retry_task
 ## user
@@ -290,35 +295,39 @@ class TestWorkflowPatterns:
     async def test_wizard_pattern(self, basic_options):
         """Test wizard/step-by-step pattern"""
         template = """
-# pre: wizard_start
-{{ set_context('current_step', 1) }}
+# pre: step1
+{{ set_context('step_number', 1) }}
 {{ set_context('total_steps', 3) }}
 {{ set_context('collected_data', {}) }}
 
 # prompt: step1
 ## user
-Step {{ get_context('current_step', 1) }} of {{ get_context('total_steps', 3) }}: Enter your name
+Step {{ get_context('step_number') }} of {{ get_context('total_steps') }}: Enter your name
 
 # post: step1
-{{ set_context('collected_data', get_context('collected_data', {}) | combine({'name': 'Alice'})) }}
-{{ set_context('current_step', 2) }}
+{% set collected = get_context('collected_data', {}) %}
+{% set _ = collected.update({'name': 'Alice'}) %}
+{{ set_context('collected_data', collected) }}
+{{ set_context('step_number', 2) }}
 {{ set_context('next_step', 'step2') }}
 
 # prompt: step2
 ## user
-Step {{ get_context('current_step', 1) }} of {{ get_context('total_steps', 3) }}: Enter your age
+Step {{ get_context('step_number') }} of {{ get_context('total_steps') }}: Enter your age
 
 # post: step2
-{{ set_context('collected_data', get_context('collected_data', {}) | combine({'age': 25})) }}
-{{ set_context('current_step', 3) }}
+{% set collected = get_context('collected_data', {}) %}
+{% set _ = collected.update({'age': 25}) %}
+{{ set_context('collected_data', collected) }}
+{{ set_context('step_number', 3) }}
 {{ set_context('next_step', 'step3') }}
 
 # prompt: step3
 ## user
-Step {{ get_context('current_step', 1) }} of {{ get_context('total_steps', 3) }}: Confirm your details
+Step {{ get_context('step_number') }} of {{ get_context('total_steps') }}: Confirm your details
 
 # post: step3
-{{ set_context('next_step', 'return') }}
+{{ set_context('next_step', 'complete') }}
 
 # prompt: complete
 ## user
@@ -327,7 +336,7 @@ Wizard complete! Data: {{ collected_data }}
         
         context = await start(template, basic_options)
         
-        assert context["current_step"] == 3
+        assert context["step_number"] == 3
         assert context["collected_data"]["name"] == "Alice"
         assert context["collected_data"]["age"] == 25
         assert "Wizard complete" in context["result_text"]
@@ -336,24 +345,26 @@ Wizard complete! Data: {{ collected_data }}
     async def test_state_machine_pattern(self, basic_options):
         """Test state machine pattern"""
         template = """
-# pre: state_init
-{{ set_context('state', 'idle') }}
-{{ set_context('event', 'start') }}
+# pre: state_handler
+{% if get_context('state') is none %}
+  {{ set_context('state', 'idle') }}
+  {{ set_context('event', 'start') }}
+{% endif %}
 
 # prompt: state_handler
 ## user
-Current state: {{ state }}, Event: {{ event }}
+Current state: {{ get_context('state', '') }}, Event: {{ get_context('event', '') }}
 
 # post: state_handler
 {% if get_context('state', '') == 'idle' and get_context('event', '') == 'start' %}
   {{ set_context('state', 'processing') }}
   {{ set_context('event', 'process') }}
   {{ set_context('next_step', 'state_handler') }}
-{% elif state == 'processing' and event == 'process' %}
+{% elif get_context('state', '') == 'processing' and get_context('event', '') == 'process' %}
   {{ set_context('state', 'completed') }}
   {{ set_context('event', 'finish') }}
   {{ set_context('next_step', 'state_handler') }}
-{% elif state == 'completed' %}
+{% elif get_context('state', '') == 'completed' %}
   {{ set_context('next_step', 'final') }}
 {% else %}
   {{ set_context('next_step', 'error') }}
@@ -377,31 +388,31 @@ State machine error
     async def test_pipeline_pattern(self, basic_options):
         """Test data pipeline pattern"""
         template = """
-# pre: pipeline_start
+# pre: stage1_clean
 {{ set_context('raw_data', 'HELLO WORLD') }}
 
 # prompt: stage1_clean
 ## user
-Stage 1: Cleaning data: {{ raw_data }}
+Stage 1: Cleaning data: {{ get_context('raw_data', '') }}
 
 # post: stage1_clean
-{{ set_context('cleaned_data', raw_data.lower()) }}
+{{ set_context('cleaned_data', get_context('raw_data', '').lower()) }}
 {{ set_context('next_step', 'stage2_transform') }}
 
 # prompt: stage2_transform
 ## user
-Stage 2: Transforming data: {{ cleaned_data }}
+Stage 2: Transforming data: {{ get_context('cleaned_data', '') }}
 
 # post: stage2_transform
-{{ set_context('transformed_data', cleaned_data.replace(' ', '_')) }}
+{{ set_context('transformed_data', get_context('cleaned_data', '').replace(' ', '_')) }}
 {{ set_context('next_step', 'stage3_output') }}
 
 # prompt: stage3_output
 ## user
-Stage 3: Final output: {{ transformed_data }}
+Stage 3: Final output: {{ get_context('transformed_data', '') }}
 
 # post: stage3_output
-{{ set_context('final_output', transformed_data + '_processed') }}
+{{ set_context('final_output', get_context('transformed_data', '') + '_processed') }}
 """
         
         context = await start(template, basic_options)
@@ -419,7 +430,7 @@ class TestRealWorldExamples:
     async def test_customer_support_workflow(self, basic_options):
         """Test customer support workflow"""
         template = """
-# pre: support_init
+# pre: triage
 {{ set_context('customer_type', 'premium') }}
 {{ set_context('issue_category', 'technical') }}
 {{ set_context('priority', 'high') }}
@@ -429,12 +440,12 @@ class TestRealWorldExamples:
 You are a customer support agent.
 
 ## user
-Customer type: {{ customer_type }}, Issue: {{ issue_category }}, Priority: {{ priority }}
+Customer type: {{ get_context('customer_type', '') }}, Issue: {{ get_context('issue_category', '') }}, Priority: {{ get_context('priority', '') }}
 
 # post: triage
 {% if get_context('customer_type', '') == 'premium' and get_context('priority', '') == 'high' %}
 {{ set_context('next_step', 'escalate') }}
-{% elif issue_category == 'technical' %}
+{% elif get_context('issue_category', '') == 'technical' %}
 {{ set_context('next_step', 'technical_support') }}
 {% else %}
 {{ set_context('next_step', 'general_support') }}
@@ -462,7 +473,7 @@ Handling with general support
     async def test_content_moderation_workflow(self, basic_options):
         """Test content moderation workflow"""
         template = """
-# pre: moderation_init
+# pre: moderate
 {{ set_context('content', 'This is a sample post about technology') }}
 {{ set_context('flagged_words', ['spam', 'inappropriate', 'violation']) }}
 {{ set_context('content_safe', True) }}
@@ -503,7 +514,7 @@ Content flagged for manual review
     async def test_data_validation_workflow(self, basic_options):
         """Test data validation workflow"""
         template = """
-# pre: validation_init
+# pre: validate
 {{ set_context('user_input', {
     'email': 'user@example.com',
     'age': 25,

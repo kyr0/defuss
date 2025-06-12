@@ -266,9 +266,21 @@ def _basic_schema_validation(data: Any, schema: Dict[str, Any]) -> bool:
     elif schema_type == "integer":
         if not isinstance(data, int) or isinstance(data, bool):  # bool is subclass of int
             return False
+        # Check minimum constraint
+        if "minimum" in schema and data < schema["minimum"]:
+            return False
+        # Check maximum constraint  
+        if "maximum" in schema and data > schema["maximum"]:
+            return False
             
     elif schema_type == "number":
         if not isinstance(data, (int, float)) or isinstance(data, bool):
+            return False
+        # Check minimum constraint
+        if "minimum" in schema and data < schema["minimum"]:
+            return False
+        # Check maximum constraint
+        if "maximum" in schema and data > schema["maximum"]:
             return False
             
     elif schema_type == "boolean":
