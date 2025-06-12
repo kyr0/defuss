@@ -283,6 +283,15 @@
               }
             },
             {
+              "match": "(#{2})\\s+(system|user|assistant|developer)(?:\\s+(#+))?\\s*$",
+              "name": "heading.2.markdown.apl.role",
+              "captures": {
+                "1": { "name": "punctuation.definition.heading.markdown" },
+                "2": { "name": "entity.name.type.apl.role" },
+                "3": { "name": "punctuation.definition.heading.markdown" }
+              }
+            },
+            {
               "match": "(#{2})\\s+(.*?)(?:\\s+(#+))?\\s*$",
               "name": "heading.2.markdown",
               "captures": {
