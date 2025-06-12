@@ -21,7 +21,7 @@ def get_default_provider():
     except ImportError:
         # Fall back to test utils mock provider
         from .test_utils import create_mock_provider
-        return create_mock_provider()
+        return create_mock_provider()  # Default provider fallback for testing without OpenAI (§6.1)
 
 
 def create_openai_provider(api_key: Optional[str] = None, base_url: Optional[str] = None):

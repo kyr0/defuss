@@ -10,18 +10,18 @@ from dataclasses import dataclass, field
 @dataclass 
 class Phase:
     """Represents a single phase (pre/prompt/post) content"""
-    content: str = ""
-    roles: Dict[str, str] = field(default_factory=dict)
-    role_list: List[tuple] = field(default_factory=list)  # (role, content) pairs for distinct messages
+    content: str = ""  # Raw content for the phase (§1.1)
+    roles: Dict[str, str] = field(default_factory=dict)  # Maps role names to content (§1.2)
+    role_list: List[tuple] = field(default_factory=list)  # (role, content) pairs for distinct messages (§1.2)
 
 
 @dataclass 
 class Step:
     """Represents a single APL step with its phases"""
-    identifier: str
-    pre: Phase = field(default_factory=Phase)
-    prompt: Phase = field(default_factory=Phase) 
-    post: Phase = field(default_factory=Phase)
+    identifier: str  # Step identifier (§1.1)
+    pre: Phase = field(default_factory=Phase)  # Pre phase (§1.1)
+    prompt: Phase = field(default_factory=Phase)  # Prompt phase (§1.1)
+    post: Phase = field(default_factory=Phase)  # Post phase (§1.1)
 
 
 class ValidationError(Exception):
@@ -32,7 +32,7 @@ class ValidationError(Exception):
 class APLParser:
     """Parser for APL templates"""
     
-    # Reserved variables for future enhancements
+    # Reserved variables for future enhancements - ensures forward compatibility
     RESERVED_VARIABLES = {
         'next_steps', 'await_steps', 'parallel_results', 'race_winner', 'concurrent_limit',
         'step_graph', 'workflow_state', 'checkpoint', 'rollback', 'snapshot', 'resume_from',
@@ -49,10 +49,10 @@ class APLParser:
     
     def __init__(self):
         # Regex patterns for parsing (§1.1, §1.2)
-        self.phase_pattern = re.compile(r'^#\s*(pre|prompt|post)\s*:\s*(.*?)\s*$', re.IGNORECASE)
-        self.role_pattern = re.compile(r'^##\s*(system|user|assistant|developer|tool_result)\s*:?\s*$', re.IGNORECASE)
-        self.jinja_var_pattern = re.compile(r'\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*[|}\[]')
-        self.jinja_set_pattern = re.compile(r'\{\%\s*set\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=')
+        self.phase_pattern = re.compile(r'^#\s*(pre|prompt|post)\s*:\s*(.*?)\s*$', re.IGNORECASE)  # Matches phase headings like "# pre:", "# prompt:", "# post:" (§1.1)
+        self.role_pattern = re.compile(r'^##\s*(system|user|assistant|developer|tool_result)\s*:?\s*$', re.IGNORECASE)  # Matches role headings like "## system:", "## user:" (§1.2)
+        self.jinja_var_pattern = re.compile(r'\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*[|}\[]')  # Extract variable names from Jinja expressions
+        self.jinja_set_pattern = re.compile(r'\{\%\s*set\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=')  # Extract variable names from Jinja set statements
         # Step identifier validation pattern (§1.1)
         self.step_identifier_pattern = re.compile(r'^[^\n\r#:]+$')
         
