@@ -2,8 +2,8 @@ For Version 1.2, we want to improve the Runtime API and context.
 
 - The specification should clearly state that the using `set` does NOT work for the context variables. `set()`, `set_context()` or a specific function like `next(step_anme)` must be used.
 - The specification should clearly state that simply accessing context variables does not wotk. `get()`, `get_context()` or a specific function like `prev()` must be used.
-- The lazy mode is called "relaxed" mode now. The relaxed mode is enabled by default. Mixed usage of relaxed and non-relaxed mode syntax is allowed unless lazy mode is explicitly disabled.
-- The developer can disable the lazy mode using relaxed=False (previously: lazy=False/True). 
+- The relaxed mode is called "relaxed" mode now. The relaxed mode is enabled by default. Mixed usage of relaxed and non-relaxed mode syntax is allowed unless relaxed mode is explicitly disabled.
+- The developer can disable the relaxed mode using relaxed=False (previously: relaxed=False/True). 
 - The 6.1.1 description should be moved to the syntax secion 1.x.
 - We add `prompts_rendered` to the context as a list. It is just the fully evaluated prompt (Jinja rendered version). It has to be added by the provider function right before the actual LLM is called. This is used by the new runtme function with call variant prompts("text")
 - We add `tools_rendered` to the context as a list. This is the  evaluated described tools (Jinja rendered version). It has to be added by the provider function right before the actual LLM is called. This is used by the new runtme function with call variant tools("text")

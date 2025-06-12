@@ -805,18 +805,21 @@ The `start()` function accepts an optional `options` dict to configure the execu
 | `with_context`                 | `dict[str, any]`        | `{}`                     | Top‑level variables initially injected and available from for the first step's *pre* phase. Add your custom async functions here, as the context is flattened and passed down to the Jinja templates `render_async` function.                                                     |
 | `debug`                     | `bool`                  | `false`                  | Emit verbose logs to stderr.                                                                          |
 | `max_runs`                  | `int \| null`           | `null` (∞)               | Hard cap for `global_runs`.                                                                           |
-| `lazy`                      | `bool`                  | `false`                  | Enable lazy syntax mode for *pre* and *post* phases (§6.1.1).                                        |
+| `relaxed`                   | `bool`                  | `false`                  | Enable relaxed syntax mode for *pre* and *post* phases (§6.1.1).                                        |
 | `jinja2_env`                | `jinja2.Environment`    | *auto*                   | Pass a custom Jinja2 environment (else APL creates one internally). The executor will switches  `enable_async` on for auto-await on custom coroutines.                                   |
 
-#### 6.1.1 Lazy Syntax Mode
+#### 6.1.1 Relaxed Syntax Mode
 
-When the `lazy: true` option is enabled, *pre* and *post* phases support a simplified syntax that omits Jinja2 delimiters (`{{ }}` and `{% %}`). The executor automatically transforms lazy syntax into valid Jinja2 before parsing.
+When the `relaxed: True` option is enabled, *pre* and *post* phases support a simplified syntax that omits Jinja2 delimiters (`{{ }}` and `{% %}`). The executor automatically transforms relaxed syntax into valid Jinja2 before parsing.
 
-**Lazy mode applies only to *pre* and *post* phases**. Prompt phases maintain full Jinja2 syntax for precise text output control.
+**Relaxed mode applies only to *pre* and *post* phases**. Prompt phases maintain full Jinja2 syntax for precise text output control.
 
-##### Transformation Rules
+ The relaxed mode preprocessor runs before Jinja2 parsing and transforms the simplified syntax into valid Jinja2 templates line-by-line. Complex multi-line expressions are not supported and require traditional Jinja2 syntax. If multi-line expressions are needed,
+ the relaxed mode can be disabled by setting `relaxed: false` in the options (see §6.1.1.4).
 
-The lazy mode preprocessor processes each line in *pre* and *post* phases:
+##### 6.1.1.1 Transformation Rules
+
+The relaxed mode preprocessor processes each line in *pre* and *post* phases:
 
 1. **Empty lines and comments**: Preserved as-is
 2. **Control flow keywords**: Lines starting with Jinja2 control keywords are wrapped with `{% %}`
@@ -829,9 +832,15 @@ The lazy mode preprocessor processes each line in *pre* and *post* phases:
 - `set`, `endset`  
 - `with`, `endwith`
 
-##### Lazy Syntax Example
+
+##### 6.1.1.2 Mixed Syntax
+
+It is possible to mix relaxed syntax with traditional Jinja2 syntax in the same *pre* or *post* phase. The executor will process both styles correctly, allowing for flexibility in template design. The only requirement is that when using Jinja2 delimiters (`{{ }}` or `{% %}`), they must be present in the same line.
+
+##### 6.1.1.3 Relaxed Syntax Examples
 
 **Traditional syntax:**
+
 ```apl
 # pre: greet
 {{ set_context('user_name', 'World') }}
@@ -845,7 +854,8 @@ The lazy mode preprocessor processes each line in *pre* and *post* phases:
 {% endif %}
 ```
 
-**Lazy syntax:**
+**Relaxed syntax:**
+
 ```apl
 # pre: greet
 set_context('user_name', 'World')
@@ -859,7 +869,22 @@ else
 endif
 ```
 
-##### Lazy Mode Usage
+**Mixed mode syntax:**
+
+```apl
+# pre: greet
+set_context('user_name', 'World')
+set_context('greeting', 'Hello')
+
+# post: greet
+{% if global_runs < 2 and not result_text %}
+    set_context('next_step', 'greet')
+else
+    set_context('next_step', 'return')
+endif
+```
+
+##### 6.1.1.4 Disabling Relaxed Mode
 
 ```python
 from defuss_apl import start
@@ -881,12 +906,9 @@ else
 endif
 """
 
-# Enable lazy mode
-status = await start(agent, {"lazy": true})
+# Disable relaxed mode
+status = await start(agent, {"relaxed": false})
 ```
-
-**Implementation Note**: The lazy mode preprocessor runs before Jinja2 parsing and transforms the simplified syntax into valid Jinja2 templates. Complex multi-line expressions may require traditional Jinja2 syntax.
-
 
 ### 6.2 Custom Jinja2 Environment Example
 
