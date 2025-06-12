@@ -126,6 +126,7 @@ class APLRuntime:
         self.base_url = self.options.get('base_url', 'https://api.openai.com')
         self.api_key = self.options.get('api_key', '<API_KEY>')
         self.debug = self.options.get('debug', False)
+        self.lazy = self.options.get('lazy', False)  # Enable lazy syntax mode
         
         # Tool and provider registrations
         self.with_tools = self.options.get('with_tools', {})
@@ -152,8 +153,11 @@ class APLRuntime:
         # Set the current instance for set_context function
         APLRuntime._current_instance = self
         
+        # Apply lazy syntax transformation if enabled (§6.1.1)
+        transformed_apl = self._transform_lazy_syntax(apl)
+        
         # Parse template
-        steps = parse_apl(apl)
+        steps = parse_apl(transformed_apl)
         self._debug_log(f"Parsed {len(steps)} steps: {list(steps.keys())}")
         
         if not steps:
@@ -598,6 +602,73 @@ class APLRuntime:
                     
         except Exception as e:
             context["errors"].append(f"Response processing error: {str(e)}")
+    
+    def _transform_lazy_syntax(self, template: str) -> str:
+        """Transform lazy syntax to valid Jinja2 (§6.1.1)"""
+        if not self.lazy:
+            return template
+            
+        self._debug_log("Applying lazy syntax transformation")
+        
+        # Jinja2 control keywords that need {% %} wrapping
+        CONTROL_KEYWORDS = {
+            'if', 'elif', 'else', 'endif',
+            'for', 'endfor', 
+            'set', 'endset',
+            'with', 'endwith'
+        }
+        
+        lines = template.split('\n')
+        result = []
+        in_pre_or_post = False
+        current_phase = None
+        
+        # Track phase context to only apply transformation to pre/post phases
+        phase_pattern = re.compile(r'^#\s*(pre|prompt|post)\s*:', re.IGNORECASE)
+        
+        for line in lines:
+            # Check if we're entering a phase
+            phase_match = phase_pattern.match(line)
+            if phase_match:
+                current_phase = phase_match.group(1).lower()
+                in_pre_or_post = current_phase in ['pre', 'post']
+                result.append(line)
+                continue
+                
+            # Only transform lines in pre/post phases
+            if not in_pre_or_post:
+                result.append(line)
+                continue
+                
+            stripped = line.strip()
+            
+            # Skip empty lines and comments
+            if not stripped or stripped.startswith('{#') or stripped.startswith('<!--'):
+                result.append(line)
+                continue
+                
+            # Skip lines that already have Jinja2 delimiters
+            if stripped.startswith('{{') or stripped.startswith('{%'):
+                result.append(line)
+                continue
+                
+            # Get indentation and first word
+            indentation = line[:len(line) - len(line.lstrip())]
+            first_word = stripped.split()[0] if stripped.split() else ''
+            
+            # Transform based on first word
+            if first_word in CONTROL_KEYWORDS:
+                # Control flow: wrap with {% %}
+                result.append(f"{indentation}{{% {stripped} %}}")
+                self._debug_log(f"Transformed control: {stripped} -> {{% {stripped} %}}")
+            else:
+                # Expression: wrap with {{ }}
+                result.append(f"{indentation}{{{{ {stripped} }}}}")
+                self._debug_log(f"Transformed expression: {stripped} -> {{{{ {stripped} }}}}")
+        
+        transformed = '\n'.join(result)
+        self._debug_log("Lazy syntax transformation complete")
+        return transformed
 
 
 async def start(apl: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -606,10 +677,13 @@ async def start(apl: str, options: Optional[Dict[str, Any]] = None) -> Dict[str,
     return await runtime.start(apl)
 
 
-def check(apl: str) -> bool:
+def check(apl: str, options: Optional[Dict[str, Any]] = None) -> bool:
     """Validate APL template syntax. Returns True on success, raises ValidationError on failure."""
     try:
-        parse_apl(apl)
+        # Apply lazy syntax transformation if enabled
+        runtime = APLRuntime(options or {})
+        transformed_apl = runtime._transform_lazy_syntax(apl)
+        parse_apl(transformed_apl)
         return True
     except ValidationError:
         raise
