@@ -805,7 +805,87 @@ The `start()` function accepts an optional `options` dict to configure the execu
 | `with_context`                 | `dict[str, any]`        | `{}`                     | Top‑level variables initially injected and available from for the first step's *pre* phase. Add your custom async functions here, as the context is flattened and passed down to the Jinja templates `render_async` function.                                                     |
 | `debug`                     | `bool`                  | `false`                  | Emit verbose logs to stderr.                                                                          |
 | `max_runs`                  | `int \| null`           | `null` (∞)               | Hard cap for `global_runs`.                                                                           |
+| `lazy`                      | `bool`                  | `false`                  | Enable lazy syntax mode for *pre* and *post* phases (§6.1.1).                                        |
 | `jinja2_env`                | `jinja2.Environment`    | *auto*                   | Pass a custom Jinja2 environment (else APL creates one internally). The executor will switches  `enable_async` on for auto-await on custom coroutines.                                   |
+
+#### 6.1.1 Lazy Syntax Mode
+
+When the `lazy: true` option is enabled, *pre* and *post* phases support a simplified syntax that omits Jinja2 delimiters (`{{ }}` and `{% %}`). The executor automatically transforms lazy syntax into valid Jinja2 before parsing.
+
+**Lazy mode applies only to *pre* and *post* phases**. Prompt phases maintain full Jinja2 syntax for precise text output control.
+
+##### Transformation Rules
+
+The lazy mode preprocessor processes each line in *pre* and *post* phases:
+
+1. **Empty lines and comments**: Preserved as-is
+2. **Control flow keywords**: Lines starting with Jinja2 control keywords are wrapped with `{% %}`
+3. **Expressions**: All other non-empty lines are wrapped with `{{ }}`
+4. **Indentation**: Preserved for readability
+
+**Control Keywords Detected:**
+- `if`, `elif`, `else`, `endif`
+- `for`, `endfor`
+- `set`, `endset`  
+- `with`, `endwith`
+
+##### Lazy Syntax Example
+
+**Traditional syntax:**
+```apl
+# pre: greet
+{{ set_context('user_name', 'World') }}
+{{ set_context('greeting', 'Hello') }}
+
+# post: greet
+{% if global_runs < 2 and not result_text %}
+    {{ set_context('next_step', 'greet') }}
+{% else %}
+    {{ set_context('next_step', 'return') }}
+{% endif %}
+```
+
+**Lazy syntax:**
+```apl
+# pre: greet
+set_context('user_name', 'World')
+set_context('greeting', 'Hello')
+
+# post: greet
+if global_runs < 2 and not result_text
+    set_context('next_step', 'greet')
+else
+    set_context('next_step', 'return')
+endif
+```
+
+##### Lazy Mode Usage
+
+```python
+from defuss_apl import start
+
+agent = """
+# pre: greet
+set_context('user_name', 'Alice')
+set_context('greeting', 'Hello')
+
+# prompt: greet
+## user
+{{ greeting }}, {{ user_name }}! How are you?
+
+# post: greet
+if "good" in result_text.lower()
+    set_context('next_step', 'return')
+else
+    set_context('next_step', 'retry')
+endif
+"""
+
+# Enable lazy mode
+status = await start(agent, {"lazy": true})
+```
+
+**Implementation Note**: The lazy mode preprocessor runs before Jinja2 parsing and transforms the simplified syntax into valid Jinja2 templates. Complex multi-line expressions may require traditional Jinja2 syntax.
 
 
 ### 6.2 Custom Jinja2 Environment Example
