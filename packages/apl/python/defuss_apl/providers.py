@@ -14,7 +14,7 @@ class ProviderError(Exception):
 
 
 def get_default_provider():
-    """Get default OpenAI provider"""
+    """Get default OpenAI provider with global settings from start() options"""
     try:
         import openai
         return create_openai_provider()
@@ -24,25 +24,49 @@ def get_default_provider():
         return create_mock_provider()  # Default provider fallback for testing without OpenAI (§6.1)
 
 
-def create_openai_provider(api_key: Optional[str] = None, base_url: Optional[str] = None):
-    """Create OpenAI provider function (§6.1 compliant)"""
+def create_openai_provider(options: Optional[Dict[str, Any]] = None):
+    """
+    Create OpenAI provider function with custom options
+    
+    Args:
+        options: Optional dict with provider-specific options including:
+            - api_key: OpenAI API key (defaults to OPENAI_API_KEY environment variable)
+            - base_url: Base URL for API endpoint (defaults to https://api.openai.com)
+            - timeout: Request timeout in seconds
+            - max_retries: Maximum number of retries for API calls
+            - default_headers: Custom headers to include with every request
+        
+    Returns:
+        Provider function compatible with APL runtime
+    """
     try:
         import openai
     except ImportError:
         raise ProviderError("OpenAI library not installed. Run: pip install openai")
-        
+    
+    # Initialize options if not provided
+    provider_options = options or {}
+    
     async def openai_provider(context: Dict[str, Any]) -> Dict[str, Any]:
         """OpenAI provider implementation"""
         try:
-            # Use context options per §6.1 if not explicitly provided
-            effective_api_key = api_key or context.get("api_key") or os.getenv("OPENAI_API_KEY")
-            effective_base_url = base_url or context.get("base_url", "https://api.openai.com")
+            # Merge options with precedence: provider options > context > env vars
+            effective_api_key = provider_options.get("api_key") or context.get("api_key") or os.getenv("OPENAI_API_KEY")
+            effective_base_url = provider_options.get("base_url") or context.get("base_url", "https://api.openai.com")
             
+            # Initialize client with options
+            client_options = {
+                "api_key": effective_api_key,
+                "base_url": effective_base_url
+            }
+            
+            # Add any additional client options from provider_options
+            for key in ["timeout", "max_retries", "default_headers"]:
+                if key in provider_options:
+                    client_options[key] = provider_options[key]
+                    
             # Initialize client
-            client = openai.AsyncOpenAI(
-                api_key=effective_api_key,
-                base_url=effective_base_url
-            )
+            client = openai.AsyncOpenAI(**client_options)
             # Extract parameters from context
             model = context.get("model", "gpt-4o")
             prompts = context.get("prompts", [])
@@ -118,25 +142,3 @@ def create_openai_provider(api_key: Optional[str] = None, base_url: Optional[str
             raise ProviderError(f"OpenAI API error: {str(e)}")
             
     return openai_provider
-
-
-def create_custom_provider(provider_fn):
-    """Wrap a custom provider function to ensure proper format"""
-    
-    async def wrapped_provider(context: Dict[str, Any]) -> Dict[str, Any]:
-        """Custom provider wrapper"""
-        try:
-            result = await provider_fn(context)
-            
-            # Validate response format
-            if not isinstance(result, dict) or "choices" not in result:
-                raise ProviderError("Provider must return dict with 'choices' key")
-                
-            return result
-            
-        except Exception as e:
-            if isinstance(e, ProviderError):
-                raise
-            raise ProviderError(f"Custom provider error: {str(e)}")
-            
-    return wrapped_provider

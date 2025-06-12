@@ -118,6 +118,42 @@ asyncio.run(main())
 
 ### With Custom Provider
 
+#### Option 1: Custom OpenAI Provider
+
+```python
+import asyncio
+from defuss_apl import start, create_openai_provider
+
+async def main():
+    agent = """
+# prompt: test
+Test using a custom OpenAI API endpoint
+"""
+
+    # Create a custom OpenAI provider with specific options
+    custom_openai = create_openai_provider(
+        base_url="https://api.my-deployment.com/v1",
+        options={
+            "api_key": "sk-my-custom-key",
+            "timeout": 60.0,
+            "max_retries": 3,
+            "default_headers": {"X-Organization": "my-org-id"}
+        }
+    )
+    
+    options = {
+        "with_providers": {
+            "gpt-4-turbo": custom_openai,
+            "my-ft-model": custom_openai
+        }
+    }
+    
+    result = await start(agent, options)
+    print(result["result_text"])
+```
+
+#### Option 2: Fully Custom Provider
+
 ```python
 import asyncio
 from defuss_apl import start, create_custom_provider
@@ -219,6 +255,45 @@ Execute an APL template and return the final context.
 #### `check(apl: str) -> bool`
 
 Validate APL template syntax. Returns `True` on success, raises `ValidationError` on failure.
+
+#### `create_openai_provider(api_key=None, base_url=None, options=None) -> callable`
+
+Create an OpenAI provider function with custom options.
+
+**Parameters:**
+- `api_key`: Optional API key (overrides context api_key and env var)
+- `base_url`: Optional base URL (overrides context base_url)
+- `options`: Optional dict with provider-specific options
+
+**Returns:** Provider function compatible with APL runtime.
+
+**Example:**
+```python
+openai_provider = create_openai_provider(
+    base_url="https://api.my-custom-deployment.com",
+    options={
+        "api_key": "sk-my-custom-key",
+        "timeout": 60.0,
+        "max_retries": 2,
+        "default_headers": {"X-Custom-Header": "value"}
+    }
+)
+
+options = {
+    "with_providers": {
+        "gpt-4-turbo": openai_provider,
+    }
+}
+```
+
+#### `create_custom_provider(provider_fn) -> callable`
+
+Wrap a custom provider function to ensure proper format.
+
+**Parameters:**
+- `provider_fn`: Custom provider function that takes context dict
+
+**Returns:** Provider function compatible with APL runtime.
 
 ### Configuration Options
 

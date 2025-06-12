@@ -7,7 +7,7 @@ Dependencies: jinja2, openai (optional)
 
 from .runtime import start, check, RuntimeError
 from .tools import describe_tools, call_tool, call_tools, validate_schema
-from .providers import create_openai_provider, create_custom_provider
+from .providers import create_openai_provider
 from .parser import parse_apl, ValidationError
 
 __version__ = "1.1.0"
@@ -20,7 +20,6 @@ __all__ = [
     "call_tools",
     "validate_schema",
     "create_openai_provider",
-    "create_custom_provider",
     "ValidationError",
     "RuntimeError",
 ]
