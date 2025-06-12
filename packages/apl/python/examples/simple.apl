@@ -3,6 +3,7 @@
 {{ set_context('greeting', 'Hello') }}
 
 # prompt: greet
+
 ## system
 You are a friendly assistant.
 
@@ -10,6 +11,8 @@ You are a friendly assistant.
 {{ greeting }}, {{ user_name }}! How are you today?
 
 # post: greet
+
+// some comment
 {% if global_runs < 2 and not result_text %}
     {{ set_context('next_step', 'greet') }}
 {% else %}

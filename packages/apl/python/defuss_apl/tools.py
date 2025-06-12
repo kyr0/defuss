@@ -1,5 +1,5 @@
 """
-APL Tools - Handle native tool calling
+APL Tools - Handle native tool calling and structured_output schema validation
 """
 
 import inspect
