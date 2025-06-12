@@ -85,7 +85,7 @@
           "name": "meta.directive.apl",
           "captures": {
             "1": { "name": "punctuation.definition.directive.apl" },
-            "2": { "name": "keyword.other.apl.directive" },
+            "2": { "name": "keyword.control.jinja" },
             "3": { "name": "text.apl" },
             "4": { "name": "markup.underline.link.apl" }
           }
