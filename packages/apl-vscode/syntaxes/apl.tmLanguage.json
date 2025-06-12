@@ -84,7 +84,7 @@
           "match": "^(@)(image_url|audio_input|file)(\\s+)(https://\\S+)\\s*$",
           "name": "meta.directive.apl",
           "captures": {
-            "1": { "name": "punctuation.definition.directive.apl" },
+            "1": { "name": "keyword.control.jinja" },
             "2": { "name": "keyword.control.jinja" },
             "3": { "name": "text.apl" },
             "4": { "name": "markup.underline.link.apl" }
