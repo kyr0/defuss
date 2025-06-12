@@ -1,6 +1,7 @@
 {
   "comments": {
-    "blockComment": ["{#", "#}"]
+    "blockComment": ["{#", "#}"],
+    "lineComment": "//"
   },
   "brackets": [["{", "}"], ["[", "]"], ["(", ")"], ["{%", "%}"]],
   "colorizedBracketPairs": [],
@@ -36,6 +37,10 @@
       "start": "^\\s*<!--\\s*#?region\\b.*-->",
       "end": "^\\s*<!--\\s*#?endregion\\b.*-->"
     }
+  },
+  "indentationRules": {
+    "increaseIndentPattern": "^\\s*(if|elif|for|with|set)\\b.*$",
+    "decreaseIndentPattern": "^\\s*(endif|endfor|endwith|endset|else|elif)\\b.*$"
   },
   "wordPattern": {
     "pattern": "(\\p{Alphabetic}|\\p{Number}|\\p{Nonspacing_Mark})(((\\p{Alphabetic}|\\p{Number}|\\p{Nonspacing_Mark})|[_])?(\\p{Alphabetic}|\\p{Number}|\\p{Nonspacing_Mark}))*",

@@ -4,6 +4,10 @@
   "description": "VS Code extension for APL - Syntax highlighting & more.",
   "version": "0.0.1",
   "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/defuss/defuss"
+  },
   "engines": {
     "vscode": "^1.100.0"
   },

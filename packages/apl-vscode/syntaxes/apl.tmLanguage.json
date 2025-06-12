@@ -2,10 +2,13 @@
   "scopeName": "text.apl",
   "comment": "APL Agentic Prompting Language",
   "fileTypes": ["apl"],
-  "foldingStartMarker": "({%\\s*(block|filter|for|if|macro|raw))",
-  "foldingStopMarker": "({%\\s*(endblock|endfilter|endfor|endif|endmacro|endraw)\\s*%})",
+  "foldingStartMarker": "({%\\s*(block|filter|for|if|macro|raw))|^\\s*(if|for|with|set)\\b",
+  "foldingStopMarker": "({%\\s*(endblock|endfilter|endfor|endif|endmacro|endraw)\\s*%})|^\\s*(endif|endfor|endwith|endset)\\b",
   "patterns": [
     { "include": "#mdBlock" },
+    { "include": "#jinjaDelimited" },
+    { "include": "#lazySyntaxGlobal" },
+    { "include": "#comments" },
     {
       "begin": "({%)\\s*(raw)\\s*(%})",
       "captures": {
@@ -64,6 +67,186 @@
     }
   ],
   "repository": {
+    "prePostPhase": {
+      "begin": "^#\\s+(pre|post)\\s*:",
+      "beginCaptures": {
+        "0": { "name": "heading.1.markdown" },
+        "1": { "name": "keyword.control.apl.phase" }
+      },
+      "end": "(?=^#\\s+)",
+      "name": "meta.apl.phase.pre-post",
+      "patterns": [{ "include": "#lazySyntax" }]
+    },
+    "lazySyntax": {
+      "patterns": [
+        {
+          "match": "^\\s*//.*$",
+          "name": "comment.line.double-slash.apl"
+        },
+        {
+          "match": "^\\s*(if|elif|else|endif|for|endfor|set|endset|with|endwith)\\b",
+          "name": "keyword.control.jinja"
+        },
+        {
+          "match": "\\b(set_context|get_context|call_tool)\\b",
+          "name": "entity.name.function.apl"
+        },
+        {
+          "match": "([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+          "captures": {
+            "1": { "name": "entity.name.function.jinja" }
+          }
+        },
+        {
+          "match": "\\b(and|or|not|in|is)\\b",
+          "name": "keyword.operator.logical.jinja"
+        },
+        {
+          "match": "\\b(true|false|none|null)\\b",
+          "name": "constant.language.jinja"
+        },
+        {
+          "match": "\\b(global_runs|result_text|runs|time_elapsed|errors|next_step)\\b",
+          "name": "variable.language.apl"
+        },
+        {
+          "match": "\\b(range|len|str|int|float|list|dict|lower|upper)\\b",
+          "name": "support.function.builtin.python"
+        },
+        {
+          "match": "(==|!=|<=|>=|<|>)",
+          "name": "keyword.operator.comparison.jinja"
+        },
+        {
+          "match": "(\\+|\\-|\\*|/|%|=)",
+          "name": "keyword.operator.arithmetic.jinja"
+        },
+        {
+          "begin": "'",
+          "beginCaptures": [
+            { "name": "punctuation.definition.string.begin.jinja" }
+          ],
+          "end": "'",
+          "endCaptures": [
+            { "name": "punctuation.definition.string.end.jinja" }
+          ],
+          "name": "string.quoted.single.jinja",
+          "patterns": [{ "include": "#string" }]
+        },
+        {
+          "begin": "\"",
+          "beginCaptures": [
+            { "name": "punctuation.definition.string.begin.jinja" }
+          ],
+          "end": "\"",
+          "endCaptures": [
+            { "name": "punctuation.definition.string.end.jinja" }
+          ],
+          "name": "string.quoted.double.jinja",
+          "patterns": [{ "include": "#string" }]
+        },
+        {
+          "match": "\\b\\d+(\\.\\d+)?\\b",
+          "name": "constant.numeric.jinja"
+        },
+        {
+          "match": "[a-zA-Z_][a-zA-Z0-9_]*",
+          "name": "variable.other.jinja"
+        },
+        {
+          "match": "[\\(\\)\\[\\],\\.]",
+          "name": "punctuation.jinja"
+        }
+      ]
+    },
+    "lazySyntaxGlobal": {
+      "patterns": [
+        {
+          "match": "^\\s*//.*$",
+          "name": "comment.line.double-slash.apl"
+        },
+        {
+          "match": "^\\s*(if|elif|else|endif|for|endfor|set|endset|with|endwith)\\b",
+          "captures": {
+            "1": { "name": "keyword.control.jinja" }
+          }
+        },
+        {
+          "match": "\\b(set_context|get_context|call_tool|inc_context)\\s*\\(",
+          "captures": {
+            "1": { "name": "entity.name.function.apl" }
+          }
+        },
+        {
+          "match": "\\b(range|len|str|int|float|list|dict|lower|upper)\\s*\\(",
+          "captures": {
+            "1": { "name": "support.function.builtin.python" }
+          }
+        },
+        {
+          "match": "'[^']*'",
+          "name": "string.quoted.single.jinja"
+        },
+        {
+          "match": "\"[^\"]*\"",
+          "name": "string.quoted.double.jinja"
+        },
+        {
+          "match": "\\b\\d+(\\.\\d+)?\\b",
+          "name": "constant.numeric.jinja"
+        },
+        {
+          "match": "\\b(global_runs|result_text|runs|time_elapsed|errors|next_step|counter)\\b",
+          "name": "variable.language.apl"
+        },
+        {
+          "match": "\\b(true|false|none|null)\\b",
+          "name": "constant.language.jinja"
+        },
+        {
+          "match": "\\b(and|or|not|in|is)\\b",
+          "name": "keyword.operator.logical.jinja"
+        },
+        {
+          "match": "(==|!=|<=|>=|<|>)",
+          "name": "keyword.operator.comparison.jinja"
+        },
+        {
+          "match": "(\\+|\\-|\\*|/|%|=)",
+          "name": "keyword.operator.arithmetic.jinja"
+        },
+        {
+          "match": "[a-zA-Z_][a-zA-Z0-9_]*",
+          "name": "variable.other.jinja"
+        }
+      ]
+    },
+    "comments": {
+      "patterns": [
+        {
+          "match": "^\\s*//.*$",
+          "name": "comment.line.double-slash.apl"
+        }
+      ]
+    },
+    "jinjaDelimited": {
+      "patterns": [
+        {
+          "begin": "{{-?",
+          "captures": [{ "name": "entity.other.jinja.delimiter.variable" }],
+          "end": "-?}}",
+          "name": "meta.scope.jinja.variable",
+          "patterns": [{ "include": "#expression" }]
+        },
+        {
+          "begin": "{%-?",
+          "captures": [{ "name": "entity.other.jinja.delimiter.tag" }],
+          "end": "-?%}",
+          "name": "meta.scope.jinja.tag",
+          "patterns": [{ "include": "#expression" }]
+        }
+      ]
+    },
     "mdBlock": {
       "patterns": [{ "include": "#mdHeading" }]
     },
