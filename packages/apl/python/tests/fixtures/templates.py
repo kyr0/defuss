@@ -81,13 +81,13 @@ Second system message.
 JSON_HELPER_TEMPLATE = """
 # pre: test
 {{ set_context('test_data', {"user": {"name": "Alice", "items": [1, 2, 3]}}) }}
-{{ set_context('name', get_json_path(test_data, "user.name", "unknown")) }}
-{{ set_context('missing', get_json_path(test_data, "user.missing", "default")) }}
-{{ set_context('item', get_json_path(test_data, "user.items.1", "none")) }}
+{{ set_context('name', get_json_path(get_context('test_data', {}), "user.name", "unknown")) }}
+{{ set_context('missing', get_json_path(get_context('test_data', {}), "user.missing", "default")) }}
+{{ set_context('item', get_json_path(get_context('test_data', {}), "user.items.1", "none")) }}
 
 # prompt: test
 ## user
-Name: {{ name }}, Missing: {{ missing }}, Item: {{ item }}
+Name: {{ get_context('name', 'unknown') }}, Missing: {{ get_context('missing', 'default') }}, Item: {{ get_context('item', 'none') }}
 """
 
 ERROR_HANDLING_TEMPLATE = """

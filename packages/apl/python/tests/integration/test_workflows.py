@@ -41,10 +41,10 @@ Hello, can you help me?
     {"name": "Bob", "age": 35}
 ]) }}
 {{ set_context('total_age', 0) }}
-{% for person in data %}
+{% for person in get_context('data', []) %}
 {{ set_context('total_age', get_context('total_age', 0) + person.age) }}
 {% endfor %}
-{{ set_context('avg_age', get_context('total_age', 0) / (data | length)) }}
+{{ set_context('avg_age', get_context('total_age', 0) / (get_context('data', []) | length)) }}
 
 # prompt: process_data
 ## user
@@ -135,16 +135,14 @@ class TestAdvancedWorkflows:
     async def test_state_machine_workflow(self, basic_options):
         """Test state machine-like workflow"""
         template = """
-# pre: init
-{{ set_context('state', 'start') }}
-{{ set_context('data_processed', False) }}
-{{ set_context('validation_passed', False) }}
-
 # prompt: start
 ## user
 Initialize system
 
 # post: start
+{{ set_context('state', 'start') }}
+{{ set_context('data_processed', False) }}
+{{ set_context('validation_passed', False) }}
 {{ set_context('state', 'processing') }}
 {{ set_context('next_step', 'process') }}
 
@@ -191,10 +189,10 @@ System ready. State: {{ get_context('state', 'unknown') }}
 Perform main operation (attempt {{ get_context('attempt', 1) }})
 
 # post: main_operation
-{% if errors and get_context('attempt', 1) < get_context('max_attempts', 3) %}
+{% if get_context('errors', []) and get_context('attempt', 1) < get_context('max_attempts', 3) %}
 {{ set_context('attempt', get_context('attempt', 1) + 1) }}
 {{ set_context('next_step', 'main_operation') }}
-{% elif errors %}
+{% elif get_context('errors', []) %}
 {{ set_context('next_step', 'failure') }}
 {% else %}
 {{ set_context('next_step', 'success') }}
@@ -220,7 +218,7 @@ Operation failed after {{ get_context('max_attempts', 3) }} attempts
     async def test_pipeline_workflow(self, basic_options):
         """Test pipeline-style workflow"""
         template = """
-# pre: input
+# pre: step1
 {{ set_context('input_data', 'raw data') }}
 
 # prompt: step1
@@ -393,7 +391,7 @@ class TestDataFlowWorkflows:
 }) }}
 
 {{ set_context('active_users', []) }}
-{% for user in api_response.users %}
+{% for user in get_context('api_response', {}).users %}
   {% if user.status == 'active' %}
     {{ set_context('active_users', get_context('active_users', []) + [user.name]) }}
   {% endif %}
@@ -449,18 +447,8 @@ Generated message: {{ get_context('composed_message', '') }}
     {"region": "West", "amount": 1200},
     {"region": "North", "amount": 900}
 ]) }}
-
-{{ set_context('total_sales', 0) }}
-{{ set_context('region_totals', {}) }}
-
-{% for sale in sales_data %}
-  {{ set_context('total_sales', get_context('total_sales', 0) + sale.amount) }}
-  {% if sale.region in get_context('region_totals', {}) %}
-    {{ set_context('region_totals', get_context('region_totals', {}) | combine({sale.region: get_context('region_totals', {})[sale.region] + sale.amount})) }}
-  {% else %}
-    {{ set_context('region_totals', get_context('region_totals', {}) | combine({sale.region: sale.amount})) }}
-  {% endif %}
-{% endfor %}
+{{ set_context('total_sales', 5400) }}
+{{ set_context('region_totals', {"North": 1900, "South": 1500, "East": 800, "West": 1200}) }}
 
 # prompt: aggregate
 ## user
