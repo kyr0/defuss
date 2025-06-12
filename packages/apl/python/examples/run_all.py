@@ -55,6 +55,11 @@ async def main():
         ("Calculator Demo", "basics/calculator_demo.py"), 
         ("Control Flow", "basics/control_flow.py"),
         ("Error Handling", "basics/error_handling.py"),
+        ("Comprehensive Add/Inc", "basics/comprehensive_add_inc.py"),
+        ("Counter Increment", "basics/counter_increment.py"),
+        ("Sum Accumulator", "basics/sum_accumulator.py"),
+        ("String Builder", "basics/string_builder.py"),
+        ("Accumulator Patterns", "basics/accumulator_patterns.py"),
         
         # Advanced
         ("Enhanced Features", "advanced/enhanced_features.py"),

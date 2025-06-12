@@ -3,6 +3,7 @@ APL Runtime - Execute APL templates with minimal dependencies
 """
 
 import asyncio
+import copy
 import time
 import re
 import json
@@ -81,6 +82,27 @@ def get_context(var_name: str, default: Any = None) -> Any:
         if runtime and runtime.debug:
             print(f"[APL DEBUG] get_context called but no active context: {var_name}", file=sys.stderr)
         return default
+
+
+def add_context(var_name: str, value: Any, default: Any = 0) -> str:
+    """Add a value to a context variable, initializing with default if not exists (§7.4 helper function)"""
+    runtime = APLRuntime._current_instance
+    if runtime and runtime.current_context is not None:
+        current_value = runtime.current_context.get(var_name, default)
+        new_value = current_value + value
+        runtime.current_context[var_name] = new_value
+        if runtime.debug:
+            print(f"[APL DEBUG] add_context: {var_name} = {current_value} + {value} = {new_value}", file=sys.stderr)
+        return ""  # Return empty string to avoid output in templates
+    else:
+        if runtime and runtime.debug:
+            print(f"[APL DEBUG] add_context called but no active context: {var_name}", file=sys.stderr)
+        return ""
+
+
+def inc_context(var_name: str, default: Any = 0) -> str:
+    """Increment a context variable by 1, initializing with default if not exists (§7.4 helper function)"""
+    return add_context(var_name, 1, default)
 
 
 class RuntimeError(Exception):
@@ -185,16 +207,9 @@ class APLRuntime:
                     current_step = next_step_value
                     self._debug_log(f"Jumping to: {current_step}")
                 else:
-                    # Find next step in template order
-                    step_keys = list(steps.keys())
-                    try:
-                        current_idx = step_keys.index(current_step)
-                        next_step_by_order = step_keys[current_idx + 1] if current_idx + 1 < len(step_keys) else "return"
-                        self._debug_log(f"No next_step set, proceeding to next in order: {next_step_by_order}")
-                        current_step = next_step_by_order
-                    except ValueError:
-                        self._debug_log(f"Unknown current step {current_step}, returning")
-                        current_step = "return"
+                    # No next_step set - terminate execution (explicit termination)
+                    self._debug_log("No next_step set, terminating execution")
+                    current_step = "return"
                         
         except Exception as e:
             context["errors"].append(str(e))
@@ -262,6 +277,8 @@ class APLRuntime:
         context["get_json_path"] = get_json_path
         context["set_context"] = set_context
         context["get_context"] = get_context
+        context["add_context"] = add_context
+        context["inc_context"] = inc_context
         
         return context
         

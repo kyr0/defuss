@@ -102,8 +102,10 @@ Access basic features
         """Test iterative workflow with counter"""
         template = """
 # pre: iterate
+{% if get_context('counter') is none %}
 {{ set_context('counter', 0) }}
 {{ set_context('max_iterations', 3) }}
+{% endif %}
 
 # prompt: iterate
 ## user
@@ -122,7 +124,12 @@ Iteration {{ get_context('counter', 0) + 1 }}
 Completed {{ get_context('counter', 0) }} iterations
 """
         
-        context = await start(template, basic_options)
+        # Enable debug for this test
+        debug_options = basic_options.copy()
+        debug_options['debug'] = True
+        debug_options['timeout'] = 1000  # Shorter timeout for debugging
+        
+        context = await start(template, debug_options)
         
         assert context["counter"] == 3
         assert "Completed 3 iterations" in context["result_text"]
@@ -189,12 +196,17 @@ System ready. State: {{ get_context('state', 'unknown') }}
 Perform main operation (attempt {{ get_context('attempt', 1) }})
 
 # post: main_operation
-{% if get_context('errors', []) and get_context('attempt', 1) < get_context('max_attempts', 3) %}
+{% set errors = get_context('errors', []) %}
+<!-- DEBUG: errors = {{ errors }}, errors|length = {{ errors|length }} -->
+{% if errors|length > 0 and get_context('attempt', 1) < get_context('max_attempts', 3) %}
+<!-- DEBUG: Going to retry -->
 {{ set_context('attempt', get_context('attempt', 1) + 1) }}
 {{ set_context('next_step', 'main_operation') }}
-{% elif get_context('errors', []) %}
+{% elif errors|length > 0 %}
+<!-- DEBUG: Going to failure -->
 {{ set_context('next_step', 'failure') }}
 {% else %}
+<!-- DEBUG: Going to success -->
 {{ set_context('next_step', 'success') }}
 {% endif %}
 
@@ -204,14 +216,22 @@ Operation succeeded after {{ get_context('attempt', 1) }} attempts
 
 # prompt: failure
 ## user
-Operation failed after {{ get_context('max_attempts', 3) }} attempts
-"""
+Operation failed after {{ get_context('max_attempts', 3) }} attempts        """
         
-        context = await start(template, basic_options)
+        # Enable debug for this test
+        debug_options = basic_options.copy()
+        debug_options['debug'] = True
+        
+        context = await start(template, debug_options)
+        
+        # Debug output
+        print(f"Context: {context}")
+        print(f"Result text: {context.get('result_text', 'NO RESULT TEXT')}")
+        print(f"Errors: {context.get('errors', 'NO ERRORS KEY')}")
         
         # Should succeed on first attempt (no actual errors in test)
         assert context["attempt"] >= 1
-        if not context["errors"]:
+        if not context.get("errors"):
             assert "succeeded" in context["result_text"].lower()
 
     @pytest.mark.asyncio

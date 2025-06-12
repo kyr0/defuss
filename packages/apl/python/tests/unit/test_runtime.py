@@ -106,6 +106,9 @@ Step 3
 ## user
 Step 1
 
+# post: step1
+{{ set_context('next_step', 'step2') }}
+
 # prompt: step2
 ## user
 Step 2

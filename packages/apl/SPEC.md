@@ -9,7 +9,7 @@ APL is a Turing-complete, domain-specific language for writing multi‑step, bra
 ## 0 - Feature Highlights
 
 * **Full Jinja inside every block** — loops, filters, tags, environments. Ship your own extensions (think: *vector database memory* etc.) simply via custom tags and simple Jinja control logic to create the optimal   prompt context.
-* **Graph‑like flow control** — set `next_step` in *post* to jump anywhere (cycles allowed); default is fall‑through order.
+* **Graph‑like flow control** — set `next_step` in *post* to jump anywhere (cycles allowed); default is explicit termination (`return`).
 * **Built‑in state** — flat vars (`result_text`, `runs`, `global_runs`, `time_elapsed`, `errors`, …) enable branching, throttling, circuit‑breaking.
 * **Provider‑agnostic** — ships with an OpenAI‑style HTTP provider; register any async function in `providers` to work with any local/cloud/API/on-premise  model.
 * **Native tool calling** — when the LLM emits a JSON tool‑call, the executor runs your async Python / TS function and returns the result back to the LLM.
@@ -167,15 +167,13 @@ print(status["result_image_urls"][0])
 ```
 pre → prompt → post →   {
   if next_step set → jump;
-  else if more steps → first phase of next step in template order;
   else → implicit return.
 }
 ```
 
 * If `next_step` is explicitly set in the *post* phase, the executor jumps to the step with that identifier.
-* If `next_step` is not explicitly set in the *post* phase, the executor jumps to the next natural-order step in template.
+* If `next_step` is not explicitly set in the *post* phase, the executor terminates execution and returns the final context.
 * If `next_step` is set to the reserved identifier `return` (case‑sensitive), the executor terminates execution and returns the final context.
-* If `next_step` is not set and there are no more steps, the executor implicitly returns the final context as a status.
 * If `next_step` is set to any non-existing step name, the executor raises `"Unknown step: <step_name>"` at runtime.
 * `next_step` is case‑sensitive including the reserved identifier `return`, which terminates execution.
 * **Circular References**: Circular `next_step` references are allowed. The template author is responsible for implementing circuit-breaking logic. Without proper circuit-breaking, the default timeout (120 seconds) will raise a timeout error at runtime.
@@ -1044,7 +1042,50 @@ Use `get_context(var_name, default=None)` to retrieve context variables safely. 
 {% endfor %}
 ```
 
-#### 7.4.3 JSON Data Access - `get_json_path()`
+#### 7.4.3 Accumulator Functions - `add_context()` and `inc_context()`
+
+APL provides helper functions for common accumulator patterns:
+
+```jinja
+{# Increment a counter (defaults to 0 if variable doesn't exist) #}
+{{ inc_context('counter') }}
+{{ inc_context('retry_count') }}
+
+{# Add values to variables with default initialization #}
+{{ add_context('total', 10) }}        {# total starts at 0, becomes 10 #}
+{{ add_context('total', 5) }}         {# total becomes 15 #}
+
+{# String concatenation #}
+{{ add_context('message', 'Hello', '') }}  {# Initialize with empty string #}
+{{ add_context('message', ' World') }}      {# message becomes "Hello World" #}
+
+{# List accumulation #}
+{{ add_context('items', [1, 2], []) }}     {# Initialize with empty list #}
+{{ add_context('items', [3, 4]) }}         {# items becomes [1, 2, 3, 4] #}
+
+{# Use in loops for sum calculations #}
+{% for number in [10, 20, 30, 40, 50] %}
+  {{ add_context('sum', number) }}
+{% endfor %}
+{# sum will be 150 #}
+
+{# Counter patterns in iterative workflows #}
+# pre: process_loop
+{% if get_context('items') is none %}
+{{ set_context('items', [1, 2, 3, 4, 5]) }}
+{{ set_context('index', 0) }}
+{% endif %}
+{{ inc_context('processed_count') }}
+{{ add_context('running_total', get_context('items', [])[get_context('index', 0)]) }}
+{{ inc_context('index') }}
+
+# post: process_loop
+{% if get_context('index', 0) < get_context('items', [])|length %}
+{{ set_context('next_step', 'process_loop') }}
+{% endif %}
+```
+
+#### 7.4.4 JSON Data Access - `get_json_path()`
 
 APL provides a `get_json_path` helper function for extracting data from JSON results:
 
@@ -1131,6 +1172,29 @@ APL provides a `get_json_path` helper function for extracting data from JSON res
 {% else %}
   {{ set_context('next_step', 'summary') }}
 {% endif %}
+
+{# Iterations - Breaking the cycle #}
+# pre: iterate
+{% if get_context('counter') is none %}
+  {{ set_context('counter', 0) }}
+  {{ set_context('max_iterations', 3) }}
+{% endif %}
+
+# prompt: iterate
+## user
+Iteration {{ get_context('counter', 0) + 1 }}
+
+# post: iterate
+{{ set_context('counter', get_context('counter', 0) + 1) }}
+{% if get_context('counter', 0) < get_context('max_iterations', 3) %}
+  {{ set_context('next_step', 'iterate') }}
+{% else %}
+  {{ set_context('next_step', 'complete') }}
+{% endif %}
+
+# prompt: complete
+## user
+Completed {{ get_context('counter', 0) }} iterations
 ```
 
 #### 8 - Future Reserved Variables

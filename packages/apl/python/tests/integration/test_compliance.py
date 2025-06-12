@@ -518,8 +518,8 @@ Step 2
             await start(template, options)
 
     @pytest.mark.asyncio
-    async def test_fall_through_behavior(self):
-        """Test §2.1 Fall-through behavior when next_step is not set"""
+    async def test_explicit_termination_behavior(self):
+        """Test §2.1 Explicit termination behavior when next_step is not set"""
         from defuss_apl.test_utils import create_echo_provider
         
         template = """
@@ -541,9 +541,11 @@ Step 3
             "with_providers": {"gpt-4o": create_echo_provider()}
         })
         
-        # Should fall through all steps and complete with step3
-        assert "Step 3" in context["result_text"]
-        assert len(context["context_history"]) == 3
+        # Should terminate after step1 since no next_step is set (explicit termination)
+        assert "Step 1" in context["result_text"]
+        assert "Step 2" not in context["result_text"]
+        assert "Step 3" not in context["result_text"]
+        assert len(context["context_history"]) == 1
 
     @pytest.mark.asyncio
     async def test_explicit_return_termination(self):
@@ -745,3 +747,37 @@ Test tool error handling
         if context.get("result_tool_calls"):
             tool_result = context["result_tool_calls"][0]
             assert tool_result.get("with_error") is True
+
+    @pytest.mark.asyncio
+    async def test_explicit_step_transitions(self):
+        """Test explicit step transitions to achieve sequential execution"""
+        from defuss_apl.test_utils import create_echo_provider
+        
+        template = """
+# prompt: step1
+## user
+Step 1
+
+# post: step1
+{{ set_context('next_step', 'step2') }}
+
+# prompt: step2
+## user  
+Step 2
+
+# post: step2
+{{ set_context('next_step', 'step3') }}
+
+# prompt: step3
+## user
+Step 3
+"""
+        
+        context = await start(template, {
+            "debug": False,
+            "with_providers": {"gpt-4o": create_echo_provider()}
+        })
+        
+        # Should execute all steps with explicit transitions
+        assert "Step 3" in context["result_text"]
+        assert len(context["context_history"]) == 3

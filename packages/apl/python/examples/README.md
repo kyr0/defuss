@@ -8,6 +8,7 @@ This directory contains comprehensive examples demonstrating APL (Agentic Prompt
 - **Simple Examples** - Basic APL templates with variables and control flow
 - **Tool Usage** - Introduction to tool calling and context-aware tools  
 - **Error Handling** - Basic error handling patterns
+- **🆕 Accumulator Patterns** - Helper functions for counters, sums, and data building
 
 ### `/advanced/` - Advanced Features
 - **Enhanced Features** - Function introspection, intelligent arguments, context-aware tools
@@ -30,6 +31,9 @@ python basics/simple_greeting.py
 # Tool usage
 python basics/calculator_demo.py
 
+# 🆕 NEW: Accumulator patterns
+python basics/run_accumulator_examples.py
+
 # Advanced features  
 python advanced/enhanced_features.py
 ```
@@ -49,6 +53,30 @@ All examples use the new `set_context` syntax instead of `{% set %}`:
 {{ set_context('user_name', 'Alice') }}
 {{ set_context('next_step', 'return') }}
 ```
+
+## 🆕 New Accumulator Helper Functions
+
+APL now includes helper functions for common accumulator patterns:
+
+```jinja
+{# Increment counters #}
+{{ inc_context('counter') }}        {# counter++ (starts at 0) #}
+
+{# Add to variables #}
+{{ add_context('total', 10) }}      {# total += 10 (starts at 0) #}
+{{ add_context('message', 'Hi', '') }}  {# message += 'Hi' (starts empty) #}
+
+{# Safe variable access #}
+{{ get_context('user_name', 'Guest') }}  {# Returns 'Guest' if not set #}
+```
+
+**Benefits:**
+- ✅ No need to check if variables exist before using
+- ✅ Safe initialization with sensible defaults  
+- ✅ Clean, readable accumulator patterns
+- ✅ Works with numbers, strings, lists, and any addable types
+
+See `basics/run_accumulator_examples.py` for comprehensive demonstrations.
 
 ## 🔧 APL Template Files (.apl)
 
