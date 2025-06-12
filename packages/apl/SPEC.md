@@ -972,6 +972,112 @@ def get_json_path(obj: dict, path: str, default=None) -> any:
     """
 ```
 
+### 6.4 Customizing Built-in Providers
+
+The APL runtime includes functions to create and configure providers with custom options. These providers can then be registered in the `with_providers` option of `start()`.
+
+#### 6.4.1 `create_openai_provider(options=None)`
+
+Many, if not all relevant LLM providers and LLM inference engines come with full or partial support for the official OpenAI Chat Completions API. 
+
+Here's an incomplete list of supported providers:
+- OpenAI
+- Azure OpenAI
+- [Anthropic](https://docs.anthropic.com/en/api/openai-sdk)
+- [OpenRouter](https://openrouter.ai/docs/api-reference/overview)
+- [Ollama](https://ollama.com/blog/openai-compatibility)
+- [Llama.cpp](https://github.com/ggml-org/llama.cpp/pull/9639)
+- [Google Vertex AI](https://cloud.google.com/vertex-ai/generative-ai/docs/migrate/openai/overview)
+- [vLLM](https://docs.vllm.ai/en/latest/examples/online_serving/openai_chat_completion_client.html)
+
+However, using alternative LLM inference providers or local inference engines always requires some custom configuration, such as setting a different `base_url`, `api_key`, or other provider-specific options.
+
+To simplify the process of creating a provider function compatible with the APL runtime, you can use the `create_openai_provider` function. This function allows you to specify custom options for the provider, such as API keys, base URLs, timeouts, and more.
+
+Because the official OpenAI client library tunnels through custom properties, the APL runtime effectively supports any OpenAI-compatible provider that adheres to the OpenAI Chat Completions API schema, allowing you to use almost any model with APL.
+
+**Function Signature:**
+
+```python
+def create_openai_provider(options: Optional[Dict[str, Any]] = None) -> callable:
+    """
+    Create an OpenAI provider function with custom options
+    
+    Args:
+        options: Optional dict with provider-specific options
+        
+    Returns:
+        Provider function compatible with APL runtime
+    """
+```
+
+The `options` dict can include any OpenAI client options as well as provider-specific settings:
+
+- `api_key`: OpenAI API key (defaults to OPENAI_API_KEY environment variable)
+- `base_url`: Base URL for API endpoint (defaults to https://api.openai.com)
+- `timeout`: Request timeout in seconds
+- `max_retries`: Maximum number of retries for API calls
+- `default_headers`: Custom headers to include with every request
+
+Provider options are resolved with the following precedence:
+1. Provider options passed to `create_openai_provider`
+2. Context options passed in each step through APL
+3. Environment variables (for `api_key` only)
+
+##### 6.4.1.1 Python Example
+
+```python
+from defuss_apl import start, create_openai_provider
+
+# Create custom OpenAI provider
+openai_provider = create_openai_provider(
+    options={
+        "api_key": "sk-my-custom-key",
+        "base_url": "https://api.my-custom-deployment.com",
+        "timeout": 60.0,
+        "max_retries": 2,
+        "default_headers": {"X-Custom-Header": "value"}
+    }
+)
+
+# Register the provider
+options = {
+    "with_providers": {
+        "gpt-4-turbo": openai_provider,
+        "my-custom-model": openai_provider
+    }
+}
+
+# Run APL template with custom provider
+result = await start(template, options)
+```
+
+##### 6.4.1.2 TypeScript Example
+
+```typescript
+import { start, create_openai_provider } from 'defuss-apl';
+
+// Create custom OpenAI provider
+const openai_provider = create_openai_provider({
+    api_key: "sk-my-custom-key",
+    base_url: "https://api.my-custom-deployment.com",
+    timeout: 60.0,
+    max_retries: 2,
+    default_headers: {"X-Custom-Header": "value"}
+});
+
+// Register the provider
+const options = {
+    with_providers: {
+        "gpt-4-turbo": openai_provider,
+        "my-custom-model": openai_provider
+    }
+};
+
+// Run APL template with custom provider
+const result = await start(template, options);
+```
+
 ---
 
 ## 7 - Common Jinja Patterns
@@ -1278,7 +1384,7 @@ The following variable names are reserved for future language enhancements and w
 **Parallel Execution & Synchronization:**
 * `next_steps` - Reserved for parallel step execution
 * `await_steps` - Reserved for step synchronization
-* `parallel_results` - Reserved for parallel execution results
+* `parallel_results` - Reserved for first-completed parallel step results
 * `race_winner` - Reserved for first-completed parallel step results
 * `concurrent_limit` - Reserved for controlling parallel execution concurrency
 
