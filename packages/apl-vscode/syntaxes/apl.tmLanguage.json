@@ -6,6 +6,7 @@
   "foldingStopMarker": "({%\\s*(endblock|endfilter|endfor|endif|endmacro|endraw)\\s*%})|^\\s*(endif|endfor|endwith|endset)\\b",
   "patterns": [
     { "include": "#mdBlock" },
+    { "include": "#promptPhase" },
     { "include": "#jinjaDelimited" },
     { "include": "#lazySyntaxGlobal" },
     { "include": "#comments" },
@@ -67,6 +68,50 @@
     }
   ],
   "repository": {
+    "promptPhase": {
+      "begin": "^(#\\s+prompt\\s*:.*)$",
+      "beginCaptures": {
+        "1": { "name": "markup.heading.markdown" }
+      },
+      "end": "(?=^#\\s+(?:pre|post|prompt)\\s*:|\\z)",
+      "name": "meta.apl.phase.prompt",
+      "patterns": [
+        {
+          "begin": "{{",
+          "end": "}}",
+          "name": "meta.scope.jinja.variable",
+          "beginCaptures": [{ "name": "entity.other.jinja.delimiter.variable" }],
+          "endCaptures": [{ "name": "entity.other.jinja.delimiter.variable" }],
+          "patterns": [{ "include": "#expression" }]
+        },
+        {
+          "begin": "{%",
+          "end": "%}",
+          "name": "meta.scope.jinja.tag",
+          "beginCaptures": [{ "name": "entity.other.jinja.delimiter.tag" }],
+          "endCaptures": [{ "name": "entity.other.jinja.delimiter.tag" }],
+          "patterns": [{ "include": "#expression" }]
+        },
+        {
+          "begin": "{#",
+          "end": "#}",
+          "name": "comment.block.jinja",
+          "beginCaptures": [{ "name": "entity.other.jinja.delimiter.comment" }],
+          "endCaptures": [{ "name": "entity.other.jinja.delimiter.comment" }]
+        },
+        {
+          "match": "^@(image_url|audio_input|file)\\s+https://\\S+\\s*$",
+          "name": "meta.directive.apl",
+          "captures": {
+            "1": { "name": "keyword.other.apl.directive" }
+          }
+        },
+        {
+          "match": ".*",
+          "name": "text.apl"
+        }
+      ]
+    },
     "prePostPhase": {
       "begin": "^#\\s+(pre|post)\\s*:",
       "beginCaptures": {
@@ -255,6 +300,16 @@
       "captures": {
         "1": {
           "patterns": [
+            {
+              "match": "(#{1})\\s+(pre|post|prompt)\\s*:\\s*(.*?)(?:\\s+(#+))?\\s*$",
+              "name": "heading.1.markdown.apl",
+              "captures": {
+                "1": { "name": "punctuation.definition.heading.markdown" },
+                "2": { "name": "keyword.control.apl.phase" },
+                "3": { "name": "entity.name.section.apl.step-name" },
+                "4": { "name": "punctuation.definition.heading.markdown" }
+              }
+            },
             {
               "match": "(#{2})\\s+(.*?)(?:\\s+(#+))?\\s*$",
               "name": "heading.2.markdown",
