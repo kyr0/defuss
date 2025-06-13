@@ -1,5 +1,5 @@
 # pre: increment
-{{ inc_context('counter') }}
+{{ inc('counter') }}
 
 # prompt: increment
 ## user

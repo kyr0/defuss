@@ -65,11 +65,11 @@ APL now includes helper functions for common accumulator patterns:
 
 ```jinja
 {# Increment counters #}
-{{ inc_context('counter') }}        {# counter++ (starts at 0) #}
+{{ inc('counter') }}        {# counter++ (starts at 0) #}
 
 {# Add to variables #}
-{{ add_context('total', 10) }}      {# total += 10 (starts at 0) #}
-{{ add_context('message', 'Hi', '') }}  {# message += 'Hi' (starts empty) #}
+{{ add('total', 10) }}      {# total += 10 (starts at 0) #}
+{{ add('message', 'Hi', '') }}  {# message += 'Hi' (starts empty) #}
 
 {# Safe variable access #}
 {{ get_context('user_name', 'Guest') }}  {# Returns 'Guest' if not set #}

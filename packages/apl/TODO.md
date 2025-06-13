@@ -42,7 +42,7 @@ get(var_name_or_path, default) =>
 
 set(var_name_or_path, value) =>    same as get(..) but for setting variables
 
-inc(var_name, default) => inc_context(var_name, default)
+inc(var_name, default) => inc(var_name, default)
 dec(var_name, default) => dec_context(var_name, default)
 
 ---

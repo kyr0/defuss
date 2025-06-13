@@ -114,9 +114,9 @@ class TestDataProcessingExamples:
 {{ set_context('numbers', [1, 2, 3, 4, 5]) }}
 
 {% for num in get_context('numbers', []) %}
-  {{ add_context('sum_total', num) }}
+  {{ add('sum_total', num) }}
   {% if num % 2 == 0 %}
-    {{ add_context('even_numbers', [num], []) }}
+    {{ add('even_numbers', [num], []) }}
   {% endif %}
 {% endfor %}
 

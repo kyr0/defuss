@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Simple Counter Example using inc_context()
+Simple Counter Example using inc()
 
 This example demonstrates:
 - Loading templates from .apl files
-- Using inc_context() to increment a counter
+- Using inc() to increment a counter
 - Explicit termination behavior
 - Loop control with conditional next_step
 """
@@ -29,7 +29,7 @@ async def run_counter_example():
     """Simple counter that increments until it reaches 5"""
     
     print("=== Simple Counter Example ===")
-    print("Using inc_context() to create a counter that increments until 5")
+    print("Using inc() to create a counter that increments until 5")
     print()
 
     if not os.getenv("OPENAI_API_KEY"):
@@ -51,8 +51,8 @@ async def run_counter_example():
         print()
         print("📝 This example shows:")
         print("   - Loading templates from .apl files")
-        print("   - inc_context() automatically initializes counter to 0 on first use")
-        print("   - Each call to inc_context('counter') adds 1 to the current value")
+        print("   - inc() automatically initializes counter to 0 on first use")
+        print("   - Each call to inc('counter') adds 1 to the current value")
         print("   - Loop continues until counter reaches 5, then explicitly terminates")
         
     except Exception as e:

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Sum Accumulator Example using add_context()
+Sum Accumulator Example using add()
 
 This example demonstrates:
 - Loading templates from .apl files
-- Using add_context() to sum numbers from a list
+- Using add() to sum numbers from a list
 - Safe variable initialization with defaults
 - Processing arrays in iterative workflows
 """
@@ -26,10 +26,10 @@ def load_template(file_path):
 
 
 async def run_sum_example():
-    """Sum numbers from a list using add_context()"""
+    """Sum numbers from a list using add()"""
     
     print("=== Sum Accumulator Example ===")
-    print("Using add_context() to sum numbers: [10, 20, 30, 40, 50]")
+    print("Using add() to sum numbers: [10, 20, 30, 40, 50]")
     print()
 
     if not os.getenv("OPENAI_API_KEY"):
@@ -57,7 +57,7 @@ async def run_sum_example():
         print()
         print("📝 This example shows:")
         print("   - Loading templates from .apl files")
-        print("   - add_context('total', value, 0) initializes total to 0 on first use")
+        print("   - add('total', value, 0) initializes total to 0 on first use")
         print("   - Each call adds the new value to the accumulator")
         print("   - Safe array access with get_context() and defaults")
         print("   - Iterative processing with explicit termination")

@@ -4,8 +4,8 @@
 {{ set_context('index', 0) }}
 {% endif %}
 {% set current_number = get_context('numbers', [])[get_context('index', 0)] %}
-{{ add_context('total', current_number, 0) }}
-{{ inc_context('index') }}
+{{ add('total', current_number, 0) }}
+{{ inc('index') }}
 
 # prompt: sum_loop
 ## user

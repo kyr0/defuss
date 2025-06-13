@@ -247,7 +247,7 @@ def get_context(var_name: str, default: Any = None) -> Any:
         return default
 
 
-def add_context(var_name: str, value: Any, default: Any = 0) -> str:
+def add(var_name: str, value: Any, default: Any = 0) -> str:
     """Add a value to a context variable, initializing with default if not exists (§7.4 helper function)"""
     runtime = APLRuntime._current_instance
     if runtime and runtime.current_context is not None:
@@ -255,20 +255,30 @@ def add_context(var_name: str, value: Any, default: Any = 0) -> str:
         new_value = current_value + value
         runtime.current_context[var_name] = new_value
         if runtime.debug:
-            print(f"[APL DEBUG] add_context: {var_name} = {current_value} + {value} = {new_value}", file=sys.stderr)
+            print(f"[APL DEBUG] add: {var_name} = {current_value} + {value} = {new_value}", file=sys.stderr)
         return ""  # Return empty string to avoid output in templates
     else:
         if runtime and runtime.debug:
-            print(f"[APL DEBUG] add_context called but no active context: {var_name}", file=sys.stderr)
+            print(f"[APL DEBUG] add called but no active context: {var_name}", file=sys.stderr)
+        return ""
+
+def inc(var_name: str, default: Any = 0) -> str:
+    """Increment a context variable by 1, initializing with default if not exists (§7.4 helper function)"""
+    runtime = APLRuntime._current_instance
+    if runtime and runtime.current_context is not None:
+        current_value = runtime.current_context.get(var_name, default)
+        new_value = current_value + 1
+        runtime.current_context[var_name] = new_value
+        if runtime.debug:
+            print(f"[APL DEBUG] inc: {var_name} = {current_value} + 1 = {new_value}", file=sys.stderr)
+        return ""  # Return empty string to avoid output in templates
+    else:
+        if runtime and runtime.debug:
+            print(f"[APL DEBUG] inc called but no active context: {var_name}", file=sys.stderr)
         return ""
 
 
-def inc_context(var_name: str, default: Any = 0) -> str:
-    """Increment a context variable by 1, initializing with default if not exists (§7.4 helper function)"""
-    return add_context(var_name, 1, default)
-
-
-def rem_context(var_name: str, value: Any, default: Any = 0) -> str:
+def rem(var_name: str, value: Any, default: Any = 0) -> str:
     """Subtract a value from a context variable, initializing with default if not exists (§7.4 helper function)"""
     runtime = APLRuntime._current_instance
     if runtime and runtime.current_context is not None:
@@ -276,32 +286,17 @@ def rem_context(var_name: str, value: Any, default: Any = 0) -> str:
         new_value = current_value - value
         runtime.current_context[var_name] = new_value
         if runtime.debug:
-            print(f"[APL DEBUG] rem_context: {var_name} = {current_value} - {value} = {new_value}", file=sys.stderr)
+            print(f"[APL DEBUG] rem: {var_name} = {current_value} - {value} = {new_value}", file=sys.stderr)
         return ""  # Return empty string to avoid output in templates
     else:
         if runtime and runtime.debug:
-            print(f"[APL DEBUG] rem_context called but no active context: {var_name}", file=sys.stderr)
+            print(f"[APL DEBUG] rem called but no active context: {var_name}", file=sys.stderr)
         return ""
-
-
-def add(var_name: str, value: Any, default: Any = 0) -> str:
-    """Add a value to a context variable, shorter alias for add_context (§7.4 helper function)"""
-    return add_context(var_name, value, default)
-
-
-def rem(var_name: str, value: Any, default: Any = 0) -> str:
-    """Subtract a value from a context variable, shorter alias for rem_context (§7.4 helper function)"""
-    return rem_context(var_name, value, default)
-
-
-def inc(var_name: str, default: Any = 0) -> str:
-    """Increment a context variable by 1, shorter alias for inc_context (§7.4 helper function)"""
-    return inc_context(var_name, default)
 
 
 def dec(var_name: str, default: Any = 0) -> str:
     """Decrement a context variable by 1, inverse of inc() (§7.4 helper function)"""
-    return rem_context(var_name, 1, default)
+    return rem(var_name, 1, default)
 
 
 class RuntimeError(Exception):
@@ -481,9 +476,6 @@ class APLRuntime:
         context["set_json_path"] = set_json_path
         context["set_context"] = set_context
         context["get_context"] = get_context
-        context["add_context"] = add_context
-        context["rem_context"] = rem_context
-        context["inc_context"] = inc_context
         context["get"] = get
         context["set"] = set
         context["add"] = add

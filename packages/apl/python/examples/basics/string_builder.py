@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-String Building Example using add_context()
+String Building Example using add()
 
 This example demonstrates:
 - Loading templates from .apl files
-- Using add_context() for string concatenation
+- Using add() for string concatenation
 - Building strings piece by piece
 - Multiple accumulator patterns in one workflow
 """
@@ -26,10 +26,10 @@ def load_template(file_path):
 
 
 async def run_string_builder_example():
-    """Build strings using add_context()"""
+    """Build strings using add()"""
     
     print("=== String Builder Example ===")
-    print("Using add_context() to build strings from word lists")
+    print("Using add() to build strings from word lists")
     print()
 
     if not os.getenv("OPENAI_API_KEY"):
@@ -57,10 +57,10 @@ async def run_string_builder_example():
         print()
         print("📝 This example shows:")
         print("   - Loading templates from .apl files")
-        print("   - add_context(key, value, '') for string initialization")
-        print("   - add_context(key, value) for string concatenation")
-        print("   - add_context(key, [item], []) for list building")
-        print("   - add_context(key, number) for numeric accumulation")
+        print("   - add(key, value, '') for string initialization")
+        print("   - add(key, value) for string concatenation")
+        print("   - add(key, [item], []) for list building")
+        print("   - add(key, number) for numeric accumulation")
         print("   - Multi-step workflow with explicit termination")
         
     except Exception as e:

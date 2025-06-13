@@ -20,9 +20,9 @@ class TestAccumulatorHelpers:
         """Test basic inc_context functionality"""
         template = """
 # pre: test
-{{ inc_context('counter') }}
-{{ inc_context('counter') }}
-{{ inc_context('counter') }}
+{{ inc('counter') }}
+{{ inc('counter') }}
+{{ inc('counter') }}
 
 # prompt: test
 ## user
@@ -37,8 +37,8 @@ Counter: {{ get_context('counter', 0) }}
         """Test inc_context with custom default"""
         template = """
 # pre: test
-{{ inc_context('counter', 10) }}
-{{ inc_context('counter', 10) }}
+{{ inc('counter', 10) }}
+{{ inc('counter', 10) }}
 
 # prompt: test
 ## user
@@ -53,9 +53,9 @@ Counter: {{ get_context('counter', 0) }}
         """Test add_context with numbers"""
         template = """
 # pre: test
-{{ add_context('total', 5) }}
-{{ add_context('total', 10) }}
-{{ add_context('total', 3) }}
+{{ add('total', 5) }}
+{{ add('total', 10) }}
+{{ add('total', 3) }}
 
 # prompt: test
 ## user
@@ -70,9 +70,9 @@ Total: {{ get_context('total', 0) }}
         """Test add_context with strings"""
         template = """
 # pre: test
-{{ add_context('message', 'Hello', '') }}
-{{ add_context('message', ' ') }}
-{{ add_context('message', 'World') }}
+{{ add('message', 'Hello', '') }}
+{{ add('message', ' ') }}
+{{ add('message', 'World') }}
 
 # prompt: test
 ## user
@@ -87,9 +87,9 @@ Message: {{ get_context('message', '') }}
         """Test add_context with lists"""
         template = """
 # pre: test
-{{ add_context('items', [1, 2], []) }}
-{{ add_context('items', [3, 4]) }}
-{{ add_context('items', [5]) }}
+{{ add('items', [1, 2], []) }}
+{{ add('items', [3, 4]) }}
+{{ add('items', [5]) }}
 
 # prompt: test
 ## user
@@ -109,8 +109,8 @@ Items: {{ get_context('items', []) }}
 {{ set_context('index', 0) }}
 {% endif %}
 {% set current = get_context('data', [])[get_context('index', 0)] %}
-{{ add_context('sum', current) }}
-{{ inc_context('index') }}
+{{ add('sum', current) }}
+{{ inc('index') }}
 
 # prompt: loop
 ## user
@@ -131,15 +131,15 @@ Added {{ current }}, sum is now {{ get_context('sum', 0) }}
         """Test multiple accumulators in one workflow"""
         template = """
 # pre: test
-{{ add_context('count', 1) }}
-{{ add_context('sum', 10) }}
-{{ add_context('product', 2, 1) }}
-{{ add_context('message', 'Hello', '') }}
+{{ add('count', 1) }}
+{{ add('sum', 10) }}
+{{ add('product', 2, 1) }}
+{{ add('message', 'Hello', '') }}
 
-{{ inc_context('count') }}
-{{ add_context('sum', 20) }}
-{{ add_context('product', 3) }}
-{{ add_context('message', ' World') }}
+{{ inc('count') }}
+{{ add('sum', 20) }}
+{{ add('product', 3) }}
+{{ add('message', ' World') }}
 
 # prompt: test
 ## user

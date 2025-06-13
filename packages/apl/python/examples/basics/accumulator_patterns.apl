@@ -18,34 +18,34 @@
 {% set category = current_item.category %}
 
 {# Count total processed #}
-{{ inc_context('total_processed') }}
+{{ inc('total_processed') }}
 
 {# Sum all scores #}
-{{ add_context('score_sum', score) }}
+{{ add('score_sum', score) }}
 
 {# Count by category #}
 {% if category == 'A' %}
-{{ inc_context('category_a_count') }}
-{{ add_context('category_a_scores', score) }}
+{{ inc('category_a_count') }}
+{{ add('category_a_scores', score) }}
 {% else %}
-{{ inc_context('category_b_count') }}
-{{ add_context('category_b_scores', score) }}
+{{ inc('category_b_count') }}
+{{ add('category_b_scores', score) }}
 {% endif %}
 
 {# Build lists #}
-{{ add_context('all_names', [name], []) }}
+{{ add('all_names', [name], []) }}
 {% if score >= 90 %}
-{{ add_context('high_performers', [name], []) }}
+{{ add('high_performers', [name], []) }}
 {% endif %}
 
 {# Build report string #}
-{{ add_context('report', name + ' (' + category + '): ' + score|string, '') }}
+{{ add('report', name + ' (' + category + '): ' + score|string, '') }}
 {% if get_context('index', 0) < get_context('dataset', [])|length - 1 %}
-{{ add_context('report', ', ') }}
+{{ add('report', ', ') }}
 {% endif %}
 
 {# Next iteration #}
-{{ inc_context('index') }}
+{{ inc('index') }}
 
 # prompt: process_data
 ## user

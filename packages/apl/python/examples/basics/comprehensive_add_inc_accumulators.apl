@@ -1,9 +1,9 @@
 # pre: accumulate
-{{ inc_context('iteration_count') }}
-{{ add_context('sum', 10) }}
-{{ add_context('message', 'Step ', '') }}
-{{ add_context('message', get_context('iteration_count', 0)|string) }}
-{{ add_context('items', [get_context('iteration_count', 0)], []) }}
+{{ inc('iteration_count') }}
+{{ add('sum', 10) }}
+{{ add('message', 'Step ', '') }}
+{{ add('message', get_context('iteration_count', 0)|string) }}
+{{ add('items', [get_context('iteration_count', 0)], []) }}
 
 # prompt: accumulate
 ## user

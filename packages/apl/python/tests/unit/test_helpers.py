@@ -374,14 +374,14 @@ class TestAddFunction:
     """Test the add helper function that is an alias for add_context"""
     
     @pytest.mark.asyncio
-    async def test_add_vs_add_context(self, basic_options):
+    async def test_add_vs_add(self, basic_options):
         """Test that add function works the same as add_context"""
         template = """
 # pre: test
 {{ set('counter1', 5) }}
 {{ set('counter2', 5) }}
 {{ add('counter1', 3) }}
-{{ add_context('counter2', 3) }}
+{{ add('counter2', 3) }}
 
 # prompt: test
 ## user
@@ -416,14 +416,14 @@ class TestIncFunction:
     """Test the inc helper function that is an alias for inc_context"""
     
     @pytest.mark.asyncio
-    async def test_inc_vs_inc_context(self, basic_options):
+    async def test_inc_vs_inc(self, basic_options):
         """Test that inc function works the same as inc_context"""
         template = """
 # pre: test
 {{ set('counter1', 5) }}
 {{ set('counter2', 5) }}
 {{ inc('counter1') }}
-{{ inc_context('counter2') }}
+{{ inc('counter2') }}
 
 # prompt: test
 ## user
@@ -445,9 +445,9 @@ class TestRemContextFunction:
         template = """
 # pre: test
 {{ set_context('num_value', 10) }}
-{{ rem_context('num_value', 3) }}
+{{ rem('num_value', 3) }}
 {{ set_context('float_value', 5.5) }}
-{{ rem_context('float_value', 1.5) }}
+{{ rem('float_value', 1.5) }}
 
 # prompt: test
 ## user
@@ -463,7 +463,7 @@ Num value: {{ get_context('num_value', 0) }}, Float value: {{ get_context('float
         """Test rem_context with default value for non-existent variables"""
         template = """
 # pre: test
-{{ rem_context('new_counter', 5, 20) }}
+{{ rem('new_counter', 5, 20) }}
 
 # prompt: test
 ## user
@@ -480,9 +480,9 @@ New counter: {{ get_context('new_counter', 0) }}
         template = """
 # pre: test
 {{ set_context('counter', 100) }}
-{{ rem_context('counter', 20) }}
-{{ rem_context('counter', 30) }}
-{{ rem_context('counter', 10) }}
+{{ rem('counter', 20) }}
+{{ rem('counter', 30) }}
+{{ rem('counter', 10) }}
 
 # prompt: test
 ## user
@@ -498,14 +498,14 @@ class TestRemFunction:
     """Test the rem helper function that is an alias for rem_context"""
     
     @pytest.mark.asyncio
-    async def test_rem_vs_rem_context(self, basic_options):
+    async def test_rem_vs_rem(self, basic_options):
         """Test that rem function works the same as rem_context"""
         template = """
 # pre: test
 {{ set('counter1', 20) }}
 {{ set('counter2', 20) }}
 {{ rem('counter1', 7) }}
-{{ rem_context('counter2', 7) }}
+{{ rem('counter2', 7) }}
 
 # prompt: test
 ## user

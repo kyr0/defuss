@@ -1222,30 +1222,30 @@ Use `get_context(var_name, default=None)` to retrieve context variables safely. 
 {% endfor %}
 ```
 
-#### 7.4.3 Accumulator Functions - `add_context()` and `inc_context()`
+#### 7.4.3 Accumulator Functions - `add()` and `inc()`
 
 APL provides helper functions for common accumulator patterns:
 
 ```jinja
 {# Increment a counter (defaults to 0 if variable doesn't exist) #}
-{{ inc_context('counter') }}
-{{ inc_context('retry_count') }}
+{{ inc('counter') }}
+{{ inc('retry_count') }}
 
 {# Add values to variables with default initialization #}
-{{ add_context('total', 10) }}        {# total starts at 0, becomes 10 #}
-{{ add_context('total', 5) }}         {# total becomes 15 #}
+{{ add('total', 10) }}              {# total starts at 0, becomes 10 #}
+{{ add('total', 5) }}               {# total becomes 15 #}
 
 {# String concatenation #}
-{{ add_context('message', 'Hello', '') }}  {# Initialize with empty string #}
-{{ add_context('message', ' World') }}      {# message becomes "Hello World" #}
+{{ add('message', 'Hello', '') }}   {# Initialize with empty string #}
+{{ add('message', ' World') }}      {# message becomes "Hello World" #}
 
 {# List accumulation #}
-{{ add_context('items', [1, 2], []) }}     {# Initialize with empty list #}
-{{ add_context('items', [3, 4]) }}         {# items becomes [1, 2, 3, 4] #}
+{{ add('items', [1, 2], []) }}      {# Initialize with empty list #}
+{{ add('items', [3, 4]) }}          {# items becomes [1, 2, 3, 4] #}
 
 {# Use in loops for sum calculations #}
 {% for number in [10, 20, 30, 40, 50] %}
-  {{ add_context('sum', number) }}
+  {{ add('sum', number) }}
 {% endfor %}
 {# sum will be 150 #}
 
@@ -1255,9 +1255,9 @@ APL provides helper functions for common accumulator patterns:
 {{ set_context('items', [1, 2, 3, 4, 5]) }}
 {{ set_context('index', 0) }}
 {% endif %}
-{{ inc_context('processed_count') }}
-{{ add_context('running_total', get_context('items', [])[get_context('index', 0)]) }}
-{{ inc_context('index') }}
+{{ inc('processed_count') }}
+{{ add('running_total', get_context('items', [])[get_context('index', 0)]) }}
+{{ inc('index') }}
 
 # post: process_loop
 {% if get_context('index', 0) < get_context('items', [])|length %}

@@ -1,8 +1,8 @@
 # Simple Counter Example
-# Demonstrates the inc_context() helper function for incrementing counters
+# Demonstrates the inc() helper function for incrementing counters
 
 # pre: increment
-{{ inc_context('counter') }}
+{{ inc('counter') }}
 
 # prompt: increment
 ## user

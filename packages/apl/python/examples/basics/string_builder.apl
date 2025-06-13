@@ -9,20 +9,20 @@
 {# Build sentence #}
 {% set current_word = get_context('words', [])[get_context('index', 0)] %}
 {% if get_context('index', 0) == 0 %}
-{{ add_context('sentence', current_word, '') }}
+{{ add('sentence', current_word, '') }}
 {% else %}
-{{ add_context('sentence', ' ') }}
-{{ add_context('sentence', current_word) }}
+{{ add('sentence', ' ') }}
+{{ add('sentence', current_word) }}
 {% endif %}
 
 {# Build word list #}
-{{ add_context('word_list', [current_word], []) }}
+{{ add('word_list', [current_word], []) }}
 
 {# Count characters #}
-{{ add_context('char_count', current_word|length) }}
+{{ add('char_count', current_word|length) }}
 
 {# Increment index #}
-{{ inc_context('index') }}
+{{ inc('index') }}
 
 # prompt: build_strings
 ## user
@@ -53,7 +53,7 @@ Now adding punctuation...
 # post: finalize
 {# Add random punctuation #}
 {% set punct = get_context('punctuation', [])[0] %}
-{{ add_context('sentence', punct) }}
+{{ add('sentence', punct) }}
 {{ set_context('next_step', 'final_result') }}
 
 # prompt: final_result

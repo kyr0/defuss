@@ -14,17 +14,17 @@
 {% set category = current_item.category %}
 
 {# Accumulate statistics #}
-{{ inc_context('total_processed') }}
-{{ add_context('score_sum', score) }}
+{{ inc('total_processed') }}
+{{ add('score_sum', score) }}
 {% if category == 'A' %}
-{{ inc_context('category_a_count') }}
-{{ add_context('category_a_scores', score) }}
+{{ inc('category_a_count') }}
+{{ add('category_a_scores', score) }}
 {% endif %}
 
 {# Build processed list #}
-{{ add_context('high_performers', [current_item.name] if score > 90 else [], []) }}
+{{ add('high_performers', [current_item.name] if score > 90 else [], []) }}
 
-{{ inc_context('index') }}
+{{ inc('index') }}
 
 # prompt: process_data
 ## user

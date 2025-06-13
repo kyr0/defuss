@@ -4,8 +4,8 @@ Comprehensive Accumulator Patterns Example
 
 This example demonstrates all accumulator helper functions:
 - Loading templates from .apl files
-- inc_context() for counting
-- add_context() for sums, strings, and lists
+- inc() for counting
+- add() for sums, strings, and lists
 - Multiple accumulator patterns in complex workflows
 """
 
@@ -63,10 +63,10 @@ async def run_comprehensive_example():
         print()
         print("📝 This example demonstrates:")
         print("   ✓ Loading templates from .apl files")
-        print("   ✓ inc_context() for counting (total_processed, category counts)")
-        print("   ✓ add_context() for sums (score_sum, category_scores)")
-        print("   ✓ add_context() for lists (all_names, high_performers)")
-        print("   ✓ add_context() for strings (report building)")
+        print("   ✓ inc() for counting (total_processed, category counts)")
+        print("   ✓ add() for sums (score_sum, category_scores)")
+        print("   ✓ add() for lists (all_names, high_performers)")
+        print("   ✓ add() for strings (report building)")
         print("   ✓ Multiple accumulators working together")
         print("   ✓ Complex data processing patterns")
         print("   ✓ Safe initialization with defaults")
