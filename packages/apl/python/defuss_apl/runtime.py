@@ -55,6 +55,80 @@ def get_json_path(data: Any, path: str, default: Any = None) -> Any:
     except (KeyError, IndexError, ValueError, TypeError):
         return default
 
+def set_json_path(data: Any, path: str, value: Any) -> bool:
+    """Helper function to set a value at a specific JSON path
+    
+    Returns True if successful, False if path cannot be navigated
+    """
+    try:
+        # Handle simple key access
+        if '.' not in path:
+            if isinstance(data, dict):
+                data[path] = value
+                return True
+            elif isinstance(data, list) and path.isdigit():
+                idx = int(path)
+                if 0 <= idx < len(data):
+                    data[idx] = value
+                    return True
+                else:
+                    return False  # Index out of range
+            else:
+                return False  # Can't set property on non-dict/non-list
+        
+        # Handle nested path
+        keys = path.split('.')
+        current = data
+        
+        # Navigate to the parent of the target property
+        for i, key in enumerate(keys[:-1]):
+            if current is None:
+                return False
+            
+            if isinstance(current, dict):
+                # Create intermediate objects if they don't exist
+                if key not in current or current[key] is None:
+                    # Determine if next key is a number (for array) or string (for object)
+                    next_key = keys[i + 1]
+                    if next_key.isdigit():
+                        current[key] = []  # Next level should be an array
+                    else:
+                        current[key] = {}  # Next level should be an object
+                current = current[key]
+            elif isinstance(current, list) and key.isdigit():
+                idx = int(key)
+                # Extend the list if index is out of range
+                while idx >= len(current):
+                    current.append(None)
+                # Create intermediate objects if they don't exist
+                if current[idx] is None:
+                    # Determine if next key is a number (for array) or string (for object)
+                    next_key = keys[i + 1]
+                    if next_key.isdigit():
+                        current[idx] = []  # Next level should be an array
+                    else:
+                        current[idx] = {}  # Next level should be an object
+                current = current[idx]
+            else:
+                return False  # Can't navigate path
+        
+        # Set the value on the final object
+        last_key = keys[-1]
+        if isinstance(current, dict):
+            current[last_key] = value
+            return True
+        elif isinstance(current, list) and last_key.isdigit():
+            idx = int(last_key)
+            # Extend the list if index is out of range
+            while idx >= len(current):
+                current.append(None)
+            current[idx] = value
+            return True
+        else:
+            return False  # Can't set property on non-dict/non-list
+            
+    except (KeyError, IndexError, ValueError, TypeError):
+        return False
 
 def set_context(var_name: str, value: Any) -> str:
     """Set a context variable (§7.4 helper function)"""
@@ -157,82 +231,6 @@ def set(var_name_or_path: str, value: Any) -> str:
     return ""  # Return empty string to avoid output in templates
 
 
-def set_json_path(data: Any, path: str, value: Any) -> bool:
-    """Helper function to set a value at a specific JSON path
-    
-    Returns True if successful, False if path cannot be navigated
-    """
-    try:
-        # Handle simple key access
-        if '.' not in path:
-            if isinstance(data, dict):
-                data[path] = value
-                return True
-            elif isinstance(data, list) and path.isdigit():
-                idx = int(path)
-                if 0 <= idx < len(data):
-                    data[idx] = value
-                    return True
-                else:
-                    return False  # Index out of range
-            else:
-                return False  # Can't set property on non-dict/non-list
-        
-        # Handle nested path
-        keys = path.split('.')
-        current = data
-        
-        # Navigate to the parent of the target property
-        for i, key in enumerate(keys[:-1]):
-            if current is None:
-                return False
-            
-            if isinstance(current, dict):
-                # Create intermediate objects if they don't exist
-                if key not in current or current[key] is None:
-                    # Determine if next key is a number (for array) or string (for object)
-                    next_key = keys[i + 1]
-                    if next_key.isdigit():
-                        current[key] = []  # Next level should be an array
-                    else:
-                        current[key] = {}  # Next level should be an object
-                current = current[key]
-            elif isinstance(current, list) and key.isdigit():
-                idx = int(key)
-                # Extend the list if index is out of range
-                while idx >= len(current):
-                    current.append(None)
-                # Create intermediate objects if they don't exist
-                if current[idx] is None:
-                    # Determine if next key is a number (for array) or string (for object)
-                    next_key = keys[i + 1]
-                    if next_key.isdigit():
-                        current[idx] = []  # Next level should be an array
-                    else:
-                        current[idx] = {}  # Next level should be an object
-                current = current[idx]
-            else:
-                return False  # Can't navigate path
-        
-        # Set the value on the final object
-        last_key = keys[-1]
-        if isinstance(current, dict):
-            current[last_key] = value
-            return True
-        elif isinstance(current, list) and last_key.isdigit():
-            idx = int(last_key)
-            # Extend the list if index is out of range
-            while idx >= len(current):
-                current.append(None)
-            current[idx] = value
-            return True
-        else:
-            return False  # Can't set property on non-dict/non-list
-            
-    except (KeyError, IndexError, ValueError, TypeError):
-        return False
-
-
 def get_context(var_name: str, default: Any = None) -> Any:
     """Get a context variable (§7.4 helper function)"""
     runtime = APLRuntime._current_instance
@@ -261,6 +259,7 @@ def add(var_name: str, value: Any, default: Any = 0) -> str:
         if runtime and runtime.debug:
             print(f"[APL DEBUG] add called but no active context: {var_name}", file=sys.stderr)
         return ""
+
 
 def inc(var_name: str, default: Any = 0) -> str:
     """Increment a context variable by 1, initializing with default if not exists (§7.4 helper function)"""
@@ -315,10 +314,6 @@ def _result(result_type: str = None) -> Any:
     if result_type:
         return get_context(f"result_{result_type}")
     return get_context("result_text")
-
-def _usage() -> Any:
-    """Get usage statistics"""
-    return get_context("usage")
 
 
 class RuntimeError(Exception):
@@ -507,7 +502,6 @@ class APLRuntime:
         context["next"] = _next
         context["prev"] = _prev
         context["result"] = _result
-        context["usage"] = _usage
         
         return context
         

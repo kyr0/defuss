@@ -790,3 +790,148 @@ Final next step: {{ get('captured_final_step', 'none') }}
         # Should have the last value set
         assert context["captured_final_step"] == "final_step"
         assert "Final next step: final_step" in context["result_text"]
+
+
+class TestPrevFunction:
+    """Test the prev helper function that gets the previous step name"""
+    
+    @pytest.mark.asyncio
+    async def test_prev_basic_functionality(self, basic_options):
+        """Test that prev returns the previous step name"""
+        template = """
+# pre: first_step
+{{ set('initial_prev', prev()) }}
+
+# prompt: first_step
+## user
+First step message
+
+# post: first_step
+{{ next('second_step') }}
+
+# pre: second_step
+{{ set('current_prev', prev()) }}
+{{ set('next_step', '') }}
+
+# prompt: second_step
+## user
+Previous step was: {{ get('current_prev', 'none') }}
+"""
+        context = await start(template, basic_options)
+        
+        # In the first step, prev should be None
+        assert context["initial_prev"] is None
+        # In the second step, prev should be 'first_step'
+        assert context["current_prev"] == "first_step"
+        assert "Previous step was: first_step" in context["result_text"]
+    
+    @pytest.mark.asyncio
+    async def test_prev_with_multiple_steps(self, basic_options):
+        """Test prev function through multiple step transitions"""
+        template = """
+# pre: step_a
+{{ set('prev_at_a', prev()) }}
+{{ next('step_b') }}
+
+# prompt: step_a
+## user
+Step A message
+
+# pre: step_b
+{{ set('prev_at_b', prev()) }}
+{{ next('step_c') }}
+
+# prompt: step_b
+## user
+Step B message
+
+# pre: step_c
+{{ set('prev_at_c', prev()) }}
+{{ set('next_step', '') }}
+
+# prompt: step_c
+## user
+Step progression complete
+"""
+        context = await start(template, basic_options)
+        
+        assert context["prev_at_a"] is None        # First step has no previous
+        assert context["prev_at_b"] == "step_a"   # Second step's previous is step_a
+        assert context["prev_at_c"] == "step_b"   # Third step's previous is step_b
+
+
+class TestResultFunction:
+    """Test the result helper function that accesses last result data"""
+    
+    @pytest.mark.asyncio
+    async def test_result_default_text(self, basic_options):
+        """Test that result() returns result_text by default"""
+        template = """
+# pre: test
+{{ set('captured_result', result()) }}
+{{ set('next_step', '') }}
+
+# prompt: test
+## user
+Test message for result capture
+
+# post: test
+{{ set('result_after_prompt', result()) }}
+"""
+        context = await start(template, basic_options)
+        
+        # Before prompt execution, result should be empty or None
+        assert context["captured_result"] is None or context["captured_result"] == ""
+        
+        # After prompt execution, result should contain the result_text
+        assert context["result_after_prompt"] is not None
+        assert "Test message for result capture" in str(context["result_after_prompt"])
+    
+    @pytest.mark.asyncio
+    async def test_result_with_type_parameter(self, basic_options):
+        """Test result function with specific type parameters"""
+        template = """
+# pre: test
+{{ set('result_text_explicit', result('text')) }}
+{{ set('result_json_explicit', result('json')) }}
+{{ set('next_step', '') }}
+
+# prompt: test
+## user
+Testing result types
+
+# post: test
+{{ set('post_result_text', result('text')) }}
+{{ set('post_result_json', result('json')) }}
+"""
+        context = await start(template, basic_options)
+        
+        # Before prompt, results should be None or empty
+        assert context["result_text_explicit"] is None or context["result_text_explicit"] == ""
+        assert context["result_json_explicit"] is None
+        
+        # After prompt, result_text should be available
+        assert context["post_result_text"] is not None
+        
+        # result_json might be None if not set by the provider
+        # This is expected behavior as JSON results depend on provider implementation
+    
+    @pytest.mark.asyncio
+    async def test_result_equivalence(self, basic_options):
+        """Test that result() is equivalent to result('text')"""
+        template = """
+# pre: test
+{{ set('next_step', '') }}
+
+# prompt: test
+## user
+Equivalence test message
+
+# post: test
+{{ set('default_result', result()) }}
+{{ set('text_result', result('text')) }}
+"""
+        context = await start(template, basic_options)
+        
+        # Both should return the same value (result_text)
+        assert context["default_result"] == context["text_result"]

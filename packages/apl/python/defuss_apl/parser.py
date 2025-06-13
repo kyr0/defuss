@@ -44,7 +44,8 @@ class APLParser:
         'permissions', 'sandbox', 'input_validation', 'output_sanitization', 'security_context',
         'plugins', 'extensions', 'middleware', 'interceptors', 'transformers',
         'sub_workflows', 'workflow_imports', 'macro_steps', 'step_library', 'template_inheritance',
-        'streaming_mode', 'real_time_updates', 'push_notifications', 'websocket_handlers', 'sse_streams'
+        'streaming_mode', 'real_time_updates', 'push_notifications', 'websocket_handlers', 'sse_streams',
+        'memoize', 'recall', 'forget', 'cache', 'uncache', 'store', 'unstore',
     }
     
     def __init__(self):

@@ -445,17 +445,15 @@ set('var', 'value')
 Test
 
 # post: test
+{# lalal #}
 if condition
+{# lalal #}
     set('result', 'success')
 endif
 """
-        
-        # Should not raise exception
-        result = check(relaxed_apl, {"relaxed": True})
-        assert result is True
-    
-    def test_check_relaxed_syntax_invalid_without_flag(self):
-        """Test that relaxed syntax is handled correctly during validation"""
+    @pytest.mark.asyncio
+    async def test_check_relaxed_syntax_valid_with_result_verification(self):
+        """Test that valid relaxed syntax passes check and produces expected result"""
         relaxed_apl = """
 # pre: test
 set('var', 'value')
@@ -463,11 +461,20 @@ set('var', 'value')
 # prompt: test
 ## user
 Test
-"""
+
+# post: test
+if condition
+    set('result', 'success')
+endif
+    """
         
-        # This should pass because check() applies relaxed transformation
+        # Should not raise exception
         result = check(relaxed_apl)
         assert result is True
+        
+        # Execute and verify the result variable is set correctly
+        context = await start(relaxed_apl, {"condition": True})
+        assert context["result"] == "success"
     
     def test_check_mixed_valid_syntax(self):
         """Test that mixed Jinja and relaxed syntax is valid"""
