@@ -1084,7 +1084,7 @@ APL uses standard Jinja2 templating. The APL runtime automatically provides a `g
 
 ### 7.1 Working with Tool Results
 
-```jinja
+```apl
 {# Iterate over all tool call results #}
 {% for tool_call in result_tool_calls %}
   Tool {{ tool_call.tool_call_id }}: {{ tool_call.content }}
@@ -1123,7 +1123,7 @@ APL uses standard Jinja2 templating. The APL runtime automatically provides a `g
 
 ### 7.2 Error Handling
 
-```jinja
+```apl
 {# Check for errors #}
 {% if errors %}
   {{ set('next_step', 'error_handler') }}
@@ -1150,7 +1150,7 @@ APL uses standard Jinja2 templating. The APL runtime automatically provides a `g
 
 ### 7.3 Previous Step Access
 
-```jinja
+```apl
 {# Check if a specific step was the previous one #}
 {% if prev_step == "validation" %}
   Validation step was completed.
@@ -1173,11 +1173,23 @@ Total workflow runs: {{ global_runs }}
 
 APL provides built-in helper functions for common operations:
 
-#### 7.4.1 Variable Assignment - `set()`
+| Helper Function                                        | Purpose |                                                 
+| ----------------------------------------------- | ------- | 
+| `get(var_name_or_json_path: str, default: any) -> any` | Returns the value of the variable or a value deep in the json path, in the context, otherwise the default if not set.                   |
+| `set(var_name_or_json_path: str, value: any) -> None` | Sets a variable or a value deep in the json path in the context. |
+| `add(var_name_or_json_path: str, value: any, default: any = None) -> None` | Adds a value to a variable or a value deep in the json path, initializing it with the default if not set. |
+| `inc(var_name_or_json_path: str, default: int = 0) -> None` | Increments a counter variable or a value deep in the json path, initializing it with the default if not set. Useful for counters. |
+| `rem(var_name_or_json_path: str, value: any, default: any = None) -> None` | Removes a value from a variable or a value deep in the json path, initializing it with the default if not set. Useful for accumulators. |
+| `dec(var_name_or_json_path: str, default: int = 0) -> None` | Decrements a counter variable or a value deep in the json path, initializing it with the default if not set. Useful for counters. |
+| `next(step_name: str) -> None` | Sets the next step to execute. |
+| `prev() -> None` | Returns the previous step name that was executed. |
+| `return() -> None` | Sets the next step to execute to `return`, so that the agentic workflow execution finishes. |
 
-Use `set(var_name, value)` to set context variables. This function works correctly with conditional logic and sequential execution:
+#### 7.4.1 Variable Assignment
 
-```jinja
+Use `set(var_name_or_json_path: str, value: any) -> None` to set context variables. This function works correctly with conditional logic and sequential execution:
+
+```apl
 {# Set variables using set_context function #}
 {{ set('model', 'gpt-4o') }}
 {{ set('temperature', 0.7) }}
@@ -1195,14 +1207,14 @@ Use `set(var_name, value)` to set context variables. This function works correct
 {{ set('total_errors', context_history | map(attribute='errors') | map('length') | sum) }}
 ```
 
-#### 7.4.2 Variable Access - `get()`
+#### 7.4.2 Variable Access
 
-Use `get(var_name, default=None)` to retrieve context variables safely. This function provides access to runtime context variables within templates:
+Use `get(var_name_or_json_path: str, default: any) -> any` to retrieve context variables safely. This function provides access to runtime context variables within templates:
 
-```jinja
+```apl
 {# Access variables set earlier with safe defaults #}
-{{ get('user_name', 'Guest') }}
-{{ get('retry_count', 0) }}
+{{ get('user_name', 'Guest') }}   {# User's name, defaults to 'Guest' #}
+{{ get('retry_count', 0) }}       
 
 {# Use in calculations and conditionals #}
 {{ set('total_retries', get('retry_count', 0) + 1) }}
@@ -1220,26 +1232,28 @@ Use `get(var_name, default=None)` to retrieve context variables safely. This fun
 {% endfor %}
 ```
 
-#### 7.4.3 Accumulator Functions - `add()` and `inc()`
+#### 7.4.3 Accumulation, Counting, Aggregation
 
-APL provides helper functions for common accumulator patterns:
+Use `add(var_name_or_json_path: str, value: any, default: any = None) -> None` to accumulate values into variables, initializing them with a default if they don't exist. 
 
-```jinja
-{# Increment a counter (defaults to 0 if variable doesn't exist) #}
-{{ inc('counter') }}
-{{ inc('retry_count') }}
+Use `inc(var_name_or_json_path: str, default: int = 0) -> None` to increment counters:
+
+```apl
+{# Initialize or increment counters #}
+{{ inc('counter') }}              {# counter starts at 0, becomes 1 #}
+{{ inc('retry_count') }}          {# retry_count starts at 0, becomes 1 #}
 
 {# Add values to variables with default initialization #}
-{{ add('total', 10) }}              {# total starts at 0, becomes 10 #}
-{{ add('total', 5) }}               {# total becomes 15 #}
+{{ add('total', 10) }}            {# total starts at 0, becomes 10 #}
+{{ add('total', 5) }}             {# total becomes 15 #}
 
 {# String concatenation #}
-{{ add('message', 'Hello', '') }}   {# Initialize with empty string #}
-{{ add('message', ' World') }}      {# message becomes "Hello World" #}
+{{ add('message', 'Hello', '') }} {# Initialize with empty string #}
+{{ add('message', ' World') }}    {# message becomes "Hello World" #}
 
 {# List accumulation #}
-{{ add('items', [1, 2], []) }}      {# Initialize with empty list #}
-{{ add('items', [3, 4]) }}          {# items becomes [1, 2, 3, 4] #}
+{{ add('items', [1, 2], []) }}    {# Initialize with empty list #}
+{{ add('items', [3, 4]) }}        {# items becomes [1, 2, 3, 4] #}
 
 {# Use in loops for sum calculations #}
 {% for number in [10, 20, 30, 40, 50] %}
@@ -1250,61 +1264,73 @@ APL provides helper functions for common accumulator patterns:
 {# Counter patterns in iterative workflows #}
 # pre: process_loop
 {% if get('items') is none %}
-{{ set('items', [1, 2, 3, 4, 5]) }}
-{{ set('index', 0) }}
+  {{ set('items', [1, 2, 3, 4, 5]) }}
+  {{ set('index', 0) }}
 {% endif %}
-{{ inc('processed_count') }}
-{{ add('running_total', get('items', [])[get('index', 0)]) }}
-{{ inc('index') }}
+  {{ inc('processed_count') }}
+  {{ add('running_total', get('items', [])[get('index', 0)]) }}
+  {{ inc('index') }}
 
 # post: process_loop
 {% if get('index', 0) < get('items', [])|length %}
-{{ set('next_step', 'process_loop') }}
+  {{ set('next_step', 'process_loop') }}
 {% endif %}
 ```
 
-#### 7.4.4 JSON Data Access - `get_json_path()`
+#### 7.4.4 Depletion, Discounting, Disaggregation
 
-APL provides a `get_json_path` helper function for extracting data from JSON results:
+Use `rem(var_name_or_json_path: str, value: any, default: any = None) -> None` to remove values from variables, initializing them with a default if they don't exist.
 
-```jinja
-{# Set up test data and extract values #}
-{{ set('test_data', {"user": {"name": "Alice", "items": [1, 2, 3]}}) }}
-{{ set('user_id', get_json_path(test_data, "user.id", "unknown")) }}
-{{ set('items', get_json_path(test_data, "items")) }}
-{{ set('count', get_json_path(test_data, "count", 0)) }}
+Use `dec(var_name_or_json_path: str, default: int = 0) -> None` to decrement counters:
 
-{# Extract data from tool results #}
-{% for tool_call in result_tool_calls if not tool_call.with_error %}
-  {{ set('user_id', get_json_path(tool_call.content, "user.id", "unknown")) }}
-  {{ set('items', get_json_path(tool_call.content, "items")) }}
-  {{ set('count', get_json_path(tool_call.content, "count", 0)) }}
-  
-  User: {{ user_id }}, Items: {{ items | length }}, Count: {{ count }}
+```apl
+{# Initialize or decrement counters #}
+{{ dec('counter') }}              {# counter starts at 0, becomes -1 #}
+{{ dec('retry_count') }}          {# retry_count starts at 0, becomes -1 #}
+
+{# Remove values from variables with default initialization #}
+{{ rem('total', 10) }}            {# total starts at 0, becomes -10 #}
+{{ rem('total', 5) }}             {# total becomes -5 #}
+
+{# String deconcatenation #}
+{{ rem('message', 'Hello', '') }} {# Initialize with empty string #}
+{{ rem('message', ' World') }}    {# message becomes "Hello World" #}
+
+{# List accumulation #}
+{{ rem('items', [1, 2], []) }}    {# Initialize with empty list #}
+{{ rem('items', [3, 4]) }}        {# items becomes [1, 2, 3, 4] #}
+
+{# Use in loops for sum calculations #}
+{% for number in [10, 20, 30, 40, 50] %}
+  {{ rem('sum', number) }}
 {% endfor %}
-
-{# Extract data from specific tool results #}
-{% for tool_call in result_tool_calls %}
-  {% if "api_call" in tool_call.tool_call_id and not tool_call.with_error %}
-    {{ set('status', get_json_path(tool_call.content, "status")) }}
-    {{ set('data', get_json_path(tool_call.content, "data.items.0.name")) }}
-    API Status: {{ status }}, First Item: {{ data }}
-  {% endif %}
-{% endfor %}
+{# sum will be -150 #}
 ```
 
 ### 7.5 Control Flow Patterns
 
-```jinja
+The functions `next(step_name: str) -> None`, `prev() -> None`, and `return() -> None` are used to control the flow of the workflow execution.
+
+```apl
+{# Set the next step to execute #}
+{{ next('process_data') }}
+
+{# Return to the previous step #}
+{{ prev() }}
+
+{# Finish the workflow execution #}
+{{ return() }}
+
+```apl
 {# Error-first decision making #}
 {% if errors %}
-  {{ set('next_step', 'error_handler') }}
+  {{ next('error_handler') }}
 {% elif time_elapsed > 5000 %}
-  {{ set('next_step', 'timeout_handler') }}
+  {{ next('timeout_handler') }}
 {% elif runs > 3 %}
-  {{ set('next_step', 'retry_limit_reached') }}
+  {{ next('retry_limit_reached') }}
 {% else %}
-  {{ set('next_step', 'continue_processing') }}
+  {{ next('continue_processing') }}
 {% endif %}
 
 {# Complex scoring logic using tool results #}
@@ -1312,11 +1338,11 @@ APL provides a `get_json_path` helper function for extracting data from JSON res
   {% if "calculate_score" in tool_call.tool_call_id and not tool_call.with_error %}
     {{ set('score', get_json_path(tool_call.content, "score", 0)) }}
     {% if score > 0.8 %}
-      {{ set('next_step', 'finalize') }}
+      {{ next('finalize') }}
     {% elif score > 0.5 and runs < 3 %}
-      {{ set('next_step', 'refine') }}
+      {{ next('refine') }}
     {% else %}
-      {{ set('next_step', 'manual_review') }}
+      {{ next('manual_review') }}
     {% endif %}
     {% break %}
   {% endif %}
@@ -1326,10 +1352,10 @@ APL provides a `get_json_path` helper function for extracting data from JSON res
 {{ set('global_errors', context_history | map(attribute='errors') | map('length') | sum) }}
 {% if global_errors > 10 %}
   Global error threshold exceeded: {{ global_errors }}
-  {{ set('next_step', 'return') }}
+  {{ next('return') }}
 {% elif time_elapsed_global > 30000 %}
   Workflow timeout exceeded
-  {{ set('next_step', 'return') }}
+  {{ next('return') }}
 {% endif %}
 
 {# Batch processing with JSON extraction #}
@@ -1345,10 +1371,10 @@ APL provides a `get_json_path` helper function for extracting data from JSON res
 {% endfor %}
 
 {% if failed_items | length > 0 %}
-  {{ set('next_step', 'retry_failed') }}
   {{ set('retry_items', failed_items) }}
+  {{ next('retry_failed') }}
 {% else %}
-  {{ set('next_step', 'summary') }}
+  {{ next('summary') }}
 {% endif %}
 
 {# Iterations - Breaking the cycle #}
@@ -1365,9 +1391,9 @@ Iteration {{ get('counter', 0) + 1 }}
 # post: iterate
 {{ set('counter', get('counter', 0) + 1) }}
 {% if get('counter', 0) < get('max_iterations', 3) %}
-  {{ set('next_step', 'iterate') }}
+  {{ next('iterate') }}
 {% else %}
-  {{ set('next_step', 'complete') }}
+  {{ next('complete') }}
 {% endif %}
 
 # prompt: complete
@@ -1407,6 +1433,13 @@ The following variable names are reserved for future language enhancements and w
 * `session` - Reserved for session-scoped data
 * `workspace` - Reserved for workspace-scoped persistence
 * `vector_store` - Reserved for vector database integration
+* `memoize` - Memoization
+* `recall` - Reserved for recalling previous context
+* `forget` - Context forgetting
+* `cache` - Reserved for caching results
+* `uncache` - Reserved for un-caching results
+* `store` - Reserved for storing context
+* `unstore` - Reserved for un-storing context
 
 **Observability & Debugging:**
 * `trace` - Reserved for execution tracing
