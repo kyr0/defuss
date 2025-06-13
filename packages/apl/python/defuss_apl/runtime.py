@@ -883,7 +883,7 @@ class APLRuntime:
                         # Transform line inside Jinja block
                         indentation = line[:len(line) - len(line.lstrip())]
                         # Skip empty lines and comments
-                        if not stripped or stripped.startswith('{#') or stripped.startswith('<!--'):
+                        if not stripped or stripped.startswith('{#'):
                             result_lines.append(line)
                         else:
                             first_word = stripped.split()[0] if stripped else ''
@@ -908,7 +908,7 @@ class APLRuntime:
                     stripped = line.strip()
                     
                     # Skip empty lines and comments
-                    if not stripped or stripped.startswith('{#') or stripped.startswith('<!--'):
+                    if not stripped or stripped.startswith('{#'):
                         result_lines.append(line)
                         i += 1
                         continue

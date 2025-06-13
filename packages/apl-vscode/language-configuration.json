@@ -1,7 +1,6 @@
 {
   "comments": {
-    "blockComment": ["{#", "#}"],
-    "lineComment": "//"
+    "blockComment": ["{#", "#}"]
   },
   "brackets": [["{", "}"], ["[", "]"], ["(", ")"], ["{%", "%}"]],
   "colorizedBracketPairs": [],

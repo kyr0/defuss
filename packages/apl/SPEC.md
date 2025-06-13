@@ -158,6 +158,74 @@ print(status["result_image_urls"][0])
 * To show a literal heading inside Markdown, indent it or use a fenced code‑block.
 * Use Jinja `{# … #}` or Markdown comments for annotations.
 
+### 1.4 Relaxed Syntax Mode
+
+When the `relaxed: true` option is enabled (default), *pre* and *post* phases support a simplified syntax that omits Jinja2 delimiters (`{{ }}` and `{% %}`). The executor automatically transforms relaxed syntax into valid Jinja2 before parsing. Multi-line expressions are supported.
+
+**Relaxed mode applies only to *pre* and *post* phases**. Prompt phases maintain full Jinja2 syntax as it's not possible to distinguish between text generation and control flow without delimiters.
+
+#### 1.4.1 Transformation Rules
+
+The relaxed mode preprocessor processes each line in *pre* and *post* phases:
+
+1. **Empty lines and comments**: Preserved as-is
+2. **Control flow keywords**: Lines starting with Jinja2 control keywords are wrapped with `{% %}`
+3. **Expressions**: All other non-empty lines are wrapped with `{{ }}`
+4. **Indentation**: Preserved for readability
+
+**Control Keywords Detected:**
+- `if`, `elif`, `else`, `endif`
+- `for`, `endfor`
+- `set`, `endset`  
+- `with`, `endwith`
+
+#### 1.4.2 Mixed Syntax
+
+You **MUST NOT** mix relaxed and traditional Jinja2 syntax in the same *pre* or *post* phase. The relaxed mode preprocessor wraps lines naively, which would cause malformed templates if traditional syntax was used alongside relaxed syntax.
+
+#### 1.4.3 Relaxed Syntax Examples
+
+**Valid Traditional-mode syntax:**
+
+```apl
+# pre: greet
+{{ set('user_name', 'World') }}
+{{ set('greeting', 'Hello') }}
+
+# post: greet
+{% if global_runs < 2 and not result_text %}
+    {{ set('next_step', 'greet') }}
+{% else %}
+    {{ set('next_step', 'return') }}
+{% endif %}
+```
+
+**Valid Relaxed-mode syntax:**
+
+```apl
+# pre: greet
+set('user_name', 'World')
+set('greeting', 'Hello')
+
+# post: greet
+if global_runs < 2 and not result_text
+    set('next_step', 'greet')
+else
+    set('next_step', 'return')
+endif
+```
+
+#### 1.4.4 Disabling Relaxed Mode
+
+You may disable relaxed mode by setting the `relaxed` option to `False` in the `start()` function call. This will enforce traditional Jinja2 syntax for all *pre* and *post* phases, ensuring strict adherence to Jinja2 formatting rules.
+
+```python
+from defuss_apl import start
+
+# Disable relaxed mode
+status = await start(agent, {"relaxed": False})
+```
+
 ---
 
 ## 2 - Executor Semantics
@@ -809,80 +877,10 @@ The `start()` function accepts an optional `options` dict to configure the execu
 | `with_context`                 | `dict[str, any]`        | `{}`                     | Top‑level variables initially injected and available for the first step's *pre* phase. Add your custom async functions here, as the context is flattened and passed down to the Jinja templates `render_async` function.                                                     |
 | `debug`                     | `bool`                  | `false`                  | Emit verbose logs to stderr.                                                                          |
 | `max_runs`                  | `int \| null`           | `null` (∞)               | Hard cap for `global_runs`.                                                                           |
-| `relaxed`                   | `bool`                  | `true`                   | Toggles relaxed syntax mode for *pre* and *post* phases (§6.1.1).                                        |
+| `relaxed`                   | `bool`                  | `true`                   | Toggles relaxed syntax mode for *pre* and *post* phases (§1.4).                                        |
 | `jinja2_env`                | `jinja2.Environment`    | *auto*                   | Pass a custom Jinja2 environment (else APL creates one internally). The executor will switches  `enable_async` on for auto-await on custom coroutines.                                   |
 
-#### 6.1.1 Relaxed Syntax Mode
-
-When the `relaxed: True` option is enabled, *pre* and *post* phases support a simplified syntax that omits Jinja2 delimiters (`{{ }}` and `{% %}`). The executor automatically transforms relaxed syntax into valid Jinja2 before parsing. Multi-line expressions are supported. 
-
-**Relaxed mode applies only to *pre* and *post* phases**. Prompt phases maintain full Jinja2 syntax as 
-it's not possible to distinguish between text generation and control flow without delimiters.
-
-##### 6.1.1.1 Transformation Rules
-
-The relaxed mode preprocessor processes each line in *pre* and *post* phases:
-
-1. **Empty lines and comments**: Preserved as-is
-2. **Control flow keywords**: Lines starting with Jinja2 control keywords are wrapped with `{% %}`
-3. **Expressions**: All other non-empty lines are wrapped with `{{ }}`
-4. **Indentation**: Preserved for readability
-
-**Control Keywords Detected:**
-- `if`, `elif`, `else`, `endif`
-- `for`, `endfor`
-- `set`, `endset`  
-- `with`, `endwith`
-
-
-##### 6.1.1.2 Mixed Syntax
-
-You **MUST NOT** mix relaxed and traditional Jinja2 syntax in the same *pre* or *post* phase. The relaxed mode preprocessor wraps lines naively, which would cause malformed templates if traditional syntax was used alongside relaxed syntax.
-
-##### 6.1.1.3 Relaxed Syntax Examples
-
-**Valid Traditional-mode syntax:**
-
-```apl
-# pre: greet
-{{ set('user_name', 'World') }}
-{{ set('greeting', 'Hello') }}
-
-# post: greet
-{% if global_runs < 2 and not result_text %}
-    {{ set('next_step', 'greet') }}
-{% else %}
-    {{ set('next_step', 'return') }}
-{% endif %}
-```
-
-**Valid Relaxed-mode syntax:**
-
-```apl
-# pre: greet
-set('user_name', 'World')
-set('greeting', 'Hello')
-
-# post: greet
-if global_runs < 2 and not result_text
-    set('next_step', 'greet')
-else
-    set('next_step', 'return')
-endif
-```
-
-##### 6.1.1.4 Disabling Relaxed-mode
-
-You may disable relaxed mode by setting the `relaxed` option to `False` in the `start()` function call. This will enforce traditional Jinja2 syntax for all *pre* and *post* phases, ensuring strict adherence to Jinja2 formatting rules.
-
-```python
-from defuss_apl import start
-
-# Disable relaxed mode
-status = await start(agent, {"relaxed": False})
-```
-
-### 6.2 Custom Jinja2 Environment Example
+### 6.1 Custom Jinja2 Environment Example
 
 You can pass a custom Jinja2 environment to the executor, allowing you to customize the Jinja2 rendering behavior, such as adding custom filters or globals.
 
@@ -951,11 +949,11 @@ const status = await start(readFileSync("agent.apl", "utf-8"), options);
 console.log(status);
 ```
 
-### 6.3 Built-in Helper Functions
+### 6.2 Built-in Helper Functions
 
 The APL runtime automatically adds the following helper functions to every template's context:
 
-#### 6.3.1 `get_json_path(obj, path, default=None)`
+#### 6.2.1 `get_json_path(obj, path, default=None)`
 
 Extract data using dot notation (e.g., `"user.profile.name"`)
 
@@ -972,11 +970,11 @@ def get_json_path(obj: dict, path: str, default=None) -> any:
     """
 ```
 
-### 6.4 Customizing Built-in Providers
+### 6.3 Customizing Built-in Providers
 
 The APL runtime includes functions to create and configure providers with custom options. These providers can then be registered in the `with_providers` option of `start()`.
 
-#### 6.4.1 `create_openai_provider(options=None)`
+#### 6.3.1 `create_openai_provider(options=None)`
 
 Many, if not all relevant LLM providers and LLM inference engines come with full or partial support for the official OpenAI Chat Completions API. 
 
@@ -1024,7 +1022,7 @@ Provider options are resolved with the following precedence:
 2. Context options passed in each step through APL
 3. Environment variables (for `api_key` only)
 
-##### 6.4.1.1 Python Example
+##### 6.3.1.1 Python Example
 
 ```python
 from defuss_apl import start, create_openai_provider
@@ -1052,7 +1050,7 @@ options = {
 result = await start(template, options)
 ```
 
-##### 6.4.1.2 TypeScript Example
+##### 6.3.1.2 TypeScript Example
 
 ```typescript
 import { start, create_openai_provider } from 'defuss-apl';

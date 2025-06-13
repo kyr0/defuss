@@ -197,16 +197,16 @@ Perform main operation (attempt {{ get('attempt', 1) }})
 
 # post: main_operation
 {% set errors = get('errors', []) %}
-<!-- DEBUG: errors = {{ errors }}, errors|length = {{ errors|length }} -->
+{# DEBUG: errors = {{ errors }}, errors|length = {{ errors|length }} #}
 {% if errors|length > 0 and get('attempt', 1) < get('max_attempts', 3) %}
-<!-- DEBUG: Going to retry -->
+{# DEBUG: Going to retry #}
 {{ set('attempt', get('attempt', 1) + 1) }}
 {{ set('next_step', 'main_operation') }}
 {% elif errors|length > 0 %}
-<!-- DEBUG: Going to failure -->
+{# DEBUG: Going to failure #}
 {{ set('next_step', 'failure') }}
 {% else %}
-<!-- DEBUG: Going to success -->
+{# DEBUG: Going to success #}
 {{ set('next_step', 'success') }}
 {% endif %}
 

@@ -69,7 +69,7 @@ class APLParser:
             line = lines[i].strip()
             
             # Skip empty lines and comments
-            if not line or line.startswith('<!--'):
+            if not line:
                 i += 1
                 continue
                 

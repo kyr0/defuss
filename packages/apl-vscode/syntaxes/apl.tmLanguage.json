@@ -105,10 +105,6 @@
     "relaxedSyntax": {
       "patterns": [
         {
-          "match": "^\\s*//.*$",
-          "name": "comment.line.double-slash.apl"
-        },
-        {
           "match": "^\\s*(if|elif|else|endif|for|endfor|set|endset|with|endwith)\\b",
           "name": "keyword.control.jinja"
         },
@@ -183,10 +179,6 @@
     "relaxedSyntaxGlobal": {
       "patterns": [
         {
-          "match": "^\\s*//.*$",
-          "name": "comment.line.double-slash.apl"
-        },
-        {
           "match": "^\\s*(if|elif|else|endif|for|endfor|set|endset|with|endwith)\\b",
           "captures": {
             "1": { "name": "keyword.control.jinja" }
@@ -239,12 +231,7 @@
       ]
     },
     "comments": {
-      "patterns": [
-        {
-          "match": "^\\s*//.*$",
-          "name": "comment.line.double-slash.apl"
-        }
-      ]
+      "patterns": []
     },
     "jinjaDelimited": {
       "patterns": [
