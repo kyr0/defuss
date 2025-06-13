@@ -16,7 +16,7 @@ class TestRuntimeErrorHandling:
         """Test error when jumping to unknown step"""
         template = """
 # pre: test
-{{ set_context('next_step', 'nonexistent') }}
+{{ set('next_step', 'nonexistent') }}
 
 # prompt: test
 ## user
@@ -57,7 +57,7 @@ Test message
 Test
 
 # post: infinite
-{{ set_context('next_step', 'infinite') }}
+{{ set('next_step', 'infinite') }}
 """
         options = {"timeout": 100}  # Very short timeout (100ms)
         
@@ -73,7 +73,7 @@ Test
         
         template = """
 # pre: test
-{{ set_context('allowed_tools', ['failing_tool']) }}
+{{ set('allowed_tools', ['failing_tool']) }}
 
 # prompt: test
 ## user
@@ -136,14 +136,14 @@ Use the failing tool with x=5
 Step 1
 
 # post: step1
-{{ set_context('next_step', 'step2') }}
+{{ set('next_step', 'step2') }}
 
 # prompt: step2
 ## user
 Step 2
 
 # post: step2
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
         
         options = basic_options.copy()
@@ -165,7 +165,7 @@ Step 2
 Test
 
 # post: loop
-{{ set_context('next_step', 'loop') }}
+{{ set('next_step', 'loop') }}
 """
         
         options = {
@@ -221,7 +221,7 @@ Test
         
         template = """
 # pre: test
-{{ set_context('output_mode', 'structured_output') }}
+{{ set('output_mode', 'structured_output') }}
 
 # prompt: test
 ## user
@@ -308,14 +308,14 @@ class TestErrorContext:
         """Test that error context is preserved for debugging"""
         template = """
 # pre: test
-{{ set_context('debug_var', 'debug_value') }}
+{{ set('debug_var', 'debug_value') }}
 
 # prompt: test
 ## user
 Test message
 
 # post: test
-{{ set_context('next_step', 'nonexistent') }}
+{{ set('next_step', 'nonexistent') }}
 """
         
         try:
@@ -346,14 +346,14 @@ Test message
 Step 1
 
 # post: step1
-{{ set_context('next_step', 'step2') }}
+{{ set('next_step', 'step2') }}
 
 # prompt: step2  
 ## user
 Step 2
 
 # post: step2
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
         
         options = basic_options.copy()

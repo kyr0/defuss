@@ -1,12 +1,12 @@
 # pre: setup
-{{ set_context('max_retries', 2) }}
+{{ set('max_retries', 2) }}
 
 # prompt: setup
-This is attempt #{{ get_context('runs', 0) + 1 }}. Please respond with something meaningful.
+This is attempt #{{ get('runs', 0) + 1 }}. Please respond with something meaningful.
 
 # post: setup
-{% if errors and get_context('runs', 0) < get_context('max_retries', 2) %}
-    {{ set_context('next_step', 'setup') }}
+{% if errors and get('runs', 0) < get('max_retries', 2) %}
+    {{ set('next_step', 'setup') }}
 {% else %}
-    {{ set_context('next_step', 'return') }}
+    {{ set('next_step', 'return') }}
 {% endif %}

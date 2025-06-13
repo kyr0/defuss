@@ -25,7 +25,7 @@ class TestAPLParser:
         """Test parsing template with all phases"""
         template = """
 # pre: setup
-{{ set_context('name', 'Alice') }}
+{{ set('name', 'Alice') }}
 
 # prompt: setup  
 ## system
@@ -35,17 +35,17 @@ You are a helpful assistant.
 Hello {{ name }}
 
 # post: setup
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
         steps = parse_apl(template)
         step = steps["setup"]
         
         assert step.pre is not None
-        assert "set_context('name', 'Alice')" in step.pre.content
+        assert "set('name', 'Alice')" in step.pre.content
         assert step.prompt.roles["system"] == "You are a helpful assistant."
         assert step.prompt.roles["user"] == "Hello {{ name }}"
         assert step.post is not None
-        assert "set_context('next_step', 'return')" in step.post.content
+        assert "set('next_step', 'return')" in step.post.content
 
     def test_role_concatenation(self):
         """Test that duplicate roles are concatenated correctly"""
@@ -93,7 +93,7 @@ And some text after.
         """Test whitespace handling in headings and content"""
         template = """
 #   pre   :   test   
-{{ set_context('var', 'value') }}
+{{ set('var', 'value') }}
 
 #  prompt  : test  
 ##   system   
@@ -141,10 +141,10 @@ class TestValidationErrors:
         """Test that templates without prompt phase are rejected"""
         template = """
 # pre: test
-{{ set_context('var', 'value') }}
+{{ set('var', 'value') }}
 
 # post: test
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
         with pytest.raises(ValidationError) as exc_info:
             parse_apl(template)

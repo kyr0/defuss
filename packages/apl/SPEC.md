@@ -127,9 +127,9 @@ from defuss_apl import start
 
 agent = """
 # pre: greet me
-{{ set_context('model', 'o4-mini') }}
-{{ set_context('temperature', 0.1) }}
-{{ set_context('customer_name', 'Aron Homberg') }}
+{{ set('model', 'o4-mini') }}
+{{ set('temperature', 0.1) }}
+{{ set('customer_name', 'Aron Homberg') }}
 
 # prompt: greet me
 
@@ -701,9 +701,9 @@ from defuss_apl import start
 
 agent = """
 # pre: greet
-{{ set_context('model', 'gpt-4o') }}
-{{ set_context('temperature', 0.7) }}
-{{ set_context('allowed_tools', ['calc']) }}
+{{ set('model', 'gpt-4o') }}
+{{ set('temperature', 0.7) }}
+{{ set('allowed_tools', ['calc']) }}
 
 # prompt: greet
 ## system
@@ -766,9 +766,9 @@ const calcTool = {
 
 const agent = `
 # pre: greet
-{{ set_context('model', 'gpt-4o') }}
-{{ set_context('temperature', 0.7) }}
-{{ set_context('allowed_tools', ['calc']) }}
+{{ set('model', 'gpt-4o') }}
+{{ set('temperature', 0.7) }}
+{{ set('allowed_tools', ['calc']) }}
 
 # prompt: greet
 ## system
@@ -845,14 +845,14 @@ You **MUST NOT** mix relaxed and traditional Jinja2 syntax in the same *pre* or 
 
 ```apl
 # pre: greet
-{{ set_context('user_name', 'World') }}
-{{ set_context('greeting', 'Hello') }}
+{{ set('user_name', 'World') }}
+{{ set('greeting', 'Hello') }}
 
 # post: greet
 {% if global_runs < 2 and not result_text %}
-    {{ set_context('next_step', 'greet') }}
+    {{ set('next_step', 'greet') }}
 {% else %}
-    {{ set_context('next_step', 'return') }}
+    {{ set('next_step', 'return') }}
 {% endif %}
 ```
 
@@ -860,14 +860,14 @@ You **MUST NOT** mix relaxed and traditional Jinja2 syntax in the same *pre* or 
 
 ```apl
 # pre: greet
-set_context('user_name', 'World')
-set_context('greeting', 'Hello')
+set('user_name', 'World')
+set('greeting', 'Hello')
 
 # post: greet
 if global_runs < 2 and not result_text
-    set_context('next_step', 'greet')
+    set('next_step', 'greet')
 else
-    set_context('next_step', 'return')
+    set('next_step', 'return')
 endif
 ```
 
@@ -1112,10 +1112,10 @@ APL uses standard Jinja2 templating. The APL runtime automatically provides a `g
 {% endfor %}
 
 {# Count tool calls by type #}
-{{ set_context('api_call_count', 0) }}
+{{ set('api_call_count', 0) }}
 {% for tool_call in result_tool_calls %}
   {% if "api" in tool_call.tool_call_id %}
-    {{ set_context('api_call_count', api_call_count + 1) }}
+    {{ set('api_call_count', api_call_count + 1) }}
   {% endif %}
 {% endfor %}
 {% if api_call_count > 3 %}
@@ -1128,7 +1128,7 @@ APL uses standard Jinja2 templating. The APL runtime automatically provides a `g
 ```jinja
 {# Check for errors #}
 {% if errors %}
-  {{ set_context('next_step', 'error_handler') }}
+  {{ set('next_step', 'error_handler') }}
   Error details: {{ errors | join(" | ") }}
 {% endif %}
 
@@ -1144,7 +1144,7 @@ APL uses standard Jinja2 templating. The APL runtime automatically provides a `g
 {% endfor %}
 
 {# Count total errors across workflow #}
-{{ set_context('total_errors', context_history | map(attribute='errors') | map('length') | sum) }}
+{{ set('total_errors', context_history | map(attribute='errors') | map('length') | sum) }}
 {% if total_errors > 5 %}
   Too many errors: {{ total_errors }}
 {% endif %}
@@ -1175,49 +1175,49 @@ Total workflow runs: {{ global_runs }}
 
 APL provides built-in helper functions for common operations:
 
-#### 7.4.1 Variable Assignment - `set_context()`
+#### 7.4.1 Variable Assignment - `set()`
 
-Use `set_context(var_name, value)` to set context variables. This function works correctly with conditional logic and sequential execution:
+Use `set(var_name, value)` to set context variables. This function works correctly with conditional logic and sequential execution:
 
 ```jinja
 {# Set variables using set_context function #}
-{{ set_context('model', 'gpt-4o') }}
-{{ set_context('temperature', 0.7) }}
-{{ set_context('customer_name', 'Aron Homberg') }}
+{{ set('model', 'gpt-4o') }}
+{{ set('temperature', 0.7) }}
+{{ set('customer_name', 'Aron Homberg') }}
 
 {# Works with conditional logic #}
 {% if "error" in result_text %}
-{{ set_context('next_step', 'error_handler') }}
+{{ set('next_step', 'error_handler') }}
 {% else %}
-{{ set_context('next_step', 'continue_processing') }}
+{{ set('next_step', 'continue_processing') }}
 {% endif %}
 
 {# Works with computed values #}
-{{ set_context('retry_count', runs + 1) }}
-{{ set_context('total_errors', context_history | map(attribute='errors') | map('length') | sum) }}
+{{ set('retry_count', runs + 1) }}
+{{ set('total_errors', context_history | map(attribute='errors') | map('length') | sum) }}
 ```
 
-#### 7.4.2 Variable Access - `get_context()`
+#### 7.4.2 Variable Access - `get()`
 
-Use `get_context(var_name, default=None)` to retrieve context variables safely. This function provides access to runtime context variables within templates:
+Use `get(var_name, default=None)` to retrieve context variables safely. This function provides access to runtime context variables within templates:
 
 ```jinja
 {# Access variables set earlier with safe defaults #}
-{{ get_context('user_name', 'Guest') }}
-{{ get_context('retry_count', 0) }}
+{{ get('user_name', 'Guest') }}
+{{ get('retry_count', 0) }}
 
 {# Use in calculations and conditionals #}
-{{ set_context('total_retries', get_context('retry_count', 0) + 1) }}
-{% if get_context('error_count', 0) > 3 %}
-  {{ set_context('next_step', 'error_handler') }}
+{{ set('total_retries', get('retry_count', 0) + 1) }}
+{% if get('error_count', 0) > 3 %}
+  {{ set('next_step', 'error_handler') }}
 {% endif %}
 
 {# Build complex data structures #}
-{{ set_context('user_list', get_context('user_list', []) + [get_context('current_user', 'unknown')]) }}
-{{ set_context('score_total', get_context('score_total', 0) + get_context('current_score', 0)) }}
+{{ set('user_list', get('user_list', []) + [get('current_user', 'unknown')]) }}
+{{ set('score_total', get('score_total', 0) + get('current_score', 0)) }}
 
 {# Safe access prevents undefined variable errors #}
-{% for item in get_context('items', []) %}
+{% for item in get('items', []) %}
   Processing: {{ item }}
 {% endfor %}
 ```
@@ -1251,17 +1251,17 @@ APL provides helper functions for common accumulator patterns:
 
 {# Counter patterns in iterative workflows #}
 # pre: process_loop
-{% if get_context('items') is none %}
-{{ set_context('items', [1, 2, 3, 4, 5]) }}
-{{ set_context('index', 0) }}
+{% if get('items') is none %}
+{{ set('items', [1, 2, 3, 4, 5]) }}
+{{ set('index', 0) }}
 {% endif %}
 {{ inc('processed_count') }}
-{{ add('running_total', get_context('items', [])[get_context('index', 0)]) }}
+{{ add('running_total', get('items', [])[get('index', 0)]) }}
 {{ inc('index') }}
 
 # post: process_loop
-{% if get_context('index', 0) < get_context('items', [])|length %}
-{{ set_context('next_step', 'process_loop') }}
+{% if get('index', 0) < get('items', [])|length %}
+{{ set('next_step', 'process_loop') }}
 {% endif %}
 ```
 
@@ -1271,16 +1271,16 @@ APL provides a `get_json_path` helper function for extracting data from JSON res
 
 ```jinja
 {# Set up test data and extract values #}
-{{ set_context('test_data', {"user": {"name": "Alice", "items": [1, 2, 3]}}) }}
-{{ set_context('user_id', get_json_path(test_data, "user.id", "unknown")) }}
-{{ set_context('items', get_json_path(test_data, "items")) }}
-{{ set_context('count', get_json_path(test_data, "count", 0)) }}
+{{ set('test_data', {"user": {"name": "Alice", "items": [1, 2, 3]}}) }}
+{{ set('user_id', get_json_path(test_data, "user.id", "unknown")) }}
+{{ set('items', get_json_path(test_data, "items")) }}
+{{ set('count', get_json_path(test_data, "count", 0)) }}
 
 {# Extract data from tool results #}
 {% for tool_call in result_tool_calls if not tool_call.with_error %}
-  {{ set_context('user_id', get_json_path(tool_call.content, "user.id", "unknown")) }}
-  {{ set_context('items', get_json_path(tool_call.content, "items")) }}
-  {{ set_context('count', get_json_path(tool_call.content, "count", 0)) }}
+  {{ set('user_id', get_json_path(tool_call.content, "user.id", "unknown")) }}
+  {{ set('items', get_json_path(tool_call.content, "items")) }}
+  {{ set('count', get_json_path(tool_call.content, "count", 0)) }}
   
   User: {{ user_id }}, Items: {{ items | length }}, Count: {{ count }}
 {% endfor %}
@@ -1288,8 +1288,8 @@ APL provides a `get_json_path` helper function for extracting data from JSON res
 {# Extract data from specific tool results #}
 {% for tool_call in result_tool_calls %}
   {% if "api_call" in tool_call.tool_call_id and not tool_call.with_error %}
-    {{ set_context('status', get_json_path(tool_call.content, "status")) }}
-    {{ set_context('data', get_json_path(tool_call.content, "data.items.0.name")) }}
+    {{ set('status', get_json_path(tool_call.content, "status")) }}
+    {{ set('data', get_json_path(tool_call.content, "data.items.0.name")) }}
     API Status: {{ status }}, First Item: {{ data }}
   {% endif %}
 {% endfor %}
@@ -1300,81 +1300,81 @@ APL provides a `get_json_path` helper function for extracting data from JSON res
 ```jinja
 {# Error-first decision making #}
 {% if errors %}
-  {{ set_context('next_step', 'error_handler') }}
+  {{ set('next_step', 'error_handler') }}
 {% elif time_elapsed > 5000 %}
-  {{ set_context('next_step', 'timeout_handler') }}
+  {{ set('next_step', 'timeout_handler') }}
 {% elif runs > 3 %}
-  {{ set_context('next_step', 'retry_limit_reached') }}
+  {{ set('next_step', 'retry_limit_reached') }}
 {% else %}
-  {{ set_context('next_step', 'continue_processing') }}
+  {{ set('next_step', 'continue_processing') }}
 {% endif %}
 
 {# Complex scoring logic using tool results #}
 {% for tool_call in result_tool_calls %}
   {% if "calculate_score" in tool_call.tool_call_id and not tool_call.with_error %}
-    {{ set_context('score', get_json_path(tool_call.content, "score", 0)) }}
+    {{ set('score', get_json_path(tool_call.content, "score", 0)) }}
     {% if score > 0.8 %}
-      {{ set_context('next_step', 'finalize') }}
+      {{ set('next_step', 'finalize') }}
     {% elif score > 0.5 and runs < 3 %}
-      {{ set_context('next_step', 'refine') }}
+      {{ set('next_step', 'refine') }}
     {% else %}
-      {{ set_context('next_step', 'manual_review') }}
+      {{ set('next_step', 'manual_review') }}
     {% endif %}
     {% break %}
   {% endif %}
 {% endfor %}
 
 {# Circuit breaker with global error tracking #}
-{{ set_context('global_errors', context_history | map(attribute='errors') | map('length') | sum) }}
+{{ set('global_errors', context_history | map(attribute='errors') | map('length') | sum) }}
 {% if global_errors > 10 %}
   Global error threshold exceeded: {{ global_errors }}
-  {{ set_context('next_step', 'return') }}
+  {{ set('next_step', 'return') }}
 {% elif time_elapsed_global > 30000 %}
   Workflow timeout exceeded
-  {{ set_context('next_step', 'return') }}
+  {{ set('next_step', 'return') }}
 {% endif %}
 
 {# Batch processing with JSON extraction #}
-{{ set_context('failed_items', []) }}
+{{ set('failed_items', []) }}
 {% for tool_call in result_tool_calls %}
   {% if "process_item" in tool_call.tool_call_id %}
-    {{ set_context('status', get_json_path(tool_call.content, "status")) }}
-    {{ set_context('item_id', get_json_path(tool_call.content, "item_id")) }}
+    {{ set('status', get_json_path(tool_call.content, "status")) }}
+    {{ set('item_id', get_json_path(tool_call.content, "item_id")) }}
     {% if status == "failed" %}
-      {{ set_context('failed_items', failed_items + [item_id]) }}
+      {{ set('failed_items', failed_items + [item_id]) }}
     {% endif %}
   {% endif %}
 {% endfor %}
 
 {% if failed_items | length > 0 %}
-  {{ set_context('next_step', 'retry_failed') }}
-  {{ set_context('retry_items', failed_items) }}
+  {{ set('next_step', 'retry_failed') }}
+  {{ set('retry_items', failed_items) }}
 {% else %}
-  {{ set_context('next_step', 'summary') }}
+  {{ set('next_step', 'summary') }}
 {% endif %}
 
 {# Iterations - Breaking the cycle #}
 # pre: iterate
-{% if get_context('counter') is none %}
-  {{ set_context('counter', 0) }}
-  {{ set_context('max_iterations', 3) }}
+{% if get('counter') is none %}
+  {{ set('counter', 0) }}
+  {{ set('max_iterations', 3) }}
 {% endif %}
 
 # prompt: iterate
 ## user
-Iteration {{ get_context('counter', 0) + 1 }}
+Iteration {{ get('counter', 0) + 1 }}
 
 # post: iterate
-{{ set_context('counter', get_context('counter', 0) + 1) }}
-{% if get_context('counter', 0) < get_context('max_iterations', 3) %}
-  {{ set_context('next_step', 'iterate') }}
+{{ set('counter', get('counter', 0) + 1) }}
+{% if get('counter', 0) < get('max_iterations', 3) %}
+  {{ set('next_step', 'iterate') }}
 {% else %}
-  {{ set_context('next_step', 'complete') }}
+  {{ set('next_step', 'complete') }}
 {% endif %}
 
 # prompt: complete
 ## user
-Completed {{ get_context('counter', 0) }} iterations
+Completed {{ get('counter', 0) }} iterations
 ```
 
 #### 8 - Future Reserved Variables

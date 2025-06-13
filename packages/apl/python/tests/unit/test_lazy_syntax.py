@@ -27,7 +27,7 @@ class TestRelaxedSyntaxTransformation:
         
         apl = """
 # pre: test
-set_context('var', 'value')
+set('var', 'value')
 
 # prompt: test
 ## user
@@ -35,13 +35,13 @@ Hello world
 
 # post: test
 if condition
-    set_context('result', 'success')
+    set('result', 'success')
 endif
 """
         
         expected = """
 # pre: test
-{{ set_context('var', 'value') }}
+{{ set('var', 'value') }}
 
 # prompt: test
 ## user
@@ -49,7 +49,7 @@ Hello world
 
 # post: test
 {% if condition %}
-    {{ set_context('result', 'success') }}
+    {{ set('result', 'success') }}
 {% endif %}
 """
         
@@ -61,8 +61,8 @@ Hello world
         runtime = APLRuntime({"relaxed": True})
         
         test_cases = [
-            ("set_context('key', 'value')", "{{ set_context('key', 'value') }}"),
-            ("get_context('key')", "{{ get_context('key') }}"),
+            ("set('key', 'value')", "{{ set('key', 'value') }}"),
+            ("get('key')", "{{ get('key') }}"),
             ("add_to_context('list', item)", "{{ add_to_context('list', item) }}"),
             ("accumulate_context('sum', 5)", "{{ accumulate_context('sum', 5) }}"),
             ("call_tool('api', params)", "{{ call_tool('api', params) }}"),
@@ -118,12 +118,12 @@ Test
         apl = """
 # pre: test
 if condition1
-    set_context('outer', 'value')
+    set('outer', 'value')
     if condition2
-        set_context('inner', 'value')
+        set('inner', 'value')
     else
         for item in items
-            set_context('item', item)
+            set('item', item)
         endfor
     endif
 endif
@@ -144,9 +144,9 @@ Test
         assert "{% endif %}" in transformed
         
         # Check that function calls are properly transformed
-        assert "{{ set_context('outer', 'value') }}" in transformed
-        assert "{{ set_context('inner', 'value') }}" in transformed
-        assert "{{ set_context('item', item) }}" in transformed
+        assert "{{ set('outer', 'value') }}" in transformed
+        assert "{{ set('inner', 'value') }}" in transformed
+        assert "{{ set('item', item) }}" in transformed
     
     def test_prompt_phase_unchanged(self):
         """Test that prompt phases are not transformed"""
@@ -154,7 +154,7 @@ Test
         
         apl = """
 # pre: test
-set_context('var', 'value')
+set('var', 'value')
 
 # prompt: test
 ## system
@@ -167,14 +167,14 @@ if this looks like code
 
 # post: test
 if condition
-    set_context('result', 'success')
+    set('result', 'success')
 endif
 """
         
         transformed = runtime._transform_relaxed_syntax(apl)
         
         # Pre and post should be transformed
-        assert "{{ set_context('var', 'value') }}" in transformed
+        assert "{{ set('var', 'value') }}" in transformed
         assert "{% if condition %}" in transformed
         assert "{% endif %}" in transformed
         
@@ -190,9 +190,9 @@ endif
         apl = """
 # pre: test
 if condition
-    set_context('var1', 'value1')
+    set('var1', 'value1')
     if nested_condition
-        set_context('var2', 'value2')
+        set('var2', 'value2')
     endif
 endif
 
@@ -209,14 +209,14 @@ Test
             if "{% if condition %}" in line:
                 # Next line should be indented
                 next_line = lines[i + 1]
-                assert next_line.startswith("    {{ set_context('var1', 'value1') }}")
+                assert next_line.startswith("    {{ set('var1', 'value1') }}")
                 
                 # Check nested indentation
                 nested_if_line = lines[i + 2]
                 assert nested_if_line.startswith("    {% if nested_condition %}")
                 
                 nested_set_line = lines[i + 3]
-                assert nested_set_line.startswith("        {{ set_context('var2', 'value2') }}")
+                assert nested_set_line.startswith("        {{ set('var2', 'value2') }}")
     
     def test_empty_lines_preserved(self):
         """Test that empty lines are preserved"""
@@ -224,9 +224,9 @@ Test
         
         apl = """
 # pre: test
-set_context('var1', 'value1')
+set('var1', 'value1')
 
-set_context('var2', 'value2')
+set('var2', 'value2')
 
 # prompt: test
 ## user
@@ -236,7 +236,7 @@ Test
         transformed = runtime._transform_relaxed_syntax(apl)
         
         # Should preserve empty lines
-        assert "{{ set_context('var1', 'value1') }}\n\n{{ set_context('var2', 'value2') }}" in transformed
+        assert "{{ set('var1', 'value1') }}\n\n{{ set('var2', 'value2') }}" in transformed
     
     def test_comments_preserved(self):
         """Test that comments are preserved"""
@@ -245,7 +245,7 @@ Test
         apl = """
 # pre: test
 # This is a comment
-set_context('var', 'value')
+set('var', 'value')
 # Another comment
 
 # prompt: test
@@ -258,13 +258,13 @@ Test
         # Comments should be preserved
         assert "# This is a comment" in transformed
         assert "# Another comment" in transformed
-        assert "{{ set_context('var', 'value') }}" in transformed
+        assert "{{ set('var', 'value') }}" in transformed
     
     def test_mixed_syntax_error_without_relaxed(self):
         """Test that relaxed syntax passes validation when used correctly"""
         apl = """
 # pre: test
-set_context('var', 'value')
+set('var', 'value')
 
 # prompt: test
 ## user
@@ -281,8 +281,8 @@ Test
         """Test that relaxed syntax executes correctly"""
         relaxed_apl = """
 # pre: test
-set_context('greeting', 'Hello')
-set_context('name', 'World')
+set('greeting', 'Hello')
+set('name', 'World')
 
 # prompt: test
 ## user
@@ -290,9 +290,9 @@ set_context('name', 'World')
 
 # post: test
 if "Hello" in result_text
-    set_context('success', True)
+    set('success', True)
 else
-    set_context('success', False)
+    set('success', False)
 endif
 """
         
@@ -311,8 +311,8 @@ endif
         
         traditional_apl = """
 # pre: test
-{{ set_context('counter', 0) }}
-{{ set_context('items', ['a', 'b', 'c']) }}
+{{ set('counter', 0) }}
+{{ set('items', ['a', 'b', 'c']) }}
 
 # prompt: test
 ## user
@@ -320,19 +320,19 @@ Process items: {{ items }}
 
 # post: test
 {% for item in items %}
-    {{ set_context('counter', get_context('counter') + 1) }}
+    {{ set('counter', get('counter') + 1) }}
 {% endfor %}
-{% if get_context('counter') == 3 %}
-    {{ set_context('result', 'success') }}
+{% if get('counter') == 3 %}
+    {{ set('result', 'success') }}
 {% else %}
-    {{ set_context('result', 'failure') }}
+    {{ set('result', 'failure') }}
 {% endif %}
 """
         
         relaxed_apl = """
 # pre: test
-set_context('counter', 0)
-set_context('items', ['a', 'b', 'c'])
+set('counter', 0)
+set('items', ['a', 'b', 'c'])
 
 # prompt: test
 ## user
@@ -340,12 +340,12 @@ Process items: {{ items }}
 
 # post: test
 for item in items
-    set_context('counter', get_context('counter') + 1)
+    set('counter', get('counter') + 1)
 endfor
-if get_context('counter') == 3
-    set_context('result', 'success')
+if get('counter') == 3
+    set('result', 'success')
 else
-    set_context('result', 'failure')
+    set('result', 'failure')
 endif
 """
         
@@ -363,8 +363,8 @@ endif
         
         apl = """
 # pre: test
-if get_context('counter', 0) > 5 and len(get_context('items', [])) < 10
-    set_context('condition_met', True)
+if get('counter', 0) > 5 and len(get('items', [])) < 10
+    set('condition_met', True)
 endif
 
 # prompt: test
@@ -375,9 +375,9 @@ Test
         transformed = runtime._transform_relaxed_syntax(apl)
         
         # Complex condition should be preserved in if statement
-        expected_condition = "get_context('counter', 0) > 5 and len(get_context('items', [])) < 10"
+        expected_condition = "get('counter', 0) > 5 and len(get('items', [])) < 10"
         assert f"{{% if {expected_condition} %}}" in transformed
-        assert "{{ set_context('condition_met', True) }}" in transformed
+        assert "{{ set('condition_met', True) }}" in transformed
     
     def test_multiline_function_calls(self):
         """Test multiline function calls are handled correctly"""
@@ -385,7 +385,7 @@ Test
         
         apl = """
 # pre: test
-set_context('data', {
+set('data', {
     'key1': 'value1',
     'key2': 'value2'
 })
@@ -400,7 +400,7 @@ Test
         # Check that the function call isn't wrapped with {{ }}
         # This is the correct behavior - we should keep multi-line function calls intact
         # to maintain valid Jinja2 syntax
-        assert "set_context('data', {" in transformed
+        assert "set('data', {" in transformed
         assert "'key1': 'value1'," in transformed
         assert "'key2': 'value2'" in transformed
         assert "})" in transformed
@@ -411,9 +411,9 @@ Test
         
         apl = """
 # pre: test
-{{ set_context('var1', 'value1') }}
+{{ set('var1', 'value1') }}
 {% if condition %}
-    set_context('var2', 'value2')
+    set('var2', 'value2')
 {% endif %}
 
 # prompt: test
@@ -424,11 +424,11 @@ Test
         transformed = runtime._transform_relaxed_syntax(apl)
         
         # Already Jinja lines should remain unchanged
-        assert "{{ set_context('var1', 'value1') }}" in transformed
+        assert "{{ set('var1', 'value1') }}" in transformed
         assert "{% if condition %}" in transformed
         
         # Lines inside Jinja blocks should still be transformed
-        assert "{{ set_context('var2', 'value2') }}" in transformed
+        assert "{{ set('var2', 'value2') }}" in transformed
 
 
 class TestRelaxedSyntaxValidation:
@@ -438,7 +438,7 @@ class TestRelaxedSyntaxValidation:
         """Test that valid relaxed syntax passes check"""
         relaxed_apl = """
 # pre: test
-set_context('var', 'value')
+set('var', 'value')
 
 # prompt: test
 ## user
@@ -446,7 +446,7 @@ Test
 
 # post: test
 if condition
-    set_context('result', 'success')
+    set('result', 'success')
 endif
 """
         
@@ -458,7 +458,7 @@ endif
         """Test that relaxed syntax is handled correctly during validation"""
         relaxed_apl = """
 # pre: test
-set_context('var', 'value')
+set('var', 'value')
 
 # prompt: test
 ## user
@@ -473,8 +473,8 @@ Test
         """Test that mixed Jinja and relaxed syntax is valid"""
         mixed_apl = """
 # pre: test
-{{ set_context('var1', 'value1') }}
-set_context('var2', 'value2')
+{{ set('var1', 'value1') }}
+set('var2', 'value2')
 
 # prompt: test
 ## user
@@ -482,10 +482,10 @@ Test
 
 # post: test
 {% if condition %}
-    set_context('jinja_result', 'success')
+    set('jinja_result', 'success')
 {% endif %}
 if other_condition
-    set_context('relaxed_result', 'success')
+    set('relaxed_result', 'success')
 endif
 """
         
@@ -503,7 +503,7 @@ class TestRelaxedSyntaxEdgeCases:
         
         apl = """
 # pre: test
-set_context('message', 'Function call (with parentheses) here')
+set('message', 'Function call (with parentheses) here')
 
 # prompt: test
 ## user
@@ -513,7 +513,7 @@ Test
         transformed = runtime._transform_relaxed_syntax(apl)
         
         # Should properly wrap the entire function call
-        assert "{{ set_context('message', 'Function call (with parentheses) here') }}" in transformed
+        assert "{{ set('message', 'Function call (with parentheses) here') }}" in transformed
     
     def test_control_keyword_in_string_not_transformed(self):
         """Test that control keywords inside strings are not transformed"""
@@ -521,7 +521,7 @@ Test
         
         apl = """
 # pre: test
-set_context('message', 'The word if should not be transformed')
+set('message', 'The word if should not be transformed')
 
 # prompt: test
 ## user
@@ -531,7 +531,7 @@ Test
         transformed = runtime._transform_relaxed_syntax(apl)
         
         # Should wrap as function call, not treat 'if' as keyword
-        assert "{{ set_context('message', 'The word if should not be transformed') }}" in transformed
+        assert "{{ set('message', 'The word if should not be transformed') }}" in transformed
         assert "{% if" not in transformed.split('\n')[2]  # Check the specific line
     
     def test_whitespace_only_lines_preserved(self):
@@ -540,9 +540,9 @@ Test
         
         apl = """
 # pre: test
-set_context('var1', 'value1')
+set('var1', 'value1')
     
-set_context('var2', 'value2')
+set('var2', 'value2')
 
 # prompt: test
 ## user
@@ -561,5 +561,5 @@ Test
         
         # Note: This test might need adjustment based on implementation details
         # The key is that the structure is preserved
-        assert "{{ set_context('var1', 'value1') }}" in transformed
-        assert "{{ set_context('var2', 'value2') }}" in transformed
+        assert "{{ set('var1', 'value1') }}" in transformed
+        assert "{{ set('var2', 'value2') }}" in transformed

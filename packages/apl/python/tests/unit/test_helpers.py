@@ -15,13 +15,13 @@ class TestSetContextFunction:
         """Test basic variable assignment with set_context"""
         template = """
 # pre: test
-{{ set_context('test_var', 'test_value') }}
-{{ set_context('number_var', 42) }}
-{{ set_context('bool_var', True) }}
+{{ set('test_var', 'test_value') }}
+{{ set('number_var', 42) }}
+{{ set('bool_var', True) }}
 
 # prompt: test
 ## user
-Variables: {{ get_context('test_var', 'default') }}, {{ get_context('number_var', 0) }}, {{ get_context('bool_var', False) }}
+Variables: {{ get('test_var', 'default') }}, {{ get('number_var', 0) }}, {{ get('bool_var', False) }}
 """
         context = await start(template, basic_options)
         
@@ -35,7 +35,7 @@ Variables: {{ get_context('test_var', 'default') }}, {{ get_context('number_var'
         """Test set_context with conditional logic"""
         template = """
 # pre: test
-{{ set_context('condition_met', True) }}
+{{ set('condition_met', True) }}
 
 # prompt: test
 ## user
@@ -43,9 +43,9 @@ Test message
 
 # post: test
 {% if "test" in result_text %}
-{{ set_context('result_check', 'found_test') }}
+{{ set('result_check', 'found_test') }}
 {% else %}
-{{ set_context('result_check', 'not_found') }}
+{{ set('result_check', 'not_found') }}
 {% endif %}
 """
         context = await start(template, basic_options)
@@ -57,13 +57,13 @@ Test message
         """Test set_context with computed values"""
         template = """
 # pre: test
-{{ set_context('base_value', 10) }}
-{{ set_context('computed_value', get_context('base_value', 0) * 2 + 5) }}
-{{ set_context('string_concat', 'prefix_' + 'suffix') }}
+{{ set('base_value', 10) }}
+{{ set('computed_value', get('base_value', 0) * 2 + 5) }}
+{{ set('string_concat', 'prefix_' + 'suffix') }}
 
 # prompt: test
 ## user
-Computed: {{ get_context('computed_value', 0) }}, String: {{ get_context('string_concat', '') }}
+Computed: {{ get('computed_value', 0) }}, String: {{ get('string_concat', '') }}
 """
         context = await start(template, basic_options)
         
@@ -76,13 +76,13 @@ Computed: {{ get_context('computed_value', 0) }}, String: {{ get_context('string
         """Test set_context with complex data types"""
         template = """
 # pre: test
-{{ set_context('test_list', [1, 2, 3]) }}
-{{ set_context('test_dict', {"key": "value", "num": 42}) }}
-{{ set_context('list_length', get_context('test_list', []) | length) }}
+{{ set('test_list', [1, 2, 3]) }}
+{{ set('test_dict', {"key": "value", "num": 42}) }}
+{{ set('list_length', get('test_list', []) | length) }}
 
 # prompt: test
 ## user
-List: {{ get_context('test_list', []) }}, Dict: {{ get_context('test_dict', {}) }}, Length: {{ get_context('list_length', 0) }}
+List: {{ get('test_list', []) }}, Dict: {{ get('test_dict', {}) }}, Length: {{ get('list_length', 0) }}
 """
         context = await start(template, basic_options)
         
@@ -95,14 +95,14 @@ List: {{ get_context('test_list', []) }}, Dict: {{ get_context('test_dict', {}) 
         """Test that set_context executes sequentially"""
         template = """
 # pre: test
-{{ set_context('counter', 0) }}
-{{ set_context('counter', get_context('counter', 0) + 1) }}
-{{ set_context('counter', get_context('counter', 0) + 1) }}
-{{ set_context('counter', get_context('counter', 0) + 1) }}
+{{ set('counter', 0) }}
+{{ set('counter', get('counter', 0) + 1) }}
+{{ set('counter', get('counter', 0) + 1) }}
+{{ set('counter', get('counter', 0) + 1) }}
 
 # prompt: test
 ## user
-Counter: {{ get_context('counter', 0) }}
+Counter: {{ get('counter', 0) }}
 """
         context = await start(template, basic_options)
         
@@ -126,7 +126,7 @@ class TestGetJsonPathFunction:
         """Test accessing nested object properties"""
         template = """
 # pre: test
-{{ set_context('data', {
+{{ set('data', {
     "user": {
         "profile": {
             "name": "Alice",
@@ -137,13 +137,13 @@ class TestGetJsonPathFunction:
         }
     }
 }) }}
-{{ set_context('name', get_json_path(get_context('data', {}), "user.profile.name", "unknown")) }}
-{{ set_context('theme', get_json_path(get_context('data', {}), "user.profile.settings.theme", "light")) }}
-{{ set_context('invalid', get_json_path(get_context('data', {}), "user.profile.invalid", "default")) }}
+{{ set('name', get_json_path(get('data', {}), "user.profile.name", "unknown")) }}
+{{ set('theme', get_json_path(get('data', {}), "user.profile.settings.theme", "light")) }}
+{{ set('invalid', get_json_path(get('data', {}), "user.profile.invalid", "default")) }}
 
 # prompt: test
 ## user
-Name: {{ get_context('name', 'unknown') }}, Theme: {{ get_context('theme', 'light') }}, Invalid: {{ get_context('invalid', 'default') }}
+Name: {{ get('name', 'unknown') }}, Theme: {{ get('theme', 'light') }}, Invalid: {{ get('invalid', 'default') }}
 """
         context = await start(template, basic_options)
         
@@ -156,20 +156,20 @@ Name: {{ get_context('name', 'unknown') }}, Theme: {{ get_context('theme', 'ligh
         """Test accessing array elements"""
         template = """
 # pre: test
-{{ set_context('data', {
+{{ set('data', {
     "items": [
         {"name": "first", "value": 1},
         {"name": "second", "value": 2},
         {"name": "third", "value": 3}
     ]
 }) }}
-{{ set_context('first_name', get_json_path(get_context('data', {}), "items.0.name", "none")) }}
-{{ set_context('second_value', get_json_path(get_context('data', {}), "items.1.value", 0)) }}
-{{ set_context('invalid_index', get_json_path(get_context('data', {}), "items.10.name", "missing")) }}
+{{ set('first_name', get_json_path(get('data', {}), "items.0.name", "none")) }}
+{{ set('second_value', get_json_path(get('data', {}), "items.1.value", 0)) }}
+{{ set('invalid_index', get_json_path(get('data', {}), "items.10.name", "missing")) }}
 
 # prompt: test
 ## user
-First: {{ get_context('first_name', 'none') }}, Second: {{ get_context('second_value', 0) }}, Invalid: {{ get_context('invalid_index', 'missing') }}
+First: {{ get('first_name', 'none') }}, Second: {{ get('second_value', 0) }}, Invalid: {{ get('invalid_index', 'missing') }}
 """
         context = await start(template, basic_options)
         
@@ -182,14 +182,14 @@ First: {{ get_context('first_name', 'none') }}, Second: {{ get_context('second_v
         """Test default value handling for missing paths"""
         template = """
 # pre: test
-{{ set_context('data', {"existing": "value"}) }}
-{{ set_context('existing', get_json_path(get_context('data', {}), "existing", "default")) }}
-{{ set_context('missing_with_default', get_json_path(get_context('data', {}), "missing", "default_value")) }}
-{{ set_context('missing_no_default', get_json_path(get_context('data', {}), "missing")) }}
+{{ set('data', {"existing": "value"}) }}
+{{ set('existing', get_json_path(get('data', {}), "existing", "default")) }}
+{{ set('missing_with_default', get_json_path(get('data', {}), "missing", "default_value")) }}
+{{ set('missing_no_default', get_json_path(get('data', {}), "missing")) }}
 
 # prompt: test
 ## user
-Existing: {{ get_context('existing', 'default') }}, Missing with default: {{ get_context('missing_with_default', 'default_value') }}, Missing no default: {{ get_context('missing_no_default', None) }}
+Existing: {{ get('existing', 'default') }}, Missing with default: {{ get('missing_with_default', 'default_value') }}, Missing no default: {{ get('missing_no_default', None) }}
 """
         context = await start(template, basic_options)
         
@@ -202,7 +202,7 @@ Existing: {{ get_context('existing', 'default') }}, Missing with default: {{ get
         """Test extracting data from tool results using get_json_path"""
         template = """
 # pre: test
-{{ set_context('mock_tool_results', [
+{{ set('mock_tool_results', [
     {
         "role": "tool",
         "tool_call_id": "call_1",
@@ -224,8 +224,8 @@ Processing tool results...
 # post: test
 {% for tool_call in mock_tool_results %}
   {% if not tool_call.with_error %}
-    {{ set_context('success_status', get_json_path(tool_call.content, "status", "unknown")) }}
-    {{ set_context('result_value', get_json_path(tool_call.content, "data.result", 0)) }}
+    {{ set('success_status', get_json_path(tool_call.content, "status", "unknown")) }}
+    {{ set('result_value', get_json_path(tool_call.content, "data.result", 0)) }}
   {% endif %}
 {% endfor %}
 """
@@ -243,11 +243,11 @@ class TestGetFunction:
         """Test basic variable retrieval with get"""
         template = """
 # pre: test
-{{ set_context('string_var', 'hello') }}
-{{ set_context('num_var', 42) }}
-{{ set_context('retrieved_string', get('string_var', 'default')) }}
-{{ set_context('retrieved_num', get('num_var', 0)) }}
-{{ set_context('missing_var', get('does_not_exist', 'missing')) }}
+{{ set('string_var', 'hello') }}
+{{ set('num_var', 42) }}
+{{ set('retrieved_string', get('string_var', 'default')) }}
+{{ set('retrieved_num', get('num_var', 0)) }}
+{{ set('missing_var', get('does_not_exist', 'missing')) }}
 
 # prompt: test
 ## user
@@ -351,16 +351,16 @@ Data: {{ get('data') }}
         assert context["data"]["items"][1]["name"] == "Second Item"
 
     @pytest.mark.asyncio
-    async def test_set_vs_set_context(self, basic_options):
+    async def test_set_vs_set(self, basic_options):
         """Test that set function works the same as set_context for simple variables"""
         template = """
 # pre: test
 {{ set('var1', 'value1') }}
-{{ set_context('var2', 'value2') }}
+{{ set('var2', 'value2') }}
 
 # prompt: test
 ## user
-Comparison: {{ get('var1') }} vs {{ get_context('var2') }}
+Comparison: {{ get('var1') }} vs {{ get('var2') }}
 """
         context = await start(template, basic_options)
         
@@ -444,14 +444,14 @@ class TestRemContextFunction:
         """Test basic subtraction with rem_context"""
         template = """
 # pre: test
-{{ set_context('num_value', 10) }}
+{{ set('num_value', 10) }}
 {{ rem('num_value', 3) }}
-{{ set_context('float_value', 5.5) }}
+{{ set('float_value', 5.5) }}
 {{ rem('float_value', 1.5) }}
 
 # prompt: test
 ## user
-Num value: {{ get_context('num_value', 0) }}, Float value: {{ get_context('float_value', 0.0) }}
+Num value: {{ get('num_value', 0) }}, Float value: {{ get('float_value', 0.0) }}
 """
         context = await start(template, basic_options)
         
@@ -467,7 +467,7 @@ Num value: {{ get_context('num_value', 0) }}, Float value: {{ get_context('float
 
 # prompt: test
 ## user
-New counter: {{ get_context('new_counter', 0) }}
+New counter: {{ get('new_counter', 0) }}
 """
         context = await start(template, basic_options)
         
@@ -479,14 +479,14 @@ New counter: {{ get_context('new_counter', 0) }}
         """Test sequential subtraction operations"""
         template = """
 # pre: test
-{{ set_context('counter', 100) }}
+{{ set('counter', 100) }}
 {{ rem('counter', 20) }}
 {{ rem('counter', 30) }}
 {{ rem('counter', 10) }}
 
 # prompt: test
 ## user
-Counter value: {{ get_context('counter', 0) }}
+Counter value: {{ get('counter', 0) }}
 """
         context = await start(template, basic_options)
         
@@ -577,7 +577,7 @@ New counter: {{ get('new_counter') }}
         """Test JSON path navigation with get"""
         template = """
 # pre: test
-{{ set_context('user', {
+{{ set('user', {
     "name": "Alice",
     "profile": {
         "age": 30,
@@ -592,12 +592,12 @@ New counter: {{ get('new_counter') }}
     ]
 }) }}
 
-{{ set_context('user_name', get('user.name', 'unknown')) }}
-{{ set_context('user_age', get('user.profile.age', 0)) }}
-{{ set_context('user_theme', get('user.profile.preferences.theme', 'light')) }}
-{{ set_context('first_post_title', get('user.posts.0.title', 'no title')) }}
-{{ set_context('missing_property', get('user.profile.missing', 'not found')) }}
-{{ set_context('invalid_path', get('user.invalid.path', 'invalid')) }}
+{{ set('user_name', get('user.name', 'unknown')) }}
+{{ set('user_age', get('user.profile.age', 0)) }}
+{{ set('user_theme', get('user.profile.preferences.theme', 'light')) }}
+{{ set('first_post_title', get('user.posts.0.title', 'no title')) }}
+{{ set('missing_property', get('user.profile.missing', 'not found')) }}
+{{ set('invalid_path', get('user.invalid.path', 'invalid')) }}
 
 # prompt: test
 ## user
@@ -619,7 +619,7 @@ Missing: {{ get('missing_property', '') }}, {{ get('invalid_path', '') }}
         """Test that get function works the same as calling get_context and get_json_path separately"""
         template = """
 # pre: test
-{{ set_context('data', {
+{{ set('data', {
     "items": [
         {"name": "first", "value": 1},
         {"name": "second", "value": 2}
@@ -627,14 +627,14 @@ Missing: {{ get('missing_property', '') }}, {{ get('invalid_path', '') }}
 }) }}
 
 # Using get function for path navigation
-{{ set_context('path_with_get', get('data.items.1.name', 'default')) }}
+{{ set('path_with_get', get('data.items.1.name', 'default')) }}
 
 # Using the separate functions (get_context + get_json_path)
-{{ set_context('path_with_separate', get_json_path(get_context('data', {}), 'items.1.name', 'default')) }}
+{{ set('path_with_separate', get_json_path(get('data', {}), 'items.1.name', 'default')) }}
 
 # Simple variable access
-{{ set_context('var_with_get', get('data', {})) }}
-{{ set_context('var_with_get_context', get_context('data', {})) }}
+{{ set('var_with_get', get('data', {})) }}
+{{ set('var_with_get_context', get('data', {})) }}
 
 # prompt: test
 ## user

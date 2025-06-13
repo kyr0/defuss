@@ -55,8 +55,8 @@ All examples use the new `set_context` syntax instead of `{% set %}`:
 
 **New syntax:**
 ```jinja
-{{ set_context('user_name', 'Alice') }}
-{{ set_context('next_step', 'return') }}
+{{ set('user_name', 'Alice') }}
+{{ set('next_step', 'return') }}
 ```
 
 ## 🆕 New Accumulator Helper Functions
@@ -72,7 +72,7 @@ APL now includes helper functions for common accumulator patterns:
 {{ add('message', 'Hi', '') }}  {# message += 'Hi' (starts empty) #}
 
 {# Safe variable access #}
-{{ get_context('user_name', 'Guest') }}  {# Returns 'Guest' if not set #}
+{{ get('user_name', 'Guest') }}  {# Returns 'Guest' if not set #}
 ```
 
 **Benefits:**

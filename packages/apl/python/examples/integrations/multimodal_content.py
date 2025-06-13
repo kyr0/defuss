@@ -50,7 +50,7 @@ async def main():
     
     template = """
 # pre: setup
-{{ set_context('allowed_tools', ['analyze_image', 'process_document']) }}
+{{ set('allowed_tools', ['analyze_image', 'process_document']) }}
 
 # prompt: setup
 ## system
@@ -65,21 +65,21 @@ Please analyze the content I'm sharing with you. I have an image and a document:
 Use your tools to analyze both the image and document, then provide a summary.
 
 # post: setup
-{{ set_context('image_analysis', none) }}
-{{ set_context('document_analysis', none) }}
-{{ set_context('total_attachments', 0) }}
+{{ set('image_analysis', none) }}
+{{ set('document_analysis', none) }}
+{{ set('total_attachments', 0) }}
 
 {% for tool_call in result_tool_calls %}
   {% if "analyze_image" in tool_call.tool_call_id and not tool_call.with_error %}
-    {{ set_context('image_analysis', tool_call.content) }}
-    {{ set_context('total_attachments', get_context('total_attachments', 0) + 1) }}
+    {{ set('image_analysis', tool_call.content) }}
+    {{ set('total_attachments', get('total_attachments', 0) + 1) }}
     
     Image analyzed: {{ get_json_path(tool_call.content, 'format', 'unknown') }} format
     Objects detected: {{ get_json_path(tool_call.content, 'detected_objects', []) | join(", ") }}
     
   {% elif "process_document" in tool_call.tool_call_id and not tool_call.with_error %}
-    {{ set_context('document_analysis', tool_call.content) }}
-    {{ set_context('total_attachments', get_context('total_attachments', 0) + 1) }}
+    {{ set('document_analysis', tool_call.content) }}
+    {{ set('total_attachments', get('total_attachments', 0) + 1) }}
     
     Document processed: {{ get_json_path(tool_call.content, 'detected_type', 'unknown') }}
     Topics: {{ get_json_path(tool_call.content, 'key_topics', []) | join(", ") }}
@@ -87,9 +87,9 @@ Use your tools to analyze both the image and document, then provide a summary.
 {% endfor %}
 
 {% if total_attachments >= 2 %}
-    {{ set_context('next_step', 'comprehensive_analysis') }}
+    {{ set('next_step', 'comprehensive_analysis') }}
 {% else %}
-    {{ set_context('next_step', 'partial_analysis') }}
+    {{ set('next_step', 'partial_analysis') }}
 {% endif %}
 
 # prompt: comprehensive_analysis
@@ -113,8 +113,8 @@ Document Analysis Results:
 Please provide a comprehensive analysis connecting insights from both sources.
 
 # post: comprehensive_analysis
-{{ set_context('analysis_type', 'comprehensive') }}
-{{ set_context('next_step', 'return') }}
+{{ set('analysis_type', 'comprehensive') }}
+{{ set('next_step', 'return') }}
 
 # prompt: partial_analysis
 ## system
@@ -122,13 +122,13 @@ You are an analytical assistant. Only partial content was processed.
 
 ## user
 Some content was processed but not all attachments were successfully analyzed.
-Processed: {{ get_context('total_attachments', 0) }} out of 2 attachments.
+Processed: {{ get('total_attachments', 0) }} out of 2 attachments.
 
 Please provide analysis based on what was successfully processed.
 
 # post: partial_analysis
-{{ set_context('analysis_type', 'partial') }}
-{{ set_context('next_step', 'return') }}
+{{ set('analysis_type', 'partial') }}
+{{ set('next_step', 'return') }}
 """
     
     print("📝 Template:")

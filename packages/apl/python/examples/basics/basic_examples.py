@@ -124,7 +124,7 @@ async def main():
     print()
     print("✨ All examples updated to use set_context syntax!")
     print("   Old: {% set var = 'value' %}")
-    print("   New: {{ set_context('var', 'value') }}")
+    print("   New: {{ set('var', 'value') }}")
 
 
 if __name__ == "__main__":

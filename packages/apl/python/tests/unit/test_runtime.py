@@ -31,14 +31,14 @@ class TestRuntimeExecution:
         """Test variable lifecycle across phases"""
         template = """
 # pre: test
-{{ set_context('test_var', 'from_pre') }}
+{{ set('test_var', 'from_pre') }}
 
 # prompt: test
 ## user
-Variable value: {{ get_context('test_var', 'default') }}
+Variable value: {{ get('test_var', 'default') }}
 
 # post: test
-{{ set_context('post_var', 'from_post') }}
+{{ set('post_var', 'from_post') }}
 """
         context = await start(template, basic_options)
         
@@ -51,14 +51,14 @@ Variable value: {{ get_context('test_var', 'default') }}
         """Test step flow control with next_step"""
         template = """
 # pre: step1
-{{ set_context('visited_step1', True) }}
+{{ set('visited_step1', True) }}
 
 # prompt: step1
 ## user
 Step 1
 
 # post: step1
-{{ set_context('next_step', 'step3') }}
+{{ set('next_step', 'step3') }}
 
 # prompt: step2
 ## user
@@ -69,7 +69,7 @@ Step 2 (should be skipped)
 Step 3
 
 # post: step3
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
         context = await start(template, basic_options)
         
@@ -107,7 +107,7 @@ Step 3
 Step 1
 
 # post: step1
-{{ set_context('next_step', 'step2') }}
+{{ set('next_step', 'step2') }}
 
 # prompt: step2
 ## user
@@ -169,14 +169,14 @@ Test
 Step 1
 
 # post: step1
-{{ set_context('next_step', 'step2') }}
+{{ set('next_step', 'step2') }}
 
 # prompt: step2
 ## user
 Step 2
 
 # post: step2
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
         context = await start(template, basic_options)
         

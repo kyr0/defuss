@@ -28,15 +28,15 @@ Hello, how are you?
         """Test personalized greeting with variables"""
         template = """
 # pre: setup
-{{ set_context('user_name', 'Alice') }}
-{{ set_context('time_of_day', 'morning') }}
+{{ set('user_name', 'Alice') }}
+{{ set('time_of_day', 'morning') }}
 
 # prompt: setup
 ## system
 You are a friendly assistant.
 
 ## user
-Good {{ get_context('time_of_day', 'day') }}, my name is {{ get_context('user_name', 'User') }}. How are you?
+Good {{ get('time_of_day', 'day') }}, my name is {{ get('user_name', 'User') }}. How are you?
 """
         
         context = await start(template, basic_options)
@@ -51,18 +51,18 @@ Good {{ get_context('time_of_day', 'day') }}, my name is {{ get_context('user_na
         """Test multi-turn conversation example"""
         template = """
 # pre: intro
-{{ set_context('topic', 'weather') }}
+{{ set('topic', 'weather') }}
 
 # prompt: intro
 ## user
-Let's talk about {{ get_context('topic', 'general') }}
+Let's talk about {{ get('topic', 'general') }}
 
 # post: intro
-{{ set_context('next_step', 'followup') }}
+{{ set('next_step', 'followup') }}
 
 # prompt: followup
 ## user
-What do you think about today's {{ get_context('topic', 'general') }}?
+What do you think about today's {{ get('topic', 'general') }}?
 """
         
         context = await start(template, basic_options)
@@ -75,25 +75,25 @@ What do you think about today's {{ get_context('topic', 'general') }}?
         """Test conditional response example"""
         template = """
 # pre: check_time
-{{ set_context('hour', 14) }}  # 2 PM
+{{ set('hour', 14) }}  # 2 PM
 
 # prompt: check_time
 ## user
 What time is it?
 
 # post: check_time
-{% if get_context('hour', 0) < 12 %}
-{{ set_context('greeting', 'Good morning') }}
-{% elif get_context('hour', 0) < 18 %}
-{{ set_context('greeting', 'Good afternoon') }}
+{% if get('hour', 0) < 12 %}
+{{ set('greeting', 'Good morning') }}
+{% elif get('hour', 0) < 18 %}
+{{ set('greeting', 'Good afternoon') }}
 {% else %}
-{{ set_context('greeting', 'Good evening') }}
+{{ set('greeting', 'Good evening') }}
 {% endif %}
-{{ set_context('next_step', 'respond') }}
+{{ set('next_step', 'respond') }}
 
 # prompt: respond
 ## user
-{{ get_context('greeting', 'Hello') }}! It's {{ get_context('hour', 0) }}:00.
+{{ get('greeting', 'Hello') }}! It's {{ get('hour', 0) }}:00.
 """
         
         context = await start(template, basic_options)
@@ -111,9 +111,9 @@ class TestDataProcessingExamples:
         """Test list processing example"""
         template = """
 # pre: process_list
-{{ set_context('numbers', [1, 2, 3, 4, 5]) }}
+{{ set('numbers', [1, 2, 3, 4, 5]) }}
 
-{% for num in get_context('numbers', []) %}
+{% for num in get('numbers', []) %}
   {{ add('sum_total', num) }}
   {% if num % 2 == 0 %}
     {{ add('even_numbers', [num], []) }}
@@ -122,7 +122,7 @@ class TestDataProcessingExamples:
 
 # prompt: process_list
 ## user
-Sum: {{ get_context('sum_total', 0) }}, Even numbers: {{ get_context('even_numbers', []) }}
+Sum: {{ get('sum_total', 0) }}, Even numbers: {{ get('even_numbers', []) }}
 """
         
         context = await start(template, basic_options)
@@ -136,7 +136,7 @@ Sum: {{ get_context('sum_total', 0) }}, Even numbers: {{ get_context('even_numbe
         """Test JSON data processing example"""
         template = """
 # pre: process_json
-{{ set_context('user_data', {
+{{ set('user_data', {
     "name": "Alice",
     "preferences": {
         "theme": "dark",
@@ -145,13 +145,13 @@ Sum: {{ get_context('sum_total', 0) }}, Even numbers: {{ get_context('even_numbe
     "history": ["login", "view_profile", "logout"]
 }) }}
 
-{{ set_context('user_name', get_json_path(get_context('user_data', {}), "name", "Unknown")) }}
-{{ set_context('theme', get_json_path(get_context('user_data', {}), "preferences.theme", "light")) }}
-{{ set_context('last_action', get_json_path(get_context('user_data', {}), "history.-1", "none")) }}
+{{ set('user_name', get_json_path(get('user_data', {}), "name", "Unknown")) }}
+{{ set('theme', get_json_path(get('user_data', {}), "preferences.theme", "light")) }}
+{{ set('last_action', get_json_path(get('user_data', {}), "history.-1", "none")) }}
 
 # prompt: process_json
 ## user
-User {{ get_context('user_name', 'Unknown') }} prefers {{ get_context('theme', 'light') }} theme. Last action: {{ get_context('last_action', 'none') }}
+User {{ get('user_name', 'Unknown') }} prefers {{ get('theme', 'light') }} theme. Last action: {{ get('last_action', 'none') }}
 """
         
         context = await start(template, basic_options)
@@ -167,23 +167,23 @@ User {{ get_context('user_name', 'Unknown') }} prefers {{ get_context('theme', '
         """Test dynamic template generation"""
         template = """
 # pre: generate_template
-{{ set_context('template_vars', {
+{{ set('template_vars', {
     'product': 'laptop',
     'price': 999,
     'currency': 'USD'
 }) }}
 
-{{ set_context('message_template', 
+{{ set('message_template', 
     'The {product} costs {price} {currency}. Would you like to purchase it?'
 ) }}
 
-{{ set_context('generated_message', 
-    get_context('message_template', '').format(**get_context('template_vars', {}))
+{{ set('generated_message', 
+    get('message_template', '').format(**get('template_vars', {}))
 ) }}
 
 # prompt: generate_template
 ## user
-{{ get_context('generated_message', '') }}
+{{ get('generated_message', '') }}
 """
         
         context = await start(template, basic_options)
@@ -206,15 +206,15 @@ Perform main task
 
 # post: main_task
 {% if errors %}
-{{ set_context('error_count', errors | length) }}
-{{ set_context('next_step', 'error_recovery') }}
+{{ set('error_count', errors | length) }}
+{{ set('next_step', 'error_recovery') }}
 {% else %}
-{{ set_context('next_step', 'success') }}
+{{ set('next_step', 'success') }}
 {% endif %}
 
 # prompt: error_recovery
 ## user
-Encountered {{ get_context('error_count', 0) }} errors. Attempting recovery.
+Encountered {{ get('error_count', 0) }} errors. Attempting recovery.
 
 # prompt: success
 ## user
@@ -232,38 +232,38 @@ Task completed successfully.
         """Test retry mechanism example"""
         template = """
 # pre: init_retry
-{{ set_context('attempt', 1) }}
-{{ set_context('max_attempts', 3) }}
-{{ set_context('success', False) }}
+{{ set('attempt', 1) }}
+{{ set('max_attempts', 3) }}
+{{ set('success', False) }}
 
 # prompt: init_retry
 ## user
 Starting retry mechanism...
 
 # post: init_retry
-{{ set_context('next_step', 'retry_task') }}
+{{ set('next_step', 'retry_task') }}
 
 # prompt: retry_task
 ## user
-Attempt {{ get_context('attempt', 1) }} of {{ get_context('max_attempts', 3) }}
+Attempt {{ get('attempt', 1) }} of {{ get('max_attempts', 3) }}
 
 # post: retry_task
-{% if not get_context('success', False) and get_context('attempt', 1) < get_context('max_attempts', 3) %}
-{{ set_context('attempt', get_context('attempt', 1) + 1) }}
-{{ set_context('next_step', 'retry_task') }}
-{% elif get_context('success', False) %}
-{{ set_context('next_step', 'success') }}
+{% if not get('success', False) and get('attempt', 1) < get('max_attempts', 3) %}
+{{ set('attempt', get('attempt', 1) + 1) }}
+{{ set('next_step', 'retry_task') }}
+{% elif get('success', False) %}
+{{ set('next_step', 'success') }}
 {% else %}
-{{ set_context('next_step', 'failure') }}
+{{ set('next_step', 'failure') }}
 {% endif %}
 
 # prompt: success
 ## user
-Succeeded after {{ get_context('attempt', 1) }} attempts
+Succeeded after {{ get('attempt', 1) }} attempts
 
 # prompt: failure
 ## user
-Failed after {{ get_context('max_attempts', 3) }} attempts
+Failed after {{ get('max_attempts', 3) }} attempts
 """
         
         # Mock a scenario where we succeed on attempt 2
@@ -296,38 +296,38 @@ class TestWorkflowPatterns:
         """Test wizard/step-by-step pattern"""
         template = """
 # pre: step1
-{{ set_context('step_number', 1) }}
-{{ set_context('total_steps', 3) }}
-{{ set_context('collected_data', {}) }}
+{{ set('step_number', 1) }}
+{{ set('total_steps', 3) }}
+{{ set('collected_data', {}) }}
 
 # prompt: step1
 ## user
-Step {{ get_context('step_number') }} of {{ get_context('total_steps') }}: Enter your name
+Step {{ get('step_number') }} of {{ get('total_steps') }}: Enter your name
 
 # post: step1
-{% set collected = get_context('collected_data', {}) %}
+{% set collected = get('collected_data', {}) %}
 {% set _ = collected.update({'name': 'Alice'}) %}
-{{ set_context('collected_data', collected) }}
-{{ set_context('step_number', 2) }}
-{{ set_context('next_step', 'step2') }}
+{{ set('collected_data', collected) }}
+{{ set('step_number', 2) }}
+{{ set('next_step', 'step2') }}
 
 # prompt: step2
 ## user
-Step {{ get_context('step_number') }} of {{ get_context('total_steps') }}: Enter your age
+Step {{ get('step_number') }} of {{ get('total_steps') }}: Enter your age
 
 # post: step2
-{% set collected = get_context('collected_data', {}) %}
+{% set collected = get('collected_data', {}) %}
 {% set _ = collected.update({'age': 25}) %}
-{{ set_context('collected_data', collected) }}
-{{ set_context('step_number', 3) }}
-{{ set_context('next_step', 'step3') }}
+{{ set('collected_data', collected) }}
+{{ set('step_number', 3) }}
+{{ set('next_step', 'step3') }}
 
 # prompt: step3
 ## user
-Step {{ get_context('step_number') }} of {{ get_context('total_steps') }}: Confirm your details
+Step {{ get('step_number') }} of {{ get('total_steps') }}: Confirm your details
 
 # post: step3
-{{ set_context('next_step', 'complete') }}
+{{ set('next_step', 'complete') }}
 
 # prompt: complete
 ## user
@@ -346,28 +346,28 @@ Wizard complete! Data: {{ collected_data }}
         """Test state machine pattern"""
         template = """
 # pre: state_handler
-{% if get_context('state') is none %}
-  {{ set_context('state', 'idle') }}
-  {{ set_context('event', 'start') }}
+{% if get('state') is none %}
+  {{ set('state', 'idle') }}
+  {{ set('event', 'start') }}
 {% endif %}
 
 # prompt: state_handler
 ## user
-Current state: {{ get_context('state', '') }}, Event: {{ get_context('event', '') }}
+Current state: {{ get('state', '') }}, Event: {{ get('event', '') }}
 
 # post: state_handler
-{% if get_context('state', '') == 'idle' and get_context('event', '') == 'start' %}
-  {{ set_context('state', 'processing') }}
-  {{ set_context('event', 'process') }}
-  {{ set_context('next_step', 'state_handler') }}
-{% elif get_context('state', '') == 'processing' and get_context('event', '') == 'process' %}
-  {{ set_context('state', 'completed') }}
-  {{ set_context('event', 'finish') }}
-  {{ set_context('next_step', 'state_handler') }}
-{% elif get_context('state', '') == 'completed' %}
-  {{ set_context('next_step', 'final') }}
+{% if get('state', '') == 'idle' and get('event', '') == 'start' %}
+  {{ set('state', 'processing') }}
+  {{ set('event', 'process') }}
+  {{ set('next_step', 'state_handler') }}
+{% elif get('state', '') == 'processing' and get('event', '') == 'process' %}
+  {{ set('state', 'completed') }}
+  {{ set('event', 'finish') }}
+  {{ set('next_step', 'state_handler') }}
+{% elif get('state', '') == 'completed' %}
+  {{ set('next_step', 'final') }}
 {% else %}
-  {{ set_context('next_step', 'error') }}
+  {{ set('next_step', 'error') }}
 {% endif %}
 
 # prompt: final
@@ -389,30 +389,30 @@ State machine error
         """Test data pipeline pattern"""
         template = """
 # pre: stage1_clean
-{{ set_context('raw_data', 'HELLO WORLD') }}
+{{ set('raw_data', 'HELLO WORLD') }}
 
 # prompt: stage1_clean
 ## user
-Stage 1: Cleaning data: {{ get_context('raw_data', '') }}
+Stage 1: Cleaning data: {{ get('raw_data', '') }}
 
 # post: stage1_clean
-{{ set_context('cleaned_data', get_context('raw_data', '').lower()) }}
-{{ set_context('next_step', 'stage2_transform') }}
+{{ set('cleaned_data', get('raw_data', '').lower()) }}
+{{ set('next_step', 'stage2_transform') }}
 
 # prompt: stage2_transform
 ## user
-Stage 2: Transforming data: {{ get_context('cleaned_data', '') }}
+Stage 2: Transforming data: {{ get('cleaned_data', '') }}
 
 # post: stage2_transform
-{{ set_context('transformed_data', get_context('cleaned_data', '').replace(' ', '_')) }}
-{{ set_context('next_step', 'stage3_output') }}
+{{ set('transformed_data', get('cleaned_data', '').replace(' ', '_')) }}
+{{ set('next_step', 'stage3_output') }}
 
 # prompt: stage3_output
 ## user
-Stage 3: Final output: {{ get_context('transformed_data', '') }}
+Stage 3: Final output: {{ get('transformed_data', '') }}
 
 # post: stage3_output
-{{ set_context('final_output', get_context('transformed_data', '') + '_processed') }}
+{{ set('final_output', get('transformed_data', '') + '_processed') }}
 """
         
         context = await start(template, basic_options)
@@ -431,24 +431,24 @@ class TestRealWorldExamples:
         """Test customer support workflow"""
         template = """
 # pre: triage
-{{ set_context('customer_type', 'premium') }}
-{{ set_context('issue_category', 'technical') }}
-{{ set_context('priority', 'high') }}
+{{ set('customer_type', 'premium') }}
+{{ set('issue_category', 'technical') }}
+{{ set('priority', 'high') }}
 
 # prompt: triage
 ## system
 You are a customer support agent.
 
 ## user
-Customer type: {{ get_context('customer_type', '') }}, Issue: {{ get_context('issue_category', '') }}, Priority: {{ get_context('priority', '') }}
+Customer type: {{ get('customer_type', '') }}, Issue: {{ get('issue_category', '') }}, Priority: {{ get('priority', '') }}
 
 # post: triage
-{% if get_context('customer_type', '') == 'premium' and get_context('priority', '') == 'high' %}
-{{ set_context('next_step', 'escalate') }}
-{% elif get_context('issue_category', '') == 'technical' %}
-{{ set_context('next_step', 'technical_support') }}
+{% if get('customer_type', '') == 'premium' and get('priority', '') == 'high' %}
+{{ set('next_step', 'escalate') }}
+{% elif get('issue_category', '') == 'technical' %}
+{{ set('next_step', 'technical_support') }}
 {% else %}
-{{ set_context('next_step', 'general_support') }}
+{{ set('next_step', 'general_support') }}
 {% endif %}
 
 # prompt: escalate
@@ -474,13 +474,13 @@ Handling with general support
         """Test content moderation workflow"""
         template = """
 # pre: moderate
-{{ set_context('content', 'This is a sample post about technology') }}
-{{ set_context('flagged_words', ['spam', 'inappropriate', 'violation']) }}
-{{ set_context('content_safe', True) }}
+{{ set('content', 'This is a sample post about technology') }}
+{{ set('flagged_words', ['spam', 'inappropriate', 'violation']) }}
+{{ set('content_safe', True) }}
 
 {% for word in flagged_words %}
   {% if word in content.lower() %}
-    {{ set_context('content_safe', False) }}
+    {{ set('content_safe', False) }}
   {% endif %}
 {% endfor %}
 
@@ -489,10 +489,10 @@ Handling with general support
 Moderating content: {{ content }}
 
 # post: moderate
-{% if get_context('content_safe', False) %}
-{{ set_context('next_step', 'approve') }}
+{% if get('content_safe', False) %}
+{{ set('next_step', 'approve') }}
 {% else %}
-{{ set_context('next_step', 'review') }}
+{{ set('next_step', 'review') }}
 {% endif %}
 
 # prompt: approve
@@ -515,26 +515,26 @@ Content flagged for manual review
         """Test data validation workflow"""
         template = """
 # pre: validate
-{{ set_context('user_input', {
+{{ set('user_input', {
     'email': 'user@example.com',
     'age': 25,
     'name': 'John Doe'
 }) }}
-{{ set_context('validation_errors', []) }}
+{{ set('validation_errors', []) }}
 
 # Email validation
-{% if '@' not in get_context('user_input', {}).email %}
-{{ set_context('validation_errors', validation_errors + ['Invalid email format']) }}
+{% if '@' not in get('user_input', {}).email %}
+{{ set('validation_errors', validation_errors + ['Invalid email format']) }}
 {% endif %}
 
 # Age validation
-{% if get_context('user_input', {}).age < 18 or get_context('user_input', {}).age > 120 %}
-{{ set_context('validation_errors', validation_errors + ['Invalid age range']) }}
+{% if get('user_input', {}).age < 18 or get('user_input', {}).age > 120 %}
+{{ set('validation_errors', validation_errors + ['Invalid age range']) }}
 {% endif %}
 
 # Name validation
-{% if get_context('user_input', {}).name | length < 2 %}
-{{ set_context('validation_errors', validation_errors + ['Name too short']) }}
+{% if get('user_input', {}).name | length < 2 %}
+{{ set('validation_errors', validation_errors + ['Name too short']) }}
 {% endif %}
 
 # prompt: validate
@@ -542,10 +542,10 @@ Content flagged for manual review
 Validating user data
 
 # post: validate
-{% if get_context('validation_errors', []) | length == 0 %}
-{{ set_context('next_step', 'process') }}
+{% if get('validation_errors', []) | length == 0 %}
+{{ set('next_step', 'process') }}
 {% else %}
-{{ set_context('next_step', 'reject') }}
+{{ set('next_step', 'reject') }}
 {% endif %}
 
 # prompt: process

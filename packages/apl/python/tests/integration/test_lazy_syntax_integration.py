@@ -15,9 +15,9 @@ class TestRelaxedSyntaxIntegration:
         
         relaxed_template = """
 # pre: greet
-set_context('user_name', 'Alice')
-set_context('max_attempts', 3)
-set_context('attempt_count', 0)
+set('user_name', 'Alice')
+set('max_attempts', 3)
+set('attempt_count', 0)
 
 # prompt: greet
 ## system
@@ -27,17 +27,17 @@ You are a helpful assistant. Respond briefly.
 Hello {{ user_name }}! How are you today?
 
 # post: greet
-set_context('attempt_count', get_context('attempt_count') + 1)
+set('attempt_count', get('attempt_count') + 1)
 
 if "good" in result_text.lower() or "well" in result_text.lower()
-    set_context('greeting_successful', True)
-    set_context('next_step', 'return')
-elif get_context('attempt_count') < get_context('max_attempts')
-    set_context('greeting_successful', False)
-    set_context('next_step', 'greet')
+    set('greeting_successful', True)
+    set('next_step', 'return')
+elif get('attempt_count') < get('max_attempts')
+    set('greeting_successful', False)
+    set('next_step', 'greet')
 else
-    set_context('greeting_successful', False)
-    set_context('next_step', 'return')
+    set('greeting_successful', False)
+    set('next_step', 'return')
 endif
 """
         
@@ -62,8 +62,8 @@ endif
         # Traditional Jinja syntax
         traditional = """
 # pre: test
-{{ set_context('counter', 1) }}
-{{ set_context('message', 'Hello World') }}
+{{ set('counter', 1) }}
+{{ set('message', 'Hello World') }}
 
 # prompt: test
 ## user
@@ -71,18 +71,18 @@ endif
 
 # post: test
 {% if result_text %}
-    {{ set_context('response_received', True) }}
-    {{ set_context('counter', get_context('counter') + 1) }}
+    {{ set('response_received', True) }}
+    {{ set('counter', get('counter') + 1) }}
 {% else %}
-    {{ set_context('response_received', False) }}
+    {{ set('response_received', False) }}
 {% endif %}
 """
         
         # Equivalent relaxed syntax
         relaxed = """
 # pre: test
-set_context('counter', 1)
-set_context('message', 'Hello World')
+set('counter', 1)
+set('message', 'Hello World')
 
 # prompt: test
 ## user
@@ -90,10 +90,10 @@ set_context('message', 'Hello World')
 
 # post: test
 if result_text
-    set_context('response_received', True)
-    set_context('counter', get_context('counter') + 1)
+    set('response_received', True)
+    set('counter', get('counter') + 1)
 else
-    set_context('response_received', False)
+    set('response_received', False)
 endif
 """
         
@@ -112,8 +112,8 @@ endif
         # Mixed Jinja and relaxed syntax should work
         mixed_syntax = """
 # pre: test
-{{ set_context('traditional', 'value') }}
-set_context('relaxed', 'value')
+{{ set('traditional', 'value') }}
+set('relaxed', 'value')
 
 # prompt: test
 ## user
@@ -121,10 +121,10 @@ Test prompt
 
 # post: test
 {% if condition %}
-    set_context('mixed_result', 'success')
+    set('mixed_result', 'success')
 {% endif %}
 if other_condition
-    {{ set_context('another_result', 'success') }}
+    {{ set('another_result', 'success') }}
 endif
 """
         
@@ -147,7 +147,7 @@ Test
         with_comments = """
 # pre: test
 # This is a comment
-set_context('var', 'value')
+set('var', 'value')
 
 # Another comment
 
@@ -158,7 +158,7 @@ Test
 # post: test
 # Final comment
 if condition
-    set_context('result', 'done')
+    set('result', 'done')
 endif
 """
         
@@ -170,23 +170,23 @@ endif
         
         complex_template = """
 # pre: process
-set_context('items', ['apple', 'banana', 'cherry'])
-set_context('processed', [])
-set_context('index', 0)
+set('items', ['apple', 'banana', 'cherry'])
+set('processed', [])
+set('index', 0)
 
 # prompt: process
 ## user
-Process item: {{ get_context('items')[get_context('index')] }}
+Process item: {{ get('items')[get('index')] }}
 
 # post: process
-set_context('processed', get_context('processed') + [get_context('items')[get_context('index')]])
-set_context('index', get_context('index') + 1)
+set('processed', get('processed') + [get('items')[get('index')]])
+set('index', get('index') + 1)
 
-if get_context('index') < len(get_context('items'))
-    set_context('next_step', 'process')
+if get('index') < len(get('items'))
+    set('next_step', 'process')
 else
-    set_context('next_step', 'return')
-    set_context('all_processed', True)
+    set('next_step', 'return')
+    set('all_processed', True)
 endif
 """
         
@@ -203,8 +203,8 @@ endif
         # Example from SPEC.md
         spec_example = """
 # pre: greet
-set_context('user_name', 'World')
-set_context('greeting', 'Hello')
+set('user_name', 'World')
+set('greeting', 'Hello')
 
 # prompt: greet
 ## user
@@ -212,9 +212,9 @@ set_context('greeting', 'Hello')
 
 # post: greet
 if global_runs < 2 and not result_text
-    set_context('next_step', 'greet')
+    set('next_step', 'greet')
 else
-    set_context('next_step', 'return')
+    set('next_step', 'return')
 endif
 """
         
@@ -223,28 +223,28 @@ endif
         # Complex nested example
         nested_example = """
 # pre: complex
-set_context('data', {'users': ['Alice', 'Bob'], 'status': 'active'})
-set_context('results', [])
+set('data', {'users': ['Alice', 'Bob'], 'status': 'active'})
+set('results', [])
 
 # prompt: complex
 ## user
-Process users: {{ get_context('data')['users'] }}
+Process users: {{ get('data')['users'] }}
 
 # post: complex
-for user in get_context('data')['users']
-    if get_context('data')['status'] == 'active'
-        set_context('results', get_context('results') + [user + '_processed'])
+for user in get('data')['users']
+    if get('data')['status'] == 'active'
+        set('results', get('results') + [user + '_processed'])
     else
-        set_context('results', get_context('results') + [user + '_skipped'])
+        set('results', get('results') + [user + '_skipped'])
     endif
 endfor
 
-if len(get_context('results')) > 0
-    set_context('processing_complete', True)
-    set_context('next_step', 'return')
+if len(get('results')) > 0
+    set('processing_complete', True)
+    set('next_step', 'return')
 else
-    set_context('processing_complete', False)
-    set_context('next_step', 'return')
+    set('processing_complete', False)
+    set('next_step', 'return')
 endif
 """
         

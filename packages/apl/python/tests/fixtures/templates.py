@@ -10,8 +10,8 @@ Hello, how are you?
 
 MULTIMODAL_TEMPLATE = """
 # pre: setup
-{{ set_context('model', 'gpt-4o') }}
-{{ set_context('temperature', 0.7) }}
+{{ set('model', 'gpt-4o') }}
+{{ set('temperature', 0.7) }}
 
 # prompt: setup
 ## system
@@ -24,9 +24,9 @@ Analyze this image:
 
 TOOL_CALLING_TEMPLATE = """
 # pre: calc
-{{ set_context('model', 'gpt-4o') }}
-{{ set_context('temperature', 0.7) }}
-{{ set_context('allowed_tools', ['calc']) }}
+{{ set('model', 'gpt-4o') }}
+{{ set('temperature', 0.7) }}
+{{ set('allowed_tools', ['calc']) }}
 
 # prompt: calc
 ## system
@@ -38,7 +38,7 @@ What's the sum of 40 and 2?
 
 CONDITIONAL_TEMPLATE = """
 # pre: test
-{{ set_context('test_var', 'initial') }}
+{{ set('test_var', 'initial') }}
 
 # prompt: test
 ## user
@@ -46,9 +46,9 @@ Test message
 
 # post: test
 {% if "helpful" in result_text %}
-{{ set_context('next_step', 'success') }}
+{{ set('next_step', 'success') }}
 {% else %}
-{{ set_context('next_step', 'retry') }}
+{{ set('next_step', 'retry') }}
 {% endif %}
 
 # prompt: success
@@ -56,14 +56,14 @@ Test message
 Success path
 
 # post: success
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 
 # prompt: retry
 ## user
 Retry path
 
 # post: retry
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
 
 ROLE_CONCATENATION_TEMPLATE = """
@@ -80,19 +80,19 @@ Second system message.
 
 JSON_HELPER_TEMPLATE = """
 # pre: test
-{{ set_context('test_data', {"user": {"name": "Alice", "items": [1, 2, 3]}}) }}
-{{ set_context('name', get_json_path(get_context('test_data', {}), "user.name", "unknown")) }}
-{{ set_context('missing', get_json_path(get_context('test_data', {}), "user.missing", "default")) }}
-{{ set_context('item', get_json_path(get_context('test_data', {}), "user.items.1", "none")) }}
+{{ set('test_data', {"user": {"name": "Alice", "items": [1, 2, 3]}}) }}
+{{ set('name', get_json_path(get('test_data', {}), "user.name", "unknown")) }}
+{{ set('missing', get_json_path(get('test_data', {}), "user.missing", "default")) }}
+{{ set('item', get_json_path(get('test_data', {}), "user.items.1", "none")) }}
 
 # prompt: test
 ## user
-Name: {{ get_context('name', 'unknown') }}, Missing: {{ get_context('missing', 'default') }}, Item: {{ get_context('item', 'none') }}
+Name: {{ get('name', 'unknown') }}, Missing: {{ get('missing', 'default') }}, Item: {{ get('item', 'none') }}
 """
 
 ERROR_HANDLING_TEMPLATE = """
 # pre: error_test
-{{ set_context('next_step', 'nonexistent') }}
+{{ set('next_step', 'nonexistent') }}
 
 # prompt: error_test
 ## user

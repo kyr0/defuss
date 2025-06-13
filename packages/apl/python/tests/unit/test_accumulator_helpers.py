@@ -26,7 +26,7 @@ class TestAccumulatorHelpers:
 
 # prompt: test
 ## user
-Counter: {{ get_context('counter', 0) }}
+Counter: {{ get('counter', 0) }}
 """
         
         context = await start(template, {'debug': False})
@@ -42,7 +42,7 @@ Counter: {{ get_context('counter', 0) }}
 
 # prompt: test
 ## user
-Counter: {{ get_context('counter', 0) }}
+Counter: {{ get('counter', 0) }}
 """
         
         context = await start(template, {'debug': False})
@@ -59,7 +59,7 @@ Counter: {{ get_context('counter', 0) }}
 
 # prompt: test
 ## user
-Total: {{ get_context('total', 0) }}
+Total: {{ get('total', 0) }}
 """
         
         context = await start(template, {'debug': False})
@@ -76,7 +76,7 @@ Total: {{ get_context('total', 0) }}
 
 # prompt: test
 ## user
-Message: {{ get_context('message', '') }}
+Message: {{ get('message', '') }}
 """
         
         context = await start(template, {'debug': False})
@@ -93,7 +93,7 @@ Message: {{ get_context('message', '') }}
 
 # prompt: test
 ## user
-Items: {{ get_context('items', []) }}
+Items: {{ get('items', []) }}
 """
         
         context = await start(template, {'debug': False})
@@ -104,21 +104,21 @@ Items: {{ get_context('items', []) }}
         """Test accumulator pattern in a loop"""
         template = """
 # pre: loop
-{% if get_context('data') is none %}
-{{ set_context('data', [1, 2, 3, 4, 5]) }}
-{{ set_context('index', 0) }}
+{% if get('data') is none %}
+{{ set('data', [1, 2, 3, 4, 5]) }}
+{{ set('index', 0) }}
 {% endif %}
-{% set current = get_context('data', [])[get_context('index', 0)] %}
+{% set current = get('data', [])[get('index', 0)] %}
 {{ add('sum', current) }}
 {{ inc('index') }}
 
 # prompt: loop
 ## user
-Added {{ current }}, sum is now {{ get_context('sum', 0) }}
+Added {{ current }}, sum is now {{ get('sum', 0) }}
 
 # post: loop
-{% if get_context('index', 0) < get_context('data', [])|length %}
-{{ set_context('next_step', 'loop') }}
+{% if get('index', 0) < get('data', [])|length %}
+{{ set('next_step', 'loop') }}
 {% endif %}
 """
         
@@ -143,7 +143,7 @@ Added {{ current }}, sum is now {{ get_context('sum', 0) }}
 
 # prompt: test
 ## user
-Results: count={{ get_context('count', 0) }}, sum={{ get_context('sum', 0) }}, product={{ get_context('product', 1) }}, message="{{ get_context('message', '') }}"
+Results: count={{ get('count', 0) }}, sum={{ get('sum', 0) }}, product={{ get('product', 1) }}, message="{{ get('message', '') }}"
 """
         
         context = await start(template, {'debug': False})

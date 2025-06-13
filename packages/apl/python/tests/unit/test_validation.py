@@ -15,7 +15,7 @@ class TestValidationAPI:
         """Test check() function with valid template"""
         template = """
 # pre: test
-{{ set_context('var', 'value') }}
+{{ set('var', 'value') }}
 
 # prompt: test
 ## system
@@ -25,7 +25,7 @@ You are helpful.
 Hello
 
 # post: test
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
         result = check(template)
         assert result is True
@@ -44,10 +44,10 @@ Hello
         """Test check() function with template missing prompt"""
         template = """
 # pre: test
-{{ set_context('var', 'value') }}
+{{ set('var', 'value') }}
 
 # post: test
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
         with pytest.raises(ValidationError) as exc_info:
             check(template)
@@ -273,14 +273,14 @@ class TestJinjaValidation:
         """Test that Jinja in content is accepted"""
         template = """
 # pre: test
-{{ set_context('var', 'value') }}
-{% if get_context('condition', False) %}
+{{ set('var', 'value') }}
+{% if get('condition', False) %}
 Content
 {% endif %}
 
 # prompt: test
 ## user
-Hello {{ get_context('var', 'default') }}
+Hello {{ get('var', 'default') }}
 """
         result = check(template)
         assert result is True
@@ -290,13 +290,13 @@ Hello {{ get_context('var', 'default') }}
         template = """
 # pre: test
 {% for item in items %}
-{{ set_context('processed_' + item, True) }}
+{{ set('processed_' + item, True) }}
 {% endfor %}
 
 # prompt: test
 ## user
-{% if get_context('user_name', '') %}
-Hello {{ get_context('user_name', 'stranger') }}
+{% if get('user_name', '') %}
+Hello {{ get('user_name', 'stranger') }}
 {% else %}
 Hello stranger
 {% endif %}

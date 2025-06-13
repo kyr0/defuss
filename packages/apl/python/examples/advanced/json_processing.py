@@ -59,8 +59,8 @@ async def main():
     
     template = """
 # pre: setup
-{{ set_context('allowed_tools', ['get_user_data']) }}
-{{ set_context('output_mode', 'json') }}
+{{ set('allowed_tools', ['get_user_data']) }}
+{{ set('output_mode', 'json') }}
 
 # prompt: setup
 ## system
@@ -70,27 +70,27 @@ You are a data processing assistant. Use the get_user_data tool to fetch informa
 Please get user data for users 123 and 456, then create a JSON summary with their names, cities, and follower counts.
 
 # post: setup
-{{ set_context('user_count', 0) }}
-{{ set_context('total_followers', 0) }}
-{{ set_context('cities', []) }}
+{{ set('user_count', 0) }}
+{{ set('total_followers', 0) }}
+{{ set('cities', []) }}
 
 {% for tool_call in result_tool_calls %}
   {% if "get_user_data" in tool_call.tool_call_id and not tool_call.with_error %}
-    {{ set_context('user_count', get_context('user_count', 0) + 1) }}
-    {{ set_context('name', get_json_path(tool_call.content, 'name', 'Unknown')) }}
-    {{ set_context('city', get_json_path(tool_call.content, 'profile.city', 'Unknown')) }}
-    {{ set_context('followers', get_json_path(tool_call.content, 'stats.followers', 0)) }}
-    {{ set_context('total_followers', get_context('total_followers', 0) + get_context('followers', 0)) }}
-    {{ set_context('cities', get_context('cities', []) + [get_context('city', 'Unknown')]) }}
+    {{ set('user_count', get('user_count', 0) + 1) }}
+    {{ set('name', get_json_path(tool_call.content, 'name', 'Unknown')) }}
+    {{ set('city', get_json_path(tool_call.content, 'profile.city', 'Unknown')) }}
+    {{ set('followers', get_json_path(tool_call.content, 'stats.followers', 0)) }}
+    {{ set('total_followers', get('total_followers', 0) + get('followers', 0)) }}
+    {{ set('cities', get('cities', []) + [get('city', 'Unknown')]) }}
     
-    User processed: {{ get_context('name', 'Unknown') }} from {{ get_context('city', 'Unknown') }} ({{ get_context('followers', 0) }} followers)
+    User processed: {{ get('name', 'Unknown') }} from {{ get('city', 'Unknown') }} ({{ get('followers', 0) }} followers)
   {% endif %}
 {% endfor %}
 
-Summary: {{ get_context('user_count', 0) }} users processed, {{ get_context('total_followers', 0) }} total followers
-Cities: {{ get_context('cities', []) | join(", ") }}
+Summary: {{ get('user_count', 0) }} users processed, {{ get('total_followers', 0) }} total followers
+Cities: {{ get('cities', []) | join(", ") }}
 
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
     
     print("📝 Template:")

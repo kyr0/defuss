@@ -94,46 +94,46 @@ async def main():
     
     template = """
 # pre: setup
-{{ set_context('allowed_tools', ['fetch_weather_api', 'convert_currency']) }}
-{{ set_context('cities', ['Paris', 'London', 'Tokyo']) }}
-{{ set_context('base_budget', 1000.0) }}
-{{ set_context('currency', 'USD') }}
+{{ set('allowed_tools', ['fetch_weather_api', 'convert_currency']) }}
+{{ set('cities', ['Paris', 'London', 'Tokyo']) }}
+{{ set('base_budget', 1000.0) }}
+{{ set('currency', 'USD') }}
 
 # prompt: setup
 ## system
 You are a travel planning assistant with access to weather and currency APIs. Help plan a trip by gathering information about multiple cities.
 
 ## user
-I'm planning a trip and have a budget of ${{ get_context('base_budget', 1000) }} {{ get_context('currency', 'USD') }}. 
-Please check the weather in {{ get_context('cities', ['Paris', 'London']) | join(", ") }} and convert my budget to EUR and GBP for European cities.
+I'm planning a trip and have a budget of ${{ get('base_budget', 1000) }} {{ get('currency', 'USD') }}. 
+Please check the weather in {{ get('cities', ['Paris', 'London']) | join(", ") }} and convert my budget to EUR and GBP for European cities.
 
 # post: setup
-{{ set_context('weather_data', []) }}
-{{ set_context('currency_conversions', []) }}
-{{ set_context('api_calls_made', 0) }}
+{{ set('weather_data', []) }}
+{{ set('currency_conversions', []) }}
+{{ set('api_calls_made', 0) }}
 
 {% for tool_call in result_tool_calls %}
-  {{ set_context('api_calls_made', get_context('api_calls_made', 0) + 1) }}
+  {{ set('api_calls_made', get('api_calls_made', 0) + 1) }}
   
   {% if "fetch_weather_api" in tool_call.tool_call_id and not tool_call.with_error %}
-    {{ set_context('city_name', get_json_path(tool_call.content, 'city', 'unknown')) }}
-    {{ set_context('temperature', get_json_path(tool_call.content, 'temperature', 0)) }}
-    {{ set_context('description', get_json_path(tool_call.content, 'description', 'unknown')) }}
-    {{ set_context('weather_data', get_context('weather_data', []) + [tool_call.content]) }}
+    {{ set('city_name', get_json_path(tool_call.content, 'city', 'unknown')) }}
+    {{ set('temperature', get_json_path(tool_call.content, 'temperature', 0)) }}
+    {{ set('description', get_json_path(tool_call.content, 'description', 'unknown')) }}
+    {{ set('weather_data', get('weather_data', []) + [tool_call.content]) }}
     
-    Weather for {{ get_context('city_name', 'unknown') }}: {{ get_context('temperature', 0) }}°C, {{ get_context('description', 'unknown') }}
+    Weather for {{ get('city_name', 'unknown') }}: {{ get('temperature', 0) }}°C, {{ get('description', 'unknown') }}
     
   {% elif "convert_currency" in tool_call.tool_call_id and not tool_call.with_error %}
-    {{ set_context('from_curr', get_json_path(tool_call.content, 'from_currency', 'unknown')) }}
-    {{ set_context('to_curr', get_json_path(tool_call.content, 'to_currency', 'unknown')) }}
-    {{ set_context('converted', get_json_path(tool_call.content, 'converted_amount', 0)) }}
-    {{ set_context('currency_conversions', get_context('currency_conversions', []) + [tool_call.content]) }}
+    {{ set('from_curr', get_json_path(tool_call.content, 'from_currency', 'unknown')) }}
+    {{ set('to_curr', get_json_path(tool_call.content, 'to_currency', 'unknown')) }}
+    {{ set('converted', get_json_path(tool_call.content, 'converted_amount', 0)) }}
+    {{ set('currency_conversions', get('currency_conversions', []) + [tool_call.content]) }}
     
-    Currency: {{ get_context('base_budget', 1000) }} {{ get_context('from_curr', 'USD') }} = {{ get_context('converted', 0) }} {{ get_context('to_curr', 'EUR') }}
+    Currency: {{ get('base_budget', 1000) }} {{ get('from_curr', 'USD') }} = {{ get('converted', 0) }} {{ get('to_curr', 'EUR') }}
   {% endif %}
 {% endfor %}
 
-{{ set_context('next_step', 'analysis') }}
+{{ set('next_step', 'analysis') }}
 
 # prompt: analysis
 ## system
@@ -148,28 +148,28 @@ Weather Data ({{ weather_data | length }} cities):
   Humidity: {{ weather.humidity }}%, Wind: {{ weather.wind_speed }} km/h
 {% endfor %}
 
-Currency Conversions ({{ get_context('currency_conversions', []) | length }} conversions):
-{% for conversion in get_context('currency_conversions', []) %}
+Currency Conversions ({{ get('currency_conversions', []) | length }} conversions):
+{% for conversion in get('currency_conversions', []) %}
 - {{ conversion.original_amount }} {{ conversion.from_currency }} = {{ conversion.converted_amount }} {{ conversion.to_currency }} (rate: {{ conversion.exchange_rate }})
 {% endfor %}
 
-Total API calls made: {{ get_context('api_calls_made', 0) }}
+Total API calls made: {{ get('api_calls_made', 0) }}
 
 Please analyze this data and provide travel recommendations considering weather conditions and budget in different currencies.
 
 # post: analysis
-{{ set_context('best_weather_city', '') }}
-{{ set_context('warmest_temp', 0) }}
+{{ set('best_weather_city', '') }}
+{{ set('warmest_temp', 0) }}
 
-{% for weather in get_context('weather_data', []) %}
-  {% if weather.temperature > get_context('warmest_temp', 0) %}
-    {{ set_context('warmest_temp', weather.temperature) }}
-    {{ set_context('best_weather_city', weather.city) }}
+{% for weather in get('weather_data', []) %}
+  {% if weather.temperature > get('warmest_temp', 0) %}
+    {{ set('warmest_temp', weather.temperature) }}
+    {{ set('best_weather_city', weather.city) }}
   {% endif %}
 {% endfor %}
 
-{{ set_context('recommendation_ready', true) }}
-{{ set_context('next_step', 'return') }}
+{{ set('recommendation_ready', true) }}
+{{ set('next_step', 'return') }}
 """
     
     print("📝 Template:")

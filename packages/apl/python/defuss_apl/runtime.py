@@ -820,7 +820,7 @@ class APLRuntime:
         # Function to detect multiline function call starts
         def is_multiline_function_call_start(line):
             # Detect if this line potentially starts a multi-line function call
-            # Like set_context('name', { or set_context('name', [
+            # Like set('name', { or set('name', [
             pattern = r'set_context\([\'"].*?[\'"]\s*,\s*[\[{]'
             return bool(re.search(pattern, line))
 

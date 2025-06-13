@@ -59,7 +59,7 @@ async def run_sum_example():
         print("   - Loading templates from .apl files")
         print("   - add('total', value, 0) initializes total to 0 on first use")
         print("   - Each call adds the new value to the accumulator")
-        print("   - Safe array access with get_context() and defaults")
+        print("   - Safe array access with get() and defaults")
         print("   - Iterative processing with explicit termination")
         
     except Exception as e:

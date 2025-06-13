@@ -99,21 +99,21 @@ And some text after.
         """Test §2.3 Variable lifecycle"""
         template = """
 # pre: step1
-{{ set_context('test_var', 'from_step1') }}
+{{ set('test_var', 'from_step1') }}
 
 # prompt: step1
 ## user
 Test message 1
 
 # post: step1
-{{ set_context('next_step', 'step2') }}
+{{ set('next_step', 'step2') }}
 
 # prompt: step2
 ## user
 Test message 2
 
 # post: step2
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
         
         context = await start(template, {"debug": False})
@@ -165,10 +165,10 @@ Test message 2
         """Test §7.4 JSON helper function"""
         template = """
 # pre: test
-{{ set_context('test_data', {"user": {"name": "Alice", "items": [1, 2, 3]}}) }}
-{{ set_context('name', get_json_path(get_context('test_data', {}), "user.name", "unknown")) }}
-{{ set_context('missing', get_json_path(get_context('test_data', {}), "user.missing", "default")) }}
-{{ set_context('item', get_json_path(get_context('test_data', {}), "user.items.1", "none")) }}
+{{ set('test_data', {"user": {"name": "Alice", "items": [1, 2, 3]}}) }}
+{{ set('name', get_json_path(get('test_data', {}), "user.name", "unknown")) }}
+{{ set('missing', get_json_path(get('test_data', {}), "user.missing", "default")) }}
+{{ set('item', get_json_path(get('test_data', {}), "user.items.1", "none")) }}
 
 # prompt: test
 ## user
@@ -219,7 +219,7 @@ Debug output
         # Test unknown step error
         template = """
 # pre: step1
-{{ set_context('next_step', "nonexistent") }}
+{{ set('next_step', "nonexistent") }}
 
 # prompt: step1
 ## user
@@ -296,37 +296,37 @@ class TestWorkflowExecution:
         """Test multi-step workflow execution"""
         template = """
 # pre: setup
-{{ set_context('user_name', 'Alice') }}
-{{ set_context('step_count', 0) }}
+{{ set('user_name', 'Alice') }}
+{{ set('step_count', 0) }}
 
 # prompt: setup
 ## user
-Initialize with name {{ get_context('user_name', 'User') }}
+Initialize with name {{ get('user_name', 'User') }}
 
 # post: setup
-{{ set_context('step_count', get_context('step_count', 0) + 1) }}
-{{ set_context('next_step', 'process') }}
+{{ set('step_count', get('step_count', 0) + 1) }}
+{{ set('next_step', 'process') }}
 
 # pre: process
-{{ set_context('step_count', get_context('step_count', 0) + 1) }}
+{{ set('step_count', get('step_count', 0) + 1) }}
 
 # prompt: process
 ## user
-Process data for {{ get_context('user_name', 'User') }}
+Process data for {{ get('user_name', 'User') }}
 
 # post: process
-{{ set_context('step_count', get_context('step_count', 0) + 1) }}
-{{ set_context('next_step', 'finalize') }}
+{{ set('step_count', get('step_count', 0) + 1) }}
+{{ set('next_step', 'finalize') }}
 
 # pre: finalize
-{{ set_context('step_count', get_context('step_count', 0) + 1) }}
+{{ set('step_count', get('step_count', 0) + 1) }}
 
 # prompt: finalize
 ## user
-Finalize for {{ get_context('user_name', 'User') }}
+Finalize for {{ get('user_name', 'User') }}
 
 # post: finalize
-{{ set_context('step_count', get_context('step_count', 0) + 1) }}
+{{ set('step_count', get('step_count', 0) + 1) }}
 """
         
         context = await start(template, {"debug": False})
@@ -342,17 +342,17 @@ Finalize for {{ get_context('user_name', 'User') }}
         
         template = """
 # pre: start
-{{ set_context('condition', True) }}
+{{ set('condition', True) }}
 
 # prompt: start
 ## user
 Start
 
 # post: start
-{% if get_context('condition', False) %}
-{{ set_context('next_step', 'success_path') }}
+{% if get('condition', False) %}
+{{ set('next_step', 'success_path') }}
 {% else %}
-{{ set_context('next_step', 'failure_path') }}
+{{ set('next_step', 'failure_path') }}
 {% endif %}
 
 # prompt: success_path
@@ -360,14 +360,14 @@ Start
 Success path taken
 
 # post: success_path
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 
 # prompt: failure_path
 ## user
 Failure path taken
 
 # post: failure_path
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 """
         
         context = await start(template, {
@@ -390,9 +390,9 @@ Main operation
 
 # post: main
 {% if errors %}
-{{ set_context('next_step', 'error_handler') }}
+{{ set('next_step', 'error_handler') }}
 {% else %}
-{{ set_context('next_step', 'success') }}
+{{ set('next_step', 'success') }}
 {% endif %}
 
 # prompt: error_handler
@@ -502,14 +502,14 @@ Single step
 Step 1
 
 # post: step1
-{{ set_context('next_step', 'step2') }}
+{{ set('next_step', 'step2') }}
 
 # prompt: step2
 ## user
 Step 2
 
 # post: step2
-{{ set_context('next_step', 'step1') }}
+{{ set('next_step', 'step1') }}
 """
         
         options = {"timeout": 1000, "max_runs": 5}  # Limit to prevent infinite loop
@@ -558,7 +558,7 @@ Step 3
 Step 1
 
 # post: step1
-{{ set_context('next_step', 'return') }}
+{{ set('next_step', 'return') }}
 
 # prompt: step2
 ## user
@@ -594,11 +594,11 @@ This should default to user role
         """Test §2.5 User-settable variables"""
         template = """
 # pre: test
-{{ set_context('model', 'gpt-3.5-turbo') }}
-{{ set_context('temperature', 0.7) }}
-{{ set_context('max_tokens', 100) }}
-{{ set_context('allowed_tools', ['calc']) }}
-{{ set_context('output_mode', 'text') }}
+{{ set('model', 'gpt-3.5-turbo') }}
+{{ set('temperature', 0.7) }}
+{{ set('max_tokens', 100) }}
+{{ set('allowed_tools', ['calc']) }}
+{{ set('output_mode', 'text') }}
 
 # prompt: test
 ## user
@@ -621,7 +621,7 @@ Test with custom settings
         
         template = """
 # pre: test
-{{ set_context('output_mode', 'json') }}
+{{ set('output_mode', 'json') }}
 
 # prompt: test
 ## user
@@ -661,7 +661,7 @@ Test token usage
 Loop iteration
 
 # post: loop
-{{ set_context('next_step', 'loop') }}
+{{ set('next_step', 'loop') }}
 """
         
         options = {"max_runs": 3, "timeout": 5000}
@@ -759,14 +759,14 @@ Test tool error handling
 Step 1
 
 # post: step1
-{{ set_context('next_step', 'step2') }}
+{{ set('next_step', 'step2') }}
 
 # prompt: step2
 ## user  
 Step 2
 
 # post: step2
-{{ set_context('next_step', 'step3') }}
+{{ set('next_step', 'step3') }}
 
 # prompt: step3
 ## user
