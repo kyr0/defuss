@@ -299,6 +299,28 @@ def dec(var_name: str, default: Any = 0) -> str:
     return rem(var_name, 1, default)
 
 
+# we need to be careful with global scope naming; "next" would override the built-in next() function
+def _next(step_name: str) -> str:
+    """Set the next step to execute (§7.4 helper function)"""
+    return set_context("next_step", step_name)
+
+
+def _prev() -> str:
+    """Gets the previous step name from context (§7.4 helper function)"""
+    return get_context("prev_step", None)
+
+
+def _result(result_type: str = None) -> Any:
+    """Get result based on type, defaults to result_text"""
+    if result_type:
+        return get_context(f"result_{result_type}")
+    return get_context("result_text")
+
+def _usage() -> Any:
+    """Get usage statistics"""
+    return get_context("usage")
+
+
 class RuntimeError(Exception):
     """Raised when APL template execution fails"""
     pass
@@ -482,6 +504,10 @@ class APLRuntime:
         context["rem"] = rem
         context["inc"] = inc
         context["dec"] = dec
+        context["next"] = _next
+        context["prev"] = _prev
+        context["result"] = _result
+        context["usage"] = _usage
         
         return context
         

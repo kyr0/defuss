@@ -708,3 +708,85 @@ Counter values: {{ get('counter1') }}, {{ get('counter2') }}
         assert context["counter1"] == 14
         assert context["counter2"] == 14
         assert context["counter1"] == context["counter2"]
+
+
+class TestNextFunction:
+    """Test the next helper function"""
+    
+    @pytest.mark.asyncio
+    async def test_next_basic_functionality(self, basic_options):
+        """Test that next sets the next_step variable"""
+        template = """
+# pre: test
+{{ next('target_step') }}
+{{ set('captured_next_step', get('next_step')) }}
+{{ set('next_step', '') }}
+
+# prompt: test
+## user
+Next step is: {{ get('captured_next_step', 'none') }}
+"""
+        context = await start(template, basic_options)
+        
+        assert context["captured_next_step"] == "target_step"
+        assert "Next step is: target_step" in context["result_text"]
+
+    @pytest.mark.asyncio
+    async def test_next_vs_set_direct_comparison(self, basic_options):
+        """Test that next('step') is equivalent to set('next_step', 'step')"""
+        template = """
+# pre: test
+{{ next('step_via_next') }}
+{{ set('result_via_next', get('next_step')) }}
+{{ set('next_step', 'step_via_set') }}
+{{ set('result_via_set', get('next_step')) }}
+{{ set('next_step', '') }}
+
+# prompt: test
+## user
+Next step via next(): {{ get('result_via_next', 'none') }}
+Direct next_step: {{ get('result_via_set', 'none') }}
+"""
+        context = await start(template, basic_options)
+        
+        # Both should work correctly
+        assert context["result_via_next"] == "step_via_next"
+        assert context["result_via_set"] == "step_via_set"
+        
+        # Test that they produce the same result when using the same value
+        template2 = """
+# pre: test
+{{ next('same_step') }}
+{{ set('result_with_next', get('next_step')) }}
+{{ set('next_step', 'same_step') }}
+{{ set('result_with_set', get('next_step')) }}
+{{ set('next_step', '') }}
+
+# prompt: test
+## user
+Comparison complete
+"""
+        context2 = await start(template2, basic_options)
+        
+        assert context2["result_with_next"] == context2["result_with_set"] == "same_step"
+
+    @pytest.mark.asyncio
+    async def test_next_multiple_calls(self, basic_options):
+        """Test that multiple calls to next() work correctly"""
+        template = """
+# pre: test
+{{ next('first_step') }}
+{{ next('second_step') }}
+{{ next('final_step') }}
+{{ set('captured_final_step', get('next_step')) }}
+{{ set('next_step', '') }}
+
+# prompt: test
+## user
+Final next step: {{ get('captured_final_step', 'none') }}
+"""
+        context = await start(template, basic_options)
+        
+        # Should have the last value set
+        assert context["captured_final_step"] == "final_step"
+        assert "Final next step: final_step" in context["result_text"]
