@@ -8,7 +8,7 @@ APL is a Turing-complete, domain-specific language for writing multi‑step, bra
 
 ## 0 - Feature Highlights
 
-* **Full Jinja inside every block** — loops, filters, tags, environments. Ship your own extensions (think: *vector database memory* etc.) simply via custom tags and simple Jinja control logic to create the optimal   prompt context.
+* **Full Jinja-power inside every block** — loops, filters, tags, environments. Ship your own extensions (think: *vector database memory* etc.) simply via custom tags and simple Jinja control logic to create the optimal prompt context.
 * **Graph‑like flow control** — set `next_step` in *post* to jump anywhere (cycles allowed); default is explicit termination (`return`).
 * **Built‑in state** — flat vars (`result_text`, `runs`, `global_runs`, `time_elapsed`, `errors`, …) enable branching, throttling, circuit‑breaking.
 * **Provider‑agnostic** — ships with an OpenAI‑style HTTP provider; register any async function in `providers` to work with any local/cloud/API/on-premise  model.

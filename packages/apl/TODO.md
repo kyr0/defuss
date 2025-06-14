@@ -1,6 +1,7 @@
 For Version 1.3, we want to improve the Runtime API and context. 
 
-- Comments in relaxed mode code?! # or // 
+- Comments {# --- #} in relaxed mode and between steps should be allowed.
+- `return()` should really be `finish()`
 - `current_step` should be defined
 - We add `prompts_rendered` to the context as a list. It is just the fully evaluated prompt (Jinja rendered version). It has to be added by the provider function right before the actual LLM is called. This is used by the new runtme function with call variant prompts("text")
 - We add `tools_rendered` to the context as a list. This is the  evaluated described tools (Jinja rendered version). It has to be added by the provider function right before the actual LLM is called. This is used by the new runtme function with call variant tools("text")

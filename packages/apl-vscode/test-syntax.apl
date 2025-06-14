@@ -2,7 +2,6 @@
 {# Initialize horoscope workflow with user preferences #}
 set('model', 'gpt-4o')
 set('temperature', 0.8)
-set('max_tokens', 800)
 set('allowed_tools', ['get_current_date', 'fetch_astronomy_data', 'validate_zodiac'])
 
 {# User configuration - normally would come from input #}
@@ -25,7 +24,8 @@ Your personality:
 - References celestial movements and planetary influences
 
 ## user
-Hello Celestia! I'm {{ get('user_name') }}, born on {{ get('birth_date') }}. I'm a {{ get('zodiac_sign') }} and I'd love a {{ get('horoscope_type') }} horoscope reading. 
+Hello Celestia! I'm {{ get('user_name') }}, born on {{ get('birth_date') }}. 
+I'm a {{ get('zodiac_sign') }} and I'd love a {{ get('horoscope_type') }} horoscope reading. 
 
 {% if get('include_lucky_numbers') %}
 Please include lucky numbers for today.
@@ -80,6 +80,10 @@ You have access to astronomical data tools. Use them to gather current celestial
 Please gather today's astronomical data and analyze the cosmic influences for a {{ get('zodiac_sign') }} born on {{ get('birth_date') }}. I need structured data about today's energy and focus areas.
 
 # post: fetch_daily_data
+
+set result_json = result('json')
+
+{# Local variable to check for errors in the structured data #}
 {# Process the structured astronomical data and plan detailed reading #}
 if get('errors')
     next('error_recovery')
@@ -144,6 +148,7 @@ Make it personal, mystical, and actionable. Use {{ get('user_name') }}'s name th
 Please provide my complete {{ get('horoscope_type') }} horoscope reading based on the cosmic data you've gathered.
 
 # post: generate_detailed_reading
+
 {# Evaluate the quality of the horoscope and decide if enhancement is needed #}
 {# Local variables for current step analysis #}
 set word_count = result('text').split()|length
@@ -219,7 +224,7 @@ elif get('enhancement_attempts', 0) >= 2
     next('finalize_reading')
 else
     {# Check if enhancement resolved the issue - use local variables for analysis #}
-    set word_count = result('text').split()|length
+    set word_count = result('text').split() | length
     set has_lucky = 'lucky' in result('text').lower()
     set enhancement_reason = get('enhancement_reason')
     
@@ -292,7 +297,7 @@ set('reading_complete', true)
 add('completed_readings', 1, 0)
 set('completion_time', time_elapsed_global)
 
-return()
+finish()
 
 
 {# --- #}
@@ -356,7 +361,7 @@ set('temperature', 0.5)  {# More conservative for error handling #}
 ## system
 There have been some technical difficulties with the horoscope generation. Provide a brief, encouraging message to {{ get('user_name') }} ({{ get('zodiac_sign') }}) and offer a simple but meaningful horoscope insight.
 
-Errors encountered: {{ get('errors')|join(', ') }}
+Errors encountered: {{ get('errors') | join(', ') }}
 
 ## user
 I'm experiencing some issues with my horoscope reading. Could you please provide a brief but meaningful insight for a {{ get('zodiac_sign') }}?
@@ -364,4 +369,4 @@ I'm experiencing some issues with my horoscope reading. Could you please provide
 # post: error_recovery
 {# Always complete after error recovery, don't loop #}
 set('error_recovery_used', true)
-return()
+finish()
