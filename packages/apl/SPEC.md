@@ -737,7 +737,7 @@ If `descriptor` is not provided, runtimes that support type introspection (like 
 Example of automatic inference in Python:
 
 ```python
-def add(x: int, y: int) -> int:
+def addNumbers(x: int, y: int) -> int:
     """Add two integers and return the sum."""
     return x + y
 ```
@@ -746,7 +746,7 @@ When `describe_tools()` is called, it automatically generates:
 
 ```jsonc
 {
-   "name": "add",
+   "name": "addNumbers",
    "description": "Add two integers and return the sum.",
    "parameters": {
      "type": "object", 
@@ -1244,7 +1244,7 @@ Use `inc(var_name_or_json_path: str, default: int = 0) -> None` to increment cou
 {{ inc('retry_count') }}          {# retry_count starts at 0, becomes 1 #}
 
 {# Add values to variables with default initialization #}
-{{ add('total', 10) }}            {# total starts at 0, becomes 10 #}
+{{ add('total', 10, 0) }}         {# total starts at 0, becomes 10 #}
 {{ add('total', 5) }}             {# total becomes 15 #}
 
 {# String concatenation #}
@@ -1257,7 +1257,7 @@ Use `inc(var_name_or_json_path: str, default: int = 0) -> None` to increment cou
 
 {# Use in loops for sum calculations #}
 {% for number in [10, 20, 30, 40, 50] %}
-  {{ add('sum', number) }}
+  {{ add('sum', number, 0) }}
 {% endfor %}
 {# sum will be 150 #}
 

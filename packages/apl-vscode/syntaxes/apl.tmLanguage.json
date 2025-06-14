@@ -260,7 +260,7 @@
         "1": {
           "patterns": [
             {
-              "match": "(#{1})\\s+(pre|post|prompt)\\s*:\\s*(.*?)(?:\\s+(#+))?\\s*$",
+              "match": "(#{1})\\s+([Pp][Rr][Ee]|[Pp][Oo][Ss][Tt]|[Pp][Rr][Oo][Mm][Pp][Tt])\\s*:\\s*(.*?)(?:\\s+(#+))?\\s*$",
               "name": "heading.1.markdown.apl",
               "captures": {
                 "1": { "name": "punctuation.definition.heading.markdown" },
