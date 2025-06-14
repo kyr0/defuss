@@ -1,3 +1,4 @@
-func(...) in relaxed syntax not hightlighted (identified as text.apl)
+' apostroph symbol causes text to be interpreted as a string literal: e.g.
+"Please gather today's astronomical data and analyze the cosmic influenc"
 
-variable names in relaxed syntax not highlighted (identified as text.apl)
+"set" as keyword is text.apl in relaxed mode - should be: entity.name.function.apl
