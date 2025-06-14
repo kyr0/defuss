@@ -109,7 +109,7 @@
           "name": "keyword.control.jinja"
         },
         {
-          "match": "\\b(set_context|get_context|call_tool)\\b",
+          "match": "\\b(set_context|get_context|call_tool|get|set|add|inc|rem|dec|next|prev|return)\\b",
           "name": "entity.name.function.apl"
         },
         {
@@ -196,7 +196,7 @@
           }
         },
         {
-          "match": "\\b(set_context|get_context|call_tool|inc_context)\\s*\\(",
+          "match": "\\b(set_context|get_context|call_tool|inc_context|get|set|add|inc|rem|dec|next|prev|return)\\s*\\(",
           "captures": {
             "1": { "name": "entity.name.function.apl" }
           }
@@ -403,6 +403,10 @@
         {
           "match": "\\b(loop|super|self|varargs|kwargs)\\b",
           "name": "variable.language.jinja"
+        },
+        {
+          "match": "\\b(set_context|get_context|call_tool|get|set|add|inc|rem|dec|next|prev|return)\\b",
+          "name": "entity.name.function.apl"
         },
         {
           "match": "[a-zA-Z_][a-zA-Z0-9_]*",
