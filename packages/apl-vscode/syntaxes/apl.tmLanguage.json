@@ -171,6 +171,13 @@
           "name": "constant.numeric.jinja"
         },
         {
+          "match": "(\\|)\\s*([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "punctuation.other.jinja" },
+            "2": { "name": "entity.name.function.jinja" }
+          }
+        },
+        {
           "match": "[\\(\\)\\[\\],\\.]",
           "name": "punctuation.jinja"
         }
@@ -219,7 +226,11 @@
           "name": "variable.language.apl"
         },
         {
-          "name": "variable.language.apl"
+          "match": "(\\|)\\s*([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "punctuation.other.jinja" },
+            "2": { "name": "entity.name.function.jinja" }
+          }
         },
         {
           "match": "\\b(true|false|none|null)\\b",
@@ -403,10 +414,10 @@
               "name": "punctuation.other.jinja"
             },
             "2": {
-              "name": "variable.language.apl"
+              "name": "entity.name.function.jinja"
             }
           },
-          "match": "(\\|)([a-zA-Z_][a-zA-Z0-9_]*)"
+          "match": "(\\|)\\s*([a-zA-Z_][a-zA-Z0-9_]*)"
         },
         {
           "captures": {
