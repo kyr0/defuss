@@ -105,7 +105,7 @@
     "relaxedSyntax": {
       "patterns": [
         {
-          "match": "^\\s*(if|elif|else|endif|for|endfor|set|endset|with|endwith)\\b",
+          "match": "^\\s*(if|elif|else|endif|for|endfor|with|endwith)\\b",
           "name": "keyword.control.jinja"
         },
         {
@@ -190,7 +190,7 @@
     "relaxedSyntaxGlobal": {
       "patterns": [
         {
-          "match": "^\\s*(if|elif|else|endif|for|endfor|set|endset|with|endwith)\\b",
+          "match": "^\\s*(if|elif|else|endif|for|endfor|with|endwith)\\b",
           "captures": {
             "1": { "name": "keyword.control.jinja" }
           }
