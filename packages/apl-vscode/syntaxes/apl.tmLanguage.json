@@ -127,7 +127,7 @@
           "name": "constant.language.jinja"
         },
         {
-          "match": "\\b(global_runs|result_text|runs|time_elapsed|errors|next_step)\\b",
+          "match": "\\b(prev_step|next_step|result_text|result_json|result_tool_calls|result_image_urls|result_audio_inputs|result_files|result_role|usage|runs|global_runs|time_elapsed|time_elapsed_global|errors|prompts|tools|context|context_history|model|temperature|allowed_tools|output_mode|output_structure|max_tokens|top_p|presence_penalty|frequency_penalty|top_k|repetition_penalty|stop_sequences|seed|logit_bias)\\b",
           "name": "variable.language.apl"
         },
         {
@@ -191,6 +191,12 @@
           }
         },
         {
+          "match": "([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+          "captures": {
+            "1": { "name": "entity.name.function.jinja" }
+          }
+        },
+        {
           "match": "\\b(range|len|str|int|float|list|dict|lower|upper)\\s*\\(",
           "captures": {
             "1": { "name": "support.function.builtin.python" }
@@ -209,7 +215,10 @@
           "name": "constant.numeric.jinja"
         },
         {
-          "match": "\\b(global_runs|result_text|runs|time_elapsed|errors|next_step|counter)\\b",
+          "match": "\\b(prev_step|next_step|result_text|result_json|result_tool_calls|result_image_urls|result_audio_inputs|result_files|result_role|usage|runs|global_runs|time_elapsed|time_elapsed_global|errors|prompts|tools|context|context_history|model|temperature|allowed_tools|output_mode|output_structure|max_tokens|top_p|presence_penalty|frequency_penalty|top_k|repetition_penalty|stop_sequences|seed|logit_bias|result)\\b",
+          "name": "variable.language.apl"
+        },
+        {
           "name": "variable.language.apl"
         },
         {
