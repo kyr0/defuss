@@ -3,6 +3,12 @@ import {
   convolution as convolution_wasm,
 } from "../pkg/defuss_fastmath.js";
 import { convolution as convolution_js } from "./convolution.js";
+import {
+  convolution1D_webnn,
+  convolution2D_webnn,
+  isWebNNAvailable,
+  getWebNNStats,
+} from "./convolution_webnn.js";
 
 // Enhanced buffer pool with aggressive reuse and memory pressure awareness
 class BufferPool {
@@ -192,6 +198,27 @@ const Workspace = (() => {
   };
 })();
 
+// WebNN availability check (cached)
+let webnnAvailableCache: boolean | null = null;
+let webnnCheckPromise: Promise<boolean> | null = null;
+
+const checkWebNNAvailability = async (): Promise<boolean> => {
+  if (webnnAvailableCache !== null) {
+    return webnnAvailableCache;
+  }
+  
+  if (webnnCheckPromise) {
+    return webnnCheckPromise;
+  }
+  
+  webnnCheckPromise = isWebNNAvailable().then(available => {
+    webnnAvailableCache = available;
+    return available;
+  });
+  
+  return webnnCheckPromise;
+};
+
 // Memory-optimized convolution with aggressive allocation strategy
 export const convolution = (
   signal: Float32Array,
@@ -349,6 +376,178 @@ export const convolution2DInPlace = (
   convolution_2d_wasm(image, kernel, result, imgWidth, imgHeight, kernelSize);
 };
 
+// Async convolution with WebNN support for maximum performance
+export const convolutionAsync = async (
+  signal: Float32Array,
+  kernel: Float32Array,
+  result?: Float32Array,
+): Promise<Float32Array> => {
+  const signalLen = signal.length;
+  const kernelLen = kernel.length;
+  const resultLen = signalLen + kernelLen - 1;
+
+  // Use provided result buffer or allocate/reuse one with memory-efficient strategy
+  let output: Float32Array;
+  let isStackAllocated = false;
+  let isPoolAllocated = false;
+
+  if (result && result.length >= resultLen) {
+    // Use provided buffer (may be larger, that's OK)
+    output =
+      result.length === resultLen
+        ? result
+        : (result.subarray(0, resultLen) as Float32Array);
+  } else {
+    // Aggressive stack allocation for small to medium results
+    const stackBuffer = Workspace.allocateStack(resultLen);
+    if (stackBuffer) {
+      output = stackBuffer;
+      isStackAllocated = true;
+    } else {
+      // Use enhanced buffer pool for larger allocations
+      output = bufferPool.getBuffer(resultLen);
+      isPoolAllocated = true;
+    }
+  }
+
+  // Enhanced decision tree with WebNN as the fastest option
+  const webnnAvailable = await checkWebNNAvailability();
+  
+  let useWebNN = false;
+  let useWasm = false;
+
+  if (webnnAvailable && signalLen >= 128) {
+    // WebNN excels with larger data sizes (GPU/NPU acceleration)
+    if (signalLen >= 1024) {
+      // Very large: WebNN should be fastest
+      useWebNN = true;
+    } else if (signalLen >= 512 && kernelLen >= 16) {
+      // Large with significant kernel: WebNN preferred
+      useWebNN = true;
+    } else if (signalLen >= 256 && kernelLen >= 32) {
+      // Medium-large with large kernel: WebNN wins
+      useWebNN = true;
+    }
+  }
+
+  if (!useWebNN) {
+    // Fallback to existing WASM/JS logic
+    if (signalLen <= 64) {
+      // Small: JS is faster and stack-allocated
+      useWasm = false;
+    } else if (signalLen >= 512 && kernelLen >= 32) {
+      // Large: JS is often better, but depends on kernel size
+      useWasm = kernelLen >= 64; // WASM better for very large kernels
+    } else {
+      // Medium: WASM generally wins
+      useWasm = true;
+    }
+  }
+
+  // Execute the convolution
+  if (useWebNN) {
+    try {
+      await convolution1D_webnn(signal, kernel, output);
+    } catch (error) {
+      console.warn('WebNN convolution failed, falling back to WASM:', error);
+      convolution_wasm(signal, kernel, output);
+    }
+  } else if (useWasm) {
+    convolution_wasm(signal, kernel, output);
+  } else {
+    convolution_js(signal, kernel, output);
+  }
+
+  // Track buffer allocation for lifecycle management
+  if (isPoolAllocated) {
+    BufferLifecycle.trackBuffer(output);
+  }
+
+  // For automatic memory management: clean up stack periodically
+  if (isStackAllocated && Math.random() < 0.1) {
+    Workspace.resetStack(); // 10% chance to reset stack
+  }
+
+  return output;
+};
+
+// Async 2D convolution with WebNN support
+export const convolution2DAsync = async (
+  image: Float32Array,
+  kernel: Float32Array,
+  result?: Float32Array,
+  imgWidth?: number,
+  imgHeight?: number,
+  kernelSize?: number,
+): Promise<Float32Array> => {
+  warmPool(); // Ensure pool is ready
+
+  // Infer dimensions if not provided
+  const width = imgWidth ?? Math.sqrt(image.length);
+  const height = imgHeight ?? width;
+  const kSize = kernelSize ?? Math.sqrt(kernel.length);
+  const resultSize = width * height;
+
+  // Enhanced memory allocation strategy for 2D
+  let output: Float32Array;
+  let isStackAllocated = false;
+  let isPoolAllocated = false;
+
+  if (result && result.length >= resultSize) {
+    output =
+      result.length === resultSize
+        ? result
+        : (result.subarray(0, resultSize) as Float32Array);
+  } else {
+    // Stack allocation for smaller 2D operations
+    const stackBuffer = Workspace.allocateStack(resultSize);
+    if (stackBuffer) {
+      output = stackBuffer;
+      isStackAllocated = true;
+    } else {
+      // Enhanced buffer pool for larger allocations
+      output = bufferPool.getBuffer(resultSize);
+      isPoolAllocated = true;
+    }
+  }
+
+  // Enhanced decision tree with WebNN for 2D convolution
+  const webnnAvailable = await checkWebNNAvailability();
+  
+  let useWebNN = false;
+
+  if (webnnAvailable) {
+    // WebNN excels for 2D convolution with larger images
+    if (width >= 64 && height >= 64) {
+      // Large images: WebNN should be fastest
+      useWebNN = true;
+    } else if (width >= 32 && height >= 32 && kSize >= 5) {
+      // Medium images with significant kernels: WebNN preferred
+      useWebNN = true;
+    }
+  }
+
+  // Execute the convolution
+  if (useWebNN) {
+    try {
+      await convolution2D_webnn(image, kernel, output, width, height, kSize);
+    } catch (error) {
+      console.warn('WebNN 2D convolution failed, falling back to WASM:', error);
+      convolution_2d_wasm(image, kernel, output, width, height, kSize);
+    }
+  } else {
+    // 2D convolution uses WASM for optimal performance
+    convolution_2d_wasm(image, kernel, output, width, height, kSize);
+  }
+
+  // Track allocation for lifecycle management
+  if (isPoolAllocated) {
+    BufferLifecycle.trackBuffer(output);
+  }
+
+  return output;
+};
+
 // Enhanced buffer management utilities with comprehensive memory control
 export const BufferUtils = {
   // Manually release a buffer back to the pool
@@ -500,5 +699,36 @@ export const BatchOperations = {
       // Clean up between batches
       BufferLifecycle.performMaintenance();
     }
+  },
+};
+
+// WebNN utilities for checking availability and getting stats
+export const WebNNUtils = {
+  /**
+   * Check if WebNN is available in the current environment.
+   * @returns Promise<boolean> True if WebNN is available
+   */
+  isAvailable: checkWebNNAvailability,
+
+  /**
+   * Get WebNN performance and cache statistics.
+   * @returns Object with WebNN stats
+   */
+  getStats: getWebNNStats,
+
+  /**
+   * Get cached availability status (synchronous, may be null if not checked yet).
+   * @returns boolean | null Cached availability status
+   */
+  getCachedAvailability: (): boolean | null => webnnAvailableCache,
+
+  /**
+   * Force re-check WebNN availability (clears cache).
+   * @returns Promise<boolean> Updated availability status
+   */
+  recheckAvailability: async (): Promise<boolean> => {
+    webnnAvailableCache = null;
+    webnnCheckPromise = null;
+    return checkWebNNAvailability();
   },
 };

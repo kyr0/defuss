@@ -3,6 +3,9 @@ import { Bench } from "tinybench";
 import {
   convolution as convolution_adaptive,
   convolution_2d as convolution_2d_adaptive,
+  convolutionAsync,
+  convolution2DAsync,
+  WebNNUtils,
 } from "./index.js";
 import {
   convolution as convolution_js,
@@ -12,6 +15,10 @@ import {
   convolution as convolution_wasm,
   convolution_2d as convolution_2d_wasm,
 } from "../pkg/defuss_fastmath.js";
+import {
+  convolution1D_webnn,
+  convolution2D_webnn,
+} from "./convolution_webnn.js";
 import { ensureWasmInit } from "./bench-util";
 import { TestData } from "./test-utils.js";
 
