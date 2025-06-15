@@ -20,12 +20,12 @@
     "bench": "vitest run --config vitest.bench.config.ts"
   },
   "devDependencies": {
-    "@vitest/browser": "^3.2.3",
     "@testing-library/dom": "^10.4.0",
+    "@vitest/browser": "^3.2.3",
     "playwright": "^1.53.0",
+    "tinybench": "^4.0.1",
     "vitest": "^3.2.3",
-    "wasm-pack": "^0.12.1",
-    "tinybench": "^4.0.1"
+    "wasm-pack": "^0.12.1"
   },
   "engines": {
     "node": ">= 10"
