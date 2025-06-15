@@ -2,12 +2,9 @@
   "name": "defuss-fastmath",
   "version": "0.0.1",
   "type": "module",
-  "main": "index.js",
-  "types": "index.d.ts",
   "packageManager": "pnpm@9.14.2",
   "description": "Ludicrously fast multicore math for web browsers using WebAssembly, SIMD-128 and Web Workers",
   "repository": "https://github.com/kyr0/defuss",
-  "files": ["index.js", "index.d.ts", "pkg/"],
   "scripts": {
     "prebuild": "rm -rf ./pkg",
     "build": "wasm-pack build --target web --out-dir pkg",
@@ -17,15 +14,34 @@
     "pretest": "pnpm build",
     "test": "vitest run",
     "prebench": "pnpm test",
-    "bench": "vitest run --config vitest.bench.config.ts"
+    "bench": "vitest run --config vitest.bench.config.ts",
+    "release": "sh scripts/release.sh"
   },
   "exports": {
     ".": {
-      "import": "./index.js",
-      "types": "./index.d.ts"
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
     },
-    "./pkg/*": "./*"
+    "./wasm": {
+      "import": {
+        "types": "./pkg/defuss_fastmath.d.ts",
+        "default": "./pkg/defuss_fastmath.js"
+      }
+    },
+    "./js": {
+      "import": {
+        "types": "./dist/index_jsonly.d.ts",
+        "default": "./dist/index_jsonly.js"
+      }
+    }
   },
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "files": ["pkg/*", "dist/*"],
   "devDependencies": {
     "@testing-library/dom": "^10.4.0",
     "@vitest/browser": "^3.2.3",

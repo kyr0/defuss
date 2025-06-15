@@ -1,3 +1,45 @@
+export const convolution = (
+  signal: Float32Array,
+  kernel: Float32Array,
+  result: Float32Array,
+) => {
+  const signalLen = signal.length;
+  const kernelLen = kernel.length;
+  const resultLen = signalLen + kernelLen - 1;
+
+  // Unroll factor 4 for the inner kernel loop
+  const unrollFactor = 4;
+  const kernelLenUnrolled = Math.floor(kernelLen / unrollFactor) * unrollFactor;
+
+  for (let n = 0; n < resultLen; n++) {
+    let sum = 0;
+
+    // Unrolled loop (factor 4)
+    let m = 0;
+    for (; m < kernelLenUnrolled; m += unrollFactor) {
+      const baseIdx = n - m;
+
+      // Manual unrolling of 4 iterations
+      if (baseIdx >= 0 && baseIdx < signalLen)
+        sum += signal[baseIdx] * kernel[m];
+      if (baseIdx - 1 >= 0 && baseIdx - 1 < signalLen)
+        sum += signal[baseIdx - 1] * kernel[m + 1];
+      if (baseIdx - 2 >= 0 && baseIdx - 2 < signalLen)
+        sum += signal[baseIdx - 2] * kernel[m + 2];
+      if (baseIdx - 3 >= 0 && baseIdx - 3 < signalLen)
+        sum += signal[baseIdx - 3] * kernel[m + 3];
+    }
+
+    // Handle remaining iterations
+    for (; m < kernelLen; m++) {
+      if (n >= m && n - m < signalLen) {
+        sum += signal[n - m] * kernel[m];
+      }
+    }
+    result[n] = sum;
+  }
+};
+
 export const convolution_2d = (
   image: Float32Array,
   kernel: Float32Array,
