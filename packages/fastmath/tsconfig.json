@@ -6,7 +6,7 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["@types/web", "vite/client", "@types/audioworklet"],
+    "types": ["@vitest/browser/providers/playwright"],
     "lib": ["ES2023"]
   },
   "include": ["src/**/*.ts"],

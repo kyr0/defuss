@@ -3,19 +3,20 @@ name = "defuss-fastmath"
 version = "0.0.1"
 edition = "2021"
 publish = false
-description = "Ludicrously fast multicore math for Rust, JavaScript, TypeScript, browsers, and Node.js"
+description = "Ludicrously fast multicore math for web browsers using WebAssembly, SIMD-128 and Web Workers"
 license = "MIT"
 authors = ["Aron Homberg <info@aron-homberg.de>"]
 keywords = [
     "fastmath", 
     "math", 
     "wasm",
+    "webassembly",
     "multicore",
     "rust",
     "javascript",
     "typescript",
-    "nodejs",
     "browser",
+    "web-workers",
     "audio",
     "dsp",
     "ml",

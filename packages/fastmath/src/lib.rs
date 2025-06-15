@@ -6,6 +6,38 @@ pub use wasm_bindgen_rayon::init_thread_pool;
 
 mod buffer;
 mod dsp;
+mod vector;
+mod matrix;
+mod convolution;
+
+// Re-export DSP functions
+pub use dsp::{sine, saw, triangle, square};
+
+// Re-export math functions
+pub use vector::{
+    vector_add,
+    vector_multiply,
+    vector_subtract,
+    vector_scale,
+    vector_dot_product,
+    vector_normalize,
+    vector_magnitude,
+};
+
+pub use matrix::{
+    matrix_multiply,
+    matrix_add,
+    matrix_subtract,
+    matrix_transpose,
+    matrix_scale,
+};
+
+pub use convolution::{
+    convolution,
+    cross_correlation,
+    convolution_2d,
+    auto_correlation,
+};
 
 #[wasm_bindgen(start)]
 pub fn main() {

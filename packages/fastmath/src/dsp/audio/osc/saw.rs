@@ -1,7 +1,9 @@
+use wasm_bindgen::prelude::*;
 use rayon::prelude::*;
 
+#[wasm_bindgen]
 pub fn saw(
-  buffer: &mut Vec<f32>,      // mutable buffer for writing output
+  buffer: &mut [f32],         // mutable buffer for writing output
   frequency: f32,             // frequency in Hz
   amplitude: f32,             // amplitude (0.0 to 1.0)
   sample_rate: f32,           // sample rate in Hz
