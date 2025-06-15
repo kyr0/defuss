@@ -20,12 +20,18 @@ pub use vector::{
     vector_subtract,
     vector_scale,
     vector_dot_product,
+    vector_dot_product_single,
+    vector_dot_product_parallel,
+    vector_batch_dot_product,
+    vector_batch_dot_product_separated,
     vector_normalize,
     vector_magnitude,
 };
 
 pub use matrix::{
     matrix_multiply,
+    matrix_multiply_single,
+    matrix_multiply_parallel,
     matrix_add,
     matrix_subtract,
     matrix_transpose,

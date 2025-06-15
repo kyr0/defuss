@@ -1,10 +1,66 @@
 use wasm_bindgen::prelude::*;
 use rayon::prelude::*;
 
-/// Parallel matrix multiplication using Rayon
+/// Threshold for switching to parallel processing for matrices
+/// For matrices, we consider total element count (m * n * k for multiplication)
+const MATRIX_PARALLEL_THRESHOLD: usize = 10000;
+
+/// Adaptive matrix multiplication using Rayon
 /// Computes C = A * B where A is m×k, B is k×n, and C is m×n
+/// Switches between single-threaded and parallel based on matrix size
 #[wasm_bindgen]
 pub fn matrix_multiply(
+    a: &[f32],      // Matrix A (row-major order)
+    b: &[f32],      // Matrix B (row-major order)
+    c: &mut [f32],  // Output matrix C (row-major order)
+    m: usize,       // Rows in A and C
+    k: usize,       // Columns in A, rows in B
+    n: usize,       // Columns in B and C
+) {
+    assert_eq!(a.len(), m * k, "Matrix A size mismatch");
+    assert_eq!(b.len(), k * n, "Matrix B size mismatch");
+    assert_eq!(c.len(), m * n, "Matrix C size mismatch");
+
+    let total_ops = m * n * k;
+    
+    if total_ops < MATRIX_PARALLEL_THRESHOLD {
+        // Single-threaded for small matrices
+        matrix_multiply_single(a, b, c, m, k, n);
+    } else {
+        // Parallel for large matrices
+        matrix_multiply_parallel(a, b, c, m, k, n);
+    }
+}
+
+/// Single-threaded matrix multiplication for small matrices
+#[wasm_bindgen]
+pub fn matrix_multiply_single(
+    a: &[f32],      // Matrix A (row-major order)
+    b: &[f32],      // Matrix B (row-major order)
+    c: &mut [f32],  // Output matrix C (row-major order)
+    m: usize,       // Rows in A and C
+    k: usize,       // Columns in A, rows in B
+    n: usize,       // Columns in B and C
+) {
+    assert_eq!(a.len(), m * k, "Matrix A size mismatch");
+    assert_eq!(b.len(), k * n, "Matrix B size mismatch");
+    assert_eq!(c.len(), m * n, "Matrix C size mismatch");
+
+    // Single-threaded computation
+    for i in 0..m {
+        for j in 0..n {
+            let mut sum = 0.0;
+            for l in 0..k {
+                sum += a[i * k + l] * b[l * n + j];
+            }
+            c[i * n + j] = sum;
+        }
+    }
+}
+
+/// Parallel matrix multiplication for large matrices
+#[wasm_bindgen]
+pub fn matrix_multiply_parallel(
     a: &[f32],      // Matrix A (row-major order)
     b: &[f32],      // Matrix B (row-major order)
     c: &mut [f32],  // Output matrix C (row-major order)

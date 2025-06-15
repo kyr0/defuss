@@ -35,12 +35,6 @@
         "types": "./dist/index_purejs.d.ts",
         "default": "./dist/index_purejs.js"
       }
-    },
-    "./webnn": {
-      "import": {
-        "types": "./dist/index_webnn.d.ts",
-        "default": "./dist/index_webnn.js"
-      }
     }
   },
   "sideEffects": false,
