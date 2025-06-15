@@ -1,13 +1,13 @@
 import { cross_correlation, auto_correlation } from "../pkg/defuss_fastmath.js";
 import { convolution, convolution_2d } from "./index.js";
-import { createTestData } from "./test-util.js";
+import { TestData } from "./test-utils.js";
 
 // Configurable test functions based on size
 export const convolutionTestFunctions = {
   // 1D Convolution test with configurable size
   test1DConvolution: (size = 4, kernelSize = 3) => {
-    const signal = createTestData.signal(size);
-    const kernel = createTestData.kernel1D(kernelSize);
+    const signal = TestData.signal(size);
+    const kernel = TestData.kernel1D(kernelSize);
     const result = new Float32Array(size + kernelSize - 1);
     convolution(signal, kernel, result);
     return { signal, kernel, result };
@@ -15,8 +15,8 @@ export const convolutionTestFunctions = {
 
   // Cross correlation test with configurable size
   testCrossCorrelation: (size = 5, templateSize = 3) => {
-    const signal = createTestData.signal(size);
-    const template = createTestData.kernel1D(templateSize);
+    const signal = TestData.signal(size);
+    const template = TestData.kernel1D(templateSize);
     const result = new Float32Array(size - templateSize + 1);
     cross_correlation(signal, template, result);
     return { signal, template, result };
@@ -24,8 +24,8 @@ export const convolutionTestFunctions = {
 
   // 2D Convolution test with configurable size
   test2DConvolution: (imageSize = 3, kernelSize = 3) => {
-    const image = createTestData.image2D(imageSize);
-    const kernel = createTestData.kernel2D(kernelSize);
+    const image = TestData.image2D(imageSize);
+    const kernel = TestData.kernel2D(kernelSize);
     const result = new Float32Array(imageSize * imageSize);
     convolution_2d(image, kernel, result, imageSize, imageSize, kernelSize);
     return { image, kernel, result, imageSize, kernelSize };
@@ -33,7 +33,7 @@ export const convolutionTestFunctions = {
 
   // Auto correlation test with configurable size
   testAutoCorrelation: (size = 5, maxLag = 2) => {
-    const signal = createTestData.signal(size);
+    const signal = TestData.signal(size);
     const result = new Float32Array(2 * maxLag + 1);
     auto_correlation(signal, result, maxLag);
     return { signal, result, maxLag };
@@ -43,7 +43,7 @@ export const convolutionTestFunctions = {
   testImpulseResponse: (signalSize = 4, kernelSize = 3) => {
     const signal = new Float32Array(signalSize);
     signal[0] = 1; // Impulse at the beginning
-    const kernel = createTestData.kernel1D(kernelSize);
+    const kernel = TestData.kernel1D(kernelSize);
     const result = new Float32Array(signalSize + kernelSize - 1);
     convolution(signal, kernel, result);
     return { signal, kernel, result };
@@ -51,16 +51,16 @@ export const convolutionTestFunctions = {
 
   // Performance test functions with configurable sizes
   testConvolution: (signalSize = 1024, kernelSize = 64) => {
-    const signal = createTestData.signal(signalSize);
-    const kernel = createTestData.kernel1D(kernelSize);
+    const signal = TestData.signal(signalSize);
+    const kernel = TestData.kernel1D(kernelSize);
     const result = new Float32Array(signalSize + kernelSize - 1);
     convolution(signal, kernel, result);
     return { signal, kernel, result };
   },
 
   test2DConvolutionPerf: (imageSize = 128, kernelSize = 5) => {
-    const image = createTestData.image2D(imageSize);
-    const kernel = createTestData.kernel2D(kernelSize);
+    const image = TestData.image2D(imageSize);
+    const kernel = TestData.kernel2D(kernelSize);
     const result = new Float32Array(imageSize * imageSize);
     convolution_2d(image, kernel, result, imageSize, imageSize, kernelSize);
     return { image, kernel, result, imageSize, kernelSize };
@@ -94,7 +94,7 @@ export const convolutionTestFunctions = {
 
   // Specialized test cases
   testEdgeDetection: (imageSize = 3) => {
-    const image = createTestData.image2D(imageSize, 42); // Use specific seed for consistency
+    const image = TestData.image2D(imageSize, 42); // Use specific seed for consistency
     // Create edge detection kernel (Laplacian)
     const kernelSize = 3;
     const kernel = new Float32Array([0, -1, 0, -1, 4, -1, 0, -1, 0]);

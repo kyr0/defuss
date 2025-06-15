@@ -13,7 +13,7 @@ import {
   convolution_2d as convolution_2d_wasm,
 } from "../pkg/defuss_fastmath.js";
 import { ensureWasmInit } from "./bench-util";
-import { createTestData } from "./test-util.js";
+import { TestData } from "./test-utils.js";
 
 describe("Convolution Performance Benchmarks", async () => {
   beforeAll(async () => {
@@ -42,8 +42,8 @@ describe("Convolution Performance Benchmarks", async () => {
       const kernelSize = Math.max(3, Math.floor(size / 16));
       console.log(`  Testing size ${size}x${kernelSize}...`);
 
-      const signal = createTestData.signal(size);
-      const kernel = createTestData.kernel1D(kernelSize);
+      const signal = TestData.signal(size);
+      const kernel = TestData.kernel1D(kernelSize);
 
       // Pre-allocate result buffers to avoid allocation overhead during benchmarking
       const wasmResult = new Float32Array(size + kernelSize - 1);
@@ -90,8 +90,8 @@ describe("Convolution Performance Benchmarks", async () => {
         `  Testing size ${size}x${size} with ${kernelSize}x${kernelSize} kernel...`,
       );
 
-      const image = createTestData.image2D(size);
-      const kernel = createTestData.kernel2D(kernelSize);
+      const image = TestData.image2D(size);
+      const kernel = TestData.kernel2D(kernelSize);
 
       // Pre-allocate result buffers to avoid allocation overhead
       const adaptiveResult = new Float32Array(size * size);
@@ -147,8 +147,8 @@ describe("Convolution Performance Benchmarks", async () => {
     const compSize = 128;
     const compKernelSize = 16;
 
-    const signal = createTestData.signal(compSize);
-    const kernel = createTestData.kernel1D(compKernelSize);
+    const signal = TestData.signal(compSize);
+    const kernel = TestData.kernel1D(compKernelSize);
 
     // Pre-allocate result buffers
     const adaptiveResult = new Float32Array(compSize + compKernelSize - 1);

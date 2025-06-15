@@ -32,8 +32,14 @@
     },
     "./js": {
       "import": {
-        "types": "./dist/index_jsonly.d.ts",
-        "default": "./dist/index_jsonly.js"
+        "types": "./dist/index_purejs.d.ts",
+        "default": "./dist/index_purejs.js"
+      }
+    },
+    "./webnn": {
+      "import": {
+        "types": "./dist/index_webnn.d.ts",
+        "default": "./dist/index_webnn.js"
       }
     }
   },
@@ -43,6 +49,7 @@
   "types": "./dist/index.d.cts",
   "files": ["pkg/*", "dist/*"],
   "devDependencies": {
+    "@types/web": "^0.0.241",
     "@testing-library/dom": "^10.4.0",
     "@vitest/browser": "^3.2.3",
     "pkgroll": "^2.12.2",

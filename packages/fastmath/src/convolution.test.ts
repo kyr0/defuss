@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import init from "../pkg";
 import { convolutionTestFunctions } from "./convolution-test-functions.js";
-import { createTestData } from "./test-util";
+import { TestData } from "./test-utils.js";
 
 describe("Convolution Operations", () => {
   beforeAll(async () => {
@@ -83,9 +83,9 @@ describe("Convolution Operations", () => {
   });
 
   it("should test data generation functions", () => {
-    const signal = createTestData.signal(10, 42);
-    const kernel = createTestData.kernel1D(5, 123);
-    const image = createTestData.image2D(4, 84);
+    const signal = TestData.signal(10, 42);
+    const kernel = TestData.kernel1D(5, 123);
+    const image = TestData.image2D(4, 84);
 
     expect(signal).toHaveLength(10);
     expect(kernel).toHaveLength(5);

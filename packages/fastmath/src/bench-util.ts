@@ -1,7 +1,7 @@
 import { Bench } from "tinybench";
 import init, { initThreadPool } from "../pkg/defuss_fastmath.js";
 import { convolutionTestFunctions } from "./convolution-test-functions.js";
-import { createTestData } from "./test-util.js";
+import { TestData } from "./test-utils.js";
 import { convolution, convolution_2d } from "./convolution.js";
 
 // Initialize WASM module
@@ -59,7 +59,7 @@ export async function benchmarkConvolution1D(
     console.log(`Benchmarking 1D convolution size: ${size}`);
 
     const kernelSize = Math.max(3, Math.floor(size / 16));
-    const { signal, kernel } = createTestData.convolution1D(size, kernelSize);
+    const { signal, kernel } = TestData.convolution1D(size, kernelSize);
 
     const bench = new Bench({
       time: cfg.benchTime,
@@ -118,7 +118,7 @@ export async function benchmarkConvolution2D(
     console.log(`Benchmarking 2D convolution size: ${size}x${size}`);
 
     const kernelSize = Math.max(3, Math.min(9, Math.floor(size / 16)));
-    const { image, kernel } = createTestData.convolution2D(size, kernelSize);
+    const { image, kernel } = TestData.convolution2D(size, kernelSize);
 
     const bench = new Bench({
       time: cfg.benchTime,

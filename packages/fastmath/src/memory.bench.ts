@@ -9,11 +9,11 @@ import {
   BatchOperations,
 } from "./index.js";
 import { convolution as convolution_js } from "./convolution.js";
-import { convolution as convolution_wasm } from "../pkg/defuss_fastmath.js";
 import {
-  createTestDataOptimized,
+  OptimizedTestData,
   BenchmarkUtils,
-} from "./optimized-test-utils.js";
+  BufferPoolUtils,
+} from "./test-utils.js";
 
 describe("Memory Allocation Benchmarks", () => {
   it("should compare allocation strategies", async () => {
@@ -25,7 +25,7 @@ describe("Memory Allocation Benchmarks", () => {
     console.log("✅ WASM initialized");
 
     // Pre-allocate benchmark buffers
-    BenchmarkUtils.preAllocateBenchmarkBuffers();
+    BufferPoolUtils.preAllocate();
 
     const testSize = 128;
     const kernelSize = 8;
@@ -36,8 +36,8 @@ describe("Memory Allocation Benchmarks", () => {
     );
 
     // Generate test data once
-    const signal = createTestDataOptimized.signal(testSize);
-    const kernel = createTestDataOptimized.kernel1D(kernelSize);
+    const signal = OptimizedTestData.signal(testSize);
+    const kernel = OptimizedTestData.kernel1D(kernelSize);
 
     // Pre-allocate result buffer for in-place operations
     const reusableResult = new Float32Array(testSize + kernelSize - 1);
@@ -62,8 +62,8 @@ describe("Memory Allocation Benchmarks", () => {
       })
       .add("Stack allocation (small buffers)", () => {
         BufferUtils.resetStack();
-        const smallSignal = createTestDataOptimized.signal(32);
-        const smallKernel = createTestDataOptimized.kernel1D(3);
+        const smallSignal = OptimizedTestData.signal(32);
+        const smallKernel = OptimizedTestData.kernel1D(3);
         convolution(smallSignal, smallKernel); // Should use stack
       });
 
@@ -93,8 +93,8 @@ describe("Memory Allocation Benchmarks", () => {
     console.log("\n🚀 Testing batch operations...");
 
     const batchPairs = Array.from({ length: 50 }, (_, i) => ({
-      signal: createTestDataOptimized.signal(64 + i),
-      kernel: createTestDataOptimized.kernel1D(4 + (i % 3)),
+      signal: OptimizedTestData.signal(64 + i),
+      kernel: OptimizedTestData.kernel1D(4 + (i % 3)),
     }));
 
     const batchStartTime = performance.now();
@@ -123,7 +123,7 @@ describe("Memory Allocation Benchmarks", () => {
 
     // Test cache efficiency
     console.log("\n📈 Test Data Cache Statistics:");
-    const cacheStats = createTestDataOptimized.getCacheStats();
+    const cacheStats = OptimizedTestData.getCacheStats();
     console.log(`Cache entries: ${cacheStats.entryCount}`);
     console.log(
       `Total cached memory: ${(cacheStats.totalMemory / 1024).toFixed(2)} KB`,
@@ -164,15 +164,15 @@ describe("Memory Allocation Benchmarks", () => {
     );
 
     // Generate test data
-    const signal = createTestDataOptimized.signal(testSize);
-    const kernel = createTestDataOptimized.kernel1D(kernelSize);
+    const signal = OptimizedTestData.signal(testSize);
+    const kernel = OptimizedTestData.kernel1D(kernelSize);
     const reusableResult = new Float32Array(testSize + kernelSize - 1);
 
     console.log("\n🔥 Stack allocation test (small buffers):");
     const stackStart = performance.now();
     for (let i = 0; i < iterations; i++) {
-      const smallSignal = createTestDataOptimized.signal(32);
-      const smallKernel = createTestDataOptimized.kernel1D(3);
+      const smallSignal = OptimizedTestData.signal(32);
+      const smallKernel = OptimizedTestData.kernel1D(3);
       const result = convolution(smallSignal, smallKernel);
       if (i % 100 === 0) BufferUtils.resetStack();
     }
@@ -208,8 +208,8 @@ describe("Memory Allocation Benchmarks", () => {
 
     console.log("\n🎯 Enhanced batch processing test:");
     const batchPairs = Array.from({ length: 100 }, (_, i) => ({
-      signal: createTestDataOptimized.signal(64 + (i % 32)),
-      kernel: createTestDataOptimized.kernel1D(4 + (i % 3)),
+      signal: OptimizedTestData.signal(64 + (i % 32)),
+      kernel: OptimizedTestData.kernel1D(4 + (i % 3)),
     }));
 
     const batchStart = performance.now();
@@ -226,8 +226,8 @@ describe("Memory Allocation Benchmarks", () => {
     // Test streaming for very large datasets
     console.log("\n🌊 Streaming processing test:");
     const largeBatch = Array.from({ length: 500 }, (_, i) => ({
-      signal: createTestDataOptimized.signal(32 + (i % 16)),
-      kernel: createTestDataOptimized.kernel1D(3 + (i % 2)),
+      signal: OptimizedTestData.signal(32 + (i % 16)),
+      kernel: OptimizedTestData.kernel1D(3 + (i % 2)),
     }));
 
     const streamStart = performance.now();
