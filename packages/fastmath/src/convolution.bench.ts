@@ -14,7 +14,7 @@ describe("Convolution Performance Benchmarks", () => {
     // Initialize WASM
     await init();
 
-    await initThreadPool(8);
+    await initThreadPool(navigator.hardwareConcurrency);
     console.log("✅ WASM initialized");
 
     const allResults: Array<{
@@ -37,11 +37,20 @@ describe("Convolution Performance Benchmarks", () => {
       const signal = createTestData.signal(size);
       const kernel = createTestData.kernel1D(kernelSize);
 
+      // Pre-allocate result buffers to avoid allocation overhead during benchmarking
+      const wasmResult = new Float32Array(size + kernelSize - 1);
+      const jsResult = new Float32Array(size + kernelSize - 1);
+      const jitResult = new Float32Array(size + kernelSize - 1);
+
       const bench = new Bench({ time: 1000, iterations: 10 });
 
       bench
         .add(`WASM 1D Convolution ${size}x${kernelSize}`, () => {
-          convolutionTestFunctions.testConvolutionWithData(signal, kernel);
+          convolutionTestFunctions.testConvolutionWithData(
+            signal,
+            kernel,
+            wasmResult,
+          );
         })
         .add(`Naive JS 1D Convolution ${size}x${kernelSize}`, () => {
           benchmarkFunctions.naiveConvolution(signal, kernel);
@@ -80,6 +89,9 @@ describe("Convolution Performance Benchmarks", () => {
       const image = createTestData.image2D(size);
       const kernel = createTestData.kernel2D(kernelSize);
 
+      // Pre-allocate result buffers to avoid allocation overhead
+      const wasmResult = new Float32Array(size * size);
+
       const bench = new Bench({ time: 1000, iterations: 5 });
 
       bench
@@ -89,6 +101,7 @@ describe("Convolution Performance Benchmarks", () => {
             kernel,
             size,
             kernelSize,
+            wasmResult,
           );
         })
         .add(`Naive JS 2D Convolution ${size}x${size}`, () => {
@@ -135,11 +148,18 @@ describe("Convolution Performance Benchmarks", () => {
     const signal = createTestData.signal(compSize);
     const kernel = createTestData.kernel1D(compKernelSize);
 
+    // Pre-allocate result buffers
+    const convResult = new Float32Array(compSize + compKernelSize - 1);
+
     const opsBench = new Bench({ time: 500, iterations: 10 });
 
     opsBench
       .add("WASM 1D Convolution", () => {
-        convolutionTestFunctions.testConvolutionWithData(signal, kernel);
+        convolutionTestFunctions.testConvolutionWithData(
+          signal,
+          kernel,
+          convResult,
+        );
       })
       .add("WASM Cross-Correlation", () => {
         convolutionTestFunctions.testCrossCorrelation(compSize, compKernelSize);

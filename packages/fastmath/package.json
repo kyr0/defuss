@@ -11,7 +11,7 @@
   "scripts": {
     "prebuild": "rm -rf ./pkg",
     "build": "wasm-pack build --target web --out-dir pkg",
-    "postbuild": "pnpm decompile",
+    "postbuild": "pnpm decompile && pkgroll",
     "clean": "rm -rf pkg",
     "decompile": "wasm2wat --enable-threads pkg/defuss_fastmath_bg.wasm -o pkg/defuss_fastmath_bg.wast",
     "pretest": "pnpm build",
@@ -19,9 +19,17 @@
     "prebench": "pnpm test",
     "bench": "vitest run --config vitest.bench.config.ts"
   },
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    },
+    "./pkg/*": "./*"
+  },
   "devDependencies": {
     "@testing-library/dom": "^10.4.0",
     "@vitest/browser": "^3.2.3",
+    "pkgroll": "^2.12.2",
     "playwright": "^1.53.0",
     "tinybench": "^4.0.1",
     "vitest": "^3.2.3",

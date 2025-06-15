@@ -131,10 +131,16 @@ export const convolutionTestFunctions = {
   },
 
   // Test functions that work with external data (for shared benchmarking)
-  testConvolutionWithData: (signal: Float32Array, kernel: Float32Array) => {
-    const result = new Float32Array(signal.length + kernel.length - 1);
-    convolution(signal, kernel, result);
-    return result;
+  testConvolutionWithData: (
+    signal: Float32Array,
+    kernel: Float32Array,
+    result?: Float32Array,
+  ) => {
+    // Reuse the result buffer if provided to avoid allocations
+    const output =
+      result || new Float32Array(signal.length + kernel.length - 1);
+    convolution(signal, kernel, output);
+    return output;
   },
 
   test2DConvolutionWithData: (
@@ -142,10 +148,12 @@ export const convolutionTestFunctions = {
     kernel: Float32Array,
     imageSize: number,
     kernelSize: number,
+    result?: Float32Array,
   ) => {
-    const result = new Float32Array(imageSize * imageSize);
-    convolution_2d(image, kernel, result, imageSize, imageSize, kernelSize);
-    return result;
+    // Reuse the result buffer if provided to avoid allocations
+    const output = result || new Float32Array(imageSize * imageSize);
+    convolution_2d(image, kernel, output, imageSize, imageSize, kernelSize);
+    return output;
   },
 
   // Specialized test cases
