@@ -1,0 +1,146 @@
+import { windowManager, type CreateWindowOptions } from "../../window.js";
+import { createRef, type Props, $ } from "defuss";
+import { throttle } from "defuss-runtime";
+
+export interface WindowProps extends Props, CreateWindowOptions {}
+
+export function Window({
+  title = "Untitled",
+  height = 300,
+  width = 200,
+  x = 50,
+  y = 100,
+  children,
+  ref = createRef(),
+  resizable = true,
+  minimizable = true,
+  maximizable = true,
+  id = undefined,
+}: WindowProps) {
+  let isDragging = false;
+
+  const initialWindowState = windowManager.addWindow({
+    id,
+    title,
+    width,
+    height,
+    x,
+    y,
+    resizable,
+    minimizable,
+    maximizable,
+  });
+
+  let dragStart = { x: initialWindowState.x, y: initialWindowState.y };
+
+  const updateWindowState = throttle(
+    (newState: Partial<CreateWindowOptions>) => {
+      windowManager.updateWindow(initialWindowState.id, newState);
+    },
+    250, // 1/4 second throttle
+  );
+
+  const onMouseMove = async (event: Event) => {
+    if (!isDragging) return;
+
+    const mouseEvent = event as MouseEvent;
+    const win = await $(ref);
+    const deltaX = mouseEvent.clientX - dragStart.x;
+    const deltaY = mouseEvent.clientY - dragStart.y;
+
+    // Get current offset and calculate new position
+    const currentOffset = await win.offset();
+    if (currentOffset) {
+      const newX = (currentOffset as any).left + deltaX;
+      const newY = (currentOffset as any).top + deltaY;
+
+      // Update the window state in the WindowManager
+      updateWindowState({ x: newX, y: newY });
+
+      // Update position using jQuery css method
+      await win.css({
+        left: `${newX}px`,
+        top: `${newY}px`,
+      });
+    }
+
+    // Update drag start position for next movement
+    dragStart = { x: mouseEvent.clientX, y: mouseEvent.clientY };
+  };
+
+  const onWindowMouseDown = (event: MouseEvent) =>
+    windowManager.setActiveWindow(initialWindowState.id);
+
+  const onMouseDown = (event: MouseEvent) => {
+    if ((event.target! as HTMLElement).tagName === "BUTTON") {
+      // If the target is a button, prevent dragging
+      isDragging = false;
+      return;
+    }
+
+    isDragging = true;
+
+    dragStart = {
+      x: event.clientX,
+      y: event.clientY,
+    };
+
+    $(document).on("mousemove", onMouseMove);
+    $(document).on("mouseup", onMouseUp);
+
+    // Prevent text selection during drag
+    event.preventDefault();
+  };
+
+  const onMouseUp = () => {
+    isDragging = false;
+    // Remove global event listeners using jQuery
+    $(document).off("mousemove", onMouseMove);
+    $(document).off("mouseup", onMouseUp);
+  };
+
+  const onWindowMounted = () => {
+    windowManager.updateWindow(initialWindowState.id, {
+      el: ref.current as HTMLElement,
+    });
+    windowManager.setActiveWindow(initialWindowState.id);
+  };
+
+  const onWindowCloseClick = () =>
+    windowManager.removeWindow(initialWindowState.id);
+
+  return (
+    <div
+      class="window crt"
+      ref={ref}
+      onMouseDown={onWindowMouseDown}
+      style={{
+        width,
+        height,
+        left: `${initialWindowState.x}px`,
+        top: `${initialWindowState.y}px`,
+        position: "absolute",
+      }}
+    >
+      <div
+        class="title-bar"
+        onMount={onWindowMounted}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onMouseMove={onMouseMove}
+      >
+        <div class="title-bar-text">{title}</div>
+        <div class="title-bar-controls">
+          <button type="button" aria-label="Minimize"></button>
+          <button type="button" aria-label="Maximize"></button>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onWindowCloseClick}
+          ></button>
+        </div>
+      </div>
+      <div class="window-body">{children}</div>
+    </div>
+  );
+}

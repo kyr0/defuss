@@ -1,5 +1,4 @@
 import type { DefussApp } from "./app.js";
-import type { Window } from "./window.js";
 
 export interface DesktopIconConfig {
   name: string;
@@ -72,24 +71,6 @@ export class DesktopManager {
   addIcon(icon: DefussDesktopAppIcon) {
     this.options.icons.push(icon);
     console.log(`Icon added: ${icon.config.name}`);
-  }
-
-  placeWindow(window: Window) {
-    if (!this.el) {
-      console.warn("Desktop not initialized. Call decorate() first.");
-      return;
-    }
-
-    // TODO:
-    window.el!.style.left = `${window.options.x}px`;
-    window.el!.style.top = `${window.options.y}px`;
-
-    // move the window.el from the previous parent to the desktop element
-    if (window.el?.parentElement) {
-      window.el.parentElement.removeChild(window.el);
-    }
-    // append the window element to the desktop element
-    this.el.appendChild(window.el!);
   }
 }
 

@@ -5,7 +5,7 @@ import {
   type Dequery,
   type NodeType,
 } from "defuss";
-import { Window, type CreateWindowOptions } from "./window.js";
+import { WindowManager, type CreateWindowOptions } from "./window.js";
 import { DefussDesktopAppIcon, type DesktopIconConfig } from "./desktop.js";
 import { DefussApp, type DefussAppConfig } from "./app.js";
 
@@ -13,12 +13,14 @@ export class DequeryWithWindowManager<NT> extends CallChainImpl<
   NT,
   DequeryWithWindowManager<NT> & Dequery<NT>
 > {
+  /*
   // create a window from any element (not necessarily identifier as an App)
   createDesktopWindow(options: CreateWindowOptions): PromiseLike<Window> {
     return createCall(this, "createWindow", async () => {
-      return new Window(options) as NT;
+      return new WindowManager(options) as NT;
     }) as unknown as PromiseLike<Window>;
   }
+  */
 
   // register an app to the desktop shell
   createDesktopApp(options: DefussAppConfig): PromiseLike<DefussApp> {

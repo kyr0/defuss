@@ -16,6 +16,7 @@ $cursor-base-path: "/cursors/";
 
 // Default font stack with custom fonts
 $default-font-family: 'Tahoma', Geneva, Verdana, sans-serif;
+$default-font-size: 16px;
 
 // Font utility variables
 $font-families: (
@@ -29,6 +30,7 @@ $barBlue: #0075e1;
 :root {
     --sans-serif: "Pixelated MS Sans Serif", Arial;
     --tahoma: "Tahoma", sans-serif;
+    --font-size: 16px;
 
     /* Color */
     --surface: lightblue;

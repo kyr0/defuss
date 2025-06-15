@@ -1,5 +1,10 @@
 ---
+import { Shell } from "defuss-desktop";
 import { BootProcess } from "../components/BootProcess.js";
+import { LogonManager } from "../components/LogonManager";
+import "./index.scss";
+
+const defaultBackgroundImagePath = "/defuss_bliss_4k.webp";
 ---
 
 <!doctype html>
@@ -21,6 +26,14 @@ import { BootProcess } from "../components/BootProcess.js";
 
 	<body>
 		<!-- Starts the boot process, only in-browser (no SSR here) -->
-		<BootProcess client:only bootDelayMs={2500} />
+		{/*<BootProcess client:only bootDelayMs={2500} />*/}
+		<Shell
+			client:only
+			desktopConfig={{
+				icons: [],
+				backgroundColor: "#000",
+				backgroundImage: defaultBackgroundImagePath,
+			}}
+		/>
 	</body>
 </html>

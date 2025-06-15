@@ -1,3 +1,6 @@
+
+@use "variables" as *;
+
 /*-------------------------------------------*\
     Window
 \*-------------------------------------------*/
@@ -10,19 +13,19 @@
     padding: 0 0 3px 0;
     -webkit-font-smoothing: none;
 }
+
+.window.inactive {
+    box-shadow: inset -1px -1px rgb(110, 121, 195),
+            inset 1px 1px rgb(90, 114, 214),
+            inset -2px -2px rgb(110, 127, 202),
+            inset 2px 2px rgb(105, 155, 233),
+            inset -3px -3px rgb(97, 130, 221),
+            inset 3px 3px rgb(122, 162, 235);
+}
+
 .title-bar {
     font-family: "Trebuchet MS";
-    background: linear-gradient(
-        180deg,
-        rgba(9, 151, 255, 1) 0%,
-        rgba(0, 83, 238, 1) 8%,
-        rgba(0, 80, 238, 1) 40%,
-        rgba(0, 102, 255, 1) 88%,
-        rgba(0, 102, 255, 1) 93%,
-        rgba(0, 91, 255, 1) 95%,
-        rgba(0, 61, 215, 1) 96%,
-        rgba(0, 61, 215, 1) 100%
-    );
+    background: linear-gradient(180deg, #2c90ff 4%, #0055e5 12%, #0055ea 40%,  #0364f9 65%, #036afe 90%, #0360fc 55%, #004de4 98%, #0043cf 100%);
     padding: 3px 5px 3px 3px;
     border-top: 1px solid #0831d9;
     border-left: 1px solid #0831d9;
@@ -31,11 +34,22 @@
     border-top-right-radius: 7px;
     font-size: 13px;
     text-shadow: 1px 1px #0f1089;
-    height: 28px;
+    height: 24px;
+}
+
+.title-bar.inactive {
+    text-shadow: none;
+    filter: contrast(0.55) brightness(1.45) saturate(0.8);
 }
 
 .title-bar-text {
     padding-left: 3px;
+}
+
+.inactive {
+    .title-bar-text {
+        opacity: 0.8;
+    }
 }
 
 .title-bar-controls {
@@ -47,6 +61,7 @@
         background-repeat: no-repeat;
         background-position: center;
         box-shadow: none;
+        cursor: inherit;
         background-color: #0050ee;
         transition: background 100ms;
         border: none;
@@ -57,48 +72,48 @@
         }
     }
     button[aria-label="Minimize"] {
-        background-image: svg-load("./icon/minimize.svg");
+        background-image: url("#{$icon-base-path}minimize.svg");
         &:hover {
-            background-image: svg-load("./icon/minimize-hover.svg");
+            background-image: url("#{$icon-base-path}minimize-hover.svg");
         }
         &:not(:disabled):active {
-            background-image: svg-load("./icon/minimize-active.svg");
+            background-image: url("#{$icon-base-path}minimize-active.svg");
         }
     }
     button[aria-label="Maximize"] {
-        background-image: svg-load("./icon/maximize.svg");
+        background-image: url("#{$icon-base-path}maximize.svg");
         &:hover {
-            background-image: svg-load("./icon/maximize-hover.svg");
+            background-image: url("#{$icon-base-path}maximize-hover.svg");
         }
         &:not(:disabled):active {
-            background-image: svg-load("./icon/maximize-active.svg");
+            background-image: url("#{$icon-base-path}maximize-active.svg");
         }
     }
     button[aria-label="Restore"] {
-        background-image: svg-load("./icon/restore.svg");
+        background-image: url("#{$icon-base-path}restore.svg");
         &:hover {
-            background-image: svg-load("./icon/restore-hover.svg");
+            background-image: url("#{$icon-base-path}restore-hover.svg");
         }
         &:not(:disabled):active {
-            background-image: svg-load("./icon/restore-active.svg");
+            background-image: url("#{$icon-base-path}restore-active.svg");
         }
     }
     button[aria-label="Help"] {
-        background-image: svg-load("./icon/help.svg");
+        background-image: url("#{$icon-base-path}help.svg");
         &:hover {
-            background-image: svg-load("./icon/help-hover.svg");
+            background-image: url("#{$icon-base-path}help-hover.svg");
         }
         &:not(:disabled):active {
-            background-image: svg-load("./icon/help-active.svg");
+            background-image: url("#{$icon-base-path}help-active.svg");
         }
     }
     button[aria-label="Close"] {
-        background-image: svg-load("./icon/close.svg");
+        background-image: url("#{$icon-base-path}close.svg");
         &:hover {
-            background-image: svg-load("./icon/close-hover.svg");
+            background-image: url("#{$icon-base-path}close-hover.svg");
         }
         &:not(:disabled):active {
-            background-image: svg-load("./icon/close-active.svg");
+            background-image: url("#{$icon-base-path}close-active.svg");
         }
     }
 }

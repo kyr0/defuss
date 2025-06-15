@@ -1,4 +1,3 @@
-- Window for the main application window (title bar, close/minimize/maximize buttons) UI.
 - Taskbar for the window management (taskbar buttons, system tray) UI.
 - IconListView for desktop icons (rubber‐band selection, drag/drop).
 - TreeListView for the folder hierarchy pane.

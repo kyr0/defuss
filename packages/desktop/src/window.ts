@@ -1,18 +1,13 @@
-import type { DesktopShellTheme } from "./shell.js";
+import { $ } from "defuss";
 
 export interface CreateWindowOptions {
   id?: string;
-  theme: DesktopShellTheme;
-  title: string;
-  stateful?: boolean; // if stateful, and if it has an id, it uses windowManagerStore to save its state
+  title?: string;
   icon?: string;
   width?: number;
   height?: number;
   x?: number;
   y?: number;
-  resizable?: boolean;
-  draggable?: boolean;
-  closeable?: boolean;
   minimizable?: boolean;
   maximizable?: boolean;
   minimized?: boolean;
@@ -20,11 +15,12 @@ export interface CreateWindowOptions {
   onClose?: () => void;
   onMinimize?: () => void;
   onMaximize?: () => void;
+  resizable?: boolean;
 }
 
 export interface WindowState {
   id: string;
-  theme: string;
+  el: HTMLElement;
   title: string;
   icon: string;
   width: number;
@@ -41,12 +37,8 @@ export interface WindowState {
 }
 
 export const defaultWindowOptions: CreateWindowOptions = {
-  theme: "xp",
-  title: "New Window",
-  stateful: false,
+  title: "Untitled",
   resizable: true,
-  draggable: true,
-  closeable: true,
   minimized: false,
   maximized: false,
   minimizable: true,
@@ -60,31 +52,147 @@ export const defaultWindowOptions: CreateWindowOptions = {
   onMaximize: () => {},
 };
 
-export class Window {
-  el?: HTMLElement;
-  constructor(public options: CreateWindowOptions = defaultWindowOptions) {
-    this.options.id = options.id || crypto.randomUUID();
+export class WindowManager {
+  windows: Array<WindowState> = [];
 
-    if (options.stateful && this.options.id) {
-      // Load state from windowManagerStore if available
-    }
-
-    __defussDesktopManager.placeWindow(this);
+  getActiveWindow(): WindowState | undefined {
+    return this.windows[this.windows.length - 1]; // Return the last window as active
   }
 
-  decorate(el: HTMLElement) {
-    this.el = el;
-    el.classList.add("defuss-window");
-    el.style.width = `${this.options.width}px`;
-    el.style.height = `${this.options.height}px`;
-    el.style.left = `${this.options.x}px`;
-    el.style.top = `${this.options.y}px`;
+  getWindow(id?: string): WindowState | undefined {
+    return this.windows.find((win) => win.id === id);
+  }
 
-    if (this.options.resizable) {
-      el.classList.add("defuss-window-resizable");
+  setActiveWindow(id: string) {
+    const window = this.getWindow(id);
+    if (window) {
+      // Move the window to the end of the array to mark it as active
+      this.windows = this.windows.filter((win) => {
+        if (win.id !== id) {
+          return true;
+        }
+        return false; // Remove the current window from its position
+      });
+      this.windows.push(window);
+
+      this.renderWindowsActivationState();
     }
-    if (this.options.draggable) {
-      el.classList.add("defuss-window-draggable");
+  }
+
+  renderWindowsActivationState() {
+    const activeWindow = this.getActiveWindow();
+
+    if (!activeWindow) return;
+
+    this.windows.forEach(async (win, index) => {
+      const $win = await $(win.el);
+      const $titleBar = await $(win.el).find(".title-bar");
+
+      // reorder windows based on their index
+      await $win.css("z-index", index.toString());
+
+      const hasInactiveClass = async () => await $titleBar.hasClass("inactive");
+
+      if (!(await hasInactiveClass())) {
+        await $win.addClass("inactive"); // Set inactive style
+        await $titleBar.addClass("inactive"); // Set active window style
+      }
+
+      if (win.id === activeWindow.id) {
+        if (await hasInactiveClass()) {
+          await $win.removeClass("inactive"); // Remove inactive style
+          await $titleBar.removeClass("inactive"); // Set active window style
+        }
+      }
+    });
+  }
+
+  addWindow(options: CreateWindowOptions): WindowState {
+    const id = options.id || crypto.randomUUID();
+    const state: Partial<WindowState> = {
+      id,
+      title: options.title || defaultWindowOptions.title,
+      icon: options.icon || defaultWindowOptions.icon,
+      width: options.width || defaultWindowOptions.width,
+      height: options.height || defaultWindowOptions.height,
+      x: options.x || defaultWindowOptions.x,
+      y: options.y || defaultWindowOptions.y,
+      resizable:
+        options.resizable !== undefined
+          ? options.resizable
+          : defaultWindowOptions.resizable,
+      minimizable:
+        options.minimizable !== undefined
+          ? options.minimizable
+          : defaultWindowOptions.minimizable,
+      maximizable:
+        options.maximizable !== undefined
+          ? options.maximizable
+          : defaultWindowOptions.maximizable,
+      minimized:
+        options.minimized !== undefined
+          ? options.minimized
+          : defaultWindowOptions.minimized,
+      maximized:
+        options.maximized !== undefined
+          ? options.maximized
+          : defaultWindowOptions.maximized,
+    };
+
+    // get the most recent windows x and y position
+    const activeWindow = this.getActiveWindow();
+
+    if (activeWindow) {
+      // Offset by 20px from the last window
+      state.x = activeWindow.x + 20;
+      state.y = activeWindow.y + 20;
     }
+
+    this.windows.push(state as WindowState);
+
+    return state as WindowState;
+  }
+
+  updateWindow(
+    id: string,
+    options: Partial<WindowState>,
+  ): WindowState | undefined {
+    const window = this.getWindow(id);
+    if (!window) return undefined;
+
+    const updatedWindow: WindowState = {
+      ...window,
+      ...options,
+      id: window.id, // ensure ID remains unchanged
+    };
+
+    // Update the window status in the list
+    this.windows = this.windows.map((win) =>
+      win.id === id
+        ? {
+            ...win,
+            ...updatedWindow,
+          }
+        : win,
+    );
+    return updatedWindow;
+  }
+
+  removeWindow(id: string) {
+    const window = this.getWindow(id);
+
+    if (!window) return;
+
+    $(window.el).remove(); // Remove the window element from the DOM
+
+    this.windows = this.windows.filter((win) => win.id !== id);
+
+    this.renderWindowsActivationState();
   }
 }
+
+// Ensure singleton of WindowManager module-wide
+globalThis.__defussWindowManager =
+  globalThis.__defussWindowManager || new WindowManager();
+
+export const windowManager = globalThis.__defussWindowManager;

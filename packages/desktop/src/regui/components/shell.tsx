@@ -14,7 +14,7 @@ export interface ShellProps extends Props {
 
 // the shell manages the desktop rendering (panel, taskbar, etc.) and their initialization
 export function Shell({
-  ref,
+  ref = createRef(),
   desktopConfig = defaultDesktopOptions,
 }: ShellProps) {
   const desktopRef = createRef();

@@ -6,6 +6,7 @@
     --title-bar-bg: black;
 }
 .window {
+    position: absolute;
     font-size: 11px;
     box-shadow: var(--border-window-outer), var(--border-window-inner);
     background: var(--surface);
@@ -22,12 +23,15 @@
     justify-content: space-between;
     align-items: center;
 }
+
 .title-bar-text {
     font-weight: bold;
     color: white;
     letter-spacing: 0;
     margin-right: 24px;
 }
+
+
 .title-bar-controls {
     display: flex;
     button {
@@ -49,6 +53,7 @@
     }
 }
 .window-body {
+    font-size: var(--font-size);
     margin: var(--element-spacing);
     pre {
         margin: -8px;

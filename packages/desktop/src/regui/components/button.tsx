@@ -1,4 +1,4 @@
-import type { Props } from "defuss";
+import { createRef, type Props } from "defuss";
 
 export interface ButtonProps extends Props {
   onClick?: () => void;
@@ -9,7 +9,7 @@ export function Button({
   onClick = () => {},
   disabled = false,
   children,
-  ref,
+  ref = createRef(),
 }: ButtonProps) {
   return (
     <button

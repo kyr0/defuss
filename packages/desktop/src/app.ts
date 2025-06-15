@@ -1,4 +1,3 @@
-import type { Window } from "./window.js";
 import { desktopShell } from "./shell.js";
 
 export interface DefussAppConfig {
@@ -13,16 +12,8 @@ export interface DefussAppConfig {
 // It is registered with the DefussShell for management and lifecycle handling.
 // The app can have multiple windows, and each window can be interacted with independently.
 export class DefussApp {
-  constructor(
-    public config: DefussAppConfig,
-    public windows: Window[] = [],
-  ) {
+  constructor(public config: DefussAppConfig) {
     desktopShell.addApp(this);
-  }
-
-  addWindow(window: Window) {
-    this.windows.push(window);
-    console.log(`Window added to app: ${this.config.name}`);
   }
 
   run() {

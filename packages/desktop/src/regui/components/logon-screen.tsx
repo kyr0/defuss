@@ -23,7 +23,7 @@ export const LogonScreen = ({
   onTurnOffComputer,
   onGuestLogon,
   onUserLogonSubmit,
-  ref,
+  ref = createRef<HTMLElement>(),
 }: LogonScreenProps) => {
   const userLoginFormRef = createRef<HTMLFormElement>();
 

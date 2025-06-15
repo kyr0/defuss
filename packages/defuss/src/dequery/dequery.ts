@@ -223,7 +223,7 @@ export class CallChainImpl<
     return createCall(this, "query", async () => {
       return Array.from(
         await waitForDOM(
-          () => Array.from(this.document.querySelectorAll(selector) || []),
+          () => Array.from(this.document.querySelectorAll(selector)),
           this.options.timeout!,
           this.document,
         ),
@@ -595,14 +595,14 @@ export class CallChainImpl<
         const elements = renderMarkup(content, this.Parser);
         this.nodes.forEach((el) => {
           elements.forEach((childEl) =>
-            (el as HTMLElement).appendChild(childEl.cloneNode(true)),
+            (el as HTMLElement).appendChild(childEl),
           );
         });
       } else {
         // Single element handling
         this.nodes.forEach((el) => {
           if (!element) return;
-          (el as HTMLElement).appendChild(element.cloneNode(true));
+          (el as HTMLElement).appendChild(element);
         });
       }
 

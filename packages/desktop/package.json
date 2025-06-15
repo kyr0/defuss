@@ -7,7 +7,13 @@
   },
   "license": "MIT",
   "description": "A window manager to create desktop environments in the browser.",
-  "keywords": ["window", "manager", "desktop", "environments", "browser"],
+  "keywords": [
+    "window",
+    "manager",
+    "desktop",
+    "environments",
+    "browser"
+  ],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -40,12 +46,15 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "dependencies": {
     "defuss": "workspace:*",
+    "defuss-runtime": "^1.2.0",
     "defuss-transval": "workspace:*"
   },
   "devDependencies": {
