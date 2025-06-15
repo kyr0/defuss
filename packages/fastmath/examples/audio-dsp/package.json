@@ -1,0 +1,20 @@
+{
+  "name": "defuss-fastmath-example-audio-dsp",
+  "version": "1.0.0",
+  "description": "Example audio DSP using defuss-fastmath",
+  "scripts": {
+    "build": "wasm-pack build --target web",
+    "postbuild": "wasm2wat --enable-threads pkg/defuss_fastmath_audio_dsp_bg.wasm -o pkg/defuss_fastmath_audio_dsp_bg.wast",
+    "dev": "vite",
+    "clean": "cargo clean",
+    "fmt": "cargo fmt --all -- --check"
+  },
+  "devDependencies": {
+    "vite": "^6.0.7",
+    "@types/web": "^0.0.192",
+    "@types/audioworklet": "^0.0.65"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {}
+}

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WASM Audio Experiment using Rust</title>
+  <link rel="stylesheet" href="reset.css">
+  <style>
+    :root {
+      --squeezy-step-factor: 1.1;
+    }
+  </style>
+</head>
+
+<body style="padding: 8vw; padding-top: 3vw">
+
+  <h1>⚡ Multithreading, WebAssembly/AudioWorklet-driven, SIMD-optimized Audio Engine 🔉</h1>
+
+  <p>
+    This tech demo features a multithreaded, SIMD-optimized Audio Engine in WebAssembly, written in Rust.
+    Using a single <code>AudioWorkletProcessor</code>, audio data is received from WebAssembly via an atomic,
+    zero-copy <code>RingBuffer</code> sharing a <code>SharedArrayBuffer</code> be between WebAssembly, the main thread,
+    and the AudioWorklet thread. This design is highly efficient, with less than 0.001ms overhead, no heap allocations,
+    and completely lock-free due to atomic state management.
+  </p>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <strong>Buffer Size:</strong>
+      <select id="bufferSize">
+        <option value="128">128 (2.9ms @ 44.1kHz)</option>
+        <option value="256">256 (5.8ms @ 44.1kHz)</option>
+        <option value="512" selected>512 (11.6ms @ 44.1kHz)</option>
+        <option value="1024">1024 (23.2ms @ 44.1kHz)</option>
+        <option value="2048">2048 (46.4ms @ 44.1kHz)</option>
+        <option value="4096">4096 (92.8ms @ 44.1kHz)</option>
+      </select> <em>(requires restart)</em>
+    </div>
+
+    <div>
+      <strong>MIDI Note:</strong> <input type="range" min="20" max="84" step="1" value="36" style="min-width: 15vw"
+             id="freq" />
+    </div>
+
+    <div>
+      <strong>Volume:</strong> <input type="range" min="0" max="1" value="0.15" step="0.01" style="min-width: 15vw"
+             id="amp" />
+    </div>
+
+    <div>
+      <strong># Oscillators:</strong> <input type="number" min="0" max="8196" value="1" step="1" style="min-width: 15vw"
+             id="parallelism" /> <em>(requires restart)</em>
+    </div>
+
+    <div>
+      <strong>Waveform:</strong>
+      <select id="waveform">
+        <option value="0">sine</option>
+        <option value="1">square</option>
+        <option value="2" selected>triangle</option>
+        <option value="3">saw</option>
+      </select>
+    </div>
+
+    <button id="play">▶ Play Tone</button>
+  </div>
+
+  <div style="margin-top: 1rem">
+    <strong>Stats:</strong>
+    <pre id="stats">-</pre>
+  </div>
+
+  <script type="module" src="./index.ts"></script>
+</body>
+
+</html>
