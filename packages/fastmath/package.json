@@ -11,11 +11,13 @@
   "scripts": {
     "prebuild": "rm -rf ./pkg",
     "build": "wasm-pack build --target web --out-dir pkg",
+    "postbuild": "pnpm decompile",
     "clean": "rm -rf pkg",
-    "pretest": "npm run build",
+    "decompile": "wasm2wat --enable-threads pkg/defuss_fastmath_bg.wasm -o pkg/defuss_fastmath_bg.wast",
+    "pretest": "pnpm build",
     "test": "vitest run",
-    "pretest:bench": "npm run build",
-    "test:bench": "vitest run --config vitest.bench.config.ts"
+    "prebench": "pnpm test",
+    "bench": "vitest run --config vitest.bench.config.ts"
   },
   "devDependencies": {
     "@vitest/browser": "^3.2.3",

@@ -11,6 +11,6 @@ export default defineConfig({
       // https://vitest.dev/guide/browser/playwright
       instances: [{ browser: "chromium" }],
     },
-    testTimeout: 60000, // Longer timeout for benchmarks
+    testTimeout: 60_000 * 10, // 10 minutes timeout for longer benchmarks
   },
 });

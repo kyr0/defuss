@@ -42,10 +42,13 @@ js-sys = { version = "0.3" }
 gloo-timers =  { version = "0.3", features = ["futures"] }
 
 [dev-dependencies]
-wasm-bindgen-test = "0.2"
+wasmprinter = "0.2"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = true
 
 [profile.release]
 # Tell `rustc` to optimize for performance
-opt-level = 3
-lto = true
-codegen-units = 1
+opt-level = 3 # Optimize for speed
+lto = true # Link Time Optimization
+codegen-units = 1 # Reduce the number of codegen units to improve inlining and optimizations

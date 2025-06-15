@@ -53,3 +53,7 @@ async function setupFastmath() {
 Cross-Origin-Embedder-Policy: require-corp
 Cross-Origin-Opener-Policy: same-origin
 ```
+
+## Developer Notes
+
+- The `decompile` task (`pnpm decompile`) generates a human-readable version of the WASM module (WAST) for debugging and understanding the instructions used. This requires a `wasm2wat` executable from the `wabt` package to be present in `PATH`. Make sure to e.g. `brew install wabt`.
