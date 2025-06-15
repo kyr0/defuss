@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import init from "../pkg";
-import {
-  convolutionTestFunctions,
-  createTestData,
-} from "./convolution-test-functions.js";
+import { convolutionTestFunctions } from "./convolution-test-functions.js";
+import { createTestData } from "./test-util";
 
 describe("Convolution Operations", () => {
   beforeAll(async () => {

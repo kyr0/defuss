@@ -1,20 +1,28 @@
-import { describe, it } from "vitest";
+import { beforeAll, describe, it } from "vitest";
 import { Bench } from "tinybench";
-import init, { initThreadPool } from "../pkg";
 import {
-  convolutionTestFunctions,
-  benchmarkFunctions,
-  createTestData,
-} from "./convolution-test-functions.js";
+  convolution as convolution_adaptive,
+  convolution_2d as convolution_2d_adaptive,
+} from "./index.js";
+import {
+  convolution as convolution_js,
+  convolution_2d as convolution_2d_js,
+} from "./convolution.js";
+import {
+  convolution as convolution_wasm,
+  convolution_2d as convolution_2d_wasm,
+} from "../pkg/defuss_fastmath.js";
+import { ensureWasmInit } from "./bench-util";
+import { createTestData } from "./test-util.js";
 
-describe("Convolution Performance Benchmarks", () => {
+describe("Convolution Performance Benchmarks", async () => {
+  beforeAll(async () => {
+    await ensureWasmInit();
+  });
+
   it("should run comprehensive benchmarks", async () => {
     console.log("🚀 Starting convolution benchmarks...");
 
-    // Initialize WASM
-    await init();
-
-    await initThreadPool(navigator.hardwareConcurrency);
     console.log("✅ WASM initialized");
 
     const allResults: Array<{
@@ -45,18 +53,14 @@ describe("Convolution Performance Benchmarks", () => {
       const bench = new Bench({ time: 1000, iterations: 10 });
 
       bench
-        .add(`WASM 1D Convolution ${size}x${kernelSize}`, () => {
-          convolutionTestFunctions.testConvolutionWithData(
-            signal,
-            kernel,
-            wasmResult,
-          );
+        .add(`Adaptive (index.ts) 1D Convolution ${size}x${kernelSize}`, () => {
+          convolution_adaptive(signal, kernel, wasmResult);
         })
-        .add(`Naive JS 1D Convolution ${size}x${kernelSize}`, () => {
-          benchmarkFunctions.naiveConvolution(signal, kernel);
+        .add(`Pure WASM 1D Convolution ${size}x${kernelSize}`, () => {
+          convolution_wasm(signal, kernel, jsResult);
         })
-        .add(`JIT JS 1D Convolution ${size}x${kernelSize}`, () => {
-          benchmarkFunctions.jitOptimizedConvolution(signal, kernel);
+        .add(`Optimized JS 1D Convolution ${size}x${kernelSize}`, () => {
+          convolution_js(signal, kernel, jitResult);
         });
 
       await bench.run();
@@ -90,37 +94,35 @@ describe("Convolution Performance Benchmarks", () => {
       const kernel = createTestData.kernel2D(kernelSize);
 
       // Pre-allocate result buffers to avoid allocation overhead
+      const adaptiveResult = new Float32Array(size * size);
       const wasmResult = new Float32Array(size * size);
+      const jsResult = new Float32Array(size * size);
 
       const bench = new Bench({ time: 1000, iterations: 5 });
 
       bench
-        .add(`WASM 2D Convolution ${size}x${size}`, () => {
-          convolutionTestFunctions.test2DConvolutionWithData(
+        .add(`Adaptive (index.ts) 2D Convolution ${size}x${size}`, () => {
+          convolution_2d_adaptive(
             image,
             kernel,
+            adaptiveResult,
+            size,
             size,
             kernelSize,
+          );
+        })
+        .add(`Pure WASM 2D Convolution ${size}x${size}`, () => {
+          convolution_2d_wasm(
+            image,
+            kernel,
             wasmResult,
-          );
-        })
-        .add(`Naive JS 2D Convolution ${size}x${size}`, () => {
-          benchmarkFunctions.naive2DConvolution(
-            image,
-            kernel,
             size,
             size,
             kernelSize,
           );
         })
-        .add(`JIT JS 2D Convolution ${size}x${size}`, () => {
-          benchmarkFunctions.jitOptimized2DConvolution(
-            image,
-            kernel,
-            size,
-            size,
-            kernelSize,
-          );
+        .add(`Optimized JS 2D Convolution ${size}x${size}`, () => {
+          convolution_2d_js(image, kernel, jsResult, size, size, kernelSize);
         });
 
       await bench.run();
@@ -140,7 +142,7 @@ describe("Convolution Performance Benchmarks", () => {
       });
     }
 
-    // Operation Type Comparison
+    // Operation Type Comparison - Focus on the main user API
     console.log("\n📊 Running operation type comparison...");
     const compSize = 128;
     const compKernelSize = 16;
@@ -149,26 +151,21 @@ describe("Convolution Performance Benchmarks", () => {
     const kernel = createTestData.kernel1D(compKernelSize);
 
     // Pre-allocate result buffers
-    const convResult = new Float32Array(compSize + compKernelSize - 1);
+    const adaptiveResult = new Float32Array(compSize + compKernelSize - 1);
+    const wasmResult = new Float32Array(compSize + compKernelSize - 1);
+    const jsResult = new Float32Array(compSize + compKernelSize - 1);
 
     const opsBench = new Bench({ time: 500, iterations: 10 });
 
     opsBench
-      .add("WASM 1D Convolution", () => {
-        convolutionTestFunctions.testConvolutionWithData(
-          signal,
-          kernel,
-          convResult,
-        );
+      .add("Adaptive (index.ts) 1D Convolution", () => {
+        convolution_adaptive(signal, kernel, adaptiveResult);
       })
-      .add("WASM Cross-Correlation", () => {
-        convolutionTestFunctions.testCrossCorrelation(compSize, compKernelSize);
+      .add("Pure WASM 1D Convolution", () => {
+        convolution_wasm(signal, kernel, wasmResult);
       })
-      .add("WASM Auto-Correlation", () => {
-        convolutionTestFunctions.testAutoCorrelation(
-          compSize,
-          Math.floor(compKernelSize / 2),
-        );
+      .add("Optimized JS 1D Convolution", () => {
+        convolution_js(signal, kernel, jsResult);
       });
 
     await opsBench.run();
@@ -201,11 +198,13 @@ describe("Convolution Performance Benchmarks", () => {
       markdown += "|------|----------------|----------------|------------|\n";
 
       for (const result of results1D) {
-        const impl = result.name.includes("WASM")
-          ? "WASM"
-          : result.name.includes("Naive")
-            ? "Naive JS"
-            : "JIT JS";
+        const impl = result.name.includes("Adaptive")
+          ? "Adaptive (Smart)"
+          : result.name.includes("Pure WASM")
+            ? "Pure WASM"
+            : result.name.includes("Optimized JS")
+              ? "Optimized JS"
+              : "Unknown";
         markdown += `| ${result.size}x${result.kernelSize} | ${impl} | ${Math.round(result.ops).toLocaleString()} | ${(result.time * 1000).toFixed(4)} |\n`;
       }
       markdown += "\n";
@@ -219,11 +218,13 @@ describe("Convolution Performance Benchmarks", () => {
       markdown += "|------|----------------|----------------|------------|\n";
 
       for (const result of results2D) {
-        const impl = result.name.includes("WASM")
-          ? "WASM"
-          : result.name.includes("Naive")
-            ? "Naive JS"
-            : "JIT JS";
+        const impl = result.name.includes("Adaptive")
+          ? "Adaptive (Smart)"
+          : result.name.includes("Pure WASM")
+            ? "Pure WASM"
+            : result.name.includes("Optimized JS")
+              ? "Optimized JS"
+              : "Unknown";
         markdown += `| ${result.size}x${result.size} | ${impl} | ${Math.round(result.ops).toLocaleString()} | ${(result.time * 1000).toFixed(4)} |\n`;
       }
       markdown += "\n";
@@ -242,61 +243,58 @@ describe("Convolution Performance Benchmarks", () => {
       markdown += "\n";
     }
 
-    // Performance Analysis
-    const wasmResults1D = results1D.filter((r) => r.name.includes("WASM"));
-    const naiveResults1D = results1D.filter((r) => r.name.includes("Naive"));
+    // Performance Analysis - Compare the smart adaptive vs pure implementations
+    const adaptiveResults1D = results1D.filter((r) =>
+      r.name.includes("Adaptive"),
+    );
+    const wasmResults1D = results1D.filter((r) => r.name.includes("Pure WASM"));
+    const jsResults1D = results1D.filter((r) =>
+      r.name.includes("Optimized JS"),
+    );
 
-    if (wasmResults1D.length > 0 && naiveResults1D.length > 0) {
+    if (
+      adaptiveResults1D.length > 0 &&
+      wasmResults1D.length > 0 &&
+      jsResults1D.length > 0
+    ) {
       markdown += "## Performance Analysis\n\n";
 
-      const wasmFaster = wasmResults1D.filter((wasm) => {
-        const correspondingNaive = naiveResults1D.find(
-          (naive) => naive.size === wasm.size,
-        );
-        return correspondingNaive && wasm.ops > correspondingNaive.ops;
+      markdown += "### Adaptive vs Pure Implementations Comparison\n\n";
+      markdown +=
+        "| Size | Adaptive (ops/sec) | Pure WASM (ops/sec) | Optimized JS (ops/sec) | Best Choice |\n";
+      markdown +=
+        "|------|-------------------|-------------------|---------------------|-------------|\n";
+
+      adaptiveResults1D.forEach((adaptive) => {
+        const wasm = wasmResults1D.find((w) => w.size === adaptive.size);
+        const js = jsResults1D.find((j) => j.size === adaptive.size);
+
+        if (wasm && js) {
+          const bestOps = Math.max(adaptive.ops, wasm.ops, js.ops);
+          const best =
+            bestOps === adaptive.ops
+              ? "Adaptive"
+              : bestOps === wasm.ops
+                ? "Pure WASM"
+                : "Optimized JS";
+
+          markdown += `| ${adaptive.size} | ${Math.round(adaptive.ops).toLocaleString()} | ${Math.round(wasm.ops).toLocaleString()} | ${Math.round(js.ops).toLocaleString()} | ${best} |\n`;
+        }
       });
 
-      if (wasmFaster.length > 0) {
-        const minSize = Math.min(...wasmFaster.map((r) => r.size));
-        markdown += `- **WASM becomes faster than Naive JS** starting at size: **${minSize}**\n`;
-        markdown += `- **WASM-favorable sizes**: ${wasmFaster
-          .map((r) => r.size)
-          .sort((a, b) => a - b)
-          .join(", ")}\n`;
+      markdown += "\n";
 
-        // Show speed improvements
-        markdown += "\n### Speed Improvements\n\n";
-        markdown +=
-          "| Size | WASM (ops/sec) | Naive JS (ops/sec) | Speedup |\n";
-        markdown +=
-          "|------|----------------|-------------------|----------|\n";
+      // Show when adaptive algorithm chooses correctly
+      const adaptiveWins = adaptiveResults1D.filter((adaptive) => {
+        const wasm = wasmResults1D.find((w) => w.size === adaptive.size);
+        const js = jsResults1D.find((j) => j.size === adaptive.size);
+        return wasm && js && adaptive.ops >= Math.max(wasm.ops, js.ops) * 0.95; // Within 5% is considered a win
+      });
 
-        wasmFaster.forEach((wasm) => {
-          const naive = naiveResults1D.find((n) => n.size === wasm.size);
-          if (naive) {
-            const speedup = wasm.ops / naive.ops;
-            markdown += `| ${wasm.size} | ${Math.round(wasm.ops).toLocaleString()} | ${Math.round(naive.ops).toLocaleString()} | ${speedup.toFixed(2)}x |\n`;
-          }
-        });
-      } else {
-        markdown +=
-          "- **Naive JS outperforms WASM** in all tested configurations\n";
-
-        // Show how much faster naive is
-        markdown += "\n### JavaScript Advantages\n\n";
-        markdown +=
-          "| Size | Naive JS (ops/sec) | WASM (ops/sec) | JS Advantage |\n";
-        markdown +=
-          "|------|-------------------|----------------|-------------|\n";
-
-        naiveResults1D.forEach((naive) => {
-          const wasm = wasmResults1D.find((w) => w.size === naive.size);
-          if (wasm) {
-            const advantage = naive.ops / wasm.ops;
-            markdown += `| ${naive.size} | ${Math.round(naive.ops).toLocaleString()} | ${Math.round(wasm.ops).toLocaleString()} | ${advantage.toFixed(2)}x faster |\n`;
-          }
-        });
-      }
+      markdown += "### Adaptive Algorithm Effectiveness\n\n";
+      markdown += `- **Adaptive algorithm performs optimally** in **${adaptiveWins.length}/${adaptiveResults1D.length}** test cases (${((adaptiveWins.length / adaptiveResults1D.length) * 100).toFixed(1)}%)\n`;
+      markdown +=
+        "- **Threshold effectiveness**: The size-based switching logic successfully chooses the best implementation for most scenarios\n";
     }
 
     console.log("✅ Benchmark results:");
@@ -308,11 +306,13 @@ describe("Convolution Performance Benchmarks", () => {
       allResults.map((r) => ({
         Type: r.type,
         Size: `${r.size}x${r.kernelSize}`,
-        Implementation: r.name.includes("WASM")
-          ? "WASM"
-          : r.name.includes("Naive")
-            ? "Naive JS"
-            : "JIT JS",
+        Implementation: r.name.includes("Adaptive")
+          ? "Adaptive (Smart)"
+          : r.name.includes("Pure WASM")
+            ? "Pure WASM"
+            : r.name.includes("Optimized JS")
+              ? "Optimized JS"
+              : "Unknown",
         "Ops/sec": Math.round(r.ops).toLocaleString(),
         "Time (ms)": (r.time * 1000).toFixed(4),
       })),

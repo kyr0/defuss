@@ -1,3 +1,4 @@
+// pure JavaScript implementation of convolution operations
 export const convolution = (
   signal: Float32Array,
   kernel: Float32Array,
@@ -40,6 +41,7 @@ export const convolution = (
   }
 };
 
+// pure JavaScript implementation of 2D convolution operations
 export const convolution_2d = (
   image: Float32Array,
   kernel: Float32Array,
@@ -48,7 +50,7 @@ export const convolution_2d = (
   imgHeight: number,
   kernelSize: number,
 ) => {
-  const halfKernel = Math.floor(kernel.byteLength / 2);
+  const halfKernel = Math.floor(kernelSize / 2);
   const unrollFactor = 4;
 
   for (let y = 0; y < imgHeight; y++) {

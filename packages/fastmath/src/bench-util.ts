@@ -1,16 +1,17 @@
 import { Bench } from "tinybench";
-import init from "../pkg/defuss_fastmath.js";
-import {
-  convolutionTestFunctions,
-  benchmarkFunctions,
-  createTestData,
-} from "./convolution-test-functions.js";
+import init, { initThreadPool } from "../pkg/defuss_fastmath.js";
+import { convolutionTestFunctions } from "./convolution-test-functions.js";
+import { createTestData } from "./test-util.js";
+import { convolution, convolution_2d } from "./convolution.js";
 
 // Initialize WASM module
 let wasmInitialized = false;
-async function ensureWasmInit() {
+export async function ensureWasmInit() {
   if (!wasmInitialized) {
+    // Initialize WASM
     await init();
+
+    await initThreadPool(navigator.hardwareConcurrency);
     wasmInitialized = true;
   }
 }
@@ -58,10 +59,7 @@ export async function benchmarkConvolution1D(
     console.log(`Benchmarking 1D convolution size: ${size}`);
 
     const kernelSize = Math.max(3, Math.floor(size / 16));
-    const { signal, kernel } = benchmarkFunctions.generateConvolutionData(
-      size,
-      kernelSize,
-    );
+    const { signal, kernel } = createTestData.convolution1D(size, kernelSize);
 
     const bench = new Bench({
       time: cfg.benchTime,
@@ -73,14 +71,10 @@ export async function benchmarkConvolution1D(
       convolutionTestFunctions.testConvolutionWithData(signal, kernel);
     });
 
-    // Naive JavaScript implementation
-    bench.add(`JS Naive 1D Convolution (${size}x${kernelSize})`, () => {
-      benchmarkFunctions.naiveConvolution(signal, kernel);
-    });
-
     // JIT-optimized JavaScript implementation
     bench.add(`JS JIT 1D Convolution (${size}x${kernelSize})`, () => {
-      benchmarkFunctions.jitOptimizedConvolution(signal, kernel);
+      const result = new Float32Array(size + kernelSize - 1);
+      convolution(signal, kernel, result);
     });
 
     await bench.run();
@@ -124,10 +118,7 @@ export async function benchmarkConvolution2D(
     console.log(`Benchmarking 2D convolution size: ${size}x${size}`);
 
     const kernelSize = Math.max(3, Math.min(9, Math.floor(size / 16)));
-    const { image, kernel } = benchmarkFunctions.generate2DConvolutionData(
-      size,
-      kernelSize,
-    );
+    const { image, kernel } = createTestData.convolution2D(size, kernelSize);
 
     const bench = new Bench({
       time: cfg.benchTime,
@@ -147,31 +138,12 @@ export async function benchmarkConvolution2D(
       },
     );
 
-    // Naive JavaScript implementation
-    bench.add(
-      `JS Naive 2D Convolution (${size}x${size}, ${kernelSize}x${kernelSize})`,
-      () => {
-        benchmarkFunctions.naive2DConvolution(
-          image,
-          kernel,
-          size,
-          size,
-          kernelSize,
-        );
-      },
-    );
-
     // JIT-optimized JavaScript implementation
     bench.add(
       `JS JIT 2D Convolution (${size}x${size}, ${kernelSize}x${kernelSize})`,
       () => {
-        benchmarkFunctions.jitOptimized2DConvolution(
-          image,
-          kernel,
-          size,
-          size,
-          kernelSize,
-        );
+        const result = new Float32Array(size * size);
+        convolution_2d(image, kernel, result, size, size, kernelSize);
       },
     );
 
