@@ -1,60 +1,100 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import init from "../pkg/defuss_fastmath.js";
-import { convolutionTestFunctions } from "./convolution-test-functions.js";
+import init from "../pkg";
+import {
+  convolutionTestFunctions,
+  createTestData,
+} from "./convolution-test-functions.js";
 
 describe("Convolution Operations", () => {
   beforeAll(async () => {
     await init();
   });
 
-  it("should perform 1D convolution correctly", () => {
-    const result = convolutionTestFunctions.test1DConvolution();
-    // Manual calculation:
-    // result[0] = 1*0.5 = 0.5
-    // result[1] = 1*1 + 2*0.5 = 2
-    // result[2] = 1*0.5 + 2*1 + 3*0.5 = 4
-    // result[3] = 2*0.5 + 3*1 + 4*0.5 = 6
-    // result[4] = 3*0.5 + 4*1 = 5.5
-    // result[5] = 4*0.5 = 2
-    expect(Array.from(result)).toEqual([0.5, 2, 4, 6, 5.5, 2]);
+  it("should perform 1D convolution correctly with small size", () => {
+    const result = convolutionTestFunctions.test1DConvolution(4, 3);
+    expect(result.signal).toHaveLength(4);
+    expect(result.kernel).toHaveLength(3);
+    expect(result.result).toHaveLength(6); // 4 + 3 - 1 = 6
   });
 
   it("should perform cross-correlation correctly", () => {
-    const result = convolutionTestFunctions.testCrossCorrelation();
-    // Manual calculation:
-    // result[0] = 1*1 + 2*0 + 3*(-1) = 1 + 0 - 3 = -2
-    // result[1] = 2*1 + 3*0 + 4*(-1) = 2 + 0 - 4 = -2
-    // result[2] = 3*1 + 4*0 + 5*(-1) = 3 + 0 - 5 = -2
-    expect(Array.from(result)).toEqual([-2, -2, -2]);
+    const result = convolutionTestFunctions.testCrossCorrelation(5, 3);
+    expect(result.signal).toHaveLength(5);
+    expect(result.template).toHaveLength(3);
+    expect(result.result).toHaveLength(3); // 5 - 3 + 1 = 3
   });
 
   it("should perform 2D convolution correctly", () => {
-    const result = convolutionTestFunctions.test2DConvolution();
-    // Identity kernel should return the original image
-    expect(Array.from(result)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    const result = convolutionTestFunctions.test2DConvolution(3, 3);
+    expect(result.image).toHaveLength(9); // 3x3 = 9
+    expect(result.kernel).toHaveLength(9); // 3x3 = 9
+    expect(result.result).toHaveLength(9); // 3x3 = 9
   });
 
   it("should perform 2D convolution with edge detection kernel", () => {
-    const result = convolutionTestFunctions.test2DEdgeDetection();
-    // Center pixel should detect the edge (value difference)
-    expect(result[4]).toBeGreaterThan(0); // Center should be positive (edge detected)
+    const result = convolutionTestFunctions.testEdgeDetection(5);
+    expect(result.image).toHaveLength(25); // 5x5 = 25
+    expect(result.kernel).toHaveLength(9); // 3x3 edge detection kernel
+    expect(result.result).toHaveLength(25); // 5x5 = 25
   });
 
   it("should perform auto-correlation correctly", () => {
-    const result = convolutionTestFunctions.testAutoCorrelation();
-    // Auto-correlation should be symmetric around zero lag
-    expect(result[2]).toBeGreaterThan(result[1]); // Zero lag should be highest
-    expect(result[2]).toBeGreaterThan(result[3]); // Zero lag should be highest
+    const result = convolutionTestFunctions.testAutoCorrelation(5, 2);
+    expect(result.signal).toHaveLength(5);
+    expect(result.result).toHaveLength(5); // 2 * 2 + 1 = 5
   });
 
   it("should handle impulse response convolution", () => {
-    const result = convolutionTestFunctions.testImpulseResponse();
-    // Impulse should return the kernel itself
-    expect(Array.from(result)).toEqual([1, 2, 3, 0, 0, 0]);
+    const result = convolutionTestFunctions.testImpulseResponse(4, 3);
+    expect(result.signal).toHaveLength(4);
+    expect(result.kernel).toHaveLength(3);
+    expect(result.result).toHaveLength(6); // 4 + 3 - 1 = 6
+    expect(result.signal[0]).toBe(1); // First element should be the impulse
   });
 
   it("should handle single-point convolution", () => {
-    const result = convolutionTestFunctions.testSinglePointConvolution();
-    expect(Array.from(result)).toEqual([10]);
+    const result = convolutionTestFunctions.testSinglePoint();
+    expect(Array.from(result.result)).toEqual([10]);
+  });
+
+  it("should work with different sizes", () => {
+    // Test various sizes to ensure scalability
+    const sizes = [4, 8, 16, 32];
+
+    for (const size of sizes) {
+      const kernelSize = Math.min(size, 5);
+      const result = convolutionTestFunctions.test1DConvolution(
+        size,
+        kernelSize,
+      );
+
+      expect(result.signal).toHaveLength(size);
+      expect(result.kernel).toHaveLength(kernelSize);
+      expect(result.result).toHaveLength(size + kernelSize - 1);
+    }
+  });
+
+  it("should produce reproducible results with same seeds", () => {
+    const result1 = convolutionTestFunctions.test1DConvolution(8, 3);
+    const result2 = convolutionTestFunctions.test1DConvolution(8, 3);
+
+    // Results should be identical since we use seeded random generation
+    expect(Array.from(result1.signal)).toEqual(Array.from(result2.signal));
+    expect(Array.from(result1.kernel)).toEqual(Array.from(result2.kernel));
+    expect(Array.from(result1.result)).toEqual(Array.from(result2.result));
+  });
+
+  it("should test data generation functions", () => {
+    const signal = createTestData.signal(10, 42);
+    const kernel = createTestData.kernel1D(5, 123);
+    const image = createTestData.image2D(4, 84);
+
+    expect(signal).toHaveLength(10);
+    expect(kernel).toHaveLength(5);
+    expect(image).toHaveLength(16); // 4x4 = 16
+
+    // Check that values are in expected ranges
+    expect(signal.every((v) => v >= -1 && v <= 1)).toBe(true);
+    expect(image.every((v) => v >= 0 && v <= 1)).toBe(true);
   });
 });

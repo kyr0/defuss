@@ -5,133 +5,182 @@ import {
   auto_correlation,
 } from "../pkg/defuss_fastmath.js";
 
-// Reusable test functions for convolution operations
+// Pseudo-random number generator for reproducible results
+class SeededRandom {
+  private seed: number;
+
+  constructor(seed = 42) {
+    this.seed = seed;
+  }
+
+  next(): number {
+    this.seed = (this.seed * 9301 + 49297) % 233280;
+    return this.seed / 233280;
+  }
+
+  range(min: number, max: number): number {
+    return min + this.next() * (max - min);
+  }
+}
+
+// Data generation functions with configurable size and pseudo-random values
+export const createTestData = {
+  // 1D data generation
+  signal: (size: number, seed = 42): Float32Array => {
+    const rng = new SeededRandom(seed);
+    return new Float32Array(size).fill(0).map(() => rng.range(-1, 1));
+  },
+
+  kernel1D: (size: number, seed = 123): Float32Array => {
+    const rng = new SeededRandom(seed);
+    const kernel = new Float32Array(size)
+      .fill(0)
+      .map(() => rng.range(-0.5, 0.5));
+    // Normalize kernel
+    const sum = kernel.reduce((acc, val) => acc + Math.abs(val), 0);
+    return kernel.map((val) => val / sum);
+  },
+
+  // 2D data generation
+  image2D: (size: number, seed = 84): Float32Array => {
+    const rng = new SeededRandom(seed);
+    return new Float32Array(size * size).fill(0).map(() => rng.range(0, 1));
+  },
+
+  kernel2D: (size: number, seed = 246): Float32Array => {
+    const rng = new SeededRandom(seed);
+    const kernel = new Float32Array(size * size)
+      .fill(0)
+      .map(() => rng.range(-0.1, 0.1));
+    // Normalize kernel
+    const sum = kernel.reduce((acc, val) => acc + Math.abs(val), 0);
+    return kernel.map((val) => val / sum);
+  },
+
+  // 3D data generation (for potential future use)
+  data3D: (size: number, seed = 168): Float32Array => {
+    const rng = new SeededRandom(seed);
+    return new Float32Array(size * size * size)
+      .fill(0)
+      .map(() => rng.range(-1, 1));
+  },
+};
+
+// Configurable test functions based on size
 export const convolutionTestFunctions = {
-  // Data generation functions for consistent comparisons
-  createLargeConvolutionData: () => {
-    const signal = new Float32Array(1024)
-      .fill(0)
-      .map((_, i) => Math.sin(i * 0.1));
-    const kernel = new Float32Array(64)
-      .fill(0)
-      .map((_, i) => Math.exp(-i * 0.1));
-    return { signal, kernel };
-  },
-
-  createLarge2DConvolutionData: () => {
-    const size = 128;
-    const image = new Float32Array(size * size)
-      .fill(0)
-      .map(() => Math.random());
-    const kernelSize = 5;
-    const kernel = new Float32Array(kernelSize * kernelSize).fill(
-      1 / (kernelSize * kernelSize),
-    );
-    return { image, kernel, size, kernelSize };
-  },
-
-  test1DConvolution: () => {
-    const signal = new Float32Array([1, 2, 3, 4]);
-    const kernel = new Float32Array([0.5, 1, 0.5]);
-    const result = new Float32Array(6); // signal_len + kernel_len - 1 = 4 + 3 - 1 = 6
+  // 1D Convolution test with configurable size
+  test1DConvolution: (size = 4, kernelSize = 3) => {
+    const signal = createTestData.signal(size);
+    const kernel = createTestData.kernel1D(kernelSize);
+    const result = new Float32Array(size + kernelSize - 1);
     convolution(signal, kernel, result);
-    return result;
+    return { signal, kernel, result };
   },
 
-  testCrossCorrelation: () => {
-    const signal = new Float32Array([1, 2, 3, 4, 5]);
-    const template = new Float32Array([1, 0, -1]);
-    const result = new Float32Array(3); // signal_len - template_len + 1 = 5 - 3 + 1 = 3
+  // Cross correlation test with configurable size
+  testCrossCorrelation: (size = 5, templateSize = 3) => {
+    const signal = createTestData.signal(size);
+    const template = createTestData.kernel1D(templateSize);
+    const result = new Float32Array(size - templateSize + 1);
     cross_correlation(signal, template, result);
-    return result;
+    return { signal, template, result };
   },
 
-  test2DConvolution: () => {
-    const image = new Float32Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    const kernel = new Float32Array([0, 0, 0, 0, 1, 0, 0, 0, 0]);
-    const result = new Float32Array(9);
-    convolution_2d(image, kernel, result, 3, 3, 3);
-    return result;
+  // 2D Convolution test with configurable size
+  test2DConvolution: (imageSize = 3, kernelSize = 3) => {
+    const image = createTestData.image2D(imageSize);
+    const kernel = createTestData.kernel2D(kernelSize);
+    const result = new Float32Array(imageSize * imageSize);
+    convolution_2d(image, kernel, result, imageSize, imageSize, kernelSize);
+    return { image, kernel, result, imageSize, kernelSize };
   },
 
-  test2DEdgeDetection: () => {
-    const image = new Float32Array([1, 1, 1, 1, 2, 1, 1, 1, 1]);
-    const kernel = new Float32Array([0, -1, 0, -1, 4, -1, 0, -1, 0]);
-    const result = new Float32Array(9);
-    convolution_2d(image, kernel, result, 3, 3, 3);
-    return result;
-  },
-
-  testAutoCorrelation: () => {
-    const signal = new Float32Array([1, 2, 1, 0, 0]);
-    const result = new Float32Array(5); // 2 * max_lag + 1 = 2 * 2 + 1 = 5
-    const maxLag = 2;
+  // Auto correlation test with configurable size
+  testAutoCorrelation: (size = 5, maxLag = 2) => {
+    const signal = createTestData.signal(size);
+    const result = new Float32Array(2 * maxLag + 1);
     auto_correlation(signal, result, maxLag);
-    return result;
+    return { signal, result, maxLag };
   },
 
-  testImpulseResponse: () => {
-    const signal = new Float32Array([1, 0, 0, 0]);
-    const kernel = new Float32Array([1, 2, 3]);
-    const result = new Float32Array(6);
+  // Impulse response test with configurable size
+  testImpulseResponse: (signalSize = 4, kernelSize = 3) => {
+    const signal = new Float32Array(signalSize);
+    signal[0] = 1; // Impulse at the beginning
+    const kernel = createTestData.kernel1D(kernelSize);
+    const result = new Float32Array(signalSize + kernelSize - 1);
+    convolution(signal, kernel, result);
+    return { signal, kernel, result };
+  },
+
+  // Performance test functions with configurable sizes
+  testConvolution: (signalSize = 1024, kernelSize = 64) => {
+    const signal = createTestData.signal(signalSize);
+    const kernel = createTestData.kernel1D(kernelSize);
+    const result = new Float32Array(signalSize + kernelSize - 1);
+    convolution(signal, kernel, result);
+    return { signal, kernel, result };
+  },
+
+  test2DConvolutionPerf: (imageSize = 128, kernelSize = 5) => {
+    const image = createTestData.image2D(imageSize);
+    const kernel = createTestData.kernel2D(kernelSize);
+    const result = new Float32Array(imageSize * imageSize);
+    convolution_2d(image, kernel, result, imageSize, imageSize, kernelSize);
+    return { image, kernel, result, imageSize, kernelSize };
+  },
+
+  // Test functions that work with external data (for shared benchmarking)
+  testConvolutionWithData: (signal: Float32Array, kernel: Float32Array) => {
+    const result = new Float32Array(signal.length + kernel.length - 1);
     convolution(signal, kernel, result);
     return result;
   },
 
-  testSinglePointConvolution: () => {
+  test2DConvolutionWithData: (
+    image: Float32Array,
+    kernel: Float32Array,
+    imageSize: number,
+    kernelSize: number,
+  ) => {
+    const result = new Float32Array(imageSize * imageSize);
+    convolution_2d(image, kernel, result, imageSize, imageSize, kernelSize);
+    return result;
+  },
+
+  // Specialized test cases
+  testEdgeDetection: (imageSize = 3) => {
+    const image = createTestData.image2D(imageSize, 42); // Use specific seed for consistency
+    // Create edge detection kernel (Laplacian)
+    const kernelSize = 3;
+    const kernel = new Float32Array([0, -1, 0, -1, 4, -1, 0, -1, 0]);
+    const result = new Float32Array(imageSize * imageSize);
+    convolution_2d(image, kernel, result, imageSize, imageSize, kernelSize);
+    return { image, kernel, result, imageSize, kernelSize };
+  },
+
+  testSinglePoint: () => {
     const signal = new Float32Array([5]);
     const kernel = new Float32Array([2]);
     const result = new Float32Array(1);
     convolution(signal, kernel, result);
-    return result;
+    return { signal, kernel, result };
+  },
+};
+
+// Benchmark comparison functions with configurable sizes
+export const benchmarkFunctions = {
+  // Generate test data for benchmarking
+  generateConvolutionData: (signalSize: number, kernelSize: number) => {
+    const signal = createTestData.signal(signalSize);
+    const kernel = createTestData.kernel1D(kernelSize);
+    return { signal, kernel };
   },
 
-  // Performance test functions with larger data sets
-  testLargeConvolution: () => {
-    const signal = new Float32Array(1024)
-      .fill(0)
-      .map((_, i) => Math.sin(i * 0.1));
-    const kernel = new Float32Array(64)
-      .fill(0)
-      .map((_, i) => Math.exp(-i * 0.1));
-    const result = new Float32Array(signal.length + kernel.length - 1);
-    convolution(signal, kernel, result);
-    return result;
-  },
-
-  testLarge2DConvolution: () => {
-    const size = 128;
-    const image = new Float32Array(size * size)
-      .fill(0)
-      .map(() => Math.random());
-    const kernelSize = 5;
-    const kernel = new Float32Array(kernelSize * kernelSize).fill(
-      1 / (kernelSize * kernelSize),
-    );
-    const result = new Float32Array(size * size);
-    convolution_2d(image, kernel, result, size, size, kernelSize);
-    return result;
-  },
-
-  // Performance test functions with larger data sets using shared data
-  testLargeConvolutionWithData: (
-    signal: Float32Array,
-    kernel: Float32Array,
-  ) => {
-    const result = new Float32Array(signal.length + kernel.length - 1);
-    convolution(signal, kernel, result);
-    return result;
-  },
-
-  testLarge2DConvolutionWithData: (
-    image: Float32Array,
-    kernel: Float32Array,
-    size: number,
-    kernelSize: number,
-  ) => {
-    const result = new Float32Array(size * size);
-    convolution_2d(image, kernel, result, size, size, kernelSize);
-    return result;
+  generate2DConvolutionData: (imageSize: number, kernelSize: number) => {
+    const image = createTestData.image2D(imageSize);
+    const kernel = createTestData.kernel2D(kernelSize);
+    return { image, kernel, imageSize, kernelSize };
   },
 
   // JavaScript naive implementations for comparison
@@ -185,7 +234,8 @@ export const convolutionTestFunctions = {
       }
     }
     return result;
-  }, // JIT-optimized JavaScript implementations with loop unrolling (factor 4)
+  },
+  // JIT-optimized JavaScript implementations with loop unrolling (factor 4)
   jitOptimizedConvolution: (signal: Float32Array, kernel: Float32Array) => {
     const signalLen = signal.length;
     const kernelLen = kernel.length;
@@ -227,6 +277,7 @@ export const convolutionTestFunctions = {
     }
     return result;
   },
+
   jitOptimized2DConvolution: (
     image: Float32Array,
     kernel: Float32Array,
