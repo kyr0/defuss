@@ -1,4 +1,4 @@
-import { UltraFastVectorBatch } from './ultra-fast-batch-processor.js';
+import { UltraFastVectorBatch } from "./ultra-fast-batch-processor.js";
 
 /**
  * Hyper-optimized streaming that builds on the current champion (1.29M ops/sec)
@@ -26,7 +26,7 @@ export class HyperOptimizedStreaming {
   generateTestDataLightning(
     numVectors: number,
     vectorLength: number,
-    seed = 42
+    seed = 42,
   ): { vectorsA: Float32Array; vectorsB: Float32Array } {
     const totalSize = numVectors * vectorLength;
     const vectorsA = new Float32Array(totalSize);
@@ -56,10 +56,10 @@ export class HyperOptimizedStreaming {
     vectorsA: Float32Array,
     vectorsB: Float32Array,
     vectorLength: number,
-    numVectors: number
+    numVectors: number,
   ): Promise<Float32Array> {
     if (!this.initialized) {
-      throw new Error('Not initialized. Call init() first.');
+      throw new Error("Not initialized. Call init() first.");
     }
 
     // Optimal chunk size based on current benchmarks
@@ -84,7 +84,7 @@ export class HyperOptimizedStreaming {
         chunkB,
         vectorLength,
         currentChunkSize,
-        false
+        false,
       );
 
       // Direct set (fastest way to copy results)
@@ -103,10 +103,10 @@ export class HyperOptimizedStreaming {
     vectorsA: Float32Array,
     vectorsB: Float32Array,
     vectorLength: number,
-    numVectors: number
+    numVectors: number,
   ): Promise<Float32Array> {
     if (!this.initialized) {
-      throw new Error('Not initialized. Call init() first.');
+      throw new Error("Not initialized. Call init() first.");
     }
 
     // Adaptive chunk size based on vector size and count
@@ -128,7 +128,7 @@ export class HyperOptimizedStreaming {
         vectorsB,
         vectorLength,
         numVectors,
-        false
+        false,
       );
     }
 
@@ -150,7 +150,7 @@ export class HyperOptimizedStreaming {
         chunkB,
         vectorLength,
         currentChunkSize,
-        false
+        false,
       );
 
       results.set(chunkResults, processedVectors);
@@ -172,10 +172,12 @@ export class HyperOptimizedStreaming {
       process: async (
         vectorsA: Float32Array,
         vectorsB: Float32Array,
-        actualVectors: number
+        actualVectors: number,
       ): Promise<Float32Array> => {
         if (actualVectors > maxVectors) {
-          throw new Error(`Cannot process ${actualVectors} vectors, max is ${maxVectors}`);
+          throw new Error(
+            `Cannot process ${actualVectors} vectors, max is ${maxVectors}`,
+          );
         }
 
         const chunkSize = 4096;
@@ -196,7 +198,7 @@ export class HyperOptimizedStreaming {
             chunkB,
             vectorLength,
             currentChunkSize,
-            false
+            false,
           );
 
           // Copy to our pool instead of creating new arrays
@@ -209,9 +211,10 @@ export class HyperOptimizedStreaming {
       },
 
       getMemoryUsage: () => ({
-        totalMB: (resultsPool.byteLength + tempResultsPool.byteLength) / (1024 * 1024),
-        maxVectors
-      })
+        totalMB:
+          (resultsPool.byteLength + tempResultsPool.byteLength) / (1024 * 1024),
+        maxVectors,
+      }),
     };
   }
 
@@ -222,7 +225,7 @@ export class HyperOptimizedStreaming {
   async hyperOptimizedPipeline(
     numVectors: number,
     vectorLength: number,
-    seed = 42
+    seed = 42,
   ): Promise<{
     totalTime: number;
     generationTime: number;
@@ -235,7 +238,11 @@ export class HyperOptimizedStreaming {
 
     // Step 1: Lightning-fast data generation
     const genStart = performance.now();
-    const { vectorsA, vectorsB } = this.generateTestDataLightning(numVectors, vectorLength, seed);
+    const { vectorsA, vectorsB } = this.generateTestDataLightning(
+      numVectors,
+      vectorLength,
+      seed,
+    );
     const genTime = performance.now() - genStart;
 
     // Step 2: Choose the best processing method
@@ -250,16 +257,26 @@ export class HyperOptimizedStreaming {
         vectorsB,
         vectorLength,
         numVectors,
-        false
+        false,
       );
       method = "Direct processing";
     } else if (vectorLength <= 512) {
       // Medium vectors: Use adaptive chunking
-      results = await this.batchDotProductAdaptive(vectorsA, vectorsB, vectorLength, numVectors);
+      results = await this.batchDotProductAdaptive(
+        vectorsA,
+        vectorsB,
+        vectorLength,
+        numVectors,
+      );
       method = "Adaptive chunking";
     } else {
       // Large vectors: Use super-streaming
-      results = await this.batchDotProductSuperStreaming(vectorsA, vectorsB, vectorLength, numVectors);
+      results = await this.batchDotProductSuperStreaming(
+        vectorsA,
+        vectorsB,
+        vectorLength,
+        numVectors,
+      );
       method = "Super-streaming";
     }
 
@@ -272,7 +289,7 @@ export class HyperOptimizedStreaming {
       processingTime: procTime,
       opsPerSecond: numVectors / (totalTime / 1000),
       results,
-      method
+      method,
     };
   }
 
@@ -282,7 +299,7 @@ export class HyperOptimizedStreaming {
   async speedTest(
     numVectors: number,
     vectorLength: number,
-    seed = 42
+    seed = 42,
   ): Promise<{
     results: Array<{
       method: string;
@@ -293,7 +310,11 @@ export class HyperOptimizedStreaming {
     fastest: string;
     fastestOpsPerSecond: number;
   }> {
-    const { vectorsA, vectorsB } = this.generateTestDataLightning(numVectors, vectorLength, seed);
+    const { vectorsA, vectorsB } = this.generateTestDataLightning(
+      numVectors,
+      vectorLength,
+      seed,
+    );
     const testResults = [];
 
     // Test 1: Direct processing (baseline)
@@ -303,14 +324,14 @@ export class HyperOptimizedStreaming {
       vectorsB,
       vectorLength,
       numVectors,
-      false
+      false,
     );
     const directTime = performance.now() - directStart;
     testResults.push({
       method: "Direct",
       time: directTime,
       opsPerSecond: numVectors / (directTime / 1000),
-      results: directResults
+      results: directResults,
     });
 
     // Test 2: Super-streaming
@@ -319,14 +340,14 @@ export class HyperOptimizedStreaming {
       vectorsA,
       vectorsB,
       vectorLength,
-      numVectors
+      numVectors,
     );
     const streamTime = performance.now() - streamStart;
     testResults.push({
       method: "Super-streaming",
       time: streamTime,
       opsPerSecond: numVectors / (streamTime / 1000),
-      results: streamResults
+      results: streamResults,
     });
 
     // Test 3: Adaptive chunking
@@ -335,25 +356,25 @@ export class HyperOptimizedStreaming {
       vectorsA,
       vectorsB,
       vectorLength,
-      numVectors
+      numVectors,
     );
     const adaptiveTime = performance.now() - adaptiveStart;
     testResults.push({
       method: "Adaptive",
       time: adaptiveTime,
       opsPerSecond: numVectors / (adaptiveTime / 1000),
-      results: adaptiveResults
+      results: adaptiveResults,
     });
 
     // Find the fastest
-    const fastest = testResults.reduce((prev, current) => 
-      prev.opsPerSecond > current.opsPerSecond ? prev : current
+    const fastest = testResults.reduce((prev, current) =>
+      prev.opsPerSecond > current.opsPerSecond ? prev : current,
     );
 
     return {
       results: testResults,
       fastest: fastest.method,
-      fastestOpsPerSecond: fastest.opsPerSecond
+      fastestOpsPerSecond: fastest.opsPerSecond,
     };
   }
 }

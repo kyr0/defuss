@@ -1,4 +1,4 @@
-import { UltraFastVectorBatch } from './ultra-fast-batch-processor.js';
+import { UltraFastVectorBatch } from "./ultra-fast-batch-processor.js";
 
 /**
  * Extreme performance optimizations that push the boundaries
@@ -25,7 +25,7 @@ export class ExtremePerformanceBatch {
   generateTestDataParallel(
     numVectors: number,
     vectorLength: number,
-    seed = 42
+    seed = 42,
   ): { vectorsA: Float32Array; vectorsB: Float32Array } {
     const totalSize = numVectors * vectorLength;
     const vectorsA = new Float32Array(totalSize);
@@ -58,7 +58,7 @@ export class ExtremePerformanceBatch {
         aChunk[i + 1] = seededRandom();
         aChunk[i + 2] = seededRandom();
         aChunk[i + 3] = seededRandom();
-        
+
         bChunk[i] = seededRandom();
         bChunk[i + 1] = seededRandom();
         bChunk[i + 2] = seededRandom();
@@ -83,10 +83,10 @@ export class ExtremePerformanceBatch {
     vectorsA: Float32Array,
     vectorsB: Float32Array,
     vectorLength: number,
-    numVectors: number
+    numVectors: number,
   ): Promise<Float32Array> {
     if (!this.initialized) {
-      throw new Error('Not initialized. Call init() first.');
+      throw new Error("Not initialized. Call init() first.");
     }
 
     // Use smaller chunks for better cache efficiency
@@ -97,23 +97,23 @@ export class ExtremePerformanceBatch {
     while (processedVectors < numVectors) {
       const remainingVectors = numVectors - processedVectors;
       const currentChunkSize = Math.min(optimalChunkSize, remainingVectors);
-      
+
       const startIdx = processedVectors * vectorLength;
       const endIdx = startIdx + currentChunkSize * vectorLength;
-      
+
       // Create aligned views for optimal SIMD performance
       const chunkA = vectorsA.subarray(startIdx, endIdx);
       const chunkB = vectorsB.subarray(startIdx, endIdx);
-      
+
       // Process with zero-copy
       const chunkResults = this.ultraFast.batchDotProductUltraFast(
         chunkA,
         chunkB,
         vectorLength,
         currentChunkSize,
-        false
+        false,
       );
-      
+
       // Direct copy into results
       results.set(chunkResults, processedVectors);
       processedVectors += currentChunkSize;
@@ -127,7 +127,7 @@ export class ExtremePerformanceBatch {
    */
   createZeroAllocationProcessor(maxVectors: number, vectorLength: number) {
     const maxSize = maxVectors * vectorLength;
-    
+
     // Pre-allocate all memory
     const vectorsAPool = new Float32Array(maxSize);
     const vectorsBPool = new Float32Array(maxSize);
@@ -140,21 +140,23 @@ export class ExtremePerformanceBatch {
       vectorsAPool,
       vectorsBPool,
       resultsPool,
-      
+
       generateAndProcess: (actualVectors: number, seed = 42) => {
         if (actualVectors > maxVectors) {
-          throw new Error(`Cannot process ${actualVectors} vectors, max is ${maxVectors}`);
+          throw new Error(
+            `Cannot process ${actualVectors} vectors, max is ${maxVectors}`,
+          );
         }
-        
+
         // Generate data directly into pre-allocated pool
         let currentSeed = seed;
         const seededRandom = () => {
           currentSeed = (currentSeed * 9301 + 49297) % 233280;
           return (currentSeed / 233280) * 2 - 1;
         };
-        
+
         const totalSize = actualVectors * vectorLength;
-        
+
         // Ultra-fast generation with loop unrolling
         for (let i = 0; i < totalSize - 7; i += 8) {
           vectorsAPool[i] = seededRandom();
@@ -165,7 +167,7 @@ export class ExtremePerformanceBatch {
           vectorsAPool[i + 5] = seededRandom();
           vectorsAPool[i + 6] = seededRandom();
           vectorsAPool[i + 7] = seededRandom();
-          
+
           vectorsBPool[i] = seededRandom();
           vectorsBPool[i + 1] = seededRandom();
           vectorsBPool[i + 2] = seededRandom();
@@ -175,43 +177,43 @@ export class ExtremePerformanceBatch {
           vectorsBPool[i + 6] = seededRandom();
           vectorsBPool[i + 7] = seededRandom();
         }
-        
+
         // Handle remaining elements
         for (let i = Math.floor(totalSize / 8) * 8; i < totalSize; i++) {
           vectorsAPool[i] = seededRandom();
           vectorsBPool[i] = seededRandom();
         }
-        
+
         // Process in optimal chunks using pre-allocated temp arrays
         let processedVectors = 0;
-        
+
         while (processedVectors < actualVectors) {
           const remainingVectors = actualVectors - processedVectors;
           const currentChunkSize = Math.min(4096, remainingVectors);
-          
+
           const startIdx = processedVectors * vectorLength;
           const endIdx = startIdx + currentChunkSize * vectorLength;
-          
+
           // Copy to aligned temp arrays (this is still faster than memory allocation)
           tempChunkA.set(vectorsAPool.subarray(startIdx, endIdx));
           tempChunkB.set(vectorsBPool.subarray(startIdx, endIdx));
-          
+
           // Process chunk
           const chunkResults = this.ultraFast.batchDotProductUltraFast(
             tempChunkA.subarray(0, currentChunkSize * vectorLength),
             tempChunkB.subarray(0, currentChunkSize * vectorLength),
             vectorLength,
             currentChunkSize,
-            false
+            false,
           );
-          
+
           // Copy results
           resultsPool.set(chunkResults, processedVectors);
           processedVectors += currentChunkSize;
         }
-        
+
         return resultsPool.subarray(0, actualVectors);
-      }
+      },
     };
   }
 
@@ -222,27 +224,41 @@ export class ExtremePerformanceBatch {
   async processMemoryMapped(
     numVectors: number,
     vectorLength: number,
-    seed = 42
-  ): Promise<{ results: Float32Array; totalTime: number; generationTime: number; processingTime: number }> {
+    seed = 42,
+  ): Promise<{
+    results: Float32Array;
+    totalTime: number;
+    generationTime: number;
+    processingTime: number;
+  }> {
     const startTotal = performance.now();
-    
+
     // Step 1: Ultra-fast parallel data generation
     const genStart = performance.now();
-    const { vectorsA, vectorsB } = this.generateTestDataParallel(numVectors, vectorLength, seed);
+    const { vectorsA, vectorsB } = this.generateTestDataParallel(
+      numVectors,
+      vectorLength,
+      seed,
+    );
     const genTime = performance.now() - genStart;
-    
+
     // Step 2: Ultra-fast aligned processing
     const procStart = performance.now();
-    const results = await this.batchDotProductAligned(vectorsA, vectorsB, vectorLength, numVectors);
+    const results = await this.batchDotProductAligned(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numVectors,
+    );
     const procTime = performance.now() - procStart;
-    
+
     const totalTime = performance.now() - startTotal;
-    
+
     return {
       results,
       totalTime,
       generationTime: genTime,
-      processingTime: procTime
+      processingTime: procTime,
     };
   }
 }
