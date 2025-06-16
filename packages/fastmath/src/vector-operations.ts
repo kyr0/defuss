@@ -1,6 +1,6 @@
 /**
  * @fileoverview Optimized JavaScript implementations for vector and matrix operations
- * 
+ *
  * These implementations use manual loop unrolling, JIT-friendly patterns,
  * and fast memory allocation to achieve maximum performance in JavaScript engines.
  */
@@ -39,14 +39,15 @@ class VectorBufferPool {
   }
 
   getStats() {
-    const hitRate = this.hits + this.misses > 0 
-      ? (this.hits / (this.hits + this.misses)) * 100 
-      : 0;
+    const hitRate =
+      this.hits + this.misses > 0
+        ? (this.hits / (this.hits + this.misses)) * 100
+        : 0;
     return {
       hitRate: hitRate.toFixed(1),
       pools: this.pools.size,
       hits: this.hits,
-      misses: this.misses
+      misses: this.misses,
     };
   }
 }
@@ -77,7 +78,7 @@ const VectorWorkspace = (() => {
 
     getUsage(): number {
       return stackOffset;
-    }
+    },
   };
 })();
 
@@ -96,7 +97,10 @@ const getVectorBuffer = (size: number): Float32Array => {
 // Release buffer back to pool
 const releaseVectorBuffer = (buffer: Float32Array): void => {
   // Stack buffers don't need explicit release
-  if (buffer.byteOffset === 0 || buffer.buffer !== VectorWorkspace.stack?.buffer) {
+  if (
+    buffer.byteOffset === 0 ||
+    buffer.buffer !== VectorWorkspace.stack?.buffer
+  ) {
     vectorPool.releaseBuffer(buffer);
   }
 };
@@ -105,7 +109,7 @@ const releaseVectorBuffer = (buffer: Float32Array): void => {
  * High-performance dot product using unrolled loops for JIT optimization.
  * This implementation is 300% faster than the naive reduce-based approach.
  * Now uses optimized memory allocation for better performance.
- * 
+ *
  * @param vectorsA Array of vectors (first operand)
  * @param vectorsB Array of vectors (second operand)
  * @returns Float32Array containing dot products
@@ -185,7 +189,7 @@ export const vector_dot_product_single = (
 /**
  * Optimized matrix multiplication using cache-friendly access patterns.
  * Uses blocked/tiled multiplication for better cache performance.
- * 
+ *
  * @param matrixA First matrix (rows x cols)
  * @param matrixB Second matrix (cols x resultCols)
  * @param result Result matrix (pre-allocated)
@@ -214,7 +218,6 @@ export const matrix_multiply = (
   for (let ii = 0; ii < rows; ii += blockSize) {
     for (let jj = 0; jj < resultCols; jj += blockSize) {
       for (let kk = 0; kk < cols; kk += blockSize) {
-        
         // Process block
         const iEnd = Math.min(ii + blockSize, rows);
         const jEnd = Math.min(jj + blockSize, resultCols);
@@ -227,18 +230,18 @@ export const matrix_multiply = (
           for (let k = kk; k < kEnd; k++) {
             const aik = rowA[k];
             const rowB = matrixB[k];
-            
+
             // Unroll inner loop for better performance
             let j = jj;
-            const unrolledEnd = jEnd - (jEnd - jj) % 4;
-            
+            const unrolledEnd = jEnd - ((jEnd - jj) % 4);
+
             for (; j < unrolledEnd; j += 4) {
               rowResult[j] += aik * rowB[j];
               rowResult[j + 1] += aik * rowB[j + 1];
               rowResult[j + 2] += aik * rowB[j + 2];
               rowResult[j + 3] += aik * rowB[j + 3];
             }
-            
+
             // Handle remaining elements
             for (; j < jEnd; j++) {
               rowResult[j] += aik * rowB[j];
@@ -270,27 +273,27 @@ export const matrix_multiply_simple = (
   for (let i = 0; i < rows; i++) {
     const rowA = matrixA[i];
     const rowResult = result[i];
-    
+
     for (let j = 0; j < resultCols; j++) {
       let sum = 0.0;
-      
+
       // Unroll inner loop by 4
       let k = 0;
       const unrolledEnd = cols - (cols % 4);
-      
+
       for (; k < unrolledEnd; k += 4) {
-        sum += 
+        sum +=
           rowA[k] * matrixB[k][j] +
           rowA[k + 1] * matrixB[k + 1][j] +
           rowA[k + 2] * matrixB[k + 2][j] +
           rowA[k + 3] * matrixB[k + 3][j];
       }
-      
+
       // Handle remaining elements
       for (; k < cols; k++) {
         sum += rowA[k] * matrixB[k][j];
       }
-      
+
       rowResult[j] = sum;
     }
   }
@@ -308,18 +311,18 @@ export const vector_add = (
   result: Float32Array,
 ): void => {
   const length = vectorA.length;
-  
+
   // Unroll by 4 for potential SIMD optimization
   let i = 0;
   const unrolledEnd = length - (length % 4);
-  
+
   for (; i < unrolledEnd; i += 4) {
     result[i] = vectorA[i] + vectorB[i];
     result[i + 1] = vectorA[i + 1] + vectorB[i + 1];
     result[i + 2] = vectorA[i + 2] + vectorB[i + 2];
     result[i + 3] = vectorA[i + 3] + vectorB[i + 3];
   }
-  
+
   // Handle remaining elements
   for (; i < length; i++) {
     result[i] = vectorA[i] + vectorB[i];
@@ -338,18 +341,18 @@ export const vector_scale = (
   result: Float32Array,
 ): void => {
   const length = vector.length;
-  
+
   // Unroll by 4
   let i = 0;
   const unrolledEnd = length - (length % 4);
-  
+
   for (; i < unrolledEnd; i += 4) {
     result[i] = vector[i] * scalar;
     result[i + 1] = vector[i + 1] * scalar;
     result[i + 2] = vector[i + 2] * scalar;
     result[i + 3] = vector[i + 3] * scalar;
   }
-  
+
   // Handle remaining elements
   for (; i < length; i++) {
     result[i] = vector[i] * scalar;
@@ -359,7 +362,7 @@ export const vector_scale = (
 /**
  * Batch dot product computation for multiple vector pairs.
  * Optimized for processing many small vectors efficiently.
- * 
+ *
  * @param vectorPairs Array of {a, b} vector pairs
  * @returns Float32Array of dot product results
  */
@@ -367,11 +370,11 @@ export const batch_dot_product = (
   vectorPairs: Array<{ a: Float32Array; b: Float32Array }>,
 ): Float32Array => {
   const results = new Float32Array(vectorPairs.length);
-  
+
   for (let i = 0; i < vectorPairs.length; i++) {
     results[i] = vector_dot_product_single(vectorPairs[i].a, vectorPairs[i].b);
   }
-  
+
   return results;
 };
 

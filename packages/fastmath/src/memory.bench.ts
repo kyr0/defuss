@@ -21,7 +21,14 @@ describe("Memory Allocation Benchmarks", () => {
 
     // Initialize WASM
     await init();
-    await initThreadPool(navigator.hardwareConcurrency);
+
+    // Get thread count with fallback for Node.js environments
+    const threadCount =
+      typeof navigator !== "undefined" && navigator.hardwareConcurrency
+        ? navigator.hardwareConcurrency
+        : 4; // Fallback to 4 threads
+
+    await initThreadPool(threadCount);
     console.log("✅ WASM initialized");
 
     // Pre-allocate benchmark buffers
@@ -145,7 +152,13 @@ describe("Memory Allocation Benchmarks", () => {
     // Initialize WASM
     await init();
     try {
-      await initThreadPool(navigator.hardwareConcurrency);
+      // Get thread count with fallback for Node.js environments
+      const threadCount =
+        typeof navigator !== "undefined" && navigator.hardwareConcurrency
+          ? navigator.hardwareConcurrency
+          : 4; // Fallback to 4 threads
+
+      await initThreadPool(threadCount);
     } catch (e) {
       console.log(
         "⚠️ Thread pool initialization failed (using single-threaded mode)",

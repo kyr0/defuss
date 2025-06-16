@@ -48,63 +48,100 @@ describe("Matrix Operations Performance Benchmarks", () => {
 
     // Matrix Multiplication Benchmarks
     console.log("\n📊 Running Matrix Multiplication benchmarks...");
-    
+
     for (const config of testConfigs) {
-      console.log(`  Testing ${config.name} - ${config.m}x${config.k} * ${config.k}x${config.n}...`);
-      
+      console.log(
+        `  Testing ${config.name} - ${config.m}x${config.k} * ${config.k}x${config.n}...`,
+      );
+
       // Generate test matrices
       const rng = seededRandom(31337);
-      
+
       // Matrix A: m x k (row-major)
       const matrixA = new Float32Array(config.m * config.k);
       for (let i = 0; i < matrixA.length; i++) {
         matrixA[i] = (rng() - 0.5) * 2;
       }
-      
-      // Matrix B: k x n (row-major)  
+
+      // Matrix B: k x n (row-major)
       const matrixB = new Float32Array(config.k * config.n);
       for (let i = 0; i < matrixB.length; i++) {
         matrixB[i] = (rng() - 0.5) * 2;
       }
-      
+
       // Pre-allocate result matrices
       const wasmResult = new Float32Array(config.m * config.n);
       const wasmSingleResult = new Float32Array(config.m * config.n);
       const wasmParallelResult = new Float32Array(config.m * config.n);
-      
+
       // For JS matrix multiply, we need to convert to 2D arrays
       const matrixA2D: Float32Array[] = [];
       const matrixB2D: Float32Array[] = [];
       const jsResult: Float32Array[] = [];
       const jsSimpleResult: Float32Array[] = [];
-      
+
       for (let i = 0; i < config.m; i++) {
         matrixA2D.push(matrixA.slice(i * config.k, (i + 1) * config.k));
         jsResult.push(new Float32Array(config.n));
         jsSimpleResult.push(new Float32Array(config.n));
       }
-      
+
       for (let i = 0; i < config.k; i++) {
         matrixB2D.push(matrixB.slice(i * config.n, (i + 1) * config.n));
       }
-      
+
       const bench = new Bench({ time: 1000, iterations: 3 });
 
       bench
         .add(`JS Matrix Multiply ${config.name}`, () => {
-          js_matrix_multiply(matrixA2D, matrixB2D, jsResult, config.m, config.k, config.n);
+          js_matrix_multiply(
+            matrixA2D,
+            matrixB2D,
+            jsResult,
+            config.m,
+            config.k,
+            config.n,
+          );
         })
         .add(`JS Simple Matrix Multiply ${config.name}`, () => {
-          js_matrix_multiply_simple(matrixA2D, matrixB2D, jsSimpleResult, config.m, config.k, config.n);
+          js_matrix_multiply_simple(
+            matrixA2D,
+            matrixB2D,
+            jsSimpleResult,
+            config.m,
+            config.k,
+            config.n,
+          );
         })
         .add(`WASM Adaptive Matrix Multiply ${config.name}`, () => {
-          matrix_multiply(matrixA, matrixB, wasmResult, config.m, config.k, config.n);
+          matrix_multiply(
+            matrixA,
+            matrixB,
+            wasmResult,
+            config.m,
+            config.k,
+            config.n,
+          );
         })
         .add(`WASM Single-threaded Matrix Multiply ${config.name}`, () => {
-          matrix_multiply_single(matrixA, matrixB, wasmSingleResult, config.m, config.k, config.n);
+          matrix_multiply_single(
+            matrixA,
+            matrixB,
+            wasmSingleResult,
+            config.m,
+            config.k,
+            config.n,
+          );
         })
         .add(`WASM Parallel Matrix Multiply ${config.name}`, () => {
-          matrix_multiply_parallel(matrixA, matrixB, wasmParallelResult, config.m, config.k, config.n);
+          matrix_multiply_parallel(
+            matrixA,
+            matrixB,
+            wasmParallelResult,
+            config.m,
+            config.k,
+            config.n,
+          );
         });
 
       await bench.run();
@@ -135,19 +172,21 @@ describe("Matrix Operations Performance Benchmarks", () => {
       { m: 32, k: 32, n: 32 }, // 32768 ops
       { m: 40, k: 40, n: 40 }, // 64000 ops
     ];
-    
+
     for (const config of thresholdConfigs) {
       const totalOps = config.m * config.k * config.n;
-      console.log(`  Testing threshold analysis for ${config.m}x${config.k}x${config.n} (${totalOps} ops)...`);
-      
+      console.log(
+        `  Testing threshold analysis for ${config.m}x${config.k}x${config.n} (${totalOps} ops)...`,
+      );
+
       const rng = seededRandom(12345);
-      
+
       const matrixA = new Float32Array(config.m * config.k);
       const matrixB = new Float32Array(config.k * config.n);
       const result1 = new Float32Array(config.m * config.n);
       const result2 = new Float32Array(config.m * config.n);
       const result3 = new Float32Array(config.m * config.n);
-      
+
       for (let i = 0; i < matrixA.length; i++) {
         matrixA[i] = (rng() - 0.5) * 2;
       }
@@ -159,13 +198,34 @@ describe("Matrix Operations Performance Benchmarks", () => {
 
       thresholdBench
         .add(`WASM Single ${totalOps}ops`, () => {
-          matrix_multiply_single(matrixA, matrixB, result1, config.m, config.k, config.n);
+          matrix_multiply_single(
+            matrixA,
+            matrixB,
+            result1,
+            config.m,
+            config.k,
+            config.n,
+          );
         })
         .add(`WASM Parallel ${totalOps}ops`, () => {
-          matrix_multiply_parallel(matrixA, matrixB, result2, config.m, config.k, config.n);
+          matrix_multiply_parallel(
+            matrixA,
+            matrixB,
+            result2,
+            config.m,
+            config.k,
+            config.n,
+          );
         })
         .add(`WASM Adaptive ${totalOps}ops`, () => {
-          matrix_multiply(matrixA, matrixB, result3, config.m, config.k, config.n);
+          matrix_multiply(
+            matrixA,
+            matrixB,
+            result3,
+            config.m,
+            config.k,
+            config.n,
+          );
         });
 
       await thresholdBench.run();
@@ -193,16 +253,16 @@ describe("Matrix Operations Performance Benchmarks", () => {
       { m: 16, k: 32, n: 64, name: "Wide (16x32x64)" },
       { m: 100, k: 50, n: 25, name: "Mixed (100x50x25)" },
     ];
-    
+
     for (const config of nonSquareConfigs) {
       console.log(`  Testing ${config.name}...`);
-      
+
       const rng = seededRandom(54321);
-      
+
       const matrixA = new Float32Array(config.m * config.k);
       const matrixB = new Float32Array(config.k * config.n);
       const wasmResult = new Float32Array(config.m * config.n);
-      
+
       for (let i = 0; i < matrixA.length; i++) {
         matrixA[i] = (rng() - 0.5) * 2;
       }
@@ -212,10 +272,16 @@ describe("Matrix Operations Performance Benchmarks", () => {
 
       const nonSquareBench = new Bench({ time: 500, iterations: 5 });
 
-      nonSquareBench
-        .add(`WASM Adaptive ${config.name}`, () => {
-          matrix_multiply(matrixA, matrixB, wasmResult, config.m, config.k, config.n);
-        });
+      nonSquareBench.add(`WASM Adaptive ${config.name}`, () => {
+        matrix_multiply(
+          matrixA,
+          matrixB,
+          wasmResult,
+          config.m,
+          config.k,
+          config.n,
+        );
+      });
 
       await nonSquareBench.run();
 
@@ -245,8 +311,10 @@ describe("Matrix Operations Performance Benchmarks", () => {
     const matrixResults = allResults.filter((r) => r.type === "MatrixMultiply");
     if (matrixResults.length > 0) {
       markdown += "## Matrix Multiplication Results\n\n";
-      markdown += "| Matrix Size | Implementation | Operations/sec | Time (ms) | Total Ops |\n";
-      markdown += "|-------------|----------------|----------------|-----------|----------|\n";
+      markdown +=
+        "| Matrix Size | Implementation | Operations/sec | Time (ms) | Total Ops |\n";
+      markdown +=
+        "|-------------|----------------|----------------|-----------|----------|\n";
 
       for (const result of matrixResults) {
         const totalOps = result.m * result.k * result.n;
@@ -256,11 +324,15 @@ describe("Matrix Operations Performance Benchmarks", () => {
     }
 
     // Threshold Analysis Results
-    const thresholdResults = allResults.filter((r) => r.type === "ThresholdAnalysis");
+    const thresholdResults = allResults.filter(
+      (r) => r.type === "ThresholdAnalysis",
+    );
     if (thresholdResults.length > 0) {
       markdown += "## Threshold Analysis Results\n\n";
-      markdown += "| Matrix Size | Implementation | Operations/sec | Time (ms) | Total Ops |\n";
-      markdown += "|-------------|----------------|----------------|-----------|----------|\n";
+      markdown +=
+        "| Matrix Size | Implementation | Operations/sec | Time (ms) | Total Ops |\n";
+      markdown +=
+        "|-------------|----------------|----------------|-----------|----------|\n";
 
       for (const result of thresholdResults) {
         const totalOps = result.m * result.k * result.n;
@@ -273,8 +345,10 @@ describe("Matrix Operations Performance Benchmarks", () => {
     const nonSquareResults = allResults.filter((r) => r.type === "NonSquare");
     if (nonSquareResults.length > 0) {
       markdown += "## Non-square Matrix Results\n\n";
-      markdown += "| Matrix Size | Implementation | Operations/sec | Time (ms) | Total Ops |\n";
-      markdown += "|-------------|----------------|----------------|-----------|----------|\n";
+      markdown +=
+        "| Matrix Size | Implementation | Operations/sec | Time (ms) | Total Ops |\n";
+      markdown +=
+        "|-------------|----------------|----------------|-----------|----------|\n";
 
       for (const result of nonSquareResults) {
         const totalOps = result.m * result.k * result.n;
@@ -285,7 +359,7 @@ describe("Matrix Operations Performance Benchmarks", () => {
 
     // Performance Analysis
     markdown += "## Performance Analysis\n\n";
-    
+
     // Find best performing implementation for each matrix size
     const sizeGroups = new Map<string, typeof allResults>();
     for (const result of matrixResults) {
@@ -297,15 +371,20 @@ describe("Matrix Operations Performance Benchmarks", () => {
     }
 
     markdown += "### Best Implementation by Matrix Size\n\n";
-    markdown += "| Matrix Size | Best Implementation | Operations/sec | Speedup vs JS |\n";
-    markdown += "|-------------|---------------------|----------------|---------------|\n";
+    markdown +=
+      "| Matrix Size | Best Implementation | Operations/sec | Speedup vs JS |\n";
+    markdown +=
+      "|-------------|---------------------|----------------|---------------|\n";
 
     for (const [size, results] of sizeGroups) {
       const sortedResults = results.sort((a, b) => b.ops - a.ops);
       const best = sortedResults[0];
-      const jsResult = results.find(r => r.name.includes("JS Matrix Multiply") && !r.name.includes("Simple"));
+      const jsResult = results.find(
+        (r) =>
+          r.name.includes("JS Matrix Multiply") && !r.name.includes("Simple"),
+      );
       const speedup = jsResult ? (best.ops / jsResult.ops).toFixed(2) : "N/A";
-      
+
       markdown += `| ${size} | ${best.name} | ${best.ops.toFixed(2)} | ${speedup}x |\n`;
     }
 

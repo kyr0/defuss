@@ -16,7 +16,6 @@ pub use dsp::{sine, saw, triangle, square};
 // Re-export math functions
 pub use vector::{
     vector_add,
-    vector_multiply,
     vector_subtract,
     vector_scale,
     vector_dot_product,
@@ -24,6 +23,9 @@ pub use vector::{
     vector_dot_product_parallel,
     vector_batch_dot_product,
     vector_batch_dot_product_separated,
+    process_vectors_in_memory,
+    batch_dot_product_zero_copy,
+    batch_dot_product_zero_copy_parallel,
     vector_normalize,
     vector_magnitude,
 };

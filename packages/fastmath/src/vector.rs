@@ -329,135 +329,156 @@ pub fn vector_batch_dot_product_separated(
     results
 }
 
-/// Manual memory management for efficient batch processing
-/// Allocates a contiguous memory buffer for vector data
+/// Simplified batch processing using WASM linear memory
+/// Instead of complex memory management, we'll use a more direct approach
+/// This function processes vectors in-place in WASM memory
 #[wasm_bindgen]
-pub fn allocate_vector_buffer(size: usize) -> *mut f32 {
-    let layout = std::alloc::Layout::array::<f32>(size).unwrap();
-    unsafe { std::alloc::alloc(layout) as *mut f32 }
+pub fn process_vectors_in_memory(
+    data_offset: usize,
+    vector_length: usize,
+    num_pairs: usize,
+    results_offset: usize
+) {
+    unsafe {
+        // Get pointers to data in WASM linear memory
+        let memory_start = 0 as *mut u8; // WASM linear memory starts at 0
+        let data_ptr = memory_start.add(data_offset) as *const f32;
+        let results_ptr = memory_start.add(results_offset) as *mut f32;
+        
+        // Process vector pairs
+        for i in 0..num_pairs {
+            let a_base = i * vector_length * 2;
+            let b_base = a_base + vector_length;
+            
+            let mut sum = 0.0;
+            
+            if vector_length >= SIMD_THRESHOLD {
+                // SIMD processing
+                let chunks = vector_length / 4;
+                let mut simd_sum = f32x4_splat(0.0);
+                
+                for j in 0..chunks {
+                    let simd_base = j * 4;
+                    let a_vec = v128_load(data_ptr.add(a_base + simd_base) as *const v128);
+                    let b_vec = v128_load(data_ptr.add(b_base + simd_base) as *const v128);
+                    let prod = f32x4_mul(a_vec, b_vec);
+                    simd_sum = f32x4_add(simd_sum, prod);
+                }
+                
+                // Extract scalar sum from SIMD register
+                sum = f32x4_extract_lane::<0>(simd_sum) + 
+                      f32x4_extract_lane::<1>(simd_sum) + 
+                      f32x4_extract_lane::<2>(simd_sum) + 
+                      f32x4_extract_lane::<3>(simd_sum);
+                
+                // Handle remaining elements
+                for j in (chunks * 4)..vector_length {
+                    sum += (*data_ptr.add(a_base + j)) * (*data_ptr.add(b_base + j));
+                }
+            } else {
+                // Scalar processing
+                for j in 0..vector_length {
+                    sum += (*data_ptr.add(a_base + j)) * (*data_ptr.add(b_base + j));
+                }
+            }
+            
+            *results_ptr.add(i) = sum;
+        }
+    }
 }
 
-/// Deallocates a vector buffer
+/// Zero-copy batch dot product that works directly with JS TypedArray pointers
+/// This function takes pointers to two flat arrays containing vectors and
+/// computes dot products without any memory copying
 #[wasm_bindgen]
-pub fn deallocate_vector_buffer(ptr: *mut f32, size: usize) {
-    let layout = std::alloc::Layout::array::<f32>(size).unwrap();
-    unsafe { std::alloc::dealloc(ptr as *mut u8, layout) };
-}
-
-/// Efficient batch dot product using raw pointers for minimal overhead
-/// ptr_a: pointer to first buffer containing all 'a' vectors
-/// ptr_b: pointer to second buffer containing all 'b' vectors  
-/// results_ptr: pointer to results buffer
-/// vector_length: length of each vector
-/// num_pairs: number of vector pairs
-#[wasm_bindgen]
-pub fn vector_batch_dot_product_raw(
-    ptr_a: *const f32,
-    ptr_b: *const f32, 
+pub fn batch_dot_product_zero_copy(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
     results_ptr: *mut f32,
     vector_length: usize,
     num_pairs: usize
 ) {
     unsafe {
-        if num_pairs < 100 || vector_length < SIMD_THRESHOLD {
-            // Single-threaded processing
-            for i in 0..num_pairs {
-                let base = i * vector_length;
-                let a_start = ptr_a.add(base);
-                let b_start = ptr_b.add(base);
-                
-                let mut sum = 0.0;
-                if vector_length >= SIMD_THRESHOLD {
-                    // SIMD processing
-                    let chunks = vector_length / 4;
-                    let mut simd_sum = f32x4_splat(0.0);
-                    
-                    for j in 0..chunks {
-                        let simd_base = j * 4;
-                        let a_vec = v128_load(a_start.add(simd_base) as *const v128);
-                        let b_vec = v128_load(b_start.add(simd_base) as *const v128);
-                        let prod = f32x4_mul(a_vec, b_vec);
-                        simd_sum = f32x4_add(simd_sum, prod);
-                    }
-                    
-                    // Extract scalar sum from SIMD register
-                    sum = f32x4_extract_lane::<0>(simd_sum) + 
-                          f32x4_extract_lane::<1>(simd_sum) + 
-                          f32x4_extract_lane::<2>(simd_sum) + 
-                          f32x4_extract_lane::<3>(simd_sum);
-                    
-                    // Handle remaining elements
-                    for j in (chunks * 4)..vector_length {
-                        sum += (*a_start.add(j)) * (*b_start.add(j));
-                    }
-                } else {
-                    // Scalar processing
-                    for j in 0..vector_length {
-                        sum += (*a_start.add(j)) * (*b_start.add(j));
-                    }
-                }
-                
-                *results_ptr.add(i) = sum;
-            }
-        } else {
-            // Parallel processing using Rayon
-            let a_slice = std::slice::from_raw_parts(ptr_a, vector_length * num_pairs);
-            let b_slice = std::slice::from_raw_parts(ptr_b, vector_length * num_pairs);
-            let results_slice = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
+        for i in 0..num_pairs {
+            let a_offset = i * vector_length;
+            let b_offset = i * vector_length;
             
-            results_slice.par_iter_mut().enumerate().for_each(|(i, result)| {
-                let base = i * vector_length;
-                let a = &a_slice[base..base + vector_length];
-                let b = &b_slice[base..base + vector_length];
-                
-                if vector_length >= SIMD_THRESHOLD {
-                    *result = simd_dot_product(a, b);
-                } else {
-                    let mut sum = 0.0;
-                    for j in 0..vector_length {
-                        sum += a[j] * b[j];
-                    }
-                    *result = sum;
+            let a_slice = std::slice::from_raw_parts(a_ptr.add(a_offset), vector_length);
+            let b_slice = std::slice::from_raw_parts(b_ptr.add(b_offset), vector_length);
+            
+            let result = if vector_length >= SIMD_THRESHOLD {
+                simd_dot_product(a_slice, b_slice)
+            } else {
+                let mut sum = 0.0;
+                for j in 0..vector_length {
+                    sum += a_slice[j] * b_slice[j];
                 }
-            });
+                sum
+            };
+            
+            *results_ptr.add(i) = result;
         }
     }
 }
 
-/// Get the raw pointer to WASM memory for direct access
+/// Zero-copy batch dot product with parallel processing for large datasets
+/// Uses Rayon for multi-threading when beneficial
 #[wasm_bindgen]
-pub fn get_memory_ptr() -> *mut u8 {
-    wasm_bindgen::memory().data_ptr()
-}
-
-/// Get the size of WASM memory in bytes
-#[wasm_bindgen]
-pub fn get_memory_size() -> usize {
-    wasm_bindgen::memory().data().len()
-}
-
-/// Copy data from JavaScript Float32Array to WASM memory at specified offset
-#[wasm_bindgen]
-pub fn copy_to_memory(data: &[f32], offset: usize) {
-    let memory = wasm_bindgen::memory();
-    let mem_slice = unsafe {
-        std::slice::from_raw_parts_mut(
-            memory.data_ptr().add(offset) as *mut f32,
-            data.len()
-        )
-    };
-    mem_slice.copy_from_slice(data);
-}
-
-/// Copy data from WASM memory at specified offset to JavaScript Float32Array
-#[wasm_bindgen]
-pub fn copy_from_memory(offset: usize, length: usize) -> Vec<f32> {
-    let memory = wasm_bindgen::memory();
-    let mem_slice = unsafe {
-        std::slice::from_raw_parts(
-            memory.data_ptr().add(offset) as *const f32,
-            length
-        )
-    };
-    mem_slice.to_vec()
+pub fn batch_dot_product_zero_copy_parallel(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
+    results_ptr: *mut f32,
+    vector_length: usize,
+    num_pairs: usize
+) {
+    unsafe {
+        // Convert raw pointers to slices for safe parallel access
+        let a_data = std::slice::from_raw_parts(a_ptr, num_pairs * vector_length);
+        let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
+        let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
+        
+        if num_pairs >= PARALLEL_THRESHOLD {
+            // Parallel processing
+            results.par_iter_mut().enumerate().for_each(|(i, result)| {
+                let a_start = i * vector_length;
+                let a_end = a_start + vector_length;
+                let b_start = i * vector_length;
+                let b_end = b_start + vector_length;
+                
+                let a_slice = &a_data[a_start..a_end];
+                let b_slice = &b_data[b_start..b_end];
+                
+                *result = if vector_length >= SIMD_THRESHOLD {
+                    simd_dot_product(a_slice, b_slice)
+                } else {
+                    let mut sum = 0.0;
+                    for j in 0..vector_length {
+                        sum += a_slice[j] * b_slice[j];
+                    }
+                    sum
+                };
+            });
+        } else {
+            // Sequential processing
+            for i in 0..num_pairs {
+                let a_start = i * vector_length;
+                let a_end = a_start + vector_length;
+                let b_start = i * vector_length;
+                let b_end = b_start + vector_length;
+                
+                let a_slice = &a_data[a_start..a_end];
+                let b_slice = &b_data[b_start..b_end];
+                
+                results[i] = if vector_length >= SIMD_THRESHOLD {
+                    simd_dot_product(a_slice, b_slice)
+                } else {
+                    let mut sum = 0.0;
+                    for j in 0..vector_length {
+                        sum += a_slice[j] * b_slice[j];
+                    }
+                    sum
+                };
+            }
+        }
+    }
 }

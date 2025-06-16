@@ -18,10 +18,7 @@ import {
   vector_add as js_vector_add,
   vector_scale as js_vector_scale,
 } from "./vector-operations.js";
-import {
-  generateSampleData,
-  seededRandom,
-} from "./vector-test-data.js";
+import { generateSampleData, seededRandom } from "./vector-test-data.js";
 import { ensureWasmInit } from "./bench-util.js";
 
 describe("Vector Operations Performance Benchmarks", () => {
@@ -52,13 +49,13 @@ describe("Vector Operations Performance Benchmarks", () => {
 
     // Dot Product Benchmarks
     console.log("\n📊 Running Dot Product benchmarks...");
-    
+
     for (const config of testConfigs) {
       console.log(`  Testing ${config.name} - ${config.dims} dimensions...`);
-      
+
       // Generate test data
       const data = generateSampleData(31337, config.dims, config.samples);
-      
+
       const bench = new Bench({ time: 1000, iterations: 5 });
 
       bench
@@ -100,17 +97,19 @@ describe("Vector Operations Performance Benchmarks", () => {
 
     // Vector Addition Benchmarks
     console.log("\n📊 Running Vector Addition benchmarks...");
-    
+
     for (const config of testConfigs) {
       console.log(`  Testing ${config.name} - ${config.dims} dimensions...`);
-      
+
       // Generate test data
       const data = generateSampleData(42, config.dims, config.samples);
-      
+
       // Pre-allocate result buffers for each iteration
       const jsResults = data.vectorsA.map(() => new Float32Array(config.dims));
-      const wasmResults = data.vectorsA.map(() => new Float32Array(config.dims));
-      
+      const wasmResults = data.vectorsA.map(
+        () => new Float32Array(config.dims),
+      );
+
       const bench = new Bench({ time: 1000, iterations: 5 });
 
       bench
@@ -144,18 +143,20 @@ describe("Vector Operations Performance Benchmarks", () => {
 
     // Vector Scaling Benchmarks
     console.log("\n📊 Running Vector Scaling benchmarks...");
-    
+
     for (const config of testConfigs) {
       console.log(`  Testing ${config.name} - ${config.dims} dimensions...`);
-      
+
       // Generate test data
       const data = generateSampleData(123, config.dims, config.samples);
       const scalar = 2.5;
-      
+
       // Pre-allocate result buffers for each iteration
       const jsResults = data.vectorsA.map(() => new Float32Array(config.dims));
-      const wasmResults = data.vectorsA.map(() => new Float32Array(config.dims));
-      
+      const wasmResults = data.vectorsA.map(
+        () => new Float32Array(config.dims),
+      );
+
       const bench = new Bench({ time: 1000, iterations: 5 });
 
       bench
@@ -188,16 +189,24 @@ describe("Vector Operations Performance Benchmarks", () => {
     }
 
     // Intensive 1024D Vector Multiplication Benchmark (100k iterations)
-    console.log("\n🔥 Running intensive 1024D vector multiplication benchmark (100k iterations)...");
-    
+    console.log(
+      "\n🔥 Running intensive 1024D vector multiplication benchmark (100k iterations)...",
+    );
+
     const intensiveDims = 1024;
     const intensiveIterations = 100000;
-    
+
     // Generate test data for intensive benchmark
-    const intensiveData = generateSampleData(42, intensiveDims, intensiveIterations);
-    
-    console.log(`  Testing ${intensiveIterations.toLocaleString()} dot products of ${intensiveDims}D vectors...`);
-    
+    const intensiveData = generateSampleData(
+      42,
+      intensiveDims,
+      intensiveIterations,
+    );
+
+    console.log(
+      `  Testing ${intensiveIterations.toLocaleString()} dot products of ${intensiveDims}D vectors...`,
+    );
+
     const intensiveBench = new Bench({ time: 5000, iterations: 3 }); // Longer time for intensive test
 
     intensiveBench
@@ -206,17 +215,26 @@ describe("Vector Operations Performance Benchmarks", () => {
       })
       .add("WASM Adaptive Dot Product 1024D (100k ops)", () => {
         for (let i = 0; i < intensiveData.vectorsA.length; i++) {
-          vector_dot_product(intensiveData.vectorsA[i], intensiveData.vectorsB[i]);
+          vector_dot_product(
+            intensiveData.vectorsA[i],
+            intensiveData.vectorsB[i],
+          );
         }
       })
       .add("WASM Single-threaded Dot Product 1024D (100k ops)", () => {
         for (let i = 0; i < intensiveData.vectorsA.length; i++) {
-          vector_dot_product_single(intensiveData.vectorsA[i], intensiveData.vectorsB[i]);
+          vector_dot_product_single(
+            intensiveData.vectorsA[i],
+            intensiveData.vectorsB[i],
+          );
         }
       })
       .add("WASM Parallel Dot Product 1024D (100k ops)", () => {
         for (let i = 0; i < intensiveData.vectorsA.length; i++) {
-          vector_dot_product_parallel(intensiveData.vectorsA[i], intensiveData.vectorsB[i]);
+          vector_dot_product_parallel(
+            intensiveData.vectorsA[i],
+            intensiveData.vectorsB[i],
+          );
         }
       });
 
@@ -228,15 +246,19 @@ describe("Vector Operations Performance Benchmarks", () => {
       if (task.result) {
         const totalTimeMs = task.result.mean * 1000; // Convert to milliseconds
         const opsPerSec = task.result.hz;
-        const timePerOp = (task.result.mean * 1000 * 1000); // Microseconds per operation
-        
+        const timePerOp = task.result.mean * 1000 * 1000; // Microseconds per operation
+
         console.log(`${task.name}:`);
         console.log(`  • Total time: ${totalTimeMs.toFixed(2)} ms`);
-        console.log(`  • Operations/sec: ${Math.round(opsPerSec).toLocaleString()}`);
+        console.log(
+          `  • Operations/sec: ${Math.round(opsPerSec).toLocaleString()}`,
+        );
         console.log(`  • Time per dot product: ${timePerOp.toFixed(3)} μs`);
-        console.log(`  • Throughput: ${((intensiveIterations * intensiveDims * 2) / (totalTimeMs / 1000) / 1e9).toFixed(2)} GFLOPS`);
+        console.log(
+          `  • Throughput: ${((intensiveIterations * intensiveDims * 2) / (totalTimeMs / 1000) / 1e9).toFixed(2)} GFLOPS`,
+        );
         console.log("");
-        
+
         allResults.push({
           name: task.name,
           dims: intensiveDims,
@@ -255,30 +277,43 @@ describe("Vector Operations Performance Benchmarks", () => {
     markdown += "## Benchmark Results\n\n";
 
     // Group results by operation type
-    const dotProductResults = allResults.filter(r => r.type === "DotProduct");
-    const addResults = allResults.filter(r => r.type === "VectorAdd");
-    const scaleResults = allResults.filter(r => r.type === "VectorScale");
-    const intensiveResults = allResults.filter(r => r.type === "IntensiveDotProduct");
+    const dotProductResults = allResults.filter((r) => r.type === "DotProduct");
+    const addResults = allResults.filter((r) => r.type === "VectorAdd");
+    const scaleResults = allResults.filter((r) => r.type === "VectorScale");
+    const intensiveResults = allResults.filter(
+      (r) => r.type === "IntensiveDotProduct",
+    );
 
     // Dot Product Analysis
     if (dotProductResults.length > 0) {
       markdown += "### Dot Product Performance\n\n";
-      markdown += "| Dimensions | JS Batch (ops/sec) | WASM Adaptive (ops/sec) | WASM Single (ops/sec) | WASM Parallel (ops/sec) | Best Implementation |\n";
-      markdown += "|------------|---------------------|-------------------------|----------------------|-------------------------|--------------------|\n";
+      markdown +=
+        "| Dimensions | JS Batch (ops/sec) | WASM Adaptive (ops/sec) | WASM Single (ops/sec) | WASM Parallel (ops/sec) | Best Implementation |\n";
+      markdown +=
+        "|------------|---------------------|-------------------------|----------------------|-------------------------|--------------------|\n";
 
       testConfigs.forEach((config) => {
-        const js = dotProductResults.find(r => r.dims === config.dims && r.name.includes("JS Batch"));
-        const adaptive = dotProductResults.find(r => r.dims === config.dims && r.name.includes("WASM Adaptive"));
-        const single = dotProductResults.find(r => r.dims === config.dims && r.name.includes("WASM Single-threaded"));
-        const parallel = dotProductResults.find(r => r.dims === config.dims && r.name.includes("WASM Parallel"));
+        const js = dotProductResults.find(
+          (r) => r.dims === config.dims && r.name.includes("JS Batch"),
+        );
+        const adaptive = dotProductResults.find(
+          (r) => r.dims === config.dims && r.name.includes("WASM Adaptive"),
+        );
+        const single = dotProductResults.find(
+          (r) =>
+            r.dims === config.dims && r.name.includes("WASM Single-threaded"),
+        );
+        const parallel = dotProductResults.find(
+          (r) => r.dims === config.dims && r.name.includes("WASM Parallel"),
+        );
 
         if (js && adaptive && single && parallel) {
           const best = [
             { name: "JS", ops: js.ops },
             { name: "WASM Adaptive", ops: adaptive.ops },
             { name: "WASM Single", ops: single.ops },
-            { name: "WASM Parallel", ops: parallel.ops }
-          ].reduce((a, b) => a.ops > b.ops ? a : b).name;
+            { name: "WASM Parallel", ops: parallel.ops },
+          ].reduce((a, b) => (a.ops > b.ops ? a : b)).name;
 
           markdown += `| ${config.dims} | ${Math.round(js.ops).toLocaleString()} | ${Math.round(adaptive.ops).toLocaleString()} | ${Math.round(single.ops).toLocaleString()} | ${Math.round(parallel.ops).toLocaleString()} | ${best} |\n`;
         }
@@ -290,12 +325,18 @@ describe("Vector Operations Performance Benchmarks", () => {
     // Vector Addition Analysis
     if (addResults.length > 0) {
       markdown += "### Vector Addition Performance\n\n";
-      markdown += "| Dimensions | JS (ops/sec) | WASM (ops/sec) | Best Implementation |\n";
-      markdown += "|------------|--------------|----------------|--------------------|\n";
+      markdown +=
+        "| Dimensions | JS (ops/sec) | WASM (ops/sec) | Best Implementation |\n";
+      markdown +=
+        "|------------|--------------|----------------|--------------------|\n";
 
       testConfigs.forEach((config) => {
-        const js = addResults.find(r => r.dims === config.dims && r.name.includes("JS Vector Add"));
-        const wasm = addResults.find(r => r.dims === config.dims && r.name.includes("WASM Vector Add"));
+        const js = addResults.find(
+          (r) => r.dims === config.dims && r.name.includes("JS Vector Add"),
+        );
+        const wasm = addResults.find(
+          (r) => r.dims === config.dims && r.name.includes("WASM Vector Add"),
+        );
 
         if (js && wasm) {
           const best = js.ops > wasm.ops ? "JS" : "WASM";
@@ -310,12 +351,18 @@ describe("Vector Operations Performance Benchmarks", () => {
     // Vector Scaling Analysis
     if (scaleResults.length > 0) {
       markdown += "### Vector Scaling Performance\n\n";
-      markdown += "| Dimensions | JS (ops/sec) | WASM (ops/sec) | Best Implementation |\n";
-      markdown += "|------------|--------------|----------------|--------------------|\n";
+      markdown +=
+        "| Dimensions | JS (ops/sec) | WASM (ops/sec) | Best Implementation |\n";
+      markdown +=
+        "|------------|--------------|----------------|--------------------|\n";
 
       testConfigs.forEach((config) => {
-        const js = scaleResults.find(r => r.dims === config.dims && r.name.includes("JS Vector Scale"));
-        const wasm = scaleResults.find(r => r.dims === config.dims && r.name.includes("WASM Vector Scale"));
+        const js = scaleResults.find(
+          (r) => r.dims === config.dims && r.name.includes("JS Vector Scale"),
+        );
+        const wasm = scaleResults.find(
+          (r) => r.dims === config.dims && r.name.includes("WASM Vector Scale"),
+        );
 
         if (js && wasm) {
           const best = js.ops > wasm.ops ? "JS" : "WASM";
@@ -329,16 +376,20 @@ describe("Vector Operations Performance Benchmarks", () => {
 
     // Intensive Benchmark Analysis
     if (intensiveResults.length > 0) {
-      markdown += "### Intensive Benchmark: 1024D Vector Dot Products (100k iterations)\n\n";
-      markdown += "| Implementation | Total Time (ms) | Ops/sec | Time per Op (μs) | GFLOPS |\n";
-      markdown += "|----------------|-----------------|---------|------------------|--------|\n";
+      markdown +=
+        "### Intensive Benchmark: 1024D Vector Dot Products (100k iterations)\n\n";
+      markdown +=
+        "| Implementation | Total Time (ms) | Ops/sec | Time per Op (μs) | GFLOPS |\n";
+      markdown +=
+        "|----------------|-----------------|---------|------------------|--------|\n";
 
       intensiveResults.forEach((result) => {
         const totalTimeMs = result.time * 1000;
         const timePerOpUs = result.time * 1000 * 1000;
-        const gflops = ((intensiveIterations * intensiveDims * 2) / result.time / 1e9);
-        
-        const implName = result.name.includes("JS Batch") 
+        const gflops =
+          (intensiveIterations * intensiveDims * 2) / result.time / 1e9;
+
+        const implName = result.name.includes("JS Batch")
           ? "JS Batch"
           : result.name.includes("WASM Adaptive")
             ? "WASM Adaptive"
@@ -349,8 +400,12 @@ describe("Vector Operations Performance Benchmarks", () => {
         markdown += `| ${implName} | ${totalTimeMs.toFixed(2)} | ${Math.round(result.ops).toLocaleString()} | ${timePerOpUs.toFixed(3)} | ${gflops.toFixed(2)} |\n`;
       });
 
-      const bestIntensive = intensiveResults.reduce((a, b) => a.ops > b.ops ? a : b);
-      const worstIntensive = intensiveResults.reduce((a, b) => a.ops < b.ops ? a : b);
+      const bestIntensive = intensiveResults.reduce((a, b) =>
+        a.ops > b.ops ? a : b,
+      );
+      const worstIntensive = intensiveResults.reduce((a, b) =>
+        a.ops < b.ops ? a : b,
+      );
       const speedup = bestIntensive.ops / worstIntensive.ops;
 
       markdown += "\n";
@@ -361,17 +416,22 @@ describe("Vector Operations Performance Benchmarks", () => {
     }
 
     // Adaptive Algorithm Effectiveness
-    const adaptiveResults = allResults.filter(r => r.name.includes("WASM Adaptive"));
+    const adaptiveResults = allResults.filter((r) =>
+      r.name.includes("WASM Adaptive"),
+    );
     const adaptiveWins = adaptiveResults.filter((adaptive) => {
-      const sameTypeResults = allResults.filter(r => r.type === adaptive.type && r.dims === adaptive.dims);
-      const maxOps = Math.max(...sameTypeResults.map(r => r.ops));
+      const sameTypeResults = allResults.filter(
+        (r) => r.type === adaptive.type && r.dims === adaptive.dims,
+      );
+      const maxOps = Math.max(...sameTypeResults.map((r) => r.ops));
       return adaptive.ops >= maxOps * 0.95; // Within 5% is considered a win
     });
 
     markdown += "### Implementation Comparison\n\n";
     markdown += `- **Total test cases**: ${allResults.length}\n`;
-    markdown += `- **Dot product adaptive effectiveness**: ${adaptiveResults.filter(r => r.type === "DotProduct").length > 0 ? "Available" : "Not tested"}\n`;
-    markdown += "- **Performance comparison**: Results show relative performance between JavaScript and WASM implementations\n";
+    markdown += `- **Dot product adaptive effectiveness**: ${adaptiveResults.filter((r) => r.type === "DotProduct").length > 0 ? "Available" : "Not tested"}\n`;
+    markdown +=
+      "- **Performance comparison**: Results show relative performance between JavaScript and WASM implementations\n";
 
     console.log("✅ Benchmark results:");
     console.log(markdown);
@@ -382,8 +442,8 @@ describe("Vector Operations Performance Benchmarks", () => {
       allResults.map((r) => ({
         Type: r.type,
         Dimensions: r.dims,
-        Implementation: r.name.includes("JS") 
-          ? "JS" 
+        Implementation: r.name.includes("JS")
+          ? "JS"
           : r.name.includes("WASM")
             ? "WASM"
             : "Unknown",

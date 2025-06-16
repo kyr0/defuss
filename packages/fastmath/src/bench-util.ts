@@ -11,7 +11,13 @@ export async function ensureWasmInit() {
     // Initialize WASM
     await init();
 
-    await initThreadPool(navigator.hardwareConcurrency);
+    // Get thread count with fallback for Node.js environments
+    const threadCount =
+      typeof navigator !== "undefined" && navigator.hardwareConcurrency
+        ? navigator.hardwareConcurrency
+        : 4; // Fallback to 4 threads
+
+    await initThreadPool(threadCount);
     wasmInitialized = true;
   }
 }
