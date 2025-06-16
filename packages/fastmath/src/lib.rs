@@ -26,6 +26,8 @@ pub use vector::{
     process_vectors_in_memory,
     batch_dot_product_zero_copy,
     batch_dot_product_zero_copy_parallel,
+    generate_test_vectors_wasm,
+    batch_dot_product_hyper_optimized,
     vector_normalize,
     vector_magnitude,
 };

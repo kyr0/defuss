@@ -482,3 +482,167 @@ pub fn batch_dot_product_zero_copy_parallel(
         }
     }
 }
+
+/// Ultra-fast random number generation in WASM
+#[wasm_bindgen]
+pub fn generate_test_vectors_wasm(
+    num_vectors: usize,
+    vector_length: usize,
+    seed: u32,
+    a_ptr: *mut f32,
+    b_ptr: *mut f32
+) {
+    unsafe {
+        let total_size = num_vectors * vector_length;
+        let a_slice = std::slice::from_raw_parts_mut(a_ptr, total_size);
+        let b_slice = std::slice::from_raw_parts_mut(b_ptr, total_size);
+        
+        let mut current_seed = seed;
+        
+        // Ultra-fast WASM random number generation with loop unrolling
+        for i in (0..total_size).step_by(8) {
+            // Generate 8 random numbers at once
+            current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+            a_slice[i] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+            current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+            b_slice[i] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+            
+            if i + 1 < total_size {
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                a_slice[i + 1] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                b_slice[i + 1] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+            }
+            
+            if i + 2 < total_size {
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                a_slice[i + 2] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                b_slice[i + 2] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+            }
+            
+            if i + 3 < total_size {
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                a_slice[i + 3] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                b_slice[i + 3] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+            }
+            
+            if i + 4 < total_size {
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                a_slice[i + 4] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                b_slice[i + 4] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+            }
+            
+            if i + 5 < total_size {
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                a_slice[i + 5] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                b_slice[i + 5] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+            }
+            
+            if i + 6 < total_size {
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                a_slice[i + 6] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                b_slice[i + 6] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+            }
+            
+            if i + 7 < total_size {
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                a_slice[i + 7] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+                current_seed = (current_seed.wrapping_mul(9301).wrapping_add(49297)) % 233280;
+                b_slice[i + 7] = (current_seed as f32 / 233280.0) * 2.0 - 1.0;
+            }
+        }
+    }
+}
+
+/// Hyper-optimized batch dot product with perfect SIMD alignment
+#[wasm_bindgen]
+pub fn batch_dot_product_hyper_optimized(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
+    results_ptr: *mut f32,
+    vector_length: usize,
+    num_pairs: usize
+) {
+    unsafe {
+        for i in 0..num_pairs {
+            let a_offset = i * vector_length;
+            let b_offset = i * vector_length;
+            
+            let a_slice = std::slice::from_raw_parts(a_ptr.add(a_offset), vector_length);
+            let b_slice = std::slice::from_raw_parts(b_ptr.add(b_offset), vector_length);
+            
+            // Use hyper-optimized SIMD for all vector sizes
+            #[cfg(target_arch = "wasm32")]
+            {
+                if vector_length >= 16 {
+                    // Process 16 elements at once using 4 SIMD registers
+                    let mut sum1 = f32x4_splat(0.0);
+                    let mut sum2 = f32x4_splat(0.0);
+                    let mut sum3 = f32x4_splat(0.0);
+                    let mut sum4 = f32x4_splat(0.0);
+                    
+                    let chunks = vector_length / 16;
+                    
+                    for j in 0..chunks {
+                        let base = j * 16;
+                        
+                        let a_vec1 = v128_load(a_slice.as_ptr().add(base) as *const v128);
+                        let b_vec1 = v128_load(b_slice.as_ptr().add(base) as *const v128);
+                        let prod1 = f32x4_mul(a_vec1, b_vec1);
+                        sum1 = f32x4_add(sum1, prod1);
+                        
+                        let a_vec2 = v128_load(a_slice.as_ptr().add(base + 4) as *const v128);
+                        let b_vec2 = v128_load(b_slice.as_ptr().add(base + 4) as *const v128);
+                        let prod2 = f32x4_mul(a_vec2, b_vec2);
+                        sum2 = f32x4_add(sum2, prod2);
+                        
+                        let a_vec3 = v128_load(a_slice.as_ptr().add(base + 8) as *const v128);
+                        let b_vec3 = v128_load(b_slice.as_ptr().add(base + 8) as *const v128);
+                        let prod3 = f32x4_mul(a_vec3, b_vec3);
+                        sum3 = f32x4_add(sum3, prod3);
+                        
+                        let a_vec4 = v128_load(a_slice.as_ptr().add(base + 12) as *const v128);
+                        let b_vec4 = v128_load(b_slice.as_ptr().add(base + 12) as *const v128);
+                        let prod4 = f32x4_mul(a_vec4, b_vec4);
+                        sum4 = f32x4_add(sum4, prod4);
+                    }
+                    
+                    // Combine all SIMD sums
+                    let combined1 = f32x4_add(sum1, sum2);
+                    let combined2 = f32x4_add(sum3, sum4);
+                    let final_sum = f32x4_add(combined1, combined2);
+                    
+                    let mut result = f32x4_extract_lane::<0>(final_sum) + 
+                                   f32x4_extract_lane::<1>(final_sum) + 
+                                   f32x4_extract_lane::<2>(final_sum) + 
+                                   f32x4_extract_lane::<3>(final_sum);
+                    
+                    // Handle remaining elements
+                    for j in (chunks * 16)..vector_length {
+                        result += a_slice[j] * b_slice[j];
+                    }
+                    
+                    *results_ptr.add(i) = result;
+                } else {
+                    // Fallback to regular SIMD for smaller vectors
+                    let result = simd_dot_product(a_slice, b_slice);
+                    *results_ptr.add(i) = result;
+                }
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let mut sum = 0.0;
+                for j in 0..vector_length {
+                    sum += a_slice[j] * b_slice[j];
+                }
+                *results_ptr.add(i) = sum;
+            }
+        }
+    }
+}
