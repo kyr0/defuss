@@ -25,6 +25,8 @@ pub use vector::{
     process_vectors_in_memory,
     batch_dot_product_zero_copy,
     batch_dot_product_zero_copy_parallel,
+    batch_dot_product_rayon_chunked,
+    batch_dot_product_hyper_optimized_parallel,
     generate_test_vectors_wasm,
     batch_dot_product_hyper_optimized,
     batch_dot_product_ultra_simple,

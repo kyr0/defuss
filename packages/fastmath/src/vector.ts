@@ -1,7 +1,9 @@
 import init, {
   initThreadPool,
   batch_dot_product_hyper_optimized,
+  batch_dot_product_hyper_optimized_parallel,
   batch_dot_product_zero_copy_parallel,
+  batch_dot_product_rayon_chunked,
   batch_dot_product_ultra_simple,
 } from "../pkg/defuss_fastmath.js";
 
@@ -17,7 +19,11 @@ export async function initWasm(): Promise<void> {
     wasmInstance = await init();
     try {
       // Initialize thread pool if supported
-      await initThreadPool(navigator.hardwareConcurrency || 4);
+      await initThreadPool(navigator.hardwareConcurrency || 8);
+      console.log(
+        "✅ WASM thread pool initialized with concurrency:",
+        navigator.hardwareConcurrency || 8,
+      );
     } catch (e) {
       console.warn(
         "⚠️ Thread pool initialization failed (expected in some environments)",
@@ -25,6 +31,7 @@ export async function initWasm(): Promise<void> {
     }
     wasmInitialized = true;
   }
+  return wasmInstance;
 }
 
 /**
@@ -64,68 +71,65 @@ export function batchDotProductZeroCopy(
   const vectorsASize = vectorsA.length * 4; // 4 bytes per f32
   const vectorsBSize = vectorsB.length * 4;
   const resultsSize = numPairs * 4;
-  const totalSize = vectorsASize + vectorsBSize + resultsSize;
 
-  // Get WASM memory
+  // Get WASM memory and malloc function
   const memory = wasmInstance.memory;
+  const malloc = wasmInstance.__wbindgen_malloc;
+  const free = wasmInstance.__wbindgen_free;
 
-  // Ensure WASM memory has enough space
-  const currentPages = memory.buffer.byteLength / 65536;
-  const requiredPages = Math.ceil(totalSize / 65536);
-  if (requiredPages > currentPages) {
-    memory.grow(requiredPages - currentPages);
-  }
+  // Allocate properly aligned memory from WASM heap
+  const aPtrValue = malloc(vectorsASize, 4); // 4-byte alignment for f32
+  const bPtrValue = malloc(vectorsBSize, 4);
+  const resultsPtrValue = malloc(resultsSize, 4);
 
-  // Calculate offsets in WASM memory (in bytes) - simple, no alignment overhead
-  const aOffset = 0;
-  const bOffset = vectorsASize;
-  const resultsOffset = vectorsASize + vectorsBSize;
+  // Create views into the allocated memory
+  const aView = new Float32Array(memory.buffer, aPtrValue, vectorsA.length);
+  const bView = new Float32Array(memory.buffer, bPtrValue, vectorsB.length);
+  const resultsView = new Float32Array(memory.buffer, resultsPtrValue, numPairs);
 
-  // Copy data to WASM memory using efficient set operations - zero-copy style
-  const aView = new Float32Array(memory.buffer, aOffset, vectorsA.length);
-  const bView = new Float32Array(memory.buffer, bOffset, vectorsB.length);
-  const resultsView = new Float32Array(memory.buffer, resultsOffset, numPairs);
-
-  // Efficient bulk copy - much faster than individual element copying
+  // Copy data to WASM memory using efficient set operations
   aView.set(vectorsA);
   bView.set(vectorsB);
 
-  // Calculate pointer values (byte offsets)
-  const aPtrValue = aOffset;
-  const bPtrValue = bOffset;
-  const resultsPtrValue = resultsOffset;
-
-  // Choose optimal implementation - use chunked processing for large parallel workloads
-  if (useParallel && numPairs > 10000) {
-    // Process in chunks for better cache efficiency and potential thread utilization
-    const chunkSize = Math.min(5000, Math.floor(numPairs / 4));
-    for (let offset = 0; offset < numPairs; offset += chunkSize) {
-      const currentChunk = Math.min(chunkSize, numPairs - offset);
-      const currentAPtr = aPtrValue + offset * vectorLength * 4;
-      const currentBPtr = bPtrValue + offset * vectorLength * 4;
-      const currentResultsPtr = resultsPtrValue + offset * 4;
-
-      batch_dot_product_ultra_simple(
-        currentAPtr,
-        currentBPtr,
-        currentResultsPtr,
+  try {
+    // Choose optimal implementation - use chunked parallel for medium workloads only
+    // WASM threading has issues with very large workloads, so be conservative
+    if (useParallel && numPairs >= 1000 && numPairs <= 4000) {
+      // Use Rayon chunked parallel implementation (SIMD + threading)
+      batch_dot_product_rayon_chunked(
+        aPtrValue,
+        bPtrValue,
+        resultsPtrValue,
         vectorLength,
-        currentChunk,
+        numPairs,
+      );
+    } else {
+      // Use sequential hyper-optimized implementation (SIMD only)
+      batch_dot_product_hyper_optimized(
+        aPtrValue,
+        bPtrValue,
+        resultsPtrValue,
+        vectorLength,
+        numPairs,
       );
     }
-  } else {
-    // Single call for sequential or smaller datasets
-    batch_dot_product_ultra_simple(
-      aPtrValue,
-      bPtrValue,
-      resultsPtrValue,
-      vectorLength,
-      numPairs,
-    );
-  }
 
-  // Return a copy of the results (this is the only unavoidable copy)
-  return new Float32Array(resultsView);
+    // Copy results before freeing memory
+    const results = new Float32Array(resultsView);
+    
+    // Clean up allocated memory
+    free(aPtrValue, vectorsASize, 4);
+    free(bPtrValue, vectorsBSize, 4);
+    free(resultsPtrValue, resultsSize, 4);
+
+    return results;
+  } catch (error) {
+    // Clean up memory on error
+    free(aPtrValue, vectorsASize, 4);
+    free(bPtrValue, vectorsBSize, 4);
+    free(resultsPtrValue, resultsSize, 4);
+    throw error;
+  }
 }
 
 /**

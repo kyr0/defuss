@@ -452,46 +452,90 @@ pub fn batch_dot_product_zero_copy_parallel(
         let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
         
         if num_pairs >= PARALLEL_THRESHOLD {
-            // Parallel processing
+            // Use Rayon's parallel processing - simpler and more reliable approach
             results.par_iter_mut().enumerate().for_each(|(i, result)| {
                 let a_start = i * vector_length;
-                let a_end = a_start + vector_length;
-                let b_start = i * vector_length;
-                let b_end = b_start + vector_length;
+                let a_slice = &a_data[a_start..a_start + vector_length];
+                let b_slice = &b_data[a_start..a_start + vector_length];
                 
-                let a_slice = &a_data[a_start..a_end];
-                let b_slice = &b_data[b_start..b_end];
+                // Use the same ultra-simple SIMD logic as the ultra_simple function
+                #[cfg(target_arch = "wasm32")]
+                {
+                    let mut sum = f32x4_splat(0.0);
+                    
+                    // Process in chunks of 4 - memory/instruction alignment
+                    let mut j = 0;
+                    while j + 4 <= vector_length {
+                        let a_vec = v128_load(a_slice.as_ptr().add(j) as *const v128);
+                        let b_vec = v128_load(b_slice.as_ptr().add(j) as *const v128);
+                        sum = f32x4_add(sum, f32x4_mul(a_vec, b_vec));
+                        j += 4;
+                    }
+                    
+                    // Extract from SIMD register and sum up directly
+                    let mut dot_result = f32x4_extract_lane::<0>(sum) + 
+                                       f32x4_extract_lane::<1>(sum) + 
+                                       f32x4_extract_lane::<2>(sum) + 
+                                       f32x4_extract_lane::<3>(sum);
+                    
+                    // Handle remaining elements
+                    while j < vector_length {
+                        dot_result += a_slice[j] * b_slice[j];
+                        j += 1;
+                    }
+                    
+                    *result = dot_result;
+                }
                 
-                *result = if vector_length >= SIMD_THRESHOLD {
-                    simd_dot_product(a_slice, b_slice)
-                } else {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
                     let mut sum = 0.0;
                     for j in 0..vector_length {
                         sum += a_slice[j] * b_slice[j];
                     }
-                    sum
-                };
+                    *result = sum;
+                }
             });
         } else {
-            // Sequential processing
+            // Sequential processing using the same ultra-simple logic
             for i in 0..num_pairs {
                 let a_start = i * vector_length;
-                let a_end = a_start + vector_length;
-                let b_start = i * vector_length;
-                let b_end = b_start + vector_length;
+                let a_slice = &a_data[a_start..a_start + vector_length];
+                let b_slice = &b_data[a_start..a_start + vector_length];
                 
-                let a_slice = &a_data[a_start..a_end];
-                let b_slice = &b_data[b_start..b_end];
+                #[cfg(target_arch = "wasm32")]
+                {
+                    let mut sum = f32x4_splat(0.0);
+                    
+                    let mut j = 0;
+                    while j + 4 <= vector_length {
+                        let a_vec = v128_load(a_slice.as_ptr().add(j) as *const v128);
+                        let b_vec = v128_load(b_slice.as_ptr().add(j) as *const v128);
+                        sum = f32x4_add(sum, f32x4_mul(a_vec, b_vec));
+                        j += 4;
+                    }
+                    
+                    let mut dot_result = f32x4_extract_lane::<0>(sum) + 
+                                       f32x4_extract_lane::<1>(sum) + 
+                                       f32x4_extract_lane::<2>(sum) + 
+                                       f32x4_extract_lane::<3>(sum);
+                    
+                    while j < vector_length {
+                        dot_result += a_slice[j] * b_slice[j];
+                        j += 1;
+                    }
+                    
+                    results[i] = dot_result;
+                }
                 
-                results[i] = if vector_length >= SIMD_THRESHOLD {
-                    simd_dot_product(a_slice, b_slice)
-                } else {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
                     let mut sum = 0.0;
                     for j in 0..vector_length {
                         sum += a_slice[j] * b_slice[j];
                     }
-                    sum
-                };
+                    results[i] = sum;
+                }
             }
         }
     }
@@ -661,6 +705,39 @@ pub fn batch_dot_product_hyper_optimized(
     }
 }
 
+/// Parallel version of hyper-optimized batch dot product using Rayon par_iter
+#[wasm_bindgen]
+pub fn batch_dot_product_hyper_optimized_parallel(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
+    results_ptr: *mut f32,
+    vector_length: usize,
+    num_pairs: usize
+) {
+    unsafe {
+        // Convert raw pointers to slices for safe parallel access
+        let a_data = std::slice::from_raw_parts(a_ptr, num_pairs * vector_length);
+        let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
+        let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
+        
+        // Simple parallel iteration - let Rayon handle chunking automatically
+        results
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, result)| {
+                let a_offset = i * vector_length;
+                let b_offset = i * vector_length;
+                
+                // Use scalar dot product for now to avoid alignment issues
+                let mut sum = 0.0_f32;
+                for j in 0..vector_length {
+                    sum += a_data[a_offset + j] * b_data[b_offset + j];
+                }
+                *result = sum;
+            });
+    }
+}
+
 /// Ultra-simple batch dot product matching the optimized C implementation pattern
 /// Direct translation of the 35ms/100k C code for maximum performance
 #[wasm_bindgen]
@@ -717,5 +794,96 @@ pub fn batch_dot_product_ultra_simple(
                 *results_ptr.add(i) = sum;
             }
         }
+    }
+}
+
+/// WASM-optimized parallel SIMD batch dot product with controlled chunking  
+#[wasm_bindgen]
+pub fn batch_dot_product_rayon_chunked(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
+    results_ptr: *mut f32,
+    vector_length: usize,
+    num_pairs: usize
+) {
+    unsafe {
+        // Convert raw pointers to slices with explicit bounds checking
+        let a_data = std::slice::from_raw_parts(a_ptr, num_pairs * vector_length);
+        let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
+        let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
+        
+        // Use fixed chunking strategy for WASM thread safety
+        let num_threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).min(8);
+        let chunk_size = std::cmp::max(num_pairs / num_threads, 100); // Minimum 100 pairs per chunk
+        
+        // Process in parallel chunks with explicit bounds
+        results.par_chunks_mut(chunk_size)
+               .enumerate()
+               .for_each(|(chunk_idx, chunk)| {
+                   let start_idx = chunk_idx * chunk_size;
+                   
+                   for (local_idx, result) in chunk.iter_mut().enumerate() {
+                       let i = start_idx + local_idx;
+                       
+                       // Bounds check - critical for WASM
+                       if i >= num_pairs {
+                           break;
+                       }
+                       
+                       let a_start = i * vector_length;
+                       let a_end = a_start + vector_length;
+                       
+                       // Additional bounds validation
+                       if a_end > a_data.len() || a_end > b_data.len() {
+                           *result = 0.0; // Safe fallback
+                           continue;
+                       }
+                       
+                       let a_slice = &a_data[a_start..a_end];
+                       let b_slice = &b_data[a_start..a_end];
+                       
+                       // SIMD implementation with WASM-safe patterns
+                       #[cfg(target_arch = "wasm32")]
+                       {
+                           let mut sum = f32x4_splat(0.0);
+                           let mut j = 0;
+                           
+                           // Process in SIMD chunks of 4
+                           while j + 4 <= vector_length {
+                               // Use safe pointer arithmetic
+                               let a_ptr_j = a_slice.as_ptr().add(j);
+                               let b_ptr_j = b_slice.as_ptr().add(j);
+                               
+                               let a_vec = v128_load(a_ptr_j as *const v128);
+                               let b_vec = v128_load(b_ptr_j as *const v128);
+                               sum = f32x4_add(sum, f32x4_mul(a_vec, b_vec));
+                               j += 4;
+                           }
+                           
+                           // Extract and sum SIMD lanes
+                           let mut dot_result = f32x4_extract_lane::<0>(sum) + 
+                                              f32x4_extract_lane::<1>(sum) + 
+                                              f32x4_extract_lane::<2>(sum) + 
+                                              f32x4_extract_lane::<3>(sum);
+                           
+                           // Handle remaining elements with bounds check
+                           while j < vector_length {
+                               dot_result += a_slice[j] * b_slice[j];
+                               j += 1;
+                           }
+                           
+                           *result = dot_result;
+                       }
+                       
+                       #[cfg(not(target_arch = "wasm32"))]
+                       {
+                           let mut sum = 0.0;
+                           for j in 0..vector_length {
+                               sum += a_slice[j] * b_slice[j];
+                           }
+                           *result = sum;
+                       }
+                   }
+               });
     }
 }
