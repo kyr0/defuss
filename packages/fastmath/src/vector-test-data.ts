@@ -16,6 +16,13 @@ export interface MatrixTestData {
   cols: number;
 }
 
+export interface BatchVectorTestData {
+  flatVectorsA: Float32Array;
+  flatVectorsB: Float32Array;
+  vectorLength: number;
+  numPairs: number;
+}
+
 // Type aliases for convenience
 export type Vectors = Float32Array[];
 export type Matrix = Float32Array[];
@@ -72,6 +79,32 @@ export const generateSampleData = (
     vectorsA,
     vectorsB,
     dims,
+  };
+};
+
+/* generate batch vector data for zero-copy processing */
+export const generateBatchData = (
+  seed = 31337,
+  vectorLength = 1024,
+  numPairs = 1000,
+): BatchVectorTestData => {
+  const rngA = seededRandom(seed);
+  const rngB = seededRandom(seed + 1000);
+
+  const totalElements = numPairs * vectorLength;
+  const flatVectorsA = new Float32Array(totalElements);
+  const flatVectorsB = new Float32Array(totalElements);
+
+  for (let i = 0; i < totalElements; i++) {
+    flatVectorsA[i] = (rngA() - 0.5) * 2; // Range [-1, 1]
+    flatVectorsB[i] = (rngB() - 0.5) * 2; // Range [-1, 1]
+  }
+
+  return {
+    flatVectorsA,
+    flatVectorsB,
+    vectorLength,
+    numPairs,
   };
 };
 

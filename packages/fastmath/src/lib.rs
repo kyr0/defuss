@@ -7,7 +7,6 @@ pub use wasm_bindgen_rayon::init_thread_pool;
 mod buffer;
 mod dsp;
 mod vector;
-mod matrix;
 mod convolution;
 
 // Re-export DSP functions
@@ -28,18 +27,9 @@ pub use vector::{
     batch_dot_product_zero_copy_parallel,
     generate_test_vectors_wasm,
     batch_dot_product_hyper_optimized,
+    batch_dot_product_ultra_simple,
     vector_normalize,
     vector_magnitude,
-};
-
-pub use matrix::{
-    matrix_multiply,
-    matrix_multiply_single,
-    matrix_multiply_parallel,
-    matrix_add,
-    matrix_subtract,
-    matrix_transpose,
-    matrix_scale,
 };
 
 pub use convolution::{

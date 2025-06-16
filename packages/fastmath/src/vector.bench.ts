@@ -1,457 +1,385 @@
 /**
- * @fileoverview Benchmarks for vector operations
- * Tests performance of JS vs WASM implementations across different vector sizes
- * and validates adaptive switching thresholds
+ * @fileoverview Benchmarks for functional vector operations
+ * Tests performance of the new functional vector implementation
  */
 
-import { beforeAll, describe, it } from "vitest";
+import { beforeAll, describe, it, expect } from "vitest";
 import { Bench } from "tinybench";
 import {
-  vector_dot_product,
-  vector_dot_product_single,
-  vector_dot_product_parallel,
-  vector_add,
-  vector_scale,
-} from "../pkg/defuss_fastmath.js";
-import {
-  vector_dot_product as js_vector_dot_product,
-  vector_add as js_vector_add,
-  vector_scale as js_vector_scale,
-} from "./vector-operations.js";
-import { generateSampleData, seededRandom } from "./vector-test-data.js";
-import { ensureWasmInit } from "./bench-util.js";
+  initWasm,
+  batchDotProductZeroCopy,
+  batchDotProductStreaming,
+} from "./vector.js";
+import { generateBatchData } from "./vector-test-data.js";
 
-describe("Vector Operations Performance Benchmarks", () => {
+describe("Functional Vector Operations Benchmarks", () => {
   beforeAll(async () => {
-    await ensureWasmInit();
+    await initWasm();
+
+    // Warmup for JIT optimization with 1024D vectors
+    console.log("🔥 Warming up WASM and JIT with 1024D vectors...");
+    const warmupData = generateBatchData(12345, 1024, 1000);
+
+    // Warmup both sequential and parallel paths
+    for (let i = 0; i < 5; i++) {
+      batchDotProductZeroCopy(
+        warmupData.flatVectorsA,
+        warmupData.flatVectorsB,
+        1024,
+        1000,
+        false, // Sequential
+      );
+      batchDotProductZeroCopy(
+        warmupData.flatVectorsA,
+        warmupData.flatVectorsB,
+        1024,
+        1000,
+        true, // Parallel
+      );
+    }
+    console.log("✅ Warmup complete");
   });
 
-  it("should run comprehensive vector benchmarks", async () => {
-    console.log("🚀 Starting vector operation benchmarks...");
+  it("should benchmark batchDotProductZeroCopy", async () => {
+    console.log("🚀 Starting functional vector benchmarks...");
 
     const allResults: Array<{
       name: string;
-      dims: number;
-      samples: number;
+      vectorLength: number;
+      numPairs: number;
       ops: number;
       time: number;
+      wallTime: number;
       type: string;
     }> = [];
 
-    // Test configurations for different vector sizes
+    // Test configurations focused on 1024D vectors with varying operation counts
     const testConfigs = [
-      { dims: 4, samples: 10000, name: "Tiny (4D)" },
-      { dims: 64, samples: 5000, name: "Small (64D)" },
-      { dims: 384, samples: 1000, name: "Medium (384D)" },
-      { dims: 1024, samples: 500, name: "Large (1024D)" },
-      { dims: 4096, samples: 100, name: "XLarge (4096D)" },
+      { vectorLength: 1024, numPairs: 10000, name: "1024D × 10k ops" },
+      { vectorLength: 1024, numPairs: 20000, name: "1024D × 20k ops" },
+      { vectorLength: 1024, numPairs: 50000, name: "1024D × 50k ops" },
+      { vectorLength: 1024, numPairs: 100000, name: "1024D × 100k ops" },
     ];
 
-    // Dot Product Benchmarks
-    console.log("\n📊 Running Dot Product benchmarks...");
+    console.log("\n📊 Running Zero-Copy Batch Dot Product benchmarks...");
 
     for (const config of testConfigs) {
-      console.log(`  Testing ${config.name} - ${config.dims} dimensions...`);
-
-      // Generate test data
-      const data = generateSampleData(31337, config.dims, config.samples);
-
-      const bench = new Bench({ time: 1000, iterations: 5 });
-
-      bench
-        .add(`JS Batch Dot Product ${config.dims}D`, () => {
-          js_vector_dot_product(data.vectorsA, data.vectorsB);
-        })
-        .add(`WASM Adaptive Dot Product ${config.dims}D`, () => {
-          for (let i = 0; i < data.vectorsA.length; i++) {
-            vector_dot_product(data.vectorsA[i], data.vectorsB[i]);
-          }
-        })
-        .add(`WASM Single-threaded Dot Product ${config.dims}D`, () => {
-          for (let i = 0; i < data.vectorsA.length; i++) {
-            vector_dot_product_single(data.vectorsA[i], data.vectorsB[i]);
-          }
-        })
-        .add(`WASM Parallel Dot Product ${config.dims}D`, () => {
-          for (let i = 0; i < data.vectorsA.length; i++) {
-            vector_dot_product_parallel(data.vectorsA[i], data.vectorsB[i]);
-          }
-        });
-
-      await bench.run();
-
-      // Collect results
-      bench.tasks.forEach((task) => {
-        if (task.result) {
-          allResults.push({
-            name: task.name,
-            dims: config.dims,
-            samples: config.samples,
-            ops: task.result.hz,
-            time: task.result.mean,
-            type: "DotProduct",
-          });
-        }
-      });
-    }
-
-    // Vector Addition Benchmarks
-    console.log("\n📊 Running Vector Addition benchmarks...");
-
-    for (const config of testConfigs) {
-      console.log(`  Testing ${config.name} - ${config.dims} dimensions...`);
-
-      // Generate test data
-      const data = generateSampleData(42, config.dims, config.samples);
-
-      // Pre-allocate result buffers for each iteration
-      const jsResults = data.vectorsA.map(() => new Float32Array(config.dims));
-      const wasmResults = data.vectorsA.map(
-        () => new Float32Array(config.dims),
+      console.log(
+        `  Testing ${config.name} - ${config.vectorLength}D x ${config.numPairs} pairs...`,
       );
 
-      const bench = new Bench({ time: 1000, iterations: 5 });
-
-      bench
-        .add(`JS Vector Add ${config.dims}D`, () => {
-          for (let i = 0; i < data.vectorsA.length; i++) {
-            js_vector_add(data.vectorsA[i], data.vectorsB[i], jsResults[i]);
-          }
-        })
-        .add(`WASM Vector Add ${config.dims}D`, () => {
-          for (let i = 0; i < data.vectorsA.length; i++) {
-            vector_add(data.vectorsA[i], data.vectorsB[i], wasmResults[i]);
-          }
-        });
-
-      await bench.run();
-
-      // Collect results
-      bench.tasks.forEach((task) => {
-        if (task.result) {
-          allResults.push({
-            name: task.name,
-            dims: config.dims,
-            samples: config.samples,
-            ops: task.result.hz,
-            time: task.result.mean,
-            type: "VectorAdd",
-          });
-        }
-      });
-    }
-
-    // Vector Scaling Benchmarks
-    console.log("\n📊 Running Vector Scaling benchmarks...");
-
-    for (const config of testConfigs) {
-      console.log(`  Testing ${config.name} - ${config.dims} dimensions...`);
-
-      // Generate test data
-      const data = generateSampleData(123, config.dims, config.samples);
-      const scalar = 2.5;
-
-      // Pre-allocate result buffers for each iteration
-      const jsResults = data.vectorsA.map(() => new Float32Array(config.dims));
-      const wasmResults = data.vectorsA.map(
-        () => new Float32Array(config.dims),
+      // Generate flat test data for zero-copy processing
+      const batchData = generateBatchData(
+        31337,
+        config.vectorLength,
+        config.numPairs,
       );
 
-      const bench = new Bench({ time: 1000, iterations: 5 });
-
-      bench
-        .add(`JS Vector Scale ${config.dims}D`, () => {
-          for (let i = 0; i < data.vectorsA.length; i++) {
-            js_vector_scale(data.vectorsA[i], scalar, jsResults[i]);
-          }
-        })
-        .add(`WASM Vector Scale ${config.dims}D`, () => {
-          for (let i = 0; i < data.vectorsA.length; i++) {
-            vector_scale(data.vectorsA[i], scalar, wasmResults[i]);
-          }
-        });
-
-      await bench.run();
-
-      // Collect results
-      bench.tasks.forEach((task) => {
-        if (task.result) {
-          allResults.push({
-            name: task.name,
-            dims: config.dims,
-            samples: config.samples,
-            ops: task.result.hz,
-            time: task.result.mean,
-            type: "VectorScale",
-          });
-        }
-      });
-    }
-
-    // Intensive 1024D Vector Multiplication Benchmark (100k iterations)
-    console.log(
-      "\n🔥 Running intensive 1024D vector multiplication benchmark (100k iterations)...",
-    );
-
-    const intensiveDims = 1024;
-    const intensiveIterations = 100000;
-
-    // Generate test data for intensive benchmark
-    const intensiveData = generateSampleData(
-      42,
-      intensiveDims,
-      intensiveIterations,
-    );
-
-    console.log(
-      `  Testing ${intensiveIterations.toLocaleString()} dot products of ${intensiveDims}D vectors...`,
-    );
-
-    const intensiveBench = new Bench({ time: 5000, iterations: 3 }); // Longer time for intensive test
-
-    intensiveBench
-      .add("JS Batch Dot Product 1024D (100k ops)", () => {
-        js_vector_dot_product(intensiveData.vectorsA, intensiveData.vectorsB);
-      })
-      .add("WASM Adaptive Dot Product 1024D (100k ops)", () => {
-        for (let i = 0; i < intensiveData.vectorsA.length; i++) {
-          vector_dot_product(
-            intensiveData.vectorsA[i],
-            intensiveData.vectorsB[i],
-          );
-        }
-      })
-      .add("WASM Single-threaded Dot Product 1024D (100k ops)", () => {
-        for (let i = 0; i < intensiveData.vectorsA.length; i++) {
-          vector_dot_product_single(
-            intensiveData.vectorsA[i],
-            intensiveData.vectorsB[i],
-          );
-        }
-      })
-      .add("WASM Parallel Dot Product 1024D (100k ops)", () => {
-        for (let i = 0; i < intensiveData.vectorsA.length; i++) {
-          vector_dot_product_parallel(
-            intensiveData.vectorsA[i],
-            intensiveData.vectorsB[i],
-          );
-        }
-      });
-
-    await intensiveBench.run();
-
-    // Collect intensive benchmark results with total time calculation
-    console.log("\n🎯 Intensive Benchmark Results (1024D × 100k operations):");
-    intensiveBench.tasks.forEach((task) => {
-      if (task.result) {
-        const totalTimeMs = task.result.mean * 1000; // Convert to milliseconds
-        const opsPerSec = task.result.hz;
-        const timePerOp = task.result.mean * 1000 * 1000; // Microseconds per operation
-
-        console.log(`${task.name}:`);
-        console.log(`  • Total time: ${totalTimeMs.toFixed(2)} ms`);
-        console.log(
-          `  • Operations/sec: ${Math.round(opsPerSec).toLocaleString()}`,
+      // Verify memory alignment for optimal SIMD performance
+      const aAlignment = batchData.flatVectorsA.byteOffset % 16 === 0;
+      const bAlignment = batchData.flatVectorsB.byteOffset % 16 === 0;
+      if (!aAlignment || !bAlignment) {
+        console.warn(
+          `    ⚠️  Data not 16-byte aligned (A: ${aAlignment}, B: ${bAlignment}) - SIMD may be slower`,
         );
+      } else {
+        console.log("    ✅ Data is 16-byte aligned - optimal for SIMD");
+      }
+
+      // Adjust benchmark timing based on operation count
+      const benchTime =
+        config.numPairs >= 50000
+          ? 3000
+          : config.numPairs >= 20000
+            ? 2000
+            : 1000;
+      const iterations = config.numPairs >= 50000 ? 3 : 5;
+
+      console.log(
+        `    Using ${benchTime}ms benchmark time with ${iterations} iterations`,
+      );
+
+      const bench = new Bench({ time: benchTime, iterations });
+
+      // Add wall time tracking functions
+      let sequentialWallTime = 0;
+      let parallelWallTime = 0;
+
+      bench
+        .add(
+          `Zero-Copy Sequential ${config.vectorLength}D x${config.numPairs}`,
+          () => {
+            const start = performance.now();
+            batchDotProductZeroCopy(
+              batchData.flatVectorsA,
+              batchData.flatVectorsB,
+              config.vectorLength,
+              config.numPairs,
+              false,
+            );
+            const end = performance.now();
+            sequentialWallTime = Math.max(sequentialWallTime, end - start);
+          },
+        )
+        .add(
+          `Zero-Copy Parallel ${config.vectorLength}D x${config.numPairs}`,
+          () => {
+            const start = performance.now();
+            batchDotProductZeroCopy(
+              batchData.flatVectorsA,
+              batchData.flatVectorsB,
+              config.vectorLength,
+              config.numPairs,
+              true,
+            );
+            const end = performance.now();
+            parallelWallTime = Math.max(parallelWallTime, end - start);
+          },
+        );
+
+      await bench.run();
+
+      // Collect results with wall time
+      bench.tasks.forEach((task) => {
+        if (task.result) {
+          const wallTime = task.name.includes("Sequential")
+            ? sequentialWallTime
+            : parallelWallTime;
+          allResults.push({
+            name: task.name,
+            vectorLength: config.vectorLength,
+            numPairs: config.numPairs,
+            ops: task.result.hz,
+            time: task.result.mean,
+            wallTime: wallTime,
+            type: "BatchDotProduct",
+          });
+        }
+      });
+
+      // Print immediate results with GFLOPS calculation
+      bench.tasks.forEach((task) => {
+        if (task.result?.hz && task.result?.mean) {
+          // Calculate GFLOPS: each dot product = 2 * vectorLength FLOPs (multiply + add)
+          // Total FLOPs per benchmark call = numPairs * vectorLength * 2
+          const flopsPerCall = config.numPairs * config.vectorLength * 2;
+          const gflops = (task.result.hz * flopsPerCall) / 1e9;
+
+          console.log(
+            `    ${task.name}: ${task.result.hz.toFixed(2)} ops/sec (${(task.result.mean * 1000).toFixed(3)}ms) - ${gflops.toFixed(2)} GFLOPS`,
+          );
+        }
+      });
+    }
+
+    console.log("\n📊 Running Streaming Batch Dot Product benchmarks...");
+
+    // Test streaming with the largest datasets (50k and 100k ops)
+    const streamingConfigs = [
+      {
+        vectorLength: 1024,
+        numVectors: 50000,
+        chunkSize: 5000,
+        name: "1024D × 50k ops (streaming)",
+      },
+      {
+        vectorLength: 1024,
+        numVectors: 100000,
+        chunkSize: 10000,
+        name: "1024D × 100k ops (streaming)",
+      },
+    ];
+
+    for (const config of streamingConfigs) {
+      console.log(
+        `  Testing streaming ${config.name} - ${config.vectorLength}D x ${config.numVectors} vectors...`,
+      );
+
+      // Generate flat test data for streaming processing
+      const batchData = generateBatchData(
+        31337,
+        config.vectorLength,
+        config.numVectors,
+      );
+
+      const bench = new Bench({ time: 2000, iterations: 3 });
+
+      bench.add(
+        `Streaming ${config.vectorLength}D x${config.numVectors} (chunk: ${config.chunkSize})`,
+        async () => {
+          await batchDotProductStreaming(
+            batchData.flatVectorsA,
+            batchData.flatVectorsB,
+            config.vectorLength,
+            config.numVectors,
+            config.chunkSize,
+          );
+        },
+      );
+
+      await bench.run();
+
+      // Collect results
+      bench.tasks.forEach((task) => {
+        if (task.result) {
+          allResults.push({
+            name: task.name,
+            vectorLength: config.vectorLength,
+            numPairs: config.numVectors,
+            ops: task.result.hz,
+            time: task.result.mean,
+            wallTime: task.result.mean * 1000, // Convert to ms for streaming
+            type: "StreamingBatchDotProduct",
+          });
+        }
+      });
+
+      // Print immediate results with wall time
+      bench.tasks.forEach((task) => {
+        if (task.result?.hz && task.result?.mean) {
+          // Find the corresponding result to get wall time
+          const result = allResults.find((r) => r.name === task.name);
+          const wallTimeDisplay = result
+            ? `${result.wallTime.toFixed(2)}ms max wall time`
+            : "wall time N/A";
+          console.log(
+            `    ${task.name}: ${task.result.hz.toFixed(2)} ops/sec (${(task.result.mean * 1000).toFixed(3)}ms avg, ${wallTimeDisplay})`,
+          );
+        }
+      });
+    }
+
+    console.log("\n🎯 Summary of Results:");
+    console.log("=".repeat(80));
+    console.table(
+      allResults.map((result) => {
+        // Calculate GFLOPS for table
+        const flopsPerCall = result.numPairs * result.vectorLength * 2;
+        const gflops = result.ops ? (result.ops * flopsPerCall) / 1e9 : 0;
+
+        return {
+          Name: result.name,
+          "Vector Length": result.vectorLength,
+          "Num Pairs": result.numPairs.toLocaleString(),
+          "Ops/sec": result.ops?.toFixed(2) || "N/A",
+          "Avg Time (ms)": result.time
+            ? (result.time * 1000).toFixed(3)
+            : "N/A",
+          "Max Wall Time (ms)": result.wallTime.toFixed(2),
+          GFLOPS: gflops.toFixed(2),
+          Type: result.type,
+        };
+      }),
+    );
+
+    // Performance insights
+    console.log("\n💡 Performance Insights:");
+
+    const sequentialResults = allResults.filter((r) =>
+      r.name.includes("Sequential"),
+    );
+    const parallelResults = allResults.filter((r) =>
+      r.name.includes("Parallel"),
+    );
+
+    if (sequentialResults.length > 0 && parallelResults.length > 0) {
+      const avgSequential =
+        sequentialResults.reduce((sum, r) => sum + (r.ops || 0), 0) /
+        sequentialResults.length;
+      const avgParallel =
+        parallelResults.reduce((sum, r) => sum + (r.ops || 0), 0) /
+        parallelResults.length;
+      const parallelSpeedup = (avgParallel / avgSequential - 1) * 100;
+
+      console.log(
+        `   • Parallel processing is ${parallelSpeedup.toFixed(1)}% ${parallelSpeedup > 0 ? "faster" : "slower"} on average`,
+      );
+    }
+
+    const streamingResults = allResults.filter(
+      (r) => r.type === "StreamingBatchDotProduct",
+    );
+    if (streamingResults.length > 0) {
+      const totalVectorsProcessed = streamingResults.reduce(
+        (sum, r) => sum + r.numPairs,
+        0,
+      );
+      const avgStreamingOps =
+        streamingResults.reduce((sum, r) => sum + (r.ops || 0), 0) /
+        streamingResults.length;
+      console.log(
+        `   • Streaming processed ${totalVectorsProcessed.toLocaleString()} total vectors`,
+      );
+      console.log(
+        `   • Average streaming performance: ${avgStreamingOps.toFixed(2)} ops/sec`,
+      );
+    }
+
+    // High-volume performance analysis
+    console.log("\n🔥 High-Volume Performance Analysis (1024D):");
+
+    const batchResults = allResults.filter((r) => r.type === "BatchDotProduct");
+    if (batchResults.length > 0) {
+      console.log("=".repeat(80));
+
+      batchResults.forEach((result) => {
+        const flopsPerCall = result.numPairs * result.vectorLength * 2;
+        const gflops = result.ops ? (result.ops * flopsPerCall) / 1e9 : 0;
+        const totalOperations = result.numPairs;
+        const timePerOp = result.time
+          ? (result.time * 1000000) / totalOperations
+          : 0; // microseconds per operation
+
+        console.log(`${result.name}:`);
+        console.log(
+          `  • Total Operations: ${totalOperations.toLocaleString()}`,
+        );
+        console.log(`  • Performance: ${gflops.toFixed(2)} GFLOPS`);
         console.log(`  • Time per dot product: ${timePerOp.toFixed(3)} μs`);
         console.log(
-          `  • Throughput: ${((intensiveIterations * intensiveDims * 2) / (totalTimeMs / 1000) / 1e9).toFixed(2)} GFLOPS`,
+          `  • Throughput: ${(result.ops || 0).toFixed(0)} batch ops/sec`,
         );
+        console.log(`  • Max Wall Time: ${result.wallTime.toFixed(2)}ms`);
         console.log("");
+      });
 
-        allResults.push({
-          name: task.name,
-          dims: intensiveDims,
-          samples: intensiveIterations,
-          ops: task.result.hz,
-          time: task.result.mean,
-          type: "IntensiveDotProduct",
-        });
+      // Find best performing configurations
+      const sequential = batchResults.filter((r) =>
+        r.name.includes("Sequential"),
+      );
+      const parallel = batchResults.filter((r) => r.name.includes("Parallel"));
+
+      if (sequential.length > 0) {
+        const bestSequential = sequential.reduce((a, b) =>
+          (a.ops || 0) > (b.ops || 0) ? a : b,
+        );
+        const bestSeqGFLOPS =
+          ((bestSequential.ops || 0) *
+            bestSequential.numPairs *
+            bestSequential.vectorLength *
+            2) /
+          1e9;
+        console.log(
+          `🏆 Best Sequential: ${bestSequential.name} - ${bestSeqGFLOPS.toFixed(2)} GFLOPS`,
+        );
       }
-    });
 
-    // Generate comprehensive report
-    console.log("\n📊 Generating performance report...");
-
-    let markdown = "# Vector Operations Performance Report\n\n";
-    markdown += "## Benchmark Results\n\n";
-
-    // Group results by operation type
-    const dotProductResults = allResults.filter((r) => r.type === "DotProduct");
-    const addResults = allResults.filter((r) => r.type === "VectorAdd");
-    const scaleResults = allResults.filter((r) => r.type === "VectorScale");
-    const intensiveResults = allResults.filter(
-      (r) => r.type === "IntensiveDotProduct",
-    );
-
-    // Dot Product Analysis
-    if (dotProductResults.length > 0) {
-      markdown += "### Dot Product Performance\n\n";
-      markdown +=
-        "| Dimensions | JS Batch (ops/sec) | WASM Adaptive (ops/sec) | WASM Single (ops/sec) | WASM Parallel (ops/sec) | Best Implementation |\n";
-      markdown +=
-        "|------------|---------------------|-------------------------|----------------------|-------------------------|--------------------|\n";
-
-      testConfigs.forEach((config) => {
-        const js = dotProductResults.find(
-          (r) => r.dims === config.dims && r.name.includes("JS Batch"),
+      if (parallel.length > 0) {
+        const bestParallel = parallel.reduce((a, b) =>
+          (a.ops || 0) > (b.ops || 0) ? a : b,
         );
-        const adaptive = dotProductResults.find(
-          (r) => r.dims === config.dims && r.name.includes("WASM Adaptive"),
+        const bestParGFLOPS =
+          ((bestParallel.ops || 0) *
+            bestParallel.numPairs *
+            bestParallel.vectorLength *
+            2) /
+          1e9;
+        console.log(
+          `🏆 Best Parallel: ${bestParallel.name} - ${bestParGFLOPS.toFixed(2)} GFLOPS`,
         );
-        const single = dotProductResults.find(
-          (r) =>
-            r.dims === config.dims && r.name.includes("WASM Single-threaded"),
-        );
-        const parallel = dotProductResults.find(
-          (r) => r.dims === config.dims && r.name.includes("WASM Parallel"),
-        );
-
-        if (js && adaptive && single && parallel) {
-          const best = [
-            { name: "JS", ops: js.ops },
-            { name: "WASM Adaptive", ops: adaptive.ops },
-            { name: "WASM Single", ops: single.ops },
-            { name: "WASM Parallel", ops: parallel.ops },
-          ].reduce((a, b) => (a.ops > b.ops ? a : b)).name;
-
-          markdown += `| ${config.dims} | ${Math.round(js.ops).toLocaleString()} | ${Math.round(adaptive.ops).toLocaleString()} | ${Math.round(single.ops).toLocaleString()} | ${Math.round(parallel.ops).toLocaleString()} | ${best} |\n`;
-        }
-      });
-
-      markdown += "\n";
+      }
     }
 
-    // Vector Addition Analysis
-    if (addResults.length > 0) {
-      markdown += "### Vector Addition Performance\n\n";
-      markdown +=
-        "| Dimensions | JS (ops/sec) | WASM (ops/sec) | Best Implementation |\n";
-      markdown +=
-        "|------------|--------------|----------------|--------------------|\n";
-
-      testConfigs.forEach((config) => {
-        const js = addResults.find(
-          (r) => r.dims === config.dims && r.name.includes("JS Vector Add"),
-        );
-        const wasm = addResults.find(
-          (r) => r.dims === config.dims && r.name.includes("WASM Vector Add"),
-        );
-
-        if (js && wasm) {
-          const best = js.ops > wasm.ops ? "JS" : "WASM";
-
-          markdown += `| ${config.dims} | ${Math.round(js.ops).toLocaleString()} | ${Math.round(wasm.ops).toLocaleString()} | ${best} |\n`;
-        }
-      });
-
-      markdown += "\n";
-    }
-
-    // Vector Scaling Analysis
-    if (scaleResults.length > 0) {
-      markdown += "### Vector Scaling Performance\n\n";
-      markdown +=
-        "| Dimensions | JS (ops/sec) | WASM (ops/sec) | Best Implementation |\n";
-      markdown +=
-        "|------------|--------------|----------------|--------------------|\n";
-
-      testConfigs.forEach((config) => {
-        const js = scaleResults.find(
-          (r) => r.dims === config.dims && r.name.includes("JS Vector Scale"),
-        );
-        const wasm = scaleResults.find(
-          (r) => r.dims === config.dims && r.name.includes("WASM Vector Scale"),
-        );
-
-        if (js && wasm) {
-          const best = js.ops > wasm.ops ? "JS" : "WASM";
-
-          markdown += `| ${config.dims} | ${Math.round(js.ops).toLocaleString()} | ${Math.round(wasm.ops).toLocaleString()} | ${best} |\n`;
-        }
-      });
-
-      markdown += "\n";
-    }
-
-    // Intensive Benchmark Analysis
-    if (intensiveResults.length > 0) {
-      markdown +=
-        "### Intensive Benchmark: 1024D Vector Dot Products (100k iterations)\n\n";
-      markdown +=
-        "| Implementation | Total Time (ms) | Ops/sec | Time per Op (μs) | GFLOPS |\n";
-      markdown +=
-        "|----------------|-----------------|---------|------------------|--------|\n";
-
-      intensiveResults.forEach((result) => {
-        const totalTimeMs = result.time * 1000;
-        const timePerOpUs = result.time * 1000 * 1000;
-        const gflops =
-          (intensiveIterations * intensiveDims * 2) / result.time / 1e9;
-
-        const implName = result.name.includes("JS Batch")
-          ? "JS Batch"
-          : result.name.includes("WASM Adaptive")
-            ? "WASM Adaptive"
-            : result.name.includes("WASM Single-threaded")
-              ? "WASM Single"
-              : "WASM Parallel";
-
-        markdown += `| ${implName} | ${totalTimeMs.toFixed(2)} | ${Math.round(result.ops).toLocaleString()} | ${timePerOpUs.toFixed(3)} | ${gflops.toFixed(2)} |\n`;
-      });
-
-      const bestIntensive = intensiveResults.reduce((a, b) =>
-        a.ops > b.ops ? a : b,
-      );
-      const worstIntensive = intensiveResults.reduce((a, b) =>
-        a.ops < b.ops ? a : b,
-      );
-      const speedup = bestIntensive.ops / worstIntensive.ops;
-
-      markdown += "\n";
-      markdown += "**Performance Summary:**\n";
-      markdown += `- Best: ${bestIntensive.name} (${Math.round(bestIntensive.ops).toLocaleString()} ops/sec)\n`;
-      markdown += `- Worst: ${worstIntensive.name} (${Math.round(worstIntensive.ops).toLocaleString()} ops/sec)\n`;
-      markdown += `- Speedup: ${speedup.toFixed(2)}x faster\n\n`;
-    }
-
-    // Adaptive Algorithm Effectiveness
-    const adaptiveResults = allResults.filter((r) =>
-      r.name.includes("WASM Adaptive"),
-    );
-    const adaptiveWins = adaptiveResults.filter((adaptive) => {
-      const sameTypeResults = allResults.filter(
-        (r) => r.type === adaptive.type && r.dims === adaptive.dims,
-      );
-      const maxOps = Math.max(...sameTypeResults.map((r) => r.ops));
-      return adaptive.ops >= maxOps * 0.95; // Within 5% is considered a win
-    });
-
-    markdown += "### Implementation Comparison\n\n";
-    markdown += `- **Total test cases**: ${allResults.length}\n`;
-    markdown += `- **Dot product adaptive effectiveness**: ${adaptiveResults.filter((r) => r.type === "DotProduct").length > 0 ? "Available" : "Not tested"}\n`;
-    markdown +=
-      "- **Performance comparison**: Results show relative performance between JavaScript and WASM implementations\n";
-
-    console.log("✅ Benchmark results:");
-    console.log(markdown);
-
-    // Print summary to console
-    console.log("\n🎯 Benchmark Summary:");
-    console.table(
-      allResults.map((r) => ({
-        Type: r.type,
-        Dimensions: r.dims,
-        Implementation: r.name.includes("JS")
-          ? "JS"
-          : r.name.includes("WASM")
-            ? "WASM"
-            : "Unknown",
-        "Ops/sec": Math.round(r.ops).toLocaleString(),
-        "Time (ms)": (r.time * 1000).toFixed(4),
-      })),
-    );
-
-    console.log("🏁 Vector benchmarks completed!");
+    expect(allResults.length).toBeGreaterThan(0);
   });
 });
