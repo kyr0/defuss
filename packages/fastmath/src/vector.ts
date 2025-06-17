@@ -845,3 +845,55 @@ export async function benchmarkUltimateExternalCallSmart(
     chunksProcessed,
   };
 }
+
+/**
+ * Dot product function for benchmarking that takes pre-allocated arrays
+ * This function extracts the core computation logic from benchmarkUltimateExternalCallSmart
+ * but only performs the actual computation without data generation or verification
+ */
+export function dot_product(
+  vectorsA: Float32Array,
+  vectorsB: Float32Array,
+  results: Float32Array
+): void {
+  if (!wasmInstance) {
+    throw new Error("WASM not initialized");
+  }
+
+  // Calculate vector length and number of pairs from array sizes
+  const totalElements = vectorsA.length;
+  const numPairs = results.length;
+  const vectorLength = totalElements / numPairs;
+
+  if (vectorsA.length !== vectorsB.length) {
+    throw new Error("vectorsA and vectorsB must have the same length");
+  }
+
+  if (totalElements % numPairs !== 0) {
+    throw new Error("Total elements must be evenly divisible by number of pairs");
+  }
+
+  // Check if we can fit directly in memory
+  const canFitDirectly = canFitInMemory(vectorLength, numPairs);
+  
+  if (canFitDirectly) {
+    // Use direct processing
+    const result = batch_dot_product_ultimate_external(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numPairs,
+    );
+
+    if (result.length < 2 + numPairs) {
+      throw new Error(`Unexpected result length: ${result.length}, expected at least ${2 + numPairs}`);
+    }
+
+    // Extract results (skip timing data at indices 0 and 1)
+    for (let i = 0; i < numPairs; i++) {
+      results[i] = result[2 + i] as number;
+    }
+  } else {
+    throw new Error("Chunked processing not supported in dot_product function. Use smaller arrays or benchmarkUltimateExternalCallSmart for large workloads.");
+  }
+}
