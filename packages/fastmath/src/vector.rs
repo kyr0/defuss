@@ -526,10 +526,40 @@ pub fn test_ultimate_performance(
     vector_length: usize,
     num_pairs: usize
 ) -> js_sys::Array {
-    // Generate test data with predictable pattern for verification
+    // Memory safety check - limit to reasonable sizes to prevent WASM OOM
     let total_elements = vector_length * num_pairs;
-    let mut a_data = vec![0.0f32; total_elements];
-    let mut b_data = vec![0.0f32; total_elements];
+    let memory_mb = (total_elements * 2 * 4) as f64 / (1024.0 * 1024.0); // 2 vectors, 4 bytes each
+    
+    // Limit to 3.5GB total to prevent WASM memory exhaustion (leaving headroom)
+    if memory_mb > 3584.0 {
+        // Return error values to indicate memory limit exceeded
+        let result_array = js_sys::Array::new();
+        result_array.push(&wasm_bindgen::JsValue::from_f64(-1.0));  // Error indicator
+        result_array.push(&wasm_bindgen::JsValue::from_f64(0.0));   // No GFLOPS
+        result_array.push(&wasm_bindgen::JsValue::from_f64(0.0));   // No result
+        result_array.push(&wasm_bindgen::JsValue::from_f64(-1.0));  // Error indicator
+        return result_array;
+    }
+    
+    // Generate test data with predictable pattern for verification
+    let mut a_data = Vec::with_capacity(total_elements);
+    let mut b_data = Vec::with_capacity(total_elements);
+    
+    // Use safer allocation approach
+    if a_data.try_reserve_exact(total_elements).is_err() || 
+       b_data.try_reserve_exact(total_elements).is_err() {
+        // Memory allocation failed
+        let result_array = js_sys::Array::new();
+        result_array.push(&wasm_bindgen::JsValue::from_f64(-2.0));  // Allocation error
+        result_array.push(&wasm_bindgen::JsValue::from_f64(0.0));
+        result_array.push(&wasm_bindgen::JsValue::from_f64(0.0));
+        result_array.push(&wasm_bindgen::JsValue::from_f64(-2.0));
+        return result_array;
+    }
+    
+    // Initialize the vectors
+    a_data.resize(total_elements, 0.0f32);
+    b_data.resize(total_elements, 0.0f32);
     let mut results = vec![0.0f32; num_pairs];
     
     // Fill with test pattern that creates measurable results

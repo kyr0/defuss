@@ -190,6 +190,12 @@ export async function testUltimatePerformance(
     throw new Error("WASM not initialized");
   }
 
+  // Check memory requirements before calling WASM
+  const memoryMB = (numPairs * vectorLength * 2 * 4) / (1024 * 1024);
+  if (memoryMB > 3584) {
+    throw new Error(`Memory requirement (${memoryMB.toFixed(1)}MB) exceeds WASM limit (3.5GB)`);
+  }
+
   // Call the WASM test function which generates its own test data
   const results = test_ultimate_performance(vectorLength, numPairs);
 
@@ -198,9 +204,19 @@ export async function testUltimatePerformance(
   const sampleResult = results[2] as number;
   const executionTime = results[3] as number;
 
-  const memoryMB = (numPairs * vectorLength * 2 * 4) / (1024 * 1024);
-  const memoryEfficiency = gflops / memoryMB;
+  // Check for error conditions returned by WASM
+  if (totalTime < 0) {
+    if (totalTime === -1) {
+      throw new Error(`Memory limit exceeded (${memoryMB.toFixed(1)}MB > 3.5GB)`);
+    } else if (totalTime === -2) {
+      throw new Error("Memory allocation failed in WASM");
+    } else {
+      throw new Error(`Unknown error in WASM (code: ${totalTime})`);
+    }
+  }
+
   const strategy = inferStrategy(vectorLength, numPairs, gflops);
+  const memoryEfficiency = gflops / memoryMB;
 
   return {
     totalTime,
