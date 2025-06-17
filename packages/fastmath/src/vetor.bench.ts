@@ -7,7 +7,7 @@ import {
   initWasm,
   compareUltimatePerformance,
   UltimatePerformanceMetrics
-} from "./ultra.js";
+} from "./vector.js";
 
 interface BenchmarkResult {
     ultimate: UltimatePerformanceMetrics;

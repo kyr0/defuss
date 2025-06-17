@@ -7,7 +7,7 @@ pub use wasm_bindgen_rayon::init_thread_pool;
 mod buffer;
 mod dsp;
 mod convolution;
-mod ultra;
+mod vector;
 // Re-export DSP functions
 pub use dsp::{sine, saw, triangle, square};
 
@@ -18,8 +18,8 @@ pub use convolution::{
     auto_correlation,
 };
 
-// Re-export ultra performance functions
-pub use ultra::{
+// Re-export vector performance functions
+pub use vector::{
     batch_dot_product_ultimate,
     test_ultimate_performance,
 };
