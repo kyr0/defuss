@@ -19,10 +19,12 @@ pub use convolution::{
 };
 
 // Re-export vector performance functions
+/*
 pub use vector::{
     batch_dot_product_ultimate,
     test_ultimate_performance,
 };
+*/
 
 #[wasm_bindgen(start)]
 pub fn main() {

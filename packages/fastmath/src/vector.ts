@@ -1,4 +1,4 @@
-import init, { initThreadPool, batch_dot_product_ultimate, batch_dot_product_ultimate_external, batch_dot_product_ultimate_external_chunked, test_ultimate_performance  } from "../pkg/defuss_fastmath.js";
+import init, { initThreadPool, batch_dot_product_ultimate_external  } from "../pkg/defuss_fastmath.js";
 
 /**
  * ULTIMATE Vector Performance Implementation
@@ -47,6 +47,7 @@ export async function initWasm(): Promise<void> {
 /**
  * Performance metrics for workload analysis
  */
+/*
 export interface UltimatePerformanceMetrics {
   totalTime: number;          // Total execution time (ms)
   executionTime: number;      // Pure execution time (ms)
@@ -55,10 +56,12 @@ export interface UltimatePerformanceMetrics {
   strategy?: string;         // Strategy used (inferred from performance)
   memoryEfficiency: number;  // GFLOPS per MB
 }
+  */
 
 /**
  * Workload characteristics for strategy selection
  */
+/*
 export interface WorkloadProfile {
   vectorLength: number;
   numPairs: number;
@@ -67,10 +70,12 @@ export interface WorkloadProfile {
   computeIntensity: number;  // FLOPS per byte
   recommendedStrategy: ExecutionStrategy;
 }
+  */
 
 /**
  * Execution strategies available in the ultimate implementation
  */
+/*
 export enum ExecutionStrategy {
   Sequential = 'Sequential',
   SequentialCacheFriendly = 'Sequential Cache-Friendly', 
@@ -78,6 +83,7 @@ export enum ExecutionStrategy {
   ParallelAggressive = 'Parallel Aggressive',
   ParallelStreaming = 'Parallel Streaming'
 }
+  */
 
 /**
  * Ultimate performance batch dot product with intelligent workload adaptation
@@ -93,6 +99,7 @@ export enum ExecutionStrategy {
  * @param numPairs Number of vector pairs to process
  * @returns Performance metrics and results
  */
+/*
 export async function batchDotProductUltimate(
   vectorsA: Float32Array,
   vectorsB: Float32Array,
@@ -174,6 +181,7 @@ export async function batchDotProductUltimate(
     wasmInstance.__wbindgen_free(resultsPtr, numPairs * 4);
   }
 }
+*/
 
 /**
  * Test the ultimate performance implementation with comprehensive analysis
@@ -182,6 +190,7 @@ export async function batchDotProductUltimate(
  * @param numPairs Number of vector pairs
  * @returns Detailed performance metrics
  */
+/*
 export async function testUltimatePerformance(
   vectorLength: number,
   numPairs: number,
@@ -230,6 +239,7 @@ export async function testUltimatePerformance(
     memoryEfficiency
   };
 }
+*/
 
 /**
  * Analyze workload characteristics and recommend optimal strategy
@@ -238,6 +248,7 @@ export async function testUltimatePerformance(
  * @param numPairs Number of vector pairs
  * @returns Workload analysis and strategy recommendation
  */
+/*
 export function analyzeWorkload(vectorLength: number, numPairs: number): WorkloadProfile {
   const totalFlops = numPairs * vectorLength * 2; // mul + add per element
   const memoryBytes = numPairs * vectorLength * 2 * 4; // 2 vectors, f32 each
@@ -268,10 +279,12 @@ export function analyzeWorkload(vectorLength: number, numPairs: number): Workloa
     recommendedStrategy,
   };
 }
+*/
 
 /**
  * Infer which strategy was used based on performance characteristics
  */
+/*
 function inferStrategy(vectorLength: number, numPairs: number, gflops: number): string {
   const profile = analyzeWorkload(vectorLength, numPairs);
   
@@ -288,35 +301,12 @@ function inferStrategy(vectorLength: number, numPairs: number, gflops: number): 
     return "Sequential Basic";
   }
 }
-
-/**
- * Test ultimate performance and return simplified results
- * 
- * @param vectorLength Length of each vector
- * @param numPairs Number of vector pairs
- * @returns Simplified performance results
- */
-export async function compareUltimatePerformance(
-  vectorLength: number,
-  numPairs: number,
-): Promise<{
-  totalTime: number;
-  memoryEfficiency: number;
-  gflops: number;
-}> {
-  // Use the smart external function that handles chunking automatically
-  const result = await benchmarkUltimateExternalCallSmart(vectorLength, numPairs);
-
-  return {
-    totalTime: result.totalTime,
-    memoryEfficiency: result.memoryEfficiency,
-    gflops: result.gflops,
-  };
-}
+*/
 
 /**
  * Get current WASM memory usage statistics
  */
+/*
 export function getWasmMemoryStats(): {
   used: number;
   total: number;
@@ -336,6 +326,7 @@ export function getWasmMemoryStats(): {
     usagePercent: 100, // Conservative estimate
   };
 }
+*/
 
 /**
  * Get memory usage information from WASM
@@ -363,255 +354,6 @@ function nativeDotProduct(a: Float32Array, b: Float32Array): number {
     result += a[i] * b[i];
   }
   return result;
-}
-
-/**
- * Direct call to batch_dot_product_ultimate passing workload from JS to WASM
- * Uses raw pointer arithmetic and zero copy - bypasses batchDotProductUltimate
- */
-export async function benchmarkUltimateDirectCall(
-  vectorLength: number,
-  numPairs: number,
-): Promise<{
-  totalTime: number;
-  executionTime: number;
-  gflops: number;
-  memoryEfficiency: number;
-  verificationResults: {
-    firstPairMatch: boolean;
-    lastPairMatch: boolean;
-    firstExpected: number;
-    firstActual: number;
-    lastExpected: number;
-    lastActual: number;
-  };
-}> {
-  if (!wasmInstance) {
-    throw new Error("WASM not initialized");
-  }
-  
-  // STEP 1: Generate workload in JavaScript - small simple test case
-  const totalElements = vectorLength * numPairs;
-  const vectorsA = new Float32Array(totalElements);
-  const vectorsB = new Float32Array(totalElements);
-  
-  // Use very simple test data
-  for (let i = 0; i < totalElements; i++) {
-    vectorsA[i] = 1.0;
-    vectorsB[i] = 1.0;
-  }
-
-  console.log(`📤 Generated JS workload: ${totalElements} elements`);
-
-  try {
-    // STEP 2: Allocate WASM memory using raw pointer arithmetic
-    console.log(`� Allocating WASM memory...`);
-    const aPtr = wasmInstance.__wbindgen_malloc(totalElements * 4);
-    const bPtr = wasmInstance.__wbindgen_malloc(totalElements * 4);
-    const resultsPtr = wasmInstance.__wbindgen_malloc(numPairs * 4);
-    
-    console.log(`📍 Pointers: aPtr=${aPtr}, bPtr=${bPtr}, resultsPtr=${resultsPtr}`);
-
-    try {
-      // STEP 3: Zero-copy data transfer from JS heap to WASM memory
-      console.log(`📋 Creating memory views...`);
-      console.log(`📋 WASM memory buffer size: ${wasmInstance.memory.buffer.byteLength} bytes`);
-      console.log(`📋 Creating aView: offset=${aPtr}, length=${totalElements}`);
-      const aView = new Float32Array(wasmInstance.memory.buffer, aPtr, totalElements);
-      console.log(`📋 Created aView successfully`);
-      
-      console.log(`📋 Creating bView: offset=${bPtr}, length=${totalElements}`);
-      const bView = new Float32Array(wasmInstance.memory.buffer, bPtr, totalElements);
-      console.log(`📋 Created bView successfully`);
-      
-      console.log(`📤 Copying data to WASM...`);
-      aView.set(vectorsA);
-      console.log(`📤 Copied vectorsA to WASM`);
-      bView.set(vectorsB);
-      console.log(`📤 Copied vectorsB to WASM`);
-
-      console.log(`🚀 Calling batch_dot_product_ultimate directly...`);
-      // STEP 4: Direct call to batch_dot_product_ultimate with raw pointers
-      const start = performance.now();
-      const executionTime = batch_dot_product_ultimate(
-        aPtr, // Raw pointer (byte offset)
-        bPtr,
-        resultsPtr,
-        vectorLength,
-        numPairs,
-      );
-      const end = performance.now();
-
-      console.log(`✅ WASM call completed! Execution time: ${executionTime}ms`);
-
-      // STEP 5: Extract results from WASM memory using zero copy
-      const resultsView = new Float32Array(wasmInstance.memory.buffer, resultsPtr, numPairs);
-      const results = new Float32Array(numPairs);
-      results.set(resultsView);
-
-      console.log(`📊 Got ${results.length} results, first few: [${results.slice(0, Math.min(4, results.length)).join(', ')}...]`);
-
-      // STEP 6: Verify results against native JS
-      const firstVectorA = vectorsA.subarray(0, vectorLength);
-      const firstVectorB = vectorsB.subarray(0, vectorLength);
-      const lastStart = (numPairs - 1) * vectorLength;
-      const lastVectorA = vectorsA.subarray(lastStart, lastStart + vectorLength);
-      const lastVectorB = vectorsB.subarray(lastStart, lastStart + vectorLength);
-
-      const firstExpected = nativeDotProduct(firstVectorA, firstVectorB);
-      const lastExpected = nativeDotProduct(lastVectorA, lastVectorB);
-      const firstActual = results[0];
-      const lastActual = results[numPairs - 1];
-
-      const tolerance = 1e-5;
-      const firstPairMatch = Math.abs(firstExpected - firstActual) < tolerance;
-      const lastPairMatch = Math.abs(lastExpected - lastActual) < tolerance;
-
-      // Calculate performance metrics
-      const totalTime = end - start;
-      const totalFlops = numPairs * vectorLength * 2;
-      const gflops = totalFlops / (totalTime * 1_000_000);
-      const memoryMB = (totalElements * 2 * 4) / (1024 * 1024);
-      const memoryEfficiency = gflops / memoryMB;
-
-      console.log(`✅ Direct call SUCCESS! ${gflops.toFixed(2)} GFLOPS`);
-
-      return {
-        totalTime,
-        executionTime,
-        gflops,
-        memoryEfficiency,
-        verificationResults: {
-          firstPairMatch,
-          lastPairMatch,
-          firstExpected,
-          firstActual,
-          lastExpected,
-          lastActual,
-        },
-      };
-
-    } finally {
-      // Clean up WASM memory
-      console.log(`🧹 Cleaning up WASM memory...`);
-      wasmInstance.__wbindgen_free(aPtr, totalElements * 4);
-      wasmInstance.__wbindgen_free(bPtr, totalElements * 4);
-      wasmInstance.__wbindgen_free(resultsPtr, numPairs * 4);
-    }
-  } catch (error) {
-    console.error(`❌ ERROR in benchmarkUltimateDirectCall:`, error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Error details: ${errorMessage}`);
-    throw error;
-  }
-}
-
-/**
- * Comprehensive benchmarking function using the working external approach
- * This enables direct calling of batch_dot_product_ultimate from JavaScript with zero-copy
- */
-export async function benchmarkUltimateExternalCall(
-  vectorLength: number,
-  numPairs: number,
-): Promise<{
-  totalTime: number;
-  executionTime: number;
-  gflops: number;
-  memoryEfficiency: number;
-  verificationResults: {
-    firstPairMatch: boolean;
-    lastPairMatch: boolean;
-    firstExpected: number;
-    firstActual: number;
-    lastExpected: number;
-    lastActual: number;
-  };
-}> {
-  if (!wasmInstance) {
-    throw new Error("WASM not initialized");
-  }
-
-  console.log(`🚀 External call with vectorLength=${vectorLength}, numPairs=${numPairs}`);
-  
-  // STEP 1: Generate workload in JavaScript 
-  const totalElements = vectorLength * numPairs;
-  const vectorsA = new Float32Array(totalElements);
-  const vectorsB = new Float32Array(totalElements);
-  
-  // Generate test data with patterns that create verifiable results
-  for (let i = 0; i < totalElements; i++) {
-    vectorsA[i] = (i % vectorLength) + 1; // 1, 2, 3, ..., vectorLength, 1, 2, 3, ...
-    vectorsB[i] = 2.0; // Simple multiplier for easy verification
-  }
-
-  console.log(`📤 Generated JS workload: ${totalElements} elements`);
-
-  // STEP 2: Direct call to WASM for optimal performance
-  const start = performance.now();
-  const result = batch_dot_product_ultimate_external(
-    vectorsA,
-    vectorsB,
-    vectorLength,
-    numPairs,
-  );
-  const end = performance.now();
-
-  if (result.length < 2 + numPairs) {
-    throw new Error(`Unexpected result length: ${result.length}, expected at least ${2 + numPairs}`);
-  }
-
-  const totalTime = result[0] as number;
-  const executionTime = result[1] as number;
-  const results = new Float32Array(numPairs);
-  for (let i = 0; i < numPairs; i++) {
-    results[i] = result[2 + i] as number;
-  }
-
-  console.log(`✅ dot_product call completed! Total: ${totalTime.toFixed(4)}ms, Execution: ${executionTime.toFixed(4)}ms`);
-
-  // STEP 3: Verify results against native JS
-  const firstVectorA = vectorsA.subarray(0, vectorLength);
-  const firstVectorB = vectorsB.subarray(0, vectorLength);
-  const lastStart = (numPairs - 1) * vectorLength;
-  const lastVectorA = vectorsA.subarray(lastStart, lastStart + vectorLength);
-  const lastVectorB = vectorsB.subarray(lastStart, lastStart + vectorLength);
-
-  const firstExpected = nativeDotProduct(firstVectorA, firstVectorB);
-  const lastExpected = nativeDotProduct(lastVectorA, lastVectorB);
-  const firstActual = results[0];
-  const lastActual = results[numPairs - 1];
-
-  const tolerance = 1e-5;
-  const firstPairMatch = Math.abs(firstExpected - firstActual) < tolerance;
-  const lastPairMatch = Math.abs(lastExpected - lastActual) < tolerance;
-
-  console.log(`🔍 Verification - First: ${firstPairMatch ? '✅' : '❌'} (${firstExpected.toFixed(3)} vs ${firstActual.toFixed(3)})`);
-  console.log(`🔍 Verification - Last: ${lastPairMatch ? '✅' : '❌'} (${lastExpected.toFixed(3)} vs ${lastActual.toFixed(3)})`);
-
-  // STEP 4: Calculate performance metrics
-  const realTotalTime = end - start;
-  const totalFlops = numPairs * vectorLength * 2;
-  const gflops = totalFlops / (realTotalTime * 1_000_000);
-  const memoryMB = (totalElements * 2 * 4) / (1024 * 1024);
-  const memoryEfficiency = gflops / memoryMB;
-
-  console.log(`⚡ Performance: ${gflops.toFixed(2)} GFLOPS`);
-  console.log(`📊 Memory efficiency: ${memoryEfficiency.toFixed(3)} GFLOPS/MB`);
-
-  return {
-    totalTime: realTotalTime,
-    executionTime,
-    gflops,
-    memoryEfficiency,
-    verificationResults: {
-      firstPairMatch,
-      lastPairMatch,
-      firstExpected,
-      firstActual,
-      lastExpected,
-      lastActual,
-    },
-  };
 }
 
 /**
@@ -767,14 +509,12 @@ export async function benchmarkUltimateExternalCallSmart(
     console.log(`💾 Using direct processing (fits in memory)`);
     processingMethod = 'direct';
     
-    const start = performance.now();
     const result = batch_dot_product_ultimate_external(
       vectorsA,
       vectorsB,
       vectorLength,
       numPairs,
     );
-    const end = performance.now();
 
     if (result.length < 2 + numPairs) {
       throw new Error(`Unexpected result length: ${result.length}, expected at least ${2 + numPairs}`);
@@ -843,50 +583,5 @@ export async function benchmarkUltimateExternalCallSmart(
     processingMethod,
     chunksProcessed,
   };
-}
-
-/**
- * Optimized dot product function for benchmarking with zero-copy design
- * Uses single WASM call with internal chunking to eliminate JS-WASM boundary overhead
- */
-export function dot_product(
-  vectorsA: Float32Array,
-  vectorsB: Float32Array,
-  results: Float32Array
-): void {
-  if (!wasmInstance) {
-    throw new Error("WASM not initialized");
-  }
-
-  // Calculate vector length and number of pairs from array sizes
-  const totalElements = vectorsA.length;
-  const numPairs = results.length;
-  const vectorLength = totalElements / numPairs;
-
-  if (vectorsA.length !== vectorsB.length) {
-    throw new Error("vectorsA and vectorsB must have the same length");
-  }
-
-  if (totalElements % numPairs !== 0) {
-    throw new Error("Total elements must be evenly divisible by number of pairs");
-  }
-
-  // Use optimized chunked function that handles everything in WASM
-  // This eliminates multiple JS-WASM boundary crossings and memory copying
-  const result = batch_dot_product_ultimate_external_chunked(
-    vectorsA,
-    vectorsB,
-    vectorLength,
-    numPairs,
-  );
-
-  if (result.length < 2 + numPairs) {
-    throw new Error(`Unexpected result length: ${result.length}, expected at least ${2 + numPairs}`);
-  }
-
-  // Single copy operation: extract results (skip timing data at indices 0 and 1)
-  for (let i = 0; i < numPairs; i++) {
-    results[i] = result[2 + i] as number;
-  }
 }
 
