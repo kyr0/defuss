@@ -304,13 +304,13 @@ export async function compareUltimatePerformance(
   memoryEfficiency: number;
   gflops: number;
 }> {
-  // Test ultimate implementation
-  const ultimate = await testUltimatePerformance(vectorLength, numPairs);
+  // Use the smart external function that handles chunking automatically
+  const result = await benchmarkUltimateExternalCallSmart(vectorLength, numPairs);
 
   return {
-    totalTime: ultimate.totalTime,
-    memoryEfficiency: ultimate.memoryEfficiency,
-    gflops: ultimate.gflops,
+    totalTime: result.totalTime,
+    memoryEfficiency: result.memoryEfficiency,
+    gflops: result.gflops,
   };
 }
 
@@ -389,26 +389,6 @@ export async function benchmarkUltimateDirectCall(
   if (!wasmInstance) {
     throw new Error("WASM not initialized");
   }
-
-  console.log(`🔍 DEBUG: Starting with vectorLength=${vectorLength}, numPairs=${numPairs}`);
-  console.log(`🔍 DEBUG: WASM instance exists: ${!!wasmInstance}`);
-  console.log(`🔍 DEBUG: WASM memory exists: ${!!wasmInstance.memory}`);
-  console.log(`🔍 DEBUG: WASM __wbindgen_malloc exists: ${typeof wasmInstance.__wbindgen_malloc}`);
-  console.log(`🔍 DEBUG: batch_dot_product_ultimate exists: ${typeof batch_dot_product_ultimate}`);
-  
-  // SKIP WASM health check to see if that's causing the corruption
-  /*
-  // Test if WASM module is working correctly with a simple operation
-  console.log(`🔍 Testing WASM module health...`);
-  try {
-    // Try the working test function to verify WASM module state
-    const testResult = test_ultimate_performance(4, 10);
-    console.log(`🔍 WASM module test completed successfully, result length: ${testResult.length}`);
-  } catch (error) {
-    console.error(`🔍 WASM module test failed:`, error);
-    throw new Error(`WASM module is corrupted: ${error}`);
-  }
-  */
   
   // STEP 1: Generate workload in JavaScript - small simple test case
   const totalElements = vectorLength * numPairs;
@@ -682,7 +662,7 @@ async function processWorkloadInChunks(
   let totalExecutionTime = 0;
   let chunksProcessed = 0;
   
-  console.log(`📊 Splitting workload: ${numPairs} pairs → ${Math.ceil(numPairs / chunkSize)} chunks of ≤${chunkSize} pairs`);
+  //console.log(`📊 Splitting workload: ${numPairs} pairs → ${Math.ceil(numPairs / chunkSize)} chunks of ≤${chunkSize} pairs`);
   
   for (let startPair = 0; startPair < numPairs; startPair += chunkSize) {
     const currentChunkSize = Math.min(chunkSize, numPairs - startPair);
@@ -693,7 +673,7 @@ async function processWorkloadInChunks(
     const chunkA = vectorsA.subarray(startIdx, endIdx);
     const chunkB = vectorsB.subarray(startIdx, endIdx);
     
-    console.log(`🔄 Processing chunk ${chunksProcessed + 1}: pairs ${startPair}-${startPair + currentChunkSize - 1}`);
+    //console.log(`🔄 Processing chunk ${chunksProcessed + 1}: pairs ${startPair}-${startPair + currentChunkSize - 1}`);
     
     // Process chunk
     const chunkResult = processingFunction(chunkA, chunkB, vectorLength, currentChunkSize);
@@ -748,10 +728,25 @@ export async function benchmarkUltimateExternalCallSmart(
 
   console.log(`🎯 Smart processing: vectorLength=${vectorLength}, numPairs=${numPairs}`);
   
-  // STEP 1: Generate workload in JavaScript 
+  // STEP 1: Generate workload in JavaScript with memory allocation check
   const totalElements = vectorLength * numPairs;
-  const vectorsA = new Float32Array(totalElements);
-  const vectorsB = new Float32Array(totalElements);
+  const estimatedMemoryMB = (totalElements * 2 * 4) / (1024 * 1024); // 2 arrays, 4 bytes per float
+  
+  // Check if workload exceeds practical JavaScript memory limits (~2GB ArrayBuffer limit)
+  const maxJSMemoryMB = 2000; // Conservative limit for ArrayBuffer allocation
+  if (estimatedMemoryMB > maxJSMemoryMB) {
+    throw new Error(`Workload too large for JavaScript: ${estimatedMemoryMB.toFixed(1)}MB exceeds JS ArrayBuffer limit (~${maxJSMemoryMB}MB). Consider reducing vector size or pair count.`);
+  }
+  
+  let vectorsA: Float32Array;
+  let vectorsB: Float32Array;
+  
+  try {
+    vectorsA = new Float32Array(totalElements);
+    vectorsB = new Float32Array(totalElements);
+  } catch (error) {
+    throw new Error(`JavaScript memory allocation failed for ${estimatedMemoryMB.toFixed(1)}MB workload: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
   
   // Generate test data with patterns that create verifiable results
   for (let i = 0; i < totalElements; i++) {
@@ -831,7 +826,7 @@ export async function benchmarkUltimateExternalCallSmart(
   // STEP 4: Calculate performance metrics
   const totalFlops = numPairs * vectorLength * 2;
   const gflops = totalFlops / (totalTime * 1_000_000);
-  const memoryMB = (totalElements * 8 * 4) / (1024 * 1024);
+  const memoryMB = (totalElements * 2 * 4) / (1024 * 1024);
   const memoryEfficiency = gflops / memoryMB;
 
   console.log(`⚡ Performance: ${gflops.toFixed(2)} GFLOPS`);
