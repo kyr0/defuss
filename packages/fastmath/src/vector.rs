@@ -1,20 +1,14 @@
 use wasm_bindgen::prelude::*;
 use rayon::prelude::*;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 /// Global memory pool for reusing allocations - INTELLIGENT REUSE
 static MEMORY_POOL: Mutex<Option<Vec<f32>>> = Mutex::new(None);
 const MAX_POOL_SIZE: usize = 10_000_000; // 10M f32s = 40MB max pool (reasonable size)
-const OPTIMAL_CHUNK_SIZE: usize = 2_000_000; // 2M f32s = 8MB optimal chunk
 const MIN_POOL_SIZE: usize = 1_000_000; // 1M f32s = 4MB minimum to keep in pool
 
 /// Static configuration for performance tuning
-const CACHE_LINE_SIZE: usize = 64;
 const L1_CACHE_SIZE: usize = 32 * 1024;  // 32KB typical L1 cache
-const L2_CACHE_SIZE: usize = 256 * 1024; // 256KB typical L2 cache
-const SIMD_WIDTH: usize = 4; // f32x4 for WASM SIMD
-const MAX_UNROLL: usize = 8; // Maximum loop unroll factor
 
 /// Workload characteristics for intelligent scheduling
 #[derive(Debug, Clone, Copy)]
@@ -504,228 +498,6 @@ fn prefetch_data(ptr: *const f32, offset: usize, length: usize) {
     }
 }
 
-/*
-/// Performance monitoring and statistics
-#[wasm_bindgen]
-pub struct PerformanceStats {
-    total_operations: AtomicUsize,
-    total_time_ms: AtomicUsize,
-    last_strategy: AtomicUsize,
-}
-
-#[wasm_bindgen]
-impl PerformanceStats {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> PerformanceStats {
-        PerformanceStats {
-            total_operations: AtomicUsize::new(0),
-            total_time_ms: AtomicUsize::new(0),
-            last_strategy: AtomicUsize::new(0),
-        }
-    }
-    
-    #[wasm_bindgen(getter)]
-    pub fn average_time_ms(&self) -> f64 {
-        let ops = self.total_operations.load(Ordering::Relaxed);
-        let time = self.total_time_ms.load(Ordering::Relaxed);
-        if ops > 0 {
-            time as f64 / ops as f64
-        } else {
-            0.0
-        }
-    }
-    
-    #[wasm_bindgen(getter)]
-    pub fn total_operations(&self) -> usize {
-        self.total_operations.load(Ordering::Relaxed)
-    }
-}
-*/
-
-/*
-/// Ultimate performance test function with comprehensive analytics
-#[wasm_bindgen]
-pub fn test_ultimate_performance(
-    vector_length: usize,
-    num_pairs: usize
-) -> js_sys::Array {
-    // Memory safety check - limit to reasonable sizes to prevent WASM OOM
-    let total_elements = vector_length * num_pairs;
-    let memory_mb = (total_elements * 2 * 4) as f64 / (1024.0 * 1024.0); // 2 vectors, 4 bytes each
-    
-    // Limit to 3.5GB total to prevent WASM memory exhaustion (leaving headroom)
-    if memory_mb > 3584.0 {
-        // Return error values to indicate memory limit exceeded
-        let result_array = js_sys::Array::new();
-        result_array.push(&wasm_bindgen::JsValue::from_f64(-1.0));  // Error indicator
-        result_array.push(&wasm_bindgen::JsValue::from_f64(0.0));   // No GFLOPS
-        result_array.push(&wasm_bindgen::JsValue::from_f64(0.0));   // No result
-        result_array.push(&wasm_bindgen::JsValue::from_f64(-1.0));  // Error indicator
-        return result_array;
-    }
-    
-    // Check if we can fit this workload in our pre-allocated pool
-    let required_elements = total_elements * 2 + num_pairs; // a_data + b_data + results
-    if required_elements > MAX_POOL_SIZE {
-        // Workload too large for pool - return error to avoid memory issues
-        let result_array = js_sys::Array::new();
-        result_array.push(&wasm_bindgen::JsValue::from_f64(-3.0));  // Pool overflow error
-        result_array.push(&wasm_bindgen::JsValue::from_f64(0.0));
-        result_array.push(&wasm_bindgen::JsValue::from_f64(0.0));
-        result_array.push(&wasm_bindgen::JsValue::from_f64(-3.0));
-        return result_array;
-    }
-    
-    // Get or create the memory pool buffer
-    let mut pool_buffer = {
-        let mut pool = MEMORY_POOL.lock().unwrap();
-        if let Some(mut buffer) = pool.take() {
-            // Ensure buffer is large enough
-            if buffer.len() < MAX_POOL_SIZE {
-                buffer.resize(MAX_POOL_SIZE, 0.0);
-            }
-            buffer
-        } else {
-            // Create initial buffer
-            vec![0.0f32; MAX_POOL_SIZE]
-        }
-    };
-    
-    // Slice the buffer for our data (zero-copy partitioning)
-    let (a_slice, rest) = pool_buffer.split_at_mut(total_elements);
-    let (b_slice, result_slice) = rest.split_at_mut(total_elements);
-    
-    // Fill slices with test pattern that creates measurable results
-    for i in 0..total_elements {
-        a_slice[i] = (i as f32 + 1.0) * 0.1;
-        b_slice[i] = (i as f32 + 1.0) * 0.2;
-    }
-    
-    // Initialize results slice
-    for i in 0..num_pairs {
-        result_slice[i] = 0.0;
-    }
-    
-    // Benchmark the ultimate implementation
-    let start_time = web_sys::window()
-        .unwrap()
-        .performance()
-        .unwrap()
-        .now();
-    
-    let execution_time = batch_dot_product_ultimate(
-        a_slice.as_ptr(),
-        b_slice.as_ptr(),
-        result_slice.as_mut_ptr(),
-        vector_length,
-        num_pairs
-    );
-    
-    let end_time = web_sys::window()
-        .unwrap()
-        .performance()
-        .unwrap()
-        .now();
-    
-    let total_time = end_time - start_time;
-    let total_flops = (num_pairs * vector_length * 2) as f64;
-    let gflops = total_flops / (total_time * 1_000_000.0);
-    
-    // Capture the sample result before returning buffer to pool
-    let sample_result = result_slice[0] as f64;
-    
-    // Return buffer to memory pool for reuse
-    {
-        let mut pool = MEMORY_POOL.lock().unwrap();
-        *pool = Some(pool_buffer);
-    }
-    
-    // Return comprehensive performance statistics
-    let result_array = js_sys::Array::new();
-    result_array.push(&wasm_bindgen::JsValue::from_f64(total_time));        // [0] Total time (ms)
-    result_array.push(&wasm_bindgen::JsValue::from_f64(gflops));            // [1] GFLOPS performance
-    result_array.push(&wasm_bindgen::JsValue::from_f64(sample_result));     // [2] Sample result for verification
-    result_array.push(&wasm_bindgen::JsValue::from_f64(execution_time));    // [3] Execution time (ms)
-    
-    result_array
-}
-*/
-/// Chunked version for large workloads - splits work intelligently and processes in chunks
-/// This prevents memory exhaustion while maintaining zero-copy performance
-/*
-#[wasm_bindgen]
-pub fn batch_dot_product_ultimate_external_chunked(
-    js_a_data: &[f32],
-    js_b_data: &[f32], 
-    vector_length: usize,
-    num_pairs: usize
-) -> js_sys::Array {
-    let total_elements = vector_length * num_pairs;
-    
-    // Validate input lengths
-    if js_a_data.len() != total_elements || js_b_data.len() != total_elements {
-        let result_array = js_sys::Array::new();
-        result_array.push(&wasm_bindgen::JsValue::from_f64(-1.0));  // Error indicator
-        return result_array;
-    }
-    
-    // Calculate optimal chunk size
-    let chunk_size = calculate_optimal_chunk_size(vector_length, num_pairs);
-    
-    // Prepare results accumulator
-    let mut all_results = Vec::with_capacity(num_pairs);
-    let mut total_time = 0.0;
-    let mut total_execution_time = 0.0;
-    
-    // Process in chunks
-    let mut processed_pairs = 0;
-    while processed_pairs < num_pairs {
-        let current_chunk_size = (num_pairs - processed_pairs).min(chunk_size);
-        let chunk_elements = current_chunk_size * vector_length;
-        let start_idx = processed_pairs * vector_length;
-        
-        // Extract chunk data (zero-copy slicing)
-        let chunk_a = &js_a_data[start_idx..start_idx + chunk_elements];
-        let chunk_b = &js_b_data[start_idx..start_idx + chunk_elements];
-        
-        // Process chunk with existing function
-        let chunk_result = batch_dot_product_ultimate_external(
-            chunk_a,
-            chunk_b,
-            vector_length,
-            current_chunk_size
-        );
-        
-        // Extract timing and results
-        if chunk_result.length() >= 2 {
-            total_time += chunk_result.get(0).as_f64().unwrap_or(0.0);
-            total_execution_time += chunk_result.get(1).as_f64().unwrap_or(0.0);
-            
-            // Extract results from this chunk
-            for i in 0..current_chunk_size {
-                if let Some(result) = chunk_result.get(2 + i as u32).as_f64() {
-                    all_results.push(result);
-                }
-            }
-        }
-        
-        processed_pairs += current_chunk_size;
-    }
-    
-    // Return combined results
-    let result_array = js_sys::Array::new();
-    result_array.push(&wasm_bindgen::JsValue::from_f64(total_time));
-    result_array.push(&wasm_bindgen::JsValue::from_f64(total_execution_time));
-    
-    // Add all results
-    for result in all_results {
-        result_array.push(&wasm_bindgen::JsValue::from_f64(result));
-    }
-    
-    result_array
-}
-*/
-
 /// Intelligent memory pool management
 fn get_or_create_buffer(required_size: usize) -> Vec<f32> {
     let mut pool = MEMORY_POOL.lock().unwrap();
@@ -756,16 +528,6 @@ fn return_buffer_to_pool(buffer: Vec<f32>) {
     }
     // Otherwise just drop the buffer - it's either too small or too large
 }
-
-/*
-/// Calculate optimal chunk size for workload splitting
-fn calculate_optimal_chunk_size(vector_length: usize, num_pairs: usize) -> usize {
-    let total_elements_per_chunk = vector_length * 2; // a_data + b_data per pair
-    let max_pairs_per_chunk = (OPTIMAL_CHUNK_SIZE / total_elements_per_chunk).max(1);
-    num_pairs.min(max_pairs_per_chunk)
-}
-
-*/
 
 /// Direct call wrapper for batch_dot_product_ultimate with external data
 /// This bridges JS-allocated data to the internal WASM function with intelligent memory reuse
@@ -851,62 +613,3 @@ pub fn batch_dot_product_ultimate_external(
     result_array
 }
 
-
-/*
-/// Ultimate performance zero-copy dot product using direct WASM memory access
-/// Completely bypasses JavaScript array overhead
-#[wasm_bindgen]
-pub fn batch_dot_product_zero_copy(
-    vector_length: usize,
-    num_pairs: usize
-) -> js_sys::Array {
-    let total_elements = vector_length * num_pairs;
-    
-    // Check memory limits
-    let required_size = total_elements * 2 + num_pairs;
-    if required_size > MAX_POOL_SIZE {
-        // Return error for oversized requests
-        let result_array = js_sys::Array::new();
-        result_array.push(&wasm_bindgen::JsValue::from_f64(-1.0));
-        return result_array;
-    }
-    
-    // Get buffer from pool
-    let mut pool_buffer = get_or_create_buffer(required_size);
-    if pool_buffer.len() < required_size {
-        pool_buffer.resize(required_size, 0.0);
-    }
-    
-    let (a_slice, rest) = pool_buffer.split_at_mut(total_elements);
-    let (b_slice, result_slice) = rest.split_at_mut(total_elements);
-    
-    // Generate test data directly in WASM (same pattern as JS)
-    for i in 0..total_elements {
-        a_slice[i] = (i % vector_length) as f32 + 1.0;
-        b_slice[i] = 2.0;
-    }
-    
-    // Clear results
-    result_slice[..num_pairs].fill(0.0);
-    
-    // Pure computation
-    batch_dot_product_ultimate(
-        a_slice.as_ptr(),
-        b_slice.as_ptr(),
-        result_slice.as_mut_ptr(),
-        vector_length,
-        num_pairs
-    );
-    
-    // Return just the results without any timing overhead
-    let result_array = js_sys::Array::new();
-    for i in 0..num_pairs {
-        result_array.push(&wasm_bindgen::JsValue::from_f64(result_slice[i] as f64));
-    }
-    
-    // Return buffer to pool
-    return_buffer_to_pool(pool_buffer);
-    
-    result_array
-}
-*/

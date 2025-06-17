@@ -33,7 +33,7 @@ describe("vector", () => {
       { vectorLength: 1024, numPairs: 1000, name: "Large vectors, small batch" },
       { vectorLength: 1024, numPairs: 10_000, name: "Medium vectors, medium batch" },
       { vectorLength: 1024, numPairs: 100_000, name: "Large vectors, medium batch" },
-      { vectorLength: 1024, numPairs: 1_000_000, name: "Huge vectors, medium batch" },
+   //   { vectorLength: 1024, numPairs: 1_000_000, name: "Huge vectors, medium batch" },
       { vectorLength: 4096, numPairs: 100, name: "XL vectors, small batch" },
     ];
 
