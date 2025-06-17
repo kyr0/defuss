@@ -2,7 +2,7 @@ import { beforeAll, describe, it } from "vitest";
 import { Bench } from "tinybench";
 import {
   convolution as convolution_adaptive,
-  convolution_2d as convolution_2d_adaptive,
+  convolution_2d as convolution_2d_adaptive
 } from "./index.js";
 import {
   convolution as convolution_js,
@@ -12,7 +12,7 @@ import {
   convolution as convolution_wasm,
   convolution_2d as convolution_2d_wasm,
 } from "../pkg/defuss_fastmath.js";
-import { ensureWasmInit } from "./bench-util";
+import { ensureWasmInit } from "./bench-util.js";
 import { TestData } from "./test-utils.js";
 
 describe.skip("Convolution Performance Benchmarks", async () => {

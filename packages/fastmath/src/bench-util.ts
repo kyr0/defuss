@@ -6,22 +6,20 @@ import { convolution, convolution_2d } from "./convolution.js";
 
 // Initialize WASM module
 let wasmInitialized = false;
-let wasmInstance: any;
 export async function ensureWasmInit() {
   if (!wasmInitialized) {
     // Initialize WASM
-    wasmInstance = await init();
+    await init();
 
     // Get thread count with fallback for Node.js environments
     const threadCount =
       typeof navigator !== "undefined" && navigator.hardwareConcurrency
         ? navigator.hardwareConcurrency
-        : 4; // Fallback to 4 threads
+        : 8; // Fallback to 8 threads
 
     await initThreadPool(threadCount);
     wasmInitialized = true;
   }
-  return wasmInstance;
 }
 
 export interface BenchmarkResult {
