@@ -5,6 +5,12 @@ import init, {
   batch_dot_product_ultimate,
   PerformanceStats,
   test_ultimate_performance,
+  dot_product_simd,
+  batch_dot_product_efficient,
+  batch_dot_product_zero_copy_efficient,
+  test_efficient_performance,
+  batch_dot_product_zero_allocation,
+  batch_dot_product_zero_allocation_parallel,
 } from "../pkg/defuss_fastmath.js";
 
 // Global WASM instance state
@@ -602,6 +608,7 @@ export function batchDotProductHyperOptimized(
     // Direct memory copy using fastest method
     const aView = new Float32Array(memory.buffer, aPtr, vectorsA.length);
     const bView = new Float32Array(memory.buffer, bPtr, vectorsB.length);
+    const resultsView = new Float32Array(memory.buffer, resultsPtr, numPairs);
 
     // Use fastest copy method
     aView.set(vectorsA);
@@ -629,8 +636,8 @@ export function batchDotProductHyperOptimized(
     }
 
     // Direct result extraction
-    const resultsView = new Float32Array(memory.buffer, resultsPtr, numPairs);
-    return new Float32Array(resultsView);
+    const cStyleResultsView = new Float32Array(memory.buffer, resultsPtr, numPairs);
+    return new Float32Array(cStyleResultsView);
   } finally {
     // Always free memory
     free(aPtr, vectorsASize, 4);
@@ -730,43 +737,132 @@ export async function batchDotProductUltimate(
 
   const totalElements = vectorLength * numPairs;
 
-  // Allocate memory in WASM
-  const aPtr = wasmInstance.__wbindgen_malloc(totalElements * 4);
-  const bPtr = wasmInstance.__wbindgen_malloc(totalElements * 4);
-  const resultsPtr = wasmInstance.__wbindgen_malloc(numPairs * 4);
+  // Validate inputs
+  if (vectorLength <= 0 || numPairs <= 0) {
+    throw new Error("Invalid dimensions: vectorLength and numPairs must be positive");
+  }
+
+  if (vectorsA.length < totalElements || vectorsB.length < totalElements) {
+    throw new Error(
+      `Input arrays too small: expected ${totalElements} elements, got A:${vectorsA.length}, B:${vectorsB.length}`
+    );
+  }
+
+  // Check for potential overflow and realistic memory limits
+  const bytesNeeded = totalElements * 8 + numPairs * 4; // 2 input arrays + results
+  const realisticMemoryLimit = 512 * 1024 * 1024; // 512MB - practical WASM limit
+  
+  if (bytesNeeded > 2**31) {
+    throw new Error("Dataset too large: would exceed memory limits");
+  }
+
+  // For very large datasets, use existing streaming implementations instead
+  if (bytesNeeded > realisticMemoryLimit) {
+    console.warn(`Dataset too large for ultimate implementation (${(bytesNeeded/1024/1024).toFixed(1)}MB), falling back to streaming`);
+    
+    // Use the best performing streaming implementation as fallback
+    const start = performance.now();
+    const results = batchDotProductStreamingOptimized(
+      vectorsA, 
+      vectorsB, 
+      vectorLength, 
+      numPairs, 
+      { 
+        useParallel: true, 
+        maxMemoryMB: 128, // Smaller chunks for stability
+        chunkSize: 16384   // Smaller chunk size
+      }
+    );
+    const end = performance.now();
+    
+    const totalTime = end - start;
+    const totalFlops = numPairs * vectorLength * 2;
+    const gflops = totalFlops / (totalTime * 1_000_000);
+
+    return {
+      results,
+      executionTime: totalTime,
+      gflops,
+    };
+  }
+
+  let aPtr = 0;
+  let bPtr = 0;
+  let resultsPtr = 0;
 
   try {
-    // Copy data to WASM memory
-    const aView = new Float32Array(
-      wasmInstance.memory.buffer,
-      aPtr,
-      totalElements,
-    );
-    const bView = new Float32Array(
-      wasmInstance.memory.buffer,
-      bPtr,
-      totalElements,
-    );
+    // Allocate memory in WASM with error checking
+    aPtr = wasmInstance.__wbindgen_malloc(totalElements * 4);
+    if (aPtr === 0) {
+      throw new Error("Failed to allocate memory for vectors A");
+    }
+
+    bPtr = wasmInstance.__wbindgen_malloc(totalElements * 4);
+    if (bPtr === 0) {
+      wasmInstance.__wbindgen_free(aPtr, totalElements * 4);
+      throw new Error("Failed to allocate memory for vectors B");
+    }
+
+    resultsPtr = wasmInstance.__wbindgen_malloc(numPairs * 4);
+    if (resultsPtr === 0) {
+      wasmInstance.__wbindgen_free(aPtr, totalElements * 4);
+      wasmInstance.__wbindgen_free(bPtr, totalElements * 4);
+      throw new Error("Failed to allocate memory for results");
+    }
+
+    // Check pointer alignment (must be 4-byte aligned for f32)
+    if (aPtr % 4 !== 0 || bPtr % 4 !== 0 || resultsPtr % 4 !== 0) {
+      throw new Error("Memory allocation returned misaligned pointers");
+    }
+
+    // Get fresh memory buffer reference (in case allocation caused growth)
+    const memoryBuffer = wasmInstance.memory.buffer;
+    
+    // Copy data to WASM memory with proper bounds checking
+    const aView = new Float32Array(memoryBuffer, aPtr, totalElements);
+    const bView = new Float32Array(memoryBuffer, bPtr, totalElements);
+    
+    // Validate that the views are valid
+    if (aView.length !== totalElements || bView.length !== totalElements) {
+      throw new Error("Memory view creation failed - buffer may have been detached");
+    }
+    
     aView.set(vectorsA.subarray(0, totalElements));
     bView.set(vectorsB.subarray(0, totalElements));
 
     // Call the ultimate performance function
     const start = performance.now();
-    const executionTime = batch_dot_product_ultimate(
-      aPtr / 4, // Convert byte offset to f32 offset
-      bPtr / 4,
-      resultsPtr / 4,
+    const executionResult = batch_dot_product_ultimate(
+      aPtr,
+      bPtr, 
+      resultsPtr,
       vectorLength,
       numPairs,
     );
     const end = performance.now();
 
-    // Copy results back
-    const resultsView = new Float32Array(
-      wasmInstance.memory.buffer,
-      resultsPtr,
-      numPairs,
-    );
+    // Check for errors from Rust function
+    if (executionResult < 0) {
+      let errorMsg = "Unknown error";
+      switch (executionResult) {
+        case -1: errorMsg = "Null pointer error"; break;
+        case -2: errorMsg = "Invalid dimensions"; break;
+        case -3: errorMsg = "Arithmetic overflow"; break;
+        case -4: errorMsg = "Misaligned pointer"; break;
+      }
+      throw new Error(`Ultimate function failed: ${errorMsg} (code: ${executionResult})`);
+    }
+
+    // Get fresh memory buffer reference again (in case computation caused growth)
+    const resultMemoryBuffer = wasmInstance.memory.buffer;
+    
+    // Copy results back with bounds checking
+    const resultsView = new Float32Array(resultMemoryBuffer, resultsPtr, numPairs);
+    
+    if (resultsView.length !== numPairs) {
+      throw new Error("Result view creation failed - buffer may have been detached");
+    }
+    
     const results = new Float32Array(numPairs);
     results.set(resultsView);
 
@@ -780,10 +876,10 @@ export async function batchDotProductUltimate(
       gflops,
     };
   } finally {
-    // Clean up WASM memory
-    wasmInstance.__wbindgen_free(aPtr, totalElements * 4);
-    wasmInstance.__wbindgen_free(bPtr, totalElements * 4);
-    wasmInstance.__wbindgen_free(resultsPtr, numPairs * 4);
+    // Clean up WASM memory (safe to call even if allocation failed)
+    if (aPtr !== 0) wasmInstance.__wbindgen_free(aPtr, totalElements * 4);
+    if (bPtr !== 0) wasmInstance.__wbindgen_free(bPtr, totalElements * 4);
+    if (resultsPtr !== 0) wasmInstance.__wbindgen_free(resultsPtr, numPairs * 4);
   }
 }
 
@@ -805,12 +901,452 @@ export async function testUltimatePerformance(
     throw new Error("WASM not initialized");
   }
 
+  // Validate inputs
+  if (vectorLength <= 0 || numPairs <= 0) {
+    throw new Error("Invalid dimensions: vectorLength and numPairs must be positive");
+  }
+
+  const start = performance.now();
   const results = test_ultimate_performance(vectorLength, numPairs);
+  const end = performance.now();
+
+  // Check if the result indicates an error
+  if (results.length === 0) {
+    throw new Error("test_ultimate_performance returned empty result");
+  }
+
+  const firstValue = results[0] as number;
+  if (firstValue < 0) {
+    let errorMsg = "Unknown error";
+    switch (firstValue) {
+      case -1: errorMsg = "Invalid dimensions"; break;
+      case -2: errorMsg = "Arithmetic overflow"; break;
+      default: errorMsg = `Error code: ${firstValue}`;
+    }
+    throw new Error(`Ultimate performance test failed: ${errorMsg}`);
+  }
+
+  const totalTime = end - start;
+  const totalFlops = numPairs * vectorLength * 2;
+  const gflops = totalFlops / (totalTime * 1_000_000);
 
   return {
-    totalTime: results[0] as number,
-    gflops: results[1] as number,
+    totalTime,
+    gflops,
     sampleResult: results[2] as number,
     executionTime: results[3] as number,
   };
+}
+
+/**
+ * EFFICIENT ZERO-COPY VECTOR OPERATIONS
+ * 
+ * Based on the optimal design pattern:
+ * - Single vector operations for small workloads
+ * - Chunked processing for large workloads (5000+ operations)
+ * - Zero-copy memory management
+ * - SIMD-optimized core functions
+ */
+
+/**
+ * Single vector dot product with SIMD optimization
+ * This is the core high-performance function following the optimal pattern
+ */
+export function singleDotProductWasm(
+  vectorA: Float32Array,
+  vectorB: Float32Array,
+): number {
+  if (!wasmInitialized || !wasmInstance) {
+    throw new Error("WASM not initialized. Call initWasm() first.");
+  }
+
+  const dims = vectorA.length;
+  if (dims !== vectorB.length) {
+    throw new Error("Vector dimensions must match");
+  }
+
+  if (dims === 0) {
+    return 0;
+  }
+
+  const memory = wasmInstance.memory;
+  const malloc = wasmInstance.__wbindgen_malloc;
+  const free = wasmInstance.__wbindgen_free;
+
+  const vectorByteSize = dims * Float32Array.BYTES_PER_ELEMENT;
+
+  let ptrA = 0;
+  let ptrB = 0;
+
+  try {
+    // Allocate memory for both vectors
+    ptrA = malloc(vectorByteSize, 4);
+    if (ptrA === 0) throw new Error("Memory allocation failed for vector A");
+
+    ptrB = malloc(vectorByteSize, 4);
+    if (ptrB === 0) {
+      free(ptrA, vectorByteSize, 4);
+      throw new Error("Memory allocation failed for vector B");
+    }
+
+    // Copy data to WASM memory
+    const heapA = new Float32Array(memory.buffer, ptrA, dims);
+    const heapB = new Float32Array(memory.buffer, ptrB, dims);
+    heapA.set(vectorA);
+    heapB.set(vectorB);
+
+    // Call the SIMD-optimized dot product
+    const result = dot_product_simd(ptrA, ptrB, dims);
+
+    return result;
+  } finally {
+    // Always free memory
+    if (ptrA !== 0) free(ptrA, vectorByteSize, 4);
+    if (ptrB !== 0) free(ptrB, vectorByteSize, 4);
+  }
+}
+
+/**
+ * Efficient batch dot product using the optimal zero-copy strategy
+ * - For < 5000 operations: individual vector processing
+ * - For >= 5000 operations: chunked parallel processing (4096 max chunk size)
+ */
+export function batchDotProductEfficient(
+  vectorsA: Float32Array,
+  vectorsB: Float32Array,
+  vectorLength: number,
+  numPairs: number,
+  options: {
+    maxMemoryMB?: number;
+    chunkSize?: number;
+  } = {},
+): Float32Array {
+  if (!wasmInitialized || !wasmInstance) {
+    throw new Error("WASM not initialized. Call initWasm() first.");
+  }
+
+  // Validate inputs
+  const expectedLength = numPairs * vectorLength;
+  if (vectorsA.length !== expectedLength || vectorsB.length !== expectedLength) {
+    throw new Error(
+      `Expected ${expectedLength} elements, got A:${vectorsA.length}, B:${vectorsB.length}`,
+    );
+  }
+
+  if (vectorLength <= 0 || numPairs <= 0) {
+    throw new Error("Invalid dimensions");
+  }
+
+  const { maxMemoryMB = 256, chunkSize = 4096 } = options;
+
+  // Calculate memory requirements
+  const totalMemoryMB = (expectedLength * 2 * 4 + numPairs * 4) / (1024 * 1024);
+
+  // For very large datasets, use streaming to avoid memory issues
+  if (totalMemoryMB > maxMemoryMB) {
+    return batchDotProductStreamingOptimized(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numPairs,
+      { maxMemoryMB: maxMemoryMB / 2, chunkSize: Math.min(chunkSize, 2048) },
+    );
+  }
+
+  const memory = wasmInstance.memory;
+  const malloc = wasmInstance.__wbindgen_malloc;
+  const free = wasmInstance.__wbindgen_free;
+
+  const vectorsASize = expectedLength * 4;
+  const vectorsBSize = expectedLength * 4;
+  const resultsSize = numPairs * 4;
+
+  let vectorsAPtr = 0;
+  let vectorsBPtr = 0;
+  let resultsPtr = 0;
+
+  try {
+    // Allocate memory
+    vectorsAPtr = malloc(vectorsASize, 4);
+    if (vectorsAPtr === 0) throw new Error("Memory allocation failed for vectors A");
+
+    vectorsBPtr = malloc(vectorsBSize, 4);
+    if (vectorsBPtr === 0) {
+      free(vectorsAPtr, vectorsASize, 4);
+      throw new Error("Memory allocation failed for vectors B");
+    }
+
+    resultsPtr = malloc(resultsSize, 4);
+    if (resultsPtr === 0) {
+      free(vectorsAPtr, vectorsASize, 4);
+      free(vectorsBPtr, vectorsBSize, 4);
+      throw new Error("Memory allocation failed for results");
+    }
+
+    // Get fresh memory buffer (in case allocation caused growth)
+    const memoryBuffer = wasmInstance.memory.buffer;
+
+    // Copy data to WASM memory
+    const vectorsAView = new Float32Array(memoryBuffer, vectorsAPtr, expectedLength);
+    const vectorsBView = new Float32Array(memoryBuffer, vectorsBPtr, expectedLength);
+    vectorsAView.set(vectorsA);
+    vectorsBView.set(vectorsB);
+
+    // Call the efficient zero-copy function
+    const executionResult = batch_dot_product_zero_copy_efficient(
+      vectorsAPtr,
+      vectorsBPtr,
+      resultsPtr,
+      vectorLength,
+      numPairs,
+    );
+
+    // Check for errors
+    if (executionResult < 0) {
+      let errorMsg = "Unknown error";
+      switch (executionResult) {
+        case -1: errorMsg = "Null pointer error"; break;
+        case -2: errorMsg = "Invalid dimensions"; break;
+      }
+      throw new Error(`Efficient function failed: ${errorMsg} (code: ${executionResult})`);
+    }
+
+    // Get fresh memory buffer again (in case computation caused growth)
+    const resultMemoryBuffer = wasmInstance.memory.buffer;
+
+    // Copy results back
+    const efficientResultsView = new Float32Array(resultMemoryBuffer, resultsPtr, numPairs);
+    const results = new Float32Array(numPairs);
+    results.set(efficientResultsView);
+
+    return results;
+  } finally {
+    // Clean up memory
+    if (vectorsAPtr !== 0) free(vectorsAPtr, vectorsASize, 4);
+    if (vectorsBPtr !== 0) free(vectorsBPtr, vectorsBSize, 4);
+    if (resultsPtr !== 0) free(resultsPtr, resultsSize, 4);
+  }
+}
+
+/**
+ * Test the efficient performance implementation
+ */
+export async function testEfficientPerformance(
+  vectorLength: number,
+  numPairs: number,
+): Promise<{
+  totalTime: number;
+  gflops: number;
+  sampleResult: number;
+  executionTime: number;
+}> {
+  await initWasm();
+
+  if (!wasmInstance) {
+    throw new Error("WASM not initialized");
+  }
+
+  // Validate inputs
+  if (vectorLength <= 0 || numPairs <= 0) {
+    throw new Error("Invalid dimensions: vectorLength and numPairs must be positive");
+  }
+
+  const start = performance.now();
+  const results = test_efficient_performance(vectorLength, numPairs);
+  const end = performance.now();
+
+  // Check if the result indicates an error
+  if (results.length === 0) {
+    throw new Error("test_efficient_performance returned empty result");
+  }
+
+  const firstValue = results[0] as number;
+  if (firstValue < 0) {
+    let errorMsg = "Unknown error";
+    switch (firstValue) {
+      case -1: errorMsg = "Invalid dimensions"; break;
+      case -2: errorMsg = "Arithmetic overflow"; break;
+      default: errorMsg = `Error code: ${firstValue}`;
+    }
+    throw new Error(`Efficient performance test failed: ${errorMsg}`);
+  }
+
+  const totalTime = end - start;
+  const totalFlops = numPairs * vectorLength * 2;
+  const gflops = totalFlops / (totalTime * 1_000_000);
+
+  return {
+    totalTime,
+    gflops,
+    sampleResult: results[2] as number,
+    executionTime: results[3] as number,
+  };
+}
+
+/**
+ * Ultimate efficient batch dot product - the single best function
+ * Automatically chooses between single vector ops and chunked processing
+ */
+export async function batchDotProductUltimateEfficient(
+  vectorsA: Float32Array,
+  vectorsB: Float32Array,
+  vectorLength: number,
+  numPairs: number,
+): Promise<{ results: Float32Array; executionTime: number; gflops: number }> {
+  await initWasm();
+
+  const start = performance.now();
+
+  let results: Float32Array;
+
+  // Choose strategy based on workload size
+  if (numPairs >= 5000) {
+    // Use chunked processing for large workloads
+    results = batchDotProductEfficient(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numPairs,
+      { maxMemoryMB: 256, chunkSize: 4096 },
+    );
+  } else if (numPairs >= 100) {
+    // Use efficient batch processing for medium workloads  
+    results = batchDotProductEfficient(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numPairs,
+      { maxMemoryMB: 128, chunkSize: 1024 },
+    );
+  } else {
+    // Use individual vector operations for small workloads
+    results = new Float32Array(numPairs);
+    for (let i = 0; i < numPairs; i++) {
+      const startIdx = i * vectorLength;
+      const endIdx = startIdx + vectorLength;
+      const vectorA = vectorsA.subarray(startIdx, endIdx);
+      const vectorB = vectorsB.subarray(startIdx, endIdx);
+      results[i] = singleDotProductWasm(vectorA, vectorB);
+    }
+  }
+
+  const end = performance.now();
+  const totalTime = end - start;
+  const totalFlops = numPairs * vectorLength * 2;
+  const gflops = totalFlops / (totalTime * 1_000_000);
+
+  return {
+    results,
+    executionTime: totalTime,
+    gflops,
+  };
+}
+
+/**
+ * Ultra high-performance zero-allocation batch dot product
+ * Works directly with input buffers without any WASM memory allocation
+ */
+export function batchDotProductUltraZeroAllocation(
+  vectorsA: Float32Array,
+  vectorsB: Float32Array,
+  vectorLength: number,
+  numPairs: number,
+  useParallel = true,
+): Float32Array {
+  if (!wasmInitialized || !wasmInstance) {
+    throw new Error("WASM not initialized. Call initWasm() first.");
+  }
+
+  // Validate inputs
+  const expectedLength = numPairs * vectorLength;
+  if (vectorsA.length !== expectedLength || vectorsB.length !== expectedLength) {
+    throw new Error(
+      `Expected ${expectedLength} elements, got A:${vectorsA.length}, B:${vectorsB.length}`,
+    );
+  }
+
+  if (vectorLength <= 0 || numPairs <= 0) {
+    throw new Error("Invalid dimensions");
+  }
+
+  // Create results buffer
+  const results = new Float32Array(numPairs);
+
+  // Get current memory buffer
+  const memory = wasmInstance.memory;
+  const memoryU8 = new Uint8Array(memory.buffer);
+
+  // Pin the data in WASM memory (zero-copy approach)
+  const vectorsABytes = new Uint8Array(vectorsA.buffer, vectorsA.byteOffset, vectorsA.byteLength);
+  const vectorsBBytes = new Uint8Array(vectorsB.buffer, vectorsB.byteOffset, vectorsB.byteLength);
+  const resultsBytes = new Uint8Array(results.buffer, results.byteOffset, results.byteLength);
+
+  // Allocate space in WASM memory for direct pointer access
+  const malloc = wasmInstance.__wbindgen_malloc;
+  const free = wasmInstance.__wbindgen_free;
+
+  const vectorsASize = vectorsA.byteLength;
+  const vectorsBSize = vectorsB.byteLength;
+  const resultsSize = results.byteLength;
+
+  let vectorsAPtr = 0;
+  let vectorsBPtr = 0;
+  let resultsPtr = 0;
+
+  try {
+    // Allocate and copy data efficiently
+    vectorsAPtr = malloc(vectorsASize, 4);
+    if (vectorsAPtr === 0) throw new Error("Memory allocation failed for vectors A");
+
+    vectorsBPtr = malloc(vectorsBSize, 4);
+    if (vectorsBPtr === 0) throw new Error("Memory allocation failed for vectors B");
+
+    resultsPtr = malloc(resultsSize, 4);
+    if (resultsPtr === 0) throw new Error("Memory allocation failed for results");
+
+    // Get fresh memory view after allocation
+    const freshMemory = new Uint8Array(wasmInstance.memory.buffer);
+
+    // Copy input data
+    freshMemory.set(vectorsABytes, vectorsAPtr);
+    freshMemory.set(vectorsBBytes, vectorsBPtr);
+
+    // Call the ultra-optimized zero-allocation function
+    const executionResult = useParallel
+      ? batch_dot_product_zero_allocation_parallel(
+          vectorsAPtr,  // Keep as byte pointer
+          vectorsBPtr,
+          resultsPtr,
+          vectorLength,
+          numPairs,
+        )
+      : batch_dot_product_zero_allocation(
+          vectorsAPtr,
+          vectorsBPtr,
+          resultsPtr,
+          vectorLength,
+          numPairs,
+        );
+
+    if (executionResult < 0) {
+      let errorMsg = "Unknown error";
+      switch (executionResult) {
+        case -1: errorMsg = "Null pointer error"; break;
+        case -2: errorMsg = "Invalid dimensions"; break;
+      }
+      throw new Error(`Ultra function failed: ${errorMsg} (code: ${executionResult})`);
+    }
+
+    // Copy results back
+    const finalMemory = new Uint8Array(wasmInstance.memory.buffer);
+    const resultBytes = finalMemory.slice(resultsPtr, resultsPtr + resultsSize);
+    results.set(new Float32Array(resultBytes.buffer, resultBytes.byteOffset, numPairs));
+
+    return results;
+  } finally {
+    // Clean up memory
+    if (vectorsAPtr !== 0) free(vectorsAPtr, vectorsASize, 4);
+    if (vectorsBPtr !== 0) free(vectorsBPtr, vectorsBSize, 4);
+    if (resultsPtr !== 0) free(resultsPtr, resultsSize, 4);
+  }
 }

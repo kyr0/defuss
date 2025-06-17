@@ -9,6 +9,8 @@ mod dsp;
 mod vector;
 mod convolution;
 mod ultimate_vector;
+mod efficient_vector;
+mod ultra_vector;
 
 // Re-export DSP functions
 pub use dsp::{sine, saw, triangle, square};
@@ -46,12 +48,23 @@ pub use ultimate_vector::{
     PerformanceStats,
 };
 
+// Re-export efficient zero-copy functions  
+pub use efficient_vector::{
+    dot_product_simd,
+    batch_dot_product_efficient,
+    batch_dot_product_zero_copy_efficient,
+    test_efficient_performance,
+};
+
 pub use convolution::{
     convolution,
     cross_correlation,
     convolution_2d,
     auto_correlation,
 };
+
+// Export ultra high-performance functions
+pub use ultra_vector::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
