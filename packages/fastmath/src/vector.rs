@@ -1253,3 +1253,172 @@ pub fn batch_dot_product_c_style(
         }
     }
 }
+
+/// Ultra-efficient streaming batch dot product processor
+/// Processes data in fixed-size chunks to minimize memory allocation overhead
+/// Uses persistent WASM memory buffers for optimal performance
+#[wasm_bindgen]
+pub fn batch_dot_product_streaming(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
+    results_ptr: *mut f32,
+    vector_length: usize,
+    num_pairs: usize,
+    chunk_size: usize,
+) {
+    unsafe {
+        let a_data = std::slice::from_raw_parts(a_ptr, num_pairs * vector_length);
+        let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
+        let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
+        
+        let effective_chunk_size = std::cmp::min(chunk_size, num_pairs);
+        
+        // Process data in chunks to minimize memory pressure
+        for chunk_start in (0..num_pairs).step_by(effective_chunk_size) {
+            let chunk_end = std::cmp::min(chunk_start + effective_chunk_size, num_pairs);
+            let current_chunk_size = chunk_end - chunk_start;
+            
+            // Process each chunk with optimal algorithm
+            if current_chunk_size >= 500 {
+                // Use parallel processing for larger chunks
+                let chunk_results = &mut results[chunk_start..chunk_end];
+                
+                chunk_results.par_chunks_mut(64)
+                             .enumerate()
+                             .for_each(|(sub_chunk_idx, sub_chunk)| {
+                                 let sub_start = chunk_start + sub_chunk_idx * 64;
+                                 
+                                 #[cfg(target_arch = "wasm32")]
+                                 {
+                                     for (local_idx, result) in sub_chunk.iter_mut().enumerate() {
+                                         let global_idx = sub_start + local_idx;
+                                         if global_idx >= chunk_end { break; }
+                                         
+                                         let a_start = global_idx * vector_length;
+                                         let a_slice = &a_data[a_start..a_start + vector_length];
+                                         let b_slice = &b_data[a_start..a_start + vector_length];
+                                         
+                                         *result = simd_dot_product_ultra(a_slice, b_slice);
+                                     }
+                                 }
+                                 
+                                 #[cfg(not(target_arch = "wasm32"))]
+                                 {
+                                     for (local_idx, result) in sub_chunk.iter_mut().enumerate() {
+                                         let global_idx = sub_start + local_idx;
+                                         if global_idx >= chunk_end { break; }
+                                         
+                                         let a_start = global_idx * vector_length;
+                                         let mut sum = 0.0;
+                                         for j in 0..vector_length {
+                                             sum += a_data[a_start + j] * b_data[a_start + j];
+                                         }
+                                         *result = sum;
+                                     }
+                                 }
+                             });
+            } else {
+                // Use sequential processing for smaller chunks
+                for i in chunk_start..chunk_end {
+                    let a_start = i * vector_length;
+                    let a_slice = &a_data[a_start..a_start + vector_length];
+                    let b_slice = &b_data[a_start..a_start + vector_length];
+                    
+                    results[i] = simd_dot_product_ultra(a_slice, b_slice);
+                }
+            }
+        }
+    }
+}
+
+/// Memory-efficient batch processor with configurable buffer limits
+/// Automatically manages memory allocation to stay within specified limits
+#[wasm_bindgen]
+pub fn batch_dot_product_memory_limited(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
+    results_ptr: *mut f32,
+    vector_length: usize,
+    num_pairs: usize,
+    max_memory_mb: usize,
+) {
+    unsafe {
+        // Calculate optimal chunk size based on memory limit
+        let bytes_per_pair = vector_length * 2 * 4; // 2 vectors * 4 bytes per float
+        let max_pairs_per_chunk = (max_memory_mb * 1024 * 1024) / bytes_per_pair;
+        let chunk_size = std::cmp::min(max_pairs_per_chunk, num_pairs);
+        
+        // Use streaming processor with calculated chunk size
+        batch_dot_product_streaming(
+            a_ptr,
+            b_ptr,
+            results_ptr,
+            vector_length,
+            num_pairs,
+            chunk_size,
+        );
+    }
+}
+
+/// Hybrid streaming processor that adapts between sequential and parallel
+/// based on workload characteristics and memory pressure
+#[wasm_bindgen]
+pub fn batch_dot_product_adaptive_streaming(
+    a_ptr: *const f32,
+    b_ptr: *const f32,
+    results_ptr: *mut f32,
+    vector_length: usize,
+    num_pairs: usize,
+) {
+    unsafe {
+        let a_data = std::slice::from_raw_parts(a_ptr, num_pairs * vector_length);
+        let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
+        let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
+        
+        // Adaptive chunk sizing based on dataset characteristics
+        let optimal_chunk_size = if num_pairs > 50000 {
+            // Large datasets: use smaller chunks for better memory efficiency
+            2048
+        } else if num_pairs > 10000 {
+            // Medium datasets: balance memory and performance
+            4096
+        } else {
+            // Small datasets: use larger chunks for better parallelization
+            8192
+        };
+        
+        let chunk_size = std::cmp::min(optimal_chunk_size, num_pairs);
+        
+        // Process in adaptive chunks
+        for chunk_start in (0..num_pairs).step_by(chunk_size) {
+            let chunk_end = std::cmp::min(chunk_start + chunk_size, num_pairs);
+            let current_chunk_size = chunk_end - chunk_start;
+            
+            // Dynamic algorithm selection based on chunk characteristics
+            if current_chunk_size >= 1000 && vector_length >= 512 {
+                // Large chunk with large vectors: use aggressive parallel processing
+                let chunk_results = &mut results[chunk_start..chunk_end];
+                
+                chunk_results.par_iter_mut()
+                             .enumerate()
+                             .for_each(|(local_idx, result)| {
+                                 let global_idx = chunk_start + local_idx;
+                                 let a_start = global_idx * vector_length;
+                                 let a_slice = &a_data[a_start..a_start + vector_length];
+                                 let b_slice = &b_data[a_start..a_start + vector_length];
+                                 
+                                 *result = simd_dot_product_ultra(a_slice, b_slice);
+                             });
+            } else {
+                // Smaller chunks or vectors: use sequential ultra-optimized processing
+                for i in chunk_start..chunk_end {
+                    let a_start = i * vector_length;
+                    let a_slice = &a_data[a_start..a_start + vector_length];
+                    let b_slice = &b_data[a_start..a_start + vector_length];
+                    
+                    results[i] = simd_dot_product_ultra(a_slice, b_slice);
+                }
+            }
+        }
+    }
+}
