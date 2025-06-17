@@ -1,12 +1,11 @@
 /**
- * @fileoverview Benchmarks for functional vector operations
  * Tests performance of the new functional vector implementation
  */
 import { beforeAll, describe, it } from "vitest";
 import {
   initWasm,
-  benchmarkUltimateExternalCallSmart,
   getWasmMemoryInfo,
+  processBatchDotProduct,
 } from "./vector.js";
 
 interface BenchmarkResult {
@@ -15,11 +14,77 @@ interface BenchmarkResult {
     gflops: number;
 }
 
+/**
+ * Generate test arrays for batch dot product benchmarking
+ */
+export function generateBenchmarkVectors(
+  vectorLength: number,
+  numPairs: number,
+): { vectorsA: Float32Array; vectorsB: Float32Array } {
+  console.log(`🎯 Generating test vectors: vectorLength=${vectorLength}, numPairs=${numPairs}`);
+  
+  const totalElements = vectorLength * numPairs;
+  const estimatedMemoryMB = (totalElements * 2 * 4) / (1024 * 1024); // 2 arrays, 4 bytes per float
+  
+  // Check if workload exceeds practical JavaScript memory limits (~2GB ArrayBuffer limit)
+  const maxJSMemoryMB = 2000; // Conservative limit for ArrayBuffer allocation
+  if (estimatedMemoryMB > maxJSMemoryMB) {
+    throw new Error(`Workload too large for JavaScript: ${estimatedMemoryMB.toFixed(1)}MB exceeds JS ArrayBuffer limit (~${maxJSMemoryMB}MB). Consider reducing vector size or pair count.`);
+  }
+  
+  let vectorsA: Float32Array;
+  let vectorsB: Float32Array;
+  
+  try {
+    vectorsA = new Float32Array(totalElements);
+    vectorsB = new Float32Array(totalElements);
+  } catch (error) {
+    throw new Error(`JavaScript memory allocation failed for ${estimatedMemoryMB.toFixed(1)}MB workload: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+  
+  // Generate test data with patterns that create verifiable results
+  for (let i = 0; i < totalElements; i++) {
+    vectorsA[i] = (i % vectorLength) + 1;
+    vectorsB[i] = 2.0;
+  }
+
+  console.log(`📤 Generated JS workload: ${totalElements} elements`);
+  
+  return { vectorsA, vectorsB };
+}
+
 describe("vector", () => {
+  let wasmInstance: any;
   beforeAll(async () => {
-    await initWasm();
+    wasmInstance = await initWasm();
   });
 
+
+  /**
+   * Smart benchmark function that automatically chooses between direct and chunked processing
+   */
+  async function benchmarkUltimateExternalCallSmart(
+    vectorLength: number,
+    numPairs: number,
+  ): Promise<{
+    totalTime: number;
+    executionTime: number;
+    gflops: number;
+    memoryEfficiency: number;
+    results: Float32Array;
+    processingMethod: 'direct' | 'chunked';
+    chunksProcessed?: number;
+  }> {
+    if (!wasmInstance) {
+      throw new Error("WASM not initialized");
+    }
+
+    // STEP 1: Generate test vectors
+    const { vectorsA, vectorsB } = generateBenchmarkVectors(vectorLength, numPairs);
+
+    // STEP 2: Process the vectors
+    return await processBatchDotProduct(vectorsA, vectorsB, vectorLength, numPairs);
+  }
 
   it("should be ultra fast", async () => {
     console.log("🚀 Starting ultra benchmarks...");

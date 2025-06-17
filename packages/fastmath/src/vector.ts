@@ -8,12 +8,13 @@ let wasmInstance: any;
  * Initialize WASM module for ultimate performance operations
  * Must be called before using any ultimate performance functions
  */
-export async function initWasm(): Promise<void> {
+export async function initWasm(): Promise<any> {
   if (!wasmInitialized) {
     wasmInstance = await init();
     await initThreadPool(navigator.hardwareConcurrency || 8); // Use available cores or default to 4
     wasmInitialized = true;
   }
+  return wasmInstance;
 }
 
 /**
@@ -137,9 +138,11 @@ async function processWorkloadInChunks(
 }
 
 /**
- * Smart benchmark function that automatically chooses between direct and chunked processing
+ * Process batch dot product with automatic method selection (direct vs chunked)
  */
-export async function benchmarkUltimateExternalCallSmart(
+export async function processBatchDotProduct(
+  vectorsA: Float32Array,
+  vectorsB: Float32Array,
   vectorLength: number,
   numPairs: number,
 ): Promise<{
@@ -155,37 +158,15 @@ export async function benchmarkUltimateExternalCallSmart(
     throw new Error("WASM not initialized");
   }
 
-  console.log(`🎯 Smart processing: vectorLength=${vectorLength}, numPairs=${numPairs}`);
-  
-  // STEP 1: Generate workload in JavaScript with memory allocation check
+  console.log(`🎯 Processing batch dot product: vectorLength=${vectorLength}, numPairs=${numPairs}`);
+
+  // Validate input arrays
   const totalElements = vectorLength * numPairs;
-  const estimatedMemoryMB = (totalElements * 2 * 4) / (1024 * 1024); // 2 arrays, 4 bytes per float
-  
-  // Check if workload exceeds practical JavaScript memory limits (~2GB ArrayBuffer limit)
-  const maxJSMemoryMB = 2000; // Conservative limit for ArrayBuffer allocation
-  if (estimatedMemoryMB > maxJSMemoryMB) {
-    throw new Error(`Workload too large for JavaScript: ${estimatedMemoryMB.toFixed(1)}MB exceeds JS ArrayBuffer limit (~${maxJSMemoryMB}MB). Consider reducing vector size or pair count.`);
-  }
-  
-  let vectorsA: Float32Array;
-  let vectorsB: Float32Array;
-  
-  try {
-    vectorsA = new Float32Array(totalElements);
-    vectorsB = new Float32Array(totalElements);
-  } catch (error) {
-    throw new Error(`JavaScript memory allocation failed for ${estimatedMemoryMB.toFixed(1)}MB workload: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-  
-  // Generate test data with patterns that create verifiable results
-  for (let i = 0; i < totalElements; i++) {
-    vectorsA[i] = (i % vectorLength) + 1;
-    vectorsB[i] = 2.0;
+  if (vectorsA.length !== totalElements || vectorsB.length !== totalElements) {
+    throw new Error(`Input array size mismatch: expected ${totalElements} elements, got A=${vectorsA.length}, B=${vectorsB.length}`);
   }
 
-  console.log(`📤 Generated JS workload: ${totalElements} elements`);
-
-  // STEP 2: Choose processing method based on memory constraints
+  // Choose processing method based on memory constraints
   const canFitDirectly = canFitInMemory(vectorLength, numPairs);
   let results: Float32Array;
   let totalTime: number;
