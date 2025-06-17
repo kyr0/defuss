@@ -93,8 +93,8 @@ export function batchDotProductZeroCopyParallel(
 
   try {
     // Choose implementation based on workload size and useParallel flag
-    if (useParallel && numPairs >= 2000) {
-      // Use parallel implementation for large workloads
+    if (useParallel && numPairs >= 500) {
+      // Use ultra-optimized parallel implementation for medium to large workloads
       batch_dot_product_parallel_ultra_optimized(
         aPtr,
         bPtr,
@@ -103,8 +103,8 @@ export function batchDotProductZeroCopyParallel(
         numPairs,
       );
     } else {
-      // Use sequential implementation for smaller workloads or when parallel is disabled
-      batch_dot_product_hyper_optimized(
+      // Use ultra-optimized sequential implementation for smaller workloads
+      batch_dot_product_c_style(
         aPtr,
         bPtr,
         resultsPtr,

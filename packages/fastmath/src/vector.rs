@@ -3,67 +3,102 @@ use rayon::prelude::*;
 
 // Threshold for switching to parallel processing
 // Below this size, single-threaded is faster due to overhead
-const PARALLEL_THRESHOLD: usize = 1000;
-const SIMD_THRESHOLD: usize = 64; // Threshold for SIMD operations
+const PARALLEL_THRESHOLD: usize = 500; // Reduced for better parallelization
+const SIMD_THRESHOLD: usize = 32; // Reduced threshold for earlier SIMD usage
 
 // SIMD-optimized dot product using explicit SIMD intrinsics
 #[cfg(target_arch = "wasm32")]
 use std::arch::wasm32::*;
 
-/// SIMD-optimized single-threaded dot product for f32 vectors
+/// Ultra-optimized SIMD dot product with aggressive 16-wide processing and loop unrolling
 #[inline]
-fn simd_dot_product(a: &[f32], b: &[f32]) -> f32 {
+fn simd_dot_product_ultra(a: &[f32], b: &[f32]) -> f32 {
     assert_eq!(a.len(), b.len(), "Vector lengths must match");
     
     #[cfg(target_arch = "wasm32")]
     {
         let len = a.len();
-        let mut sum = f32x4_splat(0.0);
-        let chunks = len / 4;
         
-        // Check if pointers are 16-byte aligned for safe SIMD usage
-        let a_ptr = a.as_ptr() as usize;
-        let b_ptr = b.as_ptr() as usize;
-        let is_aligned = (a_ptr % 16 == 0) && (b_ptr % 16 == 0);
+        // Use 4 SIMD accumulators for better parallelism and reduced latency
+        let mut sum1 = f32x4_splat(0.0);
+        let mut sum2 = f32x4_splat(0.0);
+        let mut sum3 = f32x4_splat(0.0);
+        let mut sum4 = f32x4_splat(0.0);
         
-        if is_aligned {
-            // Process 4 elements at a time using SIMD (aligned loads)
-            for i in 0..chunks {
-                let base = i * 4;
-                unsafe {
-                    let a_vec = v128_load(a.as_ptr().add(base) as *const v128);
-                    let b_vec = v128_load(b.as_ptr().add(base) as *const v128);
-                    let prod = f32x4_mul(a_vec, b_vec);
-                    sum = f32x4_add(sum, prod);
-                }
+        // Process 16 elements at once using 4 SIMD registers (ultra-wide SIMD)
+        let chunks_16 = len / 16;
+        
+        unsafe {
+            for i in 0..chunks_16 {
+                let base = i * 16;
+                let a_ptr = a.as_ptr().add(base);
+                let b_ptr = b.as_ptr().add(base);
+                
+                // Load and multiply 16 elements in parallel
+                let a_vec1 = v128_load(a_ptr as *const v128);
+                let b_vec1 = v128_load(b_ptr as *const v128);
+                let a_vec2 = v128_load(a_ptr.add(4) as *const v128);
+                let b_vec2 = v128_load(b_ptr.add(4) as *const v128);
+                let a_vec3 = v128_load(a_ptr.add(8) as *const v128);
+                let b_vec3 = v128_load(b_ptr.add(8) as *const v128);
+                let a_vec4 = v128_load(a_ptr.add(12) as *const v128);
+                let b_vec4 = v128_load(b_ptr.add(12) as *const v128);
+                
+                // Fused multiply-add for better performance
+                sum1 = f32x4_add(sum1, f32x4_mul(a_vec1, b_vec1));
+                sum2 = f32x4_add(sum2, f32x4_mul(a_vec2, b_vec2));
+                sum3 = f32x4_add(sum3, f32x4_mul(a_vec3, b_vec3));
+                sum4 = f32x4_add(sum4, f32x4_mul(a_vec4, b_vec4));
             }
-            
-            // Extract scalar sum from SIMD register
-            let mut result = f32x4_extract_lane::<0>(sum) + 
-                            f32x4_extract_lane::<1>(sum) + 
-                            f32x4_extract_lane::<2>(sum) + 
-                            f32x4_extract_lane::<3>(sum);
-            
-            // Handle remaining elements
-            for i in (chunks * 4)..len {
-                result += a[i] * b[i];
-            }
-            
-            result
-        } else {
-            // Fallback to scalar for unaligned data
-            let mut result = 0.0;
-            for i in 0..len {
-                result += a[i] * b[i];
-            }
-            result
         }
+        
+        // Combine the 4 SIMD accumulators
+        let combined1 = f32x4_add(sum1, sum2);
+        let combined2 = f32x4_add(sum3, sum4);
+        let final_sum = f32x4_add(combined1, combined2);
+        
+        let mut result = f32x4_extract_lane::<0>(final_sum) + 
+                        f32x4_extract_lane::<1>(final_sum) + 
+                        f32x4_extract_lane::<2>(final_sum) + 
+                        f32x4_extract_lane::<3>(final_sum);
+        
+        // Process remaining elements in chunks of 4
+        let remaining_start = chunks_16 * 16;
+        let chunks_4 = (len - remaining_start) / 4;
+        
+        unsafe {
+            for i in 0..chunks_4 {
+                let base = remaining_start + i * 4;
+                let a_vec = v128_load(a.as_ptr().add(base) as *const v128);
+                let b_vec = v128_load(b.as_ptr().add(base) as *const v128);
+                let prod = f32x4_mul(a_vec, b_vec);
+                
+                result += f32x4_extract_lane::<0>(prod) + 
+                         f32x4_extract_lane::<1>(prod) + 
+                         f32x4_extract_lane::<2>(prod) + 
+                         f32x4_extract_lane::<3>(prod);
+            }
+        }
+        
+        // Handle final remaining elements
+        let final_start = remaining_start + chunks_4 * 4;
+        for i in final_start..len {
+            result += a[i] * b[i];
+        }
+        
+        result
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
         // Fallback for non-WASM targets
         a.iter().zip(b.iter()).map(|(x, y)| x * y).sum()
     }
+}
+
+/// Legacy SIMD dot product (kept for compatibility)
+#[inline]
+fn simd_dot_product(a: &[f32], b: &[f32]) -> f32 {
+    simd_dot_product_ultra(a, b)
 }
 
 /// Parallel vector addition: result[i] = a[i] + b[i]
@@ -992,6 +1027,7 @@ pub fn batch_dot_product_ultra_optimized(
 }
 
 /// Memory-pool optimized parallel version with zero allocation overhead
+/// Uses all available cores with optimal chunking and ultra-optimized SIMD
 #[wasm_bindgen]
 pub fn batch_dot_product_parallel_ultra_optimized(
     a_ptr: *const f32,
@@ -1005,92 +1041,119 @@ pub fn batch_dot_product_parallel_ultra_optimized(
         let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
         let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
         
-        // Use parallel processing only for large workloads
-        if num_pairs < 2000 {
+        // Use smaller threshold for parallel to utilize all cores
+        if num_pairs < 500 {
             // For smaller workloads, use the ultra-optimized sequential version
-            batch_dot_product_ultra_optimized(a_ptr, b_ptr, results_ptr, vector_length, num_pairs);
+            batch_dot_product_c_style(a_ptr, b_ptr, results_ptr, vector_length, num_pairs);
             return;
         }
         
-        // Parallel with optimal chunking and ultra-optimized SIMD
-        results.par_iter_mut()
+        // Determine optimal chunk size for maximum core utilization
+        // Aim for 8-16 chunks to keep all cores busy
+        let num_cores = 8; // We know we have 8 cores configured
+        let min_chunk_size = 64; // Minimum chunk size to avoid overhead
+        let ideal_chunks = num_cores * 2; // 2x cores for better load balancing
+        let chunk_size = std::cmp::max(min_chunk_size, num_pairs / ideal_chunks);
+        
+        // Use par_chunks for optimal parallel processing
+        results.par_chunks_mut(chunk_size)
                .enumerate()
-               .for_each(|(i, result)| {
-                   let a_start = i * vector_length;
-                   let a_slice = &a_data[a_start..a_start + vector_length];
-                   let b_slice = &b_data[a_start..a_start + vector_length];
+               .for_each(|(chunk_idx, chunk_results)| {
+                   let chunk_start = chunk_idx * chunk_size;
                    
                    #[cfg(target_arch = "wasm32")]
                    {
-                       // Same ultra-optimized SIMD as sequential version
-                       let mut sum1 = f32x4_splat(0.0);
-                       let mut sum2 = f32x4_splat(0.0);
-                       let mut sum3 = f32x4_splat(0.0);
-                       let mut sum4 = f32x4_splat(0.0);
-                       
-                       let mut j = 0;
-                       let chunks = vector_length / 16;
-                       
-                       for _ in 0..chunks {
-                           let a_ptr_j = a_slice.as_ptr().add(j);
-                           let b_ptr_j = b_slice.as_ptr().add(j);
+                       // Ultra-optimized SIMD processing for each chunk
+                       for (local_idx, result) in chunk_results.iter_mut().enumerate() {
+                           let global_idx = chunk_start + local_idx;
+                           if global_idx >= num_pairs { break; }
                            
-                           let a_vec1 = v128_load(a_ptr_j as *const v128);
-                           let b_vec1 = v128_load(b_ptr_j as *const v128);
-                           let a_vec2 = v128_load(a_ptr_j.add(4) as *const v128);
-                           let b_vec2 = v128_load(b_ptr_j.add(4) as *const v128);
-                           let a_vec3 = v128_load(a_ptr_j.add(8) as *const v128);
-                           let b_vec3 = v128_load(b_ptr_j.add(8) as *const v128);
-                           let a_vec4 = v128_load(a_ptr_j.add(12) as *const v128);
-                           let b_vec4 = v128_load(b_ptr_j.add(12) as *const v128);
+                           let a_start = global_idx * vector_length;
+                           let a_slice = &a_data[a_start..a_start + vector_length];
+                           let b_slice = &b_data[a_start..a_start + vector_length];
                            
-                           sum1 = f32x4_add(sum1, f32x4_mul(a_vec1, b_vec1));
-                           sum2 = f32x4_add(sum2, f32x4_mul(a_vec2, b_vec2));
-                           sum3 = f32x4_add(sum3, f32x4_mul(a_vec3, b_vec3));
-                           sum4 = f32x4_add(sum4, f32x4_mul(a_vec4, b_vec4));
+                           // Use same ultra-optimized SIMD as sequential version
+                           let mut sum1 = f32x4_splat(0.0);
+                           let mut sum2 = f32x4_splat(0.0);
+                           let mut sum3 = f32x4_splat(0.0);
+                           let mut sum4 = f32x4_splat(0.0);
                            
-                           j += 16;
+                           // Process 16 elements at once
+                           let chunks_16 = vector_length / 16;
+                           for j in 0..chunks_16 {
+                               let base = j * 16;
+                               let a_ptr_j = a_slice.as_ptr().add(base);
+                               let b_ptr_j = b_slice.as_ptr().add(base);
+                               
+                               let a_vec1 = v128_load(a_ptr_j as *const v128);
+                               let b_vec1 = v128_load(b_ptr_j as *const v128);
+                               let a_vec2 = v128_load(a_ptr_j.add(4) as *const v128);
+                               let b_vec2 = v128_load(b_ptr_j.add(4) as *const v128);
+                               let a_vec3 = v128_load(a_ptr_j.add(8) as *const v128);
+                               let b_vec3 = v128_load(b_ptr_j.add(8) as *const v128);
+                               let a_vec4 = v128_load(a_ptr_j.add(12) as *const v128);
+                               let b_vec4 = v128_load(b_ptr_j.add(12) as *const v128);
+                               
+                               sum1 = f32x4_add(sum1, f32x4_mul(a_vec1, b_vec1));
+                               sum2 = f32x4_add(sum2, f32x4_mul(a_vec2, b_vec2));
+                               sum3 = f32x4_add(sum3, f32x4_mul(a_vec3, b_vec3));
+                               sum4 = f32x4_add(sum4, f32x4_mul(a_vec4, b_vec4));
+                           }
+                           
+                           let combined1 = f32x4_add(sum1, sum2);
+                           let combined2 = f32x4_add(sum3, sum4);
+                           let final_sum = f32x4_add(combined1, combined2);
+                           
+                           let mut dot_result = f32x4_extract_lane::<0>(final_sum) + 
+                                              f32x4_extract_lane::<1>(final_sum) + 
+                                              f32x4_extract_lane::<2>(final_sum) + 
+                                              f32x4_extract_lane::<3>(final_sum);
+                           
+                           // Process remaining elements in chunks of 4
+                           let remaining_start = chunks_16 * 16;
+                           let chunks_4 = (vector_length - remaining_start) / 4;
+                           for j in 0..chunks_4 {
+                               let idx = remaining_start + j * 4;
+                               let a_vec = v128_load(a_slice.as_ptr().add(idx) as *const v128);
+                               let b_vec = v128_load(b_slice.as_ptr().add(idx) as *const v128);
+                               let prod = f32x4_mul(a_vec, b_vec);
+                               
+                               dot_result += f32x4_extract_lane::<0>(prod) + 
+                                            f32x4_extract_lane::<1>(prod) + 
+                                            f32x4_extract_lane::<2>(prod) + 
+                                            f32x4_extract_lane::<3>(prod);
+                           }
+                           
+                           // Handle final remaining elements
+                           let final_start = remaining_start + chunks_4 * 4;
+                           for j in final_start..vector_length {
+                               dot_result += a_slice[j] * b_slice[j];
+                           }
+                           
+                           *result = dot_result;
                        }
-                       
-                       let sum_combined = f32x4_add(f32x4_add(sum1, sum2), f32x4_add(sum3, sum4));
-                       let mut dot_result = f32x4_extract_lane::<0>(sum_combined) + 
-                                          f32x4_extract_lane::<1>(sum_combined) + 
-                                          f32x4_extract_lane::<2>(sum_combined) + 
-                                          f32x4_extract_lane::<3>(sum_combined);
-                       
-                       while j + 4 <= vector_length {
-                           let a_vec = v128_load(a_slice.as_ptr().add(j) as *const v128);
-                           let b_vec = v128_load(b_slice.as_ptr().add(j) as *const v128);
-                           let prod = f32x4_mul(a_vec, b_vec);
-                           
-                           dot_result += f32x4_extract_lane::<0>(prod) + 
-                                        f32x4_extract_lane::<1>(prod) + 
-                                        f32x4_extract_lane::<2>(prod) + 
-                                        f32x4_extract_lane::<3>(prod);
-                           j += 4;
-                       }
-                       
-                       while j < vector_length {
-                           dot_result += a_slice[j] * b_slice[j];
-                           j += 1;
-                       }
-                       
-                       *result = dot_result;
                    }
                    
                    #[cfg(not(target_arch = "wasm32"))]
                    {
-                       let mut sum = 0.0;
-                       for j in 0..vector_length {
-                           sum += a_slice[j] * b_slice[j];
+                       for (local_idx, result) in chunk_results.iter_mut().enumerate() {
+                           let global_idx = chunk_start + local_idx;
+                           if global_idx >= num_pairs { break; }
+                           
+                           let a_start = global_idx * vector_length;
+                           let mut sum = 0.0;
+                           for j in 0..vector_length {
+                               sum += a_data[a_start + j] * b_data[a_start + j];
+                           }
+                           *result = sum;
                        }
-                       *result = sum;
                    }
                });
     }
 }
 
 /// Direct C-style implementation matching the provided reference
+/// Ultra-optimized for sequential performance using aggressive SIMD and loop unrolling
 #[wasm_bindgen]
 pub fn batch_dot_product_c_style(
     a_ptr: *const f32,
@@ -1102,6 +1165,7 @@ pub fn batch_dot_product_c_style(
     unsafe {
         #[cfg(target_arch = "wasm32")]
         {
+            // Ultra-optimized sequential processing with aggressive SIMD
             for i in 0..num_pairs {
                 let a_start = i * vector_length;
                 let b_start = i * vector_length;
@@ -1109,30 +1173,62 @@ pub fn batch_dot_product_c_style(
                 let a_vec_ptr = a_ptr.add(a_start);
                 let b_vec_ptr = b_ptr.add(b_start);
                 
-                // Direct translation of the C code
-                let mut sum = f32x4_splat(0.0);
+                // Use 4 SIMD accumulators for maximum performance
+                let mut sum1 = f32x4_splat(0.0);
+                let mut sum2 = f32x4_splat(0.0);
+                let mut sum3 = f32x4_splat(0.0);
+                let mut sum4 = f32x4_splat(0.0);
                 
-                // Process in chunks of 4, simple and direct - but handle bounds properly
-                let chunks = vector_length / 4;
-                for j in 0..chunks {
-                    let idx = j * 4;
-                    sum = f32x4_add(
-                        sum, 
-                        f32x4_mul(
-                            v128_load(a_vec_ptr.add(idx) as *const v128),
-                            v128_load(b_vec_ptr.add(idx) as *const v128)
-                        )
-                    );
+                // Process 16 elements at once for ultra-wide SIMD
+                let chunks_16 = vector_length / 16;
+                for j in 0..chunks_16 {
+                    let idx = j * 16;
+                    
+                    // Load and process 4 SIMD vectors in parallel
+                    let a_vec1 = v128_load(a_vec_ptr.add(idx) as *const v128);
+                    let b_vec1 = v128_load(b_vec_ptr.add(idx) as *const v128);
+                    let a_vec2 = v128_load(a_vec_ptr.add(idx + 4) as *const v128);
+                    let b_vec2 = v128_load(b_vec_ptr.add(idx + 4) as *const v128);
+                    let a_vec3 = v128_load(a_vec_ptr.add(idx + 8) as *const v128);
+                    let b_vec3 = v128_load(b_vec_ptr.add(idx + 8) as *const v128);
+                    let a_vec4 = v128_load(a_vec_ptr.add(idx + 12) as *const v128);
+                    let b_vec4 = v128_load(b_vec_ptr.add(idx + 12) as *const v128);
+                    
+                    // Fused multiply-add operations
+                    sum1 = f32x4_add(sum1, f32x4_mul(a_vec1, b_vec1));
+                    sum2 = f32x4_add(sum2, f32x4_mul(a_vec2, b_vec2));
+                    sum3 = f32x4_add(sum3, f32x4_mul(a_vec3, b_vec3));
+                    sum4 = f32x4_add(sum4, f32x4_mul(a_vec4, b_vec4));
                 }
                 
-                // Extract and sum directly
-                let mut result = f32x4_extract_lane::<0>(sum) + 
-                               f32x4_extract_lane::<1>(sum) + 
-                               f32x4_extract_lane::<2>(sum) + 
-                               f32x4_extract_lane::<3>(sum);
+                // Combine SIMD accumulators
+                let combined1 = f32x4_add(sum1, sum2);
+                let combined2 = f32x4_add(sum3, sum4);
+                let final_sum = f32x4_add(combined1, combined2);
                 
-                // Handle remaining elements (if vector_length not divisible by 4)
-                for j in (chunks * 4)..vector_length {
+                let mut result = f32x4_extract_lane::<0>(final_sum) + 
+                               f32x4_extract_lane::<1>(final_sum) + 
+                               f32x4_extract_lane::<2>(final_sum) + 
+                               f32x4_extract_lane::<3>(final_sum);
+                
+                // Process remaining elements in chunks of 4
+                let remaining_start = chunks_16 * 16;
+                let chunks_4 = (vector_length - remaining_start) / 4;
+                for j in 0..chunks_4 {
+                    let idx = remaining_start + j * 4;
+                    let a_vec = v128_load(a_vec_ptr.add(idx) as *const v128);
+                    let b_vec = v128_load(b_vec_ptr.add(idx) as *const v128);
+                    let prod = f32x4_mul(a_vec, b_vec);
+                    
+                    result += f32x4_extract_lane::<0>(prod) + 
+                             f32x4_extract_lane::<1>(prod) + 
+                             f32x4_extract_lane::<2>(prod) + 
+                             f32x4_extract_lane::<3>(prod);
+                }
+                
+                // Handle final remaining elements
+                let final_start = remaining_start + chunks_4 * 4;
+                for j in final_start..vector_length {
                     result += *a_vec_ptr.add(j) * *b_vec_ptr.add(j);
                 }
                 
