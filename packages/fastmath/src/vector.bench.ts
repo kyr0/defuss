@@ -113,4 +113,81 @@ describe("Vector Dot Product Benchmarks", () => {
       }
     }
   });
+
+  it("should measure end-to-end time for 100k operations", async () => {
+    console.log("\n⏱️  End-to-End 100k Operations Timing Test");
+
+    const vectorLength = 1024;
+    const numPairs = 100000;
+    const totalElements = vectorLength * numPairs;
+
+    // Generate test data
+    const vectorsA = new Float32Array(totalElements);
+    const vectorsB = new Float32Array(totalElements);
+
+    for (let i = 0; i < totalElements; i++) {
+      vectorsA[i] = Math.random();
+      vectorsB[i] = Math.random();
+    }
+
+    console.log(`\n📊 Testing ${vectorLength}D × ${numPairs} operations`);
+    console.log(
+      `Memory needed: ${((totalElements * 2 * 4) / 1024 / 1024).toFixed(2)} MB`,
+    );
+
+    // Test Sequential
+    console.log("\n🔄 Sequential Implementation:");
+    const seqStart = performance.now();
+    const seqResult = batchDotProductCStyle(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numPairs,
+    );
+    const seqEnd = performance.now();
+    const seqTime = seqEnd - seqStart;
+
+    const seqFlops = numPairs * vectorLength * 2; // multiply + add per element
+    const seqGflops = seqFlops / (seqTime * 1e6);
+
+    console.log(`  Time: ${seqTime.toFixed(2)}ms`);
+    console.log(`  Performance: ${seqGflops.toFixed(2)} GFLOPS`);
+    console.log(`  Sample result: ${seqResult[0].toFixed(6)}`);
+
+    // Test Parallel
+    console.log("\n⚡ Parallel Implementation:");
+    const parStart = performance.now();
+    const parResult = batchDotProductZeroCopyParallel(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numPairs,
+      true,
+    );
+    const parEnd = performance.now();
+    const parTime = parEnd - parStart;
+
+    const parFlops = numPairs * vectorLength * 2;
+    const parGflops = parFlops / (parTime * 1e6);
+
+    console.log(`  Time: ${parTime.toFixed(2)}ms`);
+    console.log(`  Performance: ${parGflops.toFixed(2)} GFLOPS`);
+    console.log(`  Sample result: ${parResult[0].toFixed(6)}`);
+
+    // Summary
+    const speedup = (seqTime / parTime - 1) * 100;
+    console.log("\n📈 Summary:");
+    console.log(
+      `  Sequential: ${seqTime.toFixed(2)}ms (${seqGflops.toFixed(2)} GFLOPS)`,
+    );
+    console.log(
+      `  Parallel:   ${parTime.toFixed(2)}ms (${parGflops.toFixed(2)} GFLOPS)`,
+    );
+    console.log(
+      `  Speedup:    ${speedup > 0 ? "+" : ""}${speedup.toFixed(1)}%`,
+    );
+    console.log(
+      `  Results match: ${Math.abs(seqResult[0] - parResult[0]) < 1e-5 ? "✅" : "❌"}`,
+    );
+  });
 });

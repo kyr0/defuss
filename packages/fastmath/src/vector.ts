@@ -115,12 +115,12 @@ export function batchDotProductZeroCopyParallel(
 
     // Copy results before freeing
     const results = new Float32Array(resultsView);
-    
+
     return results;
   } finally {
     // Always free memory
     free(aPtr, vectorsASize, 4);
-    free(bPtr, vectorsBSize, 4);  
+    free(bPtr, vectorsBSize, 4);
     free(resultsPtr, resultsSize, 4);
   }
 }
