@@ -5,10 +5,7 @@ import {
   batchDotProductZeroCopyParallel,
   batchDotProductCStyle,
   batchDotProductStreamingOptimized,
-  batchDotProductMemoryMapped,
   batchDotProductAdaptive,
-  batchDotProductRustStreaming,
-  batchDotProductUltimate,
 } from "./vector.js";
 
 describe("Vector Dot Product Benchmarks", () => {
@@ -337,18 +334,6 @@ describe("Vector Dot Product Benchmarks", () => {
           },
         );
       })
-      .add("Memory-Mapped Streaming (64MB)", () => {
-        batchDotProductMemoryMapped(
-          vectorsA,
-          vectorsB,
-          vectorLength,
-          numPairs,
-          {
-            bufferSizeMB: 64,
-            useParallel: true,
-          },
-        );
-      })
       .add("Adaptive Strategy", () => {
         batchDotProductAdaptive(
           vectorsA,
@@ -356,26 +341,6 @@ describe("Vector Dot Product Benchmarks", () => {
           vectorLength,
           numPairs,
           true,
-        );
-      })
-      .add("Rust Native Streaming (32MB)", () => {
-        batchDotProductRustStreaming(
-          vectorsA,
-          vectorsB,
-          vectorLength,
-          numPairs,
-          {
-            chunkSize: 4096,
-            maxMemoryMB: 32,
-          },
-        );
-      })
-      .add("Ultimate Adaptive", () => {
-        batchDotProductUltimate(
-          vectorsA,
-          vectorsB,
-          vectorLength,
-          numPairs,
         );
       });
 
@@ -423,6 +388,7 @@ describe("Vector Dot Product Benchmarks", () => {
       verificationPairs,
       { chunkSize: 512, useParallel: true, maxMemoryMB: 16 },
     );
+    
     const adaptiveResult = batchDotProductAdaptive(
       verificationVectorsA,
       verificationVectorsB,
@@ -430,32 +396,10 @@ describe("Vector Dot Product Benchmarks", () => {
       verificationPairs,
       true,
     );
-    
-    let rustStreamingResult: Float32Array;
-    try {
-      rustStreamingResult = batchDotProductRustStreaming(
-        verificationVectorsA,
-        verificationVectorsB,
-        vectorLength,
-        verificationPairs,
-        { chunkSize: 512, maxMemoryMB: 16 },
-      );
-    } catch (error) {
-      console.log(`  ⚠️ Rust streaming failed: ${error instanceof Error ? error.message : String(error)}`);
-      rustStreamingResult = new Float32Array(verificationPairs);
-    }
-    
-    const ultimateResult = batchDotProductUltimate(
-      verificationVectorsA, 
-      verificationVectorsB, 
-      vectorLength, 
-      verificationPairs
-    );
 
     // Check if results match (only compare algorithms that worked)
     const maxCheck = Math.min(5, verificationPairs);
     let allMatch = true;
-    let validResultsCount = 0;
     
     // Only compare if we have a valid traditional result
     const hasValidTraditional = traditionalResult.length > 0 && traditionalResult[0] !== 0;
@@ -464,19 +408,16 @@ describe("Vector Dot Product Benchmarks", () => {
       for (let i = 0; i < maxCheck; i++) {
         const diff1 = Math.abs(traditionalResult[i] - streamingResult[i]);
         const diff2 = Math.abs(traditionalResult[i] - adaptiveResult[i]);
-        const diff3 = Math.abs(traditionalResult[i] - ultimateResult[i]);
-        if (diff1 > 1e-5 || diff2 > 1e-5 || diff3 > 1e-5) {
+        if (diff1 > 1e-5 || diff2 > 1e-5) {
           allMatch = false;
           break;
         }
       }
-      validResultsCount++;
     } else {
       // Compare streaming algorithms against each other
       for (let i = 0; i < maxCheck; i++) {
         const diff1 = Math.abs(streamingResult[i] - adaptiveResult[i]);
-        const diff2 = Math.abs(streamingResult[i] - ultimateResult[i]);
-        if (diff1 > 1e-5 || diff2 > 1e-5) {
+        if (diff1 > 1e-5) {
           allMatch = false;
           break;
         }
@@ -491,12 +432,6 @@ describe("Vector Dot Product Benchmarks", () => {
     }
     console.log(`  Streaming[0]:       ${streamingResult[0].toFixed(6)}`);
     console.log(`  Adaptive[0]:        ${adaptiveResult[0].toFixed(6)}`);
-    if (rustStreamingResult.length > 0 && rustStreamingResult[0] !== 0) {
-      console.log(`  Rust Streaming[0]:  ${rustStreamingResult[0].toFixed(6)}`);
-    } else {
-      console.log(`  Rust Streaming[0]:  FAILED`);
-    }
-    console.log(`  Ultimate[0]:        ${ultimateResult[0].toFixed(6)}`);
     
     console.log(`\n💡 Key insight: Streaming methods work where traditional methods fail!`);
     console.log(`   Large datasets (${((numPairs * vectorLength * 2 * 4) / 1024 / 1024).toFixed(1)}MB) require streaming for memory efficiency.`);
@@ -544,8 +479,8 @@ describe("Vector Dot Product Benchmarks", () => {
         }
       },
       {
-        name: "Ultimate Adaptive",
-        fn: () => batchDotProductUltimate(vectorsA, vectorsB, vectorLength, numPairs)
+        name: "Adaptive Strategy",
+        fn: () => batchDotProductAdaptive(vectorsA, vectorsB, vectorLength, numPairs, true)
       }
     ];
 
@@ -575,19 +510,19 @@ describe("Vector Dot Product Benchmarks", () => {
       }
     }
 
-    // Target analysis
+    // Target analysis using best performing algorithm
     console.log("\n🎯 Target Analysis:");
-    const ultimateStart = performance.now();
-    const ultimateResult = batchDotProductUltimate(vectorsA, vectorsB, vectorLength, numPairs);
-    const ultimateEnd = performance.now();
-    const ultimateTime = ultimateEnd - ultimateStart;
+    const adaptiveStart = performance.now();
+    const adaptiveResult = batchDotProductAdaptive(vectorsA, vectorsB, vectorLength, numPairs, true);
+    const adaptiveEnd = performance.now();
+    const adaptiveTime = adaptiveEnd - adaptiveStart;
     
-    console.log(`  Current Ultimate Time: ${ultimateTime.toFixed(2)}ms`);
-    console.log(`  Sequential Target: ≤35ms (${ultimateTime <= 35 ? "✅ ACHIEVED" : "❌ " + ((35/ultimateTime)*100).toFixed(0) + "% needed"})`);
-    console.log(`  Parallel Target: ≤7ms (${ultimateTime <= 7 ? "✅ ACHIEVED" : "❌ " + ((7/ultimateTime)*100).toFixed(0) + "% needed"})`);
+    console.log(`  Current Best Time: ${adaptiveTime.toFixed(2)}ms`);
+    console.log(`  Sequential Target: ≤35ms (${adaptiveTime <= 35 ? "✅ ACHIEVED" : "❌ " + ((35/adaptiveTime)*100).toFixed(0) + "% needed"})`);
+    console.log(`  Parallel Target: ≤7ms (${adaptiveTime <= 7 ? "✅ ACHIEVED" : "❌ " + ((7/adaptiveTime)*100).toFixed(0) + "% needed"})`);
     
-    const ultimateGFLOPS = (numPairs * vectorLength * 2) / (ultimateTime * 1e6);
-    console.log(`  Ultimate GFLOPS: ${ultimateGFLOPS.toFixed(2)}`);
+    const adaptiveGFLOPS = (numPairs * vectorLength * 2) / (adaptiveTime * 1e6);
+    console.log(`  Current GFLOPS: ${adaptiveGFLOPS.toFixed(2)}`);
     console.log(`  Target GFLOPS (7ms): ${((numPairs * vectorLength * 2) / (7 * 1e6)).toFixed(2)}`);
   });
 });
