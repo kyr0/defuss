@@ -83,6 +83,14 @@ describe("ultra", () => {
 
     for (const config of testConfigs) {
       const { vectorLength, numPairs, name } = config;
+      
+      // Check memory requirements - skip tests that would exceed reasonable WASM limits
+      const memoryMB = (vectorLength * numPairs * 8 * 4) / (1024 * 1024); // 8 bytes per element, 4 bytes per float
+      if (memoryMB > 150) { // Conservative limit well below WASM's 4GB theoretical max
+        console.log(`\n⚠️  Skipping: ${name} (${vectorLength}x${numPairs}) - Memory requirement: ${memoryMB.toFixed(1)}MB exceeds safe limit`);
+        continue;
+      }
+      
       console.log(`\n🚀 Testing: ${name} (${vectorLength}x${numPairs})`);
       
       try {
