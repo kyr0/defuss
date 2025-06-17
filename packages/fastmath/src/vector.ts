@@ -2,6 +2,9 @@ import init, {
   initThreadPool,
   batch_dot_product_parallel_ultra_optimized,
   batch_dot_product_ultra_optimized,
+  batch_dot_product_ultimate,
+  PerformanceStats,
+  test_ultimate_performance,
 } from "../pkg/defuss_fastmath.js";
 
 // Global WASM instance state
@@ -10,17 +13,17 @@ let wasmInstance: any;
 
 /**
  * OPTIMIZED VECTOR OPERATIONS
- * 
+ *
  * This module provides ultra-high performance batch vector dot product operations
  * optimized for large datasets using WASM + Rust SIMD + parallel processing.
- * 
+ *
  * Available Functions:
  * - batchDotProductZeroCopyParallel: Core high-performance function (5.22 GFLOPS)
  * - batchDotProductStreamingOptimized: Chunked processing for large datasets (4.88 GFLOPS)
  * - batchDotProductStreaming: Async version with UI responsiveness
  * - batchDotProductAdaptive: Intelligent strategy selection
  * - batchDotProductCStyle: C-style implementation for compatibility
- * 
+ *
  * Performance Notes:
  * - Removed inefficient strategies (Memory-Mapped: 1.44 GFLOPS, Rust Streaming: 4.39 GFLOPS)
  * - Optimized chunk sizes and thresholds based on benchmark results
@@ -33,6 +36,7 @@ let wasmInstance: any;
 export async function initWasm(): Promise<void> {
   if (!wasmInitialized) {
     wasmInstance = await init();
+
     try {
       // Initialize thread pool if supported
       await initThreadPool(navigator.hardwareConcurrency || 8);
@@ -95,38 +99,40 @@ export function batchDotProductZeroCopyParallel(
   // Check if we can allocate memory for direct processing
   const totalMemoryNeeded = vectorsASize + vectorsBSize + resultsSize;
   const maxDirectMemory = 64 * 1024 * 1024; // 64MB limit for zero-copy
-  
+
   if (totalMemoryNeeded > maxDirectMemory) {
     // For large datasets, use simple processing without WASM malloc
     const results = new Float32Array(numPairs);
-    
+
     // Use simple JavaScript fallback for memory-constrained scenarios
     for (let i = 0; i < numPairs; i++) {
       const startIdx = i * vectorLength;
       const endIdx = startIdx + vectorLength;
-      
+
       let sum = 0;
       for (let j = 0; j < vectorLength; j++) {
         sum += vectorsA[startIdx + j] * vectorsB[startIdx + j];
       }
       results[i] = sum;
     }
-    
+
     return results;
   }
 
-  let aPtr: number, bPtr: number, resultsPtr: number;
-  
+  let aPtr: number;
+  let bPtr: number;
+  let resultsPtr: number;
+
   try {
     aPtr = malloc(vectorsASize, 4);
     if (aPtr === 0) throw new Error("Memory allocation failed");
-    
+
     bPtr = malloc(vectorsBSize, 4);
     if (bPtr === 0) {
       free(aPtr, vectorsASize, 4);
       throw new Error("Memory allocation failed");
     }
-    
+
     resultsPtr = malloc(resultsSize, 4);
     if (resultsPtr === 0) {
       free(aPtr, vectorsASize, 4);
@@ -141,7 +147,7 @@ export function batchDotProductZeroCopyParallel(
       const endIdx = startIdx + vectorLength;
       const a = vectorsA.subarray(startIdx, endIdx);
       const b = vectorsB.subarray(startIdx, endIdx);
-      
+
       let sum = 0;
       for (let j = 0; j < vectorLength; j++) {
         sum += a[j] * b[j];
@@ -161,7 +167,8 @@ export function batchDotProductZeroCopyParallel(
     bView.set(vectorsB);
 
     // ULTRA-AGGRESSIVE parallel threshold for 8-core utilization
-    if (useParallel && numPairs >= 50) { // Even lower threshold for maximum parallelism
+    if (useParallel && numPairs >= 50) {
+      // Even lower threshold for maximum parallelism
       // Use ultra-optimized parallel implementation for any reasonable workload
       batch_dot_product_parallel_ultra_optimized(
         aPtr,
@@ -172,7 +179,13 @@ export function batchDotProductZeroCopyParallel(
       );
     } else {
       // Use ultra-optimized sequential implementation for tiny workloads only
-      batch_dot_product_ultra_optimized(aPtr, bPtr, resultsPtr, vectorLength, numPairs);
+      batch_dot_product_ultra_optimized(
+        aPtr,
+        bPtr,
+        resultsPtr,
+        vectorLength,
+        numPairs,
+      );
     }
 
     // Copy results before freeing
@@ -288,24 +301,32 @@ export function batchDotProductCStyle(
   // Check if we can allocate memory for direct processing
   const totalMemoryNeeded = vectorsASize + vectorsBSize + resultsSize;
   const maxDirectMemory = 128 * 1024 * 1024; // 128MB limit
-  
+
   if (totalMemoryNeeded > maxDirectMemory) {
     // Use streaming for large datasets
-    return batchDotProductStreamingOptimized(vectorsA, vectorsB, vectorLength, numPairs);
+    return batchDotProductStreamingOptimized(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numPairs,
+    );
   }
 
-  let aPtrValue: number, bPtrValue: number, resultsPtrValue: number;
-  
+  let aPtrValue: number;
+  let bPtrValue: number;
+  let resultsPtrValue: number;
+
   try {
     aPtrValue = malloc(vectorsASize, 4);
-    if (aPtrValue === 0) throw new Error("Failed to allocate memory for vectors A");
-    
+    if (aPtrValue === 0)
+      throw new Error("Failed to allocate memory for vectors A");
+
     bPtrValue = malloc(vectorsBSize, 4);
     if (bPtrValue === 0) {
       free(aPtrValue, vectorsASize, 4);
       throw new Error("Failed to allocate memory for vectors B");
     }
-    
+
     resultsPtrValue = malloc(resultsSize, 4);
     if (resultsPtrValue === 0) {
       free(aPtrValue, vectorsASize, 4);
@@ -314,7 +335,12 @@ export function batchDotProductCStyle(
     }
   } catch (error) {
     // Fallback to streaming on allocation failure
-    return batchDotProductStreamingOptimized(vectorsA, vectorsB, vectorLength, numPairs);
+    return batchDotProductStreamingOptimized(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numPairs,
+    );
   }
 
   try {
@@ -393,7 +419,8 @@ export function batchDotProductStreamingOptimized(
   } = options;
 
   // For small datasets, use zero-copy direct processing (avoid recursion)
-  if (numPairs <= 32768) { // Even higher threshold to use direct more often
+  if (numPairs <= 32768) {
+    // Even higher threshold to use direct more often
     return batchDotProductZeroCopyParallel(
       vectorsA,
       vectorsB,
@@ -405,7 +432,9 @@ export function batchDotProductStreamingOptimized(
 
   // Calculate optimal chunk size based on memory constraints
   const bytesPerPair = vectorLength * 2 * 4; // 2 vectors * 4 bytes per float
-  const maxPairsPerChunk = Math.floor((maxMemoryMB * 1024 * 1024) / bytesPerPair);
+  const maxPairsPerChunk = Math.floor(
+    (maxMemoryMB * 1024 * 1024) / bytesPerPair,
+  );
   const finalChunkSize = Math.min(chunkSize, maxPairsPerChunk, numPairs);
 
   const results = new Float32Array(numPairs);
@@ -458,12 +487,13 @@ export function batchDotProductAdaptive(
 
   // Calculate memory requirements for intelligent selection
   const totalMemoryMB = (numPairs * vectorLength * 2 * 4) / (1024 * 1024);
-  
+
   // ULTRA-AGGRESSIVE thresholds for maximum performance:
   // - Use direct processing for anything that fits in memory comfortably
   // - Use streaming only for truly massive datasets that exceed memory
-  
-  if (numPairs <= 131072 && totalMemoryMB <= 1024) { // Much higher thresholds - 128k pairs, 1GB
+
+  if (numPairs <= 131072 && totalMemoryMB <= 1024) {
+    // Much higher thresholds - 128k pairs, 1GB
     // Use max-performance processing for best speed
     return batchDotProductMaxPerformance(
       vectorsA,
@@ -527,24 +557,31 @@ export function batchDotProductHyperOptimized(
   // For large datasets, immediately use streaming to avoid memory issues
   const totalMemoryNeeded = vectorsASize + vectorsBSize + resultsSize;
   const maxDirectMemory = 128 * 1024 * 1024; // 128MB limit for direct allocation
-  
+
   if (totalMemoryNeeded > maxDirectMemory) {
     // Use streaming for large datasets
-    return batchDotProductStreamingOptimized(vectorsA, vectorsB, vectorLength, numPairs);
+    return batchDotProductStreamingOptimized(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numPairs,
+    );
   }
 
-  let aPtr: number, bPtr: number, resultsPtr: number;
-  
+  let aPtr: number;
+  let bPtr: number;
+  let resultsPtr: number;
+
   try {
     aPtr = malloc(vectorsASize, 4);
     if (aPtr === 0) throw new Error("Failed to allocate memory for vectors A");
-    
+
     bPtr = malloc(vectorsBSize, 4);
     if (bPtr === 0) {
       free(aPtr, vectorsASize, 4);
       throw new Error("Failed to allocate memory for vectors B");
     }
-    
+
     resultsPtr = malloc(resultsSize, 4);
     if (resultsPtr === 0) {
       free(aPtr, vectorsASize, 4);
@@ -553,14 +590,19 @@ export function batchDotProductHyperOptimized(
     }
   } catch (error) {
     // Fallback to streaming on allocation failure
-    return batchDotProductStreamingOptimized(vectorsA, vectorsB, vectorLength, numPairs);
+    return batchDotProductStreamingOptimized(
+      vectorsA,
+      vectorsB,
+      vectorLength,
+      numPairs,
+    );
   }
 
   try {
     // Direct memory copy using fastest method
     const aView = new Float32Array(memory.buffer, aPtr, vectorsA.length);
     const bView = new Float32Array(memory.buffer, bPtr, vectorsB.length);
-    
+
     // Use fastest copy method
     aView.set(vectorsA);
     bView.set(vectorsB);
@@ -577,7 +619,13 @@ export function batchDotProductHyperOptimized(
       );
     } else {
       // Ultra-optimized sequential for tiny workloads
-      batch_dot_product_ultra_optimized(aPtr, bPtr, resultsPtr, vectorLength, numPairs);
+      batch_dot_product_ultra_optimized(
+        aPtr,
+        bPtr,
+        resultsPtr,
+        vectorLength,
+        numPairs,
+      );
     }
 
     // Direct result extraction
@@ -613,7 +661,8 @@ export function batchDotProductMaxPerformance(
   const { useParallel = true, maxMemoryMB = 512 } = options; // Much higher memory limit
 
   // For smaller datasets, use direct hyper-optimized processing
-  if (numPairs <= 32768) { // Increased threshold for direct processing
+  if (numPairs <= 32768) {
+    // Increased threshold for direct processing
     return batchDotProductHyperOptimized(
       vectorsA,
       vectorsB,
@@ -625,7 +674,9 @@ export function batchDotProductMaxPerformance(
 
   // Use ultra-large chunks to minimize overhead
   const bytesPerPair = vectorLength * 2 * 4;
-  const maxPairsPerChunk = Math.floor((maxMemoryMB * 1024 * 1024) / bytesPerPair);
+  const maxPairsPerChunk = Math.floor(
+    (maxMemoryMB * 1024 * 1024) / bytesPerPair,
+  );
   const chunkSize = Math.min(65536, maxPairsPerChunk, numPairs); // 64k chunk minimum
 
   const results = new Float32Array(numPairs);
@@ -658,4 +709,108 @@ export function batchDotProductMaxPerformance(
   }
 
   return results;
+}
+
+/**
+ * Ultimate performance batch dot product with intelligent workload adaptation
+ * This is the single function that does it all - automatically chooses the best
+ * strategy (sequential vs parallel) based on workload characteristics.
+ */
+export async function batchDotProductUltimate(
+  vectorsA: Float32Array,
+  vectorsB: Float32Array,
+  vectorLength: number,
+  numPairs: number,
+): Promise<{ results: Float32Array; executionTime: number; gflops: number }> {
+  await initWasm();
+
+  if (!wasmInstance) {
+    throw new Error("WASM not initialized");
+  }
+
+  const totalElements = vectorLength * numPairs;
+
+  // Allocate memory in WASM
+  const aPtr = wasmInstance.__wbindgen_malloc(totalElements * 4);
+  const bPtr = wasmInstance.__wbindgen_malloc(totalElements * 4);
+  const resultsPtr = wasmInstance.__wbindgen_malloc(numPairs * 4);
+
+  try {
+    // Copy data to WASM memory
+    const aView = new Float32Array(
+      wasmInstance.memory.buffer,
+      aPtr,
+      totalElements,
+    );
+    const bView = new Float32Array(
+      wasmInstance.memory.buffer,
+      bPtr,
+      totalElements,
+    );
+    aView.set(vectorsA.subarray(0, totalElements));
+    bView.set(vectorsB.subarray(0, totalElements));
+
+    // Call the ultimate performance function
+    const start = performance.now();
+    const executionTime = batch_dot_product_ultimate(
+      aPtr / 4, // Convert byte offset to f32 offset
+      bPtr / 4,
+      resultsPtr / 4,
+      vectorLength,
+      numPairs,
+    );
+    const end = performance.now();
+
+    // Copy results back
+    const resultsView = new Float32Array(
+      wasmInstance.memory.buffer,
+      resultsPtr,
+      numPairs,
+    );
+    const results = new Float32Array(numPairs);
+    results.set(resultsView);
+
+    const totalTime = end - start;
+    const totalFlops = numPairs * vectorLength * 2;
+    const gflops = totalFlops / (totalTime * 1_000_000);
+
+    return {
+      results,
+      executionTime: totalTime,
+      gflops,
+    };
+  } finally {
+    // Clean up WASM memory
+    wasmInstance.__wbindgen_free(aPtr, totalElements * 4);
+    wasmInstance.__wbindgen_free(bPtr, totalElements * 4);
+    wasmInstance.__wbindgen_free(resultsPtr, numPairs * 4);
+  }
+}
+
+/**
+ * Test the ultimate performance implementation
+ */
+export async function testUltimatePerformance(
+  vectorLength: number,
+  numPairs: number,
+): Promise<{
+  totalTime: number;
+  gflops: number;
+  sampleResult: number;
+  executionTime: number;
+}> {
+  await initWasm();
+
+  if (!wasmInstance) {
+    throw new Error("WASM not initialized");
+  }
+
+  const results = test_ultimate_performance(vectorLength, numPairs);
+
+  return {
+    totalTime: results[0] as number,
+    gflops: results[1] as number,
+    sampleResult: results[2] as number,
+    executionTime: results[3] as number,
+  };
 }

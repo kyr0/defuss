@@ -8,6 +8,7 @@ mod buffer;
 mod dsp;
 mod vector;
 mod convolution;
+mod ultimate_vector;
 
 // Re-export DSP functions
 pub use dsp::{sine, saw, triangle, square};
@@ -36,6 +37,13 @@ pub use vector::{
     batch_dot_product_ultra_simple,
     vector_normalize,
     vector_magnitude,
+};
+
+// Re-export ultimate performance functions
+pub use ultimate_vector::{
+    batch_dot_product_ultimate,
+    test_ultimate_performance,
+    PerformanceStats,
 };
 
 pub use convolution::{
