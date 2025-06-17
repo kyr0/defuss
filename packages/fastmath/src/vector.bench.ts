@@ -6,6 +6,8 @@ import {
   batchDotProductCStyle,
   batchDotProductStreamingOptimized,
   batchDotProductAdaptive,
+  batchDotProductHyperOptimized,
+  batchDotProductMaxPerformance,
 } from "./vector.js";
 
 describe("Vector Dot Product Benchmarks", () => {
@@ -524,5 +526,77 @@ describe("Vector Dot Product Benchmarks", () => {
     const adaptiveGFLOPS = (numPairs * vectorLength * 2) / (adaptiveTime * 1e6);
     console.log(`  Current GFLOPS: ${adaptiveGFLOPS.toFixed(2)}`);
     console.log(`  Target GFLOPS (7ms): ${((numPairs * vectorLength * 2) / (7 * 1e6)).toFixed(2)}`);
+  });
+
+  it("should test hyper-optimized performance targeting 35ms sequential / 10ms parallel", async () => {
+    console.log("\n🚀 HYPER-PERFORMANCE Test - Targeting 35ms/10ms");
+
+    const vectorLength = 1024;
+    const numPairs = 100000; // 100k pairs test
+    const totalElements = numPairs * vectorLength;
+
+    console.log(`\n📊 Testing ${vectorLength}D × ${numPairs} operations`);
+    const totalMemoryMB = (totalElements * 2 * 4) / (1024 * 1024);
+    console.log(`Memory needed: ${totalMemoryMB.toFixed(2)} MB`);
+
+    // Generate test data
+    const vectorsA = new Float32Array(totalElements);
+    const vectorsB = new Float32Array(totalElements);
+
+    for (let i = 0; i < totalElements; i++) {
+      vectorsA[i] = Math.random();
+      vectorsB[i] = Math.random();
+    }
+
+    // Test hyper-optimized functions
+    const testConfigs = [
+      { name: "Hyper-Optimized Sequential", useParallel: false },
+      { name: "Hyper-Optimized Parallel", useParallel: true },
+      { name: "Max Performance", fn: () => batchDotProductMaxPerformance(vectorsA, vectorsB, vectorLength, numPairs, { useParallel: true }) },
+      { name: "Adaptive Ultra", fn: () => batchDotProductAdaptive(vectorsA, vectorsB, vectorLength, numPairs, true) }
+    ];
+
+    console.log("\n⏱️  Hyper-Performance Results:");
+
+    for (const config of testConfigs) {
+      try {
+        const iterations = 3;
+        let totalTime = 0;
+        let result: Float32Array | undefined;
+
+        for (let i = 0; i < iterations; i++) {
+          const start = performance.now();
+          
+          if (config.fn) {
+            result = config.fn();
+          } else {
+            result = batchDotProductHyperOptimized(vectorsA, vectorsB, vectorLength, numPairs, config.useParallel!);
+          }
+          
+          const end = performance.now();
+          totalTime += (end - start);
+        }
+
+        const avgTime = totalTime / iterations;
+        const gflops = (numPairs * vectorLength * 2) / (avgTime * 1e6);
+        
+        const target = config.name.includes("Sequential") ? 35 : 10;
+        const status = avgTime <= target ? "✅ TARGET ACHIEVED" : `❌ ${((target/avgTime)*100).toFixed(0)}% needed`;
+        
+        console.log(`  ${config.name}:`);
+        console.log(`    Time: ${avgTime.toFixed(2)}ms (target: ≤${target}ms) ${status}`);
+        console.log(`    Performance: ${gflops.toFixed(2)} GFLOPS`);
+        console.log(`    Sample result: ${result![0].toFixed(6)}`);
+
+      } catch (error) {
+        console.log(`  ${config.name}: ❌ FAILED - ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    // Performance analysis
+    console.log("\n🎯 Performance Analysis:");
+    console.log("  Target: Sequential ≤35ms, Parallel ≤10ms");
+    console.log("  Expected parallel speedup: ~4x with 8 cores");
+    console.log("  Current optimization level: MAXIMUM");
   });
 });

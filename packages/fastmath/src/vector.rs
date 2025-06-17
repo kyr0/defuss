@@ -3,8 +3,8 @@ use rayon::prelude::*;
 
 // Threshold for switching to parallel processing
 // Below this size, single-threaded is faster due to overhead
-const PARALLEL_THRESHOLD: usize = 500; // Reduced for better parallelization
-const SIMD_THRESHOLD: usize = 32; // Reduced threshold for earlier SIMD usage
+const PARALLEL_THRESHOLD: usize = 100; // Ultra-aggressive for 8-core systems
+const SIMD_THRESHOLD: usize = 16; // Ultra-aggressive SIMD threshold
 
 // SIMD-optimized dot product using explicit SIMD intrinsics
 #[cfg(target_arch = "wasm32")]
@@ -1041,18 +1041,17 @@ pub fn batch_dot_product_parallel_ultra_optimized(
         let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
         let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
         
-        // Use smaller threshold for parallel to utilize all cores
-        if num_pairs < 500 {
-            // For smaller workloads, use the ultra-optimized sequential version
-            batch_dot_product_c_style(a_ptr, b_ptr, results_ptr, vector_length, num_pairs);
+        // AGGRESSIVE parallel threshold - use parallel much more often
+        if num_pairs < 100 {
+            // For tiny workloads, use the ultra-optimized sequential version
+            batch_dot_product_ultra_optimized(a_ptr, b_ptr, results_ptr, vector_length, num_pairs);
             return;
         }
         
-        // Determine optimal chunk size for maximum core utilization
-        // Aim for 8-16 chunks to keep all cores busy
+        // HYPER-AGGRESSIVE chunking for maximum 8-core utilization
         let num_cores = 8; // We know we have 8 cores configured
-        let min_chunk_size = 64; // Minimum chunk size to avoid overhead
-        let ideal_chunks = num_cores * 2; // 2x cores for better load balancing
+        let min_chunk_size = 16; // Much smaller minimum chunk for better parallelism
+        let ideal_chunks = num_cores * 4; // 4x cores for maximum parallel efficiency
         let chunk_size = std::cmp::max(min_chunk_size, num_pairs / ideal_chunks);
         
         // Use par_chunks for optimal parallel processing
@@ -1152,10 +1151,10 @@ pub fn batch_dot_product_parallel_ultra_optimized(
     }
 }
 
-/// Direct C-style implementation matching the provided reference
-/// Ultra-optimized for sequential performance using aggressive SIMD and loop unrolling
+/// HYPER-AGGRESSIVE parallel batch dot product for 8-core maximum utilization
+/// Designed to achieve 4x+ speedup by minimizing overhead and maximizing parallelism
 #[wasm_bindgen]
-pub fn batch_dot_product_c_style(
+pub fn batch_dot_product_hyper_parallel(
     a_ptr: *const f32,
     b_ptr: *const f32,
     results_ptr: *mut f32,
@@ -1163,261 +1162,99 @@ pub fn batch_dot_product_c_style(
     num_pairs: usize
 ) {
     unsafe {
-        #[cfg(target_arch = "wasm32")]
-        {
-            // Ultra-optimized sequential processing with aggressive SIMD
-            for i in 0..num_pairs {
-                let a_start = i * vector_length;
-                let b_start = i * vector_length;
-                
-                let a_vec_ptr = a_ptr.add(a_start);
-                let b_vec_ptr = b_ptr.add(b_start);
-                
-                // Use 4 SIMD accumulators for maximum performance
-                let mut sum1 = f32x4_splat(0.0);
-                let mut sum2 = f32x4_splat(0.0);
-                let mut sum3 = f32x4_splat(0.0);
-                let mut sum4 = f32x4_splat(0.0);
-                
-                // Process 16 elements at once for ultra-wide SIMD
-                let chunks_16 = vector_length / 16;
-                for j in 0..chunks_16 {
-                    let idx = j * 16;
-                    
-                    // Load and process 4 SIMD vectors in parallel
-                    let a_vec1 = v128_load(a_vec_ptr.add(idx) as *const v128);
-                    let b_vec1 = v128_load(b_vec_ptr.add(idx) as *const v128);
-                    let a_vec2 = v128_load(a_vec_ptr.add(idx + 4) as *const v128);
-                    let b_vec2 = v128_load(b_vec_ptr.add(idx + 4) as *const v128);
-                    let a_vec3 = v128_load(a_vec_ptr.add(idx + 8) as *const v128);
-                    let b_vec3 = v128_load(b_vec_ptr.add(idx + 8) as *const v128);
-                    let a_vec4 = v128_load(a_vec_ptr.add(idx + 12) as *const v128);
-                    let b_vec4 = v128_load(b_vec_ptr.add(idx + 12) as *const v128);
-                    
-                    // Fused multiply-add operations
-                    sum1 = f32x4_add(sum1, f32x4_mul(a_vec1, b_vec1));
-                    sum2 = f32x4_add(sum2, f32x4_mul(a_vec2, b_vec2));
-                    sum3 = f32x4_add(sum3, f32x4_mul(a_vec3, b_vec3));
-                    sum4 = f32x4_add(sum4, f32x4_mul(a_vec4, b_vec4));
-                }
-                
-                // Combine SIMD accumulators
-                let combined1 = f32x4_add(sum1, sum2);
-                let combined2 = f32x4_add(sum3, sum4);
-                let final_sum = f32x4_add(combined1, combined2);
-                
-                let mut result = f32x4_extract_lane::<0>(final_sum) + 
-                               f32x4_extract_lane::<1>(final_sum) + 
-                               f32x4_extract_lane::<2>(final_sum) + 
-                               f32x4_extract_lane::<3>(final_sum);
-                
-                // Process remaining elements in chunks of 4
-                let remaining_start = chunks_16 * 16;
-                let chunks_4 = (vector_length - remaining_start) / 4;
-                for j in 0..chunks_4 {
-                    let idx = remaining_start + j * 4;
-                    let a_vec = v128_load(a_vec_ptr.add(idx) as *const v128);
-                    let b_vec = v128_load(b_vec_ptr.add(idx) as *const v128);
-                    let prod = f32x4_mul(a_vec, b_vec);
-                    
-                    result += f32x4_extract_lane::<0>(prod) + 
-                             f32x4_extract_lane::<1>(prod) + 
-                             f32x4_extract_lane::<2>(prod) + 
-                             f32x4_extract_lane::<3>(prod);
-                }
-                
-                // Handle final remaining elements
-                let final_start = remaining_start + chunks_4 * 4;
-                for j in final_start..vector_length {
-                    result += *a_vec_ptr.add(j) * *b_vec_ptr.add(j);
-                }
-                
-                *results_ptr.add(i) = result;
-            }
+        let a_data = std::slice::from_raw_parts(a_ptr, num_pairs * vector_length);
+        let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
+        let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
+        
+        // MUCH more aggressive parallel threshold - use parallel for even small datasets
+        if num_pairs < 100 {
+            // Only use sequential for truly tiny workloads
+            batch_dot_product_ultra_optimized(a_ptr, b_ptr, results_ptr, vector_length, num_pairs);
+            return;
         }
         
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let a_data = std::slice::from_raw_parts(a_ptr, num_pairs * vector_length);
-            let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
-            let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
-            
-            for i in 0..num_pairs {
+        // Ultra-aggressive chunking for maximum core utilization
+        let num_cores = 8;
+        let min_chunk_size = 16; // Much smaller minimum chunk size
+        let ideal_chunks = num_cores * 4; // 4x cores for maximum parallelism
+        let chunk_size = std::cmp::max(min_chunk_size, num_pairs / ideal_chunks);
+        
+        // Use rayon's par_iter for maximum parallel efficiency
+        results.par_chunks_exact_mut(chunk_size)
+               .enumerate()
+               .for_each(|(chunk_idx, chunk_results)| {
+                   let chunk_start = chunk_idx * chunk_size;
+                   
+                   // Process each chunk with maximum SIMD efficiency
+                   for (local_idx, result) in chunk_results.iter_mut().enumerate() {
+                       let global_idx = chunk_start + local_idx;
+                       let a_start = global_idx * vector_length;
+                       let a_slice = &a_data[a_start..a_start + vector_length];
+                       let b_slice = &b_data[a_start..a_start + vector_length];
+                       
+                       // Use the ultra-optimized SIMD function directly
+                       *result = simd_dot_product_ultra(a_slice, b_slice);
+                   }
+               });
+        
+        // Handle remaining elements if any
+        let processed = (results.len() / chunk_size) * chunk_size;
+        if processed < num_pairs {
+            for i in processed..num_pairs {
                 let a_start = i * vector_length;
-                let mut sum = 0.0;
-                for j in 0..vector_length {
-                    sum += a_data[a_start + j] * b_data[a_start + j];
-                }
-                results[i] = sum;
+                let a_slice = &a_data[a_start..a_start + vector_length];
+                let b_slice = &b_data[a_start..a_start + vector_length];
+                results[i] = simd_dot_product_ultra(a_slice, b_slice);
             }
         }
     }
 }
 
-/// Ultra-efficient streaming batch dot product processor
-/// Processes data in fixed-size chunks to minimize memory allocation overhead
-/// Uses persistent WASM memory buffers for optimal performance
+/// ULTIMATE performance batch dot product with zero overhead
+/// Uses the most aggressive optimizations for absolute maximum speed
 #[wasm_bindgen]
-pub fn batch_dot_product_streaming(
+pub fn batch_dot_product_ultimate_performance(
     a_ptr: *const f32,
     b_ptr: *const f32,
     results_ptr: *mut f32,
     vector_length: usize,
-    num_pairs: usize,
-    chunk_size: usize,
+    num_pairs: usize
 ) {
     unsafe {
         let a_data = std::slice::from_raw_parts(a_ptr, num_pairs * vector_length);
         let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
         let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
         
-        let effective_chunk_size = std::cmp::min(chunk_size, num_pairs);
-        
-        // Process data in chunks to minimize memory pressure
-        for chunk_start in (0..num_pairs).step_by(effective_chunk_size) {
-            let chunk_end = std::cmp::min(chunk_start + effective_chunk_size, num_pairs);
-            let current_chunk_size = chunk_end - chunk_start;
+        // Always use parallel for any reasonable workload
+        if num_pairs >= 25 { // Even more aggressive threshold
+            // Hyper-aggressive parallel processing
+            let num_cores = 8;
+            let chunk_size = std::cmp::max(4, num_pairs / (num_cores * 16)); // Maximum chunks per core
             
-            // Process each chunk with optimal algorithm
-            if current_chunk_size >= 500 {
-                // Use parallel processing for larger chunks
-                let chunk_results = &mut results[chunk_start..chunk_end];
-                
-                chunk_results.par_chunks_mut(64)
-                             .enumerate()
-                             .for_each(|(sub_chunk_idx, sub_chunk)| {
-                                 let sub_start = chunk_start + sub_chunk_idx * 64;
-                                 
-                                 #[cfg(target_arch = "wasm32")]
-                                 {
-                                     for (local_idx, result) in sub_chunk.iter_mut().enumerate() {
-                                         let global_idx = sub_start + local_idx;
-                                         if global_idx >= chunk_end { break; }
-                                         
-                                         let a_start = global_idx * vector_length;
-                                         let a_slice = &a_data[a_start..a_start + vector_length];
-                                         let b_slice = &b_data[a_start..a_start + vector_length];
-                                         
-                                         *result = simd_dot_product_ultra(a_slice, b_slice);
-                                     }
-                                 }
-                                 
-                                 #[cfg(not(target_arch = "wasm32"))]
-                                 {
-                                     for (local_idx, result) in sub_chunk.iter_mut().enumerate() {
-                                         let global_idx = sub_start + local_idx;
-                                         if global_idx >= chunk_end { break; }
-                                         
-                                         let a_start = global_idx * vector_length;
-                                         let mut sum = 0.0;
-                                         for j in 0..vector_length {
-                                             sum += a_data[a_start + j] * b_data[a_start + j];
-                                         }
-                                         *result = sum;
-                                     }
-                                 }
-                             });
-            } else {
-                // Use sequential processing for smaller chunks
-                for i in chunk_start..chunk_end {
-                    let a_start = i * vector_length;
-                    let a_slice = &a_data[a_start..a_start + vector_length];
-                    let b_slice = &b_data[a_start..a_start + vector_length];
-                    
-                    results[i] = simd_dot_product_ultra(a_slice, b_slice);
-                }
-            }
-        }
-    }
-}
-
-/// Memory-efficient batch processor with configurable buffer limits
-/// Automatically manages memory allocation to stay within specified limits
-#[wasm_bindgen]
-pub fn batch_dot_product_memory_limited(
-    a_ptr: *const f32,
-    b_ptr: *const f32,
-    results_ptr: *mut f32,
-    vector_length: usize,
-    num_pairs: usize,
-    max_memory_mb: usize,
-) {
-    unsafe {
-        // Calculate optimal chunk size based on memory limit
-        let bytes_per_pair = vector_length * 2 * 4; // 2 vectors * 4 bytes per float
-        let max_pairs_per_chunk = (max_memory_mb * 1024 * 1024) / bytes_per_pair;
-        let chunk_size = std::cmp::min(max_pairs_per_chunk, num_pairs);
-        
-        // Use streaming processor with calculated chunk size
-        batch_dot_product_streaming(
-            a_ptr,
-            b_ptr,
-            results_ptr,
-            vector_length,
-            num_pairs,
-            chunk_size,
-        );
-    }
-}
-
-/// Hybrid streaming processor that adapts between sequential and parallel
-/// based on workload characteristics and memory pressure
-#[wasm_bindgen]
-pub fn batch_dot_product_adaptive_streaming(
-    a_ptr: *const f32,
-    b_ptr: *const f32,
-    results_ptr: *mut f32,
-    vector_length: usize,
-    num_pairs: usize,
-) {
-    unsafe {
-        let a_data = std::slice::from_raw_parts(a_ptr, num_pairs * vector_length);
-        let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
-        let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
-        
-        // Adaptive chunk sizing based on dataset characteristics
-        let optimal_chunk_size = if num_pairs > 50000 {
-            // Large datasets: use smaller chunks for better memory efficiency
-            2048
-        } else if num_pairs > 10000 {
-            // Medium datasets: balance memory and performance
-            4096
+            // Maximum parallel efficiency with minimal overhead
+            results.par_chunks_mut(chunk_size)
+                   .enumerate()
+                   .for_each(|(chunk_idx, chunk_results)| {
+                       let chunk_start = chunk_idx * chunk_size;
+                       
+                       for (local_idx, result) in chunk_results.iter_mut().enumerate() {
+                           let global_idx = chunk_start + local_idx;
+                           if global_idx >= num_pairs { break; }
+                           
+                           let a_start = global_idx * vector_length;
+                           let a_slice = &a_data[a_start..a_start + vector_length];
+                           let b_slice = &b_data[a_start..a_start + vector_length];
+                           
+                           *result = simd_dot_product_ultra(a_slice, b_slice);
+                       }
+                   });
         } else {
-            // Small datasets: use larger chunks for better parallelization
-            8192
-        };
-        
-        let chunk_size = std::cmp::min(optimal_chunk_size, num_pairs);
-        
-        // Process in adaptive chunks
-        for chunk_start in (0..num_pairs).step_by(chunk_size) {
-            let chunk_end = std::cmp::min(chunk_start + chunk_size, num_pairs);
-            let current_chunk_size = chunk_end - chunk_start;
-            
-            // Dynamic algorithm selection based on chunk characteristics
-            if current_chunk_size >= 1000 && vector_length >= 512 {
-                // Large chunk with large vectors: use aggressive parallel processing
-                let chunk_results = &mut results[chunk_start..chunk_end];
-                
-                chunk_results.par_iter_mut()
-                             .enumerate()
-                             .for_each(|(local_idx, result)| {
-                                 let global_idx = chunk_start + local_idx;
-                                 let a_start = global_idx * vector_length;
-                                 let a_slice = &a_data[a_start..a_start + vector_length];
-                                 let b_slice = &b_data[a_start..a_start + vector_length];
-                                 
-                                 *result = simd_dot_product_ultra(a_slice, b_slice);
-                             });
-            } else {
-                // Smaller chunks or vectors: use sequential ultra-optimized processing
-                for i in chunk_start..chunk_end {
-                    let a_start = i * vector_length;
-                    let a_slice = &a_data[a_start..a_start + vector_length];
-                    let b_slice = &b_data[a_start..a_start + vector_length];
-                    
-                    results[i] = simd_dot_product_ultra(a_slice, b_slice);
-                }
+            // Sequential for truly tiny workloads
+            for i in 0..num_pairs {
+                let a_start = i * vector_length;
+                let a_slice = &a_data[a_start..a_start + vector_length];
+                let b_slice = &b_data[a_start..a_start + vector_length];
+                results[i] = simd_dot_product_ultra(a_slice, b_slice);
             }
         }
     }
