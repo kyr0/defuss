@@ -5,14 +5,9 @@ import { beforeAll, describe, it } from "vitest";
 import {
   initWasm,
   getWasmMemoryInfo,
-  processBatchDotProduct,
+  dotProductFlat,
+  dotProduct,
 } from "./vector.js";
-
-interface BenchmarkResult {
-    totalTime: number;
-    memoryEfficiency: number;
-    gflops: number;
-}
 
 /**
  * Generate test arrays for batch dot product benchmarking
@@ -54,37 +49,9 @@ export function generateBenchmarkVectors(
 }
 
 describe("vector", () => {
-  let wasmInstance: any;
   beforeAll(async () => {
-    wasmInstance = await initWasm();
+    await initWasm();
   });
-
-
-  /**
-   * Smart benchmark function that automatically chooses between direct and chunked processing
-   */
-  async function benchmarkUltimateExternalCallSmart(
-    vectorLength: number,
-    numPairs: number,
-  ): Promise<{
-    totalTime: number;
-    executionTime: number;
-    gflops: number;
-    memoryEfficiency: number;
-    results: Float32Array;
-    processingMethod: 'direct' | 'chunked';
-    chunksProcessed?: number;
-  }> {
-    if (!wasmInstance) {
-      throw new Error("WASM not initialized");
-    }
-
-    // STEP 1: Generate test vectors
-    const { vectorsA, vectorsB } = generateBenchmarkVectors(vectorLength, numPairs);
-
-    // STEP 2: Process the vectors
-    return await processBatchDotProduct(vectorsA, vectorsB, vectorLength, numPairs);
-  }
 
   it("should be ultra fast", async () => {
     console.log("🚀 Starting ultra benchmarks...");
@@ -114,18 +81,112 @@ describe("vector", () => {
       console.log(`🔍 WASM memory used:`, memStats.usedMB, "MB");
 
       try {
-        const results: BenchmarkResult = await benchmarkUltimateExternalCallSmart(vectorLength, numPairs);
+
+        // STEP 1: Generate test vectors
+        const { vectorsA, vectorsB } = generateBenchmarkVectors(vectorLength, numPairs);
+
+        // STEP 2: Process the vectors
+        const results =  await dotProductFlat(vectorsA, vectorsB, vectorLength, numPairs);
+
         console.log(`✅ Completed: ${name}`);
         console.log(`⏱️  Total time: ${results.totalTime.toFixed(2)}ms`);
         console.log(` Memory efficiency: ${results.memoryEfficiency.toFixed(3)} GFLOPS/MB`);
         console.log(`⚡ Performance: ${results.gflops.toFixed(2)} GFLOPS`);
 
-        
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.log(`⚠️ Skipped: ${name} - ${errorMessage}`);
       }
     }
+  });
+
+  it("should work with the Array-based dotProduct function as well", async () => {
+
+    // Example: Create some test data as individual vectors
+    const vectorLength = 1024;
+    const numPairs = 100_000;
+    
+    // Create arrays of individual vectors (cleaner approach)
+    const vectorsA: Float32Array[] = [];
+    const vectorsB: Float32Array[] = [];
+    
+    for (let i = 0; i < numPairs; i++) {
+      const vecA = new Float32Array(vectorLength);
+      const vecB = new Float32Array(vectorLength);
+      
+      // Fill with test data
+      for (let j = 0; j < vectorLength; j++) {
+        vecA[j] = Math.random();
+        vecB[j] = Math.random();
+      }
+      
+      vectorsA.push(vecA);
+      vectorsB.push(vecB);
+    }
+    
+    console.log('=== dotProduct with arrays of vectors ===');
+    const results = await dotProduct(vectorsA, vectorsB);
+      
+    console.log(`⏱️  Total time: ${results.totalTime.toFixed(2)}ms`);
+    console.log(` Memory efficiency: ${results.memoryEfficiency.toFixed(3)} GFLOPS/MB`);
+    console.log(`⚡ Performance: ${results.gflops.toFixed(2)} GFLOPS`);
+    
+    // Compare with concatenated array approach (for performance comparison)
+    console.log('\n=== Comparison: concatenated array approach ===');
+    const vectorsAConcatenated = new Float32Array(vectorLength * numPairs);
+    const vectorsBConcatenated = new Float32Array(vectorLength * numPairs);
+    
+    for (let i = 0; i < numPairs; i++) {
+      const startIdx = i * vectorLength;
+      vectorsAConcatenated.set(vectorsA[i], startIdx);
+      vectorsBConcatenated.set(vectorsB[i], startIdx);
+    }
+    
+    const resultsFlat = await dotProductFlat(vectorsAConcatenated, vectorsBConcatenated, vectorLength, numPairs);
+    console.log(`Performance: ${resultsFlat.gflops.toFixed(2)} GFLOPS`);
+    console.log(`Processing method: ${resultsFlat.processingMethod}`);
+    
+    // Verify results are identical
+    const resultsMatch = results.results.every((val, idx) => Math.abs(val - resultsFlat.results[idx]) < 0.0001);
+    console.log(`Results match: ${resultsMatch ? '✅' : '❌'}`);
+    
+    console.log('\n=== Example with embedding vectors ===');
+
+    // Create example embeddings (like BERT)
+    const embeddings: Float32Array[] = [];
+    const queries: Float32Array[] = [];
+    
+    for (let i = 0; i < numPairs; i++) {
+      const embedding = new Float32Array(1024); // BERT-like dimensions
+      const query = new Float32Array(1024);
+      
+      // Fill with normalized random vectors
+      let normA = 0, normB = 0;
+      for (let j = 0; j < 1024; j++) {
+        embedding[j] = Math.random() - 0.5;
+        query[j] = Math.random() - 0.5;
+        normA += embedding[j] * embedding[j];
+        normB += query[j] * query[j];
+      }
+      
+      // Normalize vectors
+      normA = Math.sqrt(normA);
+      normB = Math.sqrt(normB);
+      for (let j = 0; j < 1024; j++) {
+        embedding[j] /= normA;
+        query[j] /= normB;
+      }
+      
+      embeddings.push(embedding);
+      queries.push(query);
+    }
+    
+    const embeddingResult = await dotProduct(embeddings, queries);
+    console.log(`Computed ${embeddings.length} cosine similarities for 1024D embeddings`);
+    console.log(`Performance: ${embeddingResult.gflops.toFixed(2)} GFLOPS`);
+    console.log(`Average similarity: ${(embeddingResult.results.reduce((sum, val) => sum + val, 0) / embeddingResult.results.length).toFixed(4)}`);
+    console.log(`Processing method: ${embeddingResult.processingMethod}`);
+    console.log(`Total time: ${embeddingResult.totalTime.toFixed(2)}ms`);
   });
   
 });

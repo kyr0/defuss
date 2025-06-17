@@ -4,6 +4,19 @@ import init, { initThreadPool, batch_dot_product_ultimate_external  } from "../p
 let wasmInitialized = false;
 let wasmInstance: any;
 
+export interface ChunkedResult {
+  results: Float32Array;
+  totalTime: number;
+  executionTime: number;
+  chunksProcessed?: number;
+}
+
+export interface DotProductResult extends ChunkedResult {
+  gflops: number;
+  memoryEfficiency: number;
+  processingMethod: 'direct' | 'chunked';
+}
+
 /**
  * Initialize WASM module for ultimate performance operations
  * Must be called before using any ultimate performance functions
@@ -80,12 +93,7 @@ async function processWorkloadInChunks(
   vectorLength: number,
   numPairs: number,
   processingFunction: (a: Float32Array, b: Float32Array, vlen: number, npairs: number) => any
-): Promise<{
-  results: Float32Array;
-  totalTime: number;
-  executionTime: number;
-  chunksProcessed: number;
-}> {
+  ): Promise<ChunkedResult> {
   const chunkSize = calculateOptimalChunkSize(vectorLength, numPairs);
   const allResults = new Float32Array(numPairs);
   let totalTime = 0;
@@ -139,21 +147,15 @@ async function processWorkloadInChunks(
 
 /**
  * Process batch dot product with automatic method selection (direct vs chunked)
+ * If vectorLength is not provided, structure will be inferred automatically
+ * If numPairs is not provided, it will be calculated from the array length and vectorLength
  */
-export async function processBatchDotProduct(
-  vectorsA: Float32Array,
-  vectorsB: Float32Array,
+export async function dotProductFlat(
+  vectorsAConcatenated: Float32Array,
+  vectorsBConcatenated: Float32Array,
   vectorLength: number,
   numPairs: number,
-): Promise<{
-  totalTime: number;
-  executionTime: number;
-  gflops: number;
-  memoryEfficiency: number;
-  results: Float32Array;
-  processingMethod: 'direct' | 'chunked';
-  chunksProcessed?: number;
-}> {
+): Promise<DotProductResult> {
   if (!wasmInstance) {
     throw new Error("WASM not initialized");
   }
@@ -162,8 +164,8 @@ export async function processBatchDotProduct(
 
   // Validate input arrays
   const totalElements = vectorLength * numPairs;
-  if (vectorsA.length !== totalElements || vectorsB.length !== totalElements) {
-    throw new Error(`Input array size mismatch: expected ${totalElements} elements, got A=${vectorsA.length}, B=${vectorsB.length}`);
+  if (vectorsAConcatenated.length !== totalElements || vectorsBConcatenated.length !== totalElements) {
+    throw new Error(`Input array size mismatch: expected ${totalElements} elements, got A=${vectorsAConcatenated.length}, B=${vectorsBConcatenated.length}`);
   }
 
   // Choose processing method based on memory constraints
@@ -179,8 +181,8 @@ export async function processBatchDotProduct(
     processingMethod = 'direct';
     
     const result = batch_dot_product_ultimate_external(
-      vectorsA,
-      vectorsB,
+      vectorsAConcatenated,
+      vectorsBConcatenated,
       vectorLength,
       numPairs,
     );
@@ -200,8 +202,8 @@ export async function processBatchDotProduct(
     processingMethod = 'chunked';
     
     const chunkResult = await processWorkloadInChunks(
-      vectorsA,
-      vectorsB,
+      vectorsAConcatenated,
+      vectorsBConcatenated,
       vectorLength,
       numPairs,
       batch_dot_product_ultimate_external
@@ -216,11 +218,11 @@ export async function processBatchDotProduct(
   console.log(`✅ ${processingMethod.toUpperCase()} processing completed! Total: ${totalTime.toFixed(4)}ms, Execution: ${executionTime.toFixed(4)}ms`);
 
   // STEP 3: Verify results against native JS (same verification logic)
-  const firstVectorA = vectorsA.subarray(0, vectorLength);
-  const firstVectorB = vectorsB.subarray(0, vectorLength);
+  const firstVectorA = vectorsAConcatenated.subarray(0, vectorLength);
+  const firstVectorB = vectorsBConcatenated.subarray(0, vectorLength);
   const lastStart = (numPairs - 1) * vectorLength;
-  const lastVectorA = vectorsA.subarray(lastStart, lastStart + vectorLength);
-  const lastVectorB = vectorsB.subarray(lastStart, lastStart + vectorLength);
+  const lastVectorA = vectorsAConcatenated.subarray(lastStart, lastStart + vectorLength);
+  const lastVectorB = vectorsBConcatenated.subarray(lastStart, lastStart + vectorLength);
 
   const firstExpected = nativeDotProduct(firstVectorA, firstVectorB);
   const lastExpected = nativeDotProduct(lastVectorA, lastVectorB);
@@ -251,6 +253,69 @@ export async function processBatchDotProduct(
     results,
     processingMethod,
     chunksProcessed,
+  };
+}
+
+/**
+ * Process dot products for arrays of vectors (cleaner API)
+ * This function automatically determines vectorLength and numPairs from the input arrays
+ */
+export async function dotProduct(
+  vectorsA: Array<Float32Array>, 
+  vectorsB: Array<Float32Array>
+): Promise<DotProductResult> {
+  // Validate input arrays
+  if (vectorsA.length !== vectorsB.length) {
+    throw new Error(`Array length mismatch: vectorsA has ${vectorsA.length} vectors, vectorsB has ${vectorsB.length} vectors`);
+  }
+  
+  if (vectorsA.length === 0) {
+    throw new Error("Cannot process empty vector arrays");
+  }
+  
+  // Determine structure from the arrays
+  const numPairs = vectorsA.length;
+  const vectorLength = vectorsA[0].length;
+  
+  // Validate all vectors have the same length
+  for (let i = 0; i < vectorsA.length; i++) {
+    if (vectorsA[i].length !== vectorLength) {
+      throw new Error(`Vector length mismatch in vectorsA[${i}]: expected ${vectorLength}, got ${vectorsA[i].length}`);
+    }
+    if (vectorsB[i].length !== vectorLength) {
+      throw new Error(`Vector length mismatch in vectorsB[${i}]: expected ${vectorLength}, got ${vectorsB[i].length}`);
+    }
+  }
+  
+  console.log(`🎯 Processing dot products: ${numPairs} pairs of ${vectorLength}-dimensional vectors`);
+  
+  // Convert arrays of vectors to concatenated arrays
+  const vectorsAConcatenated = new Float32Array(numPairs * vectorLength);
+  const vectorsBConcatenated = new Float32Array(numPairs * vectorLength);
+  
+  for (let i = 0; i < numPairs; i++) {
+    const startIdx = i * vectorLength;
+    vectorsAConcatenated.set(vectorsA[i], startIdx);
+    vectorsBConcatenated.set(vectorsB[i], startIdx);
+  }
+  
+  // Call the existing implementation
+  const result = await dotProductFlat(
+    vectorsAConcatenated,
+    vectorsBConcatenated,
+    vectorLength,
+    numPairs
+  );
+  
+  // Return result without inferredStructure (since we explicitly know the structure)
+  return {
+    totalTime: result.totalTime,
+    executionTime: result.executionTime,
+    gflops: result.gflops,
+    memoryEfficiency: result.memoryEfficiency,
+    results: result.results,
+    processingMethod: result.processingMethod,
+    chunksProcessed: result.chunksProcessed,
   };
 }
 
