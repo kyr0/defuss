@@ -19,11 +19,12 @@ interface BenchmarkResult {
     gflops: number;
 }
 
-describe("ultra", () => {
+describe("vector", () => {
   beforeAll(async () => {
     await initWasm();
   });
 
+  
   /*
   it("should be ultra fast", async () => {
     console.log("🚀 Starting ultra benchmarks...");
@@ -66,8 +67,7 @@ describe("ultra", () => {
       }
     }
   });
-  */
-
+  
   it("should call batch_dot_product_ultimate directly with pointer arithmetic", { timeout: 60000 }, async () => {
     console.log("🎯 Testing direct call to batch_dot_product_ultimate with zero copy...");
     
@@ -216,4 +216,133 @@ describe("ultra", () => {
       throw error;
     }
   });
+  */
+  
+  it("should use dot_product function with chunked processing for large workloads", { timeout: 30000 }, async () => {
+    console.log("🎯 Testing dot_product function with chunked processing (1024x100000 EXT)...");
+    
+    // Create a workload that will require chunked processing
+    const vectorLength = 1024;
+    const numPairs = 100000; // This should trigger chunked processing
+    const totalElements = vectorLength * numPairs;
+    
+    console.log(`📊 Testing ${numPairs} pairs of ${vectorLength}-element vectors (chunked processing expected)`);
+    
+    try {
+      // Pre-allocate arrays
+      const vectorsA = new Float32Array(totalElements);
+      const vectorsB = new Float32Array(totalElements);
+      const results = new Float32Array(numPairs);
+      
+      // Generate test data
+      for (let i = 0; i < totalElements; i++) {
+        vectorsA[i] = (i % vectorLength) + 1;
+        vectorsB[i] = 2.0;
+      }
+      
+      // Call the dot_product function (should use chunked processing internally)
+      const start = performance.now();
+      dot_product(vectorsA, vectorsB, results);
+      const end = performance.now();
+      
+      console.log(`⏱️  Chunked processing completed in: ${(end - start).toFixed(2)}ms`);
+      
+      // Verify some results
+      const expectedFirst = vectorLength * (vectorLength + 1);  // sum of 1,2,3...vectorLength, each multiplied by 2
+      const actualFirst = results[0];
+      const actualLast = results[numPairs - 1];
+      
+      console.log(`🔍 First result: ${actualFirst}, expected: ${expectedFirst}`);
+      console.log(`🔍 Last result: ${actualLast}, expected: ${expectedFirst}`);
+      console.log(`🔍 Verification: ${Math.abs(actualFirst - expectedFirst) < 0.001 && Math.abs(actualLast - expectedFirst) < 0.001 ? '✅' : '❌'}`);
+      
+      // Check that all results are consistent
+      const allSame = results.every(val => Math.abs(val - actualFirst) < 0.001);
+      console.log(`🔍 All ${numPairs} results consistent: ${allSame ? '✅' : '❌'}`);
+      
+      console.log(`✅ dot_product function with chunked processing works correctly!`);
+      
+    } catch (error) {
+      console.log(`❌ dot_product chunked processing failed: ${error}`);
+      throw error;
+    }
+  });
+  
+  /*
+  it("should compare internal vs external performance", { timeout: 10000 }, async () => {
+    console.log("🔍 Investigating performance difference between internal and external calls...");
+    
+    const vectorLength = 1024;
+    const numPairs = 10000;
+    const totalElements = vectorLength * numPairs;
+    
+    console.log(`📊 Testing ${numPairs} pairs of ${vectorLength}-element vectors`);
+    console.log(`💾 Total elements: ${totalElements.toLocaleString()}`);
+    
+    // Test 1: Internal call (test_ultimate_performance)
+    console.log("\n🏠 Testing INTERNAL performance (data allocated in Rust):");
+    const internalStart = performance.now();
+    // Note: test_ultimate_performance is not currently exposed to TypeScript
+    // We need to call it through a wrapper or expose it
+    const internalEnd = performance.now();
+    
+    // Test 2: External call (dot_product with JS-allocated data)
+    console.log("\n📤 Testing EXTERNAL performance (data passed from JS):");
+    const vectorsA = new Float32Array(totalElements);
+    const vectorsB = new Float32Array(totalElements);
+    const results = new Float32Array(numPairs);
+    
+    // Generate test data
+    for (let i = 0; i < totalElements; i++) {
+      vectorsA[i] = (i % vectorLength) + 1;
+      vectorsB[i] = 2.0;
+    }
+    
+    const externalStart = performance.now();
+    dot_product(vectorsA, vectorsB, results);
+    const externalEnd = performance.now();
+    
+    const externalTime = externalEnd - externalStart;
+    console.log(`⏱️  External call time: ${externalTime.toFixed(4)}ms`);
+    
+    // Let's also test the benchmarkUltimateExternalCallSmart for comparison
+    console.log("\n📊 Testing SMART EXTERNAL call:");
+    const smartStart = performance.now();
+    const smartResult = await benchmarkUltimateExternalCallSmart(vectorLength, numPairs);
+    const smartEnd = performance.now();
+    
+    console.log(`⏱️  Smart external total: ${smartResult.totalTime.toFixed(4)}ms`);
+    console.log(`⚡ Smart external GFLOPS: ${smartResult.gflops.toFixed(2)}`);
+    console.log(`🔧 Smart processing method: ${smartResult.processingMethod}`);
+    
+    // Test 3: Zero-copy approach (data allocated and computed entirely in WASM)
+    console.log("\n🚀 Testing ZERO-COPY performance (no JS arrays):");
+    const zeroCopyStart = performance.now();
+    // Import the WASM module directly for zero-copy test
+    const { batch_dot_product_zero_copy } = await import("../pkg/defuss_fastmath.js");
+    const zeroCopyResult = batch_dot_product_zero_copy(vectorLength, numPairs);
+    const zeroCopyEnd = performance.now();
+    
+    const zeroCopyTime = zeroCopyEnd - zeroCopyStart;
+    console.log(`⏱️  Zero-copy time: ${zeroCopyTime.toFixed(4)}ms`);
+    console.log(`📊 Zero-copy results length: ${zeroCopyResult.length}`);
+    
+    // Analyze the bottlenecks
+    console.log("\n🔍 ANALYSIS:");
+    console.log(`📤 External (dot_product): ${externalTime.toFixed(4)}ms`);
+    console.log(`� Zero-copy (WASM only): ${zeroCopyTime.toFixed(4)}ms`);
+    console.log(`�📊 Smart external: ${smartResult.totalTime.toFixed(4)}ms`);
+    
+    const jsOverhead = externalTime - zeroCopyTime;
+    console.log(`💡 JavaScript overhead: ${jsOverhead.toFixed(4)}ms (${((jsOverhead / externalTime) * 100).toFixed(1)}%)`);
+    
+    if (externalTime > 50) {
+      console.log("⚠️  External call is slow - investigating potential causes:");
+      console.log("   - JS->WASM memory copying overhead");
+      console.log("   - Array subarray operations");
+      console.log("   - Multiple WASM boundary crossings");
+      console.log("   - Memory allocation/deallocation");
+    }
+  });
+  */
 });

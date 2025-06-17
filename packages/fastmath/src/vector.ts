@@ -1,4 +1,4 @@
-import init, { initThreadPool, batch_dot_product_ultimate, batch_dot_product_ultimate_external, test_ultimate_performance  } from "../pkg/defuss_fastmath.js";
+import init, { initThreadPool, batch_dot_product_ultimate, batch_dot_product_ultimate_external, batch_dot_product_ultimate_external_chunked, test_ultimate_performance  } from "../pkg/defuss_fastmath.js";
 
 /**
  * ULTIMATE Vector Performance Implementation
@@ -694,7 +694,7 @@ async function processWorkloadInChunks(
     
     // Small delay to prevent blocking the event loop for very large workloads
     if (chunksProcessed % 10 === 0) {
-      await new Promise(resolve => setTimeout(resolve, 0));
+      //await new Promise(resolve => setTimeout(resolve, 0));
     }
   }
   
@@ -846,9 +846,8 @@ export async function benchmarkUltimateExternalCallSmart(
 }
 
 /**
- * Dot product function for benchmarking that takes pre-allocated arrays
- * This function extracts the core computation logic from benchmarkUltimateExternalCallSmart
- * but only performs the actual computation without data generation or verification
+ * Optimized dot product function for benchmarking with zero-copy design
+ * Uses single WASM call with internal chunking to eliminate JS-WASM boundary overhead
  */
 export function dot_product(
   vectorsA: Float32Array,
@@ -872,28 +871,22 @@ export function dot_product(
     throw new Error("Total elements must be evenly divisible by number of pairs");
   }
 
-  // Check if we can fit directly in memory
-  const canFitDirectly = canFitInMemory(vectorLength, numPairs);
-  
-  if (canFitDirectly) {
-    // Use direct processing
-    const result = batch_dot_product_ultimate_external(
-      vectorsA,
-      vectorsB,
-      vectorLength,
-      numPairs,
-    );
+  // Use optimized chunked function that handles everything in WASM
+  // This eliminates multiple JS-WASM boundary crossings and memory copying
+  const result = batch_dot_product_ultimate_external_chunked(
+    vectorsA,
+    vectorsB,
+    vectorLength,
+    numPairs,
+  );
 
-    if (result.length < 2 + numPairs) {
-      throw new Error(`Unexpected result length: ${result.length}, expected at least ${2 + numPairs}`);
-    }
+  if (result.length < 2 + numPairs) {
+    throw new Error(`Unexpected result length: ${result.length}, expected at least ${2 + numPairs}`);
+  }
 
-    // Extract results (skip timing data at indices 0 and 1)
-    for (let i = 0; i < numPairs; i++) {
-      results[i] = result[2 + i] as number;
-    }
-  } else {
-    throw new Error("Chunked processing not supported in dot_product function. Use smaller arrays or benchmarkUltimateExternalCallSmart for large workloads.");
+  // Single copy operation: extract results (skip timing data at indices 0 and 1)
+  for (let i = 0; i < numPairs; i++) {
+    results[i] = result[2 + i] as number;
   }
 }
 

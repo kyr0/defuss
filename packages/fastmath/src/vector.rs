@@ -842,3 +842,60 @@ fn calculate_optimal_chunk_size(vector_length: usize, num_pairs: usize) -> usize
     let max_pairs_per_chunk = (OPTIMAL_CHUNK_SIZE / total_elements_per_chunk).max(1);
     num_pairs.min(max_pairs_per_chunk)
 }
+
+/// Ultimate performance zero-copy dot product using direct WASM memory access
+/// Completely bypasses JavaScript array overhead
+#[wasm_bindgen]
+pub fn batch_dot_product_zero_copy(
+    vector_length: usize,
+    num_pairs: usize
+) -> js_sys::Array {
+    let total_elements = vector_length * num_pairs;
+    
+    // Check memory limits
+    let required_size = total_elements * 2 + num_pairs;
+    if required_size > MAX_POOL_SIZE {
+        // Return error for oversized requests
+        let result_array = js_sys::Array::new();
+        result_array.push(&wasm_bindgen::JsValue::from_f64(-1.0));
+        return result_array;
+    }
+    
+    // Get buffer from pool
+    let mut pool_buffer = get_or_create_buffer(required_size);
+    if pool_buffer.len() < required_size {
+        pool_buffer.resize(required_size, 0.0);
+    }
+    
+    let (a_slice, rest) = pool_buffer.split_at_mut(total_elements);
+    let (b_slice, result_slice) = rest.split_at_mut(total_elements);
+    
+    // Generate test data directly in WASM (same pattern as JS)
+    for i in 0..total_elements {
+        a_slice[i] = (i % vector_length) as f32 + 1.0;
+        b_slice[i] = 2.0;
+    }
+    
+    // Clear results
+    result_slice[..num_pairs].fill(0.0);
+    
+    // Pure computation
+    batch_dot_product_ultimate(
+        a_slice.as_ptr(),
+        b_slice.as_ptr(),
+        result_slice.as_mut_ptr(),
+        vector_length,
+        num_pairs
+    );
+    
+    // Return just the results without any timing overhead
+    let result_array = js_sys::Array::new();
+    for i in 0..num_pairs {
+        result_array.push(&wasm_bindgen::JsValue::from_f64(result_slice[i] as f64));
+    }
+    
+    // Return buffer to pool
+    return_buffer_to_pool(pool_buffer);
+    
+    result_array
+}
