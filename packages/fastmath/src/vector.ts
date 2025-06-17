@@ -5,11 +5,61 @@ import init, {
   batch_dot_product_zero_copy_parallel,
   batch_dot_product_rayon_chunked,
   batch_dot_product_ultra_simple,
+  batch_dot_product_ultra_optimized,
+  batch_dot_product_parallel_ultra_optimized,
+  batch_dot_product_c_style,
 } from "../pkg/defuss_fastmath.js";
 
 // Global WASM instance state
 let wasmInitialized = false;
 let wasmInstance: any;
+
+// Memory pool to eliminate allocation overhead
+let memoryPool: {
+  aPtr: number;
+  bPtr: number; 
+  resultsPtr: number;
+  maxSize: number;
+} | null = null;
+
+function ensureMemoryPool(totalSize: number): { aPtr: number; bPtr: number; resultsPtr: number } {
+  const malloc = wasmInstance.__wbindgen_malloc;
+  const free = wasmInstance.__wbindgen_free;
+  
+  // If pool exists and is large enough, reuse it
+  if (memoryPool && memoryPool.maxSize >= totalSize) {
+    return {
+      aPtr: memoryPool.aPtr,
+      bPtr: memoryPool.bPtr,
+      resultsPtr: memoryPool.resultsPtr
+    };
+  }
+  
+  // Free old pool if exists
+  if (memoryPool) {
+    free(memoryPool.aPtr, memoryPool.maxSize / 3, 4);
+    free(memoryPool.bPtr, memoryPool.maxSize / 3, 4);
+    free(memoryPool.resultsPtr, memoryPool.maxSize / 3, 4);
+  }
+  
+  // Allocate new larger pool with 25% headroom
+  const poolSize = Math.ceil(totalSize * 1.25);
+  const vectorsSize = Math.ceil(poolSize * 0.4); // 40% each for A and B
+  const resultsSize = Math.ceil(poolSize * 0.2);  // 20% for results
+  
+  const aPtr = malloc(vectorsSize, 16); // 16-byte alignment for optimal SIMD
+  const bPtr = malloc(vectorsSize, 16);
+  const resultsPtr = malloc(resultsSize, 16);
+  
+  memoryPool = {
+    aPtr,
+    bPtr,
+    resultsPtr,
+    maxSize: poolSize
+  };
+  
+  return { aPtr, bPtr, resultsPtr };
+}
 
 /**
  * Initialize WASM module (call once before using vector functions)
@@ -71,65 +121,44 @@ export function batchDotProductZeroCopy(
   const vectorsASize = vectorsA.length * 4; // 4 bytes per f32
   const vectorsBSize = vectorsB.length * 4;
   const resultsSize = numPairs * 4;
+  const totalSize = vectorsASize + vectorsBSize + resultsSize;
 
-  // Get WASM memory and malloc function
+  // Get WASM memory and use memory pool for zero-allocation performance
   const memory = wasmInstance.memory;
-  const malloc = wasmInstance.__wbindgen_malloc;
-  const free = wasmInstance.__wbindgen_free;
+  const { aPtr, bPtr, resultsPtr } = ensureMemoryPool(totalSize);
 
-  // Allocate properly aligned memory from WASM heap
-  const aPtrValue = malloc(vectorsASize, 4); // 4-byte alignment for f32
-  const bPtrValue = malloc(vectorsBSize, 4);
-  const resultsPtrValue = malloc(resultsSize, 4);
-
-  // Create views into the allocated memory
-  const aView = new Float32Array(memory.buffer, aPtrValue, vectorsA.length);
-  const bView = new Float32Array(memory.buffer, bPtrValue, vectorsB.length);
-  const resultsView = new Float32Array(memory.buffer, resultsPtrValue, numPairs);
+  // Create views into the pooled memory
+  const aView = new Float32Array(memory.buffer, aPtr, vectorsA.length);
+  const bView = new Float32Array(memory.buffer, bPtr, vectorsB.length);
+  const resultsView = new Float32Array(memory.buffer, resultsPtr, numPairs);
 
   // Copy data to WASM memory using efficient set operations
   aView.set(vectorsA);
   bView.set(vectorsB);
 
-  try {
-    // Choose optimal implementation - use chunked parallel for medium workloads only
-    // WASM threading has issues with very large workloads, so be conservative
-    if (useParallel && numPairs >= 1000 && numPairs <= 4000) {
-      // Use Rayon chunked parallel implementation (SIMD + threading)
-      batch_dot_product_rayon_chunked(
-        aPtrValue,
-        bPtrValue,
-        resultsPtrValue,
-        vectorLength,
-        numPairs,
-      );
-    } else {
-      // Use sequential hyper-optimized implementation (SIMD only)
-      batch_dot_product_hyper_optimized(
-        aPtrValue,
-        bPtrValue,
-        resultsPtrValue,
-        vectorLength,
-        numPairs,
-      );
-    }
-
-    // Copy results before freeing memory
-    const results = new Float32Array(resultsView);
-    
-    // Clean up allocated memory
-    free(aPtrValue, vectorsASize, 4);
-    free(bPtrValue, vectorsBSize, 4);
-    free(resultsPtrValue, resultsSize, 4);
-
-    return results;
-  } catch (error) {
-    // Clean up memory on error
-    free(aPtrValue, vectorsASize, 4);
-    free(bPtrValue, vectorsBSize, 4);
-    free(resultsPtrValue, resultsSize, 4);
-    throw error;
+  // Choose ultra-optimized implementation based on workload
+  if (useParallel && numPairs >= 2000) {
+    // Use the existing hyper-optimized parallel for now
+    batch_dot_product_hyper_optimized_parallel(
+      aPtr,
+      bPtr,
+      resultsPtr,
+      vectorLength,
+      numPairs,
+    );
+  } else {
+    // Use the existing hyper-optimized sequential (known to work well)
+    batch_dot_product_hyper_optimized(
+      aPtr,
+      bPtr,
+      resultsPtr,
+      vectorLength,
+      numPairs,
+    );
   }
+
+  // Copy results (memory pool persists for reuse)
+  return new Float32Array(resultsView);
 }
 
 /**
@@ -180,6 +209,71 @@ export async function batchDotProductStreaming(
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
   }
+
+  return results;
+}
+
+/**
+ * C-style direct implementation matching the reference code
+ * Uses malloc/free per call for maximum simplicity and performance
+ */
+export function batchDotProductCStyle(
+  vectorsA: Float32Array,
+  vectorsB: Float32Array,
+  vectorLength: number,
+  numPairs: number,
+): Float32Array {
+  if (!wasmInitialized) {
+    throw new Error("WASM not initialized. Call initWasm() first.");
+  }
+
+  // Validate input
+  const expectedLength = numPairs * vectorLength;
+  if (
+    vectorsA.length !== expectedLength ||
+    vectorsB.length !== expectedLength
+  ) {
+    throw new Error(
+      `Expected ${expectedLength} elements, got A:${vectorsA.length}, B:${vectorsB.length}`,
+    );
+  }
+
+  // Direct malloc like the C code
+  const memory = wasmInstance.memory;
+  const malloc = wasmInstance.__wbindgen_malloc;
+  const free = wasmInstance.__wbindgen_free;
+
+  const vectorsASize = vectorsA.length * 4;
+  const vectorsBSize = vectorsB.length * 4;
+  const resultsSize = numPairs * 4;
+
+  const aPtrValue = malloc(vectorsASize, 4);
+  const bPtrValue = malloc(vectorsBSize, 4);
+  const resultsPtrValue = malloc(resultsSize, 4);
+
+  // Direct memory copy
+  const aView = new Float32Array(memory.buffer, aPtrValue, vectorsA.length);
+  const bView = new Float32Array(memory.buffer, bPtrValue, vectorsB.length);
+  const resultsView = new Float32Array(memory.buffer, resultsPtrValue, numPairs);
+
+  aView.set(vectorsA);
+  bView.set(vectorsB);
+
+  // Call the C-style implementation
+  batch_dot_product_c_style(
+    aPtrValue,
+    bPtrValue,
+    resultsPtrValue,
+    vectorLength,
+    numPairs,
+  );
+
+  // Copy results and free immediately
+  const results = new Float32Array(resultsView);
+  
+  free(aPtrValue, vectorsASize, 4);
+  free(bPtrValue, vectorsBSize, 4);
+  free(resultsPtrValue, resultsSize, 4);
 
   return results;
 }
