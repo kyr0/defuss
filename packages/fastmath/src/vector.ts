@@ -546,7 +546,7 @@ export async function benchmarkUltimateExternalCall(
 
   console.log(`📤 Generated JS workload: ${totalElements} elements`);
 
-  // STEP 2: Call the working external function (zero-copy, proper memory management)
+  // STEP 2: Direct call to WASM for optimal performance
   const start = performance.now();
   const result = batch_dot_product_ultimate_external(
     vectorsA,
@@ -556,7 +556,6 @@ export async function benchmarkUltimateExternalCall(
   );
   const end = performance.now();
 
-  // STEP 3: Extract results
   if (result.length < 2 + numPairs) {
     throw new Error(`Unexpected result length: ${result.length}, expected at least ${2 + numPairs}`);
   }
@@ -568,9 +567,9 @@ export async function benchmarkUltimateExternalCall(
     results[i] = result[2 + i] as number;
   }
 
-  console.log(`✅ WASM call completed! Total: ${totalTime.toFixed(4)}ms, Execution: ${executionTime.toFixed(4)}ms`);
+  console.log(`✅ dot_product call completed! Total: ${totalTime.toFixed(4)}ms, Execution: ${executionTime.toFixed(4)}ms`);
 
-  // STEP 4: Verify results against native JS
+  // STEP 3: Verify results against native JS
   const firstVectorA = vectorsA.subarray(0, vectorLength);
   const firstVectorB = vectorsB.subarray(0, vectorLength);
   const lastStart = (numPairs - 1) * vectorLength;
@@ -589,7 +588,7 @@ export async function benchmarkUltimateExternalCall(
   console.log(`🔍 Verification - First: ${firstPairMatch ? '✅' : '❌'} (${firstExpected.toFixed(3)} vs ${firstActual.toFixed(3)})`);
   console.log(`🔍 Verification - Last: ${lastPairMatch ? '✅' : '❌'} (${lastExpected.toFixed(3)} vs ${lastActual.toFixed(3)})`);
 
-  // STEP 5: Calculate performance metrics
+  // STEP 4: Calculate performance metrics
   const realTotalTime = end - start;
   const totalFlops = numPairs * vectorLength * 2;
   const gflops = totalFlops / (realTotalTime * 1_000_000);
@@ -897,3 +896,4 @@ export function dot_product(
     throw new Error("Chunked processing not supported in dot_product function. Use smaller arrays or benchmarkUltimateExternalCallSmart for large workloads.");
   }
 }
+
