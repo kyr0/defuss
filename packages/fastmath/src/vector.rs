@@ -593,11 +593,19 @@ pub fn test_ultimate_performance(
     let total_flops = (num_pairs * vector_length * 2) as f64;
     let gflops = total_flops / (total_time * 1_000_000.0);
     
+    // Capture the sample result before dropping vectors
+    let sample_result = results[0] as f64;
+    
+    // Explicitly drop the large vectors to free memory immediately
+    drop(a_data);
+    drop(b_data);
+    drop(results);
+    
     // Return comprehensive performance statistics
     let result_array = js_sys::Array::new();
     result_array.push(&wasm_bindgen::JsValue::from_f64(total_time));        // [0] Total time (ms)
     result_array.push(&wasm_bindgen::JsValue::from_f64(gflops));            // [1] GFLOPS performance
-    result_array.push(&wasm_bindgen::JsValue::from_f64(results[0] as f64)); // [2] Sample result for verification
+    result_array.push(&wasm_bindgen::JsValue::from_f64(sample_result));     // [2] Sample result for verification
     result_array.push(&wasm_bindgen::JsValue::from_f64(execution_time));    // [3] Execution time (ms)
     
     result_array

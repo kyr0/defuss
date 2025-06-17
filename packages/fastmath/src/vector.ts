@@ -3,7 +3,20 @@ import init, { initThreadPool, batch_dot_product_ultimate, test_ultimate_perform
 /**
  * ULTIMATE Vector Performance Implementation
  * 
- * This is the TypeScript interface for the ULTIMATE (New) strategy that achieved:
+ * This is the   // Check memory requirements before calling WASM
+  const memoryMB = (numPairs * vectorLength * 2 * 4) / (1024 * 1024);
+  if (memoryMB > 4000) { // Updated to 4GB limit
+    throw new Error(`Memory requirement (${memoryMB.toFixed(1)}MB) exceeds WASM limit (4GB)`);
+  }
+
+  let results: any;
+  try {
+    // Call the WASM test function which generates its own test data
+    results = test_ultimate_performance(vectorLength, numPairs);
+  } finally {
+    // Force cleanup after WASM call to prevent memory leaks
+    await cleanupWasmMemory();
+  }pt interface for the ULTIMATE (New) strategy that achieved:
  * - 22.63 GFLOPS (9x improvement over baseline 2.5 GFLOPS)
  * - 9.05ms execution time (74% faster than 35ms sequential target)
  * - Intelligent workload adaptation with 5 execution strategies
@@ -352,5 +365,45 @@ export async function compareUltimatePerformance(
     baseline,
     improvement: { speedup, gflopsGain },
     analysis,
+  };
+}
+
+/**
+ * Get current WASM memory usage statistics
+ */
+export function getWasmMemoryStats(): {
+  used: number;
+  total: number;
+  usagePercent: number;
+} {
+  if (!wasmInstance || !wasmInstance.memory) {
+    return { used: 0, total: 0, usagePercent: 0 };
+  }
+  
+  const totalBytes = wasmInstance.memory.buffer.byteLength;
+  // Estimate used memory - this is approximate since WASM doesn't expose actual usage
+  const totalMB = totalBytes / (1024 * 1024);
+  
+  return {
+    used: totalMB, // Approximate - we'll treat total allocated as used for safety
+    total: totalMB,
+    usagePercent: 100, // Conservative estimate
+  };
+}
+
+/**
+ * Get memory usage information from WASM
+ */
+export function getWasmMemoryInfo(): { usedMB: number; totalMB: number } {
+  if (!wasmInstance) {
+    return { usedMB: 0, totalMB: 0 };
+  }
+  
+  const totalBytes = wasmInstance.memory.buffer.byteLength;
+  const totalMB = totalBytes / (1024 * 1024);
+  
+  return {
+    usedMB: totalMB, // For WASM, allocated = used
+    totalMB
   };
 }

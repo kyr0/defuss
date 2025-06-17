@@ -6,7 +6,8 @@ import { beforeAll, describe, it } from "vitest";
 import {
   initWasm,
   compareUltimatePerformance,
-  UltimatePerformanceMetrics
+  UltimatePerformanceMetrics,
+  getWasmMemoryInfo
 } from "./vector.js";
 
 interface BenchmarkResult {
@@ -44,16 +45,24 @@ describe("ultra", () => {
 
     for (const config of testConfigs) {
       const { vectorLength, numPairs, name } = config;
-      console.log(`\n📊 Running benchmarks for: ${name} (${vectorLength}x${numPairs})`) 
+      const memoryMB = (vectorLength * numPairs * 2 * 4) / (1024 * 1024);
       
+      console.log(`\n📊 Running benchmarks for: ${name} (${vectorLength}x${numPairs})`) 
+      console.log(`💾 Estimated memory: ${memoryMB.toFixed(1)}MB`);
+      
+      // Check memory before running
+      const memStats = getWasmMemoryInfo();
+      console.log(`🔍 WASM memory stats:`, memStats);
+
       try {
         const results: BenchmarkResult = await compareUltimatePerformance(vectorLength, numPairs);
         console.log(`✅ Completed: ${name}`);
         console.log("🚀 Benchmark Results:", results);
+
+        
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.log(`⚠️ Skipped: ${name} - ${errorMessage}`);
-        // Continue with other tests instead of failing completely
       }
     }
 
