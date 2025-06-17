@@ -6,7 +6,6 @@ import { beforeAll, describe, it } from "vitest";
 import {
   initWasm,
   compareUltimatePerformance,
-  UltimatePerformanceMetrics,
   getWasmMemoryInfo
 } from "./vector.js";
 
@@ -60,6 +59,5 @@ describe("ultra", () => {
         console.log(`⚠️ Skipped: ${name} - ${errorMessage}`);
       }
     }
-
   });
 });

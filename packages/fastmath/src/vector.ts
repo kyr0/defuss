@@ -3,28 +3,6 @@ import init, { initThreadPool, batch_dot_product_ultimate, test_ultimate_perform
 /**
  * ULTIMATE Vector Performance Implementation
  * 
- * This is the   // Check memory requirements before calling WASM
-  const memoryMB = (numPairs * vectorLength * 2 * 4) / (1024 * 1024);
-  if (memoryMB > 4000) { // Updated to 4GB limit
-    throw new Error(`Memory requirement (${memoryMB.toFixed(1)}MB) exceeds WASM limit (4GB)`);
-  }
-
-  let results: any;
-  try {
-    // Call the WASM test function which generates its own test data
-    results = test_ultimate_performance(vectorLength, numPairs);
-  } finally {
-    // Force cleanup after WASM call to prevent memory leaks
-    await cleanupWasmMemory();
-  }pt interface for the ULTIMATE (New) strategy that achieved:
- * - 22.63 GFLOPS (9x improvement over baseline 2.5 GFLOPS)
- * - 9.05ms execution time (74% faster than 35ms sequential target)
- * - Intelligent workload adaptation with 5 execution strategies
- * - Advanced SIMD with 32-element processing and 8 accumulators
- * - Cache-friendly blocking and memory prefetching
- * - Zero-copy operations with minimal allocation overhead
- * 
- * Key Features:
  * 1. **Intelligent Strategy Selection**: Automatically chooses optimal approach
  * 2. **Advanced SIMD Optimization**: 32-element processing with 8 accumulators
  * 3. **Cache-Friendly Design**: Optimized blocking for L1/L2 cache
@@ -89,7 +67,7 @@ export enum ExecutionStrategy {
  * This is the single function that does it all - automatically chooses the best
  * strategy (sequential vs parallel) based on workload characteristics.
  * 
- * Performance achieved: 22.63 GFLOPS (9x improvement)
+ * Performance achieved: 22.63 GFLOPS
  * 
  * @param vectorsA First set of vectors (flattened)
  * @param vectorsB Second set of vectors (flattened) 
