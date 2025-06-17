@@ -1,6 +1,11 @@
 use wasm_bindgen::prelude::*;
 use rayon::prelude::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
+
+/// Global memory pool for reusing allocations - PRE-ALLOCATED BUFFER
+static MEMORY_POOL: Mutex<Option<Vec<f32>>> = Mutex::new(None);
+const MAX_POOL_SIZE: usize = 250_000_000; // 250M f32s = 1GB max pool
 
 /// Static configuration for performance tuning
 const CACHE_LINE_SIZE: usize = 64;
@@ -541,31 +546,46 @@ pub fn test_ultimate_performance(
         return result_array;
     }
     
-    // Generate test data with predictable pattern for verification
-    let mut a_data = Vec::with_capacity(total_elements);
-    let mut b_data = Vec::with_capacity(total_elements);
-    
-    // Use safer allocation approach
-    if a_data.try_reserve_exact(total_elements).is_err() || 
-       b_data.try_reserve_exact(total_elements).is_err() {
-        // Memory allocation failed
+    // Check if we can fit this workload in our pre-allocated pool
+    let required_elements = total_elements * 2 + num_pairs; // a_data + b_data + results
+    if required_elements > MAX_POOL_SIZE {
+        // Workload too large for pool - return error to avoid memory issues
         let result_array = js_sys::Array::new();
-        result_array.push(&wasm_bindgen::JsValue::from_f64(-2.0));  // Allocation error
+        result_array.push(&wasm_bindgen::JsValue::from_f64(-3.0));  // Pool overflow error
         result_array.push(&wasm_bindgen::JsValue::from_f64(0.0));
         result_array.push(&wasm_bindgen::JsValue::from_f64(0.0));
-        result_array.push(&wasm_bindgen::JsValue::from_f64(-2.0));
+        result_array.push(&wasm_bindgen::JsValue::from_f64(-3.0));
         return result_array;
     }
     
-    // Initialize the vectors
-    a_data.resize(total_elements, 0.0f32);
-    b_data.resize(total_elements, 0.0f32);
-    let mut results = vec![0.0f32; num_pairs];
+    // Get or create the memory pool buffer
+    let mut pool_buffer = {
+        let mut pool = MEMORY_POOL.lock().unwrap();
+        if let Some(mut buffer) = pool.take() {
+            // Ensure buffer is large enough
+            if buffer.len() < MAX_POOL_SIZE {
+                buffer.resize(MAX_POOL_SIZE, 0.0);
+            }
+            buffer
+        } else {
+            // Create initial buffer
+            vec![0.0f32; MAX_POOL_SIZE]
+        }
+    };
     
-    // Fill with test pattern that creates measurable results
+    // Slice the buffer for our data (zero-copy partitioning)
+    let (a_slice, rest) = pool_buffer.split_at_mut(total_elements);
+    let (b_slice, result_slice) = rest.split_at_mut(total_elements);
+    
+    // Fill slices with test pattern that creates measurable results
     for i in 0..total_elements {
-        a_data[i] = (i as f32 + 1.0) * 0.1;
-        b_data[i] = (i as f32 + 1.0) * 0.2;
+        a_slice[i] = (i as f32 + 1.0) * 0.1;
+        b_slice[i] = (i as f32 + 1.0) * 0.2;
+    }
+    
+    // Initialize results slice
+    for i in 0..num_pairs {
+        result_slice[i] = 0.0;
     }
     
     // Benchmark the ultimate implementation
@@ -576,9 +596,9 @@ pub fn test_ultimate_performance(
         .now();
     
     let execution_time = batch_dot_product_ultimate(
-        a_data.as_ptr(),
-        b_data.as_ptr(),
-        results.as_mut_ptr(),
+        a_slice.as_ptr(),
+        b_slice.as_ptr(),
+        result_slice.as_mut_ptr(),
         vector_length,
         num_pairs
     );
@@ -593,13 +613,14 @@ pub fn test_ultimate_performance(
     let total_flops = (num_pairs * vector_length * 2) as f64;
     let gflops = total_flops / (total_time * 1_000_000.0);
     
-    // Capture the sample result before dropping vectors
-    let sample_result = results[0] as f64;
+    // Capture the sample result before returning buffer to pool
+    let sample_result = result_slice[0] as f64;
     
-    // Explicitly drop the large vectors to free memory immediately
-    drop(a_data);
-    drop(b_data);
-    drop(results);
+    // Return buffer to memory pool for reuse
+    {
+        let mut pool = MEMORY_POOL.lock().unwrap();
+        *pool = Some(pool_buffer);
+    }
     
     // Return comprehensive performance statistics
     let result_array = js_sys::Array::new();

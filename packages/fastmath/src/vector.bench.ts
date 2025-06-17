@@ -58,6 +58,18 @@ describe("ultra", () => {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.log(`⚠️ Skipped: ${name} - ${errorMessage}`);
       }
+
+      // Let the JavaScript engine breathe and perform natural GC
+      console.log(`🧹 Letting engine breathe...`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const memStatsAfter = getWasmMemoryInfo();
+      console.log(`📊 WASM memory after breathing: ${memStatsAfter.usedMB} MB`);
+      
+      // If WASM memory is over 1GB, warn about potential memory pressure
+      if (memStatsAfter.usedMB > 1024) {
+        console.log(`⚠️  High WASM memory usage detected (${memStatsAfter.usedMB}MB). Future large tests may fail.`);
+      }
     }
   });
 });

@@ -193,6 +193,8 @@ export async function testUltimatePerformance(
       throw new Error(`Memory limit exceeded (${memoryMB.toFixed(1)}MB > 3.5GB)`);
     } else if (totalTime === -2) {
       throw new Error("Memory allocation failed in WASM");
+    } else if (totalTime === -3) {
+      throw new Error(`Workload too large for memory pool (${memoryMB.toFixed(1)}MB > 1GB pool limit)`);
     } else {
       throw new Error(`Unknown error in WASM (code: ${totalTime})`);
     }
