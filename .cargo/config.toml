@@ -1,5 +1,6 @@
 [target.wasm32-unknown-unknown]
 rustflags = [
   "-C", "target-feature=+bulk-memory",
-  "-C", "target-feature=+mutable-globals"
+  "-C", "target-feature=+mutable-globals",
+  "-C", "link-arg=--max-memory=268435456"  # 4GB = 4 * 1024 * 1024 * 1024 bytes
 ]
