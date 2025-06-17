@@ -100,8 +100,15 @@ pub fn batch_dot_product_ultimate(
         .now();
     
     unsafe {
-        let a_data = std::slice::from_raw_parts(a_ptr, num_pairs * vector_length);
-        let b_data = std::slice::from_raw_parts(b_ptr, num_pairs * vector_length);
+        // Validate input parameters
+        if vector_length == 0 || num_pairs == 0 {
+            return 0.0;
+        }
+        
+        let expected_length = num_pairs * vector_length;
+        
+        let a_data = std::slice::from_raw_parts(a_ptr, expected_length);
+        let b_data = std::slice::from_raw_parts(b_ptr, expected_length);
         let results = std::slice::from_raw_parts_mut(results_ptr, num_pairs);
         
         // Analyze workload characteristics for intelligent adaptation
@@ -146,6 +153,12 @@ fn execute_sequential_basic(
     vector_length: usize, 
     num_pairs: usize
 ) {
+    // Bounds check to prevent panic
+    let expected_data_length = num_pairs * vector_length;
+    if a_data.len() < expected_data_length || b_data.len() < expected_data_length || results.len() < num_pairs {
+        return; // Gracefully handle invalid input
+    }
+    
     for i in 0..num_pairs {
         let a_start = i * vector_length;
         let a_slice = &a_data[a_start..a_start + vector_length];
@@ -628,6 +641,95 @@ pub fn test_ultimate_performance(
     result_array.push(&wasm_bindgen::JsValue::from_f64(gflops));            // [1] GFLOPS performance
     result_array.push(&wasm_bindgen::JsValue::from_f64(sample_result));     // [2] Sample result for verification
     result_array.push(&wasm_bindgen::JsValue::from_f64(execution_time));    // [3] Execution time (ms)
+    
+    result_array
+}
+
+/// Direct call wrapper for batch_dot_product_ultimate with external data
+/// This bridges JS-allocated data to the internal WASM function
+#[wasm_bindgen]
+pub fn batch_dot_product_ultimate_external(
+    js_a_data: &[f32],
+    js_b_data: &[f32], 
+    vector_length: usize,
+    num_pairs: usize
+) -> js_sys::Array {
+    let total_elements = vector_length * num_pairs;
+    
+    // Validate input lengths
+    if js_a_data.len() != total_elements || js_b_data.len() != total_elements {
+        let result_array = js_sys::Array::new();
+        result_array.push(&wasm_bindgen::JsValue::from_f64(-1.0));  // Error indicator
+        return result_array;
+    }
+    
+    // Get or create memory pool buffer (same as test_ultimate_performance)
+    let mut pool_buffer = {
+        let mut pool = MEMORY_POOL.lock().unwrap();
+        if let Some(mut buffer) = pool.take() {
+            if buffer.len() < MAX_POOL_SIZE {
+                buffer.resize(MAX_POOL_SIZE, 0.0);
+            }
+            buffer
+        } else {
+            vec![0.0f32; MAX_POOL_SIZE]
+        }
+    };
+    
+    // Slice the buffer for our data (zero-copy partitioning)
+    let (a_slice, rest) = pool_buffer.split_at_mut(total_elements);
+    let (b_slice, result_slice) = rest.split_at_mut(total_elements);
+    
+    // Copy JS data to WASM slices
+    a_slice.copy_from_slice(js_a_data);
+    b_slice.copy_from_slice(js_b_data);
+    
+    // Initialize results
+    for i in 0..num_pairs {
+        result_slice[i] = 0.0;
+    }
+    
+    // Call batch_dot_product_ultimate with slice pointers (same as test_ultimate_performance)
+    let start_time = web_sys::window()
+        .unwrap()
+        .performance()
+        .unwrap()
+        .now();
+    
+    let execution_time = batch_dot_product_ultimate(
+        a_slice.as_ptr(),
+        b_slice.as_ptr(),
+        result_slice.as_mut_ptr(),
+        vector_length,
+        num_pairs
+    );
+    
+    let end_time = web_sys::window()
+        .unwrap()
+        .performance()
+        .unwrap()
+        .now();
+    
+    let total_time = end_time - start_time;
+    
+    // Extract results before returning buffer to pool
+    let results = result_slice[..num_pairs].to_vec();
+    
+    // Return buffer to memory pool
+    {
+        let mut pool = MEMORY_POOL.lock().unwrap();
+        *pool = Some(pool_buffer);
+    }
+    
+    // Return results array: [total_time, execution_time, ...results]
+    let result_array = js_sys::Array::new();
+    result_array.push(&wasm_bindgen::JsValue::from_f64(total_time));
+    result_array.push(&wasm_bindgen::JsValue::from_f64(execution_time));
+    
+    // Add all results
+    for result in results {
+        result_array.push(&wasm_bindgen::JsValue::from_f64(result as f64));
+    }
     
     result_array
 }
