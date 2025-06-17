@@ -11,16 +11,9 @@ import {
 } from "./vector.js";
 
 interface BenchmarkResult {
-    ultimate: UltimatePerformanceMetrics;
-    baseline: {
-        time: number;
-        gflops: number;
-    };
-    improvement: {
-        speedup: number;
-        gflopsGain: number;
-    };
-    analysis: string[];
+    totalTime: number;
+    memoryEfficiency: number;
+    gflops: number;
 }
 
 describe("ultra", () => {
@@ -52,12 +45,14 @@ describe("ultra", () => {
       
       // Check memory before running
       const memStats = getWasmMemoryInfo();
-      console.log(`🔍 WASM memory stats:`, memStats);
+      console.log(`🔍 WASM memory used:`, memStats.usedMB, "MB");
 
       try {
         const results: BenchmarkResult = await compareUltimatePerformance(vectorLength, numPairs);
         console.log(`✅ Completed: ${name}`);
-        console.log("🚀 Benchmark Results:", results);
+        console.log(`⏱️  Total time: ${results.totalTime.toFixed(2)}ms`);
+        console.log(` Memory efficiency: ${results.memoryEfficiency.toFixed(3)} GFLOPS/MB`);
+        console.log(`⚡ Performance: ${results.gflops.toFixed(2)} GFLOPS`);
 
         
       } catch (error) {

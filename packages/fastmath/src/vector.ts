@@ -58,10 +58,6 @@ export interface UltimatePerformanceMetrics {
   sampleResult: number;      // Sample result for verification
   strategy?: string;         // Strategy used (inferred from performance)
   memoryEfficiency: number;  // GFLOPS per MB
-  targetAchievement: {
-    sequential: boolean;     // ≤35ms target achieved
-    parallel: boolean;       // ≤7ms target achieved
-  };
 }
 
 /**
@@ -170,11 +166,7 @@ export async function batchDotProductUltimate(
       gflops,
       sampleResult: results[0],
       strategy,
-      memoryEfficiency,
-      targetAchievement: {
-        sequential: totalTime <= 35, // Sequential target ≤35ms
-        parallel: totalTime <= 7,    // Parallel target ≤7ms
-      },
+      memoryEfficiency
     };
 
     return { results, metrics };
@@ -237,11 +229,7 @@ export async function testUltimatePerformance(
     gflops,
     sampleResult,
     strategy,
-    memoryEfficiency,
-    targetAchievement: {
-      sequential: totalTime <= 35,
-      parallel: totalTime <= 7,
-    },
+    memoryEfficiency
   };
 }
 
@@ -304,67 +292,27 @@ function inferStrategy(vectorLength: number, numPairs: number, gflops: number): 
 }
 
 /**
- * Compare ultimate performance against baseline implementations
+ * Test ultimate performance and return simplified results
  * 
  * @param vectorLength Length of each vector
  * @param numPairs Number of vector pairs
- * @returns Comprehensive comparison results
+ * @returns Simplified performance results
  */
 export async function compareUltimatePerformance(
   vectorLength: number,
   numPairs: number,
 ): Promise<{
-  ultimate: UltimatePerformanceMetrics;
-  baseline: { time: number; gflops: number };
-  improvement: { speedup: number; gflopsGain: number };
-  analysis: string[];
+  totalTime: number;
+  memoryEfficiency: number;
+  gflops: number;
 }> {
   // Test ultimate implementation
   const ultimate = await testUltimatePerformance(vectorLength, numPairs);
 
-  // Simulate baseline performance (2.5 GFLOPS as per original results)
-  const baselineGflops = 2.5;
-  const totalFlops = numPairs * vectorLength * 2;
-  const baselineTime = totalFlops / (baselineGflops * 1_000_000);
-
-  const baseline = {
-    time: baselineTime,
-    gflops: baselineGflops,
-  };
-
-  // Calculate improvements
-  const speedup = (baselineTime / ultimate.totalTime - 1) * 100;
-  const gflopsGain = (ultimate.gflops / baselineGflops - 1) * 100;
-
-  // Generate analysis
-  const analysis: string[] = [];
-  
-  if (ultimate.targetAchievement.parallel) {
-    analysis.push("🎉 EXCELLENT: Achieved aggressive 7ms parallel target!");
-  } else if (ultimate.targetAchievement.sequential) {
-    analysis.push("✅ GOOD: Achieved 35ms sequential target!");
-  } else {
-    analysis.push("⚠️ NEEDS WORK: Performance targets not met");
-  }
-
-  analysis.push(`🚀 ${speedup.toFixed(1)}% speedup over baseline`);
-  analysis.push(`⚡ ${gflopsGain.toFixed(1)}% GFLOPS improvement`);
-  analysis.push(`🧠 Strategy: ${ultimate.strategy}`);
-  analysis.push(`💾 Memory efficiency: ${ultimate.memoryEfficiency.toFixed(3)} GFLOPS/MB`);
-
-  if (ultimate.gflops > 20) {
-    analysis.push("🏆 OUTSTANDING: Achieved >20 GFLOPS performance!");
-  } else if (ultimate.gflops > 10) {
-    analysis.push("🥇 EXCELLENT: >10 GFLOPS achieved");
-  } else if (ultimate.gflops > 5) {
-    analysis.push("🥈 GOOD: >5 GFLOPS achieved");
-  }
-
   return {
-    ultimate,
-    baseline,
-    improvement: { speedup, gflopsGain },
-    analysis,
+    totalTime: ultimate.totalTime,
+    memoryEfficiency: ultimate.memoryEfficiency,
+    gflops: ultimate.gflops,
   };
 }
 
