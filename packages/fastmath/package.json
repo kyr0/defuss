@@ -10,7 +10,7 @@
     "build": "wasm-pack build --target web --out-dir pkg",
     "postbuild": "pnpm decompile && pkgroll",
     "clean": "rm -rf pkg",
-    "decompile": "wasm2wat --enable-threads pkg/defuss_fastmath_bg.wasm -o pkg/defuss_fastmath_bg.wast",
+    "decompile": "wasm2wat --generate-names --verbose --enable-threads pkg/defuss_fastmath_bg.wasm -o pkg/defuss_fastmath_bg.wast > pkg/defuss_fastmath_bg.log 2>&1",
     "pretest": "pnpm build",
     "test": "vitest run",
     "prebench": "pnpm test",
