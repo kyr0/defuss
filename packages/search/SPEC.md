@@ -51,7 +51,7 @@ The engine exploits modern multicore processors through a dual-mode approach:
 
 Durability is handled by an atomic shadow-manifest; everything else is immutable files, so no WAL or fsync gymnastics are needed in the browser.
 
-For >100k docs, spin up another independent index instance and fuse results client-side.
+**Single-Index Architecture**: For ≤100k documents, the engine uses a single embedded index without sharding complexity. Beyond 100k documents, spin up another independent index instance and fuse results client-side using rank fusion (RRF).
 
 ## Rust Toolchain & WebAssembly Build Optimizations
 
@@ -255,52 +255,72 @@ impl Document {
 
 This API provides the flexibility to build any kind of attribute without having to think too much about the errors and then handle the validation when it gets inserted. The schema being fixed, this kind of errors are covered by the users tests, prioritizing usability.
 
-With the schema and document structure defined, here's how all the pieces fit together:
+With the schema and document structure defined, here's how all the pieces fit together in the current single-index architecture:
 
 ```schema_ascii
-+-------------+     +----------------+
-| Document    |     | Collection     |
-+-------------+     +----------------+
-| id: String  |     | entries_by_idx |
-| attributes  +---->| entries_by_name|
-+-------------+     | sharding       |
-                    +----------------+
++-------------+     +-------------------+
+| Document    |     | EmbeddedCollection|
++-------------+     +-------------------+
+| id: String  |     | entries_by_index  |
+| attributes  +---->| entries_by_name   |
++-------------+     | attributes_by_name|
+                    | attribute_kinds   |
+                    | (≤100k docs)     |
+                    +-------------------+
                            |
                            v
         +----------------------------------+
-        |           Indexes                |
+        |        HybridIndex               |
         |----------------------------------|
-        |                                  |
-    +--------+   +---------+   +--------+  |
-    |Boolean |   |Integer  |   |Text    |  |
-    |Index   |   |Index    |   |Index   |  |
-    +--------+   +---------+   +--------+  |
-        |            |            |        |
-        +------------+------------+--------+
+        | Single Index (No Sharding)      |
+        +----------------------------------+
+                           |
+                           v
+    +--------+   +---------+   +--------+   +---------+
+    |Boolean |   |Integer  |   |Tag     |   |Text     |
+    |Index   |   |Index    |   |Index   |   |Index    |
+    |(Bitset)|   |(BTreeMap)| |(HashMap)|  |(DocLists)|
+    +--------+   +---------+   +--------+   +---------+
 ```
 
-Key takeaways:
+Key architecture principles:
 
-- Documents have a fixed schema with typed attributes
-- Supported types: Boolean, Integer, Tag, Text
-- Documents can have multiple values for an attribute
-- Sharding is based on an integer attribute
-- Schema validation happens at document insertion
+- **Single Index Design**: No sharding, hard-capped at 100k documents
+- **Embedded Collection**: Document and attribute mappings in one structure
+- **Dynamic Schema**: Attributes registered lazily with type inference (≤256 attributes)
+- **Specialized Indexes**: Each type optimized for its use case
+- **Flattened Document Lists**: Cache-friendly Vec<Document> instead of nested HashMaps
+- **Optional Vector Index**: SIMD-optimized brute-force for ≤100k documents
 
 # Destructuring The Documents
-
 
 The document structure established, the indexes form the core of the search system.
 
 The indexes contain the information required to find a document based on the query parameters. The index content remains small when serialized to maximize the volume of indexed data.
 
-The system creates a link between the data and the document identifier: from a given term (boolean, integer, tag or text), which document contains that term, and how many times. A basic data structure looks like this.
+The current architecture uses **flattened document lists** instead of nested hash maps. Each term maps directly to a sorted vector of document entries containing all necessary information:
 
 ```rust
-type Index = Map<Term, Map<DocumentIdentifier, Count>>;
-````
+/// Current flattened index structure
+type Index = Map<Term, Vec<Document>>;
 
-This pattern is reproduced across every index and term. The DocumentIdentifier, as a String, creates a cost of size_of(DocumentIdentifier) equal to the string size (plus some bytes depending on whether String or Box<str> is used). This approach doesn't scale well for large documents containing many terms and big identifiers, requiring a different approach.
+/// Flattened document entry with all indexing information
+struct Document {
+    doc: EntryIndex,      // u32 document identifier
+    attr: AttributeIndex, // u8 attribute identifier  
+    val: ValueIndex,      // u8 value position
+    impact: f32,          // Pre-computed BM25FS+ score
+}
+```
+
+This replaces the older nested structure `Map<Term, Map<DocumentIdentifier, Count>>` and provides several benefits:
+
+- **Better Cache Locality**: Contiguous memory layout for document lists
+- **Reduced Memory Overhead**: Eliminates nested HashMap allocations
+- **Faster Binary Search**: Direct access to sorted document vectors
+- **Compact Storage**: Numeric indexes (u32/u8) instead of string identifiers
+
+The DocumentIdentifier-as-String approach created significant memory overhead proportional to string length. The new numeric indirection through EmbeddedCollection eliminates this cost while maintaining fast bidirectional lookups.
 
 ## Strong Type Safety
 
@@ -315,7 +335,7 @@ struct DocumentId(Arc<str>);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]  
 struct AttributeName(Arc<str>);
 
-/// Numeric index for documents within a shard
+/// Numeric index for documents within the collection
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct EntryIndex(u32);
 
@@ -334,52 +354,53 @@ struct Position(u32);
 /// Index of token within processed text
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct TokenIndex(u16);
-
-/// Sharding value for document partitioning
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-struct ShardingValue(u64);
 ```
 
-This approach prevents mixing up different types of indexes and makes the code more self-documenting.
+This approach prevents mixing up different types of indexes and makes the code more self-documenting. The single-index architecture eliminates the need for sharding-related types.
 
-## The Collection File
+## The EmbeddedCollection Structure
 
-
-Introducing, for each shard, a Collection file that contains a list of all document identifiers and a u32 to identify them, allows each index to use that u32 to identify the document.
-
-```rust
-type EntryIndex = u32;
-/// the collection file in each shard
-type Collection = Map<EntryIndex, DocumentIdentifier>;
-/// for each index type
-type Index = Map<Term, Map<EntryIndex, Count>>;
-```
-
-This reduces the cost significantly.
-
-To shard the collections and indexes, the attribute used for sharding must be stored in close proximity. Using the index to find the sharding value of every document proves insufficiently performant given the index structure.
-
-Persisting that attribute in the collection makes it easier to access.
+The current architecture uses a single embedded collection that manages all documents and attributes without sharding:
 
 ```rust
-struct Collection {
-    entries: HashMap<EntryIndex, DocumentId>,
-    sharding: BTreeMap<ShardingValue, HashSet<EntryIndex>>,
-}
-```
-
-That way, when one of our indexes reaches a critical size, we can just split in half the shard by taking all the entries based on the sharding BTreeMap. The BTreeMap, being sorted by design, provides the perfect API for that.
-
-Document deletion from the index requires efficient mapping from DocumentId to EntryIndex. This introduces a reverse map:
-
-```rust
-struct Collection {
+/// Single embedded collection for ≤100k documents
+struct EmbeddedCollection {
+    /// Document mappings (no sharding required)
     entries_by_index: HashMap<EntryIndex, DocumentId>,
     entries_by_name: HashMap<DocumentId, EntryIndex>,
+    /// Dynamic attribute registration (≤256 attributes)
+    attributes_by_name: HashMap<Box<str>, AttributeIndex>,
+    attributes_by_index: HashMap<AttributeIndex, Box<str>>,
+    attribute_kinds: HashMap<AttributeIndex, Kind>,
+    /// Document count with hard limit
+    document_count: usize,
+    max_documents: usize, // = 100_000
 }
 ```
 
-This improves the performance for getting an entry by name, but duplicates all the document identifiers on disk. We can do better by doing that duplication when serializing or deserializing our collection.
+This design eliminates the complexity of sharding while maintaining efficiency:
+
+- **No Sharding Overhead**: Single contiguous document space (0-100k)
+- **Bidirectional Mappings**: Fast lookups in both directions for documents and attributes
+- **Dynamic Schema**: Attributes registered lazily with type inference
+- **Hard Capacity Limits**: 100k documents, 256 attributes max
+- **Memory Efficient**: Numeric indexes (u32/u8) minimize storage overhead
+
+The basic index structure now uses flattened document lists:
+
+```rust
+/// Current flattened index architecture
+type Index = Map<Term, Vec<Document>>;
+/// Where Document contains all indexing information
+struct Document {
+    doc: EntryIndex,      // u32 document identifier
+    attr: AttributeIndex, // u8 attribute identifier  
+    val: ValueIndex,      // u8 value position
+    impact: f32,          // Pre-computed BM25FS+ score
+}
+```
+
+This approach provides better cache locality and eliminates nested HashMap overhead compared to the original `Map<Term, Map<DocumentId, Count>>` structure.
 
 ```rust
 /// Representation on disk of an entry
@@ -816,49 +837,31 @@ impl SearchEngine {
         }
     }
 }
-    {
-        for attempt in 0..3 {
-            match self.inner.try_write() {
-                Ok(mut shard) => {
-                    let (result, size_delta) = f(&mut *shard)?;
-                    if size_delta != 0 {
-                        if let Ok(mut tracker) = self.size_tracker.try_write() {
-                            tracker.add_delta(size_delta);
-                        }
-                    }
-                    return Ok(result);
-                }
-                Err(_) if attempt < 2 => {
-                    tokio::time::sleep(Duration::from_millis(1 << attempt)).await;
-                }
-                Err(_) => return Err(ShardError::ConcurrencyTimeout),
-            }
-        }
-        unreachable!()
-    }
-}
 
-Before we dive into each index type, here's how the hierarchical structure works for our indexes:
+Before we dive into each index type, here's how the current flattened document lists architecture works:
 
 ```schema_ascii
-Term Index
-+---------+
-|'rust'   |--+
-|'fast'   |  |
-|'search' |  |
-+---------+  |
-             v
-        Attribute Index
-        +-------------+
-        |'content'    |--+
-        |'title'      |  |
-        +-------------+  |
-                         v
-                    Document Index
-                    +------------+
-                    |Doc1: [0,5] |
-                    |Doc2: [3]   |
-                    +------------+
+Flattened Index Architecture (≤100k documents)
++------------------------------------------------+
+|                                                |
+|  +-----------+    +-----------+   +-----------+|
+|  | Term      |    | Term      |   | Term      ||
+|  | 'rust'    |    | 'search'  |   | 'fast'    ||
+|  +-----------+    +-----------+   +-----------+|
+|       |               |               |       |
+|       v               v               v       |
+|  +--------+       +--------+     +--------+   |
+|  |Doc List|       |Doc List|     |Doc List|   |
+|  |Vec<Doc>|       |Vec<Doc>|     |Vec<Doc>|   |
+|  +--------+       +--------+     +--------+   |
+|       |               |               |       |
+|       v               v               v       |
+|  [doc:1,       [doc:2,         [doc:1,       |
+|   attr:title,   attr:content,   attr:title,  |
+|   val:0,        val:0,          val:1,       |
+|   impact:2.1]   impact:1.5]     impact:1.8]  |
+|                                               |
++------------------------------------------------+
 ```
 
 ## Flattened Document Lists Architecture
@@ -2079,20 +2082,35 @@ Index implementation summary:
 For the ≤100k document use case, we use a simplified single-index architecture that eliminates sharding complexity:
 
 ```schema_ascii
-                EmbeddedManifest
-                +---------------+
-                | single_shard  |
-                +---------------+
-                        |
-                        v
-                 +-------------+
-                 | Primary Index|
-                 |-------------|
-                 | 0 - 100k   |
-                 +-------------+
-                        |
-                   Collection
-                  All Indexes
+              Single-Index Architecture
+              +-------------------------+
+              |   EmbeddedManifest      |
+              | (No Sharding)           |
+              +-------------------------+
+                          |
+                          v
+                 +-------------------+
+                 |   HybridIndex     |
+                 |-------------------|
+                 | ≤100k documents   |
+                 | All index types   |
+                 +-------------------+
+                          |
+                          v
+              +-----------------------+
+              |   EmbeddedCollection  |
+              |-----------------------|
+              | entries_by_index      |
+              | entries_by_name       |  
+              | attributes_by_name    |
+              | attribute_kinds       |
+              +-----------------------+
+                          |
+                          v
+    +----------+----------+----------+----------+-----------+
+    | Boolean  | Integer | Tag      | Text     | Vector    |
+    | (Bitset) |(BTreeMap)|(HashMap)|(DocLists)|(Optional) |
+    +----------+----------+----------+----------+-----------+
 ```
 
 ### Hybrid Index Structure
@@ -3153,18 +3171,18 @@ Arena allocation benefits:
 
 Now that we have arena-based memory management, we can implement efficient query execution that eliminates allocation overhead during search operations.
 
-As a reminder, the engine is organized in shards, so search will execute across every shard. We can parallelize this across shards using Rayon while maintaining per-shard concurrency control.
+The engine uses a single embedded index, so search executes directly on the unified index structure with parallel processing within individual index types.
 
-## Parallel Shard Execution with Arena Management
+## Parallel Index Execution with Arena Management
 
-We implement true parallelism with per-shard arena allocation to eliminate memory management overhead:
+We implement true parallelism with arena allocation to eliminate memory management overhead during search:
 
 ```rust
 use rayon::prelude::*;
 use std::sync::mpsc;
 use bumpalo::Bump;
 
-impl SearchEngine {
+impl HybridIndex {
     async fn search<Cb>(&self, expression: &Expression, callback: Cb) -> std::io::Result<usize>
     where
         Cb: Fn(HashMap<EntryIndex, f64>) + Send + Sync,
@@ -3183,53 +3201,38 @@ impl SearchEngine {
             .build_global()
             .expect("Failed to initialize Rayon thread pool");
         
-        // Parallel execution across shards with individual arenas and SIMD optimization
-        let handles: Vec<_> = self.shards
-            .par_iter()
-            .map(|(shard_key, shard)| {
-                let sender = sender.clone();
-                let callback = callback.clone();
-                let expression = expression.clone();
-                
-                tokio::spawn(async move {
-                    // Each shard gets its own arena for optimal NUMA performance
-                    let arena = Bump::new();
-                    let ctx = QueryContext::new(&arena);
-                    
-                    match shard.search_with_arena_simd(&expression, &ctx).await {
-                        Ok(results) => {
-                            // Convert arena results to owned before callback
-                            let owned_results: HashMap<EntryIndex, f64> = 
-                                results.into_iter().collect();
-                            
-                            callback(owned_results.clone());
-                            sender.send((*shard_key, owned_results)).ok();
-                        }
-                        Err(e) => {
-                            eprintln!("Shard {} failed: {}", shard_key, e);
-                        }
-                    }
-                    // Arena automatically freed here
-                })
-            })
-            .collect();
-            
-        // Collect results as they arrive
-        drop(sender); // Close sender to terminate receiver loop
-        let mut total_found = 0;
-        while let Ok((_, results)) = receiver.recv() {
-            total_found += results.len();
-        }
+        // Single index execution with arena allocation and SIMD optimization
+        let arena = Bump::new();
+        let ctx = QueryContext::new(&arena);
         
-        // Wait for all shards to complete
-        for handle in handles {
-            handle.await.ok();
+        tokio::spawn(async move {
+            match self.search_with_arena_simd(&expression, &ctx).await {
+                Ok(results) => {
+                    // Convert arena results to owned before callback
+                    let owned_results: HashMap<EntryIndex, f64> = 
+                        results.into_iter().collect();
+                    
+                    callback(owned_results.clone());
+                    sender.send(owned_results).ok();
+                }
+                Err(e) => {
+                    eprintln!("Index search failed: {}", e);
+                }
+            }
+            // Arena automatically freed here
+        }).await.ok();
+        
+        // Collect results
+        drop(sender); // Close sender
+        let mut total_found = 0;
+        if let Ok(results) = receiver.recv() {
+            total_found = results.len();
         }
         
         Ok(total_found)
     }
     
-    /// SIMD-optimized shard search with parallel processing
+    /// SIMD-optimized index search with parallel processing
     async fn search_with_arena_simd(&self, expression: &Expression, ctx: &QueryContext<'_>) -> Result<ArenaHashMap<'_, EntryIndex, f32>, SearchError> {
         match expression {
             Expression::Condition(condition) => {
@@ -3490,7 +3493,7 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 
 ### Performance Optimizations
 
-- **Rayon Multicore Parallelism**: Utilizes all available CPU cores via `navigator.hardwareConcurrency` for parallel shard processing, search operations, and result fusion
+- **Rayon Multicore Parallelism**: Utilizes all available CPU cores via `navigator.hardwareConcurrency` for parallel index processing, search operations, and result fusion
 - **WebAssembly SIMD 128**: Processes 4 f32 values simultaneously using SIMD intrinsics for vector operations and numeric computations
 - **Link-Time Optimization (LTO)**: Enables cross-crate inlining and dead code elimination for maximum performance
 - **Level 3 Optimization**: Compiled with aggressive optimization flags specifically tuned for WebAssembly targets
