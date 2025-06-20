@@ -1607,6 +1607,8 @@ struct TextIndex {
     document_lists: HashMap<Box<str>, Vec<TextDocumentEntry>>,
     /// Bigram index for fuzzy search acceleration
     bigram_index: BigramFuzzyIndex,
+    /// Trie structure for prefix searches (StartsWith)
+    trie_index: TrieNode,
 }
 
 impl TextIndex {
@@ -1614,6 +1616,7 @@ impl TextIndex {
         Self {
             document_lists: HashMap::new(),
             bigram_index: BigramFuzzyIndex::new(),
+            trie_index: TrieNode::default(),
         }
     }
     
