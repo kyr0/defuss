@@ -1219,65 +1219,78 @@ impl BooleanIndex {
         }
         self.document_metadata[doc_id] = doc;
         
-        // Binary search for insertion point to maintain sort order
-        let pos = document_list.binary_search(&doc).unwrap_or_else(|e| e);
-        document_list.insert(pos, doc);
         true
     }
     
     fn search(&self, attribute: Option<AttributeIndex>, value: bool) -> Vec<EntryIndex> {
-        let document_list = if value { &self.true_documents } else { &self.false_documents };
+        let bitset = if value { &self.true_bitset } else { &self.false_bitset };
         
         match attribute {
             Some(attr) => {
-                // Binary search for attribute range, then collect documents
-                document_list.iter()
-                    .filter(|doc| doc.attr == attr)
-                    .map(|doc| doc.doc)
-                    .collect()
+                // Iterate through set bits and filter by attribute
+                let mut results = Vec::new();
+                for (word_idx, &word) in bitset.iter().enumerate() {
+                    if word == 0 { continue; }
+                    
+                    for bit_idx in 0..64 {
+                        if (word & (1u64 << bit_idx)) != 0 {
+                            let doc_id = word_idx * 64 + bit_idx;
+                            if doc_id < self.document_metadata.len() {
+                                let doc = &self.document_metadata[doc_id];
+                                if doc.attr == attr {
+                                    results.push(doc.doc);
+                                }
+                            }
+                        }
+                    }
+                }
+                results
             }
             None => {
-                // Return all documents for this boolean value
-                document_list.iter()
-                    .map(|doc| doc.doc)
-                    .collect()
+                // Return all documents for this boolean value using bitset iteration
+                let mut results = Vec::new();
+                for (word_idx, &word) in bitset.iter().enumerate() {
+                    if word == 0 { continue; }
+                    
+                    for bit_idx in 0..64 {
+                        if (word & (1u64 << bit_idx)) != 0 {
+                            let doc_id = word_idx * 64 + bit_idx;
+                            if doc_id < self.document_metadata.len() {
+                                results.push(self.document_metadata[doc_id].doc);
+                            }
+                        }
+                    }
+                }
+                results
             }
         }
     }
     
     fn delete(&mut self, entry_index: EntryIndex) -> bool {
+        let doc_id = entry_index.0 as usize;
+        let word_idx = doc_id / 64;
+        let bit_idx = doc_id % 64;
+        let mask = 1u64 << bit_idx;
+        
         let mut changed = false;
         
-        // Remove from true documents
-        if let Some(range) = Self::find_doc_range(&self.true_documents, entry_index) {
-            self.true_documents.drain(range);
+        // Clear bit from both bitsets if set
+        if word_idx < self.true_bitset.len() && (self.true_bitset[word_idx] & mask) != 0 {
+            self.true_bitset[word_idx] &= !mask;
             changed = true;
         }
         
-        // Remove from false documents
-        if let Some(range) = Self::find_doc_range(&self.false_documents, entry_index) {
-            self.false_documents.drain(range);
+        if word_idx < self.false_bitset.len() && (self.false_bitset[word_idx] & mask) != 0 {
+            self.false_bitset[word_idx] &= !mask;
             changed = true;
+        }
+        
+        // Clear document metadata
+        if doc_id < self.document_metadata.len() {
+            self.document_metadata[doc_id] = Document::new(EntryIndex(0), AttributeIndex(0), ValueIndex(0), 0.0);
         }
         
         changed
-    }
-    
-    fn find_doc_range(document_list: &[Document], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
-        let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
-            .unwrap_or_else(|e| e);
-            
-        if start >= document_list.len() || document_list[start].doc != target_doc {
-            return None;
-        }
-        
-        let end = document_list[start..]
-            .iter()
-            .position(|doc| doc.doc != target_doc)
-            .map(|pos| start + pos)
-            .unwrap_or(document_list.len());
-            
-        Some(start..end)
     }
 }
 
@@ -2120,7 +2133,7 @@ For the ≤100k document use case, we use a simplified single-index architecture
                   All Indexes
 ```
 
-### Simplified Index Structure
+### Hybrid Index Structure
 
 ```rust
 /// All index types in one embedded structure
@@ -2133,7 +2146,7 @@ enum IndexType {
 }
 
 /// Single embedded index containing all data
-struct VectorIndex {
+struct HybridIndex {
     /// Document collection (single instance)
     collection: EmbeddedCollection,
     /// All index types in one structure
@@ -2161,7 +2174,7 @@ impl VectorConfig {
     }
 }
 
-impl VectorIndex {
+impl HybridIndex {
     /// Create new index with default configuration (vectors disabled)
     fn new() -> Self {
         Self::with_vector_config(VectorConfig::disabled())
@@ -2304,7 +2317,7 @@ impl IndexFileCache {
 Single-index persistence is much simpler than multi-shard coordination:
 
 ```rust
-impl VectorIndex {
+impl HybridIndex {
     /// Atomic write using shadow manifest technique
     async fn persist(&self) -> std::io::Result<()> {
         // Write all index files
@@ -2338,7 +2351,7 @@ impl VectorIndex {
         let collection = manifest.load_collection().await?;
         
         // Lazy-load indexes as needed
-        let mut index = VectorIndex::new();
+        let mut index = HybridIndex::new();
         index.collection = collection;
         
         Ok(index)
@@ -2576,8 +2589,8 @@ Sharding remains relevant for specific use cases:
 1. **Logical Isolation**: 
    ```rust
    // Separate indices for tenants/time-ranges
-   let tenant_a_index = VectorIndex::new();
-   let tenant_b_index = VectorIndex::new();
+   let tenant_a_index = HybridIndex::new();
+   let tenant_b_index = HybridIndex::new();
    
    // Query both and merge with RRF
    let results_a = tenant_a_index.search(&query).await?;
@@ -2589,7 +2602,7 @@ Sharding remains relevant for specific use cases:
    ```rust
    // When first index reaches capacity, create second instance
    if primary_index.is_full() {
-       let secondary_index = VectorIndex::new();
+       let secondary_index = HybridIndex::new();
        // Route new documents to secondary_index
        // Merge results from both indices using RRF
    }
