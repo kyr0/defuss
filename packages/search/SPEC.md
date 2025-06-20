@@ -14,10 +14,10 @@ The engine incorporates several targeted optimizations that provide cumulative p
 
 | Optimization | Implementation | Performance Benefit |
 |--------------|----------------|-------------------|
-| **Stop-list at ingest** | Hard-coded `&["the", "and", ...]` slice with `continue` on match | Eliminates ~15% of postings, speeds every subsequent query |
+| **Stop-list at ingest** | Hard-coded `&["the", "and", ...]` slice with `continue` on match | Eliminates ~15% of documents, speeds every subsequent query |
 | **Query-term de-dupe** | `query_terms.sort_unstable(); query_terms.dedup();` before lookup | Skips scoring identical words in natural-language queries |
 | **Early-exit top-k** | Stop merging when `heap.peek().score ≥ max_possible_remaining_score` | Saves 20-30% dot-products when k ≪ N with no accuracy loss |
-| **Static doc-length-norm** | Pre-store `1 / (k1·(1-b+b·len/avg)+tf)` beside each impact | Multiplication replaces division per posting (measurable in WASM/JS) |
+| **Static doc-length-norm** | Pre-store `1 / (k1·(1-b+b·len/avg)+tf)` beside each impact | Multiplication replaces division per document (measurable in WASM/JS) |
 | **Bit-pack booleans** | Store boolean attributes as `u64` bitsets per document row | Cuts memory for yes/no fields by 8×; `&`/`|` acts as set intersection |
 | **Per-term Bloom filter** | 64-bit Bloom key: "does this term appear in any doc?" | Aborts term lookup immediately for zero-hit words (typos) |
 | **Tiny LRU cache** | `LruCache<String, Vec<(Doc,Score)>>` for last 32 queries | Real-world UIs repeat queries (autocomplete); cache hits return in μs |
@@ -651,7 +651,7 @@ impl SearchEngine {
             );
             
         // Parallel sorting for final ranking
-        let mut results: Vec<_> = global_scores.into_par_iter().collect();
+        let mut results: Vec<(EntryIndex, f32)> = global_scores.into_par_iter().collect();
         results.par_sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         
         results
@@ -715,10 +715,9 @@ impl VectorIndex {
             let chunk_results: Vec<(EntryIndex, f32)> = self.vectors[chunk_start * self.dimension..chunk_end * self.dimension]
                 .par_chunks_exact(self.dimension)
                 .zip(self.entry_mapping[chunk_start..chunk_end].par_iter())
-                .map(|(doc_vector, &entry_index)| {
-                    let score = unsafe { 
-                        Self::cosine_similarity_simd(query, doc_vector)
-                    };
+                .map(|(doc_vector, &entry_index)| {                let score = unsafe { 
+                    VectorIndex::cosine_similarity_simd(query, doc_vector)
+                };
                     (entry_index, score)
                 })
                 .collect();
@@ -790,7 +789,7 @@ impl TextIndex {
             .filter_map(|(token_idx, capture)| {
                 let term = capture.as_str().to_lowercase();
                 
-                // Skip stop words to eliminate ~15% of postings
+                // Skip stop words to eliminate ~15% of documents
                 if Self::STOP_WORDS.contains(&term.as_str()) {
                     return None;
                 }
@@ -860,7 +859,7 @@ impl TextIndex {
     }
 }
 
-/// SIMD-optimized Levenshtein distance calculation
+/// SIMD-optimized Levenshtein distance calculation for fuzzy text matching
 fn levenshtein_simd(s1: &str, s2: &str) -> usize {
     let chars1: Vec<char> = s1.chars().collect();
     let chars2: Vec<char> = s2.chars().collect();
@@ -1257,7 +1256,7 @@ Each index type can be implemented using the flattened structure:
 /// Boolean index using bit-packed representation for memory efficiency
 struct BooleanIndex {
     /// Bit-packed boolean values: one u64 bitset per document row
-    /// Cuts memory by 8× compared to individual boolean postings
+    /// Cuts memory by 8× compared to individual boolean documents
     true_bitset: Vec<u64>,
     false_bitset: Vec<u64>,
     /// Document metadata for each bit position
@@ -2480,8 +2479,8 @@ The system uses an elegant state machine for parallel index building where **sea
 | Step | What happens | Why it stays trivial |
 |------|-------------|---------------------|
 | **1. Flip a flag** | `if state.swap(BUILDING) != READY { return Err(Busy) }` (atomic) | No read/write races to guard; search code just checks the enum |
-| **2. Thread-fan-out ingestion** | Ingest caller spawns a Rayon scope; each thread parses docs → fills **private** `Vec<Posting>` + `Vec<f32>` buffers | No shared mut; zero locking inside hot loops |
-| **3. Parallel reduce** | Rayon's `reduce` concatenates/post-sorts the per-thread buffers into one flat postings vector & vector block | O(N log N) merges but fully parallel; fits 100k easily |
+| **2. Thread-fan-out ingestion** | Ingest caller spawns a Rayon scope; each thread parses docs → fills **private** `Vec<Document>` + `Vec<f32>` buffers | No shared mut; zero locking inside hot loops |
+| **3. Parallel reduce** | Rayon's `reduce` concatenates/post-sorts the per-thread buffers into one flat documents vector & vector block | O(N log N) merges but fully parallel; fits 100k easily |
 | **4. Write new files** | Serialize to `tmp/segment-{uuid}` dir | Still single final write per file; no fancy WAL |
 | **5. One-shot swap** | `rename(tmp_dir, "active")` then `state.store(READY)` | Atomic on most FS, and searchers were already blocked |
 | **6. Old data cleanup** | Delete the previous `active_old` dir asynchronously | Never touched while search was off, so safe |
@@ -2510,30 +2509,30 @@ impl SearchEngine {
         }
 
         // Parallel building using all available cores
-        let (postings, vectors) = rayon::join(
-            || self.build_postings(&docs),    // flat Vec<Posting>, per-thread buffers
+        let (documents, vectors) = rayon::join(
+            || self.build_documents(&docs),    // flat Vec<Document>, per-thread buffers
             || self.build_vectors(&docs),     // contiguous f32 block
         );
 
-        self.write_tmp_segment(&postings, &vectors)?;
+        self.write_tmp_segment(&documents, &vectors)?;
         self.atomic_swap_segment()?;
         ENGINE_STATE.store(READY, Ordering::Release);
         Ok(())
     }
 
-    /// Build postings lists using parallel processing with private per-thread buffers
-    fn build_postings(&self, docs: &[Document]) -> Vec<Posting> {
+    /// Build documents lists using parallel processing with private per-thread buffers
+    fn build_documents(&self, docs: &[Document]) -> Vec<Document> {
         use rayon::prelude::*;
         
         docs.par_chunks(1000)
             .map(|chunk| {
-                let mut local_postings = Vec::new();
+                let mut local_documents = Vec::new();
                 for doc in chunk {
-                    // Process document into postings without shared state
-                    let doc_postings = self.process_document_parallel(doc);
-                    local_postings.extend(doc_postings);
+                    // Process document into documents without shared state
+                    let doc_documents = self.process_document_parallel(doc);
+                    local_documents.extend(doc_documents);
                 }
-                local_postings
+                local_documents
             })
             .reduce(Vec::new, |mut acc, mut chunk| {
                 acc.append(&mut chunk);
@@ -3237,9 +3236,9 @@ fn levenshtein(s1: &str, s2: &str) -> usize {
 
 This optimized approach delivers:
 - **4-5× CPU reduction**: Dice coefficient replaces most Levenshtein calls
-- **Precise quality control**: Levenshtein verification on only top 32 candidates  
+- **Precise quality control**: SIMD-optimized Levenshtein verification on only top 32 candidates
 - **High recall preservation**: 0.4 Dice threshold captures quality matches
-- **Memory efficient**: Two-row Levenshtein matrix instead of full NxM
+- **Memory efficient**: Two-row Levenshtein matrix with SIMD vectorization instead of full NxM
 - **Pure computation**: No I/O operations during fuzzy matching
 
 ## Arena-Based Memory Management
@@ -3366,10 +3365,9 @@ fn union_results_arena<'arena>(
 ) -> ArenaHashMap<'arena, EntryIndex, f32> {
     for (entry, right_score) in right {
         left.entry(entry)
-            .and_modify(|left_score| *left_score = (*left_score + right_score).max(*left_score))
+            .and_modify(|right_score| *right_score = (*right_score + right_score).max(*right_score))
             .or_insert(right_score);
     }
-    
     left
 }
 ```
@@ -3406,7 +3404,7 @@ impl BigramFuzzyIndex {
         let mut results = ctx.temp_vec_with_capacity(candidates.len());
         
         for (term, dice_score) in candidates {
-            let edit_distance = levenshtein(query, &term);
+            let edit_distance = levenshtein_simd(query, &term);
             let max_distance = query.len() / 2;
             
             if edit_distance <= max_distance {
@@ -3517,10 +3515,10 @@ impl SearchEngine {
     }
     
     /// SIMD-optimized shard search with parallel processing
-    async fn search_with_arena_simd(&self, expression: &Expression, ctx: &QueryContext<'_>) -> Result<ArenaHashMap<'_, EntryIndex, f64>, SearchError> {
+    async fn search_with_arena_simd(&self, expression: &Expression, ctx: &QueryContext<'_>) -> Result<ArenaHashMap<'_, EntryIndex, f32>, SearchError> {
         match expression {
             Expression::Condition(condition) => {
-                condition.execute_with_simd(self, ctx).await
+                condition.execute_with_arena(shard, ctx).await
             }
             Expression::And(left, right) => {
                 // Parallel evaluation with SIMD optimizations
@@ -3534,9 +3532,9 @@ impl SearchEngine {
             }
             Expression::Or(left, right) => {
                 // True parallel execution across CPU cores
-                let (left_result, right_result) = rayon::join(
-                    || async { left.search_with_arena_simd(self, ctx).await },
-                    || async { right.search_with_arena_simd(self, ctx).await }
+                let (left_result, right_result) = rayon::join!(
+                    left.execute_with_arena_simd(self, ctx),
+                    right.execute_with_arena_simd(self, ctx)
                 );
                 
                 Ok(self.union_results_simd(left_result?, right_result?, ctx))
@@ -3729,7 +3727,7 @@ impl BM25Scorer {
         let base_score = self.score_term(matched_term, attribute, term_freq, doc_length);
         
         // Apply fuzzy penalty based on edit distance
-        let edit_distance = levenshtein(query_term, matched_term);
+        let edit_distance = levenshtein_simd(query_term, matched_term);
         let max_len = query_term.len().max(matched_term.len());
         let similarity = 1.0 - (edit_distance as f32 / max_len as f32);
         
@@ -3782,7 +3780,7 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 
 1. **Single-Index Architecture**: Eliminates sharding complexity for ≤100k documents, providing simpler I/O, atomic updates, and optimal memory usage (~400MB total).
 
-2. **Flattened Posting Lists**: Each term maps to a single sorted `Vec<Document{doc, attr, val, impact}>` instead of nested HashMaps, providing 20-40% memory reduction and optimal cache locality.
+2. **Flattened Document Lists**: Each term maps to a single sorted `Vec<Document{doc, attr, val, impact}>` instead of nested HashMaps, providing 20-40% memory reduction and optimal cache locality.
 
 3. **Binary Search + Galloping Merge**: Document lookups use binary search by doc ID, followed by linear/galloping merge for attribute filtering, delivering O(log N + M) performance.
 
@@ -4147,7 +4145,7 @@ You get *dense-level* recall on rare terms **and** BM25 style exact-match rankin
 
 #### Grounded in research
 
-1. **BM25F** – “The Probabilistic Relevance Framework: BM25 and Beyond”, Robertson & Zaragoza, 2004. ([researchgate.net](https://www.researchgate.net/publication/220613776_The_Probabilistic_Relevance_Framework_BM25_and_Beyond))
+1. **BM25F** – "The Probabilistic Relevance Framework: BM25 and Beyond", Robertson & Zaragoza, 2004. ([researchgate.net](https://www.researchgate.net/publication/220613776_The_Probabilistic_Relevance_Framework_BM25_and_Beyond))
 2. **BM25⁺ / δ-shift** – "Okapi BM25 - Lower-Bounding Term Frequency Normalization”, Lv & Zhai, 2011. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Okapi_BM25))
 3. **BM25S** – “BM25S: Orders of Magnitude Faster Lexical Search via Eager Sparse Scoring”, Lù et al., 2024. ([arxiv.org](https://arxiv.org/abs/2407.03618))
 4. **RRF** – “Reciprocal Rank Fusion Outperforms Condorcet…”, Cormack & Clarke, SIGIR 2009. ([plg.uwaterloo.ca](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf), [earn.microsoft.com](https://learn.microsoft.com/en-us/azure/search/hybrid-search-ranking))
@@ -4188,7 +4186,7 @@ pub struct FieldConfig {
 
 /// A single document list entry; stores the **pre‑computed impact score**.
 #[derive(Debug, Clone, Copy)]
-struct Posting {
+struct Document {
     doc_id: u32,
     impact: f32,
 }
@@ -4202,7 +4200,7 @@ pub struct IndexBuilder {
     /// Per‑field total length across corpus so we can later compute avg_len.
     accumulated_field_len: HashMap<String, usize>,
     /// term → documents (built eagerly).
-    documents: HashMap<String, Vec<Posting>>,
+    documents: HashMap<String, Vec<Document>>,
 }
 
 impl IndexBuilder {
@@ -4248,7 +4246,7 @@ impl IndexBuilder {
 
                     self.documents.entry(term.to_string())
                         .or_default()
-                        .push(Posting { doc_id, impact });
+                        .push(Document { doc_id, impact });
                 }
             }
         }
@@ -4281,7 +4279,7 @@ impl IndexBuilder {
 /// Memory‑resident sparse index.
 #[derive(Default)]
 pub struct Index {
-    documents: HashMap<String, Vec<Posting>>,
+    documents: HashMap<String, Vec<Document>>,
     /// Per-term Bloom filter: 64-bit Bloom key for zero-hit term detection
     term_bloom: u64,
     /// LRU cache for recent queries (autocomplete optimization)
@@ -4347,16 +4345,14 @@ impl Index {
             }
             
             if let Some(plist) = self.documents.get(term) {
-                for &Posting { doc_id, impact } in plist {
+                for &Document { doc_id, impact } in plist {
                     *scores.entry(doc_id).or_default() += impact;
                 }
             }
         }
 
         // Use a max‑heap to keep only top‑k.
-        let mut heap: BinaryHeap<(f32, u32)> = scores.into_iter()
-            .map(|(d, s)| (s, d))
-            .collect();
+        let mut heap: BinaryHeap<(f32, u32)> = scores.into_iter().map(|(d, s)| (s, d)).collect();
 
         let mut out = Vec::with_capacity(k);
         for _ in 0..k { 
@@ -4392,11 +4388,11 @@ pub fn rrf_fuse_arena<'arena>(
 
     for (rank, (doc, _)) in dense.iter().enumerate() {
         let rrf_score = 1.0 / (rrf_k + rank as f32 + 1.0);
-        scores.entry(*doc).and_modify(|v| *v += rrf_score).or_insert(rrf_score);
+        scores.insert(*doc, rrf_score);
     }
     for (rank, (doc, _)) in sparse.iter().enumerate() {
         let rrf_score = 1.0 / (rrf_k + rank as f32 + 1.0);
-        scores.entry(*doc).and_modify(|v| *v += rrf_score).or_insert(rrf_score);
+        *scores.entry(*doc).or_default() += rrf_score;
     }
 
     let mut heap: BinaryHeap<(f32, u32)> = scores.into_iter().map(|(d, s)| (s, d)).collect();
