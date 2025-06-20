@@ -6,7 +6,7 @@ The engine is a **high-performance, WASM-optimized search stack** engineered to 
 
 ## Performance Engineering Philosophy
 
-Within that envelope we favour **Rust's zero-cost abstractions with aggressive optimization**: document lists are kept as flat, cache-linear `Vec<Document>` blocks instead of nested maps; all per-query scratch space lives in a bump-arena to avoid slow WASM heap traffic; fuzzy matches use a bigram-Dice pre-filter so only a handful of candidates pay the Levenshtein tax; and when enabled, vector search is brute-force SIMD (≈ 6-8 ms on modern CPUs), giving exact recall without ANN build cost.
+Within that envelope we favour **Rust's zero-cost abstractions with aggressive optimization**: document lists are kept as flat, cache-linear `Vec<DocumentEntry>` blocks instead of nested maps; all per-query scratch space lives in a bump-arena to avoid slow WASM heap traffic; fuzzy matches use a bigram-Dice pre-filter so only a handful of candidates pay the Levenshtein tax; and when enabled, vector search is brute-force SIMD (≈ 6-8 ms on modern CPUs), giving exact recall without ANN build cost.
 
 ### Micro-Optimizations for 100k Document Workloads
 
@@ -289,7 +289,7 @@ Key architecture principles:
 - **Embedded Collection**: Document and attribute mappings in one structure
 - **Dynamic Schema**: Attributes registered lazily with type inference (≤256 attributes)
 - **Specialized Indexes**: Each type optimized for its use case
-- **Flattened Document Lists**: Cache-friendly Vec<Document> instead of nested HashMaps
+- **Flattened Document Lists**: Cache-friendly Vec<DocumentEntry> instead of nested HashMaps
 - **Optional Vector Index**: SIMD-optimized brute-force for ≤100k documents
 
 # Destructuring The Documents
@@ -302,10 +302,10 @@ The current architecture uses **flattened document lists** instead of nested has
 
 ```rust
 /// Current flattened index structure
-type Index = Map<Term, Vec<Document>>;
+type Index = Map<Term, Vec<DocumentEntry>>;
 
 /// Flattened document entry with all indexing information
-struct Document {
+struct DocumentEntry {
     doc: EntryIndex,      // u32 document identifier
     attr: AttributeIndex, // u8 attribute identifier  
     val: ValueIndex,      // u8 value position
@@ -390,9 +390,9 @@ The basic index structure now uses flattened document lists:
 
 ```rust
 /// Current flattened index architecture
-type Index = Map<Term, Vec<Document>>;
-/// Where Document contains all indexing information
-struct Document {
+type Index = Map<Term, Vec<DocumentEntry>>;
+/// Where DocumentEntry contains all indexing information
+struct DocumentEntry {
     doc: EntryIndex,      // u32 document identifier
     attr: AttributeIndex, // u8 attribute identifier  
     val: ValueIndex,      // u8 value position
@@ -866,14 +866,14 @@ Flattened Index Architecture (≤100k documents)
 
 ## Flattened Document Lists Architecture
 
-Instead of nested HashMap structures that create memory overhead and poor cache locality, we use flattened `Vec<Document>` per term, sorted for efficient binary search and galloping merge operations.
+Instead of nested HashMap structures that create memory overhead and poor cache locality, we use flattened `Vec<DocumentEntry>` per term, sorted for efficient binary search and galloping merge operations.
 
 ### Core Document Entry Structure
 
 ```rust
 /// Flattened document entry with all necessary indexing information
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct Document {
+struct DocumentEntry {
     /// Document identifier (primary sort key)
     doc: EntryIndex,
     /// Attribute identifier (secondary sort key)
@@ -884,7 +884,7 @@ struct Document {
     impact: f32,
 }
 
-impl Document {
+impl DocumentEntry {
     fn new(doc: EntryIndex, attr: AttributeIndex, val: ValueIndex, impact: f32) -> Self {
         Self { doc, attr, val, impact }
     }
@@ -892,9 +892,9 @@ impl Document {
 
 /// Memory-efficient index using flattened document lists
 struct FlattenedIndex {
-    /// Each term maps to a sorted vector of Document entries
+    /// Each term maps to a sorted vector of DocumentEntry entries
     /// Sorted by (doc, attr, val) for optimal binary search performance
-    document_lists: HashMap<Box<str>, Vec<Document>>,
+    document_lists: HashMap<Box<str>, Vec<DocumentEntry>>,
 }
 
 impl FlattenedIndex {
@@ -1000,7 +1000,7 @@ impl FlattenedIndex {
     }
     
     /// Insert a new document entry, maintaining sort order
-    fn insert(&mut self, term: Box<str>, doc: Document) {
+    fn insert(&mut self, term: Box<str>, doc: DocumentEntry) {
         let document_list = self.document_lists.entry(term).or_default();
         
         // Binary search for insertion point to maintain sort order
@@ -1025,7 +1025,7 @@ impl FlattenedIndex {
         changed
     }
     
-    fn find_doc_range_in_vec(document_list: &[Document], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
+    fn find_doc_range_in_vec(document_list: &[DocumentEntry], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
         let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
             .unwrap_or_else(|e| e);
             
@@ -1105,7 +1105,7 @@ struct BooleanIndex {
     true_bitset: Vec<u64>,
     false_bitset: Vec<u64>,
     /// Document metadata for each bit position
-    document_metadata: Vec<Document>,
+    document_metadata: Vec<DocumentEntry>,
 }
 
 impl BooleanIndex {
@@ -1125,7 +1125,7 @@ impl BooleanIndex {
         term: bool,
         impact: f32,
     ) -> bool {
-        let doc = Document::new(entry_index, attribute_index, value_index, impact);
+        let doc = DocumentEntry::new(entry_index, attribute_index, value_index, impact);
         let doc_id = entry_index.0 as usize;
         
         // Ensure bitsets are large enough
@@ -1146,7 +1146,7 @@ impl BooleanIndex {
         
         // Store document metadata
         if self.document_metadata.len() <= doc_id {
-            self.document_metadata.resize(doc_id + 1, Document::new(EntryIndex(0), AttributeIndex(0), ValueIndex(0), 0.0));
+            self.document_metadata.resize(doc_id + 1, DocumentEntry::new(EntryIndex(0), AttributeIndex(0), ValueIndex(0), 0.0));
         }
         self.document_metadata[doc_id] = doc;
         
@@ -1218,7 +1218,7 @@ impl BooleanIndex {
         
         // Clear document metadata
         if doc_id < self.document_metadata.len() {
-            self.document_metadata[doc_id] = Document::new(EntryIndex(0), AttributeIndex(0), ValueIndex(0), 0.0);
+            self.document_metadata[doc_id] = DocumentEntry::new(EntryIndex(0), AttributeIndex(0), ValueIndex(0), 0.0);
         }
         
         changed
@@ -1234,7 +1234,7 @@ The integer index benefits significantly from the flattened structure, especiall
 struct IntegerIndex {
     /// Maps integer values to sorted document vectors
     /// Maintains BTreeMap for efficient range queries
-    document_lists: BTreeMap<u64, Vec<Document>>,
+    document_lists: BTreeMap<u64, Vec<DocumentEntry>>,
 }
 
 impl IntegerIndex {
@@ -1252,7 +1252,7 @@ impl IntegerIndex {
         term: u64,
         impact: f32,
     ) -> bool {
-        let doc = Document::new(entry_index, attribute_index, value_index, impact);
+        let doc = DocumentEntry::new(entry_index, attribute_index, value_index, impact);
         let document_list = self.document_lists.entry(term).or_default();
         
         let pos = document_list.binary_search(&doc).unwrap_or_else(|e| e);
@@ -1318,7 +1318,7 @@ impl IntegerIndex {
         changed
     }
     
-    fn find_doc_range_in_vec(document_list: &[Document], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
+    fn find_doc_range_in_vec(document_list: &[DocumentEntry], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
         let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
             .unwrap_or_else(|e| e);
             
@@ -1344,7 +1344,7 @@ Tag index follows the same pattern with string keys:
 /// Tag index using flattened document lists for exact string matching
 struct TagIndex {
     /// Maps tag strings to sorted document vectors
-    document_lists: HashMap<Box<str>, Vec<Document>>,
+    document_lists: HashMap<Box<str>, Vec<DocumentEntry>>,
 }
 
 impl TagIndex {
@@ -1362,7 +1362,7 @@ impl TagIndex {
         term: &str,
         impact: f32,
     ) -> bool {
-        let doc = Document::new(entry_index, attribute_index, value_index, impact);
+        let doc = DocumentEntry::new(entry_index, attribute_index, value_index, impact);
         let document_list = self.document_lists.entry(term.into()).or_default();
         
         let pos = document_list.binary_search(&doc).unwrap_or_else(|e| e);
@@ -1413,7 +1413,7 @@ impl TagIndex {
         changed
     }
     
-    fn find_doc_range_in_vec(document_list: &[Document], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
+    fn find_doc_range_in_vec(document_list: &[DocumentEntry], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
         let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
             .unwrap_or_else(|e| e);
             
@@ -1438,7 +1438,7 @@ The text index uses the same flattened structure but with additional position in
 ```rust
 /// Extended document structure for text index with position information
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct TextDocument {
+struct TextDocumentEntry {
     /// Document identifier (primary sort key)
     doc: EntryIndex,
     /// Attribute identifier (secondary sort key)  
@@ -1453,7 +1453,7 @@ struct TextDocument {
     impact: f32,
 }
 
-impl TextDocument {
+impl TextDocumentEntry {
     fn new(
         doc: EntryIndex, 
         attr: AttributeIndex, 
@@ -1468,9 +1468,9 @@ impl TextDocument {
 
 /// Text index using flattened document lists with position information
 struct TextIndex {
-    /// Maps terms to sorted vectors of TextDocument entries
-    /// Each term -> Vec<TextDocument> sorted by (doc, attr, val, token_idx)
-    document_lists: HashMap<Box<str>, Vec<TextDocument>>,
+    /// Maps terms to sorted vectors of TextDocumentEntry entries
+    /// Each term -> Vec<TextDocumentEntry> sorted by (doc, attr, val, token_idx)
+    document_lists: HashMap<Box<str>, Vec<TextDocumentEntry>>,
     /// Bigram index for fuzzy search acceleration
     bigram_index: BigramFuzzyIndex,
 }
@@ -1494,7 +1494,7 @@ impl TextIndex {
         position: Position,
         impact: f32,
     ) -> bool {
-        let text_doc = TextDocument::new(
+        let text_doc = TextDocumentEntry::new(
             entry_index, attribute_index, value_index, 
             token_index, position, impact
         );
@@ -1664,7 +1664,7 @@ impl TextIndex {
         }
         
         let mut result = Vec::new();
-        let mut current_docs: Vec<Option<&TextDocument>> = iterators.iter_mut()
+        let mut current_docs: Vec<Option<&TextDocumentEntry>> = iterators.iter_mut()
             .map(|iter| iter.next())
             .collect();
         
@@ -1737,7 +1737,7 @@ impl TextIndex {
         changed
     }
     
-    fn find_doc_range(document_list: &[TextDocument], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
+    fn find_doc_range(document_list: &[TextDocumentEntry], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
         let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
             .unwrap_or_else(|e| e);
             
@@ -2365,7 +2365,7 @@ The system uses an elegant state machine for parallel index building where **sea
 | Step | What happens | Why it stays trivial |
 |------|-------------|---------------------|
 | **1. Flip a flag** | `if state.swap(BUILDING) != READY { return Err(Busy) }` (atomic) | No read/write races to guard; search code just checks the enum |
-| **2. Thread-fan-out ingestion** | Ingest caller spawns a Rayon scope; each thread parses docs → fills **private** `Vec<Document>` + `Vec<f32>` buffers | No shared mut; zero locking inside hot loops |
+| **2. Thread-fan-out ingestion** | Ingest caller spawns a Rayon scope; each thread parses docs → fills **private** `Vec<DocumentEntry>` + `Vec<f32>` buffers | No shared mut; zero locking inside hot loops |
 | **3. Parallel reduce** | Rayon's `reduce` concatenates/post-sorts the per-thread buffers into one flat documents vector & vector block | O(N log N) merges but fully parallel; fits 100k easily |
 | **4. Write new files** | Serialize to `tmp/segment-{uuid}` dir | Still single final write per file; no fancy WAL |
 | **5. One-shot swap** | `rename(tmp_dir, "active")` then `state.store(READY)` | Atomic on most FS, and searchers were already blocked |
@@ -2396,7 +2396,7 @@ impl SearchEngine {
 
         // Parallel building using all available cores
         let (documents, vectors) = rayon::join(
-            || self.build_documents(&docs),    // flat Vec<Document>, per-thread buffers
+            || self.build_documents(&docs),    // flat Vec<DocumentEntry>, per-thread buffers
             || self.build_vectors(&docs),     // contiguous f32 block
         );
 
@@ -2407,7 +2407,7 @@ impl SearchEngine {
     }
 
     /// Build documents lists using parallel processing with private per-thread buffers
-    fn build_documents(&self, docs: &[Document]) -> Vec<Document> {
+    fn build_documents(&self, docs: &[Document]) -> Vec<DocumentEntry> {
         use rayon::prelude::*;
         
         docs.par_chunks(1000)
@@ -3450,7 +3450,7 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 
 1. **Single-Index Architecture**: Eliminates sharding complexity for ≤100k documents, providing simpler I/O, atomic updates, and optimal memory usage (~400MB total).
 
-2. **Flattened Document Lists**: Each term maps to a single sorted `Vec<Document{doc, attr, val, impact}>` instead of nested HashMaps, providing 20-40% memory reduction and optimal cache locality.
+2. **Flattened Document Lists**: Each term maps to a single sorted `Vec<DocumentEntry{doc, attr, val, impact}>` instead of nested HashMaps, providing 20-40% memory reduction and optimal cache locality.
 
 3. **Binary Search + Galloping Merge**: Document lookups use binary search by doc ID, followed by linear/galloping merge for attribute filtering, delivering O(log N + M) performance.
 
@@ -3855,7 +3855,7 @@ pub struct FieldConfig {
 
 /// A single document list entry; stores the **pre‑computed impact score**.
 #[derive(Debug, Clone, Copy)]
-struct Document {
+struct DocumentEntry {
     doc_id: u32,
     impact: f32,
 }
@@ -3869,7 +3869,7 @@ pub struct IndexBuilder {
     /// Per‑field total length across corpus so we can later compute avg_len.
     accumulated_field_len: HashMap<String, usize>,
     /// term → documents (built eagerly).
-    documents: HashMap<String, Vec<Document>>,
+    documents: HashMap<String, Vec<DocumentEntry>>,
 }
 
 impl IndexBuilder {
@@ -3915,7 +3915,7 @@ impl IndexBuilder {
 
                     self.documents.entry(term.to_string())
                         .or_default()
-                        .push(Document { doc_id, impact });
+                        .push(DocumentEntry { doc_id, impact });
                 }
             }
         }
@@ -3948,7 +3948,7 @@ impl IndexBuilder {
 /// Memory‑resident sparse index.
 #[derive(Default)]
 pub struct Index {
-    documents: HashMap<String, Vec<Document>>,
+    documents: HashMap<String, Vec<DocumentEntry>>,
     /// Per-term Bloom filter: 64-bit Bloom key for zero-hit term detection
     term_bloom: u64,
     /// LRU cache for recent queries (autocomplete optimization)
@@ -4014,7 +4014,7 @@ impl Index {
             }
             
             if let Some(plist) = self.documents.get(term) {
-                for &Document { doc_id, impact } in plist {
+                for &DocumentEntry { doc_id, impact } in plist {
                     *scores.entry(doc_id).or_default() += impact;
                 }
             }
