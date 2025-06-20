@@ -236,25 +236,25 @@ enum Value {
 /// Represents a document to be indexed
 struct Document {
     /// Unique identifier for the document
-    id: String,
+    id: DocumentId,
     /// Maps attribute names to their values
     /// A single attribute can have multiple values
-    attributes: HashMap<String, Vec<Value>>,
+    attributes: HashMap<Box<str>, Vec<Value>>,
     /// Optional vector embedding (separate from attributes)
     vector: Option<Vec<f32>>,
 }
 
 impl Document {
-    pub fn new(id: impl Into<String>) -> Self {
+    pub fn new(id: impl AsRef<str>) -> Self {
         Self {
-            id: id.into(),
+            id: DocumentId(id.as_ref().into()),
             attributes: Default::default(),
             vector: None,
         }
     }
 
-    pub fn attribute(mut self, name: impl Into<String>, value: impl Into<Value>) -> Self {
-        self.attributes.entry(name.into()).or_default().push(value.into());
+    pub fn attribute(mut self, name: impl AsRef<str>, value: impl Into<Value>) -> Self {
+        self.attributes.entry(name.as_ref().into()).or_default().push(value.into());
         self
     }
 
