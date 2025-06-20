@@ -2184,7 +2184,7 @@ enum IndexType {
 /// Single embedded index containing all data
 struct HybridIndex {
     /// Document collection (single instance)
-    collection: EmbeddedCollection,
+    collection: FlexibleCollection,
     /// All index types in one structure (excludes Vector)
     indexes: HashMap<Kind, IndexType>,
     /// Cached file references for lazy loading
@@ -2235,7 +2235,7 @@ impl HybridIndex {
         };
         
         Self {
-            collection: EmbeddedCollection::new(),
+            collection: FlexibleCollection::new(),
             indexes,
             file_cache: IndexFileCache::new(),
             vector_config,
@@ -2254,7 +2254,7 @@ impl HybridIndex {
     }
     
     fn is_full(&self) -> bool {
-        self.collection.document_count >= EmbeddedCollection::MAX_DOCUMENTS
+        self.collection.document_count >= FlexibleCollection::MAX_DOCUMENTS
     }
     
     fn has_vector_index(&self) -> bool {
@@ -2659,7 +2659,7 @@ impl EmbeddedManifest {
     
     /// Add document with capacity check
     fn add_document(&mut self, doc_id: DocumentId) -> Result<(), IndexError> {
-        if self.total_documents >= EmbeddedCollection::MAX_DOCUMENTS {
+        if self.total_documents >= FlexibleCollection::MAX_DOCUMENTS {
             return Err(IndexError::CapacityExceeded);
         }
         
