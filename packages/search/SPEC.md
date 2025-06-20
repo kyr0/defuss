@@ -1,5 +1,10 @@
 # Search Engine Design
 
+The engine is a **light-weight, WASM-friendly search stack** meant to run entirely in the browser, the edge, or any sandbox without sys-calls.  It is purposely capped at **≤ 100 000 documents per index**, each document carrying a 1024-dimensional, L2-normalised vector plus strictly-typed lexical fields.  Within that envelope we favour **simplicity over heavy machinery**: postings are kept as flat, cache-linear `Vec<Document>` blocks instead of nested maps; all per-query scratch space lives in a bump-arena to avoid slow WASM heap traffic; fuzzy matches use a bigram-Dice pre-filter so only a handful of candidates pay the Levenshtein tax; and vector search is brute-force SIMD (≈ 8 ms on modern CPUs), giving exact recall without ANN build cost.  Durability is handled by an atomic shadow-manifest; everything else is immutable files, so no WAL or fsync gymnastics are needed in the browser.
+
+Need more than 100 k docs? **Silo**: spin up additional indices keyed by any natural partition (tenant, time-range, language, etc.) and run the same query over those shards in parallel—fusion is a cheap RRF merge of the partial top-k lists.  This keeps every shard small, fast, and simple while allowing the whole application to scale horizontally without redesigning the core.
+
+
 ## Core Design Principles
 
 This search engine is built around several key architectural decisions that maximize performance while maintaining simplicity:
@@ -1493,7 +1498,7 @@ Once we have those words, we can simply deduce matching the entries.
 
 ### Fuzzy Search with Scoring
 
-Instead of simple post-filtering, we implement scored fuzzy search using trigrams with BM25 scoring:
+Instead of simple post-filtering, we implement a scored fuzzy search using trigrams with BM25 scoring:
 
 ```rust
 impl<'a> Trigrams<'a> {
@@ -1548,14 +1553,7 @@ This approach provides:
 - **Configurable fuzziness**: Edit distance threshold based on query length
 - **Quality filtering**: Poor matches filtered out before scoring
 
-Text Search Achievements:
-
-- Prefix search using trie data structure
-- Scored fuzzy search using trigram indexing with BM25
-- Quality-based filtering instead of simple distance thresholds
-- Integration with modern scoring algorithms
-
-# Query Execution
+## Query Execution
 
 Now that we have a way to build the expression of the query and query individually each index, it's time to plug everything together to execute a complete search.
 
@@ -1897,7 +1895,7 @@ That welded scorer is what we call **BM25FS⁺** (“F” = field weights, “S�
 
 | piece     | intuition                                                                                 | math                                                                                  |   |               |
 | --------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | - | ------------- |
-| **BM25**  | TF-IDF with length normalisation                                                          | \`IDF(t) × (k₁+1)·tf / (k₁(1-b+b·                                                     | D | /avgDL)+tf)\` |
+| **BM25**  | TF-IDF with length normalisation                                                          | \`IDF(t) × (k₁+1)·tf / (k₁(1-b+b\!\cdot\!tfrac|D_f|/\overline{|D_f|}} + tf\` |
 | **BM25F** | treat each field (title, body, code, …) with its own weight *w\_f*                        | sum the BM25 score over fields after multiplying TF by *w\_f* ([researchgate.net][1]) |   |               |
 | **BM25⁺** | add a small δ so *any* match beats “no match”, fixing the long-doc bias                   | just wrap the fraction in `[ ... ] + δ` ([en.wikipedia.org][2])                       |   |               |
 | **BM25S** | pre-compute the whole term impact at **indexing** time → query becomes sparse dot-product | store the *impact* instead of raw tf in your posting list ([arxiv.org][3])            |   |               |
