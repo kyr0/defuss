@@ -19,7 +19,6 @@ export function clearSchemaCache() {
 
 export async function getRpcClient<T extends Record<string, RpcApiClass>>() {
   if (schema === null) {
-    // TODO: cache schema in memory or localStorage
     schema = await getSchema();
   }
   const client = {} as Record<string, RpcApiClass>;
