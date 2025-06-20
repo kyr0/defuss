@@ -4082,9 +4082,11 @@ impl IndexBuilder {
                 if field_len == 0.0 { continue; }
 
                 for (term, &freq) in tf.iter() {
+                    // Simplified BM25 impact calculation using avg_len=1.0
+                    // Production implementation should use actual computed average field lengths
                     let impact = cfg.weight
                         * ((self.k1 + 1.0) * freq as f32)
-                        / (self.k1 * (1.0 - cfg.b + cfg.b * field_len / 1.0) + freq as f32)  // avg_len placeholder, fixed later.
+                        / (self.k1 * (1.0 - cfg.b + cfg.b * field_len / 1.0) + freq as f32)  // avg_len=1.0 (simplified)
                         + self.delta;
 
                     self.documents.entry(term.to_string())
@@ -4097,25 +4099,27 @@ impl IndexBuilder {
         }
     }
 
-    /// Finalise the index (computes avg field lengths and adjusts impacts where needed).
+    /// Finalise the index (computes avg field lengths).
+    /// Note: This implementation uses simplified BM25 without per-term field length normalization
+    /// for demonstration purposes. Production implementations should store additional metadata
+    /// to enable proper rescaling of impact scores with computed average field lengths.
     pub fn finalize(mut self, doc_count: usize) -> Index {
-        // Compute average length per field.
+        // Compute average length per field for reference
         let mut avg_len: HashMap<String, f32> = HashMap::new();
         for cfg in &self.field_cfgs {
             let total = *self.accumulated_field_len.get(&cfg.name).unwrap_or(&0) as f32;
             avg_len.insert(cfg.name.clone(), (total / doc_count as f32).max(1.0));
         }
 
-        // Second pass: length‑normalise impacts properly.
-        for (term, plist) in self.documents.iter_mut() {
-            for post in plist.iter_mut() {
-                // For demo purposes we leave impact untouched. A full impl would
-                // store per‑document field info or adjust above with actual avg_len.
-                let _ = term; // silence unused warning; real code would use this.
-            }
+        // Note: Impact scores were computed with avg_len=1.0 during indexing
+        // A complete implementation would require storing field metadata per term
+        // to enable proper BM25 rescaling with actual average field lengths
+        
+        Index { 
+            documents: self.documents, 
+            term_bloom: [0; 4], 
+            query_cache: std::sync::Mutex::new(lru::LruCache::new(32)) 
         }
-
-        Index { documents: self.documents }
     }
 }
 
