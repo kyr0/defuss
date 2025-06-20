@@ -299,7 +299,7 @@ Key architecture principles:
 
 - **Single Index Design**: No sharding, hard-capped at 100k documents
 - **Embedded Collection**: Document and attribute mappings in one structure
-- **Dynamic Schema**: Attributes registered lazily with type inference (≤256 attributes)
+- **Dynamic Schema**: Attributes registered lazily with type inference (< 256 attributes)
 - **Specialized Indexes**: Each type optimized for its use case
 - **Flattened Document Lists**: Cache-friendly Vec<DocumentEntry> instead of nested HashMaps
 - **Optional Vector Index**: SIMD-optimized brute-force for ≤100k documents
@@ -380,7 +380,7 @@ struct EmbeddedCollection {
     /// Document mappings (no sharding required)
     entries_by_index: HashMap<EntryIndex, DocumentId>,
     entries_by_name: HashMap<DocumentId, EntryIndex>,
-    /// Dynamic attribute registration (≤256 attributes)
+    /// Dynamic attribute registration (< 256 attributes)
     attributes_by_name: HashMap<Box<str>, AttributeIndex>,
     attributes_by_index: HashMap<AttributeIndex, Box<str>>,
     attribute_kinds: HashMap<AttributeIndex, Kind>,
@@ -394,7 +394,7 @@ This design eliminates the complexity of sharding while maintaining efficiency:
 - **No Sharding Overhead**: Single contiguous document space (0-100k)
 - **Bidirectional Mappings**: Fast lookups in both directions for documents and attributes
 - **Dynamic Schema**: Attributes registered lazily with type inference
-- **Hard Capacity Limits**: 100k documents, 256 attributes max
+- **Hard Capacity Limits**: 100k documents, 255 attributes max
 - **Memory Efficient**: Numeric indexes (u32/u8) minimize storage overhead
 
 The basic index structure now uses flattened document lists:
@@ -3674,18 +3674,30 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 
 You can get 80% of Elasticsearch/MongoDB's dynamism with one simple rule added to the current engine:
 
-**Lazy-register unknown attributes at ingest, infer their kind from the first value, and cap the total attribute table at 256 slots.**
+**Lazy-register unknown attributes at ingest, infer their kind from the first value, and cap the total attribute table at 255 slots.**
 
 This approach maintains the engine's zero-versioning promise while giving developers the ergonomic "just add a field" experience of document stores.
 
-### Implementation Changes
+**Attribute table is append-only** 
 
-| What changes | Code impact | Why it stays simple |
-|--------------|-------------|-------------------|
-| **1. Attribute table becomes append-only** | `if !attr_by_name.contains(name) { let new_id = attr_by_name.len() as u8; attr_by_name.insert(name.clone(), new_id); attr_by_index.insert(new_id, name.clone()); }` | 10-15 LOC in the collection's insert() path. Single writer (browser thread) ⇒ no races. |
-| **2. Kind inference once** | `match value { Bool(_)⇒Boolean, Int(_)⇒Integer, s if len≤32 ⇒Tag, _⇒Text }` | Few lines. Good enough for logs / JSON blobs. |
-| **3. Hard cap** | `assert!(attr_by_name.len() < 256)` | None. Keeps AttributeIndex a u8, no resizing. |
-| **4. Unknown-to-old-docs caveat** | Documentation: "Queries on a new field only see docs added after the field first appeared." | Acceptable for edge / 100k-doc workloads; no re-index pass needed. |
+`if !attr_by_name.contains(name) { if attr_by_name.len() >= 256 { return Err(AttributeCapacityExceeded); } let new_id = attr_by_name.len() as u8; attr_by_name.insert(name.clone(), new_id); attr_by_index.insert(new_id, name.clone()); }` 
+
+ Single writer (browser thread) ⇒ no races.
+
+**Kind inference once** 
+
+`match value { Bool(_)⇒Boolean, Int(_)⇒Integer, s if len≤32 ⇒Tag, _⇒Text }`
+
+Good enough for logs / JSON blobs.
+
+**Hard cap** 
+
+`if attr_by_name.len() >= 256 { return Err(AttributeCapacityExceeded); }` 
+
+ Keeps AttributeIndex a u8, no resizing.
+
+|**Unknown-to-old-docs caveat** 
+Queries on a new field only see docs added after the field first appeared. Acceptable for edge / 100k-doc workloads; no re-index pass needed.
 
 ### Flexible Collection Implementation
 
@@ -3860,7 +3872,7 @@ This flexible approach maintains simplicity by avoiding:
 
 ### Scaling Beyond the Cap
 
-If an application needs more than 256 distinct fields:
+If an application needs more than 255 distinct fields:
 
 1. **Promote important fields**: Move frequently-used fields to a fixed schema
 2. **Silo workloads**: Use the existing multi-index strategy for specialized data
