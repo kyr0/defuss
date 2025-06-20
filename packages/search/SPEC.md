@@ -3364,24 +3364,7 @@ This approach provides:
 - **Short-circuiting**: AND operations skip unnecessary work
 - **Better resource utilization**: Multiple CPU cores engaged per shard
 
-## Caching File Content
 
-A shard is only defined by the names of the files it's composed of.
-
-```rust
-struct ShardManifest {
-    /// the collection is mandatory, it's the index of all the entries
-    /// if it's none, there's no entry, so there's no shard
-    collection: Box<str>,
-    /// then every index is optional (except the integer index, but the same idea is kept)
-    boolean: Option<Box<str>>,
-    integer: Option<Box<str>>,
-    tag: Option<Box<str>>,
-    text: Option<Box<str>>,
-}
-```
-
-For each condition in the search expression, the system loads the collection to find the AttributeIndex for the given attribute name, and then loads the corresponding index and executes the query. Loading all indexes when starting a search in the shard is possible but unnecessary given that not all may be needed and considering the decryption cost, this is avoided.
 
 Let's add an abstraction layer for the shard.
 
@@ -3768,7 +3751,6 @@ If an application needs more than 256 distinct fields:
 
 1. **Promote important fields**: Move frequently-used fields to a fixed schema
 2. **Silo workloads**: Use the existing multi-index strategy for specialized data
-3. **Field namespacing**: Use prefixes to group related fields (`user.name`, `user.email`)
 
 ### Benefits
 
