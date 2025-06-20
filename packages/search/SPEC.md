@@ -22,7 +22,7 @@ The engine incorporates several targeted optimizations that provide cumulative p
 | **Per-term Bloom filter** | 64-bit Bloom key: "does this term appear in any doc?" | Aborts term lookup immediately for zero-hit words (typos) |
 | **Tiny LRU cache** | `LruCache<String, Vec<(Doc,Score)>>` for last 32 queries | Real-world UIs repeat queries (autocomplete); cache hits return in μs |
 
-All optimizations are **≤ 30 LOC** each, maintain the single-shard design, and provide cumulative performance boost for the target 100k-document workload.
+All optimizations are **≤ 30 LOC** each, maintain the single-index design, and provide cumulative performance boost for the target 100k-document workload.
 
 ### WebAssembly Performance Optimizations
 
@@ -51,7 +51,7 @@ The engine exploits modern multicore processors through a dual-mode approach:
 
 Durability is handled by an atomic shadow-manifest; everything else is immutable files, so no WAL or fsync gymnastics are needed in the browser.
 
-Need more than 100k docs? **Silo**: spin up additional indices keyed by any natural partition (tenant, time-range, language, etc.) and run the same query over those shards in parallel—fusion is a cheap RRF merge of the partial top-k lists.  This keeps every shard small, fast, and simple while allowing the whole application to scale horizontally without redesigning the core.
+For >100k docs, spin up another independent index instance and fuse results client-side.
 
 ## Rust Toolchain & WebAssembly Build Optimizations
 
@@ -206,8 +206,7 @@ This search engine is built around several key architectural decisions that maxi
 2. **Numeric indirection everywhere** → Maps documents (EntryIndex) and attributes (AttributeIndex) to integers, keeping document lists tiny
 3. **Self-cleaning document lists** → Generic `iter_with_mut` keeps every map/set tidy without boilerplate
 4. **Lazy, cached file loading** → CachedEncryptedFile + OnceCell means no index touches disk twice
-5. **Manifest + append-only writes** → Safe, atomic shard updates without global locking
-6. **Size-driven shard splitting** → Pragmatic "how big is too big?" without full serialise-encrypt cycles
+5. **Atomic manifest writes** → Safe, atomic index updates without global locking
 
 The ground rules are:
 
@@ -236,23 +235,6 @@ let message = Document::new("message_id")
     .attribute("encrypted", true); // boolean
 ```
 
-the content of the index is sharded. Sharding means defining a way to group documents. As a matter of simplicity, the sharding mechanism is based on an integer attribute defined in the document.
-
-This is defined in the schema, so that it's common across the entire search engine. The function to define it follows:
-
-```rust
-let schema = Schema::builder()
-    .attribute("content", Kind::Text)
-    .attribute("sender", Kind::Tag)
-    .attribute("recipient", Kind::Tag)
-    .attribute("timestamp", Kind::Integer)
-    .attribute("encrypted", Kind::Boolean)
-    .shard_by("timestamp")
-    .build()?;
-```
-
-Building the schema fails if the sharding attribute is not defined or if it's not an integer.
-
 The schema structure is:
 
 ```rust
@@ -260,7 +242,7 @@ The schema structure is:
 enum Kind {
     /// Simple true/false values
     Boolean,
-    /// Unsigned 64-bit integers, used for numeric queries and sharding
+    /// Unsigned 64-bit integers, used for numeric queries
     Integer,
     /// Single tokens that require exact matching (e.g. email addresses, IDs)
     Tag,
@@ -272,9 +254,6 @@ enum Kind {
 struct Schema {
     /// Maps attribute names to their types
     attributes: HashMap<String, Kind>,
-    /// The attribute used to determine document sharding
-    /// Must be of Kind::Integer
-    shard_by: String,
 }
 
 impl Schema {
@@ -284,17 +263,9 @@ impl Schema {
     }
 }
 
-enum Error {
-    /// when the user didn't specify a sharding attribute
-    ShardingAttributeNotSet,
-    /// when the user specified how to shard but the attribute is not defined
-    UnknownShardingAttribute
-}
-
 #[derive(Default)]
 struct SchemaBuilder {
     attributes: HashMap<String, Kind>,
-    shard_by: Option<String>,
 }
 
 impl SchemaBuilder {
@@ -303,23 +274,10 @@ impl SchemaBuilder {
         self
     }
 
-    pub fn shard_by(mut self, name: impl Into<String>) -> Self {
-        self.shard_by = Some(name.into());
-        self
-    }
-
-    pub fn build(self) -> Result<Schema, Error> {
-        let Some(shard_by) = self.shard_by else {
-            return Err(Error::ShardingAttributeNotSet);
-        }
-        if !self.attributes.contains_key(&shard_by) {
-            return Err(Error::UnknownShardingAttribute);
-        }
-
-        Ok(Schema {
+    pub fn build(self) -> Schema {
+        Schema {
             attributes: self.attributes,
-            shard_by,
-        })
+        }
     }
 }
 ```
@@ -335,7 +293,7 @@ This provides a relatively simple API for the Document.
 enum Value {
     /// Boolean values are stored as-is
     Boolean(bool),
-    /// Integer values are used for range queries and sharding
+    /// Integer values are used for range queries
     Integer(u64),
     /// Tags are stored without any processing
     Tag(String),
@@ -490,7 +448,6 @@ Document deletion from the index requires efficient mapping from DocumentId to E
 struct Collection {
     entries_by_index: HashMap<EntryIndex, DocumentId>,
     entries_by_name: HashMap<DocumentId, EntryIndex>,
-    sharding: BTreeMap<ShardingValue, HashSet<EntryIndex>>,
 }
 ```
 
@@ -501,7 +458,6 @@ This improves the performance for getting an entry by name, but duplicates all t
 struct Entry {
     index: EntryIndex,
     name: DocumentId,
-    shard: ShardingValue,
 }
 
 /// Representation on disk of a collection
@@ -510,23 +466,20 @@ struct PersistedCollection {
 }
 ```
 
-This represents how the collection is stored on disk. Each entry maintains its numeric index, document identifier, and sharding value in a simple vector structure.
+This represents how the collection is stored on disk. Each entry maintains its numeric index and document identifier in a simple vector structure.
 
 ```rust
-/// Manages document identifiers and sharding information
+/// Manages document identifiers for efficient lookups
 struct Collection {
     /// Maps numeric indexes to document identifiers
     /// Uses u32 to optimize memory usage while supporting large datasets
     entries_by_index: HashMap<EntryIndex, DocumentId>,
     /// Reverse mapping for quick document lookups
     entries_by_name: HashMap<DocumentId, EntryIndex>,
-    /// Maps sharding values to sets of document indexes
-    /// Using BTreeMap for ordered access during shard splitting
-    sharding: BTreeMap<ShardingValue, HashSet<EntryIndex>>,
 }
 ```
 
-In memory, bidirectional mappings between indexes and document identifiers enable efficient lookups in both directions. The sharding map uses a BTreeMap to maintain order, which is crucial for sharding operations.
+In memory, bidirectional mappings between indexes and document identifiers enable efficient lookups in both directions.
 
 And here is the function to build a Collection based on its persisted state on disk.
 
@@ -536,16 +489,13 @@ impl From<PersistedCollection> for Collection {
     fn from(value: PersistedCollection) -> Collection {
         let mut entries_by_index = HashMap::with_capacity(value.entries.len());
         let mut entries_by_name = HashMap::with_capacity(value.entries.len());
-        let mut sharding = BTreeMap::default();
         for entry in value.entries {
             entries_by_index.insert(entry.index, entry.name.clone());
             entries_by_name.insert(entry.name.clone(), entry.index);
-            sharding.entry(entry.shard).or_default().insert(entry.index);
         }
         Collection {
             entries_by_index,
             entries_by_name,
-            sharding,
         }
     }
 }
@@ -581,7 +531,6 @@ Key points about collections:
 
 - Uses numeric indexes to reduce storage overhead
 - Maintains bidirectional mappings for efficient lookups
-- Stores sharding information for easy partitioning
 - Uses Arc<str> for memory-efficient string handling
 - Attributes are also indexed for space optimization
 
@@ -609,52 +558,17 @@ impl SearchEngine {
             .thread_name(|idx| format!("defuss-search-{}", idx))
             .build_global()?;
         
-        // Parallel shard processing with optimal work distribution
-        let results: Vec<_> = self.shards
-            .par_iter()
-            .map(|(shard_key, shard)| {
-                let arena = Bump::new(); // Per-thread arena allocation
-                let ctx = QueryContext::new(&arena);
-                
-                shard.search_with_arena(expression, &ctx)
-                    .map(|results| (*shard_key, results))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-            
-        // Parallel result fusion using RRF
-        Ok(self.fuse_results_parallel(results))
-    }
-    
-    /// Parallel RRF fusion leveraging all cores
-    fn fuse_results_parallel(&self, shard_results: Vec<(u64, HashMap<EntryIndex, f32>)>) -> Vec<(EntryIndex, f32)> {
-        use rayon::prelude::*;
+        // Parallel document processing within single index
+        let arena = Bump::new();
+        let ctx = QueryContext::new(&arena);
         
-        // Parallel score accumulation across shards
-        let global_scores: HashMap<EntryIndex, f32> = shard_results
-            .par_iter()
-            .flat_map(|(_, results)| results.par_iter())
-            .fold(
-                || HashMap::new(),
-                |mut acc, (&entry, &score)| {
-                    *acc.entry(entry).or_default() += score;
-                    acc
-                }
-            )
-            .reduce(
-                || HashMap::new(),
-                |mut acc1, acc2| {
-                    for (entry, score) in acc2 {
-                        *acc1.entry(entry).or_default() += score;
-                    }
-                    acc1
-                }
-            );
-            
+        let results = self.index.search_with_arena(expression, &ctx)?;
+        
         // Parallel sorting for final ranking
-        let mut results: Vec<(EntryIndex, f32)> = global_scores.into_par_iter().collect();
-        results.par_sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        let mut sorted_results: Vec<(EntryIndex, f32)> = results.into_par_iter().collect();
+        sorted_results.par_sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         
-        results
+        Ok(sorted_results)
     }
 }
 ```
@@ -2435,32 +2349,11 @@ impl VectorIndex {
 This simplified architecture provides:
 - **Single atomic operation**: One manifest + data files
 - **Lazy loading**: Indexes loaded only when accessed
-- **Simple recovery**: No multi-shard coordination
+- **Simple recovery**: No coordination complexity
 - **WASM-friendly**: Minimal file system operations
-- **Extensible**: Manifest format supports future sharding if needed
+- **Clean design**: Single-index architecture without unnecessary complexity
 
 The embedded approach eliminates complexity while maintaining all performance characteristics optimal for the ≤100k document use case.
-
-```rust
-struct Manifest {
-    shards: BTreeMap<u64, Shard>,
-}
-
-struct Shard {
-    collection: Filename,
-    indexes: HashMap<Kind, Filename>,
-}
-```
-
-This manifest is stored in the working directory as manifest.bin and every file (collections and indexes) has a random name.
-
-Sharding architecture highlights:
-
-- Manifest-based shard management
-- File-based storage with lazy loading
-- Transaction support for concurrent operations
-- Dynamic shard splitting based on size
-- Recovery mechanism for incomplete transactions
 
 ## "Stop-the-World, Build-Fast" Parallel Writing
 
@@ -2629,43 +2522,33 @@ enum IndexError {
 
 ### Manifest Format (Extensible)
 
-We keep the manifest format for future extensibility, but default to single-shard operation:
+We keep the manifest format for future extensibility, but use single-index operation:
 
 ```rust
-/// Manifest supports multiple shards but defaults to one
+/// Manifest for single embedded index
 struct EmbeddedManifest {
-    /// Always contains exactly one shard for ≤100k docs
-    /// Format preserved for future multi-shard extension
-    shards: BTreeMap<u64, ShardDescriptor>,
-    /// Current document count across all shards
+    /// Index descriptor
+    index: IndexDescriptor,
+    /// Current document count
     total_documents: usize,
 }
 
 impl EmbeddedManifest {
     fn new() -> Self {
-        let mut shards = BTreeMap::new();
-        // Single shard starting at key 0
-        shards.insert(0, ShardDescriptor {
-            collection: "collection_0.bin".into(),
-            boolean_index: Some("boolean_0.bin".into()),
-            integer_index: Some("integer_0.bin".into()),
-            tag_index: Some("tag_0.bin".into()),
-            text_index: Some("text_0.bin".into()),
-            vector_index: Some("vector_0.bin".into()),
-        });
-        
         Self {
-            shards,
+            index: IndexDescriptor {
+                collection: "collection.bin".into(),
+                boolean_index: Some("boolean.bin".into()),
+                integer_index: Some("integer.bin".into()),
+                tag_index: Some("tag.bin".into()),
+                text_index: Some("text.bin".into()),
+                vector_index: Some("vector.bin".into()),
+            },
             total_documents: 0,
         }
     }
     
-    /// Get the single shard (guaranteed to exist)
-    fn primary_shard(&self) -> &ShardDescriptor {
-        self.shards.get(&0).expect("Primary shard must exist")
-    }
-    
-    /// Add document to single shard with capacity check
+    /// Add document with capacity check
     fn add_document(&mut self, doc_id: DocumentId) -> Result<(), IndexError> {
         if self.total_documents >= EmbeddedCollection::MAX_DOCUMENTS {
             return Err(IndexError::CapacityExceeded);
@@ -2676,7 +2559,7 @@ impl EmbeddedManifest {
     }
 }
 
-struct ShardDescriptor {
+struct IndexDescriptor {
     collection: Box<str>,
     boolean_index: Option<Box<str>>,
     integer_index: Option<Box<str>>,
@@ -2731,149 +2614,6 @@ For ≤100k documents:
 - **Query Latency**: Single-digit milliseconds, no shard fan-out overhead
 
 The single-index design eliminates complexity while maintaining all performance benefits. When scaling beyond 100k documents becomes necessary, developers can create multiple independent index instances and merge results using RRF, providing explicit control over partitioning strategy.
-- **Memory efficiency**: Avoid excessive RAM usage from large indexes
-- **Storage optimization**: Keep encrypted files under 400 MiB for manageable I/O
-
-```rust
-/// provides size estimation for optimizing shard splits
-trait ContentSize {
-    /// returns estimated size in bytes when serialized
-    fn estimate_size(&self) -> usize;
-}
-
-// for constant value sizes
-macro_rules! const_size {
-    ($name:ident) => {
-        impl ContentSize for $name {
-            fn estimate_size(&self) -> usize {
-                std::mem::size_of::<$name>()
-            }
-        }
-    }
-}
-
-// and for other types like u16, u32, u64 and bool
-const_size!(u8);
-
-// let's consider a string just for its content size
-impl<T: AsRef<str>> ContentSize for T {
-    /// estimates string size based on character count
-    /// note: This is an approximation and doesn't account for encoding overhead
-    fn estimate_size(&self) -> usize {
-        self.as_ref().len()
-    }
-}
-
-// for maps, similar
-impl<K: ContentSize, V: ContentSize> for HashMap<K, V> {
-    /// recursively estimates size of all keys and values
-    /// used to determine when to split shards
-    fn estimate_size(&self) -> usize {
-        self.iter().fold(0, |acc, (key, value)| acc + key.estimate_size() + value.estimate_size())
-    }
-}
-```
-
-With this in hand, implementation across all indexes provides a rough idea of the file size. Considering that encryption adds overhead, the index splits when it reaches 90% of the limit size.
-
-The sharding mechanism implementation is straightforward and based on the foundation established earlier in this document.
-
-Here's a visual example of how a shard splits:
-
-```schema_ascii
-Before Split:
-    Shard 0 [0-200]
-    +---------------+
-    | Doc1  [50]    |
-    | Doc2  [75]    |
-    | Doc3  [125]   |
-    | Doc4  [175]   |
-    +---------------+
-
-After Split:
-    Shard 0 [0-100]     Shard 1 [101-200]
-    +---------------+   +----------------+
-    | Doc1  [50]    |   | Doc3  [125]    |
-    | Doc2  [75]    |   | Doc4  [175]    |
-    +---------------+   +----------------+
-```
-
-In the Collection structure lives a BTreeMap of all the entries by sharding value. A simple way to shard is just to split that BTreeMap at its center of gravity so that we have almost the same number of documents in both shard.
-
-Now we just have to implement a splitting function on the collection and all the indexes.
-
-```rust
-impl Collection {
-    /// attempts to split the collection into two roughly equal parts
-    /// returns None if splitting is not possible (e.g., all documents have same shard value)
-    fn split(&mut self) -> Option<Collection> {
-        // if all the entries have the same sharding value, it's not possible to split considering
-        // a sharding value can only be in one shard.
-        if self.sharding < 2 {
-            return None;
-        }
-
-        // calculate target size for new collection
-        let total_count = self.entries_by_name.len();
-        let half_count = total_count / 2;
-
-        let mut new_collection = Collection::default();
-
-        // keep moving entries until we reach approximately half size
-        while new_collection.entries_by_name.len() < half_count && self.sharding.len() > 1 {
-            // if this happens, it means everything was moved from the old shard, which is not possible
-            // which does not happen considering that the number of shards is checked
-            let Some((shard_value, entries)) = self.sharding.pop_last() {
-                return new_collection;
-            }
-            // moving from the old collection to the new collection one by one
-            for entry_index in entries {
-                if let Some(name) = self.entries_by_index.remove(&entry_index) {
-                    self.entries_by_name.remove(&name);
-                    new_collection.entries_by_index.insert(entry_index, name.clone());
-                    new_collection.entries_by_name.insert(name, entry_index);
-                }
-            }
-            new_collection.sharding.insert(shard_value, entries);
-        }
-
-        new_collection
-    }
-}
-```
-
-This will give us a new collection if it was possible to split it. If it's possible, we can now split all the indexes.
-
-```rust
-// similar for each index
-impl BooleanIndex {
-    // create a new index and move every item from the old entries to the new index
-    fn split(&mut self, entries: &HashSet<EntryIndex>) -> BooleanIndex {
-        let mut next = BooleanIndex::default();
-        self.content.iter_with_mut(|(term, term_documents)| {
-            term_documents.iter_with_mut(|(attribute, attribute_documents)| {
-                // fetch the intersection
-                let intersection = entries.iter().filter(|entry_index| attribute_documents.contains_key(entry_index)).collect();
-                if !intersection.is_empty() {
-                    // only create the document lists if there is an intersection
-                    let next_term_documents = next.content.entry(term.clone()).or_default();
-                    let next_attribute_documents = next_term_documents.entry(attribute.clone()).or_default();
-                    for entry_index in intersection.iter() {
-                        // remove from the old one and insert in the new one
-                        if let Some(entry_document) = attribute_documents.remove(entry_index) {
-                            next_attribute_documents.insert(entry_index, entry_document);
-                        }
-                    }
-                }
-                !intersection.is_empty()
-            })
-        });
-        next
-    }
-}
-```
-
-After creating a new shard, it is injected into the transaction manifest, with the sharding key being the minimum of all sharding keys, accessible using the first_key_value function of the BTreeMap. At the next commit, searching becomes possible.
 
 # Query Definition
 
@@ -3815,7 +3555,7 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 
 - **Hard Capacity Limit**: 100k document enforcement prevents performance degradation
 - **Single-File Persistence**: One manifest + data blob simplifies WASM file system interactions
-- **Extensible Manifest**: Format supports future multi-index scaling when needed
+- **Clean Architecture**: Single-index design without unnecessary complexity
 - **Manual Scaling**: Beyond 100k, developers create multiple index instances with explicit RRF merging
 - **Flexible Schema**: Dynamic attribute registration provides MongoDB/Elasticsearch-style ergonomics
 
