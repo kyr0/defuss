@@ -3571,10 +3571,10 @@ impl BM25Scorer {
         query_term: &str,
         matched_term: &str,
         attribute: AttributeIndex,
+        entry_index: EntryIndex,
         term_freq: u32,
-        doc_length: u32,
     ) -> f32 {
-        let base_score = self.score_term(matched_term, attribute, term_freq, doc_length);
+        let base_score = self.score_term(matched_term, attribute, entry_index, term_freq);
         
         // Apply fuzzy penalty based on edit distance
         let edit_distance = levenshtein_simd(query_term, matched_term);
