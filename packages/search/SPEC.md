@@ -2487,18 +2487,16 @@ use std::sync::atomic::{AtomicU8, Ordering};
 const READY: u8 = 0;
 const BUILDING: u8 = 1;
 
-static ENGINE_STATE: AtomicU8 = AtomicU8::new(READY);
-
 impl SearchEngine {
     pub fn search(&self, query: &Query) -> Result<SearchResults, SearchError> {
-        if ENGINE_STATE.load(Ordering::Acquire) != READY {
+        if self.state.load(Ordering::Acquire) != READY {
             return Err(SearchError::Indexing);
         }
         self.do_search(query)
     }
 
     pub fn ingest(&self, docs: Vec<Document>) -> Result<(), IngestError> {
-        if ENGINE_STATE.swap(BUILDING, Ordering::AcqRel) != READY {
+        if self.state.swap(BUILDING, Ordering::AcqRel) != READY {
             return Err(IngestError::Busy); // another build in progress
         }
 
@@ -2510,7 +2508,7 @@ impl SearchEngine {
 
         self.write_tmp_segment(&documents, &vector_data)?;
         self.atomic_swap_segment()?;
-        ENGINE_STATE.store(READY, Ordering::Release);
+        self.state.store(READY, Ordering::Release);
         Ok(())
     }
 
