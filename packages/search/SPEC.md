@@ -1834,11 +1834,20 @@ impl TextIndex {
         token_index: TokenIndex,
         position: Position,
     ) -> bool {
-        let term_documents = self.content.entry(term).or_default();
-        let attribute_documents = term_documents.entry(attribute_index).or_default();
-        let entry_documents = attribute_documents.entry(entry_index).or_default();
-        let value_documents = entry_documents.entry(value_index).or_default();
-        value_documents.insert((token_index, position))
+        let text_doc = TextDocumentEntry::new(
+            entry_index, attribute_index, value_index, 
+            token_index, position, 1.0
+        );
+        
+        let document_list = self.document_lists.entry(term.into()).or_default();
+        
+        // Binary search for insertion point to maintain sort order
+        let pos = document_list.binary_search(&text_doc).unwrap_or_else(|e| e);
+        document_list.insert(pos, text_doc);
+        
+        // Update bigram index for fuzzy search
+        self.bigram_index.add_term(term);
+        true
     }
 }
 ```
@@ -2697,19 +2706,50 @@ Given the index structure defined previously, looking for the related entries is
 ```rust
 impl BooleanIndex {
     fn search(&self, attribute: Option<AttributeIndex>, filter: &BooleanFilter) -> HashSet<EntryIndex> {
-        let document_lists = match filter {
-            BooleanIndex::Equals { value } => self.content.get(value),
+        let value = match filter {
+            BooleanFilter::Equals { value } => *value,
         };
-        let Some(document_lists) = document_lists else {
-            // no need to go further if the term is not found
-            return Default::default();
-        };
-        if let Some(attribute) = attribute {
-            document_lists.get(&attribute).iter().flat_map(|attr_documents| attr_documents.keys().copied())
-        } else {
-            // if there is no attribute specifier, all entries are returned
-            document_lists.iter().flat_map(|attr_documents| attr_documents.keys().copied())
+        
+        let bitset = if value { &self.true_bitset } else { &self.false_bitset };
+        let mut results = HashSet::new();
+        
+        match attribute {
+            Some(attr) => {
+                // Iterate through set bits and filter by attribute
+                for (word_idx, &word) in bitset.iter().enumerate() {
+                    if word == 0 { continue; }
+                    
+                    for bit_idx in 0..64 {
+                        if (word & (1u64 << bit_idx)) != 0 {
+                            let doc_id = word_idx * 64 + bit_idx;
+                            if doc_id < self.document_metadata.len() {
+                                let doc = &self.document_metadata[doc_id];
+                                if doc.attr == attr {
+                                    results.insert(doc.doc);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            None => {
+                // Return all documents for this boolean value using bitset iteration
+                for (word_idx, &word) in bitset.iter().enumerate() {
+                    if word == 0 { continue; }
+                    
+                    for bit_idx in 0..64 {
+                        if (word & (1u64 << bit_idx)) != 0 {
+                            let doc_id = word_idx * 64 + bit_idx;
+                            if doc_id < self.document_metadata.len() {
+                                results.insert(self.document_metadata[doc_id].doc);
+                            }
+                        }
+                    }
+                }
+            }
         }
+        
+        results
     }
 }
 ```
@@ -2732,28 +2772,36 @@ But the IntegerIndex indexes the possible values with a BTreeMap, which allows u
 
 ```rust
 impl IntegerIndex {
-    fn filter_content(&self, filter: &IntegerFilter) -> impl Iterator<Item = &HashMap<AttributeIndex, HashMap<EntryIndex, HashSet<ValueIndex>>>> {
+    fn filter_content(&self, filter: &IntegerFilter) -> impl Iterator<Item = (&u64, &Vec<DocumentEntry>)> {
         match filter {
-            IntegerFilter::Equals { value } => self.content.range(*value..=*value),
-            IntegerFilter::GreaterThan { value } => self.content.range((*value + 1)..),
-            IntegerFilter::LowerThan { value } => self.content.range(..*value),
+            IntegerFilter::Equals { value } => self.document_lists.range(*value..=*value),
+            IntegerFilter::GreaterThan { value } => self.document_lists.range((*value + 1)..),
+            IntegerFilter::LowerThan { value } => self.document_lists.range(..*value),
         }
     }
 
     fn search(&self, attribute: Option<AttributeIndex>, filter: &IntegerFilter) -> HashSet<EntryIndex> {
+        let mut results = HashSet::new();
+        
         if let Some(attribute) = attribute {
-            self.filter_content(filter)
-                // here we filter for the given attribute
-                .flat_map(|documents| documents.get(&attribute).iter())
-                .flat_map(|entries| entries.keys().copied())
-                .collect()
+            // Filter for the given attribute
+            for (_, document_list) in self.filter_content(filter) {
+                for doc in document_list.iter() {
+                    if doc.attr == attribute {
+                        results.insert(doc.doc);
+                    }
+                }
+            }
         } else {
-            self.filter_content(filter)
-                // here we take all the attributes
-                .flat_map(|documents| documents.values())
-                .flat_map(|entries| entries.keys().copied())
-                .collect()
+            // Take all attributes
+            for (_, document_list) in self.filter_content(filter) {
+                for doc in document_list.iter() {
+                    results.insert(doc.doc);
+                }
+            }
         }
+        
+        results
     }
 }
 ```
