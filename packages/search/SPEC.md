@@ -784,7 +784,7 @@ impl SizeTracker {
 
 ### State-Based Concurrency Control
 
-The engine uses a simple atomic state machine instead of complex per-shard locking. This eliminates race conditions and provides deterministic behavior:
+The engine uses a simple atomic state machine instead of complex per-index locking. This eliminates race conditions and provides deterministic behavior:
 
 ```rust
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -2294,7 +2294,7 @@ impl IndexFileCache {
 
 ### Persistence Strategy
 
-Single-index persistence is much simpler than multi-shard coordination:
+Single-index persistence is much simpler than multi-index coordination:
 
 ```rust
 impl HybridIndex {
@@ -2457,7 +2457,7 @@ For corpora guaranteed to stay under 100,000 documents, we use a simplified sing
 | Aspect | <100k docs | Why |
 |--------|-------------|-----|
 | **Memory** | ~400 MB vectors + lexical index fits comfortably in one page-aligned mmap | No L3/GC pressure that sharding would relieve |
-| **Latency** | Brute-force SIMD scan + flat document lists already ≤ 10 ms | Extra shard fan-out/merge would add overhead |
+| **Latency** | Brute-force SIMD scan + flat document lists already ≤ 10 ms | No fan-out/merge overhead needed |
 | **Durability** | One shadow-manifest + one data blob is simpler than N small files | Fewer I/O ops, easier atomic rename in WASM host FS APIs |
 
 ### Simplified Collection Structure
@@ -2465,7 +2465,7 @@ For corpora guaranteed to stay under 100,000 documents, we use a simplified sing
 ```rust
 /// Single-index collection optimized for ≤100k documents
 struct EmbeddedCollection {
-    /// Document mappings (single shard, no splitting)
+    /// Document mappings (single index, no splitting)
     entries_by_index: HashMap<EntryIndex, DocumentId>,
     entries_by_name: HashMap<DocumentId, EntryIndex>,
     /// All documents in one contiguous range
@@ -2592,9 +2592,9 @@ Sharding remains relevant for specific use cases:
 
 Single-index architecture provides:
 - **Atomic Updates**: One shadow-manifest + one data blob
-- **Simplified I/O**: No shard coordination or fan-out overhead  
+- **Simplified I/O**: No coordination or fan-out overhead  
 - **WASM-Friendly**: Fewer file operations, easier atomic rename APIs
-- **Memory Efficiency**: No cross-shard duplicate metadata
+- **Memory Efficiency**: No duplicate metadata overhead
 - **Optimal Caching**: Single mmap region for entire index
 
 ### Performance Characteristics
@@ -2604,7 +2604,7 @@ For ≤100k documents:
 - **Text Search**: <5ms with flattened document lists + binary search
 - **Memory Usage**: ~400MB total (vectors + lexical indices)
 - **Insert Latency**: <1ms per document with flattened structures
-- **Query Latency**: Single-digit milliseconds, no shard fan-out overhead
+- **Query Latency**: Single-digit milliseconds, no fan-out overhead
 
 The single-index design eliminates complexity while maintaining all performance benefits. When scaling beyond 100k documents becomes necessary, developers can create multiple independent index instances and merge results using RRF, providing explicit control over partitioning strategy.
 
@@ -3043,28 +3043,28 @@ async fn execute_query_with_arena(expression: &Expression) -> Result<Vec<(EntryI
 impl Expression {
     async fn execute_with_arena<'arena>(
         &self, 
-        shard: &ConcurrentShard, 
+        index: &HybridIndex, 
         ctx: &QueryContext<'arena>
     ) -> Result<ArenaHashMap<'arena, EntryIndex, f32>, SearchError> {
         match self {
             Expression::Condition(condition) => {
-                condition.execute_with_arena(shard, ctx).await
+                condition.execute_with_arena(index, ctx).await
             }
             Expression::And(left, right) => {
                 // Use arena for intermediate results
-                let left_result = left.execute_with_arena(shard, ctx).await?;
+                let left_result = left.execute_with_arena(index, ctx).await?;
                 
                 if left_result.is_empty() {
                     return Ok(ctx.temp_map()); // Arena-allocated empty map
                 }
                 
-                let right_result = right.execute_with_arena(shard, ctx).await?;
+                let right_result = right.execute_with_arena(index, ctx).await?;
                 Ok(intersect_results_arena(left_result, right_result, ctx))
             }
             Expression::Or(left, right) => {
                 let (left_result, right_result) = tokio::join!(
-                    left.execute_with_arena(shard, ctx),
-                    right.execute_with_arena(shard, ctx)
+                    left.execute_with_arena(index, ctx),
+                    right.execute_with_arena(index, ctx)
                 );
                 
                 Ok(union_results_arena(left_result?, right_result?, ctx))
@@ -3236,7 +3236,7 @@ impl HybridIndex {
     async fn search_with_arena_simd(&self, expression: &Expression, ctx: &QueryContext<'_>) -> Result<ArenaHashMap<'_, EntryIndex, f32>, SearchError> {
         match expression {
             Expression::Condition(condition) => {
-                condition.execute_with_arena(shard, ctx).await
+                condition.execute_with_arena(self, ctx).await
             }
             Expression::And(left, right) => {
                 // Parallel evaluation with SIMD optimizations
@@ -3269,28 +3269,28 @@ The previous RPN approach lost short-circuiting opportunities. We implement a pa
 
 ```rust
 impl Expression {
-    async fn execute_parallel(&self, shard: &ConcurrentShard) -> Result<HashMap<EntryIndex, f64>, SearchError> {
+    async fn execute_parallel(&self, index: &HybridIndex) -> Result<HashMap<EntryIndex, f64>, SearchError> {
         match self {
             Expression::Condition(condition) => {
-                condition.execute(shard).await
+                condition.execute(index).await
             }
             Expression::And(left, right) => {
                 // For AND: evaluate left first, if empty, skip right
-                let left_future = left.execute_parallel(shard);
+                let left_future = left.execute_parallel(index);
                 let left_result = left_future.await?;
                 
                 if left_result.is_empty() {
                     return Ok(HashMap::new()); // Short-circuit: AND with empty = empty
                 }
                 
-                let right_result = right.execute_parallel(shard).await?;
+                let right_result = right.execute_parallel(index).await?;
                 Ok(intersect_results(left_result, right_result))
             }
             Expression::Or(left, right) => {
                 // For OR: evaluate both in parallel, combine results
                 let (left_result, right_result) = tokio::join!(
-                    left.execute_parallel(shard),
-                    right.execute_parallel(shard)
+                    left.execute_parallel(index),
+                    right.execute_parallel(index)
                 );
                 
                 Ok(union_results(left_result?, right_result?))
@@ -3327,40 +3327,9 @@ fn union_results(
 This approach provides:
 - **True parallelism**: OR branches execute concurrently
 - **Short-circuiting**: AND operations skip unnecessary work
-- **Better resource utilization**: Multiple CPU cores engaged per shard
+- **Better resource utilization**: Multiple CPU cores engaged per index
 
-
-
-Let's add an abstraction layer for the shard.
-
-```rust
-struct Shard {
-    /// this is loaded anyway
-    collection: Collection,
-    /// then a cache is created
-    boolean: Option<CachedEncryptedFile<BooleanIndex>>,
-    integer: Option<CachedEncryptedFile<IntegerIndex>>,
-    tag: Option<CachedEncryptedFile<TagIndex>>,
-    text: Option<CachedEncryptedFile<TextIndex>>,
-}
-
-struct CachedEncryptedFile<T> {
-    file: EncryptedFile,
-    cache: async_lock::OnceCell<T>,
-}
-
-impl<T: serde::de::DeserializedOwned> CachedEncryptedFile<T> {
-    async fn get(&self) -> std::io::Result<&T> {
-        self.cache
-            // here the file is only deserialized when access is needed
-            // and it remains cached
-            .get_or_try_init(|| async { self.file.deserialize::<T>().await })
-            .await
-    }
-}
-```
-
-With that level of abstraction, we're sure the files are only loaded once in memory.
+The current `HybridIndex` already provides efficient file caching and lazy loading through the `IndexFileCache` abstraction.
 
 ## Scoring and Ranking
 
@@ -3489,7 +3458,7 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 
 5. **Lazy File Loading with Caching**: `CachedEncryptedFile` + `OnceCell` ensures each index file is loaded exactly once, with automatic decryption caching and memory management.
 
-6. **Atomic State Transitions**: Stop-the-world building with atomic state machine provides consistency without complex multi-shard coordination.
+6. **Atomic State Transitions**: Stop-the-world building with atomic state machine provides consistency without complex coordination.
 
 ### Performance Optimizations
 
@@ -3501,7 +3470,7 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 - **Flattened Memory Layout**: Single contiguous vectors per term eliminate HashMap overhead and provide linear cache access patterns
 - **Bump Arena Allocation**: Per-query scratch space eliminates thousands of malloc/free calls, with automatic bulk deallocation
 - **Galloping Intersection**: Multi-term queries use exponential search to accelerate document list merges
-- **No Shard Fan-out**: Direct index access eliminates query distribution and result merging overhead
+- **No Fan-out Overhead**: Direct index access eliminates query distribution and result merging overhead
 - **Short-Circuit Evaluation**: AND operations skip unnecessary work when early results are empty
 - **SIMD Vector Search**: Brute-force with SIMD 128 provides 6-8ms queries with perfect recall
 - **Arena-Optimized Collections**: All intermediate data structures use bump allocation to avoid WebAssembly heap fragmentation
@@ -3542,7 +3511,7 @@ This approach maintains the engine's zero-versioning promise while giving develo
 ```rust
 /// Enhanced collection with dynamic attribute registration
 struct FlexibleCollection {
-    /// Document mappings (single shard, no splitting)
+    /// Document mappings (single index, no splitting)
     entries_by_index: HashMap<EntryIndex, DocumentId>,
     entries_by_name: HashMap<DocumentId, EntryIndex>,
     /// Dynamic attribute registration (append-only)
