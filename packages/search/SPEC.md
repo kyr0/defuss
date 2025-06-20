@@ -86,70 +86,34 @@ rustflags = [
 ```toml
 [dependencies]
 # Parallel processing with WebAssembly support
-rayon = { version = "1.8", features = ["web_spin_lock"] }
-
-# SIMD operations for WebAssembly
-wasm-simd = "0.3"
+rayon = { version = "1.10", features = ["web_spin_lock"] }
 
 # Arena allocation for zero-fragmentation memory management
-bumpalo = { version = "3.14", features = ["collections"] }
-
-# Async runtime optimized for single-threaded WebAssembly
-tokio = { version = "1.35", features = ["rt", "macros"], default-features = false }
+bumpalo = { version = "3.18.1", features = ["collections"] }
 
 # Serialization with zero-copy optimization
 rkyv = { version = "0.7", features = ["validation", "archive_be", "archive_le"] }
 
 # Hash collections optimized for WebAssembly
-hashbrown = "0.14"
+hashbrown = { version = "0.14", features = ["rayon"] }
 
 # Regular expressions with Unicode support
 regex = { version = "1.10", features = ["unicode"] }
 
 # Text processing and stemming
-rust-stemmers = "1.2"
+rust_stemmers = "1.2"
 
 # Web APIs for hardware detection
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { version = "0.3", features = [
+web_sys = { version = "0.3", features = [
     "Navigator", 
     "Window", 
     "console",
 ] }
 wasm-bindgen = "0.2"
-js-sys = "0.3"
+js_sys = "0.3"
 ```
 
-### Build Script for Maximum Performance
-
-```bash
-#!/bin/bash
-# build-wasm-optimized.sh - Maximum performance WebAssembly build
-
-# Ensure latest Rust with WebAssembly target
-rustup update stable
-rustup target add wasm32-unknown-unknown
-
-# Build with maximum optimization
-RUSTFLAGS="-C target-feature=+simd128,+bulk-memory,+mutable-globals" \
-cargo build \
-    --target wasm32-unknown-unknown \
-    --release \
-    --features="wasm-opt"
-
-# Post-processing with wasm-opt for additional optimizations
-wasm-opt \
-    --enable-simd \
-    --enable-bulk-memory \
-    --enable-mutable-globals \
-    --optimize-level=4 \
-    --shrink-level=2 \
-    --convergence \
-    target/wasm32-unknown-unknown/release/defuss_search.wasm \
-    -o target/optimized/defuss_search.wasm
-
-echo "Optimized WebAssembly binary: target/optimized/defuss_search.wasm"
-```
 
 ### Performance Features Enabled
 
@@ -159,42 +123,6 @@ echo "Optimized WebAssembly binary: target/optimized/defuss_search.wasm"
 - **LTO (Link-Time Optimization)**: Cross-crate inlining and dead code elimination
 - **Single Codegen Unit**: Maximum optimization scope at compile time
 - **Panic Abort**: Reduced binary size by removing unwinding infrastructure
-
-### Runtime Performance Detection
-
-```rust
-/// Detect available hardware concurrency and SIMD capabilities
-pub fn detect_runtime_capabilities() -> RuntimeConfig {
-    let thread_count = web_sys::window()
-        .and_then(|w| w.navigator().hardware_concurrency())
-        .unwrap_or(4) as usize;
-        
-    let simd_support = cfg!(target_feature = "simd128");
-    let bulk_memory = cfg!(target_feature = "bulk-memory");
-    
-    RuntimeConfig {
-        thread_count,
-        simd_enabled: simd_support,
-        bulk_memory_enabled: bulk_memory,
-        rayon_thread_pool_size: thread_count,
-    }
-}
-
-/// Configure Rayon thread pool based on detected capabilities
-pub fn initialize_threading(config: &RuntimeConfig) -> Result<(), ThreadPoolBuildError> {
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(config.thread_count)
-        .thread_name(|idx| format!("defuss-worker-{}", idx))
-        .spawn_handler(|thread| {
-            // WebAssembly-specific thread spawning
-            std::thread::spawn(|| thread.run())
-        })
-        .build_global()
-}
-```
-
-This configuration ensures maximum performance for WebAssembly deployment while leveraging all available CPU cores and SIMD capabilities.
-
 
 ## Core Design Principles
 
