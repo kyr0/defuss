@@ -4142,11 +4142,19 @@ impl IndexBuilder {
         // A complete implementation would require storing field metadata per term
         // to enable proper BM25 rescaling with actual average field lengths
         
-        Index { 
+        // Build the Bloom filter with all indexed terms
+        let mut index = Index { 
             documents: self.documents, 
             term_bloom: [0; 4], 
             query_cache: std::sync::Mutex::new(lru::LruCache::new(32)) 
+        };
+        
+        // Populate Bloom filter with all terms from the index
+        for term in index.documents.keys() {
+            index.add_term_to_bloom(term);
         }
+        
+        index
     }
 }
 
