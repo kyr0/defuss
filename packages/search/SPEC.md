@@ -635,16 +635,16 @@ impl VectorIndex {
     /// SIMD-optimized cosine similarity using WebAssembly SIMD 128
     fn cosine_similarity_simd(query: &[f32], doc_vector: &[f32]) -> f32 {
         debug_assert_eq!(query.len(), doc_vector.len());
-        debug_assert_eq!(query.len() % 4, 0, "Vector dimensions must be multiple of 4 for SIMD");
+        debug_assert_eq!(query.len() % 4, 0, "Dimensions must be multiple of 4 for SIMD optimization");
         
         let mut dot_product = f32x4_splat(0.0);
         
-        // Process 4 f32 values per iteration using SIMD 128
+        // Process 4 f32 values simultaneously using SIMD 128-bit vectors
         for chunk_idx in (0..query.len()).step_by(4) {
             let q_chunk = f32x4_load_unaligned(&query[chunk_idx]);
             let d_chunk = f32x4_load_unaligned(&doc_vector[chunk_idx]);
             
-            // Parallel multiply-accumulate: dot_product += q_chunk * d_chunk
+            // SIMD multiply-accumulate: 4 operations in parallel
             dot_product = f32x4_add(dot_product, f32x4_mul(q_chunk, d_chunk));
         }
         
@@ -1261,11 +1261,16 @@ impl BooleanIndex {
         true
     }
     
-    fn search(&self, attribute: Option<AttributeIndex>, value: bool) -> Vec<EntryIndex> {
+    fn search(&self, attribute: Option<AttributeIndex>, filter: &BooleanFilter) -> HashSet<EntryIndex> {
+        let value = match filter {
+            BooleanFilter::Equals { value } => *value,
+        };
+        
+        let mut results = HashSet::new();
+        
         match attribute {
             Some(attr) => {
                 // Iterate through documents with boolean values and filter by attribute and value
-                let mut results = Vec::new();
                 for (word_idx, &has_value_word) in self.has_value_bitset.iter().enumerate() {
                     if has_value_word == 0 { continue; }
                     
@@ -1289,17 +1294,15 @@ impl BooleanIndex {
                             if doc_id < self.document_metadata.len() {
                                 let doc = &self.document_metadata[doc_id];
                                 if doc.attr == attr {
-                                    results.push(doc.doc);
+                                    results.insert(doc.doc);
                                 }
                             }
                         }
                     }
                 }
-                results
             }
             None => {
                 // Return all documents with the requested boolean value
-                let mut results = Vec::new();
                 for (word_idx, &has_value_word) in self.has_value_bitset.iter().enumerate() {
                     if has_value_word == 0 { continue; }
                     
@@ -1321,14 +1324,15 @@ impl BooleanIndex {
                         if (target_word & (1u64 << bit_idx)) != 0 {
                             let doc_id = word_idx * 64 + bit_idx;
                             if doc_id < self.document_metadata.len() {
-                                results.push(self.document_metadata[doc_id].doc);
+                                results.insert(self.document_metadata[doc_id].doc);
                             }
                         }
                     }
                 }
-                results
             }
         }
+        
+        results
     }
     
     fn delete(&mut self, entry_index: EntryIndex) -> bool {
@@ -1644,7 +1648,24 @@ impl TextIndex {
         
         // Update bigram index for fuzzy search
         self.bigram_index.add_term(term);
+        
+        // Insert term into trie for prefix searches
+        self.insert_to_trie(term);
         true
+    }
+    
+    /// Insert a term into the trie for prefix searches
+    fn insert_to_trie(&mut self, term: &str) {
+        let term_arc: Arc<str> = term.into();
+        let mut current = &mut self.trie_index;
+        
+        // Add each character of the term into the trie structure
+        for ch in term.chars() {
+            current = current.children.entry(ch).or_default();
+        }
+        
+        // Store the complete term at the leaf node
+        current.term = Some(term_arc);
     }
     
     /// Search for exact term matches
@@ -1967,27 +1988,6 @@ impl TextIndex {
         let document_list = self.document_lists.entry(term.into()).or_default();
         
         // Binary search for insertion point to maintain sort order
-        let pos = document_list.binary_search(&text_doc).unwrap_or_else(|e| e);
-        document_list.insert(pos, text_doc);
-        
-        // Update bigram index for fuzzy search
-        self.bigram_index.add_term(term);
-        true
-    }
-}
-```
-
-The delete method, on the other hand, remains the same.
-
-## Optional Vector Index
-
-The vector index enables semantic search through high-dimensional vector embeddings but is entirely optional. When disabled, the search engine operates purely on lexical indexes with full BM25FS+ scoring capabilities.
-
-### Vector Index Configuration
-
-```rust
-/// Optional vector index with configurable dimensions
-struct VectorIndex {
     /// Flat vector storage: Structure-of-Arrays for SIMD efficiency
     /// Layout: [doc0_dim0..doc0_dimN, doc1_dim0..doc1_dimN, ...]
     vectors: Vec<f32>,
