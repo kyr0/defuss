@@ -587,39 +587,52 @@ The search engine leverages Rayon for true multicore performance, utilizing all 
 ```rust
 use rayon::prelude::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Once;
+use std::sync::Arc;
+use once_cell::sync::OnceCell;
+use rayon::ThreadPool;
 
-static INIT_THREAD_POOL: Once = Once::new();
+/// Global thread pool singleton - initialized once per process to prevent panics
+static GLOBAL_THREAD_POOL: OnceCell<Arc<ThreadPool>> = OnceCell::new();
 
-/// Parallel search execution across all available CPU cores
+/// Initialize global thread pool exactly once per process
+fn ensure_thread_pool_initialized() -> Arc<ThreadPool> {
+    GLOBAL_THREAD_POOL.get_or_init(|| {
+        // Detect available cores from browser environment
+        let thread_count = web_sys::window()
+            .and_then(|w| w.navigator().hardware_concurrency())
+            .unwrap_or(4) as usize;
+            
+        // Configure Rayon thread pool for optimal WASM performance
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(thread_count)
+            .thread_name(|idx| format!("defuss-search-{}", idx))
+            .build()
+            .expect("Failed to initialize thread pool");
+            
+        Arc::new(pool)
+    }).clone()
+}
+
+/// Thread-safe search execution using global singleton pool
 impl SearchEngine {
     fn search_parallel(&self, expression: &Expression) -> Result<Vec<(EntryIndex, f32)>, SearchError> {
-        // Initialize global thread pool only once per process
-        INIT_THREAD_POOL.call_once(|| {
-            // Detect available cores from browser environment
-            let thread_count = web_sys::window()
-                .and_then(|w| w.navigator().hardware_concurrency())
-                .unwrap_or(4) as usize;
-                
-            // Configure Rayon thread pool for optimal WASM performance
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(thread_count)
-                .thread_name(|idx| format!("defuss-search-{}", idx))
-                .build_global()
-                .expect("Failed to initialize global thread pool");
-        });
+        // Use singleton thread pool - never panics on subsequent calls
+        let thread_pool = ensure_thread_pool_initialized();
         
-        // Parallel document processing within single index
-        let arena = Bump::new();
-        let ctx = QueryContext::new(&arena);
-        
-        let results = self.index.search_with_arena(expression, &ctx)?;
-        
-        // Parallel sorting for final ranking
-        let mut sorted_results: Vec<(EntryIndex, f32)> = results.into_par_iter().collect();
-        sorted_results.par_sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
-        Ok(sorted_results)
+        // Execute search within thread pool context
+        thread_pool.install(|| {
+            // Arena allocation for zero-fragmentation memory management
+            let arena = Bump::new();
+            let ctx = QueryContext::new(&arena);
+            
+            let results = self.index.search_with_arena(expression, &ctx)?;
+            
+            // Parallel sorting for final ranking
+            let mut sorted_results: Vec<(EntryIndex, f32)> = results.into_par_iter().collect();
+            sorted_results.par_sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            
+            Ok(sorted_results)
+        })
     }
 }
 ```
