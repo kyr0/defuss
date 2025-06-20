@@ -271,7 +271,7 @@ With the schema and document structure defined, here's how all the pieces fit to
 
 ```schema_ascii
 +-------------+     +-------------------+
-| Document    |     | EmbeddedCollection|
+| Document    |     | FlexibleCollection|
 +-------------+     +-------------------+
 | id: String  |     | entries_by_index  |
 | attributes  +---->| entries_by_name   |
@@ -332,7 +332,7 @@ This replaces the older nested structure `HashMap<Term, HashMap<DocumentIdentifi
 - **Faster Binary Search**: Direct access to sorted document vectors
 - **Compact Storage**: Numeric indexes (u32/u8) instead of string identifiers
 
-The DocumentIdentifier-as-String approach created significant memory overhead proportional to string length. The new numeric indirection through EmbeddedCollection eliminates this cost while maintaining fast bidirectional lookups.
+The DocumentIdentifier-as-String approach created significant memory overhead proportional to string length. The new numeric indirection through FlexibleCollection eliminates this cost while maintaining fast bidirectional lookups.
 
 ## Strong Type Safety
 
@@ -370,24 +370,108 @@ struct TokenIndex(u16);
 
 This approach prevents mixing up different types of indexes and makes the code more self-documenting. The single-index architecture eliminates the need for sharding-related types.
 
-## The EmbeddedCollection Structure
-
-The current architecture uses a single embedded collection that manages all documents and attributes without sharding:
+### FlexibleCollection Implementation
 
 ```rust
-/// Single embedded collection for ≤100k documents
-struct EmbeddedCollection {
-    /// Document mappings (no sharding required)
+/// Enhanced collection with dynamic attribute registration
+struct FlexibleCollection {
+    /// Document mappings (single index, no splitting)
     entries_by_index: HashMap<EntryIndex, DocumentId>,
     entries_by_name: HashMap<DocumentId, EntryIndex>,
-    /// Dynamic attribute registration (< 256 attributes)
+    /// Dynamic attribute registration (append-only)
     attributes_by_name: HashMap<Box<str>, AttributeIndex>,
     attributes_by_index: HashMap<AttributeIndex, Box<str>>,
+    /// Type information inferred at first encounter
     attribute_kinds: HashMap<AttributeIndex, Kind>,
-    /// Document count with hard limit
+    /// Document count tracking
     document_count: usize,
 }
+
+impl FlexibleCollection {
+    const MAX_DOCUMENTS: usize = 100_000;
+    const MAX_ATTRIBUTES: usize = 256;
+    const MAX_VALUES_PER_ATTRIBUTE: usize = 255;
+    
+    fn new() -> Self {
+        Self {
+            entries_by_index: HashMap::with_capacity(Self::MAX_DOCUMENTS),
+            entries_by_name: HashMap::with_capacity(Self::MAX_DOCUMENTS),
+            attributes_by_name: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
+            attributes_by_index: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
+            attribute_kinds: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
+            document_count: 0,
+        }
+    }
+    
+    /// Lazy attribute registration with kind inference
+    fn register_attribute_if_needed(&mut self, name: &str, value: &Value) -> Result<AttributeIndex, IndexError> {
+        // Check if attribute already exists
+        if let Some(&attr_idx) = self.attributes_by_name.get(name) {
+            // Verify type compatibility
+            let inferred_kind = Self::infer_kind(value);
+            if let Some(&existing_kind) = self.attribute_kinds.get(&attr_idx) {
+                if existing_kind != inferred_kind {
+                    return Err(IndexError::TypeMismatch(existing_kind, inferred_kind));
+                }
+            }
+            return Ok(attr_idx);
+        }
+        
+        // Register new attribute
+        if self.attributes_by_name.len() >= Self::MAX_ATTRIBUTES {
+            return Err(IndexError::AttributeCapacityExceeded);
+        }
+        
+        let new_id = self.attributes_by_name.len() as u8;
+        let attr_idx = AttributeIndex(new_id);
+        let name_box: Box<str> = name.into();
+        let inferred_kind = Self::infer_kind(value);
+        
+        self.attributes_by_name.insert(name_box.clone(), attr_idx);
+        self.attributes_by_index.insert(attr_idx, name_box);
+        self.attribute_kinds.insert(attr_idx, inferred_kind);
+        
+        Ok(attr_idx)
+    }
+    
+    /// Simple type inference from first value encountered
+    fn infer_kind(value: &Value) -> Kind {
+        match value {
+            Value::Boolean(_) => Kind::Boolean,
+            Value::Integer(_) => Kind::Integer,
+            Value::Tag(s) if s.len() <= 32 => Kind::Tag,
+            Value::Tag(_) | Value::Text(_) => Kind::Text,
+        }
+    }
+    
+    /// Get attribute index with lazy registration
+    fn get_or_register_attribute(&mut self, name: &str, value: &Value) -> Result<AttributeIndex, IndexError> {
+        self.register_attribute_if_needed(name, value)
+    }
+    
+    /// Lookup attribute index (returns None for unknown fields)
+    fn get_attribute_index(&self, name: &str) -> Option<AttributeIndex> {
+        self.attributes_by_name.get(name).copied()
+    }
+    
+    /// Get attribute kind for validation
+    fn get_attribute_kind(&self, attr_idx: AttributeIndex) -> Option<Kind> {
+        self.attribute_kinds.get(&attr_idx).copied()
+    }
+}
+
+#[derive(Debug)]
+enum IndexError {
+    CapacityExceeded,
+    AttributeCapacityExceeded,
+    ValueCapacityExceeded,
+    DocumentNotFound,
+    TypeMismatch(Kind, Kind),
+    VectorDimensionMismatch,
+    VectorNotNormalized,
+}
 ```
+
 
 This design eliminates the complexity of sharding while maintaining efficiency:
 
@@ -2154,7 +2238,7 @@ For the ≤100k document use case, we use a simplified single-index architecture
                           |
                           v
               +-----------------------+
-              |   EmbeddedCollection  |
+              |   FlexibleCollection  |
               |-----------------------|
               | entries_by_index      |
               | entries_by_name       |  
@@ -2341,7 +2425,7 @@ Even with a single index, we maintain lazy loading for memory efficiency:
 /// Manages file-based persistence for embedded index
 struct IndexFileCache {
     /// Single collection file
-    collection_file: IndexFile<EmbeddedCollection>,
+    collection_file: IndexFile<FlexibleCollection>,
     /// Index files (loaded on demand)
     boolean_file: Option<IndexFile<BooleanIndex>>,
     integer_file: Option<IndexFile<IntegerIndex>>,
@@ -2572,51 +2656,7 @@ For corpora guaranteed to stay under 100,000 documents, we use a simplified sing
 ### Simplified Collection Structure
 
 ```rust
-/// Single-index collection optimized for ≤100k documents
-struct EmbeddedCollection {
-    /// Document mappings (single index, no splitting)
-    entries_by_index: HashMap<EntryIndex, DocumentId>,
-    entries_by_name: HashMap<DocumentId, EntryIndex>,
-    /// All documents in one contiguous range
-    document_count: usize,
-}
-
-/// Tracks size changes incrementally to avoid O(N²) overhead
-impl EmbeddedCollection {
-    const MAX_DOCUMENTS: usize = 100_000;
-    
-    fn new() -> Self {
-        Self {
-            entries_by_index: HashMap::with_capacity(Self::MAX_DOCUMENTS),
-            entries_by_name: HashMap::with_capacity(Self::MAX_DOCUMENTS),
-            document_count: 0,
-        }
-    }
-    
-    /// Add document with hard limit enforcement
-    fn add_document(&mut self, doc_id: DocumentId) -> Result<EntryIndex, IndexError> {
-        if self.document_count >= Self::MAX_DOCUMENTS {
-            return Err(IndexError::CapacityExceeded);
-        }
-        
-        let entry_idx = EntryIndex(self.document_count as u32);
-        self.entries_by_index.insert(entry_idx, doc_id.clone());
-        self.entries_by_name.insert(doc_id, entry_idx);
-        self.document_count += 1;
-        
-        Ok(entry_idx)
-    }
-    
-    /// Check if collection is at capacity
-    fn is_at_capacity(&self) -> bool {
-        self.document_count >= Self::MAX_DOCUMENTS
-    }
-    
-    /// No automatic splitting - hard limit enforced at insertion
-    fn needs_split(&self) -> bool {
-        false // Never split automatically
-    }
-}
+// Note: We now use FlexibleCollection instead of FlexibleCollection for consistency
 
 #[derive(Debug)]
 enum IndexError {
@@ -3703,108 +3743,6 @@ Good enough for logs / JSON blobs.
 
 |**Unknown-to-old-docs caveat** 
 Queries on a new field only see docs added after the field first appeared. Acceptable for edge / 100k-doc workloads; no re-index pass needed.
-
-### Flexible Collection Implementation
-
-```rust
-/// Enhanced collection with dynamic attribute registration
-struct FlexibleCollection {
-    /// Document mappings (single index, no splitting)
-    entries_by_index: HashMap<EntryIndex, DocumentId>,
-    entries_by_name: HashMap<DocumentId, EntryIndex>,
-    /// Dynamic attribute registration (append-only)
-    attributes_by_name: HashMap<Box<str>, AttributeIndex>,
-    attributes_by_index: HashMap<AttributeIndex, Box<str>>,
-    /// Type information inferred at first encounter
-    attribute_kinds: HashMap<AttributeIndex, Kind>,
-    /// Document count tracking
-    document_count: usize,
-}
-
-impl FlexibleCollection {
-    const MAX_DOCUMENTS: usize = 100_000;
-    const MAX_ATTRIBUTES: usize = 256;
-    const MAX_VALUES_PER_ATTRIBUTE: usize = 255;
-    
-    fn new() -> Self {
-        Self {
-            entries_by_index: HashMap::with_capacity(Self::MAX_DOCUMENTS),
-            entries_by_name: HashMap::with_capacity(Self::MAX_DOCUMENTS),
-            attributes_by_name: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
-            attributes_by_index: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
-            attribute_kinds: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
-            document_count: 0,
-        }
-    }
-    
-    /// Lazy attribute registration with kind inference
-    fn register_attribute_if_needed(&mut self, name: &str, value: &Value) -> Result<AttributeIndex, IndexError> {
-        // Check if attribute already exists
-        if let Some(&attr_idx) = self.attributes_by_name.get(name) {
-            // Verify type compatibility
-            let inferred_kind = Self::infer_kind(value);
-            if let Some(&existing_kind) = self.attribute_kinds.get(&attr_idx) {
-                if existing_kind != inferred_kind {
-                    return Err(IndexError::TypeMismatch(existing_kind, inferred_kind));
-                }
-            }
-            return Ok(attr_idx);
-        }
-        
-        // Register new attribute
-        if self.attributes_by_name.len() >= Self::MAX_ATTRIBUTES {
-            return Err(IndexError::AttributeCapacityExceeded);
-        }
-        
-        let new_id = self.attributes_by_name.len() as u8;
-        let attr_idx = AttributeIndex(new_id);
-        let name_box: Box<str> = name.into();
-        let inferred_kind = Self::infer_kind(value);
-        
-        self.attributes_by_name.insert(name_box.clone(), attr_idx);
-        self.attributes_by_index.insert(attr_idx, name_box);
-        self.attribute_kinds.insert(attr_idx, inferred_kind);
-        
-        Ok(attr_idx)
-    }
-    
-    /// Simple type inference from first value encountered
-    fn infer_kind(value: &Value) -> Kind {
-        match value {
-            Value::Boolean(_) => Kind::Boolean,
-            Value::Integer(_) => Kind::Integer,
-            Value::Tag(s) if s.len() <= 32 => Kind::Tag,
-            Value::Tag(_) | Value::Text(_) => Kind::Text,
-        }
-    }
-    
-    /// Get attribute index with lazy registration
-    fn get_or_register_attribute(&mut self, name: &str, value: &Value) -> Result<AttributeIndex, IndexError> {
-        self.register_attribute_if_needed(name, value)
-    }
-    
-    /// Lookup attribute index (returns None for unknown fields)
-    fn get_attribute_index(&self, name: &str) -> Option<AttributeIndex> {
-        self.attributes_by_name.get(name).copied()
-    }
-    
-    /// Get attribute kind for validation
-    fn get_attribute_kind(&self, attr_idx: AttributeIndex) -> Option<Kind> {
-        self.attribute_kinds.get(&attr_idx).copied()
-    }
-}
-
-#[derive(Debug)]
-enum IndexError {
-    CapacityExceeded,
-    AttributeCapacityExceeded,
-    ValueCapacityExceeded,
-    DocumentNotFound,
-    TypeMismatch(Kind, Kind),
-    VectorDimensionMismatch,
-    VectorNotNormalized,
-}
-```
 
 ### Dynamic Document Insertion
 
