@@ -542,7 +542,7 @@ use wasm_simd::*;
 
 impl VectorIndex {
     /// SIMD-optimized cosine similarity using WebAssembly SIMD 128
-    unsafe fn cosine_similarity_simd(query: &[f32], doc_vector: &[f32]) -> f32 {
+    fn cosine_similarity_simd(query: &[f32], doc_vector: &[f32]) -> f32 {
         debug_assert_eq!(query.len(), doc_vector.len());
         debug_assert_eq!(query.len() % 4, 0, "Vector dimensions must be multiple of 4 for SIMD");
         
@@ -589,9 +589,8 @@ impl VectorIndex {
             let chunk_results: Vec<(EntryIndex, f32)> = self.vectors[chunk_start * self.dimension..chunk_end * self.dimension]
                 .par_chunks_exact(self.dimension)
                 .zip(self.entry_mapping[chunk_start..chunk_end].par_iter())
-                .map(|(doc_vector, &entry_index)| {                let score = unsafe { 
-                    VectorIndex::cosine_similarity_simd(query, doc_vector)
-                };
+                .map(|(doc_vector, &entry_index)| {
+                    let score = VectorIndex::cosine_similarity_simd(query, doc_vector);
                     (entry_index, score)
                 })
                 .collect();
@@ -771,7 +770,6 @@ fn levenshtein_simd(s1: &str, s2: &str) -> usize {
 The original approach of recursively computing `estimate_size()` on every insert creates O(N²) complexity for hot paths. Instead, we implement incremental size tracking:
 
 ```rust
-/// Tracks size changes incrementally to avoid O(N²) overhead
 #[derive(Debug, Default)]
 struct SizeTracker {
     current_size: usize,
@@ -1989,10 +1987,7 @@ impl VectorIndex {
             .par_chunks_exact(self.dimension)
             .zip(self.entry_mapping.par_iter())
             .map(|(doc_vector, &entry_index)| {
-                let score = unsafe { 
-                    // SIMD-optimized dot product using WebAssembly SIMD 128 intrinsics
-                    Self::cosine_similarity_simd(query, doc_vector)
-                };
+                let score = Self::cosine_similarity_simd(query, doc_vector);
                 (entry_index, score)
             })
             .fold(
@@ -2039,7 +2034,7 @@ impl VectorIndex {
     }
 
     /// WebAssembly SIMD 128 optimized cosine similarity for 1024-dimensional vectors
-    unsafe fn cosine_similarity_simd(query: &[f32], doc_vector: &[f32]) -> f32 {
+    fn cosine_similarity_simd(query: &[f32], doc_vector: &[f32]) -> f32 {
         debug_assert_eq!(query.len(), doc_vector.len());
         debug_assert_eq!(query.len() % 4, 0, "Dimensions must be multiple of 4 for SIMD optimization");
         
@@ -2062,7 +2057,7 @@ impl VectorIndex {
     }
 
     /// Scalar fallback for non-SIMD environments or dimension validation
-    unsafe fn cosine_similarity_scalar(query: &[f32], doc_vector: &[f32]) -> f32 {
+    fn cosine_similarity_scalar(query: &[f32], doc_vector: &[f32]) -> f32 {
         debug_assert_eq!(query.len(), doc_vector.len());
         query.iter().zip(doc_vector).map(|(q, d)| q * d).sum()
     }
@@ -2578,6 +2573,7 @@ struct EmbeddedCollection {
     document_count: usize,
 }
 
+/// Tracks size changes incrementally to avoid O(N²) overhead
 impl EmbeddedCollection {
     const MAX_DOCUMENTS: usize = 100_000;
     
