@@ -503,20 +503,27 @@ The search engine leverages Rayon for true multicore performance, utilizing all 
 ```rust
 use rayon::prelude::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Once;
+
+static INIT_THREAD_POOL: Once = Once::new();
 
 /// Parallel search execution across all available CPU cores
 impl SearchEngine {
     async fn search_parallel(&self, expression: &Expression) -> Result<Vec<(EntryIndex, f32)>, SearchError> {
-        // Detect available cores from browser environment
-        let thread_count = web_sys::window()
-            .and_then(|w| w.navigator().hardware_concurrency())
-            .unwrap_or(4) as usize;
-            
-        // Configure Rayon thread pool for optimal WASM performance
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(thread_count)
-            .thread_name(|idx| format!("defuss-search-{}", idx))
-            .build_global()?;
+        // Initialize global thread pool only once per process
+        INIT_THREAD_POOL.call_once(|| {
+            // Detect available cores from browser environment
+            let thread_count = web_sys::window()
+                .and_then(|w| w.navigator().hardware_concurrency())
+                .unwrap_or(4) as usize;
+                
+            // Configure Rayon thread pool for optimal WASM performance
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(thread_count)
+                .thread_name(|idx| format!("defuss-search-{}", idx))
+                .build_global()
+                .expect("Failed to initialize global thread pool");
+        });
         
         // Parallel document processing within single index
         let arena = Bump::new();
