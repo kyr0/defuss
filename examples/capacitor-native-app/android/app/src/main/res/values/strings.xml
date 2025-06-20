@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Defuss Capacitor</string>
+    <string name="title_activity_main">Defuss Capacitor</string>
+    <string name="package_name">de.aronhomberg.defusscapacitor</string>
+    <string name="custom_url_scheme">de.aronhomberg.defusscapacitor</string>
+     <string name="capacitor_background_geolocation_notification_channel_name">
+        Background Tracking
+    </string>
+    <string name="capacitor_background_geolocation_notification_icon">
+        drawable/ic_tracking
+    </string>
+    <string name="capacitor_background_geolocation_notification_color">
+        yellow
+    </string>
+</resources>

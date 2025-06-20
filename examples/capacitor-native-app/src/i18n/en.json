@@ -1,0 +1,352 @@
+{
+	"common": {
+		"loading": "Loading...",
+		"error": "An error occurred",
+		"not_found": "Not found",
+		"back": "Back"
+	},
+	"home": {
+		"title": "Welcome to Light in a Bottle",
+		"description": "Share warmth, find connection.",
+		"cta_text": "Ready to share your light and connect authentically?",
+		"features": {
+			"support": {
+				"title": "True Support & Accountability",
+				"description": "Build a community of deep, genuine support. Share your thoughts and feelings in a safe, encouraging space. Forge accountability partnerships that uplift and inspire."
+			},
+			"bottles": {
+				"title": "Messages in a Bottle",
+				"description": "Send your \"message in a bottle\" out to the community. These are thoughtful expressions, shared once a day, fostering mindful communication."
+			},
+			"reactions": {
+				"title": "Encouraging Reactions Only",
+				"description": "React to bottles with kindness. Our platform filters out negativity, ensuring every interaction is positive and uplifting. No irony, no sarcasm, just pure support."
+			},
+			"connections": {
+				"title": "Thoughtful Connections",
+				"description": "Like a bottle? Add the sender as a friend. View their bottles and react by sending your own. No direct DMs until a meaningful, long-term bond is formed (30 bi-directional bottles)."
+			},
+			"mindful": {
+				"title": "One Thoughtful Bottle a Day",
+				"description": "Everyone can send only one bottle per day. This encourages mindful expression, ensuring each message is heartfelt and considered. After 30 shared bottles, this increases to two."
+			}
+		}
+	},
+	"login": {
+		"app_name": "Light in a Bottle",
+		"welcome_message": "Welcome back! Please sign in to continue.",
+		"email_label": "Email address",
+		"password_label": "Password",
+		"remember_me": "Remember me",
+		"forgot_password": "Forgot your password?",
+		"sign_in_button": "Sign in",
+		"or_continue_with": "Or continue with",
+		"no_account": "Don't have an account?",
+		"sign_up_link": "Sign up"
+	},
+	"signup": {
+		"title": "Create Account",
+		"subtitle": "Join us and let your light shine.",
+		"full_name_label": "Full Name",
+		"email_label": "Email address",
+		"password_label": "Password",
+		"confirm_password_label": "Confirm Password",
+		"agree_to_terms": "I agree to the",
+		"terms_link": "Terms of Service",
+		"sign_up_button": "Sign Up",
+		"already_have_account": "Already have an account?",
+		"sign_in_link": "Sign In"
+	},
+	"forgot_password": {
+		"title": "Forgot Password?",
+		"subtitle": "No worries, we'll send you reset instructions.",
+		"email_label": "Email address",
+		"send_reset_button": "Send Reset Link",
+		"back_to_login": "Back to Sign In"
+	},
+	"tos": {
+		"title": "Legal Agreements",
+		"terms_of_service": "Terms of Service",
+		"privacy_policy": "Privacy Policy",
+		"last_updated": "Last Updated: October 26, 2023",
+		"terms": {
+			"intro": "Welcome to Light in a Bottle (\"us\", \"we\", or \"our\"). These Terms of Service govern your use of our mobile application (the \"Service\"). Please read these Terms of Service carefully before using the Service.",
+			"acceptance": "Your access to and use of the Service is conditioned on your acceptance of and compliance with these Terms. These Terms apply to all visitors, users, and others who access or use the Service.",
+			"agreement": "By accessing or using the Service you agree to be bound by these Terms. If you disagree with any part of the terms then you may not access the Service.",
+			"eligibility": {
+				"title": "1. Eligibility",
+				"content": "You must be at least 13 years old to use the Service. By agreeing to these Terms, you represent and warrant to us that: (a) you are at least 13 years old; (b) you have not previously been suspended or removed from the Service; and (c) your registration and your use of the Service is in compliance with any and all applicable laws and regulations."
+			},
+			"accounts": {
+				"title": "2. Accounts",
+				"content1": "When you create an account with us, you must provide us with information that is accurate, complete, and current at all times. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account on our Service.",
+				"content2": "You are responsible for safeguarding the password that you use to access the Service and for any activities or actions under your password, whether your password is with our Service or a third-party service. You agree not to disclose your password to any third party. You must notify us immediately upon becoming aware of any breach of security or unauthorized use of your account."
+			},
+			"features": {
+				"title": "3. Core Features and Conduct",
+				"messages": {
+					"title": "3.1. Messages in a Bottle",
+					"content": "You may share one \"message in a bottle\" per day (this may increase to two per day after 30 bi-directionally shared bottles with an established connection). These messages are intended for thoughtful expression and positive community engagement. Content must be respectful and constructive."
+				},
+				"reactions": {
+					"title": "3.2. Positive Reactions",
+					"content": "The Service is designed to foster a supportive environment. Reactions to messages should be encouraging and kind. We employ filters and community moderation to discourage negativity, irony, or sarcasm. We reserve the right to remove content that violates these principles."
+				},
+				"connections": {
+					"title": "3.3. Building Connections",
+					"content": "You can add other users as friends if you appreciate their \"messages in a bottle.\" Direct messaging (DM) capabilities are intentionally limited and will only become available after a sustained period of mutual positive interaction (e.g., 30 bi-directionally shared and positively reacted-to bottles between two users). This is to encourage meaningful connections before private communication."
+				},
+				"prohibited": {
+					"title": "3.4. Prohibited Conduct",
+					"intro": "You agree not to use the Service to:",
+					"list": {
+						"1": "Post any content that is unlawful, harmful, threatening, abusive, harassing, defamatory, vulgar, obscene, libelous, invasive of another's privacy, hateful, or racially, ethnically, or otherwise objectionable.",
+						"2": "Harm minors in any way.",
+						"3": "Impersonate any person or entity, or falsely state or otherwise misrepresent your affiliation with a person or entity.",
+						"4": "Post any unsolicited or unauthorized advertising, promotional materials, \"junk mail,\" \"spam,\" \"chain letters,\" \"pyramid schemes,\" or any other form of solicitation.",
+						"5": "Post any material that contains software viruses or any other computer code, files, or programs designed to interrupt, destroy, or limit the functionality of any computer software or hardware or telecommunications equipment.",
+						"6": "Interfere with or disrupt the Service or servers or networks connected to the Service."
+					}
+				}
+			},
+			"ip": {
+				"title": "4. Intellectual Property",
+				"content1": "The Service and its original content (excluding content provided by users), features, and functionality are and will remain the exclusive property of Light in a Bottle and its licensors. The Service is protected by copyright, trademark, and other laws of both the United States and foreign countries. Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of Light in a Bottle.",
+				"content2": "By posting content to the Service, you grant us a worldwide, non-exclusive, royalty-free license (with the right to sublicense) to use, copy, reproduce, process, adapt, modify, publish, transmit, display, and distribute such content in any and all media or distribution methods (now known or later developed)."
+			},
+			"termination": {
+				"title": "5. Termination",
+				"content1": "We may terminate or suspend your account immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.",
+				"content2": "Upon termination, your right to use the Service will immediately cease. If you wish to terminate your account, you may simply discontinue using the Service."
+			},
+			"liability": {
+				"title": "6. Limitation of Liability",
+				"content": "In no event shall Light in a Bottle, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Service; (ii) any conduct or content of any third party on the Service; (iii) any content obtained from the Service; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage, and even if a remedy set forth herein is found to have failed of its essential purpose."
+			},
+			"disclaimer": {
+				"title": "7. Disclaimer",
+				"content1": "Your use of the Service is at your sole risk. The Service is provided on an \"AS IS\" and \"AS AVAILABLE\" basis. The Service is provided without warranties of any kind, whether express or implied, including, but not limited to, implied warranties of merchantability, fitness for a particular purpose, non-infringement or course of performance.",
+				"content2": "Light in a Bottle its subsidiaries, affiliates, and its licensors do not warrant that a) the Service will function uninterrupted, secure or available at any particular time or location; b) any errors or defects will be corrected; c) the Service is free of viruses or other harmful components; or d) the results of using the Service will meet your requirements."
+			},
+			"law": {
+				"title": "8. Governing Law",
+				"content": "These Terms shall be governed and construed in accordance with the laws of the jurisdiction in which Light in a Bottle is established, without regard to its conflict of law provisions. Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights. If any provision of these Terms is held to be invalid or unenforceable by a court, the remaining provisions of these Terms will remain in effect. These Terms constitute the entire agreement between us regarding our Service, and supersede and replace any prior agreements we might have between us regarding the Service."
+			},
+			"changes": {
+				"title": "9. Changes to Terms",
+				"content": "We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material we will try to provide at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion. By continuing to access or use our Service after those revisions become effective, you agree to be bound by the revised terms. If you do not agree to the new terms, please stop using the Service."
+			},
+			"contact": {
+				"title": "10. Contact Us",
+				"content": "If you have any questions about these Terms, please contact us at: support@lightinabottle.app"
+			}
+		},
+		"privacy": {
+			"intro": "This Privacy Policy describes how Light in a Bottle (\"us\", \"we\", or \"our\") collects, uses, and shares information about you when you use our mobile application (the \"Service\").",
+			"collection": {
+				"title": "1. Information We Collect",
+				"intro": "We collect information you provide directly to us and information we collect automatically when you use the Service.",
+				"provided": {
+					"title": "1.1. Information You Provide to Us",
+					"account": {
+						"title": "Account Information",
+						"content": "When you create an account, we collect information such as your username, password (hashed), and email address (optional)."
+					},
+					"content": {
+						"title": "User Content",
+						"content": "We collect the content you create and share on the Service, such as your \"messages in a bottle,\" reactions, and any direct messages exchanged with other users once that feature is enabled."
+					},
+					"comms": {
+						"title": "Communications",
+						"content": "If you contact us directly, we may receive additional information about you, such as your name, email address, the contents of the message and/or attachments you may send us, and any other information you may choose to provide."
+					}
+				},
+				"automatic": {
+					"title": "1.2. Information We Collect Automatically",
+					"usage": {
+						"title": "Usage Information",
+						"content": "We collect information about your activity on the Service, such as the messages you view, your interactions with other users, features you use, and the time, frequency, and duration of your activities."
+					},
+					"device": {
+						"title": "Device Information",
+						"content": "We collect information about the device you use to access the Service, including hardware model, operating system and version, unique device identifiers, and mobile network information."
+					},
+					"log": {
+						"title": "Log Information",
+						"content": "When you use our Service, we automatically collect and store certain information in server logs. This includes details of how you used our service, IP address, device event information such as crashes, system activity, hardware settings, browser type, browser language, the date and time of your request and referral URL."
+					}
+				}
+			},
+			"usage": {
+				"title": "2. How We Use Your Information",
+				"intro": "We use the information we collect to:",
+				"list": {
+					"1": "Provide, operate, and maintain our Service;",
+					"2": "Improve, personalize, and expand our Service;",
+					"3": "Understand and analyze how you use our Service;",
+					"4": "Develop new products, services, features, and functionality;",
+					"5": "Communicate with you, either directly or through one of our partners, including for customer service, to provide you with updates and other information relating to the Service, and for marketing and promotional purposes (with your consent, where required);",
+					"6": "Process your transactions;",
+					"7": "Send you push notifications (with your consent);",
+					"8": "Find and prevent fraud and abuse; and",
+					"9": "For compliance purposes, including enforcing our Terms of Service, or other legal rights, or as may be required by applicable laws and regulations or requested by any judicial process or governmental agency."
+				}
+			},
+			"sharing": {
+				"title": "3. How We Share Your Information",
+				"intro": "We may share the information we collect in various ways, including the following:",
+				"users": {
+					"title": "With Other Users",
+					"content": "Your username and the content you share as \"messages in a bottle\" are visible to other users of the Service. If you add friends or engage in direct messaging (when available), those users will see your interactions with them."
+				},
+				"vendors": {
+					"title": "Vendors and Service Providers",
+					"content": "We may share information with third-party vendors and service providers that perform services on our behalf, such as hosting, data analytics, customer service, and marketing."
+				},
+				"legal": {
+					"title": "As Required By Law and Similar Disclosures",
+					"content": "We may access, preserve, and disclose your information if we believe doing so is required or appropriate to: (a) comply with law enforcement requests and legal process, such as a court order or subpoena; (b) respond to your requests; or (c) protect your, our, or others' rights, property, or safety."
+				},
+				"merger": {
+					"title": "Merger, Sale, or Other Asset Transfers",
+					"content": "If we are involved in a merger, acquisition, financing due diligence, reorganization, bankruptcy, receivership, sale of company assets, or transition of service to another provider, your information may be sold or transferred as part of such a transaction as permitted by law and/or contract."
+				},
+				"consent": {
+					"title": "With Your Consent",
+					"content": "We may share your information for other purposes with your consent."
+				}
+			},
+			"retention": {
+				"title": "4. Data Retention",
+				"content": "We retain your personal information for as long as necessary to provide the Service and fulfill the transactions you have requested, or for other essential purposes such as complying with our legal obligations, resolving disputes, and enforcing our agreements. User content such as messages may be retained to maintain the integrity of the platform and community experience."
+			},
+			"choices": {
+				"title": "5. Your Choices",
+				"intro": "You have several choices regarding your information:"
+			}
+		}
+	},
+	"about": {
+		"title": "About Light in a Bottle",
+		"subtitle": "Discover the story behind our app.",
+		"welcome": "Welcome to Light in a Bottle, an application crafted with the vision of bringing a little more calm, mindfulness, and positivity into your daily life. In a world that often feels fast-paced and overwhelming, we wanted to create a serene digital space where users can pause, reflect, and reconnect with themselves.",
+		"creator_title": "Meet the Creator",
+		"creator_subtitle": "Jane Doe - Lead Developer & Visionary",
+		"creator_story": "This app was born from a personal journey of seeking tranquility amidst chaos. As the lead developer, Jane Doe, I envisioned a tool that wasn't just functional, but also an experience – a gentle reminder to appreciate the small moments and cultivate inner peace. The \"Light in a Bottle\" concept symbolizes capturing those fleeting moments of clarity, inspiration, and hope that can illuminate our paths.",
+		"mission": "Our mission is to provide a simple, intuitive, and aesthetically pleasing platform that supports your well-being. We believe that technology, when designed thoughtfully, can be a powerful ally in fostering mental and emotional health. Every feature, color choice, and interaction within this app has been carefully considered to align with our core values of calmness, simplicity, and modern elegance.",
+		"closing": "Thank you for joining our community. We hope Light in a Bottle helps you find your own spark.",
+		"back_to_home": "Back to Home"
+	},
+	"navigation": {
+		"menu": "Menu",
+		"home": "Home",
+		"profile": "Profile",
+		"settings": "Settings",
+		"help": "Help",
+		"logout": "Logout"
+	},
+	"dashboard": {
+		"send_bottle": "Send a Bottle",
+		"view_details": "View Details",
+		"welcome": "Share your light with the community",
+		"create_post": "Create New Post"
+	},
+	"bottle_details": {
+		"title": "Bottle Details",
+		"from": "From",
+		"received": "Received",
+		"like": "Like",
+		"save": "Save",
+		"send_message": "Send Your Own Message",
+		"toss_into_sea": "Toss into the Sea"
+	},
+	"settings": {
+		"title": "Settings",
+		"notification_settings": "Notification Settings",
+		"notification_frequency": "Notification Frequency",
+		"notification_frequency_description": "Choose how often you want to receive notifications.",
+		"frequency_options": {
+			"instantly": "Instantly",
+			"daily": "Daily Digest",
+			"weekly": "Weekly Summary",
+			"never": "Never"
+		},
+		"security": "Security",
+		"enable_pin": "Enable PIN Code",
+		"pin_description": "Secure your app with a 4-digit PIN code.",
+		"current_pin": "Current PIN (if changing)",
+		"current_pin_description": "Leave blank if setting up for the first time.",
+		"new_pin": "New 4-Digit PIN",
+		"confirm_pin": "Confirm New PIN",
+		"save_changes": "Save Changes"
+	},
+	"help": {
+		"title": "Help Center",
+		"faq": "Frequently Asked Questions",
+		"contact_support": "Contact Support",
+		"contact_description": "If you couldn't find the answer to your question in our FAQ, please feel free to reach out to our support team.",
+		"contact_us": "Contact Us",
+		"questions": {
+			"change_password": {
+				"question": "How do I change my password?",
+				"answer": "You can change your password from the Settings page. Navigate to \"Settings\", then find the \"Security\" section. There you will find an option to update your password. You will need to enter your current password and then your new password twice."
+			},
+			"notification_frequency": {
+				"question": "How can I adjust notification frequency?",
+				"answer": "To adjust your notification frequency, go to the \"Settings\" page. Under \"Notification Settings\", you'll find a dropdown menu labeled \"Notification Frequency\". Select your preferred option (e.g., Instantly, Daily Digest, Weekly Summary, or Never) and save your changes."
+			},
+			"pin_code": {
+				"question": "What is the PIN code feature?",
+				"answer": "The PIN code feature adds an extra layer of security to your app. When enabled, you'll need to enter a 4-digit PIN to access the app. You can enable, disable, or change your PIN from the \"Security\" section within the \"Settings\" page."
+			},
+			"forgot_pin": {
+				"question": "I forgot my PIN. What should I do?",
+				"answer": "If you've forgotten your PIN, you'll typically need to reset it. This process might involve verifying your identity through your email or other security questions. Please look for a \"Forgot PIN?\" option on the PIN entry screen or contact support for assistance."
+			}
+		}
+	},
+	"profile": {
+		"title": "My Profile",
+		"edit_profile": "Edit Profile",
+		"bio_placeholder": "Finding light in unexpected places. Spreading kindness one bottle at a time.",
+		"stats": {
+			"bottles_sent": "Bottles Sent",
+			"bottles_received": "Bottles Received",
+			"connections": "Connections"
+		},
+		"tabs": {
+			"my_posts": "My Posts",
+			"saved_bottles": "Saved Bottles"
+		},
+		"actions": {
+			"edit": "Edit",
+			"delete": "Delete"
+		}
+	},
+	"create_bottle": {
+		"title": "Create Your Bottle",
+		"subtitle": "Share your light with the community",
+		"message_label": "Your Message",
+		"message_placeholder": "What would you like to share today? Perhaps a thought, feeling, or moment of inspiration...",
+		"character_count": "characters",
+		"character_limit": "280 character limit",
+		"mood_label": "How are you feeling?",
+		"mood_options": {
+			"peaceful": "Peaceful",
+			"grateful": "Grateful",
+			"hopeful": "Hopeful",
+			"reflective": "Reflective",
+			"joyful": "Joyful",
+			"contemplative": "Contemplative"
+		},
+		"anonymous_label": "Post anonymously",
+		"anonymous_description": "Your username will be hidden from other users",
+		"preview": "Preview Your Bottle",
+		"send_bottle": "Toss Bottle into the Sea",
+		"cancel": "Cancel",
+		"draft_saved": "Draft saved",
+		"message_required": "Please enter a message",
+		"success_message": "Your bottle has been sent into the sea! 🌊",
+		"daily_limit": "You've reached your daily bottle limit. Come back tomorrow!"
+	}
+}
