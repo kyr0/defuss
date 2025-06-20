@@ -1369,7 +1369,7 @@ impl IntegerIndex {
         let mut empty_keys = Vec::new();
         
         for (key, document_list) in self.document_lists.iter_mut() {
-            if let Some(range) = BooleanIndex::find_doc_range(document_list, entry_index) {
+            if let Some(range) = Self::find_doc_range_in_vec(document_list, entry_index) {
                 document_list.drain(range);
                 changed = true;
                 
@@ -1385,6 +1385,23 @@ impl IntegerIndex {
         }
         
         changed
+    }
+    
+    fn find_doc_range_in_vec(document_list: &[Document], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
+        let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
+            .unwrap_or_else(|e| e);
+            
+        if start >= document_list.len() || document_list[start].doc != target_doc {
+            return None;
+        }
+        
+        let end = document_list[start..]
+            .iter()
+            .position(|doc| doc.doc != target_doc)
+            .map(|pos| start + pos)
+            .unwrap_or(document_list.len());
+            
+        Some(start..end)
     }
 }
 
@@ -1447,7 +1464,7 @@ impl TagIndex {
         let mut empty_keys = Vec::new();
         
         for (key, document_list) in self.document_lists.iter_mut() {
-            if let Some(range) = BooleanIndex::find_doc_range(document_list, entry_index) {
+            if let Some(range) = Self::find_doc_range_in_vec(document_list, entry_index) {
                 document_list.drain(range);
                 changed = true;
                 
@@ -1463,6 +1480,23 @@ impl TagIndex {
         }
         
         changed
+    }
+    
+    fn find_doc_range_in_vec(document_list: &[Document], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
+        let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
+            .unwrap_or_else(|e| e);
+            
+        if start >= document_list.len() || document_list[start].doc != target_doc {
+            return None;
+        }
+        
+        let end = document_list[start..]
+            .iter()
+            .position(|doc| doc.doc != target_doc)
+            .map(|pos| start + pos)
+            .unwrap_or(document_list.len());
+            
+        Some(start..end)
     }
 }
 
