@@ -1401,48 +1401,66 @@ impl TextIndex {
 
 The delete method, on the other hand, remains the same.
 
-## Vector Index
+## Optional Vector Index
 
-The vector index enables semantic search through high-dimensional vector embeddings. For corpora ≤ 100,000 documents, we use a **brute-force approach** that's simpler and faster than complex ANN algorithms.
+The vector index enables semantic search through high-dimensional vector embeddings but is entirely optional. When disabled, the search engine operates purely on lexical indexes with full BM25FS+ scoring capabilities.
 
-### Design Constraints
-
-- **Hard limit**: 100,000 documents per shard
-- **Fixed dimensions**: 1024-D L2-normalized vectors  
-- **Memory usage**: ~390 MiB per shard (100k × 1024 × 4 bytes)
-- **Performance target**: ~8ms on 12-core AVX2/AVX-512 systems
-
-### SIMD-Optimized Brute Force
+### Vector Index Configuration
 
 ```rust
-use rayon::prelude::*;
-use std::collections::BinaryHeap;
-
-/// High-performance vector index using SIMD brute-force search
-/// Optimized for ≤100k documents with 1024-dimensional vectors
+/// Optional vector index with configurable dimensions
 struct VectorIndex {
     /// Flat vector storage: Structure-of-Arrays for SIMD efficiency
-    /// Layout: [doc0_dim0..doc0_dim1023, doc1_dim0..doc1_dim1023, ...]
+    /// Layout: [doc0_dim0..doc0_dimN, doc1_dim0..doc1_dimN, ...]
     vectors: Vec<f32>,
     /// Maps vector positions to document entries
     entry_mapping: Vec<EntryIndex>,
-    /// Fixed dimension (always 1024)
+    /// Configurable dimension (default: 1024, can be 384, 512, 768, 1024, 1536)
     dimension: usize,
+    /// Whether vector indexing is enabled
+    enabled: bool,
 }
 
 impl VectorIndex {
-    const DIMENSION: usize = 1024;
+    const DEFAULT_DIMENSION: usize = 1024;
     const MAX_DOCUMENTS: usize = 100_000;
     
+    /// Create new vector index with optional configuration
     fn new() -> Self {
+        Self::with_dimension(Self::DEFAULT_DIMENSION)
+    }
+    
+    /// Create vector index with specific dimensions (0 = disabled)
+    fn with_dimension(dimension: usize) -> Self {
+        let enabled = dimension > 0;
+        let capacity = if enabled { Self::MAX_DOCUMENTS * dimension } else { 0 };
+        
         Self {
-            vectors: Vec::with_capacity(Self::MAX_DOCUMENTS * Self::DIMENSION),
-            entry_mapping: Vec::with_capacity(Self::MAX_DOCUMENTS),
-            dimension: Self::DIMENSION,
+            vectors: Vec::with_capacity(capacity),
+            entry_mapping: Vec::with_capacity(if enabled { Self::MAX_DOCUMENTS } else { 0 }),
+            dimension,
+            enabled,
         }
     }
+    
+    /// Disable vector indexing entirely
+    fn disabled() -> Self {
+        Self::with_dimension(0)
+    }
+    
+    fn is_enabled(&self) -> bool {
+        self.enabled
+    }
 
-    fn insert(&mut self, entry_index: EntryIndex, vector: &[f32]) -> Result<(), VectorError> {
+    fn insert(&mut self, entry_index: EntryIndex, vector: Option<&[f32]>) -> Result<(), VectorError> {
+        if !self.enabled {
+            return Ok(()); // No-op when disabled
+        }
+        
+        let Some(vector) = vector else {
+            return Ok(()); // Document without vector embedding
+        };
+        
         if vector.len() != self.dimension {
             return Err(VectorError::DimensionMismatch);
         }
@@ -1462,7 +1480,15 @@ impl VectorIndex {
         Ok(())
     }
 
-    fn search(&self, query: &[f32], k: usize) -> Result<Vec<(EntryIndex, f32)>, VectorError> {
+    fn search(&self, query: Option<&[f32]>, k: usize) -> Result<Vec<(EntryIndex, f32)>, VectorError> {
+        if !self.enabled {
+            return Ok(Vec::new()); // Return empty results when disabled
+        }
+        
+        let Some(query) = query else {
+            return Ok(Vec::new()); // No query vector provided
+        };
+        
         if query.len() != self.dimension {
             return Err(VectorError::DimensionMismatch);
         }
@@ -1500,6 +1526,10 @@ impl VectorIndex {
     }
 
     fn delete(&mut self, entry_index: EntryIndex) -> bool {
+        if !self.enabled {
+            return false; // No-op when disabled
+        }
+        
         if let Some(pos) = self.entry_mapping.iter().position(|&x| x == entry_index) {
             // Remove vector data (swap_remove for O(1) performance)
             let start_idx = pos * self.dimension;
@@ -1637,26 +1667,72 @@ struct EmbeddedIndex {
     indexes: HashMap<Kind, IndexType>,
     /// Cached file references for lazy loading
     file_cache: IndexFileCache,
+    /// Vector indexing configuration
+    vector_config: VectorConfig,
+}
+
+/// Configuration for vector indexing
+#[derive(Debug, Clone)]
+struct VectorConfig {
+    enabled: bool,
+    dimension: usize,
+}
+
+impl VectorConfig {
+    fn disabled() -> Self {
+        Self { enabled: false, dimension: 0 }
+    }
+    
+    fn with_dimension(dimension: usize) -> Self {
+        Self { enabled: dimension > 0, dimension }
+    }
 }
 
 impl EmbeddedIndex {
+    /// Create new index with default configuration (vectors disabled)
     fn new() -> Self {
+        Self::with_vector_config(VectorConfig::disabled())
+    }
+    
+    /// Create new index with vector configuration
+    fn with_vector_config(vector_config: VectorConfig) -> Self {
         let mut indexes = HashMap::new();
         indexes.insert(Kind::Boolean, IndexType::Boolean(BooleanIndex::new()));
         indexes.insert(Kind::Integer, IndexType::Integer(IntegerIndex::new()));
         indexes.insert(Kind::Tag, IndexType::Tag(TagIndex::new()));
         indexes.insert(Kind::Text, IndexType::Text(TextIndex::new()));
-        indexes.insert(Kind::Vector, IndexType::Vector(VectorIndex::new()));
+        
+        // Only create vector index if enabled
+        if vector_config.enabled {
+            indexes.insert(Kind::Vector, IndexType::Vector(
+                VectorIndex::with_dimension(vector_config.dimension)
+            ));
+        }
         
         Self {
             collection: EmbeddedCollection::new(),
             indexes,
             file_cache: IndexFileCache::new(),
+            vector_config,
         }
+    }
+    
+    /// Create index with vectors enabled (1024 dimensions by default)
+    fn with_vectors() -> Self {
+        Self::with_vector_config(VectorConfig::with_dimension(1024))
+    }
+    
+    /// Create index with custom vector dimensions
+    fn with_vector_dimension(dimension: usize) -> Self {
+        Self::with_vector_config(VectorConfig::with_dimension(dimension))
     }
     
     fn is_full(&self) -> bool {
         self.collection.document_count >= EmbeddedCollection::MAX_DOCUMENTS
+    }
+    
+    fn has_vector_index(&self) -> bool {
+        self.vector_config.enabled
     }
     
     /// Add document with capacity enforcement
