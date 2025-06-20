@@ -6,7 +6,7 @@ The engine is a **high-performance, WASM-optimized search stack** engineered to 
 
 ## Performance Engineering Philosophy
 
-Within that envelope we favour **Rust's zero-cost abstractions with aggressive optimization**: postings are kept as flat, cache-linear `Vec<Document>` blocks instead of nested maps; all per-query scratch space lives in a bump-arena to avoid slow WASM heap traffic; fuzzy matches use a bigram-Dice pre-filter so only a handful of candidates pay the Levenshtein tax; and when enabled, vector search is brute-force SIMD (≈ 6-8 ms on modern CPUs), giving exact recall without ANN build cost.
+Within that envelope we favour **Rust's zero-cost abstractions with aggressive optimization**: document lists are kept as flat, cache-linear `Vec<Document>` blocks instead of nested maps; all per-query scratch space lives in a bump-arena to avoid slow WASM heap traffic; fuzzy matches use a bigram-Dice pre-filter so only a handful of candidates pay the Levenshtein tax; and when enabled, vector search is brute-force SIMD (≈ 6-8 ms on modern CPUs), giving exact recall without ANN build cost.
 
 ### WebAssembly Performance Optimizations
 
@@ -181,8 +181,8 @@ This search engine is built around several key architectural decisions that maxi
 **What Makes This Design Smart:**
 
 1. **Strict, typed schema** → Enables cheap validation & indexing with finite attribute sets
-2. **Numeric indirection everywhere** → Maps documents (EntryIndex) and attributes (AttributeIndex) to integers, keeping postings tiny
-3. **Self-cleaning postings** → Generic `iter_with_mut` keeps every map/set tidy without boilerplate
+2. **Numeric indirection everywhere** → Maps documents (EntryIndex) and attributes (AttributeIndex) to integers, keeping document lists tiny
+3. **Self-cleaning document lists** → Generic `iter_with_mut` keeps every map/set tidy without boilerplate
 4. **Lazy, cached file loading** → CachedEncryptedFile + OnceCell means no index touches disk twice
 5. **Manifest + append-only writes** → Safe, atomic shard updates without global locking
 6. **Size-driven shard splitting** → Pragmatic "how big is too big?" without full serialise-encrypt cycles
@@ -925,14 +925,14 @@ Term Index
                     +------------+
 ```
 
-## Flattened Posting Lists Architecture
+## Flattened Document Lists Architecture
 
 Instead of nested HashMap structures that create memory overhead and poor cache locality, we use flattened `Vec<Document>` per term, sorted for efficient binary search and galloping merge operations.
 
-### Core Posting Structure
+### Core Document Entry Structure
 
 ```rust
-/// Flattened posting entry with all necessary indexing information
+/// Flattened document entry with all necessary indexing information
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Document {
     /// Document identifier (primary sort key)
@@ -951,46 +951,46 @@ impl Document {
     }
 }
 
-/// Memory-efficient index using flattened posting lists
+/// Memory-efficient index using flattened document lists
 struct FlattenedIndex {
     /// Each term maps to a sorted vector of Document entries
     /// Sorted by (doc, attr, val) for optimal binary search performance
-    postings: HashMap<Box<str>, Vec<Document>>,
+    document_lists: HashMap<Box<str>, Vec<Document>>,
 }
 
 impl FlattenedIndex {
     /// Binary search for document range, then filter by attribute
     fn search_term(&self, term: &str, target_attr: Option<AttributeIndex>) -> impl Iterator<Item = &Document> {
-        let Some(postings) = self.postings.get(term) else {
+        let Some(document_list) = self.document_lists.get(term) else {
             return Either::Left(std::iter::empty());
         };
         
         match target_attr {
             Some(attr) => Either::Right(
-                postings.iter().filter(move |doc| doc.attr == attr)
+                document_list.iter().filter(move |doc| doc.attr == attr)
             ),
-            None => Either::Left(postings.iter()),
+            None => Either::Left(document_list.iter()),
         }
     }
     
     /// Binary search to find first occurrence of document
     fn find_doc_range(&self, term: &str, target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
-        let postings = self.postings.get(term)?;
+        let document_list = self.document_lists.get(term)?;
         
         // Binary search for first occurrence of target_doc
-        let start = postings.binary_search_by_key(&target_doc, |doc| doc.doc)
+        let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
             .unwrap_or_else(|e| e);
             
-        if start >= postings.len() || postings[start].doc != target_doc {
+        if start >= document_list.len() || document_list[start].doc != target_doc {
             return None;
         }
         
         // Find end of document range
-        let end = postings[start..]
+        let end = document_list[start..]
             .iter()
             .position(|doc| doc.doc != target_doc)
             .map(|pos| start + pos)
-            .unwrap_or(postings.len());
+            .unwrap_or(document_list.len());
             
         Some(start..end)
     }
@@ -1001,8 +1001,8 @@ impl FlattenedIndex {
         
         let mut iterators: Vec<_> = terms.iter()
             .filter_map(|&term| {
-                let postings = self.postings.get(term)?;
-                Some(postings.iter())
+                let document_list = self.document_lists.get(term)?;
+                Some(document_list.iter())
             })
             .collect();
             
@@ -1060,45 +1060,45 @@ impl FlattenedIndex {
         result
     }
     
-    /// Insert a new posting, maintaining sort order
+    /// Insert a new document entry, maintaining sort order
     fn insert(&mut self, term: Box<str>, doc: Document) {
-        let postings = self.postings.entry(term).or_default();
+        let document_list = self.document_lists.entry(term).or_default();
         
         // Binary search for insertion point to maintain sort order
-        let pos = postings.binary_search(&doc).unwrap_or_else(|e| e);
-        postings.insert(pos, doc);
+        let pos = document_list.binary_search(&doc).unwrap_or_else(|e| e);
+        document_list.insert(pos, doc);
     }
     
-    /// Remove all postings for a document
+    /// Remove all document entries for a document
     fn delete_document(&mut self, target_doc: EntryIndex) -> bool {
         let mut changed = false;
         
-        for postings in self.postings.values_mut() {
+        for document_list in self.document_lists.values_mut() {
             // Find document range using binary search
-            if let Some(range) = Self::find_doc_range_in_vec(postings, target_doc) {
-                postings.drain(range);
+            if let Some(range) = Self::find_doc_range_in_vec(document_list, target_doc) {
+                document_list.drain(range);
                 changed = true;
             }
         }
         
-        // Remove empty posting lists
-        self.postings.retain(|_, postings| !postings.is_empty());
+        // Remove empty document lists
+        self.document_lists.retain(|_, document_list| !document_list.is_empty());
         changed
     }
     
-    fn find_doc_range_in_vec(postings: &[Document], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
-        let start = postings.binary_search_by_key(&target_doc, |doc| doc.doc)
+    fn find_doc_range_in_vec(document_list: &[Document], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
+        let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
             .unwrap_or_else(|e| e);
             
-        if start >= postings.len() || postings[start].doc != target_doc {
+        if start >= document_list.len() || document_list[start].doc != target_doc {
             return None;
         }
         
-        let end = postings[start..]
+        let end = document_list[start..]
             .iter()
             .position(|doc| doc.doc != target_doc)
             .map(|pos| start + pos)
-            .unwrap_or(postings.len());
+            .unwrap_or(document_list.len());
             
         Some(start..end)
     }
@@ -1159,19 +1159,19 @@ use either::Either; // Helper enum for iterator type erasure
 Now we can implement each index type using the flattened structure:
 
 ```rust
-/// Boolean index using flattened posting lists
+/// Boolean index using flattened document lists
 struct BooleanIndex {
     /// Maps boolean values to sorted document vectors
     /// true/false -> Vec<Document> sorted by (doc, attr, val)
-    true_postings: Vec<Document>,
-    false_postings: Vec<Document>,
+    true_documents: Vec<Document>,
+    false_documents: Vec<Document>,
 }
 
 impl BooleanIndex {
     fn new() -> Self {
         Self {
-            true_postings: Vec::new(),
-            false_postings: Vec::new(),
+            true_documents: Vec::new(),
+            false_documents: Vec::new(),
         }
     }
     
@@ -1184,28 +1184,28 @@ impl BooleanIndex {
         impact: f32,
     ) -> bool {
         let doc = Document::new(entry_index, attribute_index, value_index, impact);
-        let postings = if term { &mut self.true_postings } else { &mut self.false_postings };
+        let document_list = if term { &mut self.true_documents } else { &mut self.false_documents };
         
         // Binary search for insertion point to maintain sort order
-        let pos = postings.binary_search(&doc).unwrap_or_else(|e| e);
-        postings.insert(pos, doc);
+        let pos = document_list.binary_search(&doc).unwrap_or_else(|e| e);
+        document_list.insert(pos, doc);
         true
     }
     
     fn search(&self, attribute: Option<AttributeIndex>, value: bool) -> Vec<EntryIndex> {
-        let postings = if value { &self.true_postings } else { &self.false_postings };
+        let document_list = if value { &self.true_documents } else { &self.false_documents };
         
         match attribute {
             Some(attr) => {
                 // Binary search for attribute range, then collect documents
-                postings.iter()
+                document_list.iter()
                     .filter(|doc| doc.attr == attr)
                     .map(|doc| doc.doc)
                     .collect()
             }
             None => {
                 // Return all documents for this boolean value
-                postings.iter()
+                document_list.iter()
                     .map(|doc| doc.doc)
                     .collect()
             }
@@ -1215,34 +1215,34 @@ impl BooleanIndex {
     fn delete(&mut self, entry_index: EntryIndex) -> bool {
         let mut changed = false;
         
-        // Remove from true postings
-        if let Some(range) = Self::find_doc_range(&self.true_postings, entry_index) {
-            self.true_postings.drain(range);
+        // Remove from true documents
+        if let Some(range) = Self::find_doc_range(&self.true_documents, entry_index) {
+            self.true_documents.drain(range);
             changed = true;
         }
         
-        // Remove from false postings
-        if let Some(range) = Self::find_doc_range(&self.false_postings, entry_index) {
-            self.false_postings.drain(range);
+        // Remove from false documents
+        if let Some(range) = Self::find_doc_range(&self.false_documents, entry_index) {
+            self.false_documents.drain(range);
             changed = true;
         }
         
         changed
     }
     
-    fn find_doc_range(postings: &[Document], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
-        let start = postings.binary_search_by_key(&target_doc, |doc| doc.doc)
+    fn find_doc_range(document_list: &[Document], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
+        let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
             .unwrap_or_else(|e| e);
             
-        if start >= postings.len() || postings[start].doc != target_doc {
+        if start >= document_list.len() || document_list[start].doc != target_doc {
             return None;
         }
         
-        let end = postings[start..]
+        let end = document_list[start..]
             .iter()
             .position(|doc| doc.doc != target_doc)
             .map(|pos| start + pos)
-            .unwrap_or(postings.len());
+            .unwrap_or(document_list.len());
             
         Some(start..end)
     }
@@ -1253,17 +1253,17 @@ impl BooleanIndex {
 The integer index benefits significantly from the flattened structure, especially for range queries:
 
 ```rust
-/// Integer index using flattened posting lists with range query optimization
+/// Integer index using flattened document lists with range query optimization
 struct IntegerIndex {
     /// Maps integer values to sorted document vectors
     /// Maintains BTreeMap for efficient range queries
-    postings: BTreeMap<u64, Vec<Document>>,
+    document_lists: BTreeMap<u64, Vec<Document>>,
 }
 
 impl IntegerIndex {
     fn new() -> Self {
         Self {
-            postings: BTreeMap::new(),
+            document_lists: BTreeMap::new(),
         }
     }
     
@@ -1276,27 +1276,27 @@ impl IntegerIndex {
         impact: f32,
     ) -> bool {
         let doc = Document::new(entry_index, attribute_index, value_index, impact);
-        let postings = self.postings.entry(term).or_default();
+        let document_list = self.document_lists.entry(term).or_default();
         
-        let pos = postings.binary_search(&doc).unwrap_or_else(|e| e);
-        postings.insert(pos, doc);
+        let pos = document_list.binary_search(&doc).unwrap_or_else(|e| e);
+        document_list.insert(pos, doc);
         true
     }
     
     fn search_range(&self, range: std::ops::Range<u64>, attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
         let mut results = Vec::new();
         
-        for (_, postings) in self.postings.range(range) {
+        for (_, document_list) in self.document_lists.range(range) {
             match attribute {
                 Some(attr) => {
                     results.extend(
-                        postings.iter()
+                        document_list.iter()
                             .filter(|doc| doc.attr == attr)
                             .map(|doc| doc.doc)
                     );
                 }
                 None => {
-                    results.extend(postings.iter().map(|doc| doc.doc));
+                    results.extend(document_list.iter().map(|doc| doc.doc));
                 }
             }
         }
@@ -1322,20 +1322,20 @@ impl IntegerIndex {
         let mut changed = false;
         let mut empty_keys = Vec::new();
         
-        for (key, postings) in self.postings.iter_mut() {
-            if let Some(range) = BooleanIndex::find_doc_range(postings, entry_index) {
-                postings.drain(range);
+        for (key, document_list) in self.document_lists.iter_mut() {
+            if let Some(range) = BooleanIndex::find_doc_range(document_list, entry_index) {
+                document_list.drain(range);
                 changed = true;
                 
-                if postings.is_empty() {
+                if document_list.is_empty() {
                     empty_keys.push(*key);
                 }
             }
         }
         
-        // Remove empty posting lists
+        // Remove empty document lists
         for key in empty_keys {
-            self.postings.remove(&key);
+            self.document_lists.remove(&key);
         }
         
         changed
@@ -1347,16 +1347,16 @@ impl IntegerIndex {
 Tag index follows the same pattern with string keys:
 
 ```rust
-/// Tag index using flattened posting lists for exact string matching
+/// Tag index using flattened document lists for exact string matching
 struct TagIndex {
     /// Maps tag strings to sorted document vectors
-    postings: HashMap<Box<str>, Vec<Document>>,
+    document_lists: HashMap<Box<str>, Vec<Document>>,
 }
 
 impl TagIndex {
     fn new() -> Self {
         Self {
-            postings: HashMap::new(),
+            document_lists: HashMap::new(),
         }
     }
     
@@ -1369,27 +1369,27 @@ impl TagIndex {
         impact: f32,
     ) -> bool {
         let doc = Document::new(entry_index, attribute_index, value_index, impact);
-        let postings = self.postings.entry(term.into()).or_default();
+        let document_list = self.document_lists.entry(term.into()).or_default();
         
-        let pos = postings.binary_search(&doc).unwrap_or_else(|e| e);
-        postings.insert(pos, doc);
+        let pos = document_list.binary_search(&doc).unwrap_or_else(|e| e);
+        document_list.insert(pos, doc);
         true
     }
     
     fn search(&self, term: &str, attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
-        let Some(postings) = self.postings.get(term) else {
+        let Some(document_list) = self.document_lists.get(term) else {
             return Vec::new();
         };
         
         match attribute {
             Some(attr) => {
-                postings.iter()
+                document_list.iter()
                     .filter(|doc| doc.attr == attr)
                     .map(|doc| doc.doc)
                     .collect()
             }
             None => {
-                postings.iter()
+                document_list.iter()
                     .map(|doc| doc.doc)
                     .collect()
             }
@@ -1400,27 +1400,27 @@ impl TagIndex {
         let mut changed = false;
         let mut empty_keys = Vec::new();
         
-        for (key, postings) in self.postings.iter_mut() {
-            if let Some(range) = BooleanIndex::find_doc_range(postings, entry_index) {
-                postings.drain(range);
+        for (key, document_list) in self.document_lists.iter_mut() {
+            if let Some(range) = BooleanIndex::find_doc_range(document_list, entry_index) {
+                document_list.drain(range);
                 changed = true;
                 
-                if postings.is_empty() {
+                if document_list.is_empty() {
                     empty_keys.push(key.clone());
                 }
             }
         }
         
-        // Remove empty posting lists
+        // Remove empty document lists
         for key in empty_keys {
-            self.postings.remove(&key);
+            self.document_lists.remove(&key);
         }
         
         changed
     }
 }
 
-## Text Index with Flattened Postings
+## Text Index with Flattened Document Lists
 
 The text index uses the same flattened structure but with additional position information for phrase queries and proximity scoring:
 
@@ -1455,11 +1455,11 @@ impl TextDocument {
     }
 }
 
-/// Text index using flattened posting lists with position information
+/// Text index using flattened document lists with position information
 struct TextIndex {
     /// Maps terms to sorted vectors of TextDocument entries
     /// Each term -> Vec<TextDocument> sorted by (doc, attr, val, token_idx)
-    postings: HashMap<Box<str>, Vec<TextDocument>>,
+    document_lists: HashMap<Box<str>, Vec<TextDocument>>,
     /// Bigram index for fuzzy search acceleration
     bigram_index: BigramFuzzyIndex,
 }
@@ -1467,7 +1467,7 @@ struct TextIndex {
 impl TextIndex {
     fn new() -> Self {
         Self {
-            postings: HashMap::new(),
+            document_lists: HashMap::new(),
             bigram_index: BigramFuzzyIndex::new(),
         }
     }
@@ -1488,11 +1488,11 @@ impl TextIndex {
             token_index, position, impact
         );
         
-        let postings = self.postings.entry(term.into()).or_default();
+        let document_list = self.document_lists.entry(term.into()).or_default();
         
         // Binary search for insertion point to maintain sort order
-        let pos = postings.binary_search(&text_doc).unwrap_or_else(|e| e);
-        postings.insert(pos, text_doc);
+        let pos = document_list.binary_search(&text_doc).unwrap_or_else(|e| e);
+        document_list.insert(pos, text_doc);
         
         // Update bigram index for fuzzy search
         self.bigram_index.add_term(term);
@@ -1501,19 +1501,19 @@ impl TextIndex {
     
     /// Search for exact term matches
     fn search_exact(&self, term: &str, attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
-        let Some(postings) = self.postings.get(term) else {
+        let Some(document_list) = self.document_lists.get(term) else {
             return Vec::new();
         };
         
         match attribute {
             Some(attr) => {
-                postings.iter()
+                document_list.iter()
                     .filter(|doc| doc.attr == attr)
                     .map(|doc| doc.doc)
                     .collect()
             }
             None => {
-                postings.iter()
+                document_list.iter()
                     .map(|doc| doc.doc)
                     .collect()
             }
@@ -1527,14 +1527,14 @@ impl TextIndex {
         let mut results = Vec::new();
         
         for (term, dice_score) in candidates.into_iter().take(32) {
-            if let Some(postings) = self.postings.get(&*term) {
+            if let Some(document_list) = self.document_lists.get(&*term) {
                 let docs: Vec<_> = match attribute {
                     Some(attr) => {
-                        postings.iter()
+                        document_list.iter()
                             .filter(|doc| doc.attr == attr)
                             .collect()
                     }
-                    None => postings.iter().collect(),
+                    None => document_list.iter().collect(),
                 };
                 
                 for doc in docs {
@@ -1560,12 +1560,12 @@ impl TextIndex {
         if terms.is_empty() { return Vec::new(); }
         if terms.len() == 1 { return self.search_exact(terms[0], attribute); }
         
-        // Get posting lists for all terms
-        let mut posting_lists: Vec<_> = terms.iter()
-            .filter_map(|&term| self.postings.get(term))
+        // Get document lists for all terms
+        let mut document_lists: Vec<_> = terms.iter()
+            .filter_map(|&term| self.document_lists.get(term))
             .collect();
             
-        if posting_lists.len() != terms.len() {
+        if document_lists.len() != terms.len() {
             return Vec::new(); // Missing terms
         }
         
@@ -1594,8 +1594,8 @@ impl TextIndex {
         let mut term_positions: Vec<Vec<(TokenIndex, Position)>> = Vec::new();
         
         for &term in terms {
-            if let Some(postings) = self.postings.get(term) {
-                let positions: Vec<_> = postings.iter()
+            if let Some(document_list) = self.document_lists.get(term) {
+                let positions: Vec<_> = document_list.iter()
                     .filter(|doc| {
                         doc.doc == doc_id && 
                         attribute.map_or(true, |attr| doc.attr == attr)
@@ -1643,8 +1643,8 @@ impl TextIndex {
         
         let mut iterators: Vec<_> = terms.iter()
             .filter_map(|&term| {
-                let postings = self.postings.get(term)?;
-                Some(postings.iter())
+                let document_list = self.document_lists.get(term)?;
+                Some(document_list.iter())
             })
             .collect();
             
@@ -1707,38 +1707,38 @@ impl TextIndex {
         let mut changed = false;
         let mut empty_keys = Vec::new();
         
-        for (key, postings) in self.postings.iter_mut() {
-            if let Some(range) = Self::find_doc_range(postings, entry_index) {
-                postings.drain(range);
+        for (key, document_list) in self.document_lists.iter_mut() {
+            if let Some(range) = Self::find_doc_range(document_list, entry_index) {
+                document_list.drain(range);
                 changed = true;
                 
-                if postings.is_empty() {
+                if document_list.is_empty() {
                     empty_keys.push(key.clone());
                 }
             }
         }
         
-        // Remove empty posting lists
+        // Remove empty document lists
         for key in empty_keys {
-            self.postings.remove(&key);
+            self.document_lists.remove(&key);
         }
         
         changed
     }
     
-    fn find_doc_range(postings: &[TextDocument], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
-        let start = postings.binary_search_by_key(&target_doc, |doc| doc.doc)
+    fn find_doc_range(document_list: &[TextDocument], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
+        let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
             .unwrap_or_else(|e| e);
             
-        if start >= postings.len() || postings[start].doc != target_doc {
+        if start >= document_list.len() || document_list[start].doc != target_doc {
             return None;
         }
         
-        let end = postings[start..]
+        let end = document_list[start..]
             .iter()
             .position(|doc| doc.doc != target_doc)
             .map(|pos| start + pos)
-            .unwrap_or(postings.len());
+            .unwrap_or(document_list.len());
             
         Some(start..end)
     }
@@ -2064,7 +2064,7 @@ Index implementation summary:
 - **Tag Index**: Exact match lookups with Box<str> memory optimization  
 - **Text Index**: Full-text search with position tracking and BM25 scoring
 - **Vector Index**: SIMD-optimized brute-force search for ≤100k documents
-- **Self-Cleaning**: All indexes automatically remove empty postings via `iter_with_mut`
+- **Self-Cleaning**: All indexes automatically remove empty document lists via `iter_with_mut`
 
 ## Embedded Index Definition
 
@@ -2402,7 +2402,7 @@ For corpora guaranteed to stay under 100,000 documents, we use a simplified sing
 | Aspect | <100k docs | Why |
 |--------|-------------|-----|
 | **Memory** | ~400 MB vectors + lexical index fits comfortably in one page-aligned mmap | No L3/GC pressure that sharding would relieve |
-| **Latency** | Brute-force SIMD scan + flat postings already ≤ 10 ms | Extra shard fan-out/merge would add overhead |
+| **Latency** | Brute-force SIMD scan + flat document lists already ≤ 10 ms | Extra shard fan-out/merge would add overhead |
 | **Durability** | One shadow-manifest + one data blob is simpler than N small files | Fewer I/O ops, easier atomic rename in WASM host FS APIs |
 
 ### Simplified Collection Structure
@@ -2556,7 +2556,7 @@ Single-index architecture provides:
 
 For ≤100k documents:
 - **Vector Search**: 6-8ms brute-force SIMD (faster than HNSW build time)
-- **Text Search**: <5ms with flattened postings + binary search
+- **Text Search**: <5ms with flattened document lists + binary search
 - **Memory Usage**: ~400MB total (vectors + lexical indices)
 - **Insert Latency**: <1ms per document with flattened structures
 - **Query Latency**: Single-digit milliseconds, no shard fan-out overhead
