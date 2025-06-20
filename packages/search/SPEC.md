@@ -3203,12 +3203,12 @@ impl<'arena> QueryContext<'arena> {
 }
 
 /// Per-query execution with automatic arena cleanup
-async fn execute_query_with_arena(expression: &Expression) -> Result<Vec<(EntryIndex, f32)>, SearchError> {
+async fn execute_query_with_arena(expression: &Expression, index: &HybridIndex) -> Result<Vec<(EntryIndex, f32)>, SearchError> {
     let arena = Bump::new(); // Single allocation for entire query
     let ctx = QueryContext::new(&arena);
     
     // All intermediate collections use arena allocation
-    let results = process_expression_with_arena(expression, &ctx).await?;
+    let results = expression.execute_with_arena(index, &ctx).await?;
     
     // Convert arena results to owned data before arena drops
     let owned_results: Vec<(EntryIndex, f32)> = results.into_iter().collect();
@@ -3422,8 +3422,8 @@ impl HybridIndex {
             Expression::And(left, right) => {
                 // Parallel evaluation with SIMD optimizations
                 let (left_result, right_result) = rayon::join(
-                    || async { left.search_with_arena_simd(self, ctx).await },
-                    || async { right.search_with_arena_simd(self, ctx).await }
+                    || async { self.search_with_arena_simd(left, ctx).await },
+                    || async { self.search_with_arena_simd(right, ctx).await }
                 );
                 
                 // SIMD-optimized intersection using vectorized operations
@@ -3432,8 +3432,8 @@ impl HybridIndex {
             Expression::Or(left, right) => {
                 // True parallel execution across CPU cores
                 let (left_result, right_result) = rayon::join!(
-                    left.search_with_arena_simd(self, ctx),
-                    right.search_with_arena_simd(self, ctx)
+                    self.search_with_arena_simd(left, ctx),
+                    self.search_with_arena_simd(right, ctx)
                 );
                 
                 Ok(self.union_results_simd(left_result?, right_result?, ctx))
