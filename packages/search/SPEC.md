@@ -167,6 +167,7 @@ The schema structure is:
 
 ```rust
 /// Represents the possible data types that can be indexed
+/// Note: Vector embeddings are not part of Kind - they're handled separately
 enum Kind {
     /// Simple true/false values
     Boolean,
@@ -176,6 +177,7 @@ enum Kind {
     Tag,
     /// Full-text content that will be tokenized and stemmed
     Text,
+    // No Vector variant - vectors are document-level embeddings, not attribute types
 }
 
 /// Defines the structure and rules for indexable documents
@@ -218,6 +220,7 @@ This provides a relatively simple API for the Document.
 
 ```rust
 /// A value that can be indexed
+/// Note: Vector embeddings are handled separately from attribute values
 enum Value {
     /// Boolean values are stored as-is
     Boolean(bool),
@@ -227,6 +230,7 @@ enum Value {
     Tag(String),
     /// Text values will be tokenized and processed
     Text(String),
+    // No Vector variant - vectors bypass the Value system and are document-level embeddings
 }
 
 /// Represents a document to be indexed
@@ -236,6 +240,8 @@ struct Document {
     /// Maps attribute names to their values
     /// A single attribute can have multiple values
     attributes: HashMap<String, Vec<Value>>,
+    /// Optional vector embedding (separate from attributes)
+    vector: Option<Vec<f32>>,
 }
 
 impl Document {
@@ -243,11 +249,17 @@ impl Document {
         Self {
             id: id.into(),
             attributes: Default::default(),
+            vector: None,
         }
     }
 
     pub fn attribute(mut self, name: impl Into<String>, value: impl Into<Value>) -> Self {
         self.attributes.entry(name.into()).or_default().push(value.into());
+        self
+    }
+
+    pub fn with_vector(mut self, vector: Vec<f32>) -> Self {
+        self.vector = Some(vector);
         self
     }
 }
@@ -2122,19 +2134,21 @@ enum IndexType {
     Integer(IntegerIndex),
     Tag(TagIndex),
     Text(TextIndex),
-    Vector(VectorIndex),
+    // Note: Vector index is managed separately in vector_config, not via Kind enum
 }
 
 /// Single embedded index containing all data
 struct HybridIndex {
     /// Document collection (single instance)
     collection: EmbeddedCollection,
-    /// All index types in one structure
+    /// All index types in one structure (excludes Vector)
     indexes: HashMap<Kind, IndexType>,
     /// Cached file references for lazy loading
     file_cache: IndexFileCache,
-    /// Vector indexing configuration
+    /// Vector indexing configuration and storage (managed separately)
     vector_config: VectorConfig,
+    /// Optional vector index (separate from Kind-based indexes)
+    vector_index: Option<VectorIndex>,
 }
 
 /// Configuration for vector indexing
@@ -2168,18 +2182,20 @@ impl HybridIndex {
         indexes.insert(Kind::Tag, IndexType::Tag(TagIndex::new()));
         indexes.insert(Kind::Text, IndexType::Text(TextIndex::new()));
         
-        // Only create vector index if enabled
-        if vector_config.enabled {
-            indexes.insert(Kind::Vector, IndexType::Vector(
-                VectorIndex::with_dimension(vector_config.dimension)
-            ));
-        }
+        // Vector index is managed separately, not through Kind enum
+        // Vectors bypass the Value enum system entirely as they are document-level embeddings
+        let vector_index = if vector_config.enabled {
+            Some(VectorIndex::with_dimension(vector_config.dimension))
+        } else {
+            None
+        };
         
         Self {
             collection: EmbeddedCollection::new(),
             indexes,
             file_cache: IndexFileCache::new(),
             vector_config,
+            vector_index,
         }
     }
     
@@ -2198,7 +2214,7 @@ impl HybridIndex {
     }
     
     fn has_vector_index(&self) -> bool {
-        self.vector_config.enabled
+        self.vector_index.is_some()
     }
     
     /// Add document with capacity enforcement
@@ -2216,6 +2232,15 @@ impl HybridIndex {
                     self.index_value(entry_idx, attr_idx, ValueIndex(value_idx as u8), value)?;
                 }
             }
+        }
+        
+        // Handle vector embedding separately (bypasses Value enum system)
+        if let Some(ref mut vector_index) = self.vector_index {
+            vector_index.insert(entry_idx, doc.vector.as_deref()).map_err(|e| match e {
+                VectorError::CapacityExceeded => IndexError::CapacityExceeded,
+                VectorError::DimensionMismatch => IndexError::VectorDimensionMismatch,
+                VectorError::NotNormalized => IndexError::VectorNotNormalized,
+            })?;
         }
         
         Ok(entry_idx)
@@ -2510,6 +2535,8 @@ impl EmbeddedCollection {
 enum IndexError {
     CapacityExceeded,
     DocumentNotFound,
+    VectorDimensionMismatch,
+    VectorNotNormalized,
 }
 ```
 
@@ -3605,6 +3632,8 @@ enum IndexError {
     AttributeCapacityExceeded,
     DocumentNotFound,
     TypeMismatch(Kind, Kind),
+    VectorDimensionMismatch,
+    VectorNotNormalized,
 }
 ```
 
