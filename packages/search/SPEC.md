@@ -187,14 +187,14 @@ This search engine is built around several key architectural decisions that maxi
 5. **Manifest + append-only writes** → Safe, atomic shard updates without global locking
 6. **Size-driven shard splitting** → Pragmatic "how big is too big?" without full serialise-encrypt cycles
 
-Let's write down some ground rules:
+The ground rules are:
 
 - a schema has a finite number of attributes
 - an attribute has a defined type
 - a document attribute cannot contain another document
 - a document attribute can contain multiple values
 
-If we follow those rules, we should end up with the following API:
+Following these rules results in the following API:
 
 ```rust
 let schema = Schema::builder()
@@ -214,9 +214,9 @@ let message = Document::new("message_id")
     .attribute("encrypted", true); // boolean
 ```
 
-the content of the index should be sharded. Sharding means we have to define a way to group documents. As a matter of simplicity, the sharding mechanism will be just based on an integer attribute defined in the document.
+the content of the index is sharded. Sharding means defining a way to group documents. As a matter of simplicity, the sharding mechanism is based on an integer attribute defined in the document.
 
-This is something that should be defined in the schema, so that it's common across the entire search engine. So let's introduce a function to define it as follow.
+This is defined in the schema, so that it's common across the entire search engine. The function to define it follows:
 
 ```rust
 let schema = Schema::builder()
@@ -229,9 +229,9 @@ let schema = Schema::builder()
     .build()?;
 ```
 
-And now, building the schema should fail if the sharding attribute is not defined or if it's not an integer.
+Building the schema fails if the sharding attribute is not defined or if it's not an integer.
 
-It gives us the following structure for the schema.
+The schema structure is:
 
 ```rust
 /// Represents the possible data types that can be indexed
@@ -256,7 +256,7 @@ struct Schema {
 }
 
 impl Schema {
-    // let's follow the builder pattern
+    // follows the builder pattern
     pub fn builder() -> SchemaBuilder {
         SchemaBuilder::default()
     }
@@ -304,11 +304,9 @@ impl SchemaBuilder {
 
 Note: if we want to optimize some extra bytes, instead of using a String, we can use a Box<str> as we won't update the content of those strings.
 
-Now, let's have a look at the Document API. we could create a document builder that will analyse every attribute value that gets inserted in the document, but this could become a bit complicated to handle all the possible errors that should never happen.
+The Document API provides a builder pattern that analyzes every attribute value inserted in the document. The search-engine validates the document before inserting it in the indexes.
 
-Instead of that, the search-engine will validate the document before inserting it in the indexes.
-
-This gives use a relatively simple API for the Document as well.
+This provides a relatively simple API for the Document.
 
 ```rust
 /// A value that can be indexed
@@ -347,9 +345,9 @@ impl Document {
 }
 ```
 
-This kind of API provides the flexibility to build any kind of attribute without having to think too much about the errors and then handle the validation when it gets inserted. The schema being fixed, this kind of errors should be covered by the users tests, by doing so, I decided to prioritise usability.
+This API provides the flexibility to build any kind of attribute without having to think too much about the errors and then handle the validation when it gets inserted. The schema being fixed, this kind of errors are covered by the users tests, prioritizing usability.
 
-Now that we have defined our schema and document structure, here's how all the pieces fit together:
+With the schema and document structure defined, here's how all the pieces fit together:
 
 ```schema_ascii
 +-------------+     +----------------+
@@ -384,17 +382,17 @@ Key takeaways:
 # Destructuring The Documents
 
 
-Now that we know how the documents will be structured, it's time to dive in the serious stuff: the indexes.
+The document structure established, the indexes form the core of the search system.
 
-The indexes will contain the information we need to find a document based on the query parameters. We'll try to keep the content of the index fairly small when serialized to maximise the content of indexed data.
+The indexes contain the information required to find a document based on the query parameters. The index content remains small when serialized to maximize the volume of indexed data.
 
-So basically, we'll do a link between the data and the document identifier: from a given term (boolean, integer, tag or text), what document contains that term, and how many times. A basic data structure would look like this.
+The system creates a link between the data and the document identifier: from a given term (boolean, integer, tag or text), which document contains that term, and how many times. A basic data structure looks like this.
 
 ```rust
 type Index = Map<Term, Map<DocumentIdentifier, Count>>;
 ````
 
-This would be reproduced across every index and term. When you think about the DocumentIdentifier, which would be a String, each term would have a cost of size_of(DocumentIdentifier) which is at least equal to the size of the string (plus some bytes depending on if we use String or Box<str>). This doesn't scale well for large documents containing many terms and big identifiers, we need to use a different approach.
+This pattern is reproduced across every index and term. The DocumentIdentifier, as a String, creates a cost of size_of(DocumentIdentifier) equal to the string size (plus some bytes depending on whether String or Box<str> is used). This approach doesn't scale well for large documents containing many terms and big identifiers, requiring a different approach.
 
 ## Strong Type Safety
 
@@ -439,7 +437,7 @@ This approach prevents mixing up different types of indexes and makes the code m
 ## The Collection File
 
 
-If we introduce, for each shard, a Collection file that will contain a list of all the document identifiers and a u32 to identify them, then in each index, we can use that u32 to identify the document.
+Introducing, for each shard, a Collection file that contains a list of all document identifiers and a u32 to identify them, allows each index to use that u32 to identify the document.
 
 ```rust
 type EntryIndex = u32;
@@ -449,11 +447,11 @@ type Collection = Map<EntryIndex, DocumentIdentifier>;
 type Index = Map<Term, Map<EntryIndex, Count>>;
 ```
 
-This should reduce the cost significantly.
+This reduces the cost significantly.
 
-Now, in order to shard the collections and indexes, we need to store the attribute used for sharding close. If we use the index to find the sharding value of every document, considering the structure of the index, doing so will not be performant enough.
+To shard the collections and indexes, the attribute used for sharding must be stored in close proximity. Using the index to find the sharding value of every document proves insufficiently performant given the index structure.
 
-Persisting that attribute in the collection should make it easier to access.
+Persisting that attribute in the collection makes it easier to access.
 
 ```rust
 struct Collection {
@@ -464,7 +462,7 @@ struct Collection {
 
 That way, when one of our indexes reaches a critical size, we can just split in half the shard by taking all the entries based on the sharding BTreeMap. The BTreeMap, being sorted by design, provides the perfect API for that.
 
-The next problem we'll have to tackle on that structure: when deleting a document from the index, how to efficiently go from the DocumentId to the EntryIndex? For that, we need to introduce a reverse map as follow.
+Document deletion from the index requires efficient mapping from DocumentId to EntryIndex. This introduces a reverse map:
 
 ```rust
 struct Collection {
@@ -490,7 +488,7 @@ struct PersistedCollection {
 }
 ```
 
-This represents how we'll store our collection on disk. Each entry maintains its numeric index, document identifier, and sharding value in a simple vector structure.
+This represents how the collection is stored on disk. Each entry maintains its numeric index, document identifier, and sharding value in a simple vector structure.
 
 ```rust
 /// Manages document identifiers and sharding information
@@ -506,7 +504,7 @@ struct Collection {
 }
 ```
 
-In memory, we maintain bidirectional mappings between indexes and document identifiers for efficient lookups in both directions. The sharding map uses a BTreeMap to maintain order, which will be crucial for our sharding operations.
+In memory, bidirectional mappings between indexes and document identifiers enable efficient lookups in both directions. The sharding map uses a BTreeMap to maintain order, which is crucial for sharding operations.
 
 And here is the function to build a Collection based on its persisted state on disk.
 
@@ -531,11 +529,11 @@ impl From<PersistedCollection> for Collection {
 }
 ```
 
-Notice the use of Arc<str> instead of String. We need to have multiple reference to the same string in memory. If we use String, we'll pay several time the cost of that string length. When using Arc<str>, we only pay the price of the string length once and just the price of the pointer each time we clone it.
+Notice the use of Arc<str> instead of String. Multiple references to the same string in memory are required. String usage incurs the cost of that string length multiple times. Arc<str> usage pays the string length price once and only the pointer cost for each clone.
 
-One could ask, considering the advantage of Arc<str>, why not write that directly to disk or use it in the other indexes. Well, it doesn't work when serialized. Arc<str> contains a pointer in memory of where the string is. When serialize/deserialize, this memory address changes, so the serializer just replaces the pointer with its actual value, which means duplication of data.
+One might ask, considering the advantage of Arc<str>, why not write that directly to disk or use it in the other indexes. Arc<str> doesn't work when serialized. Arc<str> contains a pointer in memory of where the string is. When serialize/deserialize, this memory address changes, so the serializer replaces the pointer with its actual value, resulting in data duplication.
 
-Now, let's take a step back. In the current Index representation, there's no mention of attribute, but the attribute is quite similar to the document identifier: we don't know how big it could be and the size on disk is related to the size of the string. Might be worth adding it in our collection structure. And since we'll need to access the attribute name by an AttributeIndex and the other way around, we need to implement a similar mechanism.
+In the current Index representation, there's no mention of attribute, but the attribute is quite similar to the document identifier: the size is unknown and the disk footprint relates to the string size. Adding it to the collection structure proves worthwhile. Since accessing the attribute name by an AttributeIndex and vice versa is required, a similar mechanism is implemented.
 
 ```rust
 struct Attribute {
@@ -555,7 +553,7 @@ struct Collection {
 }
 ```
 
-At this point, we have everything ween need to build our collection.
+At this point, everything needed to build the collection is available.
 
 Key points about collections:
 
@@ -1156,7 +1154,7 @@ use either::Either; // Helper enum for iterator type erasure
 
 ### Specialized Index Implementations
 
-Now we can implement each index type using the flattened structure:
+Each index type can be implemented using the flattened structure:
 
 ```rust
 /// Boolean index using flattened document lists
@@ -1794,11 +1792,11 @@ fn stem_word(word: &str) -> String {
 }
 ```
 
-Now, for each attribute value, we keep a HashSet of the TokenIndex and Position.
+For each attribute value, a HashSet of the TokenIndex and Position is maintained.
 
-Considering the wasm binary will only be able to handle 4GB of data, the maximum index length of a string would fit in a u32 and considering the words have a minimum of 3 characters, using u16 to index them should be enough. Therefore, Position and TokenIndex are respectively an alias to u32 and u16.
+Given the wasm binary can only handle 4GB of data, the maximum index length of a string fits in a u32 and given the words have a minimum of 3 characters, using u16 to index them suffices. Therefore, Position and TokenIndex are respectively an alias to u32 and u16.
 
-Now, if we implement the insert method, it gives us the following.
+Implementing the insert method provides the following.
 
 ```rust
 impl TextIndex {
@@ -1890,7 +1888,7 @@ impl VectorIndex {
             return Err(VectorError::CapacityExceeded);
         }
 
-        // Ensure L2 normalization (vectors should be pre-normalized)
+        // Ensure L2 normalization (vectors are pre-normalized)
         let norm: f32 = vector.iter().map(|x| x * x).sum::<f32>().sqrt();
         if (norm - 1.0).abs() > 1e-6 {
             return Err(VectorError::NotNormalized);
@@ -2100,7 +2098,7 @@ enum IndexType {
 }
 
 /// Single embedded index containing all data
-struct EmbeddedIndex {
+struct VectorIndex {
     /// Document collection (single instance)
     collection: EmbeddedCollection,
     /// All index types in one structure
@@ -2128,7 +2126,7 @@ impl VectorConfig {
     }
 }
 
-impl EmbeddedIndex {
+impl VectorIndex {
     /// Create new index with default configuration (vectors disabled)
     fn new() -> Self {
         Self::with_vector_config(VectorConfig::disabled())
@@ -2271,7 +2269,7 @@ impl IndexFileCache {
 Single-index persistence is much simpler than multi-shard coordination:
 
 ```rust
-impl EmbeddedIndex {
+impl VectorIndex {
     /// Atomic write using shadow manifest technique
     async fn persist(&self) -> std::io::Result<()> {
         // Write all index files
@@ -2305,7 +2303,7 @@ impl EmbeddedIndex {
         let collection = manifest.load_collection().await?;
         
         // Lazy-load indexes as needed
-        let mut index = EmbeddedIndex::new();
+        let mut index = VectorIndex::new();
         index.collection = collection;
         
         Ok(index)
@@ -2333,7 +2331,7 @@ struct Shard {
 }
 ```
 
-This manifest will be stored in the working directory as manifest.bin and every file (collections and indexes) will have a random name.
+This manifest is stored in the working directory as manifest.bin and every file (collections and indexes) has a random name.
 
 Sharding architecture highlights:
 
@@ -2345,9 +2343,9 @@ Sharding architecture highlights:
 
 ## Transaction Mechanism
 
-This level of abstraction for the manifest allows us to add or delete shards when needed but there's an issue: we cannot block the access to the search engine each time we insert a document. We should be able to insert a set of documents while using the index and just block its access when writing the updated manifest to disk.
+This level of abstraction for the manifest allows adding or deleting shards when needed but there's an issue: the search engine access cannot be blocked each time a document is inserted. The system supports inserting a set of documents while using the index and only blocks access when writing the updated manifest to disk.
 
-Following a similar mechanism to a transactional database, inserting data will require initializing a transaction, which will create a temporary manifest file which will contain the names of all the original indexes and the names of the indexes that have been updated. Updating a collection or an index will create a new file on disk but non updated indexes will remain the same.
+Following a similar mechanism to a transactional database, inserting data requires initializing a transaction, creating a temporary manifest file containing the names of all original indexes and the names of the indexes that have been updated. Updating a collection or an index creates a new file on disk but non-updated indexes remain the same.
 
 ```schema_ascii
     Original State         Transaction             Committed State
@@ -2360,7 +2358,7 @@ Following a similar mechanism to a transactional database, inserting data will r
     +--------------+       +--------------+        +--------------+
 ```
 
-This would give us this code for shard management
+This provides the following code for shard management
 
 ```rust
 /// represents a file during a transaction
@@ -2389,7 +2387,7 @@ struct TxManifest {
 }
 ```
 
-This transaction manifest would be written to the filesystem depending on the platform: in the browser, since we cannot know when the page will be closed, it's better to write it after each operation, while on mobile, the app can do a simple operation before closing. This provides a nice way of being able to recover a transaction that has not been committed.
+This transaction manifest is written to the filesystem depending on the platform: in the browser, since page closure is unpredictable, writing occurs after each operation, while on mobile, the app performs a simple operation before closing. This provides recovery capability for uncommitted transactions.
 
 That commit operation simply consists in, for each file of each shard, taking the next filename if exists or the base one, and write it in the manifest.bin. This commit operation is atomic, and then less prone to errors.
 
@@ -2524,8 +2522,8 @@ Sharding remains relevant for specific use cases:
 1. **Logical Isolation**: 
    ```rust
    // Separate indices for tenants/time-ranges
-   let tenant_a_index = EmbeddedIndex::new();
-   let tenant_b_index = EmbeddedIndex::new();
+   let tenant_a_index = VectorIndex::new();
+   let tenant_b_index = VectorIndex::new();
    
    // Query both and merge with RRF
    let results_a = tenant_a_index.search(&query).await?;
@@ -2537,7 +2535,7 @@ Sharding remains relevant for specific use cases:
    ```rust
    // When first index reaches capacity, create second instance
    if primary_index.is_full() {
-       let secondary_index = EmbeddedIndex::new();
+       let secondary_index = VectorIndex::new();
        // Route new documents to secondary_index
        // Merge results from both indices using RRF
    }
@@ -2605,9 +2603,9 @@ impl<K: ContentSize, V: ContentSize> for HashMap<K, V> {
 }
 ```
 
-With this in hand, we can implement it for all the indexes and we'll have a rough idea of the size of the file. Considering that encryption will add a bit of overhead in size, we can decide to split the index when it reaches 90% of the limit size.
+With this in hand, implementation across all indexes provides a rough idea of the file size. Considering that encryption adds overhead, the index splits when it reaches 90% of the limit size.
 
-But now the question is: how to implement the sharding mechanism? It's quite simple and will be based on what we put in place earlier in this article.
+The sharding mechanism implementation is straightforward and based on the foundation established earlier in this document.
 
 Here's a visual example of how a shard splits:
 
@@ -2652,8 +2650,8 @@ impl Collection {
 
         // keep moving entries until we reach approximately half size
         while new_collection.entries_by_name.len() < half_count && self.sharding.len() > 1 {
-            // if this happens, it means we moved everything from the old shard, which shouldn't be possible
-            // which shouldn't happen considering that we check the number of shards
+            // if this happens, it means everything was moved from the old shard, which is not possible
+            // which does not happen considering that the number of shards is checked
             let Some((shard_value, entries)) = self.sharding.pop_last() {
                 return new_collection;
             }
@@ -2678,7 +2676,7 @@ This will give us a new collection if it was possible to split it. If it's possi
 ```rust
 // similar for each index
 impl BooleanIndex {
-    // we just create a new index an move every item from the old entries to the new index
+    // create a new index and move every item from the old entries to the new index
     fn split(&mut self, entries: &HashSet<EntryIndex>) -> BooleanIndex {
         let mut next = BooleanIndex::default();
         self.content.iter_with_mut(|(term, term_documents)| {
@@ -2704,17 +2702,17 @@ impl BooleanIndex {
 }
 ```
 
-After this creation of a new shard, we can inject it in the transaction manifest, with the sharding key being the minimum of all the sharding keys, which can simply be accessed using the first_key_value function of the BTreeMap. And at the next commit, it will be possible to search in it.
+After creating a new shard, it is injected into the transaction manifest, with the sharding key being the minimum of all sharding keys, accessible using the first_key_value function of the BTreeMap. At the next commit, searching becomes possible.
 
 # Query Definition
 
-In order to execute a search, the user first needs to define its query. Considering the indexes we have, we'll have to define, for each index, a set of filters that could be executed, but we'll define them later in that article.
+To execute a search, the user first defines the query. Given the indexes available, a set of filters for each index is defined and executed.
 
-These filters can be applied to specific attributes, though this isn't always necessary. For example, we might want to search for text across all attributes, like filtering all articles having "Hello" in them, in the title or the content, with a single condition. On the other side, it's hard to imagine a use case where the user will want any article with a boolean value, whatever the attribute. That being said, this responsibility will be left to the user building the query.
+These filters can be applied to specific attributes, though this isn't always necessary. For example, searching for text across all attributes, like filtering all articles having "Hello" in them, in the title or the content, with a single condition. On the other side, it's hard to imagine a use case where the user wants any article with a boolean value, whatever the attribute. That being said, this responsibility is left to the user building the query.
 
 And finally, those conditions can be combined into an expression, with AND or OR.
 
-With such a structure, we could query something like title:matches("search") AND author:"jeremie" AND (tags:"webassembly" OR tags:"rust") AND public:true.
+With such a structure, queries like title:matches("search") AND author:"jeremie" AND (tags:"webassembly" OR tags:"rust") AND public:true are supported.
 
 This gives us the following rust implementation, which is nothing more than a tree structure.
 
@@ -2763,7 +2761,7 @@ enum TagFilter {
 }
 ```
 
-Considering the index structure defined before, looking for the related entries will be fairly simple for a given attribute.
+Given the index structure defined previously, looking for the related entries is straightforward for a given attribute.
 
 ```rust
 impl BooleanIndex {
@@ -2778,7 +2776,7 @@ impl BooleanIndex {
         if let Some(attribute) = attribute {
             document_lists.get(&attribute).iter().flat_map(|attr_documents| attr_documents.keys().copied())
         } else {
-            // if there is not attribute specifier, we just return all the entries
+            // if there is no attribute specifier, all entries are returned
             document_lists.iter().flat_map(|attr_documents| attr_documents.keys().copied())
         }
     }
@@ -2789,7 +2787,7 @@ The TagIndex being exactly the same.
 
 ## Integer Filter
 
-The integer filter can be a bit more complicated. We want to allow the user to be able to query a date range for example. So we'll need to implement GreaterThan and LowerThan on top of the previously defined filter.
+The integer filter supports more complexity. The system allows users to query date ranges, for example. This requires implementing GreaterThan and LowerThan on top of the previously defined filter.
 
 ```rust
 enum IntegerFilter {
@@ -2840,9 +2838,9 @@ Filter Implementation Achievements:
 
 ## Text Filter
 
-Now let's tackle the most complex piece. Searching through text is only easy when looking for exact values. We need something more clever here.
+The most complex piece involves text search. Searching through text remains simple when looking for exact values. More sophisticated approaches are required.
 
-We want to support fuzzy matching, where searching for "Moovies" would match "movie" and this is done by implementing some fuzzy search.
+The system supports fuzzy matching, where searching for "Moovies" matches "movie" through fuzzy search implementation.
 
 We also want something that allows to find words starting with a value (searching title:starts_with("Artic") should catch "Article"). This is a subset of the wildcard search.
 
@@ -2859,11 +2857,11 @@ enum TextFilter {
 }
 ```
 
-The Equals implementation is similar to the previous indexes so we'll skip it.
+The Equals implementation is similar to the previous indexes so it is skipped.
 
 ### Prefix Search
 
-In order to implement the StartsWith filter without going through the entire content of the index, we need to precompute a structure. This structure will be a simple tree where each node is a character.
+Implementing the StartsWith filter without traversing the entire index content requires a precomputed structure. This structure consists of a simple tree where each node represents a character.
 
 ```rust
 #[derive(Debug, Default)]
@@ -2873,7 +2871,7 @@ pub(super) struct TrieNode {
 }
 ```
 
-That way, finding the words matching a prefix will just need to go through each letters of that prefix in the tree, and all children are the potential words.
+Finding words matching a prefix requires traversing each letter of that prefix in the tree, with all children representing potential words.
 
 Finding the final node for the StartsWith filter is done as following
 
@@ -2888,7 +2886,7 @@ impl TrieNode {
 }
 ```
 
-And once we get the node, we need to iterate through the entire tree structure of the children to collect the matching words. This can be done by implementing an iterator.
+Once the node is obtained, iteration through the entire tree structure of the children collects the matching words. This is accomplished by implementing an iterator.
 
 ```rust
 #[derive(Debug, Default)]
@@ -3452,7 +3450,7 @@ struct ShardManifest {
     /// the collection is mandatory, it's the index of all the entries
     /// if it's none, there's no entry, so there's no shard
     collection: Box<str>,
-    /// then every index is optional (except the integer index, but we'll keep the same idea)
+    /// then every index is optional (except the integer index, but the same idea is kept)
     boolean: Option<Box<str>>,
     integer: Option<Box<str>>,
     tag: Option<Box<str>>,
@@ -3460,7 +3458,7 @@ struct ShardManifest {
 }
 ```
 
-Which means that, for each condition in the search expression, we'll need to load the collection to find the AttributeIndex for the given attribute name, and then load the corresponding index and execute the query. We could load all of the indexes when starting a search in the shard but we might not need all of them and considering the decryption cost, we should avoid that.
+For each condition in the search expression, the system loads the collection to find the AttributeIndex for the given attribute name, and then loads the corresponding index and executes the query. Loading all indexes when starting a search in the shard is possible but unnecessary given that not all may be needed and considering the decryption cost, this is avoided.
 
 Let's add an abstraction layer for the shard.
 
@@ -3468,7 +3466,7 @@ Let's add an abstraction layer for the shard.
 struct Shard {
     /// this is loaded anyway
     collection: Collection,
-    /// then we create a cache
+    /// then a cache is created
     boolean: Option<CachedEncryptedFile<BooleanIndex>>,
     integer: Option<CachedEncryptedFile<IntegerIndex>>,
     tag: Option<CachedEncryptedFile<TagIndex>>,
@@ -3483,7 +3481,7 @@ struct CachedEncryptedFile<T> {
 impl<T: serde::de::DeserializedOwned> CachedEncryptedFile<T> {
     async fn get(&self) -> std::io::Result<&T> {
         self.cache
-            // here we only deserialize the file when we need to access it
+            // here the file is only deserialized when access is needed
             // and it remains cached
             .get_or_try_init(|| async { self.file.deserialize::<T>().await })
             .await
