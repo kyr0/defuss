@@ -2103,14 +2103,27 @@ impl VectorIndex {
         }
         
         if let Some(pos) = self.entry_mapping.iter().position(|&x| x == entry_index) {
-            // Remove vector data (swap_remove for O(1) performance)
-            let start_idx = pos * self.dimension;
-            let end_idx = start_idx + self.dimension;
+            // If deleting the last element, we can simply truncate
+            if pos == self.entry_mapping.len() - 1 {
+                // Truncate vector storage directly
+                self.vectors.truncate(self.vectors.len() - self.dimension);
+                
+                // Remove entry mapping
+                self.entry_mapping.pop();  // More efficient than swap_remove for last element
+                return true;
+            }
             
-            // Move last document's vector to deleted position
-            if pos < self.entry_mapping.len() - 1 {
-                let last_start = (self.entry_mapping.len() - 1) * self.dimension;
-                self.vectors.copy_within(last_start.., start_idx);
+            // Not the last element - move last document's vector to deleted position
+            let start_idx = pos * self.dimension;
+            let last_start = (self.entry_mapping.len() - 1) * self.dimension;
+            
+            // Use copy_nonoverlapping for safety (even though regions shouldn't overlap here)
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    self.vectors.as_ptr().add(last_start),
+                    self.vectors.as_mut_ptr().add(start_idx),
+                    self.dimension
+                );
             }
             
             // Truncate vector storage
