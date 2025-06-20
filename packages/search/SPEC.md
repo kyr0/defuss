@@ -2958,10 +2958,13 @@ Finding the final node for the StartsWith filter is done as following
 ```rust
 impl TrieNode {
     fn find_starts_with(&self, mut value: Chars<'_>) -> Option<&TrieNode> {
-        let character = value.next()?;
-        self.children
-            .get(&character)
-            .and_then(|child| child.find_starts_with(value))
+        if let Some(character) = value.next() {
+            self.children
+                .get(&character)?
+                .find_starts_with(value)
+        } else {
+            Some(self)
+        }
     }
 }
 ```
