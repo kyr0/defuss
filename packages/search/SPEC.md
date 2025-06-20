@@ -1811,11 +1811,11 @@ impl TextIndex {
         token_index: TokenIndex,
         position: Position,
     ) -> bool {
-        let term_postings = self.content.entry(term).or_default();
-        let attribute_postings = term_postings.entry(attribute_index).or_default();
-        let entry_postings = entry_postings.entry(entry_index).or_default();
-        let value_postings = attr_postings.entry(value_index).or_default();
-        value_postings.insert((token_index, position))
+        let term_documents = self.content.entry(term).or_default();
+        let attribute_documents = term_documents.entry(attribute_index).or_default();
+        let entry_documents = attribute_documents.entry(entry_index).or_default();
+        let value_documents = entry_documents.entry(value_index).or_default();
+        value_documents.insert((token_index, position))
     }
 }
 ```
@@ -2681,18 +2681,18 @@ impl BooleanIndex {
     // we just create a new index an move every item from the old entries to the new index
     fn split(&mut self, entries: &HashSet<EntryIndex>) -> BooleanIndex {
         let mut next = BooleanIndex::default();
-        self.content.iter_with_mut(|(term, term_postings)| {
-            term_postings.iter_with_mut(|(attribute, attribute_postings)| {
+        self.content.iter_with_mut(|(term, term_documents)| {
+            term_documents.iter_with_mut(|(attribute, attribute_documents)| {
                 // fetch the intersection
-                let intersection = entries.iter().filter(|entry_index| attribute_postings.contains_key(entry_index)).collect();
+                let intersection = entries.iter().filter(|entry_index| attribute_documents.contains_key(entry_index)).collect();
                 if !intersection.is_empty() {
-                    // only create the postings if there is an intersection
-                    let next_term_postings = next.content.entry(term.clone()).or_default();
-                    let next_attribute_postings = next_term_postings.entry(attribute.clone()).or_default();
+                    // only create the document lists if there is an intersection
+                    let next_term_documents = next.content.entry(term.clone()).or_default();
+                    let next_attribute_documents = next_term_documents.entry(attribute.clone()).or_default();
                     for entry_index in intersection.iter() {
                         // remove from the old one and insert in the new one
-                        if let Some(entry_posting) = attribute_postings.remove(entry_index) {
-                            next_attribute_postings.insert(entry_index, entry_posting);
+                        if let Some(entry_document) = attribute_documents.remove(entry_index) {
+                            next_attribute_documents.insert(entry_index, entry_document);
                         }
                     }
                 }
@@ -2768,18 +2768,18 @@ Considering the index structure defined before, looking for the related entries 
 ```rust
 impl BooleanIndex {
     fn search(&self, attribute: Option<AttributeIndex>, filter: &BooleanFilter) -> HashSet<EntryIndex> {
-        let postings = match filter {
+        let document_lists = match filter {
             BooleanIndex::Equals { value } => self.content.get(value),
         };
-        let Some(postings) = postings else {
+        let Some(document_lists) = document_lists else {
             // no need to go further if the term is not found
             return Default::default();
         };
         if let Some(attribute) = attribute {
-            postings.get(&attribute).iter().flat_map(|attr_postings| attr_postings.keys().copied())
+            document_lists.get(&attribute).iter().flat_map(|attr_documents| attr_documents.keys().copied())
         } else {
             // if there is not attribute specifier, we just return all the entries
-            postings.iter().flat_map(|attr_postings| attr_postings.keys().copied())
+            document_lists.iter().flat_map(|attr_documents| attr_documents.keys().copied())
         }
     }
 }
@@ -2815,13 +2815,13 @@ impl IntegerIndex {
         if let Some(attribute) = attribute {
             self.filter_content(filter)
                 // here we filter for the given attribute
-                .flat_map(|postings| postings.get(&attribute).iter())
+                .flat_map(|documents| documents.get(&attribute).iter())
                 .flat_map(|entries| entries.keys().copied())
                 .collect()
         } else {
             self.filter_content(filter)
                 // here we take all the attributes
-                .flat_map(|postings| postings.values())
+                .flat_map(|documents| documents.values())
                 .flat_map(|entries| entries.keys().copied())
                 .collect()
         }
@@ -3602,7 +3602,7 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 
 3. **Binary Search + Galloping Merge**: Document lookups use binary search by doc ID, followed by linear/galloping merge for attribute filtering, delivering O(log N + M) performance.
 
-4. **Type-Safe Numeric Indirection**: Using strong newtype wrappers for all indexes (EntryIndex, AttributeIndex, etc.) prevents index confusion while keeping postings compact with u32/u8 sizes.
+4. **Type-Safe Numeric Indirection**: Using strong newtype wrappers for all indexes (EntryIndex, AttributeIndex, etc.) prevents index confusion while keeping documents compact with u32/u8 sizes.
 
 5. **Lazy File Loading with Caching**: `CachedEncryptedFile` + `OnceCell` ensures each index file is loaded exactly once, with automatic decryption caching and memory management.
 
@@ -3617,7 +3617,7 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 - **Specific Rust Toolchain**: Uses latest stable Rust with WebAssembly-specific performance optimizations enabled
 - **Flattened Memory Layout**: Single contiguous vectors per term eliminate HashMap overhead and provide linear cache access patterns
 - **Bump Arena Allocation**: Per-query scratch space eliminates thousands of malloc/free calls, with automatic bulk deallocation
-- **Galloping Intersection**: Multi-term queries use exponential search to accelerate posting list merges
+- **Galloping Intersection**: Multi-term queries use exponential search to accelerate document list merges
 - **No Shard Fan-out**: Direct index access eliminates query distribution and result merging overhead
 - **Short-Circuit Evaluation**: AND operations skip unnecessary work when early results are empty
 - **SIMD Vector Search**: Brute-force with SIMD 128 provides 6-8ms queries with perfect recall
@@ -3635,6 +3635,213 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 - **Single-File Persistence**: One manifest + data blob simplifies WASM file system interactions
 - **Extensible Manifest**: Format supports future multi-index scaling when needed
 - **Manual Scaling**: Beyond 100k, developers create multiple index instances with explicit RRF merging
+- **Flexible Schema**: Dynamic attribute registration provides MongoDB/Elasticsearch-style ergonomics
+
+## Flexible Column Index: Dynamic Schema with Static Performance
+
+You can get 80% of Elasticsearch/MongoDB's dynamism with one simple rule added to the current engine:
+
+**Lazy-register unknown attributes at ingest, infer their kind from the first value, and cap the total attribute table at 256 slots.**
+
+This approach maintains the engine's zero-versioning promise while giving developers the ergonomic "just add a field" experience of document stores.
+
+### Implementation Changes
+
+| What changes | Code impact | Why it stays simple |
+|--------------|-------------|-------------------|
+| **1. Attribute table becomes append-only** | `if !attr_by_name.contains(name) { let new_id = attr_by_name.len() as u8; attr_by_name.insert(name.clone(), new_id); attr_by_index.insert(new_id, name.clone()); }` | 10-15 LOC in the collection's insert() path. Single writer (browser thread) ⇒ no races. |
+| **2. Kind inference once** | `match value { Bool(_)⇒Boolean, Int(_)⇒Integer, s if len≤32 ⇒Tag, _⇒Text }` | Few lines. Good enough for logs / JSON blobs. |
+| **3. Hard cap** | `assert!(attr_by_name.len() < 256)` | None. Keeps AttributeIndex a u8, no resizing. |
+| **4. Unknown-to-old-docs caveat** | Documentation: "Queries on a new field only see docs added after the field first appeared." | Acceptable for edge / 100k-doc workloads; no re-index pass needed. |
+
+### Flexible Collection Implementation
+
+```rust
+/// Enhanced collection with dynamic attribute registration
+struct FlexibleCollection {
+    /// Document mappings (single shard, no splitting)
+    entries_by_index: HashMap<EntryIndex, DocumentId>,
+    entries_by_name: HashMap<DocumentId, EntryIndex>,
+    /// Dynamic attribute registration (append-only)
+    attributes_by_name: HashMap<Box<str>, AttributeIndex>,
+    attributes_by_index: HashMap<AttributeIndex, Box<str>>,
+    /// Type information inferred at first encounter
+    attribute_kinds: HashMap<AttributeIndex, Kind>,
+    /// Document count tracking
+    document_count: usize,
+    max_documents: usize, // = 100_000
+    max_attributes: usize, // = 256
+}
+
+impl FlexibleCollection {
+    const MAX_DOCUMENTS: usize = 100_000;
+    const MAX_ATTRIBUTES: usize = 256;
+    
+    fn new() -> Self {
+        Self {
+            entries_by_index: HashMap::with_capacity(Self::MAX_DOCUMENTS),
+            entries_by_name: HashMap::with_capacity(Self::MAX_DOCUMENTS),
+            attributes_by_name: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
+            attributes_by_index: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
+            attribute_kinds: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
+            document_count: 0,
+            max_documents: Self::MAX_DOCUMENTS,
+            max_attributes: Self::MAX_ATTRIBUTES,
+        }
+    }
+    
+    /// Lazy attribute registration with kind inference
+    fn register_attribute_if_needed(&mut self, name: &str, value: &Value) -> Result<AttributeIndex, IndexError> {
+        // Check if attribute already exists
+        if let Some(&attr_idx) = self.attributes_by_name.get(name) {
+            // Verify type compatibility
+            let inferred_kind = Self::infer_kind(value);
+            if let Some(&existing_kind) = self.attribute_kinds.get(&attr_idx) {
+                if existing_kind != inferred_kind {
+                    return Err(IndexError::TypeMismatch(existing_kind, inferred_kind));
+                }
+            }
+            return Ok(attr_idx);
+        }
+        
+        // Register new attribute
+        if self.attributes_by_name.len() >= self.max_attributes {
+            return Err(IndexError::AttributeCapacityExceeded);
+        }
+        
+        let new_id = self.attributes_by_name.len() as u8;
+        let attr_idx = AttributeIndex(new_id);
+        let name_box: Box<str> = name.into();
+        let inferred_kind = Self::infer_kind(value);
+        
+        self.attributes_by_name.insert(name_box.clone(), attr_idx);
+        self.attributes_by_index.insert(attr_idx, name_box);
+        self.attribute_kinds.insert(attr_idx, inferred_kind);
+        
+        Ok(attr_idx)
+    }
+    
+    /// Simple type inference from first value encountered
+    fn infer_kind(value: &Value) -> Kind {
+        match value {
+            Value::Boolean(_) => Kind::Boolean,
+            Value::Integer(_) => Kind::Integer,
+            Value::Tag(s) if s.len() <= 32 => Kind::Tag,
+            Value::Tag(_) | Value::Text(_) => Kind::Text,
+        }
+    }
+    
+    /// Get attribute index with lazy registration
+    fn get_or_register_attribute(&mut self, name: &str, value: &Value) -> Result<AttributeIndex, IndexError> {
+        self.register_attribute_if_needed(name, value)
+    }
+    
+    /// Lookup attribute index (returns None for unknown fields)
+    fn get_attribute_index(&self, name: &str) -> Option<AttributeIndex> {
+        self.attributes_by_name.get(name).copied()
+    }
+    
+    /// Get attribute kind for validation
+    fn get_attribute_kind(&self, attr_idx: AttributeIndex) -> Option<Kind> {
+        self.attribute_kinds.get(&attr_idx).copied()
+    }
+}
+
+#[derive(Debug)]
+enum IndexError {
+    CapacityExceeded,
+    AttributeCapacityExceeded,
+    DocumentNotFound,
+    TypeMismatch(Kind, Kind),
+}
+```
+
+### Dynamic Document Insertion
+
+```rust
+impl FlexibleIndex {
+    /// Add document with dynamic attribute registration
+    fn add_document(&mut self, doc: Document) -> Result<EntryIndex, IndexError> {
+        if self.is_full() {
+            return Err(IndexError::CapacityExceeded);
+        }
+        
+        let entry_idx = self.collection.add_document(doc.id)?;
+        
+        // Index document with dynamic attribute registration
+        for (attr_name, values) in doc.attributes {
+            for (value_idx, value) in values.into_iter().enumerate() {
+                // Lazy attribute registration with type inference
+                let attr_idx = self.collection.get_or_register_attribute(&attr_name, &value)?;
+                self.index_value(entry_idx, attr_idx, ValueIndex(value_idx as u8), value)?;
+            }
+        }
+        
+        Ok(entry_idx)
+    }
+}
+```
+
+### Query Behavior for Dynamic Fields
+
+```rust
+impl SearchEngine {
+    /// Query with graceful handling of unknown fields
+    fn search_with_dynamic_fields(&self, expression: &Expression) -> Result<Vec<(EntryIndex, f32)>, SearchError> {
+        match expression {
+            Expression::Condition(condition) => {
+                // Check if attribute exists
+                if let Some(attr_name) = &condition.attribute {
+                    if self.collection.get_attribute_index(attr_name).is_none() {
+                        // Unknown field → empty result set (same as MongoDB/Elasticsearch)
+                        return Ok(Vec::new());
+                    }
+                }
+                self.execute_condition(condition)
+            }
+            Expression::And(left, right) => {
+                let left_results = self.search_with_dynamic_fields(left)?;
+                if left_results.is_empty() {
+                    return Ok(Vec::new()); // Short-circuit
+                }
+                let right_results = self.search_with_dynamic_fields(right)?;
+                Ok(self.intersect_results(left_results, right_results))
+            }
+            Expression::Or(left, right) => {
+                let left_results = self.search_with_dynamic_fields(left)?;
+                let right_results = self.search_with_dynamic_fields(right)?;
+                Ok(self.union_results(left_results, right_results))
+            }
+        }
+    }
+}
+```
+
+### What You Don't Add
+
+This flexible approach maintains simplicity by avoiding:
+
+- **No schema versions**: The attribute table is append-only, no migrations needed
+- **No new on-disk format**: The attribute table is already persisted in the collection file
+- **No per-document dynamic typing**: The kind is fixed after first sighting
+- **No compatibility code**: Unknown fields simply return empty results
+- **No re-indexing**: New fields only apply to subsequently added documents
+
+### Scaling Beyond the Cap
+
+If an application needs more than 256 distinct fields:
+
+1. **Promote important fields**: Move frequently-used fields to a fixed schema
+2. **Silo workloads**: Use the existing multi-index strategy for specialized data
+3. **Field namespacing**: Use prefixes to group related fields (`user.name`, `user.email`)
+
+### Benefits
+
+- **MongoDB/Elasticsearch ergonomics**: "Just add a field" developer experience
+- **Zero versioning**: No schema evolution complexity
+- **Type safety**: Inferred types prevent common errors
+- **Performance preservation**: AttributeIndex remains u8, no memory overhead
+- **Graceful degradation**: Unknown fields return empty results, no errors
 
 ### Vector Search Innovation
 
@@ -3672,7 +3879,7 @@ That welded scorer is what we call **BM25FS⁺** (“F” = field weights, “S�
 | **BM25**  | TF-IDF with length normalisation                                                          | \`IDF(t) × (k₁+1)·tf / (k₁(1-b+b\!\cdot\!tfrac|D_f|/\overline{|D_f|}} + tf\` |
 | **BM25F** | treat each field (title, body, code, …) with its own weight *w\_f*                        | sum the BM25 score over fields after multiplying TF by *w\_f* ([researchgate.net][1]) |   |               |
 | **BM25⁺** | add a small δ so *any* match beats “no match”, fixing the long-doc bias                   | just wrap the fraction in `[ ... ] + δ` ([en.wikipedia.org][2])                       |   |               |
-| **BM25S** | pre-compute the whole term impact at **indexing** time → query becomes sparse dot-product | store the *impact* instead of raw tf in your posting list ([arxiv.org][3])            |   |               |
+| **BM25S** | pre-compute the whole term impact at **indexing** time → query becomes sparse dot-product | store the *impact* instead of raw tf in your document list ([arxiv.org][3])            |   |               |
 
 Putting it together for one term *t* in field *f*:
 
@@ -3696,10 +3903,10 @@ let impact = w_f
 At query-time:
 
 ```rust
-score[doc] += impact;           // one add per posting, done
+score[doc] += impact;           // one add per document, done
 ```
 
-Latency now depends almost entirely on posting-list size, not floating-point math.
+Latency now depends almost entirely on document-list size, not floating-point math.
 
 ##### Fusing with dense cosine hits
 
@@ -3795,14 +4002,14 @@ pub struct FieldConfig {
     pub b: f32,
 }
 
-/// A single posting list entry; stores the **pre‑computed impact score**.
+/// A single document list entry; stores the **pre‑computed impact score**.
 #[derive(Debug, Clone, Copy)]
 struct Posting {
     doc_id: u32,
     impact: f32,
 }
 
-/// Builder collects statistics & postings until `finalize()` is called.
+/// Builder collects statistics & documents until `finalize()` is called.
 #[derive(Default)]
 pub struct IndexBuilder {
     k1: f32,
@@ -3810,8 +4017,8 @@ pub struct IndexBuilder {
     field_cfgs: Vec<FieldConfig>,
     /// Per‑field total length across corpus so we can later compute avg_len.
     accumulated_field_len: HashMap<String, usize>,
-    /// term → postings (built eagerly).
-    postings: HashMap<String, Vec<Posting>>,
+    /// term → documents (built eagerly).
+    documents: HashMap<String, Vec<Posting>>,
 }
 
 impl IndexBuilder {
@@ -3855,7 +4062,7 @@ impl IndexBuilder {
                         / (self.k1 * (1.0 - cfg.b + cfg.b * field_len / 1.0) + freq as f32)  // avg_len placeholder, fixed later.
                         + self.delta;
 
-                    self.postings.entry(term.to_string())
+                    self.documents.entry(term.to_string())
                         .or_default()
                         .push(Posting { doc_id, impact });
                 }
@@ -3875,22 +4082,22 @@ impl IndexBuilder {
         }
 
         // Second pass: length‑normalise impacts properly.
-        for (term, plist) in self.postings.iter_mut() {
+        for (term, plist) in self.documents.iter_mut() {
             for post in plist.iter_mut() {
                 // For demo purposes we leave impact untouched. A full impl would
-                // store per‑posting field info or adjust above with actual avg_len.
+                // store per‑document field info or adjust above with actual avg_len.
                 let _ = term; // silence unused warning; real code would use this.
             }
         }
 
-        Index { postings: self.postings }
+        Index { documents: self.documents }
     }
 }
 
 /// Memory‑resident sparse index.
 #[derive(Default)]
 pub struct Index {
-    postings: HashMap<String, Vec<Posting>>,
+    documents: HashMap<String, Vec<Posting>>,
 }
 
 impl Index {
@@ -3898,7 +4105,7 @@ impl Index {
     pub fn search(&self, query: &str, k: usize) -> Vec<(u32, f32)> {
         let mut scores: HashMap<u32, f32> = HashMap::new();
         for term in query.split_whitespace() {
-            if let Some(plist) = self.postings.get(term) {
+            if let Some(plist) = self.documents.get(term) {
                 for &Posting { doc_id, impact } in plist {
                     *scores.entry(doc_id).or_default() += impact;
                 }
