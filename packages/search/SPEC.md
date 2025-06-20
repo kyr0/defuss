@@ -1,8 +1,9 @@
 # Search Engine Design
 
-The engine is a **light-weight, WASM-friendly search stack** meant to run entirely in the browser, the edge, or any sandbox without sys-calls.  It is purposely capped at **≤ 100 000 documents per index**, each document carrying a 1024-dimensional, L2-normalised vector plus strictly-typed lexical fields.  Within that envelope we favour **simplicity over heavy machinery**: postings are kept as flat, cache-linear `Vec<Document>` blocks instead of nested maps; all per-query scratch space lives in a bump-arena to avoid slow WASM heap traffic; fuzzy matches use a bigram-Dice pre-filter so only a handful of candidates pay the Levenshtein tax; and vector search is brute-force SIMD (≈ 8 ms on modern CPUs), giving exact recall without ANN build cost.  Durability is handled by an atomic shadow-manifest; everything else is immutable files, so no WAL or fsync gymnastics are needed in the browser.
+The engine is a **light-weight, WASM-friendly search stack** meant to run entirely in the browser, the edge, or any sandbox without sys-calls. It is purposely capped at **≤ 100 000 documents per index**, each document carrying a n-dimensional, L2-normalised vector plus strictly-typed lexical fields.  Within that envelope we favour **simplicity over heavy machinery**: postings are kept as flat, cache-linear `Vec<Document>` blocks instead of nested maps; all per-query scratch space lives in a bump-arena to avoid slow WASM heap traffic; fuzzy matches use a bigram-Dice pre-filter so only a handful of candidates pay the Levenshtein tax; and vector search is brute-force SIMD (≈ 8 ms on modern CPUs), giving exact recall without ANN build cost.  Durability is handled by an atomic shadow-manifest; everything else is immutable files, so no WAL or fsync gymnastics are needed in the browser.Keep one sorted Vec<Posting{doc, attr, val, impact}> per term. Binary-search by doc, then linear / gallop merge for attribute filtering.
 
-Need more than 100 k docs? **Silo**: spin up additional indices keyed by any natural partition (tenant, time-range, language, etc.) and run the same query over those shards in parallel—fusion is a cheap RRF merge of the partial top-k lists.  This keeps every shard small, fast, and simple while allowing the whole application to scale horizontally without redesigning the core.
+
+Need more than 100k docs? **Silo**: spin up additional indices keyed by any natural partition (tenant, time-range, language, etc.) and run the same query over those shards in parallel—fusion is a cheap RRF merge of the partial top-k lists.  This keeps every shard small, fast, and simple while allowing the whole application to scale horizontally without redesigning the core.
 
 
 ## Core Design Principles
@@ -1637,19 +1638,212 @@ This optimized approach delivers:
 - **Memory efficient**: Two-row Levenshtein matrix instead of full NxM
 - **Pure computation**: No I/O operations during fuzzy matching
 
+## Arena-Based Memory Management
+
+WebAssembly's default allocator suffers from fragmentation and slow allocation patterns. We use bump-arena allocation to eliminate thousands of malloc calls per query and provide deterministic memory cleanup.
+
+### Bump Arena Implementation
+
+```rust
+use bumpalo::Bump;
+use bumpalo::collections::{Vec as ArenaVec, HashMap as ArenaHashMap, HashSet as ArenaHashSet};
+
+/// Query context with arena-allocated scratch space
+struct QueryContext<'arena> {
+    arena: &'arena Bump,
+}
+
+impl<'arena> QueryContext<'arena> {
+    fn new(arena: &'arena Bump) -> Self {
+        Self { arena }
+    }
+    
+    /// Create arena-allocated HashMap for intermediate results
+    fn temp_map<K, V>(&self) -> ArenaHashMap<'arena, K, V> 
+    where
+        K: std::hash::Hash + Eq,
+    {
+        ArenaHashMap::new_in(self.arena)
+    }
+    
+    /// Create arena-allocated HashSet for document accumulation
+    fn temp_set<T>(&self) -> ArenaHashSet<'arena, T>
+    where
+        T: std::hash::Hash + Eq,
+    {
+        ArenaHashSet::new_in(self.arena)
+    }
+    
+    /// Create arena-allocated Vec with known capacity
+    fn temp_vec_with_capacity<T>(&self, capacity: usize) -> ArenaVec<'arena, T> {
+        ArenaVec::with_capacity_in(capacity, self.arena)
+    }
+    
+    /// Create arena-allocated Vec for results collection
+    fn temp_vec<T>(&self) -> ArenaVec<'arena, T> {
+        ArenaVec::new_in(self.arena)
+    }
+}
+
+/// Per-query execution with automatic arena cleanup
+async fn execute_query_with_arena(expression: &Expression) -> Result<Vec<(EntryIndex, f32)>, SearchError> {
+    let arena = Bump::new(); // Single allocation for entire query
+    let ctx = QueryContext::new(&arena);
+    
+    // All intermediate collections use arena allocation
+    let results = process_expression_with_arena(expression, &ctx).await?;
+    
+    // Convert arena results to owned data before arena drops
+    let owned_results: Vec<(EntryIndex, f32)> = results.into_iter().collect();
+    
+    // Arena automatically freed here - zero fragmentation, single deallocation
+    Ok(owned_results)
+}
+```
+
+### Arena-Optimized Search Operations
+
+```rust
+impl Expression {
+    async fn execute_with_arena<'arena>(
+        &self, 
+        shard: &ConcurrentShard, 
+        ctx: &QueryContext<'arena>
+    ) -> Result<ArenaHashMap<'arena, EntryIndex, f32>, SearchError> {
+        match self {
+            Expression::Condition(condition) => {
+                condition.execute_with_arena(shard, ctx).await
+            }
+            Expression::And(left, right) => {
+                // Use arena for intermediate results
+                let left_result = left.execute_with_arena(shard, ctx).await?;
+                
+                if left_result.is_empty() {
+                    return Ok(ctx.temp_map()); // Arena-allocated empty map
+                }
+                
+                let right_result = right.execute_with_arena(shard, ctx).await?;
+                Ok(intersect_results_arena(left_result, right_result, ctx))
+            }
+            Expression::Or(left, right) => {
+                let (left_result, right_result) = tokio::join!(
+                    left.execute_with_arena(shard, ctx),
+                    right.execute_with_arena(shard, ctx)
+                );
+                
+                Ok(union_results_arena(left_result?, right_result?, ctx))
+            }
+        }
+    }
+}
+
+/// Arena-allocated result intersection
+fn intersect_results_arena<'arena>(
+    left: ArenaHashMap<'arena, EntryIndex, f32>,
+    right: ArenaHashMap<'arena, EntryIndex, f32>,
+    ctx: &QueryContext<'arena>
+) -> ArenaHashMap<'arena, EntryIndex, f32> {
+    let mut result = ctx.temp_map();
+    
+    for (entry, left_score) in left {
+        if let Some(&right_score) = right.get(&entry) {
+            result.insert(entry, left_score * right_score);
+        }
+    }
+    
+    result
+}
+
+/// Arena-allocated result union
+fn union_results_arena<'arena>(
+    mut left: ArenaHashMap<'arena, EntryIndex, f32>,
+    right: ArenaHashMap<'arena, EntryIndex, f32>,
+    _ctx: &QueryContext<'arena>
+) -> ArenaHashMap<'arena, EntryIndex, f32> {
+    for (entry, right_score) in right {
+        left.entry(entry)
+            .and_modify(|left_score| *left_score = (*left_score + right_score).max(*left_score))
+            .or_insert(right_score);
+    }
+    
+    left
+}
+```
+
+### Fuzzy Search with Arena Allocation
+
+```rust
+impl BigramFuzzyIndex {
+    /// Arena-optimized fuzzy search eliminating temporary allocations
+    fn fuzzy_search_arena<'arena>(
+        &self, 
+        query: &str, 
+        scorer: &BM25Scorer, 
+        attribute: AttributeIndex,
+        ctx: &QueryContext<'arena>
+    ) -> ArenaVec<'arena, (String, f32)> {
+        let query_bigrams = Self::extract_bigrams(query);
+        let mut candidates = ctx.temp_vec_with_capacity(64); // Estimate capacity
+        
+        // Stage 1: Fast bigram Dice screening using arena allocation
+        for (term, term_bigrams) in &self.term_bigrams {
+            let dice_score = Self::dice_coefficient(&query_bigrams, term_bigrams);
+            
+            if dice_score >= 0.4 {
+                candidates.push((term.clone(), dice_score));
+            }
+        }
+        
+        // Sort and limit to top 32 (no additional allocations)
+        candidates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        candidates.truncate(32);
+        
+        // Stage 2: Levenshtein + scoring with arena results
+        let mut results = ctx.temp_vec_with_capacity(candidates.len());
+        
+        for (term, dice_score) in candidates {
+            let edit_distance = levenshtein(query, &term);
+            let max_distance = query.len() / 2;
+            
+            if edit_distance <= max_distance {
+                let estimated_tf = 1;
+                let estimated_doc_len = 100;
+                
+                let bm25_score = scorer.score_fuzzy_match(
+                    query, &term, attribute, estimated_tf, estimated_doc_len
+                );
+                
+                let final_score = bm25_score * dice_score;
+                results.push((term.to_string(), final_score));
+            }
+        }
+        
+        results
+    }
+}
+```
+
+Arena allocation benefits:
+- **Zero fragmentation**: Linear bump allocation pattern
+- **Bulk deallocation**: Entire arena freed in single operation
+- **Reduced syscalls**: Eliminates thousands of malloc/free per query
+- **WASM optimization**: Bypasses slow WebAssembly heap management
+- **Predictable performance**: No allocation-related latency spikes
+
 ## Query Execution
 
-Now that we have a way to build the expression of the query and query individually each index, it's time to plug everything together to execute a complete search.
+Now that we have arena-based memory management, we can implement efficient query execution that eliminates allocation overhead during search operations.
 
 As a reminder, the engine is organized in shards, so search will execute across every shard. We can parallelize this across shards using Rayon while maintaining per-shard concurrency control.
 
-## Parallel Shard Execution
+## Parallel Shard Execution with Arena Management
 
-Instead of the previous serial approach, we implement true parallelism:
+We implement true parallelism with per-shard arena allocation to eliminate memory management overhead:
 
 ```rust
 use rayon::prelude::*;
 use std::sync::mpsc;
+use bumpalo::Bump;
 
 impl SearchEngine {
     async fn search<Cb>(&self, expression: &Expression, callback: Cb) -> std::io::Result<usize>
@@ -1659,7 +1853,7 @@ impl SearchEngine {
         let (sender, receiver) = mpsc::channel();
         let callback = Arc::new(callback);
         
-        // Parallel execution across shards
+        // Parallel execution across shards with individual arenas
         let handles: Vec<_> = self.shards
             .par_iter()
             .map(|(shard_key, shard)| {
@@ -1668,15 +1862,24 @@ impl SearchEngine {
                 let expression = expression.clone();
                 
                 tokio::spawn(async move {
-                    match shard.search(&expression).await {
+                    // Each shard gets its own arena for optimal NUMA performance
+                    let arena = Bump::new();
+                    let ctx = QueryContext::new(&arena);
+                    
+                    match shard.search_with_arena(&expression, &ctx).await {
                         Ok(results) => {
-                            callback(results.clone());
-                            sender.send((*shard_key, results)).ok();
+                            // Convert arena results to owned before callback
+                            let owned_results: HashMap<EntryIndex, f64> = 
+                                results.into_iter().collect();
+                            
+                            callback(owned_results.clone());
+                            sender.send((*shard_key, owned_results)).ok();
                         }
                         Err(e) => {
                             eprintln!("Shard {} failed: {}", shard_key, e);
                         }
                     }
+                    // Arena automatically freed here
                 })
             })
             .collect();
@@ -1929,11 +2132,13 @@ This search engine design delivers production-ready performance through several 
 
 ### Performance Optimizations
 
+- **Bump Arena Allocation**: Per-query scratch space eliminates thousands of malloc/free calls, with automatic bulk deallocation
 - **Per-Shard Concurrency**: RwLock with exponential backoff enables true parallelism while preventing data races
 - **Incremental Size Tracking**: O(1) size updates replace O(N²) recursive estimation 
 - **Short-Circuit Evaluation**: AND operations skip unnecessary work when early results are empty
 - **Parallel OR Execution**: Independent branches execute concurrently using tokio::join!
 - **SIMD Vector Search**: Brute-force with AVX-512/AVX2 provides 6-8ms queries with perfect recall
+- **Arena-Optimized Collections**: All intermediate data structures use bump allocation to avoid WebAssembly heap fragmentation
 
 ### Advanced Scoring
 
@@ -2135,21 +2340,25 @@ impl IndexBuilder {
     }
 
     /// Add a single document with a stable numeric identifier.
-    /// `fields` is a mapping from field name to raw string content.
+    /// Add document with arena-optimized tokenization to reduce allocation overhead
     pub fn add_document(&mut self, doc_id: u32, fields: &HashMap<String, String>) {
+        let arena = Bump::new(); // Per-document arena for tokenization scratch space
+        
         // Lazily compute per‑field average length denominator accumulations.
         for cfg in &self.field_cfgs {
             let len = fields.get(&cfg.name).map(|t| t.split_whitespace().count()).unwrap_or(0);
             *self.accumulated_field_len.entry(cfg.name.clone()).or_default() += len;
         }
 
-        // For each field → tokenise → build term frequencies.
+        // For each field → tokenise → build term frequencies using arena allocation.
         for cfg in &self.field_cfgs {
             if let Some(text) = fields.get(&cfg.name) {
                 let tokens = text.split_whitespace();
-                let mut tf: HashMap<&str, u32> = HashMap::new();
+                
+                // Use arena-allocated HashMap for temporary term frequency counting
+                let mut tf = bumpalo::collections::HashMap::new_in(&arena);
                 for tok in tokens {
-                    *tf.entry(tok).or_default() += 1;
+                    *tf.entry(tok).or_default() += 1u32;
                 }
 
                 let field_len = tf.values().sum::<u32>() as f32;
@@ -2166,6 +2375,8 @@ impl IndexBuilder {
                         .push(Posting { doc_id, impact });
                 }
             }
+        }
+        // Arena automatically freed here, eliminating tokenization allocation overhead
         }
     }
 
@@ -2221,51 +2432,100 @@ impl Index {
 }
 
 // ────────────────────────────
-// Fusion helpers
+// Arena-optimized fusion helpers
 // ────────────────────────────
 
-/// Reciprocal Rank Fusion (RRF).
-pub fn rrf_fuse(rrf_k: f32, dense: &[(u32, f32)], sparse: &[(u32, f32)], top_k: usize) -> Vec<(u32, f32)> {
-    use std::collections::hash_map::Entry::*;
-    let mut scores: HashMap<u32, f32> = HashMap::new();
+/// Reciprocal Rank Fusion (RRF) with arena allocation to eliminate temporary maps.
+pub fn rrf_fuse_arena<'arena>(
+    rrf_k: f32, 
+    dense: &[(u32, f32)], 
+    sparse: &[(u32, f32)], 
+    top_k: usize,
+    arena: &'arena Bump
+) -> Vec<(u32, f32)> {
+    use bumpalo::collections::HashMap as ArenaHashMap;
+    
+    let mut scores = ArenaHashMap::new_in(arena);
 
     for (rank, (doc, _)) in dense.iter().enumerate() {
-        scores.entry(*doc).and_modify(|v| *v += 1.0 / (rrf_k + rank as f32 + 1.0)).or_insert(1.0 / (rrf_k + rank as f32 + 1.0));
+        let rrf_score = 1.0 / (rrf_k + rank as f32 + 1.0);
+        scores.entry(*doc).and_modify(|v| *v += rrf_score).or_insert(rrf_score);
     }
     for (rank, (doc, _)) in sparse.iter().enumerate() {
-        scores.entry(*doc).and_modify(|v| *v += 1.0 / (rrf_k + rank as f32 + 1.0)).or_insert(1.0 / (rrf_k + rank as f32 + 1.0));
+        let rrf_score = 1.0 / (rrf_k + rank as f32 + 1.0);
+        scores.entry(*doc).and_modify(|v| *v += rrf_score).or_insert(rrf_score);
     }
 
     let mut heap: BinaryHeap<(f32, u32)> = scores.into_iter().map(|(d, s)| (s, d)).collect();
     let mut fused = Vec::with_capacity(top_k);
-    for _ in 0..top_k { if let Some((score, doc)) = heap.pop() { fused.push((doc, score)); } }
+    for _ in 0..top_k { 
+        if let Some((score, doc)) = heap.pop() { 
+            fused.push((doc, score)); 
+        } 
+    }
     fused
 }
 
-/// Min‑max normalised weighted CombSUM.
-pub fn comb_sum_fuse(alpha: f32, dense: &[(u32, f32)], sparse: &[(u32, f32)], top_k: usize) -> Vec<(u32, f32)> {
-    fn min_max_norm(scores: &[f32]) -> Vec<f32> {
-        if scores.is_empty() { return vec![]; }
+/// Standard RRF for backward compatibility (uses system allocator).
+pub fn rrf_fuse(rrf_k: f32, dense: &[(u32, f32)], sparse: &[(u32, f32)], top_k: usize) -> Vec<(u32, f32)> {
+    let arena = Bump::new();
+    rrf_fuse_arena(rrf_k, dense, sparse, top_k, &arena)
+}
+
+/// Min‑max normalised weighted CombSUM with arena allocation.
+pub fn comb_sum_fuse_arena<'arena>(
+    alpha: f32, 
+    dense: &[(u32, f32)], 
+    sparse: &[(u32, f32)], 
+    top_k: usize,
+    arena: &'arena Bump
+) -> Vec<(u32, f32)> {
+    use bumpalo::collections::Vec as ArenaVec;
+    
+    fn min_max_norm_arena<'a>(scores: &[f32], arena: &'a Bump) -> ArenaVec<'a, f32> {
+        if scores.is_empty() { return ArenaVec::new_in(arena); }
         let (min, max) = scores.iter().fold((f32::MAX, f32::MIN), |(lo, hi), &v| (lo.min(v), hi.max(v)));
-        if (max - min).abs() < 1e-6 { return vec![1.0; scores.len()]; }
-        scores.iter().map(|&v| (v - min) / (max - min)).collect()
+        if (max - min).abs() < 1e-6 { 
+            let mut result = ArenaVec::with_capacity_in(scores.len(), arena);
+            result.resize(scores.len(), 1.0);
+            return result;
+        }
+        
+        let mut result = ArenaVec::with_capacity_in(scores.len(), arena);
+        for &v in scores {
+            result.push((v - min) / (max - min));
+        }
+        result
     }
 
-    let d_norm = min_max_norm(&dense.iter().map(|&(_, s)| s).collect::<Vec<_>>());
-    let b_norm = min_max_norm(&sparse.iter().map(|&(_, s)| s).collect::<Vec<_>>());
+    let dense_scores: Vec<f32> = dense.iter().map(|&(_, s)| s).collect();
+    let sparse_scores: Vec<f32> = sparse.iter().map(|&(_, s)| s).collect();
+    
+    let d_norm = min_max_norm_arena(&dense_scores, arena);
+    let b_norm = min_max_norm_arena(&sparse_scores, arena);
 
-    let mut scores: HashMap<u32, f32> = HashMap::new();
-    for ((doc, _), s) in dense.iter().zip(d_norm) {
+    let mut scores = bumpalo::collections::HashMap::new_in(arena);
+    for ((doc, _), s) in dense.iter().zip(d_norm.iter()) {
         scores.insert(*doc, alpha * s);
     }
-    for ((doc, _), s) in sparse.iter().zip(b_norm) {
+    for ((doc, _), s) in sparse.iter().zip(b_norm.iter()) {
         *scores.entry(*doc).or_default() += (1.0 - alpha) * s;
     }
 
     let mut heap: BinaryHeap<(f32, u32)> = scores.into_iter().map(|(d, s)| (s, d)).collect();
     let mut fused = Vec::with_capacity(top_k);
-    for _ in 0..top_k { if let Some((score, doc)) = heap.pop() { fused.push((doc, score)); } }
+    for _ in 0..top_k { 
+        if let Some((score, doc)) = heap.pop() { 
+            fused.push((doc, score)); 
+        } 
+    }
     fused
+}
+
+/// Standard CombSum for backward compatibility (uses system allocator).
+pub fn comb_sum_fuse(alpha: f32, dense: &[(u32, f32)], sparse: &[(u32, f32)], top_k: usize) -> Vec<(u32, f32)> {
+    let arena = Bump::new();
+    comb_sum_fuse_arena(alpha, dense, sparse, top_k, &arena)
 }
 
 // ────────────────────────────
