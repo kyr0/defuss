@@ -355,7 +355,7 @@ struct EntryIndex(u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct AttributeIndex(u8);
 
-/// Index within a multi-value attribute
+/// Index within a multi-value attribute (supports up to 255 values per attribute)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct ValueIndex(u8);
 
@@ -394,7 +394,7 @@ This design eliminates the complexity of sharding while maintaining efficiency:
 - **No Sharding Overhead**: Single contiguous document space (0-100k)
 - **Bidirectional Mappings**: Fast lookups in both directions for documents and attributes
 - **Dynamic Schema**: Attributes registered lazily with type inference
-- **Hard Capacity Limits**: 100k documents, 255 attributes max
+- **Hard Capacity Limits**: 100k documents, 255 attributes max, 255 values per attribute max
 - **Memory Efficient**: Numeric indexes (u32/u8) minimize storage overhead
 
 The basic index structure now uses flattened document lists:
@@ -2273,6 +2273,9 @@ impl HybridIndex {
         for (attr_name, values) in doc.attributes {
             if let Some(attr_idx) = self.collection.get_attribute_index(&attr_name) {
                 for (value_idx, value) in values.into_iter().enumerate() {
+                    if value_idx >= FlexibleCollection::MAX_VALUES_PER_ATTRIBUTE {
+                        return Err(IndexError::ValueCapacityExceeded);
+                    }
                     self.index_value(entry_idx, attr_idx, ValueIndex(value_idx as u8), value)?;
                 }
             }
@@ -2618,6 +2621,8 @@ impl EmbeddedCollection {
 #[derive(Debug)]
 enum IndexError {
     CapacityExceeded,
+    AttributeCapacityExceeded,
+    ValueCapacityExceeded,
     DocumentNotFound,
     VectorDimensionMismatch,
     VectorNotNormalized,
@@ -3719,6 +3724,7 @@ struct FlexibleCollection {
 impl FlexibleCollection {
     const MAX_DOCUMENTS: usize = 100_000;
     const MAX_ATTRIBUTES: usize = 256;
+    const MAX_VALUES_PER_ATTRIBUTE: usize = 255;
     
     fn new() -> Self {
         Self {
@@ -3792,6 +3798,7 @@ impl FlexibleCollection {
 enum IndexError {
     CapacityExceeded,
     AttributeCapacityExceeded,
+    ValueCapacityExceeded,
     DocumentNotFound,
     TypeMismatch(Kind, Kind),
     VectorDimensionMismatch,
@@ -3814,6 +3821,9 @@ impl HybridIndex {
         // Index document with dynamic attribute registration
         for (attr_name, values) in doc.attributes {
             for (value_idx, value) in values.into_iter().enumerate() {
+                if value_idx >= Self::MAX_VALUES_PER_ATTRIBUTE {
+                    return Err(IndexError::ValueCapacityExceeded);
+                }
                 // Lazy attribute registration with type inference
                 let attr_idx = self.collection.get_or_register_attribute(&attr_name, &value)?;
                 self.index_value(entry_idx, attr_idx, ValueIndex(value_idx as u8), value)?;
