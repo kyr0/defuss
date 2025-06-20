@@ -593,7 +593,7 @@ static INIT_THREAD_POOL: Once = Once::new();
 
 /// Parallel search execution across all available CPU cores
 impl SearchEngine {
-    async fn search_parallel(&self, expression: &Expression) -> Result<Vec<(EntryIndex, f32)>, SearchError> {
+    fn search_parallel(&self, expression: &Expression) -> Result<Vec<(EntryIndex, f32)>, SearchError> {
         // Initialize global thread pool only once per process
         INIT_THREAD_POOL.call_once(|| {
             // Detect available cores from browser environment
@@ -3253,7 +3253,7 @@ async fn execute_query_with_arena(expression: &Expression, index: &HybridIndex) 
     let ctx = QueryContext::new(&arena);
     
     // All intermediate collections use arena allocation
-    let results = expression.execute_with_arena(index, &ctx).await?;
+    let results = expression.execute_with_arena(index, &ctx)?;
     
     // Convert arena results to owned data before arena drops
     let owned_results: Vec<(EntryIndex, f32)> = results.into_iter().collect();
@@ -3267,30 +3267,32 @@ async fn execute_query_with_arena(expression: &Expression, index: &HybridIndex) 
 
 ```rust
 impl Expression {
-    async fn execute_with_arena<'arena>(
+    fn execute_with_arena<'arena>(
         &self, 
         index: &HybridIndex, 
         ctx: &QueryContext<'arena>
     ) -> Result<ArenaHashMap<'arena, EntryIndex, f32>, SearchError> {
         match self {
             Expression::Condition(condition) => {
-                condition.execute_with_arena(index, ctx).await
+                condition.execute_with_arena(index, ctx)
             }
             Expression::And(left, right) => {
                 // Use arena for intermediate results
-                let left_result = left.execute_with_arena(index, ctx).await?;
+                let left_result = left.execute_with_arena(index, ctx)?;
                 
                 if left_result.is_empty() {
                     return Ok(ctx.temp_map()); // Arena-allocated empty map
                 }
                 
-                let right_result = right.execute_with_arena(index, ctx).await?;
+                // Process right branch only if left has matches
+                let right_result = right.execute_with_arena(index, ctx)?;
                 Ok(intersect_results_arena(left_result, right_result, ctx))
             }
             Expression::Or(left, right) => {
-                let (left_result, right_result) = tokio::join!(
-                    left.execute_with_arena(index, ctx),
-                    right.execute_with_arena(index, ctx)
+                // Parallel evaluation using rayon
+                let (left_result, right_result) = rayon::join(
+                    || left.execute_with_arena(index, ctx),
+                    || right.execute_with_arena(index, ctx)
                 );
                 
                 Ok(union_results_arena(left_result?, right_result?, ctx))
@@ -3431,22 +3433,21 @@ impl HybridIndex {
         let arena = Bump::new();
         let ctx = QueryContext::new(&arena);
         
-        tokio::spawn(async move {
-            match self.search_with_arena_simd(&expression, &ctx).await {
-                Ok(results) => {
-                    // Convert arena results to owned before callback
-                    let owned_results: HashMap<EntryIndex, f64> = 
-                        results.into_iter().collect();
-                    
-                    callback(owned_results.clone());
-                    sender.send(owned_results).ok();
-                }
-                Err(e) => {
-                    eprintln!("Index search failed: {}", e);
-                }
+        // Execute search operation directly without tokio
+        match self.search_with_arena_simd(&expression, &ctx) {
+            Ok(results) => {
+                // Convert arena results to owned before callback
+                let owned_results: HashMap<EntryIndex, f64> = 
+                    results.into_iter().collect();
+                
+                callback(owned_results.clone());
+                sender.send(owned_results).ok();
             }
-            // Arena automatically freed here
-        }).await.ok();
+            Err(e) => {
+                eprintln!("Index search failed: {}", e);
+            }
+        }
+        // Arena automatically freed here
         
         // Collect results
         drop(sender); // Close sender
@@ -3459,16 +3460,16 @@ impl HybridIndex {
     }
     
     /// SIMD-optimized index search with parallel processing
-    async fn search_with_arena_simd(&self, expression: &Expression, ctx: &QueryContext<'_>) -> Result<ArenaHashMap<'_, EntryIndex, f32>, SearchError> {
+    fn search_with_arena_simd(&self, expression: &Expression, ctx: &QueryContext<'_>) -> Result<ArenaHashMap<'_, EntryIndex, f32>, SearchError> {
         match expression {
             Expression::Condition(condition) => {
-                condition.execute_with_arena(&self.indexes, ctx).await
+                condition.execute_with_arena(&self.indexes, ctx)
             }
             Expression::And(left, right) => {
-                // Parallel evaluation with SIMD optimizations
+                // Parallel evaluation with SIMD optimizations using rayon::join for synchronous functions
                 let (left_result, right_result) = rayon::join(
-                    || async { self.search_with_arena_simd(left, ctx).await },
-                    || async { self.search_with_arena_simd(right, ctx).await }
+                    || self.search_with_arena_simd(left, ctx),
+                    || self.search_with_arena_simd(right, ctx)
                 );
                 
                 // SIMD-optimized intersection using vectorized operations
@@ -3476,9 +3477,9 @@ impl HybridIndex {
             }
             Expression::Or(left, right) => {
                 // True parallel execution across CPU cores
-                let (left_result, right_result) = rayon::join!(
-                    self.search_with_arena_simd(left, ctx),
-                    self.search_with_arena_simd(right, ctx)
+                let (left_result, right_result) = rayon::join(
+                    || self.search_with_arena_simd(left, ctx),
+                    || self.search_with_arena_simd(right, ctx)
                 );
                 
                 Ok(self.union_results_simd(left_result?, right_result?, ctx))
@@ -3495,28 +3496,27 @@ The previous RPN approach lost short-circuiting opportunities. We implement a pa
 
 ```rust
 impl Expression {
-    async fn execute_parallel(&self, index: &HybridIndex) -> Result<HashMap<EntryIndex, f64>, SearchError> {
+    fn execute_parallel(&self, index: &HybridIndex) -> Result<HashMap<EntryIndex, f64>, SearchError> {
         match self {
             Expression::Condition(condition) => {
-                condition.execute(index).await
+                condition.execute(index)
             }
             Expression::And(left, right) => {
                 // For AND: evaluate left first, if empty, skip right
-                let left_future = left.execute_parallel(index);
-                let left_result = left_future.await?;
+                let left_result = left.execute_parallel(index)?;
                 
                 if left_result.is_empty() {
                     return Ok(HashMap::new()); // Short-circuit: AND with empty = empty
                 }
                 
-                let right_result = right.execute_parallel(index).await?;
+                let right_result = right.execute_parallel(index)?;
                 Ok(intersect_results(left_result, right_result))
             }
             Expression::Or(left, right) => {
                 // For OR: evaluate both in parallel, combine results
-                let (left_result, right_result) = tokio::join!(
-                    left.execute_parallel(index),
-                    right.execute_parallel(index)
+                let (left_result, right_result) = rayon::join(
+                    || left.execute_parallel(index),
+                    || right.execute_parallel(index)
                 );
                 
                 Ok(union_results(left_result?, right_result?))
