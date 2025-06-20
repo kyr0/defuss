@@ -133,7 +133,7 @@ This search engine is built around several key architectural decisions that maxi
 1. **Strict, typed schema** → Enables cheap validation & indexing with finite attribute sets
 2. **Numeric indirection everywhere** → Maps documents (EntryIndex) and attributes (AttributeIndex) to integers, keeping document lists tiny
 3. **Self-cleaning document lists** → Generic `iter_with_mut` keeps every map/set tidy without boilerplate
-4. **Lazy, cached file loading** → CachedEncryptedFile + OnceCell means no index touches disk twice
+4. **Lazy, cached file loading** → IndexFile + OnceCell means no index touches disk twice
 5. **Atomic manifest writes** → Safe, atomic index updates without global locking
 
 The ground rules are:
@@ -314,7 +314,7 @@ The current architecture uses **flattened document lists** instead of nested has
 
 ```rust
 /// Current flattened index structure
-type Index = Map<Term, Vec<DocumentEntry>>;
+type Index = HashMap<Term, Vec<DocumentEntry>>;
 
 /// Flattened document entry with all indexing information
 struct DocumentEntry {
@@ -325,7 +325,7 @@ struct DocumentEntry {
 }
 ```
 
-This replaces the older nested structure `Map<Term, Map<DocumentIdentifier, Count>>` and provides several benefits:
+This replaces the older nested structure `HashMap<Term, HashMap<DocumentIdentifier, Count>>` and provides several benefits:
 
 - **Better Cache Locality**: Contiguous memory layout for document lists
 - **Reduced Memory Overhead**: Eliminates nested HashMap allocations
@@ -402,7 +402,7 @@ The basic index structure now uses flattened document lists:
 
 ```rust
 /// Current flattened index architecture
-type Index = Map<Term, Vec<DocumentEntry>>;
+type Index = HashMap<Term, Vec<DocumentEntry>>;
 /// Where DocumentEntry contains all indexing information
 struct DocumentEntry {
     doc: EntryIndex,      // u32 document identifier
@@ -412,7 +412,7 @@ struct DocumentEntry {
 }
 ```
 
-This approach provides better cache locality and eliminates nested HashMap overhead compared to the original `Map<Term, Map<DocumentId, Count>>` structure.
+This approach provides better cache locality and eliminates nested HashMap overhead compared to the original `HashMap<Term, HashMap<DocumentId, Count>>` structure.
 
 ```rust
 /// Representation on disk of an entry
@@ -2303,25 +2303,64 @@ Even with a single index, we maintain lazy loading for memory efficiency:
 /// Manages file-based persistence for embedded index
 struct IndexFileCache {
     /// Single collection file
-    collection_file: CachedEncryptedFile<EmbeddedCollection>,
+    collection_file: IndexFile<EmbeddedCollection>,
     /// Index files (loaded on demand)
-    boolean_file: Option<CachedEncryptedFile<BooleanIndex>>,
-    integer_file: Option<CachedEncryptedFile<IntegerIndex>>,
-    tag_file: Option<CachedEncryptedFile<TagIndex>>,
-    text_file: Option<CachedEncryptedFile<TextIndex>>,
-    vector_file: Option<CachedEncryptedFile<VectorIndex>>,
+    boolean_file: Option<IndexFile<BooleanIndex>>,
+    integer_file: Option<IndexFile<IntegerIndex>>,
+    tag_file: Option<IndexFile<TagIndex>>,
+    text_file: Option<IndexFile<TextIndex>>,
+    vector_file: Option<IndexFile<VectorIndex>>,
 }
 
 impl IndexFileCache {
     fn new() -> Self {
         Self {
-            collection_file: CachedEncryptedFile::new("collection.bin"),
-            boolean_file: Some(CachedEncryptedFile::new("boolean.bin")),
-            integer_file: Some(CachedEncryptedFile::new("integer.bin")),
-            tag_file: Some(CachedEncryptedFile::new("tag.bin")),
-            text_file: Some(CachedEncryptedFile::new("text.bin")),
-            vector_file: Some(CachedEncryptedFile::new("vector.bin")),
+            collection_file: IndexFile::new("collection.bin"),
+            boolean_file: Some(IndexFile::new("boolean.bin")),
+            integer_file: Some(IndexFile::new("integer.bin")),
+            tag_file: Some(IndexFile::new("tag.bin")),
+            text_file: Some(IndexFile::new("text.bin")),
+            vector_file: Some(IndexFile::new("vector.bin")),
         }
+    }
+}
+
+/// Simple file wrapper for WASM/JS compatibility
+/// Uses Vec<u8> for easy ArrayBuffer/Blob conversion in JavaScript
+struct IndexFile<T> {
+    filename: String,
+    data: Option<Vec<u8>>,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T> IndexFile<T> 
+where 
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn new(filename: &str) -> Self {
+        Self {
+            filename: filename.to_string(),
+            data: None,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+    
+    /// Load data from Vec<u8> (compatible with JS ArrayBuffer)
+    fn load_from_bytes(&mut self, bytes: Vec<u8>) -> Result<T, Box<dyn std::error::Error>> {
+        self.data = Some(bytes.clone());
+        let deserialized = bincode::deserialize(&bytes)?;
+        Ok(deserialized)
+    }
+    
+    /// Serialize data to Vec<u8> (compatible with JS ArrayBuffer/Blob)
+    fn serialize_to_bytes(&self, data: &T) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let bytes = bincode::serialize(data)?;
+        Ok(bytes)
+    }
+    
+    /// Get raw bytes for JS interop
+    fn get_bytes(&self) -> Option<&Vec<u8>> {
+        self.data.as_ref()
     }
 }
 ```
@@ -3531,7 +3570,7 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 
 4. **Type-Safe Numeric Indirection**: Using strong newtype wrappers for all indexes (EntryIndex, AttributeIndex, etc.) prevents index confusion while keeping documents compact with u32/u8 sizes.
 
-5. **Lazy File Loading with Caching**: `CachedEncryptedFile` + `OnceCell` ensures each index file is loaded exactly once, with automatic decryption caching and memory management.
+5. **Lazy File Loading with Caching**: `IndexFile` + `OnceCell` ensures each index file is loaded exactly once, with automatic memory management and WASM/JS compatibility.
 
 6. **Atomic State Transitions**: Stop-the-world building with atomic state machine provides consistency without complex coordination.
 
