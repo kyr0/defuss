@@ -1596,58 +1596,215 @@ Index implementation summary:
 - **Vector Index**: SIMD-optimized brute-force search for ≤100k documents
 - **Self-Cleaning**: All indexes automatically remove empty postings via `iter_with_mut`
 
-## Shard Definition
+## Embedded Index Definition
 
-Here's how our sharding architecture organizes data across multiple shards:
+For the ≤100k document use case, we use a simplified single-index architecture that eliminates sharding complexity:
 
 ```schema_ascii
-                 Manifest
-                +--------+
-                | shards |
-                +--------+
-                     |
-          +----------+-----------+
-          v          v           v
-    +---------+ +---------+ +---------+
-    | Shard 0 | | Shard 1 | | Shard 2 |
-    |---------| |---------| |---------|
-    | 0 - 100 | | 101-200 | | 201-300 |
-    +---------+ +---------+ +---------+
-        |           |           |
-    Collection  Collection  Collection
-     Indexes     Indexes     Indexes
+                EmbeddedManifest
+                +---------------+
+                | single_shard  |
+                +---------------+
+                        |
+                        v
+                 +-------------+
+                 | Primary Index|
+                 |-------------|
+                 | 0 - 100k   |
+                 +-------------+
+                        |
+                   Collection
+                  All Indexes
 ```
 
-At this point, we have everything we need to build a shard: a collection to list all the documents in the shard and an index for each type. A simple implementation of that shard would look like this.
+### Simplified Index Structure
 
 ```rust
-// an abstraction to be able to map the indexes
-enum AnyIndex {
+/// All index types in one embedded structure
+enum IndexType {
     Boolean(BooleanIndex),
     Integer(IntegerIndex),
     Tag(TagIndex),
     Text(TextIndex),
+    Vector(VectorIndex),
 }
 
-struct Shard {
-    collection: Collection,
-    indexes: HashMap<Kind, AnyIndex>,
+/// Single embedded index containing all data
+struct EmbeddedIndex {
+    /// Document collection (single instance)
+    collection: EmbeddedCollection,
+    /// All index types in one structure
+    indexes: HashMap<Kind, IndexType>,
+    /// Cached file references for lazy loading
+    file_cache: IndexFileCache,
+}
+
+impl EmbeddedIndex {
+    fn new() -> Self {
+        let mut indexes = HashMap::new();
+        indexes.insert(Kind::Boolean, IndexType::Boolean(BooleanIndex::new()));
+        indexes.insert(Kind::Integer, IndexType::Integer(IntegerIndex::new()));
+        indexes.insert(Kind::Tag, IndexType::Tag(TagIndex::new()));
+        indexes.insert(Kind::Text, IndexType::Text(TextIndex::new()));
+        indexes.insert(Kind::Vector, IndexType::Vector(VectorIndex::new()));
+        
+        Self {
+            collection: EmbeddedCollection::new(),
+            indexes,
+            file_cache: IndexFileCache::new(),
+        }
+    }
+    
+    fn is_full(&self) -> bool {
+        self.collection.document_count >= EmbeddedCollection::MAX_DOCUMENTS
+    }
+    
+    /// Add document with capacity enforcement
+    fn add_document(&mut self, doc: Document) -> Result<EntryIndex, IndexError> {
+        if self.is_full() {
+            return Err(IndexError::CapacityExceeded);
+        }
+        
+        let entry_idx = self.collection.add_document(doc.id)?;
+        
+        // Index document in all relevant indexes
+        for (attr_name, values) in doc.attributes {
+            if let Some(attr_idx) = self.collection.get_attribute_index(&attr_name) {
+                for (value_idx, value) in values.into_iter().enumerate() {
+                    self.index_value(entry_idx, attr_idx, ValueIndex(value_idx as u8), value)?;
+                }
+            }
+        }
+        
+        Ok(entry_idx)
+    }
+    
+    fn index_value(
+        &mut self, 
+        entry_idx: EntryIndex, 
+        attr_idx: AttributeIndex, 
+        value_idx: ValueIndex, 
+        value: Value
+    ) -> Result<(), IndexError> {
+        match value {
+            Value::Boolean(b) => {
+                if let Some(IndexType::Boolean(ref mut idx)) = self.indexes.get_mut(&Kind::Boolean) {
+                    idx.insert(entry_idx, attr_idx, value_idx, b, 1.0);
+                }
+            }
+            Value::Integer(i) => {
+                if let Some(IndexType::Integer(ref mut idx)) = self.indexes.get_mut(&Kind::Integer) {
+                    idx.insert(entry_idx, attr_idx, value_idx, i, 1.0);
+                }
+            }
+            Value::Tag(ref s) => {
+                if let Some(IndexType::Tag(ref mut idx)) = self.indexes.get_mut(&Kind::Tag) {
+                    idx.insert(entry_idx, attr_idx, value_idx, s, 1.0);
+                }
+            }
+            Value::Text(ref s) => {
+                if let Some(IndexType::Text(ref mut idx)) = self.indexes.get_mut(&Kind::Text) {
+                    let tokens = TextIndex::process_text(s);
+                    for token in tokens {
+                        idx.insert(
+                            entry_idx, attr_idx, value_idx,
+                            &token.term, token.index, token.position, 1.0
+                        );
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 ```
 
-But this is a single shard representation, we might have several and need to have a representation for all of them.
+### File-Based Persistence
+
+Even with a single index, we maintain lazy loading for memory efficiency:
 
 ```rust
-struct Manager {
-    shards: BTreeMap<u64, Shard>,
+/// Manages file-based persistence for embedded index
+struct IndexFileCache {
+    /// Single collection file
+    collection_file: CachedEncryptedFile<EmbeddedCollection>,
+    /// Index files (loaded on demand)
+    boolean_file: Option<CachedEncryptedFile<BooleanIndex>>,
+    integer_file: Option<CachedEncryptedFile<IntegerIndex>>,
+    tag_file: Option<CachedEncryptedFile<TagIndex>>,
+    text_file: Option<CachedEncryptedFile<TextIndex>>,
+    vector_file: Option<CachedEncryptedFile<VectorIndex>>,
+}
+
+impl IndexFileCache {
+    fn new() -> Self {
+        Self {
+            collection_file: CachedEncryptedFile::new("collection.bin"),
+            boolean_file: Some(CachedEncryptedFile::new("boolean.bin")),
+            integer_file: Some(CachedEncryptedFile::new("integer.bin")),
+            tag_file: Some(CachedEncryptedFile::new("tag.bin")),
+            text_file: Some(CachedEncryptedFile::new("text.bin")),
+            vector_file: Some(CachedEncryptedFile::new("vector.bin")),
+        }
+    }
 }
 ```
 
-With this representation, the u64 in the BTreeMap will represent the minimum in the range of partition handled by that shard. When initialized, the first shard key will be 0.
+### Persistence Strategy
 
-But the two previous representations are actually wrong: this would mean that we'll load in memory the entire search engine, which doesn't scale. Instead, the Shard structure will only contain the filenames of the collection and indexes, which will be loaded in memory only when needed, and written to disk when they are not needed anymore.
+Single-index persistence is much simpler than multi-shard coordination:
 
-The Manager structure can then be renamed to Manifest and will be, as well, persisting on disk, representing the state of the search engine at a given point in time.
+```rust
+impl EmbeddedIndex {
+    /// Atomic write using shadow manifest technique
+    async fn persist(&self) -> std::io::Result<()> {
+        // Write all index files
+        self.file_cache.collection_file.serialize(&self.collection).await?;
+        
+        if let Some(ref file) = self.file_cache.boolean_file {
+            if let Some(IndexType::Boolean(ref idx)) = self.indexes.get(&Kind::Boolean) {
+                file.serialize(idx).await?;
+            }
+        }
+        
+        // ... similar for other index types
+        
+        // Atomic manifest update (single file)
+        let manifest = EmbeddedManifest::from_index(self);
+        let manifest_data = bincode::serialize(&manifest)?;
+        
+        // Shadow write + atomic rename
+        std::fs::write("manifest.tmp", manifest_data)?;
+        std::fs::rename("manifest.tmp", "manifest.bin")?;
+        
+        Ok(())
+    }
+    
+    /// Load from disk
+    async fn load() -> std::io::Result<Self> {
+        let manifest_data = std::fs::read("manifest.bin")?;
+        let manifest: EmbeddedManifest = bincode::deserialize(&manifest_data)?;
+        
+        // Load collection first
+        let collection = manifest.load_collection().await?;
+        
+        // Lazy-load indexes as needed
+        let mut index = EmbeddedIndex::new();
+        index.collection = collection;
+        
+        Ok(index)
+    }
+}
+```
+
+This simplified architecture provides:
+- **Single atomic operation**: One manifest + data files
+- **Lazy loading**: Indexes loaded only when accessed
+- **Simple recovery**: No multi-shard coordination
+- **WASM-friendly**: Minimal file system operations
+- **Extensible**: Manifest format supports future sharding if needed
+
+The embedded approach eliminates complexity while maintaining all performance characteristics optimal for the ≤100k document use case.
 
 ```rust
 struct Manifest {
@@ -1720,64 +1877,175 @@ This transaction manifest would be written to the filesystem depending on the pl
 
 That commit operation simply consists in, for each file of each shard, taking the next filename if exists or the base one, and write it in the manifest.bin. This commit operation is atomic, and then less prone to errors.
 
-## Shard Splitting Strategy
+## Single-Index Architecture for ≤100k Documents
 
-We use a dual-criteria approach for determining when to split shards:
+For corpora guaranteed to stay under 100,000 documents, we use a simplified single-index architecture that eliminates sharding complexity while maintaining optimal performance.
 
-### Updated Shard Limits
+### Why Single Index Works Best
 
-- **Per-shard document cap**: 100,000 documents (hard limit for vector index performance)
-- **Shard when**: `entries.len() == 100_000` **OR** estimated serialized size ≈ 400 MiB
-- **Vector search constraint**: Brute-force performs optimally under 100k documents
+| Aspect | <100k docs | Why |
+|--------|-------------|-----|
+| **Memory** | ~400 MB vectors + lexical index fits comfortably in one page-aligned mmap | No L3/GC pressure that sharding would relieve |
+| **Latency** | Brute-force SIMD scan + flat postings already ≤ 10 ms | Extra shard fan-out/merge would add overhead |
+| **Durability** | One shadow-manifest + one data blob is simpler than N small files | Fewer I/O ops, easier atomic rename in WASM host FS APIs |
 
-### Why 100k Document Limit
-
-The vector index's brute-force approach is specifically optimized for this scale:
+### Simplified Collection Structure
 
 ```rust
-impl Collection {
-    const MAX_DOCUMENTS_PER_SHARD: usize = 100_000;
+/// Single-index collection optimized for ≤100k documents
+struct EmbeddedCollection {
+    /// Document mappings (single shard, no splitting)
+    entries_by_index: HashMap<EntryIndex, DocumentId>,
+    entries_by_name: HashMap<DocumentId, EntryIndex>,
+    /// All documents in one contiguous range
+    document_count: usize,
+    /// Hard limit enforcement
+    max_documents: usize, // = 100_000
+}
+
+impl EmbeddedCollection {
+    const MAX_DOCUMENTS: usize = 100_000;
     
-    fn should_split(&self, estimated_size_mb: usize) -> bool {
-        // Hard limit: vector index performance degrades beyond 100k
-        self.entries_by_name.len() >= Self::MAX_DOCUMENTS_PER_SHARD 
-            // Soft limit: storage efficiency 
-            || estimated_size_mb >= 400
+    fn new() -> Self {
+        Self {
+            entries_by_index: HashMap::with_capacity(Self::MAX_DOCUMENTS),
+            entries_by_name: HashMap::with_capacity(Self::MAX_DOCUMENTS),
+            document_count: 0,
+            max_documents: Self::MAX_DOCUMENTS,
+        }
     }
+    
+    /// Add document with hard limit enforcement
+    fn add_document(&mut self, doc_id: DocumentId) -> Result<EntryIndex, IndexError> {
+        if self.document_count >= self.max_documents {
+            return Err(IndexError::CapacityExceeded);
+        }
+        
+        let entry_idx = EntryIndex(self.document_count as u32);
+        self.entries_by_index.insert(entry_idx, doc_id.clone());
+        self.entries_by_name.insert(doc_id, entry_idx);
+        self.document_count += 1;
+        
+        Ok(entry_idx)
+    }
+    
+    /// No automatic splitting - hard limit enforced at insertion
+    fn needs_split(&self) -> bool {
+        false // Never split automatically
+    }
+}
+
+#[derive(Debug)]
+enum IndexError {
+    CapacityExceeded,
+    DocumentNotFound,
 }
 ```
 
-### Hybrid Split Triggers
+### Manifest Format (Extensible)
 
-Instead of relying only on size estimation, we implement multiple triggers:
+We keep the manifest format for future extensibility, but default to single-shard operation:
 
 ```rust
-/// Determines when a shard should be split
-fn check_split_conditions(
-    shard: &Shard,
-    size_tracker: &SizeTracker,
-) -> SplitReason {
-    let document_count = shard.collection.entries_by_name.len();
-    let estimated_size_mb = size_tracker.estimate_size() / (1024 * 1024);
+/// Manifest supports multiple shards but defaults to one
+struct EmbeddedManifest {
+    /// Always contains exactly one shard for ≤100k docs
+    /// Format preserved for future multi-shard extension
+    shards: BTreeMap<u64, ShardDescriptor>,
+    /// Current document count across all shards
+    total_documents: usize,
+}
+
+impl EmbeddedManifest {
+    fn new() -> Self {
+        let mut shards = BTreeMap::new();
+        // Single shard starting at key 0
+        shards.insert(0, ShardDescriptor {
+            collection: "collection_0.bin".into(),
+            boolean_index: Some("boolean_0.bin".into()),
+            integer_index: Some("integer_0.bin".into()),
+            tag_index: Some("tag_0.bin".into()),
+            text_index: Some("text_0.bin".into()),
+            vector_index: Some("vector_0.bin".into()),
+        });
+        
+        Self {
+            shards,
+            total_documents: 0,
+        }
+    }
     
-    if document_count >= 100_000 {
-        SplitReason::DocumentLimit
-    } else if estimated_size_mb >= 400 {
-        SplitReason::SizeLimit  
-    } else {
-        SplitReason::NoSplit
+    /// Get the single shard (guaranteed to exist)
+    fn primary_shard(&self) -> &ShardDescriptor {
+        self.shards.get(&0).expect("Primary shard must exist")
+    }
+    
+    /// Add document to single shard with capacity check
+    fn add_document(&mut self, doc_id: DocumentId) -> Result<(), IndexError> {
+        if self.total_documents >= EmbeddedCollection::MAX_DOCUMENTS {
+            return Err(IndexError::CapacityExceeded);
+        }
+        
+        self.total_documents += 1;
+        Ok(())
     }
 }
 
-enum SplitReason {
-    DocumentLimit,  // Vector index performance constraint
-    SizeLimit,      // Storage/memory constraint  
-    NoSplit,
+struct ShardDescriptor {
+    collection: Box<str>,
+    boolean_index: Option<Box<str>>,
+    integer_index: Option<Box<str>>,
+    tag_index: Option<Box<str>>,
+    text_index: Option<Box<str>>,
+    vector_index: Option<Box<str>>,
 }
 ```
 
-This dual approach ensures:
-- **Vector performance**: Never exceed 100k documents per shard (8ms query guarantee)
+### When to Use Multiple Indices
+
+Sharding remains relevant for specific use cases:
+
+1. **Logical Isolation**: 
+   ```rust
+   // Separate indices for tenants/time-ranges
+   let tenant_a_index = EmbeddedIndex::new();
+   let tenant_b_index = EmbeddedIndex::new();
+   
+   // Query both and merge with RRF
+   let results_a = tenant_a_index.search(&query).await?;
+   let results_b = tenant_b_index.search(&query).await?;
+   let merged = rrf_fuse_arena(60.0, &results_a, &results_b, top_k, &arena);
+   ```
+
+2. **Exceeding 100k Documents**:
+   ```rust
+   // When first index reaches capacity, create second instance
+   if primary_index.is_full() {
+       let secondary_index = EmbeddedIndex::new();
+       // Route new documents to secondary_index
+       // Merge results from both indices using RRF
+   }
+   ```
+
+### Storage Benefits
+
+Single-index architecture provides:
+- **Atomic Updates**: One shadow-manifest + one data blob
+- **Simplified I/O**: No shard coordination or fan-out overhead  
+- **WASM-Friendly**: Fewer file operations, easier atomic rename APIs
+- **Memory Efficiency**: No cross-shard duplicate metadata
+- **Optimal Caching**: Single mmap region for entire index
+
+### Performance Characteristics
+
+For ≤100k documents:
+- **Vector Search**: 6-8ms brute-force SIMD (faster than HNSW build time)
+- **Text Search**: <5ms with flattened postings + binary search
+- **Memory Usage**: ~400MB total (vectors + lexical indices)
+- **Insert Latency**: <1ms per document with flattened structures
+- **Query Latency**: Single-digit milliseconds, no shard fan-out overhead
+
+The single-index design eliminates complexity while maintaining all performance benefits. When scaling beyond 100k documents becomes necessary, developers can create multiple independent index instances and merge results using RRF, providing explicit control over partitioning strategy.
 - **Memory efficiency**: Avoid excessive RAM usage from large indexes
 - **Storage optimization**: Keep encrypted files under 400 MiB for manageable I/O
 
@@ -2766,31 +3034,30 @@ This scoring approach provides:
 
 ## Architecture Summary
 
-This search engine design delivers production-ready performance through several key innovations:
+This embedded search engine design delivers optimal performance for ≤100k document collections through architectural simplicity and focused optimizations:
 
 ### What Makes This Design Exceptional
 
-1. **Flattened Posting Lists**: Each term maps to a single sorted `Vec<Document{doc, attr, val, impact}>` instead of nested HashMaps, providing 20-40% memory reduction and optimal cache locality.
+1. **Single-Index Architecture**: Eliminates sharding complexity for ≤100k documents, providing simpler I/O, atomic updates, and optimal memory usage (~400MB total).
 
-2. **Binary Search + Galloping Merge**: Document lookups use binary search by doc ID, followed by linear/galloping merge for attribute filtering, delivering O(log N + M) performance.
+2. **Flattened Posting Lists**: Each term maps to a single sorted `Vec<Document{doc, attr, val, impact}>` instead of nested HashMaps, providing 20-40% memory reduction and optimal cache locality.
 
-3. **Type-Safe Numeric Indirection**: Using strong newtype wrappers for all indexes (EntryIndex, AttributeIndex, etc.) prevents index confusion while keeping postings compact with u32/u8 sizes.
+3. **Binary Search + Galloping Merge**: Document lookups use binary search by doc ID, followed by linear/galloping merge for attribute filtering, delivering O(log N + M) performance.
 
-4. **Lazy File Loading with Caching**: `CachedEncryptedFile` + `OnceCell` ensures each index file is loaded exactly once, with automatic decryption caching and memory management.
+4. **Type-Safe Numeric Indirection**: Using strong newtype wrappers for all indexes (EntryIndex, AttributeIndex, etc.) prevents index confusion while keeping postings compact with u32/u8 sizes.
 
-5. **Atomic Transactions**: Shadow manifest technique provides ACID properties for shard updates without global locks, enabling concurrent read access during writes.
+5. **Lazy File Loading with Caching**: `CachedEncryptedFile` + `OnceCell` ensures each index file is loaded exactly once, with automatic decryption caching and memory management.
 
-6. **Dual-Criteria Shard Splitting**: Document count (100k limit) + size estimation ensures optimal performance for both vector search and storage efficiency.
+6. **Atomic Transactions**: Single shadow-manifest + data blob provides ACID properties without multi-shard coordination complexity.
 
 ### Performance Optimizations
 
+- **Unified Memory Layout**: Single index eliminates cross-shard overhead and provides optimal page-aligned mmap usage
 - **Flattened Memory Layout**: Single contiguous vectors per term eliminate HashMap overhead and provide linear cache access patterns
 - **Bump Arena Allocation**: Per-query scratch space eliminates thousands of malloc/free calls, with automatic bulk deallocation
 - **Galloping Intersection**: Multi-term queries use exponential search to accelerate posting list merges
-- **Per-Shard Concurrency**: RwLock with exponential backoff enables true parallelism while preventing data races
-- **Incremental Size Tracking**: O(1) size updates replace O(N²) recursive estimation 
+- **No Shard Fan-out**: Direct index access eliminates query distribution and result merging overhead
 - **Short-Circuit Evaluation**: AND operations skip unnecessary work when early results are empty
-- **Parallel OR Execution**: Independent branches execute concurrently using tokio::join!
 - **SIMD Vector Search**: Brute-force with AVX-512/AVX2 provides 6-8ms queries with perfect recall
 - **Arena-Optimized Collections**: All intermediate data structures use bump allocation to avoid WebAssembly heap fragmentation
 
@@ -2800,16 +3067,16 @@ This search engine design delivers production-ready performance through several 
 - **Fuzzy Search with Quality**: Bigram Dice pre-filtering + limited Levenshtein verification + relevance scoring
 - **Hybrid Search Fusion**: RRF combines text and vector results for optimal precision/recall
 
-### Scalability Features
+### Simplified Scalability
 
-- **Horizontal Sharding**: Documents partitioned by integer attribute for linear scaling
-- **Memory-Bounded Operation**: Lazy loading ensures memory usage stays constant regardless of index size  
-- **Recovery Mechanism**: Transaction logs enable crash recovery without data loss
-- **SIMD-Optimized Vector Search**: Structure-of-Arrays layout with parallel processing for maximum throughput
+- **Hard Capacity Limit**: 100k document enforcement prevents performance degradation
+- **Single-File Persistence**: One manifest + data blob simplifies WASM file system interactions
+- **Extensible Manifest**: Format supports future multi-index scaling when needed
+- **Manual Scaling**: Beyond 100k, developers create multiple index instances with explicit RRF merging
 
 ### Vector Search Innovation
 
-Instead of complex ANN algorithms, we use **intelligent brute-force**:
+For ≤100k documents, we use **optimized brute-force** instead of complex ANN algorithms:
 
 - **100k document hard limit**: Ensures 6-8ms query latency
 - **1024-D fixed vectors**: Optimized SIMD kernels for AVX-512/AVX2
