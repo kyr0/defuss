@@ -2467,12 +2467,12 @@ impl SearchEngine {
         }
 
         // Parallel building using all available cores
-        let (documents, vectors) = rayon::join(
+        let (documents, vector_data) = rayon::join(
             || self.build_documents(&docs),    // flat Vec<DocumentEntry>, per-thread buffers
-            || self.build_vectors(&docs),     // contiguous f32 block
+            || self.build_vector_data(&docs),     // contiguous f32 block
         );
 
-        self.write_tmp_segment(&documents, &vectors)?;
+        self.write_tmp_segment(&documents, &vector_data)?;
         self.atomic_swap_segment()?;
         ENGINE_STATE.store(READY, Ordering::Release);
         Ok(())
@@ -2499,7 +2499,7 @@ impl SearchEngine {
     }
 
     /// Build vector embeddings using parallel processing
-    fn build_vectors(&self, docs: &[Document]) -> Vec<f32> {
+    fn build_vector_data(&self, docs: &[Document]) -> Vec<f32> {
         use rayon::prelude::*;
         
         docs.par_iter()
@@ -3367,8 +3367,8 @@ impl HybridIndex {
             Expression::Or(left, right) => {
                 // True parallel execution across CPU cores
                 let (left_result, right_result) = rayon::join!(
-                    left.execute_with_arena_simd(self, ctx),
-                    right.execute_with_arena_simd(self, ctx)
+                    left.search_with_arena_simd(self, ctx),
+                    right.search_with_arena_simd(self, ctx)
                 );
                 
                 Ok(self.union_results_simd(left_result?, right_result?, ctx))
@@ -3725,7 +3725,7 @@ enum IndexError {
 ### Dynamic Document Insertion
 
 ```rust
-impl FlexibleIndex {
+impl HybridIndex {
     /// Add document with dynamic attribute registration
     fn add_document(&mut self, doc: Document) -> Result<EntryIndex, IndexError> {
         if self.is_full() {
@@ -3821,7 +3821,7 @@ For ≤100k documents, we use **SIMD-optimized brute-force** instead of complex 
 - **Multicore parallelism**: Rayon distributes vector chunks across all CPU cores
 - **SIMD vectorization**: 4x throughput improvement via 128-bit SIMD operations
 
-This architecture supports searching millions of documents with sub-100ms latency while maintaining strict consistency guarantees and enabling real-time updates through aggressive parallelization and WebAssembly-specific optimizations.
+This architecture supports searching up to 100k documents with sub-100ms latency while maintaining strict consistency guarantees and enabling real-time updates through aggressive parallelization and WebAssembly-specific optimizations.
 
 ## Novel BM25FS⁺ Scoring Algorithm
 
