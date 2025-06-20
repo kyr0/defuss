@@ -386,7 +386,6 @@ struct EmbeddedCollection {
     attribute_kinds: HashMap<AttributeIndex, Kind>,
     /// Document count with hard limit
     document_count: usize,
-    max_documents: usize, // = 100_000
 }
 ```
 
@@ -2543,8 +2542,6 @@ struct EmbeddedCollection {
     entries_by_name: HashMap<DocumentId, EntryIndex>,
     /// All documents in one contiguous range
     document_count: usize,
-    /// Hard limit enforcement
-    max_documents: usize, // = 100_000
 }
 
 impl EmbeddedCollection {
@@ -2555,13 +2552,12 @@ impl EmbeddedCollection {
             entries_by_index: HashMap::with_capacity(Self::MAX_DOCUMENTS),
             entries_by_name: HashMap::with_capacity(Self::MAX_DOCUMENTS),
             document_count: 0,
-            max_documents: Self::MAX_DOCUMENTS,
         }
     }
     
     /// Add document with hard limit enforcement
     fn add_document(&mut self, doc_id: DocumentId) -> Result<EntryIndex, IndexError> {
-        if self.document_count >= self.max_documents {
+        if self.document_count >= Self::MAX_DOCUMENTS {
             return Err(IndexError::CapacityExceeded);
         }
         
@@ -2571,6 +2567,11 @@ impl EmbeddedCollection {
         self.document_count += 1;
         
         Ok(entry_idx)
+    }
+    
+    /// Check if collection is at capacity
+    fn is_at_capacity(&self) -> bool {
+        self.document_count >= Self::MAX_DOCUMENTS
     }
     
     /// No automatic splitting - hard limit enforced at insertion
@@ -3636,8 +3637,6 @@ struct FlexibleCollection {
     attribute_kinds: HashMap<AttributeIndex, Kind>,
     /// Document count tracking
     document_count: usize,
-    max_documents: usize, // = 100_000
-    max_attributes: usize, // = 256
 }
 
 impl FlexibleCollection {
@@ -3652,8 +3651,6 @@ impl FlexibleCollection {
             attributes_by_index: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
             attribute_kinds: HashMap::with_capacity(Self::MAX_ATTRIBUTES),
             document_count: 0,
-            max_documents: Self::MAX_DOCUMENTS,
-            max_attributes: Self::MAX_ATTRIBUTES,
         }
     }
     
@@ -3672,7 +3669,7 @@ impl FlexibleCollection {
         }
         
         // Register new attribute
-        if self.attributes_by_name.len() >= self.max_attributes {
+        if self.attributes_by_name.len() >= Self::MAX_ATTRIBUTES {
             return Err(IndexError::AttributeCapacityExceeded);
         }
         
