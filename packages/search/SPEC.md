@@ -2885,7 +2885,7 @@ Implementing the StartsWith filter without traversing the entire index content r
 #[derive(Debug, Default)]
 pub(super) struct TrieNode {
     children: BTreeMap<char, TrieNode>,
-    term: Option<Box<str>>,
+    term: Option<Arc<str>>,
 }
 ```
 
@@ -2921,13 +2921,14 @@ impl<'t> TrieNodeTermIterator<'t> {
 }
 
 impl Iterator for TrieNodeTermIterator<'_> {
-    type Item = Box<str>;
+    type Item = Arc<str>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.queue.pop_front()?;
         self.queue.extend(next.children.values());
-        if let Some(value) = next.term {
-            Some(value.clone())
+        if let Some(ref value) = next.term {
+            // Arc can be cloned cheaply without moving ownership
+            Some(Arc::clone(value))
         } else {
             self.next()
         }
@@ -2935,7 +2936,7 @@ impl Iterator for TrieNodeTermIterator<'_> {
 }
 
 impl TrieNode {
-    fn search(&self, prefix: &str) -> impl Iterator<Item = Box<str>> {
+    fn search(&self, prefix: &str) -> impl Iterator<Item = Arc<str>> {
         if let Some(found) = self.find_starts_with(prefix.chars()) {
             TrieNodeTermIterator::new(found)
         } else {
@@ -3350,7 +3351,7 @@ impl HybridIndex {
     async fn search_with_arena_simd(&self, expression: &Expression, ctx: &QueryContext<'_>) -> Result<ArenaHashMap<'_, EntryIndex, f32>, SearchError> {
         match expression {
             Expression::Condition(condition) => {
-                condition.execute_with_arena(self, ctx).await
+                condition.execute_with_arena(&self.indexes, ctx).await
             }
             Expression::And(left, right) => {
                 // Parallel evaluation with SIMD optimizations
