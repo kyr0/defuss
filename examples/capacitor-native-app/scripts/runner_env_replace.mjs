@@ -1,10 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
 import "dotenv/config";
 import { promises as fs } from "node:fs";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
-
-const execAsync = promisify(exec);
 
 // 1. Copy src/background.js to dist/assets/background.js
 console.log("Copying background.js to dist/assets...");
