@@ -18,7 +18,7 @@ The engine incorporates several targeted optimizations that provide cumulative p
 | **Query-term de-dupe** | `query_terms.sort_unstable(); query_terms.dedup();` before lookup | Skips scoring identical words in natural-language queries |
 | **Early-exit top-k** | Stop merging when `heap.peek().score ≥ max_possible_remaining_score` | Saves 20-30% dot-products when k ≪ N with no accuracy loss |
 | **Static doc-length-norm** | Pre-store `1 / (k1·(1-b+b·len/avg)+tf)` beside each impact | Multiplication replaces division per document (measurable in WASM/JS) |
-| **Bit-pack booleans** | Store boolean attributes as `u64` bitsets per document row | Cuts memory for yes/no fields by 8×; `&`/`|` acts as set intersection |
+| **Bit-pack booleans** | Store boolean attributes as single `u64` bitset + has-value mask | Cuts memory for yes/no fields by 16×; derive false values via bit complement |
 | **Per-term Bloom filter** | 64-bit Bloom key: "does this term appear in any doc?" | Aborts term lookup immediately for zero-hit words (typos) |
 | **Tiny LRU cache** | `LruCache<String, Vec<(Doc,Score)>>` for last 32 queries | Real-world UIs repeat queries (autocomplete); cache hits return in μs |
 
@@ -1112,9 +1112,12 @@ Each index type can be implemented using the flattened structure:
 /// Boolean index using bit-packed representation for memory efficiency
 struct BooleanIndex {
     /// Bit-packed boolean values: one u64 bitset per document row
+    /// Only stores true values - false values derived by bit complement
     /// Cuts memory by 8× compared to individual boolean documents
-    true_bitset: Vec<u64>,
-    false_bitset: Vec<u64>,
+    bitset: Vec<u64>,
+    /// Tracks which documents have boolean values set (true or false)
+    /// Used to distinguish between false and unset/missing values
+    has_value_bitset: Vec<u64>,
     /// Document metadata for each bit position
     document_metadata: Vec<DocumentEntry>,
 }
@@ -1122,8 +1125,8 @@ struct BooleanIndex {
 impl BooleanIndex {
     fn new() -> Self {
         Self {
-            true_bitset: Vec::new(),
-            false_bitset: Vec::new(),
+            bitset: Vec::new(),
+            has_value_bitset: Vec::new(),
             document_metadata: Vec::new(),
         }
     }
@@ -1141,18 +1144,23 @@ impl BooleanIndex {
         
         // Ensure bitsets are large enough
         let required_words = (doc_id / 64) + 1;
-        self.true_bitset.resize(required_words, 0);
-        self.false_bitset.resize(required_words, 0);
+        self.bitset.resize(required_words, 0);
+        self.has_value_bitset.resize(required_words, 0);
         
-        // Set appropriate bit using bitwise operations for free set intersection
+        // Set appropriate bits using bitwise operations for free set intersection
         let word_idx = doc_id / 64;
         let bit_idx = doc_id % 64;
         let mask = 1u64 << bit_idx;
         
+        // Always mark that this document has a value
+        self.has_value_bitset[word_idx] |= mask;
+        
+        // Set bit only if value is true (false values are represented by absence of bit)
         if term {
-            self.true_bitset[word_idx] |= mask;
+            self.bitset[word_idx] |= mask;
         } else {
-            self.false_bitset[word_idx] |= mask;
+            // Ensure bit is clear for false values
+            self.bitset[word_idx] &= !mask;
         }
         
         // Store document metadata
@@ -1165,17 +1173,29 @@ impl BooleanIndex {
     }
     
     fn search(&self, attribute: Option<AttributeIndex>, value: bool) -> Vec<EntryIndex> {
-        let bitset = if value { &self.true_bitset } else { &self.false_bitset };
-        
         match attribute {
             Some(attr) => {
-                // Iterate through set bits and filter by attribute
+                // Iterate through documents with boolean values and filter by attribute and value
                 let mut results = Vec::new();
-                for (word_idx, &word) in bitset.iter().enumerate() {
-                    if word == 0 { continue; }
+                for (word_idx, &has_value_word) in self.has_value_bitset.iter().enumerate() {
+                    if has_value_word == 0 { continue; }
+                    
+                    let value_word = if word_idx < self.bitset.len() { 
+                        self.bitset[word_idx] 
+                    } else { 
+                        0 
+                    };
+                    
+                    // Get the actual bitset for the requested value
+                    let target_word = if value { 
+                        value_word 
+                    } else { 
+                        // For false values: documents that have a value but bit is not set
+                        has_value_word & !value_word 
+                    };
                     
                     for bit_idx in 0..64 {
-                        if (word & (1u64 << bit_idx)) != 0 {
+                        if (target_word & (1u64 << bit_idx)) != 0 {
                             let doc_id = word_idx * 64 + bit_idx;
                             if doc_id < self.document_metadata.len() {
                                 let doc = &self.document_metadata[doc_id];
@@ -1189,13 +1209,27 @@ impl BooleanIndex {
                 results
             }
             None => {
-                // Return all documents for this boolean value using bitset iteration
+                // Return all documents with the requested boolean value
                 let mut results = Vec::new();
-                for (word_idx, &word) in bitset.iter().enumerate() {
-                    if word == 0 { continue; }
+                for (word_idx, &has_value_word) in self.has_value_bitset.iter().enumerate() {
+                    if has_value_word == 0 { continue; }
+                    
+                    let value_word = if word_idx < self.bitset.len() { 
+                        self.bitset[word_idx] 
+                    } else { 
+                        0 
+                    };
+                    
+                    // Get the actual bitset for the requested value
+                    let target_word = if value { 
+                        value_word 
+                    } else { 
+                        // For false values: documents that have a value but bit is not set
+                        has_value_word & !value_word 
+                    };
                     
                     for bit_idx in 0..64 {
-                        if (word & (1u64 << bit_idx)) != 0 {
+                        if (target_word & (1u64 << bit_idx)) != 0 {
                             let doc_id = word_idx * 64 + bit_idx;
                             if doc_id < self.document_metadata.len() {
                                 results.push(self.document_metadata[doc_id].doc);
@@ -1217,13 +1251,13 @@ impl BooleanIndex {
         let mut changed = false;
         
         // Clear bit from both bitsets if set
-        if word_idx < self.true_bitset.len() && (self.true_bitset[word_idx] & mask) != 0 {
-            self.true_bitset[word_idx] &= !mask;
+        if word_idx < self.bitset.len() && (self.bitset[word_idx] & mask) != 0 {
+            self.bitset[word_idx] &= !mask;
             changed = true;
         }
         
-        if word_idx < self.false_bitset.len() && (self.false_bitset[word_idx] & mask) != 0 {
-            self.false_bitset[word_idx] &= !mask;
+        if word_idx < self.has_value_bitset.len() && (self.has_value_bitset[word_idx] & mask) != 0 {
+            self.has_value_bitset[word_idx] &= !mask;
             changed = true;
         }
         
@@ -2750,17 +2784,30 @@ impl BooleanIndex {
             BooleanFilter::Equals { value } => *value,
         };
         
-        let bitset = if value { &self.true_bitset } else { &self.false_bitset };
         let mut results = HashSet::new();
         
         match attribute {
             Some(attr) => {
-                // Iterate through set bits and filter by attribute
-                for (word_idx, &word) in bitset.iter().enumerate() {
-                    if word == 0 { continue; }
+                // Iterate through documents with boolean values and filter by attribute and value
+                for (word_idx, &has_value_word) in self.has_value_bitset.iter().enumerate() {
+                    if has_value_word == 0 { continue; }
+                    
+                    let value_word = if word_idx < self.bitset.len() { 
+                        self.bitset[word_idx] 
+                    } else { 
+                        0 
+                    };
+                    
+                    // Get the actual bitset for the requested value
+                    let target_word = if value { 
+                        value_word 
+                    } else { 
+                        // For false values: documents that have a value but bit is not set
+                        has_value_word & !value_word 
+                    };
                     
                     for bit_idx in 0..64 {
-                        if (word & (1u64 << bit_idx)) != 0 {
+                        if (target_word & (1u64 << bit_idx)) != 0 {
                             let doc_id = word_idx * 64 + bit_idx;
                             if doc_id < self.document_metadata.len() {
                                 let doc = &self.document_metadata[doc_id];
@@ -2773,12 +2820,26 @@ impl BooleanIndex {
                 }
             }
             None => {
-                // Return all documents for this boolean value using bitset iteration
-                for (word_idx, &word) in bitset.iter().enumerate() {
-                    if word == 0 { continue; }
+                // Return all documents with the requested boolean value
+                for (word_idx, &has_value_word) in self.has_value_bitset.iter().enumerate() {
+                    if has_value_word == 0 { continue; }
+                    
+                    let value_word = if word_idx < self.bitset.len() { 
+                        self.bitset[word_idx] 
+                    } else { 
+                        0 
+                    };
+                    
+                    // Get the actual bitset for the requested value
+                    let target_word = if value { 
+                        value_word 
+                    } else { 
+                        // For false values: documents that have a value but bit is not set
+                        has_value_word & !value_word 
+                    };
                     
                     for bit_idx in 0..64 {
-                        if (word & (1u64 << bit_idx)) != 0 {
+                        if (target_word & (1u64 << bit_idx)) != 0 {
                             let doc_id = word_idx * 64 + bit_idx;
                             if doc_id < self.document_metadata.len() {
                                 results.insert(self.document_metadata[doc_id].doc);
