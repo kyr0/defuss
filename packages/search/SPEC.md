@@ -36,12 +36,18 @@ This search engine is specifically engineered for WebAssembly deployment with ag
 
 ### Multicore Architecture
 
-The engine exploits modern multicore processors through:
+The engine exploits modern multicore processors through a dual-mode approach:
 
-- **Parallel Shard Processing**: Each shard processes queries on separate threads using Rayon thread pools
-- **Concurrent Index Access**: Multiple readers with optimistic RwLock retry patterns
+**Search Mode (READY)**: 
+- **Parallel Query Processing**: Multiple search threads process queries simultaneously using shared immutable indexes
 - **SIMD Vector Operations**: 128-bit SIMD operations process 4 f32 values simultaneously on each core
-- **Thread-Safe Arena Allocation**: Per-thread bump arenas eliminate allocation contention
+- **Concurrent Read Access**: Lock-free reads from stable index snapshots with atomic state verification
+
+**Build Mode (BUILDING)**:
+- **Full CPU Utilization**: All cores participate in parallel index construction with private per-thread buffers
+- **Zero-Lock Ingestion**: Each thread processes document chunks independently with no shared mutable state
+- **Parallel Reduce Operations**: Rayon's parallel reduce merges per-thread results into final index structures
+- **Thread-Safe Arena Allocation**: Per-thread bump arenas eliminate allocation contention during building
 
 Durability is handled by an atomic shadow-manifest; everything else is immutable files, so no WAL or fsync gymnastics are needed in the browser.
 
@@ -914,40 +920,61 @@ impl SizeTracker {
 }
 ```
 
-### Per-Shard Concurrency Control
+### State-Based Concurrency Control
 
-While the manifest provides atomicity at the transaction level, individual shards need protection from concurrent access. We wrap each shard in an RwLock with opportunistic retry:
+The engine uses a simple atomic state machine instead of complex per-shard locking. This eliminates race conditions and provides deterministic behavior:
 
 ```rust
-use std::sync::RwLock;
-use std::time::Duration;
+use std::sync::atomic::{AtomicU8, Ordering};
 
-/// Thread-safe shard wrapper with optimistic concurrency
-struct ConcurrentShard {
-    inner: RwLock<Shard>,
-    size_tracker: RwLock<SizeTracker>,
+/// Engine state for coordinating reads and writes
+#[repr(u8)]
+enum EngineState {
+    Ready = 0,    // Search operations allowed
+    Building = 1, // Index rebuild in progress, searches return 503
 }
 
-impl ConcurrentShard {
-    async fn read_with_retry<F, R>(&self, f: F) -> Result<R, ShardError>
-    where
-        F: Fn(&Shard) -> Result<R, ShardError>,
-    {
-        for attempt in 0..3 {
-            match self.inner.try_read() {
-                Ok(shard) => return f(&*shard),
-                Err(_) if attempt < 2 => {
-                    tokio::time::sleep(Duration::from_millis(1 << attempt)).await;
-                }
-                Err(_) => return Err(ShardError::ConcurrencyTimeout),
-            }
+/// Thread-safe engine wrapper with state-based coordination
+struct SearchEngine {
+    state: AtomicU8,
+    active_index: RwLock<Option<Index>>,
+    build_mutex: std::sync::Mutex<()>, // Ensures single writer
+}
+
+impl SearchEngine {
+    /// Fast path: check state before attempting search
+    fn check_ready(&self) -> Result<(), SearchError> {
+        match self.state.load(Ordering::Acquire) {
+            0 => Ok(()), // READY
+            1 => Err(SearchError::Indexing),
+            _ => unreachable!(),
         }
-        unreachable!()
     }
 
-    async fn write_with_retry<F, R>(&self, f: F) -> Result<R, ShardError>
-    where
-        F: Fn(&mut Shard) -> Result<(R, isize), ShardError>, // Returns result + size delta
+    /// Acquire exclusive write access for index building
+    fn acquire_write_lock(&self) -> Result<std::sync::MutexGuard<()>, IngestError> {
+        // Only one writer allowed, but non-blocking check
+        self.build_mutex.try_lock()
+            .map_err(|_| IngestError::Busy)
+    }
+
+    /// Search with optimistic state check (no locks in hot path)
+    async fn search_optimistic(&self, query: &Query) -> Result<SearchResults, SearchError> {
+        self.check_ready()?;
+        
+        // Read snapshot without blocking (state already checked)
+        let index_guard = self.active_index.read().unwrap();
+        if let Some(ref index) = *index_guard {
+            // Double-check state hasn't changed during read acquisition
+            self.check_ready()?;
+            
+            // Search on stable snapshot
+            index.search(query)
+        } else {
+            Err(SearchError::NoIndex)
+        }
+    }
+}
     {
         for attempt in 0..3 {
             match self.inner.try_write() {
@@ -2436,55 +2463,105 @@ Sharding architecture highlights:
 - Dynamic shard splitting based on size
 - Recovery mechanism for incomplete transactions
 
-## Transaction Mechanism
+## "Stop-the-World, Build-Fast" Parallel Writing
 
-This level of abstraction for the manifest allows adding or deleting shards when needed but there's an issue: the search engine access cannot be blocked each time a document is inserted. The system supports inserting a set of documents while using the index and only blocks access when writing the updated manifest to disk.
+The system uses an elegant state machine for parallel index building where **search is disabled while ingesting, allowing writes to use every core** without complex locking or race conditions.
 
-Following a similar mechanism to a transactional database, inserting data requires initializing a transaction, creating a temporary manifest file containing the names of all original indexes and the names of the indexes that have been updated. Updating a collection or an index creates a new file on disk but non-updated indexes remain the same.
-
-```schema_ascii
-    Original State         Transaction             Committed State
-    +--------------+       +--------------+        +--------------+
-    | manifest.bin |       | manifest.tx  |        | manifest.bin |
-    +--------------+       +--------------+        +--------------+
-    | idx1.bin     |       | idx1.bin     |        | idx1.bin     |
-    | idx2.bin     |  -->  | idx2_new.bin |  -->   | idx2_new.bin |
-    | idx3.bin     |       | idx3.bin     |        | idx3.bin     |
-    +--------------+       +--------------+        +--------------+
+```
+      ┌─────────────┐   search() returns 503 / "indexing"
+      │ EngineState │── READY ─────────────┐
+      └─────────────┘                      │
+                ▲                          ▼
+                └──────── BUILDING ◄──── acquire_write()  (single writer gate)
 ```
 
-This provides the following code for shard management
+### Parallel Writing Process
+
+| Step | What happens | Why it stays trivial |
+|------|-------------|---------------------|
+| **1. Flip a flag** | `if state.swap(BUILDING) != READY { return Err(Busy) }` (atomic) | No read/write races to guard; search code just checks the enum |
+| **2. Thread-fan-out ingestion** | Ingest caller spawns a Rayon scope; each thread parses docs → fills **private** `Vec<Posting>` + `Vec<f32>` buffers | No shared mut; zero locking inside hot loops |
+| **3. Parallel reduce** | Rayon's `reduce` concatenates/post-sorts the per-thread buffers into one flat postings vector & vector block | O(N log N) merges but fully parallel; fits 100k easily |
+| **4. Write new files** | Serialize to `tmp/segment-{uuid}` dir | Still single final write per file; no fancy WAL |
+| **5. One-shot swap** | `rename(tmp_dir, "active")` then `state.store(READY)` | Atomic on most FS, and searchers were already blocked |
+| **6. Old data cleanup** | Delete the previous `active_old` dir asynchronously | Never touched while search was off, so safe |
+
+### Implementation
 
 ```rust
-/// represents a file during a transaction
-struct TxFile {
-    /// original file path, if it exists
-    // a shard can not have any boolean index but it can be created after an update
-    base: Option<Filename>,
-    /// new file path after changes, if modified
-    // the filename once the transaction is committed
-    next: Option<Filename>,
-}
+use std::sync::atomic::{AtomicU8, Ordering};
 
-/// represents a shard during a transaction
-struct TxShard {
-    /// collection file state
-    collection: TxFile,
-    /// index files state for each kind
-    indexes: HashMap<Kind, TxFile>,
-}
+const READY: u8 = 0;
+const BUILDING: u8 = 1;
 
-/// manages the state of all shards during a transaction
-struct TxManifest {
-    /// maps shard keys to their transaction state
-    /// uses BTreeMap to maintain order for efficient splits
-    shards: BTreeMap<u64, TxShard>,
+static ENGINE_STATE: AtomicU8 = AtomicU8::new(READY);
+
+impl SearchEngine {
+    pub fn search(&self, query: &Query) -> Result<SearchResults, SearchError> {
+        if ENGINE_STATE.load(Ordering::Acquire) != READY {
+            return Err(SearchError::Indexing);
+        }
+        self.do_search(query)
+    }
+
+    pub fn ingest(&self, docs: Vec<Document>) -> Result<(), IngestError> {
+        if ENGINE_STATE.swap(BUILDING, Ordering::AcqRel) != READY {
+            return Err(IngestError::Busy); // another build in progress
+        }
+
+        // Parallel building using all available cores
+        let (postings, vectors) = rayon::join(
+            || self.build_postings(&docs),    // flat Vec<Posting>, per-thread buffers
+            || self.build_vectors(&docs),     // contiguous f32 block
+        );
+
+        self.write_tmp_segment(&postings, &vectors)?;
+        self.atomic_swap_segment()?;
+        ENGINE_STATE.store(READY, Ordering::Release);
+        Ok(())
+    }
+
+    /// Build postings lists using parallel processing with private per-thread buffers
+    fn build_postings(&self, docs: &[Document]) -> Vec<Posting> {
+        use rayon::prelude::*;
+        
+        docs.par_chunks(1000)
+            .map(|chunk| {
+                let mut local_postings = Vec::new();
+                for doc in chunk {
+                    // Process document into postings without shared state
+                    let doc_postings = self.process_document_parallel(doc);
+                    local_postings.extend(doc_postings);
+                }
+                local_postings
+            })
+            .reduce(Vec::new, |mut acc, mut chunk| {
+                acc.append(&mut chunk);
+                acc
+            })
+    }
+
+    /// Build vector embeddings using parallel processing
+    fn build_vectors(&self, docs: &[Document]) -> Vec<f32> {
+        use rayon::prelude::*;
+        
+        docs.par_iter()
+            .flat_map(|doc| {
+                // Extract and compute embeddings in parallel
+                self.compute_embeddings_parallel(doc)
+            })
+            .collect()
+    }
 }
 ```
 
-This transaction manifest is written to the filesystem depending on the platform: in the browser, since page closure is unpredictable, writing occurs after each operation, while on mobile, the app performs a simple operation before closing. This provides recovery capability for uncommitted transactions.
+### Benefits
 
-That commit operation simply consists in, for each file of each shard, taking the next filename if exists or the base one, and write it in the manifest.bin. This commit operation is atomic, and then less prone to errors.
+- **Full CPU utilisation during indexing**: Every core works on its own buffer with no locks
+- **No extra schema/version logic**: Fields are inferred on the fly while parsing 
+- **Zero search/index race complexity**: Searches either run on the old snapshot or are politely rejected until the build finishes (usually sub-second for 100k docs)
+
+For applications requiring 24×7 availability, **two instances** can be deployed behind a load-balancer with round-robin: while one is BUILDING, the other continues serving queries.
 
 ## Single-Index Architecture for ≤100k Documents
 
@@ -3713,7 +3790,7 @@ This embedded search engine design delivers optimal performance for ≤100k docu
 
 5. **Lazy File Loading with Caching**: `CachedEncryptedFile` + `OnceCell` ensures each index file is loaded exactly once, with automatic decryption caching and memory management.
 
-6. **Atomic Transactions**: Single shadow-manifest + data blob provides ACID properties without multi-shard coordination complexity.
+6. **Atomic State Transitions**: Stop-the-world building with atomic state machine provides consistency without complex multi-shard coordination.
 
 ### Performance Optimizations
 
