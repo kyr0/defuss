@@ -359,12 +359,12 @@ struct AttributeIndex(u8);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct ValueIndex(u8);
 
-/// Position of token within text
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Position of token within text (token-based, not byte-based)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Position(u32);
 
-/// Index of token within processed text
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Index of token within processed text (same unit as Position for consistency)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct TokenIndex(u16);
 ```
 
@@ -466,7 +466,6 @@ enum IndexError {
     AttributeCapacityExceeded,
     ValueCapacityExceeded,
     DocumentNotFound,
-    TypeMismatch(Kind, Kind),
     VectorDimensionMismatch,
     VectorNotNormalized,
 }
@@ -733,139 +732,6 @@ impl VectorIndex {
         
         Ok(results)
     }
-}
-```
-
-### Parallel Text Processing
-
-Text indexing and search leverage parallelism for tokenization and scoring:
-
-```rust
-impl TextIndex {
-    /// High-frequency stop words filtered at ingest for optimal performance
-    const STOP_WORDS: &'static [&'static str] = &[
-        "the", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by",
-        "a", "an", "is", "are", "was", "were", "be", "been", "have", "has", "had",
-        "do", "does", "did", "will", "would", "could", "should", "may", "might",
-        "this", "that", "these", "those", "i", "you", "he", "she", "it", "we", "they"
-    ];
-
-    /// Parallel text tokenization using Rayon with stop-word filtering
-    fn process_text_parallel(input: &str) -> Vec<Token> {
-        use regex::Regex;
-        use rayon::prelude::*;
-        
-        let word_regex = Regex::new(r"(\w{3,20})").unwrap();
-        
-        // Parallel tokenization and stemming with stop-word elimination
-        word_regex
-            .find_iter(input)
-            .enumerate()
-            .collect::<Vec<_>>()
-            .par_iter()
-            .filter_map(|(token_idx, capture)| {
-                let term = capture.as_str().to_lowercase();
-                
-                // Skip stop words to eliminate ~15% of documents
-                if Self::STOP_WORDS.contains(&term.as_str()) {
-                    return None;
-                }
-                
-                let position = capture.start() as u32;
-                
-                // Parallel stemming operation
-                let stemmed = Self::stem_word_parallel(&term);
-                
-                Some(Token {
-                    term: stemmed,
-                    index: TokenIndex(*token_idx as u16),
-                    position: Position(position),
-                }
-            })
-            .collect()
-    }
-    
-    /// Parallel fuzzy search with SIMD-optimized string operations
-    fn search_fuzzy_parallel(&self, query: &str, attribute: Option<AttributeIndex>) -> Vec<(EntryIndex, f32)> {
-        use rayon::prelude::*;
-        
-        // Parallel bigram coefficient calculation
-        let query_bigrams = BigramFuzzyIndex::extract_bigrams(query);
-        
-        let candidates: Vec<_> = self.bigram_index.term_bigrams
-            .par_iter()
-            .filter_map(|(term, term_bigrams)| {
-                let dice_score = BigramFuzzyIndex::dice_coefficient(&query_bigrams, term_bigrams);
-                if dice_score >= 0.4 {
-                    Some((term.clone(), dice_score))
-                } else {
-                    None
-                }
-            })
-            .collect();
-        
-        // Parallel sorting and top-k selection
-        let mut sorted_candidates = candidates;
-        sorted_candidates.par_sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        sorted_candidates.truncate(32);
-        
-        // Parallel Levenshtein computation on top candidates
-        sorted_candidates
-            .par_iter()
-            .filter_map(|(term, dice_score)| {
-                let edit_distance = levenshtein_simd(query, term);
-                let max_distance = query.len() / 2;
-                
-                if edit_distance <= max_distance {
-                    // Estimate BM25 score with SIMD optimizations
-                    let bm25_score = self.compute_bm25_score_simd(term, attribute);
-                    let final_score = bm25_score * dice_score;
-                    Some((term.clone(), final_score))
-                } else {
-                    None
-                }
-            })
-            .map(|(term, score)| {
-                // Convert term matches to document entries
-                self.term_to_documents(&term, attribute)
-                    .into_iter()
-                    .map(move |entry| (entry, score))
-            })
-            .flatten()
-            .collect()
-    }
-}
-
-/// SIMD-optimized Levenshtein distance calculation for fuzzy text matching
-fn levenshtein_simd(s1: &str, s2: &str) -> usize {
-    let chars1: Vec<char> = s1.chars().collect();
-    let chars2: Vec<char> = s2.chars().collect();
-    
-    if chars1.is_empty() { return chars2.len(); }
-    if chars2.is_empty() { return chars1.len(); }
-    
-    // SIMD-optimized dynamic programming with vectorized operations
-    let len1 = chars1.len();
-    let len2 = chars2.len();
-    
-    let mut prev_row: Vec<u32> = (0..=len2 as u32).collect();
-    let mut curr_row = vec![0u32; len2 + 1];
-    
-    for i in 1..=len1 {
-        curr_row[0] = i as u32;
-        
-        // SIMD-vectorized distance computation where possible
-        for j in 1..=len2 {
-            let cost = if chars1[i-1] == chars2[j-1] { 0 } else { 1 };
-            curr_row[j] = (prev_row[j] + 1)           // deletion
-                .min(curr_row[j-1] + 1)               // insertion
-                .min(prev_row[j-1] + cost);           // substitution
-        }
-        
-        std::mem::swap(&mut prev_row, &mut curr_row);
-    }
-    
-    prev_row[len2] as usize
 }
 ```
 
@@ -1375,6 +1241,7 @@ impl BooleanIndex {
         changed
     }
 }
+```
 
 ## Integer Index
 
@@ -1405,6 +1272,141 @@ impl IntegerIndex {
     ) -> bool {
         let doc = DocumentEntry::new(entry_index, attribute_index, value_index, impact);
         let document_list = self.document_lists.entry(term).or_default();
+        
+        let pos = document_list.binary_search(&doc).unwrap_or_else(|e| e);
+        document_list.insert(pos, doc);
+        true
+    }
+    
+    fn search_range(&self, range: std::ops::Range<u64>, attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
+        let mut results = Vec::new();
+        
+        for (_, document_list) in self.document_lists.range(range) {
+            match attribute {
+                Some(attr) => {
+                    results.extend(
+                        document_list.iter()
+                            .filter(|doc| doc.attr == attr)
+                            .map(|doc| doc.doc)
+                    );
+                }
+                None => {
+                    results.extend(document_list.iter().map(|doc| doc.doc));
+                }
+            }
+        }
+        
+        results.sort_unstable();
+        results.dedup();
+        results
+    }
+    
+    fn search_equals(&self, value: u64, attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
+        self.search_range(value..=value, attribute)
+    }
+    
+    fn search_greater_than(&self, value: u64, attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
+        self.search_range((value + 1).., attribute)
+    }
+    
+    fn search_less_than(&self, value: u64, attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
+        self.search_range(..value, attribute)
+    }
+    
+    fn delete(&mut self, entry_index: EntryIndex) -> bool {
+        let mut changed = false;
+        let mut empty_keys = Vec::new();
+        
+        for (key, document_list) in self.document_lists.iter_mut() {
+            if let Some(range) = Self::find_doc_range_in_vec(document_list, entry_index) {
+                document_list.drain(range);
+                changed = true;
+                
+                if document_list.is_empty() {
+                    empty_keys.push(*key);
+                }
+            }
+        }
+        
+        // Remove empty document lists
+        for key in empty_keys {
+            self.document_lists.remove(&key);
+        }
+        
+        changed
+    }
+    
+    fn find_doc_range_in_vec(document_list: &[DocumentEntry], target_doc: EntryIndex) -> Option<std::ops::Range<usize>> {
+        let start = document_list.binary_search_by_key(&target_doc, |doc| doc.doc)
+            .unwrap_or_else(|e| e);
+            
+        if start >= document_list.len() || document_list[start].doc != target_doc {
+            return None;
+        }
+        
+        let end = document_list[start..]
+            .iter()
+            .position(|doc| doc.doc != target_doc)
+            .map(|pos| start + pos)
+            .unwrap_or(document_list.len());
+            
+        Some(start..end)
+    }
+}
+```
+
+## Tag Index
+
+Tag index follows the same pattern with string keys:
+
+```rust
+/// Tag index using flattened document lists for exact string matching
+struct TagIndex {
+    /// Maps tag strings to sorted document vectors
+    document_lists: HashMap<Box<str>, Vec<DocumentEntry>>,
+}
+
+impl TagIndex {
+    fn new() -> Self {
+        Self {
+            document_lists: HashMap::new(),
+        }
+    }
+    
+    fn insert(
+        &mut self,
+        entry_index: EntryIndex,
+        attribute_index: AttributeIndex,
+        value_index: ValueIndex,
+        term: &str,
+        impact: f32,
+    ) -> bool {
+        let doc = DocumentEntry::new(entry_index, attribute_index, value_index, impact);
+        let document_list = self.document_lists.entry(term.into()).or_default();
+        
+        let pos = document_list.binary_search(&doc).unwrap_or_else(|e| e);
+        document_list.insert(pos, doc);
+        true
+    }
+    
+    fn search(&self, term: &str, attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
+        let Some(document_list) = self.document_lists.get(term) else {
+            return Vec::new();
+        };
+        
+        match attribute {
+            Some(attr) => {
+                document_list.iter()
+                    .filter(|doc| doc.attr == attr)
+                    .map(|doc| doc.doc)
+                    .collect()
+            }
+            None => {
+                document_list.iter()
+                    .map(|doc| doc.doc)
+                    .collect()
+            }
+        }
         
         let pos = document_list.binary_search(&doc).unwrap_or_else(|e| e);
         document_list.insert(pos, doc);
@@ -1596,9 +1598,9 @@ struct TextDocumentEntry {
     attr: AttributeIndex,
     /// Value position within attribute (tertiary sort key)
     val: ValueIndex,
-    /// Token index within the text (for phrase queries)
+    /// Token index within the text (for phrase queries) - same unit as position
     token_idx: TokenIndex,
-    /// Character position in original text
+    /// Token position in text sequence (token-based, not byte-based for UTF-8 safety)
     position: Position,
     /// Pre-computed BM25 impact score
     impact: f32,
@@ -1773,7 +1775,7 @@ impl TextIndex {
         attribute: Option<AttributeIndex>
     ) -> bool {
         // Get positions for each term in this document
-        let mut term_positions: Vec<Vec<(TokenIndex, Position)>> = Vec::new();
+        let mut term_positions: Vec<Vec<Position>> = Vec::new();
         
         for &term in terms {
             if let Some(document_list) = self.document_lists.get(term) {
@@ -1782,7 +1784,7 @@ impl TextIndex {
                         doc.doc == doc_id && 
                         attribute.map_or(true, |attr| doc.attr == attr)
                     })
-                    .map(|doc| (doc.token_idx, doc.position))
+                    .map(|doc| doc.position)
                     .collect();
                     
                 if positions.is_empty() {
@@ -1795,20 +1797,21 @@ impl TextIndex {
             }
         }
         
-        // Check for consecutive token sequences
+        // Check for consecutive token sequences using position-based arithmetic
+        // This fixes the token position consistency issue for UTF-8 safety
         for start_pos in &term_positions[0] {
-            let mut current_token = start_pos.0;
+            let mut current_position = *start_pos;
             let mut found_phrase = true;
             
             for i in 1..term_positions.len() {
-                let expected_token = TokenIndex(current_token.0 + 1);
+                let expected_position = Position(current_position.0 + 1);
                 
-                if !term_positions[i].iter().any(|(token, _)| *token == expected_token) {
+                if !term_positions[i].iter().any(|pos| *pos == expected_position) {
                     found_phrase = false;
                     break;
                 }
                 
-                current_token = expected_token;
+                current_position = expected_position;
             }
             
             if found_phrase {
