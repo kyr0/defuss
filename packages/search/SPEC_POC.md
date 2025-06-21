@@ -741,7 +741,7 @@ impl TextIndex {
     }
     
     /// Search with BM25FS⁺ scoring and memory pool-optimized aggregation
-    fn search_bm25(&self, query: &str, language: Language, attribute: Option<AttributeIndex>, limit: usize) -> Vec<(EntryIndex, f32)> {
+    fn search_bm25(&self, query: &str, language: Language, attribute: Option<AttributeIndex>, topK: usize) -> Vec<(EntryIndex, f32)> {
         use std::collections::HashMap;
         
         // Check LRU cache first for repeated queries (autocomplete optimization)
@@ -784,8 +784,8 @@ impl TextIndex {
                 .map(|(doc, score)| (OrderedFloat(score), doc))
                 .collect();
         
-        let mut results = Vec::with_capacity(limit);
-        for _ in 0..limit {
+        let mut results = Vec::with_capacity(topK);
+        for _ in 0..topK {
             if let Some((score, doc)) = heap.pop() {
                 results.push((doc, score.0));
             } else {
@@ -1438,9 +1438,9 @@ impl HybridSearchEngine {
     }
     
     /// Search using BM25FS⁺ text scoring with language support
-    fn search_text_bm25(&self, query: &str, language: Language, attribute: Option<&str>, limit: usize) -> Vec<(DocumentId, f32)> {
+    fn search_text_bm25(&self, query: &str, language: Language, attribute: Option<&str>, topK: usize) -> Vec<(DocumentId, f32)> {
         let attr_index = attribute.and_then(|name| self.collection.get_attribute_index(name));
-        let results = self.text_index.search_bm25(query, language, attr_index, limit);
+        let results = self.text_index.search_bm25(query, language, attr_index, topK);
         
         results.into_iter()
             .filter_map(|(entry_idx, score)| {
@@ -1451,8 +1451,8 @@ impl HybridSearchEngine {
     }
     
     /// Search vectors with SIMD optimization
-    fn search_vector(&self, query: &[f32], limit: usize) -> Result<Vec<(DocumentId, f32)>, VectorError> {
-        let results = self.vector_index.search(Some(query), limit)?;
+    fn search_vector(&self, query: &[f32], topK: usize) -> Result<Vec<(DocumentId, f32)>, VectorError> {
+        let results = self.vector_index.search(Some(query), topK)?;
         
         Ok(results.into_iter()
             .filter_map(|(entry_idx, score)| {
@@ -1468,10 +1468,10 @@ impl HybridSearchEngine {
         text_query: Option<&str>, 
         language: Language,
         vector_query: Option<&[f32]>, 
-        limit: usize
+        topK: usize
     ) -> Vec<(DocumentId, f32)> {
         let sparse_results = if let Some(query) = text_query {
-            let results = self.search_text_bm25(query, language, None, limit * 2);
+            let results = self.search_text_bm25(query, language, None, topK * 2);
             results.into_iter()
                 .enumerate()
                 .map(|(rank, (doc_id, _))| {
@@ -1489,7 +1489,7 @@ impl HybridSearchEngine {
         };
         
         let dense_results = if let Some(query) = vector_query {
-            if let Ok(results) = self.vector_index.search(Some(query), limit * 2) {
+            if let Ok(results) = self.vector_index.search(Some(query), topK * 2) {
                 results
             } else {
                 Vec::new()
@@ -1499,7 +1499,7 @@ impl HybridSearchEngine {
         };
         
         // Apply RRF fusion with k=60 (battle-tested default)
-        let fused = rrf_fuse(60.0, &dense_results, &sparse_results, limit);
+        let fused = rrf_fuse(60.0, &dense_results, &sparse_results, topK);
         
         // Convert back to DocumentId
         fused.into_iter()
@@ -1516,13 +1516,13 @@ impl HybridSearchEngine {
         text_query: Option<&str>, 
         language: Language,
         vector_query: Option<&[f32]>, 
-        limit: usize,
+        topK: usize,
         alpha: Option<f32>
     ) -> Vec<(DocumentId, f32)> {
         let alpha = alpha.unwrap_or(0.4);
         
         let sparse_results = if let Some(query) = text_query {
-            let results = self.search_text_bm25(query, language, None, limit * 2);
+            let results = self.search_text_bm25(query, language, None, topK * 2);
             results.into_iter()
                 .map(|(doc_id, score)| {
                     if let Some(&entry_idx) = self.collection.entries_by_name.get(&doc_id) {
@@ -1538,7 +1538,7 @@ impl HybridSearchEngine {
         };
         
         let dense_results = if let Some(query) = vector_query {
-            if let Ok(results) = self.vector_index.search(Some(query), limit * 2) {
+            if let Ok(results) = self.vector_index.search(Some(query), topK * 2) {
                 results
             } else {
                 Vec::new()
@@ -1548,7 +1548,7 @@ impl HybridSearchEngine {
         };
         
         // Apply CombSUM fusion
-        let fused = comb_sum_fuse(alpha, &dense_results, &sparse_results, limit);
+        let fused = comb_sum_fuse(alpha, &dense_results, &sparse_results, topK);
         
         // Convert back to DocumentId
         fused.into_iter()
@@ -1565,16 +1565,16 @@ impl HybridSearchEngine {
         text_query: Option<&str>,
         language: Language,
         vector_query: Option<&[f32]>,
-        limit: usize,
+        topK: usize,
         fusion_strategy: FusionStrategy,
         alpha: Option<f32>
     ) -> Vec<(DocumentId, f32)> {
         match fusion_strategy {
             FusionStrategy::RRF => {
-                self.search_hybrid_rrf(text_query, language, vector_query, limit)
+                self.search_hybrid_rrf(text_query, language, vector_query, topK)
             }
             FusionStrategy::CombSUM => {
-                self.search_hybrid_combsum(text_query, language, vector_query, limit, alpha)
+                self.search_hybrid_combsum(text_query, language, vector_query, topK, alpha)
             }
         }
     }
@@ -1594,7 +1594,7 @@ fn rrf_fuse(
     k: f32,
     dense_results: &[(EntryIndex, f32)],
     sparse_results: &[(EntryIndex, f32)],
-    limit: usize
+    topK: usize
 ) -> Vec<(EntryIndex, f32)> {
     use std::collections::HashMap;
     
@@ -1614,7 +1614,7 @@ fn rrf_fuse(
     // Sort by RRF score and return top results
     let mut final_results: Vec<_> = scores.into_iter().collect();
     final_results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    final_results.truncate(limit);
+    final_results.truncate(topK);
     final_results
 }
 
@@ -1623,7 +1623,7 @@ fn comb_sum_fuse(
     alpha: f32,
     dense_results: &[(EntryIndex, f32)],
     sparse_results: &[(EntryIndex, f32)],
-    limit: usize
+    topK: usize
 ) -> Vec<(EntryIndex, f32)> {
     use std::collections::HashMap;
     
@@ -1645,7 +1645,7 @@ fn comb_sum_fuse(
     // Sort by combined score and return top results
     let mut final_results: Vec<_> = scores.into_iter().collect();
     final_results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    final_results.truncate(limit);
+    final_results.truncate(topK);
     final_results
 }
 
@@ -1672,282 +1672,7 @@ fn normalize_scores(results: &[(EntryIndex, f32)]) -> Vec<(EntryIndex, f32)> {
 }
 ```
 
-## FileIndex Implementation
-
-```rust
-/// Zero-copy file-based index with memory-mapped storage
-struct FileIndex {
-    /// Memory-mapped file handle
-    mmap: Option<memmap2::Mmap>,
-    /// Pointer to serialized data start
-    data_ptr: *const u8,
-    /// Total data size in bytes
-    data_size: usize,
-    /// Index metadata for quick access
-    metadata: IndexMetadata,
-}
-
-/// Index metadata for zero-copy deserialization
-#[derive(Debug, Clone)]
-struct IndexMetadata {
-    /// Document count
-    doc_count: u32,
-    /// Term count  
-    term_count: u32,
-    /// Vector dimension (0 if disabled)
-    vector_dim: u16,
-    /// Language used for text processing
-    language: Language,
-    /// Offset table for binary search
-    term_offsets: Vec<u64>,
-    /// Document ID mappings
-    doc_id_map: HashMap<DocumentId, EntryIndex>,
-}
-
-impl FileIndex {
-    /// Create new file index for writing
-    fn new() -> Self {
-        Self {
-            mmap: None,
-            data_ptr: std::ptr::null(),
-            data_size: 0,
-            metadata: IndexMetadata {
-                doc_count: 0,
-                term_count: 0,
-                vector_dim: 0,
-                language: Language::English,
-                term_offsets: Vec::new(),
-                doc_id_map: HashMap::new(),
-            },
-        }
-    }
-    
-    /// Memory-map an existing index file for zero-copy access
-    fn open(path: &std::path::Path) -> Result<Self, std::io::Error> {
-        let file = std::fs::File::open(path)?;
-        let mmap = unsafe { memmap2::Mmap::map(&file)? };
-        
-        let data_ptr = mmap.as_ptr();
-        let data_size = mmap.len();
-        
-        // Deserialize metadata from the beginning of the file
-        let metadata = unsafe { Self::deserialize_metadata(data_ptr, data_size)? };
-        
-        Ok(Self {
-            mmap: Some(mmap),
-            data_ptr,
-            data_size,
-            metadata,
-        })
-    }
-    
-    /// Serialize index to file with zero-copy layout
-    fn save(&self, path: &std::path::Path, text_index: &TextIndex, vector_index: &VectorIndex, collection: &Collection) -> Result<(), std::io::Error> {
-        use std::io::Write;
-        
-        let mut file = std::fs::File::create(path)?;
-        
-        // Write magic header
-        file.write_all(b"DEFUSS01")?; // 8 bytes magic + version
-        
-        // Write metadata
-        self.write_metadata(&mut file, text_index, vector_index, collection)?;
-        
-        // Write term dictionary with sorted order for binary search
-        self.write_term_dictionary(&mut file, text_index)?;
-        
-        // Write document lists (flattened)
-        self.write_document_lists(&mut file, text_index)?;
-        
-        // Write vector data (if enabled)
-        if vector_index.is_enabled() {
-            self.write_vector_data(&mut file, vector_index)?;
-        }
-        
-        // Write document mappings
-        self.write_document_mappings(&mut file, collection)?;
-        
-        file.sync_all()?;
-        Ok(())
-    }
-    
-    /// Zero-copy term lookup using memory-mapped data
-    fn search_term(&self, term: &str) -> Option<&[u8]> {
-        if self.data_ptr.is_null() {
-            return None;
-        }
-        
-        // Binary search in term offsets
-        let term_bytes = term.as_bytes();
-        let mut left = 0;
-        let mut right = self.metadata.term_offsets.len();
-        
-        while left < right {
-            let mid = (left + right) / 2;
-            let offset = self.metadata.term_offsets[mid] as usize;
-            
-            unsafe {
-                let term_ptr = self.data_ptr.add(offset);
-                let term_len = *(term_ptr as *const u32) as usize;
-                let stored_term = std::slice::from_raw_parts(term_ptr.add(4), term_len);
-                
-                match stored_term.cmp(term_bytes) {
-                    std::cmp::Ordering::Equal => {
-                        // Found term, return document list pointer
-                        let doclist_ptr = term_ptr.add(4 + term_len);
-                        let doclist_len = *(doclist_ptr as *const u32) as usize;
-                        return Some(std::slice::from_raw_parts(doclist_ptr.add(4), doclist_len));
-                    }
-                    std::cmp::Ordering::Less => left = mid + 1,
-                    std::cmp::Ordering::Greater => right = mid,
-                }
-            }
-        }
-        
-        None
-    }
-    
-    /// Zero-copy vector access via pointer arithmetic
-    fn get_vector(&self, doc_index: EntryIndex) -> Option<&[f32]> {
-        if self.metadata.vector_dim == 0 {
-            return None;
-        }
-        
-        let vector_section_offset = self.calculate_vector_section_offset();
-        let vector_size = self.metadata.vector_dim as usize * std::mem::size_of::<f32>();
-        let doc_offset = doc_index.0 as usize * vector_size;
-        
-        if vector_section_offset + doc_offset + vector_size > self.data_size {
-            return None;
-        }
-        
-        unsafe {
-            let vector_ptr = self.data_ptr.add(vector_section_offset + doc_offset) as *const f32;
-            Some(std::slice::from_raw_parts(vector_ptr, self.metadata.vector_dim as usize))
-        }
-    }
-    
-    /// Calculate offset to vector data section
-    fn calculate_vector_section_offset(&self) -> usize {
-        // Magic(8) + Metadata + Terms + DocumentLists = VectorSection
-        // This would be computed during serialization and stored in metadata
-        0 // Placeholder - actual implementation would track this
-    }
-    
-    // Private serialization helpers
-    unsafe fn deserialize_metadata(data_ptr: *const u8, data_size: usize) -> Result<IndexMetadata, std::io::Error> {
-        // Skip magic header (8 bytes)
-        let mut ptr = data_ptr.add(8);
-        
-        // Read metadata fields
-        let doc_count = *(ptr as *const u32);
-        ptr = ptr.add(4);
-        
-        let term_count = *(ptr as *const u32);
-        ptr = ptr.add(4);
-        
-        let vector_dim = *(ptr as *const u16);
-        ptr = ptr.add(2);
-        
-        let language_id = *(ptr as *const u8);
-        let language = match language_id {
-            0 => Language::English,
-            1 => Language::Spanish,
-            2 => Language::French,
-            // ... other languages
-            _ => Language::English,
-        };
-        
-        // Read term offsets
-        let mut term_offsets = Vec::with_capacity(term_count as usize);
-        for _ in 0..term_count {
-            ptr = ptr.add(1); // Alignment
-            term_offsets.push(*(ptr as *const u64));
-            ptr = ptr.add(8);
-        }
-        
-        Ok(IndexMetadata {
-            doc_count,
-            term_count,
-            vector_dim,
-            language,
-            term_offsets,
-            doc_id_map: HashMap::new(), // Would be populated from file
-        })
-    }
-    
-    fn write_metadata(&self, file: &mut std::fs::File, text_index: &TextIndex, vector_index: &VectorIndex, collection: &Collection) -> Result<(), std::io::Error> {
-        use std::io::Write;
-        
-        file.write_all(&(collection.document_count as u32).to_le_bytes())?;
-        file.write_all(&(text_index.document_lists.len() as u32).to_le_bytes())?;
-        file.write_all(&(vector_index.dimension as u16).to_le_bytes())?;
-        file.write_all(&[0u8])?; // Language::English = 0
-        
-        Ok(())
-    }
-    
-    fn write_term_dictionary(&self, file: &mut std::fs::File, text_index: &TextIndex) -> Result<(), std::io::Error> {
-        // Sort terms for binary search
-        let mut terms: Vec<_> = text_index.document_lists.keys().collect();
-        terms.sort();
-        
-        for term in terms {
-            // Write term length + term + document list
-            file.write_all(&(term.len() as u32).to_le_bytes())?;
-            file.write_all(term.as_bytes())?;
-            
-            let doc_list = &text_index.document_lists[term];
-            file.write_all(&(doc_list.len() as u32).to_le_bytes())?;
-            
-            // Serialize document entries as packed structs
-            for entry in doc_list {
-                file.write_all(&entry.doc.0.to_le_bytes())?;
-                file.write_all(&[entry.attr.0])?;
-                file.write_all(&[entry.val.0])?;
-                file.write_all(&entry.token_idx.0.to_le_bytes())?;
-                file.write_all(&entry.position.0.to_le_bytes())?;
-                file.write_all(&entry.impact.to_le_bytes())?;
-            }
-        }
-        
-        Ok(())
-    }
-    
-    fn write_document_lists(&self, _file: &mut std::fs::File, _text_index: &TextIndex) -> Result<(), std::io::Error> {
-        // Document lists are written inline with terms in write_term_dictionary
-        Ok(())
-    }
-    
-    fn write_vector_data(&self, file: &mut std::fs::File, vector_index: &VectorIndex) -> Result<(), std::io::Error> {
-        // Write vectors as flat f32 array for zero-copy access
-        for chunk in vector_index.vectors.chunks(vector_index.dimension) {
-            for &value in chunk {
-                file.write_all(&value.to_le_bytes())?;
-            }
-        }
-        Ok(())
-    }
-    
-    fn write_document_mappings(&self, file: &mut std::fs::File, collection: &Collection) -> Result<(), std::io::Error> {
-        use std::io::Write;
-        
-        // Write document ID mappings for reverse lookup
-        for (entry_idx, doc_id) in &collection.entries_by_index {
-            file.write_all(&entry_idx.0.to_le_bytes())?;
-            file.write_all(&(doc_id.0.len() as u32).to_le_bytes())?;
-            file.write_all(doc_id.0.as_bytes())?;
-        }
-        
-        Ok(())
-    }
-}
-
-unsafe impl Send for FileIndex {}
-unsafe impl Sync for FileIndex {}
-```
-
-## Enhanced Zero-Copy Serialization with rkyv
+## Zero-Copy Serialization
 
 The FileIndex implements high-performance serialization using the `rkyv` crate for true zero-copy deserialization:
 
@@ -2011,7 +1736,7 @@ impl FileIndex {
     }
     
     /// Memory-map file and return zero-copy access to index
-    fn open_zero_copy(path: &std::path::Path) -> Result<(memmap2::Mmap, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
+    fn load(path: &std::path::Path) -> Result<(memmap2::Mmap, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
         let file = std::fs::File::open(path)?;
         let mmap = unsafe { memmap2::Mmap::map(&file)? };
         let archived = Self::deserialize_index(&mmap)?;
@@ -2021,7 +1746,7 @@ impl FileIndex {
     }
     
     /// Save index with rkyv serialization
-    fn save_zero_copy(
+    fn save(
         path: &std::path::Path,
         text_index: &TextIndex,
         vector_index: &VectorIndex,
