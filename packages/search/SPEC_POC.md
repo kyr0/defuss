@@ -1090,6 +1090,32 @@ impl BM25Scorer {
         self.avg_doc_lengths.insert(attr_idx, avg_length);
         self.doc_count = doc_count;
     }
+    
+    /// Remove document-specific normalization factors during deletion
+    fn remove_document_norms(&mut self, entry_index: EntryIndex) {
+        // Remove all normalization factors for this document across all attributes
+        self.doc_length_norms.retain(|(doc_idx, _), _| *doc_idx != entry_index);
+    }
+    
+    /// Decrease document frequency for a term (used during document deletion)
+    fn decrease_term_frequency(&mut self, term: &str) -> bool {
+        if let Some(freq) = self.term_frequencies.get_mut(term) {
+            if *freq > 1 {
+                *freq -= 1;
+                true // Term still exists in other documents
+            } else {
+                self.term_frequencies.remove(term);
+                false // Term no longer exists in any document
+            }
+        } else {
+            false // Term was not tracked
+        }
+    }
+    
+    /// Update total document count (called after document deletion)
+    fn update_document_count(&mut self, new_count: usize) {
+        self.doc_count = new_count;
+    }
 }
 ```
 
