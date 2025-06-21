@@ -1498,11 +1498,122 @@ impl HybridSearchEngine {
             .collect()
     }
     
+    /// Main hybrid search with configurable fusion strategy
+    fn search_hybrid_with_strategy(
+        &self,
+        text_query: Option<&str>,
+        language: Language,
+        vector_query: Option<&[f32]>,
+        limit: usize,
+        fusion_strategy: FusionStrategy,
+        alpha: Option<f32>
+    ) -> Vec<(DocumentId, f32)> {
+        match fusion_strategy {
+            FusionStrategy::RRF => {
+                self.search_hybrid_rrf(text_query, language, vector_query, limit)
+            }
+            FusionStrategy::CombSUM => {
+                self.search_hybrid_combsum(text_query, language, vector_query, limit, alpha)
+            }
+        }
+    }
+    
     /// Legacy hybrid search for backward compatibility with language support
     fn search_hybrid(&self, text_query: Option<&str>, language: Language, vector_query: Option<&[f32]>, limit: usize) -> Vec<(DocumentId, f32)> {
         // Default to RRF fusion for best recall/precision balance
         self.search_hybrid_rrf(text_query, language, vector_query, limit)
     }
+}
+
+/// Fusion strategy for combining text and vector search results
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FusionStrategy {
+    /// Reciprocal Rank Fusion (RRF) - parameter-free, excellent recall
+    RRF,
+    /// CombSUM fusion - weighted combination, tunable via alpha
+    CombSUM,
+}
+
+/// Reciprocal Rank Fusion implementation
+fn rrf_fuse(
+    k: f32,
+    dense_results: &[(EntryIndex, f32)],
+    sparse_results: &[(EntryIndex, f32)],
+    limit: usize
+) -> Vec<(EntryIndex, f32)> {
+    use std::collections::HashMap;
+    
+    let mut scores = HashMap::new();
+    
+    // RRF formula: score = Σ[1 / (k + rank)]
+    for (rank, &(doc_id, _)) in dense_results.iter().enumerate() {
+        let rrf_score = 1.0 / (k + rank as f32);
+        *scores.entry(doc_id).or_insert(0.0) += rrf_score;
+    }
+    
+    for (rank, &(doc_id, _)) in sparse_results.iter().enumerate() {
+        let rrf_score = 1.0 / (k + rank as f32);
+        *scores.entry(doc_id).or_insert(0.0) += rrf_score;
+    }
+    
+    // Sort by RRF score and return top results
+    let mut final_results: Vec<_> = scores.into_iter().collect();
+    final_results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    final_results.truncate(limit);
+    final_results
+}
+
+/// CombSUM fusion with min-max normalization
+fn comb_sum_fuse(
+    alpha: f32,
+    dense_results: &[(EntryIndex, f32)],
+    sparse_results: &[(EntryIndex, f32)],
+    limit: usize
+) -> Vec<(EntryIndex, f32)> {
+    use std::collections::HashMap;
+    
+    // Normalize dense scores to [0,1]
+    let dense_normalized = normalize_scores(dense_results);
+    let sparse_normalized = normalize_scores(sparse_results);
+    
+    let mut scores = HashMap::new();
+    
+    // CombSUM: final_score = α × dense_norm + (1-α) × sparse_norm
+    for &(doc_id, score) in &dense_normalized {
+        *scores.entry(doc_id).or_insert(0.0) += alpha * score;
+    }
+    
+    for &(doc_id, score) in &sparse_normalized {
+        *scores.entry(doc_id).or_insert(0.0) += (1.0 - alpha) * score;
+    }
+    
+    // Sort by combined score and return top results
+    let mut final_results: Vec<_> = scores.into_iter().collect();
+    final_results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    final_results.truncate(limit);
+    final_results
+}
+
+/// Min-max normalization to [0,1] range
+fn normalize_scores(results: &[(EntryIndex, f32)]) -> Vec<(EntryIndex, f32)> {
+    if results.is_empty() {
+        return Vec::new();
+    }
+    
+    let min_score = results.iter().map(|(_, score)| *score).fold(f32::INFINITY, f32::min);
+    let max_score = results.iter().map(|(_, score)| *score).fold(f32::NEG_INFINITY, f32::max);
+    
+    if (max_score - min_score).abs() < f32::EPSILON {
+        // All scores are the same, return uniform scores
+        return results.iter().map(|&(doc_id, _)| (doc_id, 1.0)).collect();
+    }
+    
+    results.iter()
+        .map(|&(doc_id, score)| {
+            let normalized = (score - min_score) / (max_score - min_score);
+            (doc_id, normalized)
+        })
+        .collect()
 }
 ```
 
@@ -2007,8 +2118,7 @@ impl WasmSearchEngine {
     }
     
     /**
-     * High-performance hybrid search with zero-copy results
-    
+     * High-performance hybrid search with zero-copy results and configurable fusion strategy
      */
     #[wasm_bindgen]
     pub fn search_zero_copy(
@@ -2017,9 +2127,16 @@ impl WasmSearchEngine {
         language_code: u8,
         query_vector_index: Option<u32>, // Index in vectors section for query vector
         limit: usize,
+        fusion_strategy: u8,             // 0 = RRF, 1 = CombSUM
+        alpha: Option<f32>,              // Alpha parameter for CombSUM (ignored for RRF)
         results_offset: Option<u32>      // Custom offset for results
     ) -> Result<u32, JsValue> {
         let language = self.u8_to_language(language_code);
+        let strategy = match fusion_strategy {
+            0 => FusionStrategy::RRF,
+            1 => FusionStrategy::CombSUM,
+            _ => FusionStrategy::RRF, // Default fallback
+        };
         
         // Get query vector using zero-copy access
         let vector_query = if let Some(vec_idx) = query_vector_index {
@@ -2033,17 +2150,18 @@ impl WasmSearchEngine {
             None
         };
         
-        // Perform hybrid search
-        let result_count = self.wasm_engine.search_zero_copy(
-          query,
-          language,
-          queryVectorIndex,
-          limit,
-          undefined // Use default results offset
+        // Perform hybrid search with strategy selection
+        let results = self.engine.search_hybrid_with_strategy(
+            if query.is_empty() { None } else { Some(query) },
+            language,
+            vector_query,
+            limit,
+            strategy,
+            alpha
         );
         
-        // Read results directly from SharedArrayBuffer
-        return this.readResultsFromBuffer(resultCount);
+        // Write results to SharedArrayBuffer and return count
+        self.write_results_to_buffer(&results, results_offset)
     }
     
     /**
@@ -2133,284 +2251,6 @@ impl WasmSearchEngine {
     }
     
     return results;
-  }
-}
-```
-
-## TypeScript/JavaScript Integration & Zero-Copy Patterns
-
-The search engine provides comprehensive TypeScript bindings for seamless integration with modern web applications. The zero-copy design minimizes memory overhead and maximizes performance through SharedArrayBuffer operations.
-
-### Pure TypeScript Integration
-
-```typescript
-import init, { initThreadPool, WasmSearchEngine } from "../pkg/defuss_search.js";
-
-// Global WASM instance state
-let wasmInitialized = false;
-let wasmInstance: any;
-
-export interface SearchResult {
-  docId: string;
-  score: number;
-  snippets?: string[];
-}
-
-export interface HybridSearchOptions {
-  textQuery?: string;
-  vectorQuery?: Float32Array;
-  language?: Language;
-  limit?: number;
-  alpha?: number; // For CombSUM fusion
-  fusionStrategy?: 'rrf' | 'combsum';
-}
-
-export interface MemoryStats {
-  totalSize: number;
-  vectorsUsed: number;
-  vectorsAvailable: number;
-  bufferUtilization: number;
-}
-
-export interface ChunkedResult {
-  results: Float32Array;
-  totalTime: number;
-  executionTime: number;
-  chunksProcessed?: number;
-}
-
-export interface SearchPerformanceResult extends ChunkedResult {
-  gflops: number;
-  memoryEfficiency: number;
-  processingMethod: 'hybrid_rrf' | 'hybrid_combsum' | 'text_only' | 'vector_only';
-}
-
-export enum Language {
-  English = 0,
-  Spanish = 1,
-  French = 2,
-  German = 3,
-  Italian = 4,
-  Portuguese = 5,
-  Russian = 6,
-  Chinese = 7,
-  Japanese = 8,
-  Korean = 9,
-  Arabic = 10,
-  Hindi = 11,
-  Dutch = 12,
-  Swedish = 13,
-  Norwegian = 14
-}
-
-/**
- * Initialize WASM module for ultimate performance operations
- * Must be called before using any search functions
- */
-export async function initWasm(): Promise<any> {
-  if (!wasmInitialized) {
-    wasmInstance = await init();
-    await initThreadPool(navigator.hardwareConcurrency || 8); // Use available cores
-    wasmInitialized = true;
-  }
-  return wasmInstance;
-}
-
-/**
- * DefussSearchEngine will be generated by wasm-bindgen
- * Import it from the generated WASM bindings:
- * 
- * import { DefussSearchEngine } from "../pkg/defuss_search.js";
- * 
- * The search engine provides idiomatic TypeScript/JavaScript methods for:
- * - Adding documents with text and vector data
- * - Performing hybrid search (text + vector)
- * - Text-only BM25FS+ search
- * - Vector-only similarity search
- * - Batch operations and performance monitoring
- * 
- * All methods are automatically generated with proper TypeScript types.
- */
-```
-
-### Advanced Usage Patterns
-
-#### 1. **High-Performance Initialization**
-```typescript
-// Initialize WASM and create search engine
-async function createSearchEngine(vectorDim: number = 1024): Promise<DefussSearchEngine> {
-  await initWasm();
-  return new DefussSearchEngine(vectorDim, 100_000);
-}
-
-// Usage
-const engine = await createSearchEngine(1024);
-```
-
-#### 2. **Batch Document Indexing**
-```typescript
-async function batchIndexDocuments(
-  engine: DefussSearchEngine,
-  documents: Array<{
-    id: string;
-    fields: Record<string, string>;
-    vector?: Float32Array;
-  }>
-): Promise<void> {
-  const batchSize = 100;
-  
-  for (let i = 0; i < documents.length; i += batchSize) {
-    const batch = documents.slice(i, i + batchSize);
-    
-    // Process batch in parallel for maximum throughput
-    await Promise.all(
-      batch.map(doc => 
-        engine.addDocument(doc.id, doc.fields, doc.vector)
-      )
-    );
-    
-    // Optional: Log progress
-    console.log(`Indexed ${Math.min(i + batchSize, documents.length)}/${documents.length} documents`);
-  }
-}
-```
-
-#### 3. **Smart Query Vector Caching**
-```typescript
-class QueryVectorCache {
-  private cache = new Map<string, Float32Array>();
-  private maxSize: number = 1000;
-
-  getOrCompute(query: string, computeFn: () => Float32Array): Float32Array {
-    if (this.cache.has(query)) {
-      return this.cache.get(query)!;
-    }
-
-    const vector = computeFn();
-    
-    // LRU eviction
-    if (this.cache.size >= this.maxSize) {
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
-    }
-
-    this.cache.set(query, vector);
-    return vector;
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-}
-
-// Usage with search engine
-const vectorCache = new QueryVectorCache();
-
-async function searchWithCache(
-  engine: DefussSearchEngine,
-  textQuery: string,
-  embeddingFn: (text: string) => Float32Array
-): Promise<SearchResult[]> {
-  const queryVector = vectorCache.getOrCompute(textQuery, () => embeddingFn(textQuery));
-  
-  return engine.searchHybrid({
-    textQuery,
-    vectorQuery: queryVector,
-    fusionStrategy: 'rrf'
-  });
-}
-```
-
-#### 4. **Web Worker Integration**
-```typescript
-// search-worker.ts
-import { initWasm, DefussSearchEngine } from './defuss-search';
-
-let searchEngine: DefussSearchEngine | null = null;
-
-self.onmessage = async (event) => {
-  const { type, data } = event.data;
-
-  try {
-    switch (type) {
-      case 'init':
-        await initWasm();
-        searchEngine = new DefussSearchEngine(data.vectorDim, data.maxDocs);
-        self.postMessage({ type: 'ready' });
-        break;
-
-      case 'addDocument':
-        if (!searchEngine) throw new Error('Engine not initialized');
-        await searchEngine.addDocument(data.docId, data.fields, data.vector, data.language);
-        self.postMessage({ type: 'documentAdded', docId: data.docId });
-        break;
-
-      case 'search':
-        if (!searchEngine) throw new Error('Engine not initialized');
-        const results = await searchEngine.searchHybrid(data.options);
-        self.postMessage({ type: 'searchResults', results });
-        break;
-
-      case 'benchmark':
-        if (!searchEngine) throw new Error('Engine not initialized');
-        const benchmarkResults = await searchEngine.benchmark(data.queries, data.iterations);
-        self.postMessage({ type: 'benchmarkResults', results: benchmarkResults });
-        break;
-
-      default:
-        throw new Error(`Unknown message type: ${type}`);
-    }
-  } catch (error) {
-    self.postMessage({ 
-      type: 'error', 
-      error: error instanceof Error ? error.message : String(error) 
-    });
-  }
-};
-
-// Main thread usage
-class WorkerSearchEngine {
-  private worker: Worker;
-  private ready: Promise<void>;
-
-  constructor(vectorDim: number = 1024, maxDocs: number = 100_000) {
-    this.worker = new Worker('./search-worker.js');
-    
-    this.ready = new Promise((resolve) => {
-      this.worker.onmessage = (event) => {
-        if (event.data.type === 'ready') {
-          resolve();
-        }
-      };
-    });
-
-    this.worker.postMessage({ 
-      type: 'init', 
-      data: { vectorDim, maxDocs } 
-    });
-  }
-
-  async search(options: HybridSearchOptions): Promise<SearchResult[]> {
-    await this.ready;
-    
-    return new Promise((resolve, reject) => {
-      const handler = (event: MessageEvent) => {
-        if (event.data.type === 'searchResults') {
-          this.worker.removeEventListener('message', handler);
-          resolve(event.data.results);
-        } else if (event.data.type === 'error') {
-          this.worker.removeEventListener('message', handler);
-          reject(new Error(event.data.error));
-        }
-      };
-
-      this.worker.addEventListener('message', handler);
-      this.worker.postMessage({ type: 'search', data: { options } });
-    });
-  }
-
-  terminate(): void {
-    this.worker.terminate();
   }
 }
 ```
