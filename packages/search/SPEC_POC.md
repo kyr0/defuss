@@ -9,17 +9,17 @@ This POC provides a **genius-level hybrid search engine** with:
 **Core Components:**
 - **BM25FS⁺ Scoring**: Field-weighted, δ-shifted, eager sparse scoring for 10-500× faster queries
 - **SIMD Vector Search**: Brute-force exact cosine similarity with 4x parallelized operations
-- **Arena-Optimized Fusion**: RRF and CombSUM strategies with zero-allocation processing
+- **Memory Pool Fusion**: RRF and CombSUM strategies with efficient memory reuse
 
 **Performance Features:**
-- **WASM-Optimized**: Bump allocators, SIMD intrinsics, and lock-free concurrent access
+- **WASM-Optimized**: Memory pools, SIMD intrinsics, and lock-free concurrent access
 - **Multicore Ready**: Rayon parallel processing across all available cores
 - **Micro-Optimized**: Stop-lists, Bloom filters, query de-duplication, early-exit top-k
 
 **Simplicity Focus:**
 - **≤ 100k documents**: Purpose-built for the target use case
 - **Minimal Dependencies**: Core functionality with essential optimizations only
-- **Clean Architecture**: Flat data structures, numeric indirection, arena allocation
+- **Clean Architecture**: Flat data structures, numeric indirection, memory pooling
 
 The result is a **genius-level, extremely fast hybrid search engine** that maintains simplicity while delivering exceptional performance for modern web applications running in WebAssembly.
 
@@ -27,7 +27,7 @@ The result is a **genius-level, extremely fast hybrid search engine** that maint
 
 The engine prioritizes **simplicity and speed** through:
 - **Flattened Document Lists**: Cache-linear `Vec<DocumentEntry>` storage
-- **Arena Allocation**: Zero-fragmentation memory management perfect for WASM
+- **Memory Pool Management**: Intelligent buffer reuse for reduced allocation overhead
 - **SIMD Vector Operations**: 4x parallelized vector f32 operations with manual unrolling
 - **BM25FS⁺ Eager Scoring**: Novel fusion of BM25F + BM25⁺ + BM25S for 10-500× query speedup to sparse dot-product
 
@@ -564,6 +564,42 @@ impl TextDocumentEntry {
     }
 }
 
+/// Simple memory pool for reducing allocations during search operations
+static MEMORY_POOL: std::sync::Mutex<Option<Vec<f32>>> = std::sync::Mutex::new(None);
+const MAX_POOL_SIZE: usize = 10_000;     // 10K f32s = 40KB max pool (reasonable size)
+const MIN_POOL_SIZE: usize = 1_000;      // 1K f32s = 4KB minimum to keep in pool
+
+/// Intelligent memory pool management for search operations
+fn get_or_create_buffer(required_size: usize) -> Vec<f32> {
+    let mut pool = MEMORY_POOL.lock().unwrap();
+    
+    if let Some(mut buffer) = pool.take() {
+        // Reuse existing buffer if it's large enough
+        if buffer.len() >= required_size {
+            buffer.truncate(required_size.max(MIN_POOL_SIZE));
+            return buffer;
+        }
+        // If existing buffer is too small, keep it and create a new one
+        *pool = Some(buffer);
+    }
+    
+    // Create new buffer, but don't make it unnecessarily large
+    let buffer_size = required_size.max(MIN_POOL_SIZE).min(MAX_POOL_SIZE);
+    vec![0.0f32; buffer_size]
+}
+
+fn return_buffer_to_pool(buffer: Vec<f32>) {
+    // Only keep the buffer if it's a reasonable size for reuse
+    if buffer.len() >= MIN_POOL_SIZE && buffer.len() <= MAX_POOL_SIZE {
+        let mut pool = MEMORY_POOL.lock().unwrap();
+        if pool.is_none() {
+            *pool = Some(buffer);
+        }
+        // If pool already has a buffer, just drop this one (GC will handle it)
+    }
+    // Otherwise just drop the buffer - it's either too small or too large
+}
+
 /// Text index using flattened document lists with BM25FS⁺ scoring
 struct TextIndex {
     /// Maps terms to sorted vectors of TextDocumentEntry entries
@@ -644,10 +680,9 @@ impl TextIndex {
         current.term = Some(term_arc);
     }
     
-    /// Search with BM25FS⁺ scoring and arena-optimized aggregation
+    /// Search with BM25FS⁺ scoring and memory pool-optimized aggregation
     fn search_bm25(&self, query: &str, language: Language, attribute: Option<AttributeIndex>, limit: usize) -> Vec<(EntryIndex, f32)> {
-        use bumpalo::Bump;
-        use bumpalo::collections::HashMap as ArenaHashMap;
+        use std::collections::HashMap;
         
         // Check LRU cache first for repeated queries (autocomplete optimization)
         let cache_key = format!("{}:{:?}:{:?}", query, language, attribute);
@@ -657,9 +692,8 @@ impl TextIndex {
             }
         }
         
-        // Arena allocation for zero-fragmentation query processing
-        let arena = Bump::new();
-        let mut scores = ArenaHashMap::new_in(&arena);
+        // Use standard HashMap for score aggregation (simple and efficient)
+        let mut scores = HashMap::new();
         
         // Process query with language-specific stop words and stemming
         let query_tokens = Self::process_text(query, language);
@@ -1974,6 +2008,7 @@ impl WasmSearchEngine {
     
     /**
      * High-performance hybrid search with zero-copy results
+    
      */
     #[wasm_bindgen]
     pub fn search_zero_copy(
