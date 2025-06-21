@@ -153,15 +153,31 @@ enum Kind {
     Text,
 }
 
-/// A value that can be indexed
+/// A value that can be indexed with optional BM25F weight
 enum Value {
     Tag(String),
     Text(String),
 }
 
-/// Defines the structure and rules for indexable documents
+/// Field configuration for BM25F scoring
+#[derive(Debug, Clone)]
+struct FieldWeight {
+    /// BM25F weight for this field (default: 1.0)
+    weight: f32,
+    /// Length normalization parameter b (default: 0.75)
+    b: f32,
+}
+
+impl Default for FieldWeight {
+    fn default() -> Self {
+        Self { weight: 1.0, b: 0.75 }
+    }
+}
+
+/// Defines the structure and rules for indexable documents with BM25F weights
 struct Schema {
     attributes: HashMap<String, Kind>,
+    field_weights: HashMap<String, FieldWeight>,
 }
 
 impl Schema {
@@ -173,6 +189,7 @@ impl Schema {
 #[derive(Default)]
 struct SchemaBuilder {
     attributes: HashMap<String, Kind>,
+    field_weights: HashMap<String, FieldWeight>,
 }
 
 impl SchemaBuilder {
@@ -180,10 +197,26 @@ impl SchemaBuilder {
         self.attributes.insert(name.into(), kind);
         self
     }
+    
+    pub fn text_field(mut self, name: impl Into<String>, weight: f32, b: Option<f32>) -> Self {
+        let name_str = name.into();
+        self.attributes.insert(name_str.clone(), Kind::Text);
+        self.field_weights.insert(name_str, FieldWeight { 
+            weight, 
+            b: b.unwrap_or(0.75) 
+        });
+        self
+    }
+    
+    pub fn tag_field(mut self, name: impl Into<String>) -> Self {
+        self.attributes.insert(name.into(), Kind::Tag);
+        self
+    }
 
     pub fn build(self) -> Schema {
         Schema {
             attributes: self.attributes,
+            field_weights: self.field_weights,
         }
     }
 }
@@ -284,26 +317,35 @@ struct FieldConfig {
     b: f32,
 }
 
-/// BM25FS⁺ parameters for consistent scoring
+/// BM25FS⁺ parameters for consistent scoring with dynamic field weights
 #[derive(Debug, Clone)]
 struct BM25Config {
     /// TF saturation parameter (default: 1.2)
     k1: f32,
     /// Lower bound δ to ensure any match beats no match (default: 0.5)
     delta: f32,
-    /// Field configurations with weights
-    field_configs: Vec<FieldConfig>,
+    /// Dynamic field weights from schema
+    field_weights: HashMap<String, FieldWeight>,
 }
 
-impl Default for BM25Config {
-    fn default() -> Self {
+impl BM25Config {
+    fn new(schema: &Schema) -> Self {
         Self {
             k1: 1.2,
             delta: 0.5,
-            field_configs: vec![
-                FieldConfig { name: "title".to_string(), weight: 2.5, b: 0.75 },
-                FieldConfig { name: "body".to_string(), weight: 1.0, b: 0.75 },
-            ],
+            field_weights: schema.field_weights.clone(),
+        }
+    }
+    
+    fn with_defaults() -> Self {
+        let mut field_weights = HashMap::new();
+        field_weights.insert("title".to_string(), FieldWeight { weight: 2.5, b: 0.75 });
+        field_weights.insert("body".to_string(), FieldWeight { weight: 1.0, b: 0.75 });
+        
+        Self {
+            k1: 1.2,
+            delta: 0.5,
+            field_weights,
         }
     }
 }
@@ -432,7 +474,7 @@ impl BM25Scorer {
         }
     }
     
-    /// Compute BM25FS⁺ impact score for a term at indexing time
+    /// Compute BM25FS⁺ impact score for a term at indexing time with dynamic field weights
     fn compute_impact(
         &self,
         field_name: &str,
@@ -440,14 +482,9 @@ impl BM25Scorer {
         field_length: f32,
         _document_frequency: u32, // For future IDF calculations
     ) -> f32 {
-        let field_config = self.config.field_configs
-            .iter()
-            .find(|cfg| cfg.name == field_name)
-            .unwrap_or(&FieldConfig { 
-                name: field_name.to_string(), 
-                weight: 1.0, 
-                b: 0.75 
-            });
+        let field_weight = self.config.field_weights
+            .get(field_name)
+            .unwrap_or(&FieldWeight::default());
         
         let avg_length = self.field_avg_lengths
             .get(field_name)
@@ -456,9 +493,9 @@ impl BM25Scorer {
         
         // BM25FS⁺ formula: w_f × BM25(tf) + δ
         let tf_component = (self.config.k1 + 1.0) * tf as f32;
-        let normalization = self.config.k1 * (1.0 - field_config.b + field_config.b * field_length / avg_length) + tf as f32;
+        let normalization = self.config.k1 * (1.0 - field_weight.b + field_weight.b * field_length / avg_length) + tf as f32;
         
-        field_config.weight * (tf_component / normalization) + self.config.delta
+        field_weight.weight * (tf_component / normalization) + self.config.delta
     }
     
     /// Update field statistics during indexing
@@ -1411,67 +1448,579 @@ impl HybridSearchEngine {
 }
 ```
 
-## Usage Example
+## FileIndex Implementation
 
 ```rust
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create hybrid search engine with 768-dimensional vectors
-    let mut engine = HybridSearchEngine::with_vector_dimension(768);
+/// Zero-copy file-based index with memory-mapped storage
+struct FileIndex {
+    /// Memory-mapped file handle
+    mmap: Option<memmap2::Mmap>,
+    /// Pointer to serialized data start
+    data_ptr: *const u8,
+    /// Total data size in bytes
+    data_size: usize,
+    /// Index metadata for quick access
+    metadata: IndexMetadata,
+}
+
+/// Index metadata for zero-copy deserialization
+#[derive(Debug, Clone)]
+struct IndexMetadata {
+    /// Document count
+    doc_count: u32,
+    /// Term count  
+    term_count: u32,
+    /// Vector dimension (0 if disabled)
+    vector_dim: u16,
+    /// Language used for text processing
+    language: Language,
+    /// Offset table for binary search
+    term_offsets: Vec<u64>,
+    /// Document ID mappings
+    doc_id_map: HashMap<DocumentId, EntryIndex>,
+}
+
+impl FileIndex {
+    /// Create new file index for writing
+    fn new() -> Self {
+        Self {
+            mmap: None,
+            data_ptr: std::ptr::null(),
+            data_size: 0,
+            metadata: IndexMetadata {
+                doc_count: 0,
+                term_count: 0,
+                vector_dim: 0,
+                language: Language::English,
+                term_offsets: Vec::new(),
+                doc_id_map: HashMap::new(),
+            },
+        }
+    }
     
-    // Add documents with BM25FS⁺ text indexing and vector embeddings
-    let doc1 = Document::new("doc1")
-        .attribute("title", Value::Text("Rust Programming Guide".to_string()))
-        .attribute("content", Value::Text("Learn Rust programming language with safety and performance".to_string()))
-        .with_vector(vec![0.1; 768]); // Normalized vector embedding
+    /// Memory-map an existing index file for zero-copy access
+    fn open(path: &std::path::Path) -> Result<Self, std::io::Error> {
+        let file = std::fs::File::open(path)?;
+        let mmap = unsafe { memmap2::Mmap::map(&file)? };
         
-    let doc2 = Document::new("doc2")
-        .attribute("title", Value::Text("JavaScript Development".to_string()))
-        .attribute("content", Value::Text("Modern JavaScript development with ES6 features".to_string()))
-        .with_vector(vec![0.2; 768]); // Normalized vector embedding
+        let data_ptr = mmap.as_ptr();
+        let data_size = mmap.len();
         
-    // Add documents with English language processing
-    engine.add_document(doc1, Language::English)?;
-    engine.add_document(doc2, Language::English)?;
-    
-    // Text search with BM25FS⁺ scoring and English stop words/stemming
-    let text_results = engine.search_text_bm25("Rust programming", Language::English, None, 10);
-    println!("Text search: {:?}", text_results);
-    
-    // Vector search with SIMD optimization
-    let query_vector = vec![0.15; 768]; // Query embedding
-    let vector_results = engine.search_vector(&query_vector, 10)?;
-    println!("Vector search: {:?}", vector_results);
-    
-    // Hybrid search with RRF fusion (default)
-    let hybrid_results = engine.search_hybrid(
-        Some("programming language"), 
-        Language::English,
-        Some(&query_vector), 
-        10
-    );
-    println!("Hybrid RRF: {:?}", hybrid_results);
-    
-    // Hybrid search with CombSUM fusion
-    let combsum_results = engine.search_hybrid_combsum(
-        Some("programming language"), 
-        Language::English,
-        Some(&query_vector), 
-        10,
-        Some(0.4) // α = 0.4 (dense weight)
-    );
-    println!("Hybrid CombSUM: {:?}", combsum_results);
-    
-    // Multi-language example with Spanish
-    let spanish_doc = Document::new("doc3")
-        .attribute("title", Value::Text("Programación en Rust".to_string()))
-        .attribute("content", Value::Text("Aprende el lenguaje de programación Rust con seguridad y rendimiento".to_string()))
-        .with_vector(vec![0.12; 768]);
+        // Deserialize metadata from the beginning of the file
+        let metadata = unsafe { Self::deserialize_metadata(data_ptr, data_size)? };
         
-    engine.add_document(spanish_doc, Language::Spanish)?;
+        Ok(Self {
+            mmap: Some(mmap),
+            data_ptr,
+            data_size,
+            metadata,
+        })
+    }
     
-    let spanish_results = engine.search_text_bm25("programación", Language::Spanish, None, 10);
-    println!("Spanish search: {:?}", spanish_results);
+    /// Serialize index to file with zero-copy layout
+    fn save(&self, path: &std::path::Path, text_index: &TextIndex, vector_index: &VectorIndex, collection: &FlexibleCollection) -> Result<(), std::io::Error> {
+        use std::io::Write;
+        
+        let mut file = std::fs::File::create(path)?;
+        
+        // Write magic header
+        file.write_all(b"DEFUSS01")?; // 8 bytes magic + version
+        
+        // Write metadata
+        self.write_metadata(&mut file, text_index, vector_index, collection)?;
+        
+        // Write term dictionary with sorted order for binary search
+        self.write_term_dictionary(&mut file, text_index)?;
+        
+        // Write document lists (flattened)
+        self.write_document_lists(&mut file, text_index)?;
+        
+        // Write vector data (if enabled)
+        if vector_index.is_enabled() {
+            self.write_vector_data(&mut file, vector_index)?;
+        }
+        
+        // Write document mappings
+        self.write_document_mappings(&mut file, collection)?;
+        
+        file.sync_all()?;
+        Ok(())
+    }
     
-    Ok(())
+    /// Zero-copy term lookup using memory-mapped data
+    fn search_term(&self, term: &str) -> Option<&[u8]> {
+        if self.data_ptr.is_null() {
+            return None;
+        }
+        
+        // Binary search in term offsets
+        let term_bytes = term.as_bytes();
+        let mut left = 0;
+        let mut right = self.metadata.term_offsets.len();
+        
+        while left < right {
+            let mid = (left + right) / 2;
+            let offset = self.metadata.term_offsets[mid] as usize;
+            
+            unsafe {
+                let term_ptr = self.data_ptr.add(offset);
+                let term_len = *(term_ptr as *const u32) as usize;
+                let stored_term = std::slice::from_raw_parts(term_ptr.add(4), term_len);
+                
+                match stored_term.cmp(term_bytes) {
+                    std::cmp::Ordering::Equal => {
+                        // Found term, return document list pointer
+                        let doclist_ptr = term_ptr.add(4 + term_len);
+                        let doclist_len = *(doclist_ptr as *const u32) as usize;
+                        return Some(std::slice::from_raw_parts(doclist_ptr.add(4), doclist_len));
+                    }
+                    std::cmp::Ordering::Less => left = mid + 1,
+                    std::cmp::Ordering::Greater => right = mid,
+                }
+            }
+        }
+        
+        None
+    }
+    
+    /// Zero-copy vector access via pointer arithmetic
+    fn get_vector(&self, doc_index: EntryIndex) -> Option<&[f32]> {
+        if self.metadata.vector_dim == 0 {
+            return None;
+        }
+        
+        let vector_section_offset = self.calculate_vector_section_offset();
+        let vector_size = self.metadata.vector_dim as usize * std::mem::size_of::<f32>();
+        let doc_offset = doc_index.0 as usize * vector_size;
+        
+        if vector_section_offset + doc_offset + vector_size > self.data_size {
+            return None;
+        }
+        
+        unsafe {
+            let vector_ptr = self.data_ptr.add(vector_section_offset + doc_offset) as *const f32;
+            Some(std::slice::from_raw_parts(vector_ptr, self.metadata.vector_dim as usize))
+        }
+    }
+    
+    /// Calculate offset to vector data section
+    fn calculate_vector_section_offset(&self) -> usize {
+        // Magic(8) + Metadata + Terms + DocumentLists = VectorSection
+        // This would be computed during serialization and stored in metadata
+        0 // Placeholder - actual implementation would track this
+    }
+    
+    // Private serialization helpers
+    unsafe fn deserialize_metadata(data_ptr: *const u8, data_size: usize) -> Result<IndexMetadata, std::io::Error> {
+        // Skip magic header (8 bytes)
+        let mut ptr = data_ptr.add(8);
+        
+        // Read metadata fields
+        let doc_count = *(ptr as *const u32);
+        ptr = ptr.add(4);
+        
+        let term_count = *(ptr as *const u32);
+        ptr = ptr.add(4);
+        
+        let vector_dim = *(ptr as *const u16);
+        ptr = ptr.add(2);
+        
+        let language_id = *(ptr as *const u8);
+        let language = match language_id {
+            0 => Language::English,
+            1 => Language::Spanish,
+            2 => Language::French,
+            // ... other languages
+            _ => Language::English,
+        };
+        
+        // Read term offsets
+        let mut term_offsets = Vec::with_capacity(term_count as usize);
+        for _ in 0..term_count {
+            ptr = ptr.add(1); // Alignment
+            term_offsets.push(*(ptr as *const u64));
+            ptr = ptr.add(8);
+        }
+        
+        Ok(IndexMetadata {
+            doc_count,
+            term_count,
+            vector_dim,
+            language,
+            term_offsets,
+            doc_id_map: HashMap::new(), // Would be populated from file
+        })
+    }
+    
+    fn write_metadata(&self, file: &mut std::fs::File, text_index: &TextIndex, vector_index: &VectorIndex, collection: &FlexibleCollection) -> Result<(), std::io::Error> {
+        use std::io::Write;
+        
+        file.write_all(&(collection.document_count as u32).to_le_bytes())?;
+        file.write_all(&(text_index.document_lists.len() as u32).to_le_bytes())?;
+        file.write_all(&(vector_index.dimension as u16).to_le_bytes())?;
+        file.write_all(&[0u8])?; // Language::English = 0
+        
+        Ok(())
+    }
+    
+    fn write_term_dictionary(&self, file: &mut std::fs::File, text_index: &TextIndex) -> Result<(), std::io::Error> {
+        // Sort terms for binary search
+        let mut terms: Vec<_> = text_index.document_lists.keys().collect();
+        terms.sort();
+        
+        for term in terms {
+            // Write term length + term + document list
+            file.write_all(&(term.len() as u32).to_le_bytes())?;
+            file.write_all(term.as_bytes())?;
+            
+            let doc_list = &text_index.document_lists[term];
+            file.write_all(&(doc_list.len() as u32).to_le_bytes())?;
+            
+            // Serialize document entries as packed structs
+            for entry in doc_list {
+                file.write_all(&entry.doc.0.to_le_bytes())?;
+                file.write_all(&[entry.attr.0])?;
+                file.write_all(&[entry.val.0])?;
+                file.write_all(&entry.token_idx.0.to_le_bytes())?;
+                file.write_all(&entry.position.0.to_le_bytes())?;
+                file.write_all(&entry.impact.to_le_bytes())?;
+            }
+        }
+        
+        Ok(())
+    }
+    
+    fn write_document_lists(&self, _file: &mut std::fs::File, _text_index: &TextIndex) -> Result<(), std::io::Error> {
+        // Document lists are written inline with terms in write_term_dictionary
+        Ok(())
+    }
+    
+    fn write_vector_data(&self, file: &mut std::fs::File, vector_index: &VectorIndex) -> Result<(), std::io::Error> {
+        // Write vectors as flat f32 array for zero-copy access
+        for chunk in vector_index.vectors.chunks(vector_index.dimension) {
+            for &value in chunk {
+                file.write_all(&value.to_le_bytes())?;
+            }
+        }
+        Ok(())
+    }
+    
+    fn write_document_mappings(&self, file: &mut std::fs::File, collection: &FlexibleCollection) -> Result<(), std::io::Error> {
+        use std::io::Write;
+        
+        // Write document ID mappings for reverse lookup
+        for (entry_idx, doc_id) in &collection.entries_by_index {
+            file.write_all(&entry_idx.0.to_le_bytes())?;
+            file.write_all(&(doc_id.0.len() as u32).to_le_bytes())?;
+            file.write_all(doc_id.0.as_bytes())?;
+        }
+        
+        Ok(())
+    }
+}
+
+unsafe impl Send for FileIndex {}
+unsafe impl Sync for FileIndex {}
+```
+
+## WASM Zero-Copy Memory Handling
+
+### SharedArrayBuffer Integration
+
+The search engine is designed for optimal WASM performance using zero-copy memory access between JavaScript and WebAssembly:
+
+```rust
+/// WASM-specific memory interface for zero-copy JS/TS integration
+#[cfg(target_arch = "wasm32")]
+pub mod wasm_interface {
+    use wasm_bindgen::prelude::*;
+    use js_sys::{SharedArrayBuffer, Uint8Array, Float32Array};
+    
+    /// Zero-copy search engine interface for JavaScript
+    #[wasm_bindgen]
+    pub struct WasmSearchEngine {
+        engine: crate::HybridSearchEngine,
+        shared_buffer: Option<SharedArrayBuffer>,
+        memory_offset: u32,
+    }
+    
+    #[wasm_bindgen]
+    impl WasmSearchEngine {
+        /// Create engine with shared memory buffer
+        #[wasm_bindgen(constructor)]
+        pub fn new(vector_dim: usize, shared_buffer: Option<SharedArrayBuffer>) -> WasmSearchEngine {
+            WasmSearchEngine {
+                engine: crate::HybridSearchEngine::with_vector_dimension(vector_dim),
+                shared_buffer,
+                memory_offset: 0,
+            }
+        }
+        
+        /// Add document using zero-copy vector data from SharedArrayBuffer
+        #[wasm_bindgen]
+        pub fn add_document_from_buffer(
+            &mut self, 
+            doc_id: &str,
+            text_fields: &JsValue, // JSON object with field names and text
+            vector_offset: u32,    // Offset in SharedArrayBuffer
+            language_code: u8      // Language enum as u8
+        ) -> Result<(), JsValue> {
+            let language = self.u8_to_language(language_code);
+            
+            // Parse text fields from JS object
+            let fields: std::collections::HashMap<String, String> = 
+                serde_wasm_bindgen::from_value(text_fields.clone())?;
+            
+            // Create document
+            let mut doc = crate::Document::new(doc_id);
+            
+            for (field_name, text) in fields {
+                doc = doc.attribute(field_name, crate::Value::Text(text));
+            }
+            
+            // Zero-copy vector access from SharedArrayBuffer
+            if let Some(ref buffer) = self.shared_buffer {
+                let vector = self.get_vector_from_shared_buffer(buffer, vector_offset)?;
+                doc = doc.with_vector(vector);
+            }
+            
+            self.engine.add_document(doc, language)
+                .map_err(|e| JsValue::from_str(&format!("Error: {:?}", e)))?;
+            
+            Ok(())
+        }
+        
+        /// Search with results written directly to SharedArrayBuffer
+        #[wasm_bindgen]
+        pub fn search_to_buffer(
+            &self,
+            query: &str,
+            language_code: u8,
+            vector_offset: Option<u32>,
+            results_offset: u32,  // Where to write results in SharedArrayBuffer
+            max_results: usize
+        ) -> Result<u32, JsValue> {
+            let language = self.u8_to_language(language_code);
+            
+            // Get query vector from SharedArrayBuffer if provided
+            let query_vector = if let (Some(offset), Some(ref buffer)) = (vector_offset, &self.shared_buffer) {
+                Some(self.get_vector_from_shared_buffer(buffer, offset)?)
+            } else {
+                None
+            };
+            
+            // Perform hybrid search
+            let results = self.engine.search_hybrid(
+                Some(query),
+                language,
+                query_vector.as_deref(),
+                max_results
+            );
+            
+            // Write results directly to SharedArrayBuffer
+            if let Some(ref buffer) = self.shared_buffer {
+                self.write_results_to_shared_buffer(buffer, results_offset, &results)?;
+            }
+            
+            Ok(results.len() as u32)
+        }
+        
+        /// Load index from memory-mapped file data
+        #[wasm_bindgen]
+        pub fn load_from_buffer(&mut self, index_data: &Uint8Array) -> Result<(), JsValue> {
+            // Convert Uint8Array to Rust slice for zero-copy file index loading
+            let data_ptr = index_data.raw_copy_to_ptr() as *const u8;
+            let data_len = index_data.length() as usize;
+            
+            // Create FileIndex from raw data
+            let file_index = unsafe {
+                crate::FileIndex::from_raw_data(data_ptr, data_len)
+            }.map_err(|e| JsValue::from_str(&format!("Load error: {:?}", e)))?;
+            
+            // Update engine with loaded index
+            self.engine.load_file_index(file_index);
+            
+            Ok(())
+        }
+        
+        // Private helper methods
+        fn u8_to_language(&self, code: u8) -> crate::Language {
+            match code {
+                0 => crate::Language::English,
+                1 => crate::Language::Spanish,
+                2 => crate::Language::French,
+                3 => crate::Language::German,
+                4 => crate::Language::Italian,
+                5 => crate::Language::Portuguese,
+                6 => crate::Language::Russian,
+                7 => crate::Language::Dutch,
+                8 => crate::Language::Danish,
+                9 => crate::Language::Finnish,
+                10 => crate::Language::Hungarian,
+                11 => crate::Language::Norwegian,
+                12 => crate::Language::Romanian,
+                13 => crate::Language::Swedish,
+                14 => crate::Language::Turkish,
+                _ => crate::Language::English,
+            }
+        }
+        
+        fn get_vector_from_shared_buffer(&self, buffer: &SharedArrayBuffer, offset: u32) -> Result<Vec<f32>, JsValue> {
+            let float_array = Float32Array::new_with_byte_offset_and_length(
+                buffer,
+                offset,
+                self.engine.vector_index.dimension as u32
+            );
+            
+            // Zero-copy conversion to Rust Vec
+            let mut vector = vec![0.0f32; self.engine.vector_index.dimension];
+            float_array.copy_to(&mut vector);
+            
+            Ok(vector)
+        }
+        
+        fn write_results_to_shared_buffer(
+            &self, 
+            buffer: &SharedArrayBuffer, 
+            offset: u32, 
+            results: &[(crate::DocumentId, f32)]
+        ) -> Result<(), JsValue> {
+            // Write results as: [count: u32][doc_id_len: u32, doc_id: bytes, score: f32]...
+            let uint8_array = Uint8Array::new_with_byte_offset(buffer, offset);
+            let mut write_offset = 0;
+            
+            // Write result count
+            let count_bytes = (results.len() as u32).to_le_bytes();
+            for (i, &byte) in count_bytes.iter().enumerate() {
+                uint8_array.set_index(write_offset + i as u32, byte);
+            }
+            write_offset += 4;
+            
+            // Write each result
+            for (doc_id, score) in results {
+                let doc_id_bytes = doc_id.0.as_bytes();
+                let doc_id_len = doc_id_bytes.len() as u32;
+                
+                // Write doc_id length
+                let len_bytes = doc_id_len.to_le_bytes();
+                for (i, &byte) in len_bytes.iter().enumerate() {
+                    uint8_array.set_index(write_offset + i as u32, byte);
+                }
+                write_offset += 4;
+                
+                // Write doc_id
+                for (i, &byte) in doc_id_bytes.iter().enumerate() {
+                    uint8_array.set_index(write_offset + i as u32, byte);
+                }
+                write_offset += doc_id_len;
+                
+                // Write score
+                let score_bytes = score.to_le_bytes();
+                for (i, &byte) in score_bytes.iter().enumerate() {
+                    uint8_array.set_index(write_offset + i as u32, byte);
+                }
+                write_offset += 4;
+            }
+            
+            Ok(())
+        }
+    }
 }
 ```
+
+### TypeScript Integration
+
+```typescript
+// TypeScript interface for zero-copy WASM search engine
+export interface SearchResult {
+  docId: string;
+  score: number;
+}
+
+export class WasmSearchEngine {
+  private wasmEngine: any;
+  private sharedBuffer: SharedArrayBuffer;
+  private vectorDimension: number;
+  
+  constructor(vectorDimension: number, sharedBufferSize: number = 64 * 1024 * 1024) {
+    this.vectorDimension = vectorDimension;
+    this.sharedBuffer = new SharedArrayBuffer(sharedBufferSize);
+    this.wasmEngine = new wasm.WasmSearchEngine(vectorDimension, this.sharedBuffer);
+  }
+  
+  // Add document with zero-copy vector data
+  addDocument(
+    docId: string, 
+    textFields: Record<string, string>, 
+    vector: Float32Array,
+    language: Language = Language.English
+  ): void {
+    // Write vector to SharedArrayBuffer
+    const vectorOffset = this.allocateVector();
+    const vectorView = new Float32Array(this.sharedBuffer, vectorOffset, this.vectorDimension);
+    vectorView.set(vector);
+    
+    // Add document via WASM (zero-copy vector access)
+    this.wasmEngine.add_document_from_buffer(
+      docId, 
+      textFields, 
+      vectorOffset, 
+      language as number
+    );
+  }
+  
+  // Search with zero-copy result handling
+  search(
+    query: string, 
+    queryVector?: Float32Array, 
+    language: Language = Language.English,
+    maxResults: number = 10
+  ): SearchResult[] {
+    const resultsOffset = this.allocateResults(maxResults);
+    
+    let vectorOffset: number | undefined;
+    if (queryVector) {
+      vectorOffset = this.allocateVector();
+      const vectorView = new Float32Array(this.sharedBuffer, vectorOffset, this.vectorDimension);
+      vectorView.set(queryVector);
+    }
+    
+    // Perform search with results written directly to SharedArrayBuffer
+    const resultCount = this.wasmEngine.search_to_buffer(
+      query,
+      language as number,
+      vectorOffset,
+      resultsOffset,
+      maxResults
+    );
+    
+    // Zero-copy result parsing
+    return this.parseResultsFromBuffer(resultsOffset, resultCount);
+  }
+  
+  // Load pre-built index from ArrayBuffer (zero-copy)
+  loadIndex(indexData: ArrayBuffer): void {
+    const uint8Array = new Uint8Array(indexData);
+    this.wasmEngine.load_from_buffer(uint8Array);
+  }
+  
+  private allocateVector(): number {
+    // Simple bump allocator for demo - production would use proper memory management
+    static nextOffset = 0;
+    const offset = nextOffset;
+    nextOffset += this.vectorDimension * 4; // 4 bytes per f32
+    return offset;
+  }
+  
+  private allocateResults(maxResults: number): number {
+    // Allocate space for results
+    static resultsBase = 32 * 1024 * 1024; // Start results at 32MB
+    return resultsBase;
+  }
+  
+  private parseResultsFromBuffer(offset: number, count: number): SearchResult[] {
+    const view = new DataView(this.sharedBuffer, offset);
+    let readOffset = 4; // Skip count (already provided)
+    
+    const results: SearchResult[] = [];
+    
