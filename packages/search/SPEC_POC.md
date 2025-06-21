@@ -792,7 +792,7 @@ impl BM25Scorer {
 
 ```rust
 /// Extended document structure for text index with position information
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Archive, Deserialize, Serialize)]
 struct TextDocumentEntry {
     /// Document identifier (primary sort key)
     doc: EntryIndex,
