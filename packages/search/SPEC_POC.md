@@ -14,7 +14,7 @@ let schema = Schema::builder()
     .build();
 
 // Create hybrid search engine with schema
-let mut engine = HybridSearchEngine::with_schema(&schema);
+let mut engine = SearchEngine::with_schema(&schema);
 
 // Add documents (tokenizer config is automatically applied)
 let doc1 = Document::new("doc1")
@@ -2272,7 +2272,7 @@ enum FusionStrategy {
 }
 
 /// Main hybrid search engine combining text and vector search
-struct HybridSearchEngine {
+struct SearchEngine {
     /// Document collection with dynamic schema
     collection: Collection,
     /// Text search index
@@ -2281,7 +2281,7 @@ struct HybridSearchEngine {
     vector_index: VectorIndex,
 }
 
-impl HybridSearchEngine {
+impl SearchEngine {
     /// Create new hybrid search engine with BM25FS⁺ configuration
     fn new() -> Self {
         Self::with_config(BM25Config::default(), VectorIndex::DEFAULT_DIMENSION)
@@ -2747,61 +2747,218 @@ fn load_index_from_storage(key: &str) -> Option<Vec<u8>> {
 }
 ```
 
+## Document Store
+
+```rust
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::io::Read;
+use brotli::{CompressorReader, Decompressor};
+use serde::{Serialize, Deserialize};
+use lru::LruCache;
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
+
+/// Compressed document storage separate from search index
+#[derive(Debug)]
+pub struct DocumentStore {
+    /// Maps DocumentId to compressed JSON bytes
+    documents: HashMap<DocumentId, Vec<u8>>,
+    /// Optional LRU cache for recently accessed documents
+    cache: Mutex<LruCache<DocumentId, Arc<Document>>>,
+}
+
+impl DocumentStore {
+    /// Create new document store with default cache size
+    pub fn new() -> Self {
+        Self::with_cache_size(100)
+    }
+    
+    /// Create document store with custom cache size
+    pub fn with_cache_size(cache_size: usize) -> Self {
+        Self {
+            documents: HashMap::new(),
+            cache: Mutex::new(LruCache::new(cache_size)),
+        }
+    }
+    
+    /// Store document with Brotli compression
+    pub fn store_document(&mut self, doc: &Document) -> Result<(), IndexError> {
+        // Serialize to JSON
+        let json = serde_json::to_vec(doc)
+            .map_err(|e| IndexError::SerializationError(format!("JSON serialization failed: {}", e)))?;
+        
+        // Compress with Brotli (quality level 6 for balanced speed/compression)
+        let mut compressed = Vec::new();
+        let mut compressor = CompressorReader::new(&json[..], 4096, 6, 22);
+        compressor.read_to_end(&mut compressed)
+            .map_err(|e| IndexError::SerializationError(format!("Brotli compression failed: {}", e)))?;
+        
+        // Store compressed data
+        self.documents.insert(doc.id.clone(), compressed);
+        
+        // Invalidate cache entry if it exists
+        if let Ok(mut cache) = self.cache.try_lock() {
+            cache.pop(&doc.id);
+        }
+        
+        Ok(())
+    }
+    
+    /// Retrieve and decompress document
+    pub fn get_document(&self, doc_id: &DocumentId) -> Result<Option<Document>, IndexError> {
+        // Check cache first
+        if let Ok(mut cache) = self.cache.try_lock() {
+            if let Some(cached_doc) = cache.get(doc_id) {
+                return Ok(Some((**cached_doc).clone()));
+            }
+        }
+        
+        // Get compressed data
+        let Some(compressed) = self.documents.get(doc_id) else {
+            return Ok(None);
+        };
+        
+        // Decompress
+        let mut decompressed = Vec::new();
+        let mut decompressor = Decompressor::new(&compressed[..], 4096);
+        decompressor.read_to_end(&mut decompressed)
+            .map_err(|e| IndexError::SerializationError(format!("Brotli decompression failed: {}", e)))?;
+        
+        // Deserialize from JSON
+        let doc: Document = serde_json::from_slice(&decompressed)
+            .map_err(|e| IndexError::SerializationError(format!("JSON deserialization failed: {}", e)))?;
+        
+        // Cache the result
+        if let Ok(mut cache) = self.cache.try_lock() {
+            cache.put(doc_id.clone(), Arc::new(doc.clone()));
+        }
+        
+        Ok(Some(doc))
+    }
+    
+    /// Remove document from store
+    pub fn remove_document(&mut self, doc_id: &DocumentId) -> bool {
+        // Remove from storage
+        let removed = self.documents.remove(doc_id).is_some();
+        
+        // Remove from cache
+        if let Ok(mut cache) = self.cache.try_lock() {
+            cache.pop(doc_id);
+        }
+        
+        removed
+    }
+    
+    /// Get number of stored documents
+    pub fn document_count(&self) -> usize {
+        self.documents.len()
+    }
+    
+    /// Check if document exists in store
+    pub fn contains_document(&self, doc_id: &DocumentId) -> bool {
+        self.documents.contains_key(doc_id)
+    }
+    
+    /// Get all document IDs
+    pub fn document_ids(&self) -> Vec<DocumentId> {
+        self.documents.keys().cloned().collect()
+    }
+    
+    /// Clear all documents and cache
+    pub fn clear(&mut self) {
+        self.documents.clear();
+        if let Ok(mut cache) = self.cache.try_lock() {
+            cache.clear();
+        }
+    }
+    
+    /// Get storage statistics
+    pub fn storage_stats(&self) -> DocumentStoreStats {
+        let total_compressed_size: usize = self.documents.values().map(|v| v.len()).sum();
+        let cache_size = self.cache.try_lock()
+            .map(|cache| cache.len())
+            .unwrap_or(0);
+        
+        DocumentStoreStats {
+            document_count: self.documents.len(),
+            total_compressed_bytes: total_compressed_size,
+            cache_entries: cache_size,
+            average_compressed_size: if self.documents.is_empty() {
+                0.0
+            } else {
+                total_compressed_size as f64 / self.documents.len() as f64
+            },
+        }
+    }
+}
+
+/// Statistics about document storage
+#[derive(Debug, Clone)]
+pub struct DocumentStoreStats {
+    pub document_count: usize,
+    pub total_compressed_bytes: usize,
+    pub cache_entries: usize,
+    pub average_compressed_size: f64,
+}
+
+/// Serializable document store for file persistence
+#[derive(Archive, RkyvDeserialize, RkyvSerialize, Debug, Clone)]
+#[archive(compare(PartialEq), check_bytes)]
+struct SerializableDocumentStore {
+    /// Document ID to compressed data mappings
+    documents: Vec<(String, Vec<u8>)>,
+    /// Document count for validation
+    document_count: u32,
+}
+
+impl DocumentStore {
+    /// Serialize document store to bytes for file storage
+    pub fn serialize_to_bytes(&self) -> Result<Vec<u8>, IndexError> {
+        use rkyv::ser::{Serializer, serializers::AllocSerializer};
+        
+        let serializable = SerializableDocumentStore {
+            documents: self.documents.iter()
+                .map(|(doc_id, compressed)| (doc_id.as_str().to_string(), compressed.clone()))
+                .collect(),
+            document_count: self.documents.len() as u32,
+        };
+        
+        let mut serializer = AllocSerializer::<4096>::default();
+        serializer.serialize_value(&serializable)
+            .map_err(|e| IndexError::SerializationError(format!("Document store serialization failed: {}", e)))?;
+        
+        Ok(serializer.into_serializer().into_inner().to_vec())
+    }
+    
+    /// Deserialize document store from bytes
+    pub fn deserialize_from_bytes(data: &[u8]) -> Result<Self, IndexError> {
+        use rkyv::check_archived_root;
+        
+        // Validate and get archived data
+        let archived = unsafe { rkyv::archived_root::<SerializableDocumentStore>(data) };
+        check_archived_root::<SerializableDocumentStore>(data)
+            .map_err(|e| IndexError::SerializationError(format!("Document store validation failed: {}", e)))?;
+        
+        // Reconstruct document store
+        let mut documents = HashMap::new();
+        for doc_entry in archived.documents.iter() {
+            let doc_id = DocumentId::new(&doc_entry.0);
+            let compressed = doc_entry.1.to_vec();
+            documents.insert(doc_id, compressed);
+        }
+        
+        Ok(Self {
+            documents,
+            cache: Mutex::new(LruCache::new(100)), // Default cache size
+        })
+    }
+}
+```
+
 ## Example Usage
 
 ### Schema Definition with Tag Fields
 
-```rust
-// Define schema with tag fields
-let schema = Schema::builder()
-    .title_field("Rust WebAssembly Tutorial")
-    .body_field("Learn how to build fast web applications...")
-    .tag_field("categories")        // Field for exact-match categories
-    .tag_field("tags")             // Field for keywords/labels
-    .build();
-
-let mut engine = HybridSearchEngine::with_schema(&schema);
-```
-
-### Document Creation with Tags
-
-```rust
-// Create documents with different tag approaches
-let doc1 = Document::new("doc1")
-    .attribute("title", "Rust WebAssembly Tutorial")
-    .attribute("content", "Learn how to build fast web applications...")
-    .tag("categories", "tutorial")           // Single tag
-    .tags("tags", ["rust", "webassembly", "performance"])  // Multiple tags
-    .build();
-
-let doc2 = Document::new("doc2")
-    .attribute("title", "JavaScript Performance Tips")
-    .attribute("content", "Optimize your JavaScript applications...")
-    .tags("categories", ["tutorial", "performance"])  // Multiple categories
-    .tag("tags", "javascript")              // Single tag
-    .build();
-
-// Tags are automatically converted to Value::Tag and joined with spaces
-// e.g., ["rust", "webassembly", "performance"] becomes "rust webassembly performance"
-
-// Add documents to index
-engine.add_document(doc1, Language::English)?;
-engine.add_document(doc2, Language::English)?;
-```
-
-### Type Compatibility
-
-The fix ensures that tag fields accept both:
-- **Schema-defined tags**: `tag_field()` registers as `Kind::Tag`
-- **Document tags**: `.tag()` and `.tags()` create `Value::Tag`
-- **Flexible compatibility**: `Kind::Tag` and `Kind::Text` are compatible for indexing
-
-This prevents the `TypeMismatch` error that occurred when:
-1. Schema defined a field as `Kind::Tag`
-2. Document used `.attribute()` which created `Value::Text`
-3. Type inference returned `Kind::Text` ≠ `Kind::Tag`
-
-### Schema Definition with Semantic Field Types
 
 - **Semantic clarity**: Users specify meaning, not numbers
 - **Arbitrary field names**: Can use any field name with semantic meaning
@@ -2822,20 +2979,86 @@ let schema = Schema::builder()
 let schema_custom = Schema::builder()
     .attribute_with_weight("special_field", Kind::Text, 3.0, Some(0.8))
     .build();
+
+let mut engine = SearchEngine::with_schema(&schema);
 ```
+
+### Document Creation with Tags
+
+```rust
+// Create documents with different tag approaches
+let doc1 = Document::new("doc1")
+    .attribute("title", "Rust WebAssembly Tutorial")
+    .attribute("content", "Learn how to build fast web applications...")
+    .tag("categories", "tutorial")           // Single tag
+    .tags("tags", ["rust", "webassembly", "performance"])  // Multiple tags
+    .vector(&[0.1, 0.2, 0.3, 0.4, 0.5]) // Optional vector for hybrid search
+    .build();
+
+let doc2 = Document::new("doc2")
+    .attribute("title", "JavaScript Performance Tips")
+    .attribute("content", "Optimize your JavaScript applications...")
+    .tags("categories", ["tutorial", "performance"])  // Multiple categories
+    .tag("tags", "javascript")              // Single tag
+    .vector(&[0.1, 0.2, 0.3, 0.4, 0.5]) // Optional vector for hybrid search
+    .build();
+
+// Create Document Store 
+let mut store = DocumentStore::new();
+// Store documents in the Document Store
+store.store_document(&doc1)?;
+store.store_document(&doc2)?;
+
+// serialize the Document Store to bytes for persistence
+let serialized_store = store.serialize_to_bytes()?;
+// Deserialize the Document Store from bytes
+let deserialized_store = DocumentStore::deserialize_from_bytes(&serialized_store)?;
+
+// Tags are automatically converted to Value::Tag and joined with spaces
+// e.g., ["rust", "webassembly", "performance"] becomes "rust webassembly performance"
+
+// Add documents to index
+engine.add_document(doc1, Language::English)?;
+engine.add_document(doc2, Language::English)?;
+
+engine.search(
+    Some("webassembly performance"),
+    Some(Language::English),
+    None,
+    Some(10),
+    FusionStrategy::RRF,
+    None
+);
+
+// Get real document content from Document Store
+let retrieved_doc1 = deserialized_store.get_document(&DocumentId::new("doc1"))?;
+```
+
+### Type Compatibility
+
+The fix ensures that tag fields accept both:
+- **Schema-defined tags**: `tag_field()` registers as `Kind::Tag`
+- **Document tags**: `.tag()` and `.tags()` create `Value::Tag`
+- **Flexible compatibility**: `Kind::Tag` and `Kind::Text` are compatible for indexing
+
+This prevents the `TypeMismatch` error that occurred when:
+1. Schema defined a field as `Kind::Tag`
+2. Document used `.attribute()` which created `Value::Text`
+3. Type inference returned `Kind::Text` ≠ `Kind::Tag`
+
 
 ### Schema-to-Engine Integration
 
 ```rust
 // BEFORE: Field weights ignored (always uses defaults)
-let mut engine_old = HybridSearchEngine::new(); // BM25Config::default() with empty field_weights
+let mut engine_old = SearchEngine::new(); // BM25Config::default() with empty field_weights
 
 // AFTER: Schema-driven field weights properly applied
-let mut engine = HybridSearchEngine::with_schema(&schema); // BM25Config::new(&schema) with schema field_weights
+let mut engine = SearchEngine::with_schema(&schema); // BM25Config::new(&schema) with schema field_weights
 
 // Alternative constructors for different use cases
-let mut engine_with_vectors = HybridSearchEngine::with_schema_and_vector_dimension(&schema, 384);
-let mut engine_custom = HybridSearchEngine::with_config(BM25Config::new(&schema), 768);
+let mut engine_with_vectors = SearchEngine::with_schema_and_vector_dimension(&schema, 384);
+let mut engine_custom = SearchEngine::with_config(BM25Config::new(&schema), 768);
 
 // Now when documents are indexed, the schema field weights are automatically applied
 let doc = Document::new("article_1")
