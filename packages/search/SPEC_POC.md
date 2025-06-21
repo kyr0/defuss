@@ -157,28 +157,27 @@ use wasm_bindgen::prelude::*;
 use rayon::prelude::*;
 ```
 
-
 ### Required Rust Toolchain Configuration
 
 ```toml
 # Cargo.toml - WebAssembly-optimized build configuration
 [profile.release]
 opt-level = 3              # Maximum optimization level (-O3 equivalent)
-lto = true                # Link-time optimization for cross-crate inlining
-codegen-units = 1         # Single codegen unit for maximum optimization
-panic = "abort"           # Reduce binary size by removing unwinding code
-strip = true              # Strip debug symbols from final binary
+lto = true                 # Link-time optimization for cross-crate inlining
+codegen-units = 1          # Single codegen unit for maximum optimization
+panic = "abort"            # Reduce binary size by removing unwinding code
+strip = true               # Strip debug symbols from final binary
 
 [profile.release.package."*"]
-opt-level = 3             # Ensure all dependencies use maximum optimization
+opt-level = 3              # Ensure all dependencies use maximum optimization
 
 # WebAssembly-specific target configuration
 [target.wasm32-unknown-unknown]
 rustflags = [
-    "-C", "target-feature=+simd128",     # Enable WebAssembly SIMD 128-bit vectors
-    "-C", "target-feature=+bulk-memory", # Enable bulk memory operations
-    "-C", "target-feature=+mutable-globals", # Required for some optimizations
-    "-C", "target-cpu=generic",          # Generic CPU for broad compatibility
+    "-C", "target-feature=+simd128",          # Enable WebAssembly SIMD 128-bit vectors
+    "-C", "target-feature=+bulk-memory",      # Enable bulk memory operations
+    "-C", "target-feature=+mutable-globals",  # Required for some optimizations
+    "-C", "target-cpu=generic",               # Generic CPU for broad compatibility
 ]
 ```
 
@@ -1888,3 +1887,27 @@ impl FileIndex {
     }
 }
 ```
+
+## Example Usage
+
+- **Semantic clarity**: Users specify meaning, not numbers
+- **Arbitrary field names**: Can use any field name with semantic meaning
+- **Research-grounded**: Weights based on information retrieval research
+- **Flexible**: Can still override with custom weights when needed
+
+```rust
+// Semantic approach (recommended)
+let schema = Schema::builder()
+    .title_field("article_title")      // Gets weight 2.5, b=0.75
+    .description_field("summary")      // Gets weight 1.5, b=0.75  
+    .body_field("main_content")        // Gets weight 1.0, b=0.75
+    .tags_field("category_labels")     // Gets weight 1.8, b=0.5
+    .attribute_semantic("custom_heading", Kind::Text, SemanticKind::Heading)
+    .build();
+
+// Still supports manual weights
+let schema = Schema::builder()
+    .attribute_with_weight("special_field", Kind::Text, 3.0, Some(0.8))
+    .build();
+```
+
