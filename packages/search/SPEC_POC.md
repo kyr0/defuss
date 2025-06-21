@@ -1,5 +1,48 @@
 # `defuss-search` - Hybrid Text & Vector Search POC
 
+## Quick Start with Schema-Integrated Tokenizer
+
+```rust
+use defuss_search::*;
+
+// Create schema with integrated tokenizer configuration
+let schema = Schema::builder()
+    .title_field("title")       // BM25F weight: 2.5, b: 0.75
+    .body_field("content")      // BM25F weight: 1.0, b: 0.75  
+    .tags_field("tags")         // BM25F weight: 1.8, b: 0.5
+    .with_technical_tokenizer() // Include numbers, longer tokens for technical content
+    .build();
+
+// Create hybrid search engine with schema
+let mut engine = HybridSearchEngine::with_schema(&schema);
+
+// Add documents (tokenizer config is automatically applied)
+let doc1 = Document::new("doc1")
+    .attribute("title", "Machine Learning with Python 3.9+")
+    .attribute("content", "Learn ML algorithms like SVM, k-means clustering...")
+    .attribute("tags", "python machine-learning algorithms")
+    .with_vector(embedding_vector);
+
+engine.add_document(doc1, Language::English)?;
+
+// Search (uses schema's tokenizer configuration automatically)
+let results = engine.search_hybrid_rrf(
+    Some("machine learning python"),
+    Some(&embedding_query),
+    Language::English,
+    None, // Search all attributes
+    Some(10)
+);
+```
+
+**Key Benefits of Schema-Integrated Tokenizer:**
+- **Consistency**: All text processing uses the same tokenizer configuration
+- **Simplicity**: No need to pass tokenizer config to every method
+- **Schema-Driven**: Tokenizer behavior is part of the index definition
+- **Flexibility**: Easy to switch between conservative, technical, or custom tokenizer configs
+
+## Architecture Overview
+
 This document describes a **proof-of-concept implementation** of a hybrid search engine focusing on **TextIndex** and **VectorIndex** components for WASM deployment. This POC is designed for **≤ 100,000 documents** with optional vector embeddings, optimized for extreme speed using bump allocators, SIMD operations, and parallel processing.
 
 ## Summary
@@ -450,6 +493,8 @@ struct Schema {
     attributes: HashMap<String, Kind>,
     field_weights: HashMap<String, FieldWeight>,
     semantic_kinds: HashMap<String, SemanticKind>,
+    /// Tokenizer configuration for consistent text processing
+    tokenizer_config: TokenizerConfig,
 }
 
 impl Schema {
@@ -463,6 +508,7 @@ struct SchemaBuilder {
     attributes: HashMap<String, Kind>,
     field_weights: HashMap<String, FieldWeight>,
     semantic_kinds: HashMap<String, SemanticKind>,
+    tokenizer_config: TokenizerConfig,
 }
 
 impl SchemaBuilder {
@@ -554,11 +600,30 @@ impl SchemaBuilder {
         self.attribute_semantic(name, Kind::Text, SemanticKind::Tags)
     }
 
+    /// Configure tokenizer for text processing
+    pub fn with_tokenizer(mut self, tokenizer_config: TokenizerConfig) -> Self {
+        self.tokenizer_config = tokenizer_config;
+        self
+    }
+    
+    /// Use conservative tokenizer configuration (min_length: 2, excludes numbers)
+    pub fn with_conservative_tokenizer(mut self) -> Self {
+        self.tokenizer_config = TokenizerConfig::conservative();
+        self
+    }
+    
+    /// Use technical tokenizer configuration (includes all tokens, longer max length)
+    pub fn with_technical_tokenizer(mut self) -> Self {
+        self.tokenizer_config = TokenizerConfig::technical();
+        self
+    }
+
     pub fn build(self) -> Schema {
         Schema {
             attributes: self.attributes,
             field_weights: self.field_weights,
             semantic_kinds: self.semantic_kinds,
+            tokenizer_config: self.tokenizer_config,
         }
     }
 }
@@ -771,6 +836,8 @@ struct BM25Config {
     field_weights: HashMap<String, FieldWeight>,
     /// Semantic kinds for automatic weight assignment
     semantic_kinds: HashMap<String, SemanticKind>,
+    /// Tokenizer configuration for text processing
+    tokenizer_config: TokenizerConfig,
 }
 
 impl BM25Config {
@@ -780,6 +847,7 @@ impl BM25Config {
             delta: 0.5,
             field_weights: schema.field_weights.clone(),
             semantic_kinds: schema.semantic_kinds.clone(),
+            tokenizer_config: schema.tokenizer_config.clone(),
         }
     }
     
@@ -819,6 +887,7 @@ impl Default for BM25Config {
             delta: 0.5,
             field_weights: HashMap::new(), // Start empty, use get_field_weight for defaults
             semantic_kinds: HashMap::new(), // Start empty, populated from schema
+            tokenizer_config: TokenizerConfig::default(),
         }
     }
 }
@@ -1670,7 +1739,7 @@ use stop_words::{get, Language as StopWordsLanguage};
 use rust_stemmers::{Algorithm, Stemmer};
 
 /// Token processing configuration for text indexing
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 struct TokenizerConfig {
     /// Minimum token length (default: 1 to include acronyms like "AI", "ML")
     min_length: usize,
@@ -1704,16 +1773,6 @@ impl TokenizerConfig {
         }
     }
     
-    /// Technical configuration for code, APIs, and technical documentation
-    pub fn technical() -> Self {
-        Self {
-            min_length: 1,      // Include all tokens (variable names, etc.)
-            max_length: 100,    // Very long identifiers and URLs
-            include_numbers: true,
-            include_mixed: true,
-        }
-    }
-    
     /// Build regex pattern from configuration
     fn build_regex(&self) -> regex::Regex {
         let pattern = if self.include_numbers && self.include_mixed {
@@ -1740,9 +1799,9 @@ struct Token {
 }
 
 impl TextIndex {
-    /// Process text input into tokens with configurable tokenization
-    fn process_text(input: &str, language: Language) -> Vec<Token> {
-        Self::process_text_with_config(input, language, &TokenizerConfig::default())
+    /// Process text input into tokens using the configured tokenizer
+    fn process_text(&self, input: &str, language: Language) -> Vec<Token> {
+        Self::process_text_with_config(input, language, &self.scorer.config.tokenizer_config)
     }
     
     /// Process text with custom tokenizer configuration
@@ -1840,9 +1899,6 @@ impl<'n> Iterator for TrieNodeTermIterator<'n> {
             for child in node.children.values() {
                 self.queue.push_back(child);
             }
-            
-                       
-
             
             // Return term if this node has one
             if let Some(ref term) = node.term {
@@ -2032,10 +2088,6 @@ impl VectorIndex {
     /// Create new vector index with optional configuration
     fn new() -> Self {
         Self::with_dimension(Self::DEFAULT_DIMENSION)
-    }
-    
-    fn with_config(config: BM25Config) -> Self {
-        Self::with_full_config(config, TokenizerConfig::default())
     }
     
     /// Create vector index with specific dimensions (0 = disable vectors)
@@ -2256,15 +2308,6 @@ impl HybridSearchEngine {
         }
     }
     
-    /// Create with schema and tokenizer configuration
-    fn with_schema_and_tokenizer(schema: &Schema, tokenizer_config: TokenizerConfig) -> Self {
-        Self {
-            collection: Collection::with_schema(schema),
-            text_index: TextIndex::with_full_config(BM25Config::new(schema), tokenizer_config),
-            vector_index: VectorIndex::with_dimension(VectorIndex::DEFAULT_DIMENSION),
-        }
-    }
-    
     /// Add a document to the index with BM25FS⁺ scoring and language support
     fn add_document(&mut self, document: Document, language: Language) -> Result<(), IndexError> {
         // Validate document first
@@ -2280,7 +2323,7 @@ impl HybridSearchEngine {
                 let value_index = ValueIndex(value_idx as u8);
                 
                 if let Value::Text(text) = value {
-                    let tokens = TextIndex::process_text(text, language);
+                    let tokens = self.text_index.process_text(text, language);
                     let field_length = tokens.len() as f32;
                     
                     // Build term frequency map for BM25FS⁺ calculation
@@ -2299,56 +2342,6 @@ impl HybridSearchEngine {
                             token.index,
                             token.position,
                             attr_name, // Field name for BM25F weights
-                            tf,
-                            field_length,
-                        );
-                    }
-                }
-            }
-        }
-        
-        // Index vector if present
-        if let Some(ref vector) = document.vector {
-            self.vector_index.insert(entry_index, Some(vector))?;
-        }
-        
-        Ok(())
-    }
-    
-    /// Add a document with configurable text processing
-    fn add_document_with_tokenizer(&mut self, document: Document, language: Language, tokenizer_config: &TokenizerConfig) -> Result<(), IndexError> {
-        // Validate document first
-        document.validate()?;
-        
-        // Register document with collection
-        let entry_index = self.collection.add_document(document.id.clone())?;
-        
-        // Index text attributes with configurable tokenization
-        for (attr_name, values) in &document.attributes {
-            for (value_idx, value) in values.iter().enumerate() {
-                let attr_index = self.collection.get_or_register_attribute(attr_name, value)?;
-                let value_index = ValueIndex(value_idx as u8);
-                
-                if let Value::Text(text) = value {
-                    let tokens = TextIndex::process_text_with_config(text, language, tokenizer_config);
-                    let field_length = tokens.len() as f32;
-                    
-                    // Build term frequency map for BM25FS⁺ calculation
-                    let mut tf_map = HashMap::new();
-                    for token in &tokens {
-                        *tf_map.entry(&token.term).or_insert(0u32) += 1;
-                    }
-                    
-                    for token in tokens {
-                        let tf = tf_map[&token.term];
-                        self.text_index.insert(
-                            entry_index,
-                            attr_index,
-                            value_index,
-                            &token.term,
-                            token.index,
-                            token.position,
-                            attr_name,
                             tf,
                             field_length,
                         );
@@ -2845,3 +2838,29 @@ engine.add_document(doc, Language::English)?;
 // Schema field weights now properly influence BM25FS⁺ scoring
 let results = engine.search_text_bm25("machine learning", Some(Language::English), None, Some(10));
 ```
+
+### Schema-Driven Design
+
+The search engine uses a **schema-first approach** where all indexing behavior is defined upfront:
+
+- **Field Types & Weights**: Define which fields are text vs. tags, with automatic BM25F weight assignment
+- **Tokenizer Configuration**: Text processing rules (min/max token length, number inclusion, etc.) are part of the schema
+- **Semantic Mapping**: Fields can be mapped to semantic types (Title, Body, Tags) for intelligent weight assignment
+- **Consistency**: All operations use the same schema-defined configuration, eliminating parameter drift
+
+```rust
+// Schema defines the complete indexing strategy
+let schema = Schema::builder()
+    .title_field("name")                    // BM25F weight: 2.5
+    .description_field("summary")           // BM25F weight: 1.5  
+    .body_field("content")                  // BM25F weight: 1.0
+    .tags_field("categories")               // BM25F weight: 1.8
+    .with_conservative_tokenizer()          // min_length: 2, no numbers
+    .build();
+```
+
+**Benefits**:
+- **No Configuration Drift**: All text processing is consistent across the index
+- **Self-Documenting**: Schema captures indexing intent and field semantics
+- **Type Safety**: Compile-time validation of field types and configurations
+- **Performance**: Schema-driven optimizations (field weights, tokenizer rules) are applied at indexing time
