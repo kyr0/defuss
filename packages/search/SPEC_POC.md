@@ -1373,7 +1373,7 @@ struct TextIndex {
     /// BM25FS⁺ scoring engine
     scorer: BM25Scorer,
     /// LRU cache for recent queries (autocomplete optimization)
-    query_cache: std::sync::Mutex<lru::LruCache<String, Vec<(Doc,Score)>>>,
+    query_cache: std::sync::Mutex<lru::LruCache<String, Vec<(EntryIndex, f32)>>>,
     /// Tokenizer configuration for consistent text processing
     tokenizer_config: TokenizerConfig,
 }
