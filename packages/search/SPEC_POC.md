@@ -1090,7 +1090,7 @@ impl BM25Scorer {
         self.avg_doc_lengths.insert(attr_idx, avg_length);
         self.doc_count = doc_count;
     }
-    
+
     /// Remove document-specific normalization factors during deletion
     fn remove_document_norms(&mut self, entry_index: EntryIndex) {
         // Remove all normalization factors for this document across all attributes
@@ -1112,87 +1112,9 @@ impl BM25Scorer {
         }
     }
     
-    /// Remove a document from the text index, cleaning up all associated data
-    fn remove_document(&mut self, entry_index: EntryIndex) -> bool {
-        let mut terms_to_remove = Vec::new();
-        let mut removed_any = false;
-        
-        // Iterate through all terms and remove entries for this document
-        for (term, document_list) in &mut self.document_lists {
-            let original_len = document_list.len();
-            
-            // Remove all entries for this document (there may be multiple per term due to multiple positions)
-            document_list.retain(|doc_entry| doc_entry.doc != entry_index);
-            
-            if document_list.len() < original_len {
-                removed_any = true;
-                
-                // Decrease term frequency in BM25 scorer
-                if !self.scorer.decrease_term_frequency(term) {
-                    // Term no longer exists in any document, mark for removal
-                    terms_to_remove.push(term.clone());
-                }
-            }
-        }
-        
-        // Remove terms that no longer have any documents
-        for term in &terms_to_remove {
-            self.document_lists.remove(term);
-            self.remove_from_supporting_indexes(term);
-        }
-        
-        // Clean up document-specific data in BM25Scorer
-        self.scorer.remove_document_norms(entry_index);
-        
-        // Clear query cache since cached results might contain stale document references
-        if let Ok(mut cache) = self.query_cache.try_lock() {
-            cache.clear();
-        }
-        
-        removed_any
-    }
-    
-    /// Remove a term from supporting indexes (trie, bigram, bloom filter)
-    /// Note: This is a simplified cleanup - in practice, bloom filters can't be cleanly updated
-    fn remove_from_supporting_indexes(&mut self, term: &str) {
-        // Remove from bigram index
-        self.bigram_index.remove_term(term);
-        
-        // Remove from trie - this is complex to do efficiently, so we mark as removed
-        // In a production system, periodic trie rebuilding might be better
-        self.remove_from_trie(term);
-        
-        // Note: Bloom filter cannot be cleanly updated (false positives will remain)
-        // This is acceptable since bloom filters only affect performance, not correctness
-        // In a production system, periodic bloom filter rebuilding might be considered
-    }
-    
-    /// Remove a term from the trie structure
-    /// This is a simplified implementation that marks nodes as empty but doesn't compact the trie
-    fn remove_from_trie(&mut self, term: &str) {
-        let mut current = &mut self.trie_index;
-        let mut path = Vec::new();
-        
-        // Navigate to the term's node, recording the path
-        for ch in term.chars() {
-            if let Some(child) = current.children.get_mut(&ch) {
-                path.push((current as *mut TrieNode, ch));
-                current = child;
-            } else {
-                return; // Term not found in trie
-            }
-        }
-        
-        // Mark the term as removed
-        current.term = None;
-        
-        // TODO: In a production system, implement proper trie compaction
-        // to remove nodes that no longer lead to any terms
-    }
-    
-    /// Update document count after deletion (should be called after all deletions)
+    /// Update total document count (called after document deletion)
     fn update_document_count(&mut self, new_count: usize) {
-        self.scorer.update_document_count(new_count);
+        self.doc_count = new_count;
     }
 }
 ```
@@ -1368,600 +1290,543 @@ impl TextIndex {
         current.term = Some(term_arc);
     }
     
-    /// Remove a document from the text index, cleaning up all associated data
-    fn remove_document(&mut self, entry_index: EntryIndex) -> bool {
-        let mut terms_to_remove = Vec::new();
-        let mut removed_any = false;
+    /// Search with BM25FS⁺ scoring and memory pool-optimized aggregation
+    fn search_bm25(&self, query: &str, language: Language, attribute: Option<AttributeIndex>, top_k: usize) -> Vec<(EntryIndex, f32)> {
+        use std::collections::{HashMap, BinaryHeap};
+        use ordered_float::OrderedFloat;
         
-        // Iterate through all terms and remove entries for this document
-        for (term, document_list) in &mut self.document_lists {
-            let original_len = document_list.len();
+        // Check LRU cache first for repeated queries (autocomplete optimization)
+        let cache_key = format!("{}:{:?}:{:?}", query, language, attribute);
+        if let Ok(mut cache) = self.query_cache.try_lock() {
+            if let Some(cached_result) = cache.get(&cache_key) {
+                return cached_result.clone();
+            }
+        }
+        
+        // Use standard HashMap for score aggregation (simple and efficient)
+        let mut scores = HashMap::new();
+        
+        // Process query with language-specific stop words and stemming
+        let query_tokens = Self::process_text(query, language);
+        let mut query_terms: Vec<&str> = query_tokens.iter().map(|t| t.term.as_str()).collect();
+        
+        // Query-term de-duplication to skip scoring identical words
+        query_terms.sort_unstable();
+        query_terms.dedup();
+        
+        for term in query_terms {
+            // Early abort with Bloom filter for zero-hit words (typos)
+            if !self.bloom_filter.might_contain(term) {
+                continue;
+            }
             
-            // Remove all entries for this document (there may be multiple per term due to multiple positions)
-            document_list.retain(|doc_entry| doc_entry.doc != entry_index);
-            
-            if document_list.len() < original_len {
-                removed_any = true;
-                
-                // Decrease term frequency in BM25 scorer
-                if !self.scorer.decrease_term_frequency(term) {
-                    // Term no longer exists in any document, mark for removal
-                    terms_to_remove.push(term.clone());
+            if let Some(document_list) = self.document_lists.get(term) {
+                for doc_entry in document_list {
+                    if attribute.map_or(true, |attr| doc_entry.attr == attr) {
+                        *scores.entry(doc_entry.doc).or_insert(0.0) += doc_entry.impact;
+                    }
                 }
             }
         }
         
-        // Remove terms that no longer have any documents
-        for term in &terms_to_remove {
-            self.document_lists.remove(term);
-            self.remove_from_supporting_indexes(term);
-        }
+        // Convert to heap for top-k selection
+        let mut heap: BinaryHeap<(OrderedFloat<f32>, EntryIndex)> = 
+            scores.into_iter()
+                .map(|(doc, score)| (OrderedFloat(score), doc))
+                .collect();
         
-        // Clean up document-specific data in BM25Scorer
-        self.scorer.remove_document_norms(entry_index);
-        
-        // Clear query cache since cached results might contain stale document references
-        if let Ok(mut cache) = self.query_cache.try_lock() {
-            cache.clear();
-        }
-        
-        removed_any
-    }
-    
-    /// Remove a term from supporting indexes (trie, bigram, bloom filter)
-    /// Note: This is a simplified cleanup - in practice, bloom filters can't be cleanly updated
-    fn remove_from_supporting_indexes(&mut self, term: &str) {
-        // Remove from bigram index
-        self.bigram_index.remove_term(term);
-        
-        // Remove from trie - this is complex to do efficiently, so we mark as removed
-        // In a production system, periodic trie rebuilding might be better
-        self.remove_from_trie(term);
-        
-        // Note: Bloom filter cannot be cleanly updated (false positives will remain)
-        // This is acceptable since bloom filters only affect performance, not correctness
-        // In a production system, periodic bloom filter rebuilding might be considered
-    }
-    
-    /// Remove a term from the trie structure
-    /// This is a simplified implementation that marks nodes as empty but doesn't compact the trie
-    fn remove_from_trie(&mut self, term: &str) {
-        let mut current = &mut self.trie_index;
-        let mut path = Vec::new();
-        
-        // Navigate to the term's node, recording the path
-        for ch in term.chars() {
-            if let Some(child) = current.children.get_mut(&ch) {
-                path.push((current as *mut TrieNode, ch));
-                current = child;
+        let mut results = Vec::with_capacity(top_k);
+        for _ in 0..top_k {
+            if let Some((score, doc)) = heap.pop() {
+                results.push((doc, score.0));
             } else {
-                return; // Term not found in trie
+                break;
             }
         }
         
-        // Mark the term as removed
-        current.term = None;
+        // Cache result for future queries
+        if let Ok(mut cache) = self.query_cache.try_lock() {
+            cache.put(cache_key, results.clone());
+        }
         
-        // TODO: In a production system, implement proper trie compaction
-        // to remove nodes that no longer lead to any terms
+        results
     }
     
-    /// Update document count after deletion (should be called after all deletions)
-    fn update_document_count(&mut self, new_count: usize) {
-        self.scorer.update_document_count(new_count);
+    /// Search for exact term matches
+    fn search_exact(&self, term: &str, attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
+        // Fast negative lookup using bloom filter
+        if !self.bloom_filter.might_contain(term) {
+            return Vec::new();
+        }
+        
+        let Some(document_list) = self.document_lists.get(term) else {
+            return Vec::new();
+        };
+        
+        match attribute {
+            Some(attr) => {
+                document_list.iter()
+                    .filter(|doc| doc.attr == attr)
+                    .map(|doc| doc.doc)
+                    .collect()
+            }
+            None => {
+                document_list.iter()
+                    .map(|doc| doc.doc)
+                    .collect()
+            }
+        }
+
+        /// Remove a document from the text index, cleaning up all associated data
+        fn remove_document(&mut self, entry_index: EntryIndex) -> bool {
+            let mut terms_to_remove = Vec::new();
+            let mut removed_any = false;
+            
+            // Iterate through all terms and remove entries for this document
+            for (term, document_list) in &mut self.document_lists {
+                let original_len = document_list.len();
+                
+                // Remove all entries for this document (there may be multiple per term due to multiple positions)
+                document_list.retain(|doc_entry| doc_entry.doc != entry_index);
+                
+                if document_list.len() < original_len {
+                    removed_any = true;
+                    
+                    // Decrease term frequency in BM25 scorer
+                    if !self.scorer.decrease_term_frequency(term) {
+                        // Term no longer exists in any document, mark for removal
+                        terms_to_remove.push(term.clone());
+                    }
+                }
+            }
+            
+            // Remove terms that no longer have any documents
+            for term in &terms_to_remove {
+                self.document_lists.remove(term);
+                self.remove_from_supporting_indexes(term);
+            }
+            
+            // Clean up document-specific data in BM25Scorer
+            self.scorer.remove_document_norms(entry_index);
+            
+            // Clear query cache since cached results might contain stale document references
+            if let Ok(mut cache) = self.query_cache.try_lock() {
+                cache.clear();
+            }
+            
+            removed_any
+        }
+        
+        /// Remove a term from supporting indexes (trie, bigram, bloom filter)
+        /// Note: This is a simplified cleanup - in practice, bloom filters can't be cleanly updated
+        fn remove_from_supporting_indexes(&mut self, term: &str) {
+            // Remove from bigram index
+            self.bigram_index.remove_term(term);
+            
+            // Remove from trie - this is complex to do efficiently, so we mark as removed
+            // In a production system, periodic trie rebuilding might be better
+            self.remove_from_trie(term);
+            
+            // Note: Bloom filter cannot be cleanly updated (false positives will remain)
+            // This is acceptable since bloom filters only affect performance, not correctness
+            // In a production system, periodic bloom filter rebuilding might be considered
+        }
+        
+        /// Remove a term from the trie structure
+        /// This is a simplified implementation that marks nodes as empty but doesn't compact the trie
+        fn remove_from_trie(&mut self, term: &str) {
+            let mut current = &mut self.trie_index;
+            let mut path = Vec::new();
+            
+            // Navigate to the term's node, recording the path
+            for ch in term.chars() {
+                if let Some(child) = current.children.get_mut(&ch) {
+                    path.push((current as *mut TrieNode, ch));
+                    current = child;
+                } else {
+                    return; // Term not found in trie
+                }
+            }
+            
+            // Mark the term as removed
+            current.term = None;
+            
+            // TODO: In a production system, implement proper trie compaction
+            // to remove nodes that no longer lead to any terms
+        }
+        
+        /// Update document count after deletion (should be called after all deletions)
+        fn update_document_count(&mut self, new_count: usize) {
+            self.scorer.update_document_count(new_count);
+        }
+    }
+    
+    /// Search for terms with a given prefix
+    fn search_prefix(&self, prefix: &str, attribute: Option<AttributeIndex>) -> Option<Vec<EntryIndex>> {
+        let found_node = self.trie_index.find_starts_with(prefix.chars())?;
+        let mut results = Vec::new();
+        
+        for term in found_node.iter_terms() {
+            results.extend(self.search_exact(&term, attribute));
+        }
+        
+        results.sort_unstable();
+        results.dedup();
+        Some(results)
+    }
+    
+    /// Fuzzy search using bigram pre-filtering
+    fn search_fuzzy(&self, query: &str, attribute: Option<AttributeIndex>, max_results: usize) -> Vec<(EntryIndex, f32)> {
+        let fuzzy_results = self.bigram_index.fuzzy_search(query, max_results);
+        let mut scored_results = Vec::new();
+        
+        for (term, similarity_score) in fuzzy_results {
+            let docs = self.search_exact(&term, attribute);
+            for doc in docs {
+                scored_results.push((doc, similarity_score));
+            }
+        }
+        
+        // Sort by score and take top results
+        scored_results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored_results.truncate(max_results);
+        scored_results
+    }
+    
+    /// Check if a document contains the terms as a consecutive phrase
+    fn search_phrase(&self, terms: &[&str], attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
+        if terms.is_empty() { return Vec::new(); }
+        
+        // Get all documents that contain the first term
+        let candidates = self.search_exact(terms[0], attribute);
+        let mut results = Vec::new();
+        
+        for doc_id in candidates {
+            if self.has_phrase_in_document(doc_id, terms, attribute) {
+                results.push(doc_id);
+            }
+        }
+        
+        results
+    }
+    
+    /// Check if a document contains the terms as a consecutive phrase
+    fn has_phrase_in_document(
+        &self, 
+        doc_id: EntryIndex, 
+        terms: &[&str], 
+        attribute: Option<AttributeIndex>
+    ) -> bool {
+        // Get positions for each term in this document
+        let mut term_positions: Vec<Vec<Position>> = Vec::new();
+        
+        for &term in terms {
+            if let Some(document_list) = self.document_lists.get(term) {
+                let positions: Vec<_> = document_list.iter()
+                    .filter(|doc| {
+                        doc.doc == doc_id && 
+                        attribute.map_or(true, |attr| doc.attr == attr)
+                    })
+                    .map(|doc| doc.position)
+                    .collect();
+                    
+                if positions.is_empty() {
+                    return false; // Term not found in document
+                }
+                
+                term_positions.push(positions);
+            } else {
+                return false;
+            }
+        }
+        
+        // Check for consecutive token sequences using position-based arithmetic
+        for start_pos in &term_positions[0] {
+            let mut current_position = *start_pos;
+            let mut found_phrase = true;
+            
+            for i in 1..term_positions.len() {
+                let expected_position = Position(current_position.0 + 1);
+                
+                if !term_positions[i].iter().any(|pos| *pos == expected_position) {
+                    found_phrase = false;
+                    break;
+                }
+                
+                current_position = expected_position;
+            }
+            
+            if found_phrase {
+                return true;
+            }
+        }
+        
+        false
     }
 }
 ```
 
-### Core Text Index Structure
+### Text Processing
 
 ```rust
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
-use rkyv::{Archive, Deserialize, Serialize};
-use lru::LruCache;
+use regex::Regex;
+use stop_words::{get, Language as StopWordsLanguage};
+use rust_stemmers::{Algorithm, Stemmer};
 
-/// Extended document structure for text index with position information
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Archive, Deserialize, Serialize)]
-struct TextDocumentEntry {
-    /// Document identifier (primary sort key)
-    doc: EntryIndex,
-    /// Attribute identifier (secondary sort key)  
-    attr: AttributeIndex,
-    /// Value position within attribute (tertiary sort key)
-    val: ValueIndex,
-    /// Token index within the text (for phrase queries) - same unit as position
-    token_idx: TokenIndex,
-    /// Token position in text sequence (token-based, not byte-based for UTF-8 safety)
+/// Token processing for text indexing
+#[derive(Debug, Clone)]
+struct Token {
+    term: String,
+    index: TokenIndex,
     position: Position,
-    /// Pre-computed BM25FS⁺ impact score
-    impact: f32,
-}
-
-impl Eq for TextDocumentEntry {}
-
-impl Ord for TextDocumentEntry {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.doc, self.attr, self.val, self.token_idx).cmp(&(other.doc, other.attr, other.val, other.token_idx))
-    }
-}
-
-impl TextDocumentEntry {
-    fn new(
-        doc: EntryIndex, 
-        attr: AttributeIndex, 
-        val: ValueIndex,
-        token_idx: TokenIndex,
-        position: Position,
-        impact: f32
-    ) -> Self {
-        Self { doc, attr, val, token_idx, position, impact }
-    }
-}
-
-/// Simple memory pool for reducing allocations during search operations
-use std::sync::{Mutex, OnceLock};
-
-static MEMORY_POOL: OnceLock<Mutex<Option<Vec<f32>>>> = OnceLock::new();
-const MAX_POOL_SIZE: usize = 10_000;     // 10K f32s = 40KB max pool (reasonable size)
-const MIN_POOL_SIZE: usize = 1_000;      // 1K f32s = 4KB minimum to keep in pool
-
-/// Intelligent memory pool management for search operations
-fn get_or_create_buffer(required_size: usize) -> Vec<f32> {
-    let pool = MEMORY_POOL.get_or_init(|| Mutex::new(None));
-    let mut pool_guard = pool.lock().unwrap();
-    
-    if let Some(mut buffer) = pool_guard.take() {
-        // Reuse existing buffer if it's large enough
-        if buffer.len() >= required_size {
-            buffer.truncate(required_size.max(MIN_POOL_SIZE));
-            buffer.fill(0.0); // Clear previous data
-            return buffer;
-        }
-        // If existing buffer is too small, return it to the pool and create a new one
-        *pool_guard = Some(buffer);
-    }
-    
-    // Create new buffer, but don't make it unnecessarily large
-    let buffer_size = required_size.max(MIN_POOL_SIZE).min(MAX_POOL_SIZE);
-    vec![0.0f32; buffer_size]
-}
-
-fn return_buffer_to_pool(mut buffer: Vec<f32>) {
-    // Only keep the buffer if it's a reasonable size for reuse
-    if buffer.len() >= MIN_POOL_SIZE && buffer.len() <= MAX_POOL_SIZE {
-        let pool = MEMORY_POOL.get_or_init(|| Mutex::new(None));
-        let mut pool_guard = pool.lock().unwrap();
-        if pool_guard.is_none() {
-            buffer.clear(); // Clear data but keep capacity
-            *pool_guard = Some(buffer);
-        }
-        // If pool already has a buffer, just drop this one (GC will handle it)
-    }
-    // Otherwise just drop the buffer - it's either too small or too large
-}
-
-/// Text index using flattened document lists with BM25FS⁺ scoring
-struct TextIndex {
-    /// Maps terms to sorted vectors of TextDocumentEntry entries
-    /// Each term -> Vec<TextDocumentEntry> sorted by (doc, attr, val, token_idx)
-    document_lists: HashMap<Box<str>, Vec<TextDocumentEntry>>,
-    /// Bigram index for fuzzy search acceleration
-    bigram_index: BigramFuzzyIndex,
-    /// Trie structure for prefix searches (StartsWith)
-    trie_index: TrieNode,
-    /// Bloom filter for fast negative lookups
-    bloom_filter: BloomFilter,
-    /// BM25FS⁺ scoring engine
-    scorer: BM25Scorer,
-    /// LRU cache for recent queries (autocomplete optimization)
-    query_cache: std::sync::Mutex<lru::LruCache<String, Vec<(Doc,Score)>>>,
 }
 
 impl TextIndex {
-    fn new() -> Self {
-        Self::with_config(BM25Config::default())
-    }
-    
-    fn with_config(config: BM25Config) -> Self {
-        Self {
-            document_lists: HashMap::new(),
-            bigram_index: BigramFuzzyIndex::new(),
-            trie_index: TrieNode::default(),
-            bloom_filter: BloomFilter::new(),
-            scorer: BM25Scorer::new(config),
-            query_cache: std::sync::Mutex::new(lru::LruCache::new(32)),
-        }
-    }
-    
-    /// Insert a term with BM25FS⁺ impact calculation including IDF
-    fn insert(
-        &mut self,
-        entry_index: EntryIndex,
-        attribute_index: AttributeIndex,
-        value_index: ValueIndex,
-        term: &str,
-        token_index: TokenIndex,
-        position: Position,
-        field_name: &str,
-        tf: u32,
-        field_length: f32,
-    ) -> bool {
-        // Update term document frequency for IDF calculation
-        self.scorer.update_term_frequency(term);
+    /// Process text input into tokens for indexing with language support
+    fn process_text(input: &str, language: Language) -> Vec<Token> {
+        let word_regex = Regex::new(r"(\w{3,20})").unwrap();
+        let mut tokens = Vec::new();
         
-        // Compute BM25FS⁺ impact at indexing time with IDF
-        let impact = self.scorer.compute_impact(term, field_name, tf, field_length, entry_index);
+        // Get stop words for the specified language
+        let stop_words = get(language.to_stop_words_language());
         
-        let text_doc = TextDocumentEntry::new(
-            entry_index, attribute_index, value_index, 
-            token_index, position, impact
-        );
+        // Create stemmer for the specified language
+        let stemmer = Stemmer::create(language.to_stemmer_algorithm());
         
-        let document_list = self.document_lists.entry(term.into()).or_default();
-        
-        // Binary search for insertion point to maintain sort order
-        let pos = document_list.binary_search(&text_doc).unwrap_or_else(|e| e);
-        document_list.insert(pos, text_doc);
-        
-        // Update supporting indexes
-        self.bigram_index.add_term(term);
-        self.insert_to_trie(term);
-        self.bloom_filter.add_term(term);
-        
-        true
-    }
-    
-    /// Insert a term into the trie for prefix searches
-    fn insert_to_trie(&mut self, term: &str) {
-        let term_arc: Arc<str> = term.into();
-        let mut current = &mut self.trie_index;
-        
-        for ch in term.chars() {
-            current = current.children.entry(ch).or_default();
-        }
-        
-        current.term = Some(term_arc);
-    }
-    
-    /// Remove a document from the text index, cleaning up all associated data
-    fn remove_document(&mut self, entry_index: EntryIndex) -> bool {
-        let mut terms_to_remove = Vec::new();
-        let mut removed_any = false;
-        
-        // Iterate through all terms and remove entries for this document
-        for (term, document_list) in &mut self.document_lists {
-            let original_len = document_list.len();
+        for (token_idx, capture) in word_regex.find_iter(input).enumerate() {
+            let term = capture.as_str().to_lowercase();
             
-            // Remove all entries for this document (there may be multiple per term due to multiple positions)
-            document_list.retain(|doc_entry| doc_entry.doc != entry_index);
+            // Skip stop words using language-specific stop word list
+            if stop_words.contains(&term) {
+                continue;
+            }
             
-            if document_list.len() < original_len {
-                removed_any = true;
-                
-                // Decrease term frequency in BM25 scorer
-                if !self.scorer.decrease_term_frequency(term) {
-                    // Term no longer exists in any document, mark for removal
-                    terms_to_remove.push(term.clone());
-                }
-            }
+            // Use token index as position for consistency across phrase matching
+            let position = Position(token_idx as u32);
+            
+            // Apply language-specific stemming
+            let stemmed = stemmer.stem(&term).to_string();
+            
+            tokens.push(Token {
+                term: stemmed,
+                index: TokenIndex(token_idx as u16),
+                position,
+            });
         }
         
-        // Remove terms that no longer have any documents
-        for term in &terms_to_remove {
-            self.document_lists.remove(term);
-            self.remove_from_supporting_indexes(term);
-        }
-        
-        // Clean up document-specific data in BM25Scorer
-        self.scorer.remove_document_norms(entry_index);
-        
-        // Clear query cache since cached results might contain stale document references
-        if let Ok(mut cache) = self.query_cache.try_lock() {
-            cache.clear();
-        }
-        
-        removed_any
-    }
-    
-    /// Remove a term from supporting indexes (trie, bigram, bloom filter)
-    /// Note: This is a simplified cleanup - in practice, bloom filters can't be cleanly updated
-    fn remove_from_supporting_indexes(&mut self, term: &str) {
-        // Remove from bigram index
-        self.bigram_index.remove_term(term);
-        
-        // Remove from trie - this is complex to do efficiently, so we mark as removed
-        // In a production system, periodic trie rebuilding might be better
-        self.remove_from_trie(term);
-        
-        // Note: Bloom filter cannot be cleanly updated (false positives will remain)
-        // This is acceptable since bloom filters only affect performance, not correctness
-        // In a production system, periodic bloom filter rebuilding might be considered
-    }
-    
-    /// Remove a term from the trie structure
-    /// This is a simplified implementation that marks nodes as empty but doesn't compact the trie
-    fn remove_from_trie(&mut self, term: &str) {
-        let mut current = &mut self.trie_index;
-        let mut path = Vec::new();
-        
-        // Navigate to the term's node, recording the path
-        for ch in term.chars() {
-            if let Some(child) = current.children.get_mut(&ch) {
-                path.push((current as *mut TrieNode, ch));
-                current = child;
-            } else {
-                return; // Term not found in trie
-            }
-        }
-        
-        // Mark the term as removed
-        current.term = None;
-        
-        // TODO: In a production system, implement proper trie compaction
-        // to remove nodes that no longer lead to any terms
-    }
-    
-    /// Update document count after deletion (should be called after all deletions)
-    fn update_document_count(&mut self, new_count: usize) {
-        self.scorer.update_document_count(new_count);
+        tokens
     }
 }
 ```
 
-### Core Text Index Structure
+### Supporting Indexes
 
 ```rust
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
-use rkyv::{Archive, Deserialize, Serialize};
-use lru::LruCache;
+use std::collections::{BTreeMap, VecDeque, HashSet};
+use std::sync::Arc;
 
-/// Extended document structure for text index with position information
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Archive, Deserialize, Serialize)]
-struct TextDocumentEntry {
-    /// Document identifier (primary sort key)
-    doc: EntryIndex,
-    /// Attribute identifier (secondary sort key)  
-    attr: AttributeIndex,
-    /// Value position within attribute (tertiary sort key)
-    val: ValueIndex,
-    /// Token index within the text (for phrase queries) - same unit as position
-    token_idx: TokenIndex,
-    /// Token position in text sequence (token-based, not byte-based for UTF-8 safety)
-    position: Position,
-    /// Pre-computed BM25FS⁺ impact score
-    impact: f32,
+/// Trie node for prefix search
+#[derive(Default)]
+struct TrieNode {
+    children: BTreeMap<char, TrieNode>,
+    term: Option<Arc<str>>,
 }
 
-impl Eq for TextDocumentEntry {}
-
-impl Ord for TextDocumentEntry {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.doc, self.attr, self.val, self.token_idx).cmp(&(other.doc, other.attr, other.val, other.token_idx))
-    }
-}
-
-impl TextDocumentEntry {
-    fn new(
-        doc: EntryIndex, 
-        attr: AttributeIndex, 
-        val: ValueIndex,
-        token_idx: TokenIndex,
-        position: Position,
-        impact: f32
-    ) -> Self {
-        Self { doc, attr, val, token_idx, position, impact }
-    }
-}
-
-/// Simple memory pool for reducing allocations during search operations
-use std::sync::{Mutex, OnceLock};
-
-static MEMORY_POOL: OnceLock<Mutex<Option<Vec<f32>>>> = OnceLock::new();
-const MAX_POOL_SIZE: usize = 10_000;     // 10K f32s = 40KB max pool (reasonable size)
-const MIN_POOL_SIZE: usize = 1_000;      // 1K f32s = 4KB minimum to keep in pool
-
-/// Intelligent memory pool management for search operations
-fn get_or_create_buffer(required_size: usize) -> Vec<f32> {
-    let pool = MEMORY_POOL.get_or_init(|| Mutex::new(None));
-    let mut pool_guard = pool.lock().unwrap();
-    
-    if let Some(mut buffer) = pool_guard.take() {
-        // Reuse existing buffer if it's large enough
-        if buffer.len() >= required_size {
-            buffer.truncate(required_size.max(MIN_POOL_SIZE));
-            buffer.fill(0.0); // Clear previous data
-            return buffer;
+impl TrieNode {
+    fn find_starts_with(&self, mut value: std::str::Chars<'_>) -> Option<&TrieNode> {
+        match value.next() {
+            Some(ch) => self.children.get(&ch)?.find_starts_with(value),
+            None => Some(self),
         }
-        // If existing buffer is too small, return it to the pool and create a new one
-        *pool_guard = Some(buffer);
     }
     
-    // Create new buffer, but don't make it unnecessarily large
-    let buffer_size = required_size.max(MIN_POOL_SIZE).min(MAX_POOL_SIZE);
-    vec![0.0f32; buffer_size]
-}
-
-fn return_buffer_to_pool(mut buffer: Vec<f32>) {
-    // Only keep the buffer if it's a reasonable size for reuse
-    if buffer.len() >= MIN_POOL_SIZE && buffer.len() <= MAX_POOL_SIZE {
-        let pool = MEMORY_POOL.get_or_init(|| Mutex::new(None));
-        let mut pool_guard = pool.lock().unwrap();
-        if pool_guard.is_none() {
-            buffer.clear(); // Clear data but keep capacity
-            *pool_guard = Some(buffer);
-        }
-        // If pool already has a buffer, just drop this one (GC will handle it)
+    fn iter_terms(&self) -> TrieNodeTermIterator {
+        TrieNodeTermIterator::new(self)
     }
-    // Otherwise just drop the buffer - it's either too small or too large
 }
 
-/// Text index using flattened document lists with BM25FS⁺ scoring
-struct TextIndex {
-    /// Maps terms to sorted vectors of TextDocumentEntry entries
-    /// Each term -> Vec<TextDocumentEntry> sorted by (doc, attr, val, token_idx)
-    document_lists: HashMap<Box<str>, Vec<TextDocumentEntry>>,
-    /// Bigram index for fuzzy search acceleration
-    bigram_index: BigramFuzzyIndex,
-    /// Trie structure for prefix searches (StartsWith)
-    trie_index: TrieNode,
-    /// Bloom filter for fast negative lookups
-    bloom_filter: BloomFilter,
-    /// BM25FS⁺ scoring engine
-    scorer: BM25Scorer,
-    /// LRU cache for recent queries (autocomplete optimization)
-    query_cache: std::sync::Mutex<lru::LruCache<String, Vec<(Doc,Score)>>>,
+struct TrieNodeTermIterator<'n> {
+    queue: VecDeque<&'n TrieNode>,
 }
 
-impl TextIndex {
+impl<'t> TrieNodeTermIterator<'t> {
+    fn new(node: &'t TrieNode) -> Self {
+        let mut queue = VecDeque::new();
+        queue.push_back(node);
+        Self { queue }
+    }
+}
+
+impl<'n> Iterator for TrieNodeTermIterator<'n> {
+    type Item = &'n str;
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(node) = self.queue.pop_front() {
+            // Add child nodes to queue
+            for child in node.children.values() {
+                self.queue.push_back(child);
+            }
+            
+            // Return term if this node has one
+            if let Some(ref term) = node.term {
+                return Some(term.as_ref());
+            }
+        }
+        None
+    }
+}
+
+/// Bigram-based fuzzy search with Sørensen-Dice coefficient
+struct BigramFuzzyIndex {
+    /// Pre-computed bigram sets for all indexed terms
+    term_bigrams: HashMap<Box<str>, HashSet<[char; 2]>>,
+}
+
+impl BigramFuzzyIndex {
     fn new() -> Self {
-        Self::with_config(BM25Config::default())
-    }
-    
-    fn with_config(config: BM25Config) -> Self {
         Self {
-            document_lists: HashMap::new(),
-            bigram_index: BigramFuzzyIndex::new(),
-            trie_index: TrieNode::default(),
-            bloom_filter: BloomFilter::new(),
-            scorer: BM25Scorer::new(config),
-            query_cache: std::sync::Mutex::new(lru::LruCache::new(32)),
+            term_bigrams: HashMap::new(),
         }
     }
     
-    /// Insert a term with BM25FS⁺ impact calculation including IDF
-    fn insert(
-        &mut self,
-        entry_index: EntryIndex,
-        attribute_index: AttributeIndex,
-        value_index: ValueIndex,
-        term: &str,
-        token_index: TokenIndex,
-        position: Position,
-        field_name: &str,
-        tf: u32,
-        field_length: f32,
-    ) -> bool {
-        // Update term document frequency for IDF calculation
-        self.scorer.update_term_frequency(term);
+    fn add_term(&mut self, term: &str) {
+        let term_box: Box<str> = term.into();
+        let bigrams = Self::extract_bigrams(term);
+        self.term_bigrams.insert(term_box, bigrams);
+    }
+    
+    /// Extract bigrams from a term with start/end markers
+    fn extract_bigrams(term: &str) -> HashSet<[char; 2]> {
+        let chars: Vec<char> = format!("^{}$", term.to_lowercase()).chars().collect();
+        chars.windows(2)
+            .map(|window| [window[0], window[1]])
+            .collect()
+    }
+    
+    /// Sørensen-Dice coefficient: 2 * |A ∩ B| / (|A| + |B|)
+    fn dice_coefficient(set1: &HashSet<[char; 2]>, set2: &HashSet<[char; 2]>) -> f32 {
+        if set1.is_empty() && set2.is_empty() { return 1.0; }
+        if set1.is_empty() || set2.is_empty() { return 0.0; }
         
-        // Compute BM25FS⁺ impact at indexing time with IDF
-        let impact = self.scorer.compute_impact(term, field_name, tf, field_length, entry_index);
+        let intersection = set1.intersection(set2).count();
+        2.0 * intersection as f32 / (set1.len() + set2.len()) as f32
+    }
+    
+    /// Two-stage fuzzy search: fast Dice pre-filter + precise Levenshtein on top candidates
+    fn fuzzy_search(&self, query: &str, max_results: usize) -> Vec<(String, f32)> {
+        let query_bigrams = Self::extract_bigrams(query);
+        let mut candidates = Vec::new();
         
-        let text_doc = TextDocumentEntry::new(
-            entry_index, attribute_index, value_index, 
-            token_index, position, impact
-        );
+        // Stage 1: Fast bigram Dice coefficient screening (≥ 0.4 threshold)
+        for (term, term_bigrams) in &self.term_bigrams {
+            let dice_score = Self::dice_coefficient(&query_bigrams, term_bigrams);
+            
+            if dice_score >= 0.4 {
+                candidates.push((term.clone(), dice_score));
+            }
+        }
         
-        let document_list = self.document_lists.entry(term.into()).or_default();
+        // Sort by Dice score and take top 32 candidates
+        candidates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        candidates.truncate(32);
         
-        // Binary search for insertion point to maintain sort order
-        let pos = document_list.binary_search(&text_doc).unwrap_or_else(|e| e);
-        document_list.insert(pos, text_doc);
-        
-        // Update supporting indexes
-        self.bigram_index.add_term(term);
-        self.insert_to_trie(term);
-        self.bloom_filter.add_term(term);
-        
+        // Stage 2: Precise Levenshtein filtering on top candidates only
+        candidates.into_iter()
+            .filter_map(|(term, dice_score)| {
+                let edit_distance = levenshtein(query, &term);
+                let max_distance = query.len() / 2; // Allow up to 50% edit distance
+                
+                if edit_distance <= max_distance {
+                    Some((term.to_string(), dice_score))
+                } else {
+                    None
+                }
+            })
+            .take(max_results)
+            .collect()
+    }
+}
+
+/// Simple Bloom filter for term existence
+struct BloomFilter {
+    bits: Vec<u64>,
+    hash_count: u8,
+}
+
+impl BloomFilter {
+    fn new() -> Self {
+        Self {
+            bits: vec![0; 4], // 256 bits
+            hash_count: 3,
+        }
+    }
+    
+    fn add_term(&mut self, term: &str) {
+        for i in 0..self.hash_count {
+            let hash = self.hash_term(term, i);
+            let bit_index = hash % 256;
+            let word_index = bit_index / 64;
+            let bit_offset = bit_index % 64;
+            self.bits[word_index as usize] |= 1u64 << bit_offset;
+        }
+    }
+    
+    fn might_contain(&self, term: &str) -> bool {
+        for i in 0..self.hash_count {
+            let hash = self.hash_term(term, i);
+            let bit_index = hash % 256;
+            let word_index = bit_index / 64;
+            let bit_offset = bit_index % 64;
+            if (self.bits[word_index as usize] & (1u64 << bit_offset)) == 0 {
+                return false;
+            }
+        }
         true
     }
     
-    /// Insert a term into the trie for prefix searches
-    fn insert_to_trie(&mut self, term: &str) {
-        let term_arc: Arc<str> = term.into();
-        let mut current = &mut self.trie_index;
-        
-        for ch in term.chars() {
-            current = current.children.entry(ch).or_default();
+    fn hash_term(&self, term: &str, seed: u8) -> u64 {
+        // Simple hash function (use a proper hash in production)
+        let mut hash = seed as u64;
+        for byte in term.bytes() {
+            hash = hash.wrapping_mul(31).wrapping_add(byte as u64);
         }
-        
-        current.term = Some(term_arc);
+        hash
+    }
+}
+
+/// Optimized Levenshtein distance (only called on top candidates)
+fn levenshtein(s1: &str, s2: &str) -> usize {
+    let chars1: Vec<char> = s1.chars().collect();
+    let chars2: Vec<char> = s2.chars().collect();
+    let len1 = chars1.len();
+    let len2 = chars2.len();
+    
+    if len1 == 0 { return len2; }
+    if len2 == 0 { return len1; }
+    
+    let mut prev_row = vec![0; len2 + 1];
+    let mut curr_row = vec![0; len2 + 1];
+    
+    // Initialize first row
+    for j in 0..=len2 {
+        prev_row[j] = j;
     }
     
-    /// Remove a document from the text index, cleaning up all associated data
-    fn remove_document(&mut self, entry_index: EntryIndex) -> bool {
-        let mut terms_to_remove = Vec::new();
-        let mut removed_any = false;
+    for i in 1..=len1 {
+        curr_row[0] = i;
         
-        // Iterate through all terms and remove entries for this document
-        for (term, document_list) in &mut self.document_lists {
-            let original_len = document_list.len();
+        for j in 1..=len2 {
+            let cost = if chars1[i-1] == chars2[j-1] { 0 } else { 1 };
             
-            // Remove all entries for this document (there may be multiple per term due to multiple positions)
-            document_list.retain(|doc_entry| doc_entry.doc != entry_index);
-            
-            if document_list.len() < original_len {
-                removed_any = true;
-                
-                // Decrease term frequency in BM25 scorer
-                if !self.scorer.decrease_term_frequency(term) {
-                    // Term no longer exists in any document, mark for removal
-                    terms_to_remove.push(term.clone());
-                }
-            }
+            curr_row[j] = (prev_row[j] + 1)           // deletion
+                .min(curr_row[j-1] + 1)               // insertion
+                .min(prev_row[j-1] + cost);           // substitution
         }
         
-        // Remove terms that no longer have any documents
-        for term in &terms_to_remove {
-            self.document_lists.remove(term);
-            self.remove_from_supporting_indexes(term);
-        }
-        
-        // Clean up document-specific data in BM25Scorer
-        self.scorer.remove_document_norms(entry_index);
-        
-        // Clear query cache since cached results might contain stale document references
-        if let Ok(mut cache) = self.query_cache.try_lock() {
-            cache.clear();
-        }
-        
-        removed_any
+        std::mem::swap(&mut prev_row, &mut curr_row);
     }
     
-    /// Remove a term from supporting indexes (trie, bigram, bloom filter)
-    /// Note: This is a simplified cleanup - in practice, bloom filters can't be cleanly updated
-    fn remove_from_supporting_indexes(&mut self, term: &str) {
-        // Remove from bigram index
-        self.bigram_index.remove_term(term);
-        
-        // Remove from trie - this is complex to do efficiently, so we mark as removed
-        // In a production system, periodic trie rebuilding might be better
-        self.remove_from_trie(term);
-        
-        // Note: Bloom filter cannot be cleanly updated (false positives will remain)
-        // This is acceptable since bloom filters only affect performance, not correctness
-        // In a production system, periodic bloom filter rebuilding might be considered
-    }
-    
-    /// Remove a term from the trie structure
-    /// This is a simplified implementation that marks nodes as empty but doesn't compact the trie
-    fn remove_from_trie(&mut self, term: &str) {
-        let mut current = &mut self.trie_index;
-        let mut path = Vec::new();
-        
-        // Navigate to the term's node, recording the path
-        for ch in term.chars() {
-            if let Some(child) = current.children.get_mut(&ch) {
-                path.push((current as *mut TrieNode, ch));
-                current = child;
-            } else {
-                return; // Term not found in trie
-            }
-        }
-        
-        // Mark the term as removed
-        current.term = None;
-        
-        // TODO: In a production system, implement proper trie compaction
-        // to remove nodes that no longer lead to any terms
-    }
-    
-    /// Update document count after deletion (should be called after all deletions)
-    fn update_document_count(&mut self, new_count: usize) {
-        self.scorer.update_document_count(new_count);
-    }
+    prev_row[len2]
 }
 ```
 
@@ -2107,7 +1972,7 @@ impl VectorIndex {
         Ok(results)
     }
 
-    fn delete(&mut self, entry_index: EntryIndex) -> bool {
+    fn remove_document(&mut self, entry_index: EntryIndex) -> bool {
         if !self.enabled {
             return false;
         }
@@ -2246,10 +2111,8 @@ impl HybridSearchEngine {
     fn remove_document(&mut self, document_id: &DocumentId) -> Result<bool, IndexError> {
         // Remove from collection first
         if let Some(entry_index) = self.collection.remove_document(document_id) {
-            // Note: For simplicity in this POC, we don't remove from text index
-            // In production, you'd want to implement text index deletion
-            // For now, just remove from vector index
-            self.vector_index.delete(entry_index);
+            self.vector_index.remove_document(entry_index);
+            self.text_index.remove_document(entry_index);
             Ok(true)
         } else {
             Ok(false) // Document wasn't found
@@ -2644,47 +2507,3 @@ let schema = Schema::builder()
     .attribute_with_weight("special_field", Kind::Text, 3.0, Some(0.8))
     .build();
 ```
-
-## Summary of Corrections Applied
-
-This specification has been enhanced to achieve "genius-level" perfection with the following critical fixes:
-
-### 1. **DocumentId Auto-Generation** ✅
-- Added `Document::new_auto()` for UUID generation when no ID provided
-- Added `Document::new_optional()` for flexible document creation
-- Timestamp + counter approach prevents collisions even in high-throughput scenarios
-
-### 2. **Robust Input Validation** ✅ 
-- Added `Document::validate()` method to catch issues before indexing
-- Comprehensive error checking for empty IDs, capacity limits, and type mismatches
-- Enhanced `IndexError` enum with `DuplicateDocument`, `InvalidDocumentId`, and `SerializationError`
-
-### 3. **Mathematical Accuracy** ✅
-- Fixed BM25FS⁺ formula implementation to match mathematical specification exactly
-- Corrected order of operations: `w_f × BM25(tf) + δ` (not `w_f × (BM25(tf) + δ)`)
-
-### 4. **Consistent Error Handling** ✅
-- Removed duplicate error variants between `IndexError` and `VectorError`
-- Proper error propagation throughout the stack
-- Clear, actionable error messages
-
-### 5. **Memory Safety & Performance** ✅
-- Fixed Collection document registration with proper duplicate detection
-- Added document deletion support with cleanup
-- Consistent parameter naming (`top_k` throughout, not mixed `top_k`/`top_k`/`max_results`)
-
-### 6. **Production-Ready Architecture** ✅
-- Proper capacity management for 100k document limit
-- EntryIndex overflow protection
-- Thread-safe counter for document ID generation
-- Zero-copy serialization with validation
-
-### Core Strengths Maintained:
-- **BM25FS⁺ Innovation**: Field-weighted, δ-shifted eager sparse scoring
-- **WASM Optimization**: Manual SIMD unrolling, memory pools, rayon parallelism
-- **Multilingual Support**: 15 languages with native stemming/stop-words
-- **Hybrid Excellence**: Battle-tested RRF and CombSUM fusion strategies
-- **Semantic Schema**: Research-grounded automatic field weight assignment
-
-The specification now represents a **complete, consistent, and production-ready** search engine design suitable for code generation without further modifications.
-
