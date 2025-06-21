@@ -131,7 +131,9 @@ Where `α ≃ 0.3-0.5` for most corpora. CombSUM and its cousin CombMNZ originat
 | `w_body` | Body field weight | 1.0 | Baseline field weight |
 | `w_description` | Description field weight | 1.5 | Medium importance structured field |
 | `k` (RRF) | Rank shift | 60.0 | Cormack & Clarke 2009 optimal across datasets |
-| `α` (CombSUM) | Dense/sparse blend | 0.4 | Tune once per corpus type, rarely revisit |
+| `α` (CombSUM) | Dense/sparse blend | 0.4 | Default blend ratio for most corpora |
+| `topK` | Results count | 10 | Default number of results to return |
+| `language` | Text processing | English | Default language for stop words and stemming |
 
 **Grounded in Research:**
 - **BM25F**: Robertson & Zaragoza, "The Probabilistic Relevance Framework: BM25 and Beyond" (2004)
@@ -1438,7 +1440,9 @@ impl HybridSearchEngine {
     }
     
     /// Search using BM25FS⁺ text scoring with language support
-    fn search_text_bm25(&self, query: &str, language: Language, attribute: Option<&str>, topK: usize) -> Vec<(DocumentId, f32)> {
+    fn search_text_bm25(&self, query: &str, language: Option<Language>, attribute: Option<&str>, topK: Option<usize>) -> Vec<(DocumentId, f32)> {
+        let language = language.unwrap_or(Language::English);
+        let topK = topK.unwrap_or(10);
         let attr_index = attribute.and_then(|name| self.collection.get_attribute_index(name));
         let results = self.text_index.search_bm25(query, language, attr_index, topK);
         
@@ -1451,7 +1455,8 @@ impl HybridSearchEngine {
     }
     
     /// Search vectors with SIMD optimization
-    fn search_vector(&self, query: &[f32], topK: usize) -> Result<Vec<(DocumentId, f32)>, VectorError> {
+    fn search_vector(&self, query: &[f32], topK: Option<usize>) -> Result<Vec<(DocumentId, f32)>, VectorError> {
+        let topK = topK.unwrap_or(10);
         let results = self.vector_index.search(Some(query), topK)?;
         
         Ok(results.into_iter()
@@ -1466,12 +1471,14 @@ impl HybridSearchEngine {
     fn search_hybrid_rrf(
         &self, 
         text_query: Option<&str>, 
-        language: Language,
+        language: Option<Language>,
         vector_query: Option<&[f32]>, 
-        topK: usize
+        topK: Option<usize>
     ) -> Vec<(DocumentId, f32)> {
+        let language = language.unwrap_or(Language::English);
+        let topK = topK.unwrap_or(10);
         let sparse_results = if let Some(query) = text_query {
-            let results = self.search_text_bm25(query, language, None, topK * 2);
+            let results = self.search_text_bm25(query, Some(language), None, Some(topK * 2));
             results.into_iter()
                 .enumerate()
                 .map(|(rank, (doc_id, _))| {
@@ -1514,15 +1521,17 @@ impl HybridSearchEngine {
     fn search_hybrid_combsum(
         &self, 
         text_query: Option<&str>, 
-        language: Language,
+        language: Option<Language>,
         vector_query: Option<&[f32]>, 
-        topK: usize,
+        topK: Option<usize>,
         alpha: Option<f32>
     ) -> Vec<(DocumentId, f32)> {
+        let language = language.unwrap_or(Language::English);
+        let topK = topK.unwrap_or(10);
         let alpha = alpha.unwrap_or(0.4);
         
         let sparse_results = if let Some(query) = text_query {
-            let results = self.search_text_bm25(query, language, None, topK * 2);
+            let results = self.search_text_bm25(query, Some(language), None, Some(topK * 2));
             results.into_iter()
                 .map(|(doc_id, score)| {
                     if let Some(&entry_idx) = self.collection.entries_by_name.get(&doc_id) {
@@ -1563,18 +1572,21 @@ impl HybridSearchEngine {
     fn search(
         &self,
         text_query: Option<&str>,
-        language: Language,
+        language: Option<Language>,
         vector_query: Option<&[f32]>,
-        topK: usize,
+        topK: Option<usize>,
         fusion_strategy: FusionStrategy,
         alpha: Option<f32>
     ) -> Vec<(DocumentId, f32)> {
+        let language = language.unwrap_or(Language::English);
+        let topK = topK.unwrap_or(10);
+        
         match fusion_strategy {
             FusionStrategy::RRF => {
-                self.search_hybrid_rrf(text_query, language, vector_query, topK)
+                self.search_hybrid_rrf(text_query, Some(language), vector_query, Some(topK))
             }
             FusionStrategy::CombSUM => {
-                self.search_hybrid_combsum(text_query, language, vector_query, topK, alpha)
+                self.search_hybrid_combsum(text_query, Some(language), vector_query, Some(topK), alpha)
             }
         }
     }
