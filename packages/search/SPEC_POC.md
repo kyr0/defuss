@@ -61,8 +61,17 @@ The **BM25FS⁺** algorithm welded together ("F" = field weights, "S" = eager *S
 For term *t* in field *f* of document *D*:
 
 ```
-impact_{t,f,D} = w_f × ((k1 + 1) × tf_{t,f,D}) / (k1 × (1 - b + b × |D_f| / avg_len_f) + tf_{t,f,D}) + δ
+impact_{t,f,D} = w_f × ((k1 + 1) × tf_{t,f,D}) / (k1 × (1 - b_f + b_f × |D_f| / avg_len_f) + tf_{t,f,D}) + δ
 ```
+
+Where:
+- `w_f` = field weight for field *f*
+- `k1` = TF saturation parameter (typically 1.2)
+- `tf_{t,f,D}` = term frequency of *t* in field *f* of document *D*
+- `b_f` = length normalization parameter for field *f* (typically 0.75)
+- `|D_f|` = length of field *f* in document *D*
+- `avg_len_f` = average length of field *f* across all documents
+- `δ` = lower bound shift parameter (typically 0.5)
 
 **Key Benefits:**
 - **Field weights (BM25F)** rescue high-signal zones (titles, headings)  
@@ -212,8 +221,15 @@ web_sys = { version = "0.3", features = [
     "Response",                        # For fetch API
     "Request",                         # For network requests
     "RequestInit",                     # For fetch configuration
+    "RequestMode",                     # For CORS settings
     "Storage",                         # For localStorage
     "Promise",                         # For async operations
+    "AbortController",                 # For request cancellation
+    "AbortSignal",                     # For abort signals
+    "Headers",                         # For HTTP headers
+    "Document",                        # For DOM access
+    "Element",                         # For DOM manipulation
+    "HtmlElement",                     # For HTML elements
 ] }
 ```
 
@@ -279,9 +295,16 @@ impl Language {
             Language::Norwegian => rust_stemmers::Algorithm::Norwegian,
             Language::Danish => rust_stemmers::Algorithm::Danish,
             Language::Finnish => rust_stemmers::Algorithm::Finnish,
-            // Fallback to English for languages without stemming support
+            // Fallback to English for languages without direct stemming support
+            // Note: These languages will still benefit from stop-word filtering
             Language::Arabic | Language::Chinese | Language::Japanese => rust_stemmers::Algorithm::English,
         }
+    }
+    
+    /// Check if language has native stemming support
+    fn has_native_stemming(self) -> bool {
+        !matches!(self, Language::Arabic | Language::Chinese | Language::Japanese)
+    }
     }
 }
 
@@ -295,6 +318,10 @@ impl Default for Language {
 ### Core Types
 
 ```rust
+use std::collections::HashMap;
+use std::sync::Arc;
+use rkyv::{Archive, Deserialize, Serialize};
+
 /// Represents the possible data types that can be indexed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Archive, Deserialize, Serialize)]
 enum Kind {
@@ -345,9 +372,24 @@ impl SemanticKind {
 }
 
 /// A value that can be indexed with optional BM25F weight
+#[derive(Debug, Clone)]
 enum Value {
+    /// Exact-match tokens (IDs, categories, etc.)
     Tag(String),
+    /// Full-text content for tokenization and stemming
     Text(String),
+}
+
+impl From<String> for Value {
+    fn from(s: String) -> Self {
+        Value::Text(s)
+    }
+}
+
+impl From<&str> for Value {
+    fn from(s: &str) -> Self {
+        Value::Text(s.to_string())
+    }
 }
 
 /// Field configuration for BM25F scoring
@@ -521,6 +563,28 @@ impl Document {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct DocumentId(Arc<str>);
 
+impl DocumentId {
+    fn new(id: impl AsRef<str>) -> Self {
+        Self(id.as_ref().into())
+    }
+    
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for DocumentId {
+    fn from(s: &str) -> Self {
+        Self(s.into())
+    }
+}
+
+impl From<String> for DocumentId {
+    fn from(s: String) -> Self {
+        Self(s.into())
+    }
+}
+
 /// Numeric index for documents within the collection
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 struct EntryIndex(u32);
@@ -546,7 +610,7 @@ struct TokenIndex(u16);
 
 ```rust
 /// Flattened document entry with BM25FS⁺ pre-computed impact scores
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 struct DocumentEntry {
     /// Document identifier (primary sort key)
     doc: EntryIndex,
@@ -556,6 +620,14 @@ struct DocumentEntry {
     val: ValueIndex,
     /// Pre-computed BM25FS⁺ impact score (includes field weights and δ-shift)
     impact: f32,
+}
+
+impl Eq for DocumentEntry {}
+
+impl Ord for DocumentEntry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.doc, self.attr, self.val).cmp(&(other.doc, other.attr, other.val))
+    }
 }
 
 impl DocumentEntry {
@@ -727,7 +799,7 @@ impl Collection {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 enum IndexError {
     CapacityExceeded,
     AttributeCapacityExceeded,
@@ -737,6 +809,22 @@ enum IndexError {
     VectorDimensionMismatch,
     VectorNotNormalized,
 }
+
+impl std::fmt::Display for IndexError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IndexError::CapacityExceeded => write!(f, "Maximum document capacity exceeded"),
+            IndexError::AttributeCapacityExceeded => write!(f, "Maximum attribute capacity exceeded"),
+            IndexError::ValueCapacityExceeded => write!(f, "Maximum values per attribute exceeded"),
+            IndexError::DocumentNotFound => write!(f, "Document not found"),
+            IndexError::TypeMismatch(expected, found) => write!(f, "Type mismatch: expected {:?}, found {:?}", expected, found),
+            IndexError::VectorDimensionMismatch => write!(f, "Vector dimension mismatch"),
+            IndexError::VectorNotNormalized => write!(f, "Vector is not L2 normalized"),
+        }
+    }
+}
+
+impl std::error::Error for IndexError {}
 ```
 
 ## TextIndex Implementation
@@ -796,8 +884,13 @@ impl BM25Scorer {
 ### Core Text Index Structure
 
 ```rust
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
+use rkyv::{Archive, Deserialize, Serialize};
+use lru::LruCache;
+
 /// Extended document structure for text index with position information
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Archive, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Archive, Deserialize, Serialize)]
 struct TextDocumentEntry {
     /// Document identifier (primary sort key)
     doc: EntryIndex,
@@ -811,6 +904,14 @@ struct TextDocumentEntry {
     position: Position,
     /// Pre-computed BM25FS⁺ impact score
     impact: f32,
+}
+
+impl Eq for TextDocumentEntry {}
+
+impl Ord for TextDocumentEntry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.doc, self.attr, self.val, self.token_idx).cmp(&(other.doc, other.attr, other.val, other.token_idx))
+    }
 }
 
 impl TextDocumentEntry {
@@ -827,22 +928,26 @@ impl TextDocumentEntry {
 }
 
 /// Simple memory pool for reducing allocations during search operations
-static MEMORY_POOL: std::sync::Mutex<Option<Vec<f32>>> = std::sync::Mutex::new(None);
+use std::sync::{Mutex, OnceLock};
+
+static MEMORY_POOL: OnceLock<Mutex<Option<Vec<f32>>>> = OnceLock::new();
 const MAX_POOL_SIZE: usize = 10_000;     // 10K f32s = 40KB max pool (reasonable size)
 const MIN_POOL_SIZE: usize = 1_000;      // 1K f32s = 4KB minimum to keep in pool
 
 /// Intelligent memory pool management for search operations
 fn get_or_create_buffer(required_size: usize) -> Vec<f32> {
-    let mut pool = MEMORY_POOL.lock().unwrap();
+    let pool = MEMORY_POOL.get_or_init(|| Mutex::new(None));
+    let mut pool_guard = pool.lock().unwrap();
     
-    if let Some(mut buffer) = pool.take() {
+    if let Some(mut buffer) = pool_guard.take() {
         // Reuse existing buffer if it's large enough
         if buffer.len() >= required_size {
             buffer.truncate(required_size.max(MIN_POOL_SIZE));
+            buffer.fill(0.0); // Clear previous data
             return buffer;
         }
-        // If existing buffer is too small, keep it and create a new one
-        *pool = Some(buffer);
+        // If existing buffer is too small, return it to the pool and create a new one
+        *pool_guard = Some(buffer);
     }
     
     // Create new buffer, but don't make it unnecessarily large
@@ -850,12 +955,14 @@ fn get_or_create_buffer(required_size: usize) -> Vec<f32> {
     vec![0.0f32; buffer_size]
 }
 
-fn return_buffer_to_pool(buffer: Vec<f32>) {
+fn return_buffer_to_pool(mut buffer: Vec<f32>) {
     // Only keep the buffer if it's a reasonable size for reuse
     if buffer.len() >= MIN_POOL_SIZE && buffer.len() <= MAX_POOL_SIZE {
-        let mut pool = MEMORY_POOL.lock().unwrap();
-        if pool.is_none() {
-            *pool = Some(buffer);
+        let pool = MEMORY_POOL.get_or_init(|| Mutex::new(None));
+        let mut pool_guard = pool.lock().unwrap();
+        if pool_guard.is_none() {
+            buffer.clear(); // Clear data but keep capacity
+            *pool_guard = Some(buffer);
         }
         // If pool already has a buffer, just drop this one (GC will handle it)
     }
@@ -1477,13 +1584,15 @@ impl VectorIndex {
     }
 
     /// SIMD-optimized cosine similarity using WebAssembly SIMD 128
+    /// Note: This implementation uses manual unrolling for broad compatibility.
+    /// For actual SIMD intrinsics, enable the wasm-simd feature and use std::arch::wasm32
     fn cosine_similarity_simd(query: &[f32], doc_vector: &[f32]) -> f32 {
         debug_assert_eq!(query.len(), doc_vector.len());
         
         let mut dot_product = 0.0f32;
         
-        // Process 4 f32 values simultaneously with SIMD-style operations
-        // Note: Actual SIMD intrinsics would require wasm-simd feature and std::arch::wasm32
+        // Process 4 f32 values simultaneously with manual unrolling
+        // This pattern allows compilers to vectorize the operations automatically
         let chunks = query.chunks_exact(4).zip(doc_vector.chunks_exact(4));
         for (q_chunk, d_chunk) in chunks {
             // Manual unrolling for better performance (compiler may vectorize)
@@ -1559,12 +1668,24 @@ impl VectorIndex {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 enum VectorError {
     DimensionMismatch,
     NotNormalized,
     CapacityExceeded,
 }
+
+impl std::fmt::Display for VectorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VectorError::DimensionMismatch => write!(f, "Vector dimension mismatch"),
+            VectorError::NotNormalized => write!(f, "Vector is not L2 normalized"),
+            VectorError::CapacityExceeded => write!(f, "Vector index capacity exceeded"),
+        }
+    }
+}
+
+impl std::error::Error for VectorError {}
 ```
 
 ## Hybrid Search Engine
