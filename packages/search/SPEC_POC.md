@@ -200,13 +200,11 @@ lru = "0.12"
 ordered-float = "4.2"
 regex = "1.10"
 
-# WebAssembly-specific utilities
-[target.'cfg(target_arch = "wasm32")'.dependencies]
+# WebAssembly utilities and web APIs
 base64 = "0.22"                        # For encoding/decoding stored data
 wasm-bindgen-futures = "0.4"           # For async operations
-
-# Web APIs for hardware detection and storage
-[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+js_sys = "0.3"
 web_sys = { version = "0.3", features = [
     "Navigator", 
     "Window", 
@@ -216,8 +214,6 @@ web_sys = { version = "0.3", features = [
     "Storage",                         # For localStorage
     "Promise",                         # For async operations
 ] }
-wasm-bindgen = "0.2"
-js_sys = "0.3"
 ```
 
 ## Type System & Schema
@@ -1981,31 +1977,8 @@ impl FileIndex {
         Self::serialize_index(text_index, vector_index, collection, schema)
     }
     
-    /// Load from file using standard file I/O (fallback for native platforms)
-    #[cfg(not(target_arch = "wasm32"))]
-    fn load_from_file(path: &std::path::Path) -> Result<(Vec<u8>, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
-        let data = std::fs::read(path)?;
-        let archived = Self::deserialize_index(&data)?;
-        Ok((data, archived))
-    }
-    
-    /// Save to file using standard file I/O (fallback for native platforms)
-    #[cfg(not(target_arch = "wasm32"))]
-    fn save_to_file(
-        path: &std::path::Path,
-        text_index: &TextIndex,
-        vector_index: &VectorIndex,
-        collection: &Collection,
-        schema: &Schema
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let serialized = Self::serialize_index(text_index, vector_index, collection, schema)?;
-        std::fs::write(path, serialized)?;
-        Ok(())
-    }
-    
-    /// WebAssembly-compatible loading from browser storage or network
-    #[cfg(target_arch = "wasm32")]
-    fn load_from_web_source(data: Vec<u8>) -> Result<(Vec<u8>, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
+    /// WebAssembly-compatible loading from browser storage, network, or embedded data
+    fn load_from_data(data: Vec<u8>) -> Result<(Vec<u8>, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
         let archived = Self::deserialize_index(&data)?;
         Ok((data, archived))
     }
@@ -2021,7 +1994,6 @@ For WebAssembly deployment, the index can be loaded through several methods:
 const EMBEDDED_INDEX: &[u8] = include_bytes!("search_index.rkyv");
 
 // 2. Network loading (fetch API)
-#[cfg(target_arch = "wasm32")]
 async fn load_index_from_network(url: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use web_sys::window;
     use wasm_bindgen_futures::JsFuture;
@@ -2035,7 +2007,6 @@ async fn load_index_from_network(url: &str) -> Result<Vec<u8>, Box<dyn std::erro
 }
 
 // 3. Browser storage loading (localStorage/indexedDB)
-#[cfg(target_arch = "wasm32")]
 fn load_index_from_storage(key: &str) -> Option<Vec<u8>> {
     use web_sys::window;
     
