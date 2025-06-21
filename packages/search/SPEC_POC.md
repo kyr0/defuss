@@ -1304,6 +1304,8 @@ struct TextIndex {
     scorer: BM25Scorer,
     /// LRU cache for recent queries (autocomplete optimization)
     query_cache: std::sync::Mutex<lru::LruCache<String, Vec<(Doc,Score)>>>,
+    /// Tokenizer configuration for consistent text processing
+    tokenizer_config: TokenizerConfig,
 }
 
 impl TextIndex {
@@ -1312,13 +1314,19 @@ impl TextIndex {
     }
     
     fn with_config(config: BM25Config) -> Self {
+        Self::with_full_config(config, TokenizerConfig::default())
+    }
+    
+    /// Create TextIndex with both BM25 and tokenizer configuration
+    fn with_full_config(bm25_config: BM25Config, tokenizer_config: TokenizerConfig) -> Self {
         Self {
             document_lists: HashMap::new(),
             bigram_index: BigramFuzzyIndex::new(),
             trie_index: TrieNode::default(),
             bloom_filter: BloomFilter::new(),
-            scorer: BM25Scorer::with_config(config),
+            scorer: BM25Scorer::with_config(bm25_config),
             query_cache: std::sync::Mutex::new(lru::LruCache::new(32)),
+            tokenizer_config, // Store configuration for consistent processing
         }
     }
     
@@ -1661,6 +1669,68 @@ use regex::Regex;
 use stop_words::{get, Language as StopWordsLanguage};
 use rust_stemmers::{Algorithm, Stemmer};
 
+/// Token processing configuration for text indexing
+#[derive(Debug, Clone)]
+struct TokenizerConfig {
+    /// Minimum token length (default: 1 to include acronyms like "AI", "ML")
+    min_length: usize,
+    /// Maximum token length (default: 50 for URLs and technical terms)
+    max_length: usize,
+    /// Whether to preserve numbers as tokens (default: true)
+    include_numbers: bool,
+    /// Whether to preserve mixed alphanumeric tokens (default: true)
+    include_mixed: bool,
+}
+
+impl Default for TokenizerConfig {
+    fn default() -> Self {
+        Self {
+            min_length: 1,      // Include single-letter tokens and short acronyms
+            max_length: 50,     // Allow longer technical terms and identifiers
+            include_numbers: true,
+            include_mixed: true,
+        }
+    }
+}
+
+impl TokenizerConfig {
+    /// Conservative configuration for general text (excludes very short tokens)
+    pub fn conservative() -> Self {
+        Self {
+            min_length: 2,      // Skip single letters but keep "AI", "ML"
+            max_length: 30,     // Reasonable upper bound
+            include_numbers: false,
+            include_mixed: true,
+        }
+    }
+    
+    /// Technical configuration for code, APIs, and technical documentation
+    pub fn technical() -> Self {
+        Self {
+            min_length: 1,      // Include all tokens (variable names, etc.)
+            max_length: 100,    // Very long identifiers and URLs
+            include_numbers: true,
+            include_mixed: true,
+        }
+    }
+    
+    /// Build regex pattern from configuration
+    fn build_regex(&self) -> regex::Regex {
+        let pattern = if self.include_numbers && self.include_mixed {
+            // Include word characters and numbers: \w includes [a-zA-Z0-9_]
+            format!(r"(\w{{{},{}}})(?:['\-_](\w+))*", self.min_length, self.max_length)
+        } else if self.include_mixed {
+            // Include letters with numbers but not pure numbers
+            format!(r"([a-zA-Z][\w]{{{},{}}})(?:['\-_](\w+))*", self.min_length.saturating_sub(1), self.max_length.saturating_sub(1))
+        } else {
+            // Letters only
+            format!(r"([a-zA-Z]{{{},{}}})(?:['\-_]([a-zA-Z]+))*", self.min_length, self.max_length)
+        };
+        
+        regex::Regex::new(&pattern).expect("Valid regex pattern")
+    }
+}
+
 /// Token processing for text indexing
 #[derive(Debug, Clone)]
 struct Token {
@@ -1670,9 +1740,14 @@ struct Token {
 }
 
 impl TextIndex {
-    /// Process text input into tokens for indexing with language support
+    /// Process text input into tokens with configurable tokenization
     fn process_text(input: &str, language: Language) -> Vec<Token> {
-        let word_regex = Regex::new(r"(\w{3,20})").unwrap();
+        Self::process_text_with_config(input, language, &TokenizerConfig::default())
+    }
+    
+    /// Process text with custom tokenizer configuration
+    fn process_text_with_config(input: &str, language: Language, config: &TokenizerConfig) -> Vec<Token> {
+        let word_regex = config.build_regex();
         let mut tokens = Vec::new();
         
         // Get stop words for the specified language
@@ -1684,16 +1759,27 @@ impl TextIndex {
         for (token_idx, capture) in word_regex.find_iter(input).enumerate() {
             let term = capture.as_str().to_lowercase();
             
+            // Additional length validation (regex should handle this, but double-check)
+            if term.len() < config.min_length || term.len() > config.max_length {
+                continue;
+            }
+            
             // Skip stop words using language-specific stop word list
-            if stop_words.contains(&term) {
+            // Note: Don't filter very short terms from stop words list since they might be important acronyms
+            if term.len() > 2 && stop_words.contains(&term) {
                 continue;
             }
             
             // Use token index as position for consistency across phrase matching
             let position = Position(token_idx as u32);
             
-            // Apply language-specific stemming
-            let stemmed = stemmer.stem(&term).to_string();
+            // Apply language-specific stemming (but preserve short acronyms)
+            let stemmed = if term.len() <= 3 {
+                // Don't stem very short terms (likely acronyms or abbreviations)
+                term
+            } else {
+                stemmer.stem(&term).to_string()
+            };
             
             tokens.push(Token {
                 term: stemmed,
@@ -1754,6 +1840,9 @@ impl<'n> Iterator for TrieNodeTermIterator<'n> {
             for child in node.children.values() {
                 self.queue.push_back(child);
             }
+            
+                       
+
             
             // Return term if this node has one
             if let Some(ref term) = node.term {
@@ -1945,6 +2034,10 @@ impl VectorIndex {
         Self::with_dimension(Self::DEFAULT_DIMENSION)
     }
     
+    fn with_config(config: BM25Config) -> Self {
+        Self::with_full_config(config, TokenizerConfig::default())
+    }
+    
     /// Create vector index with specific dimensions (0 = disable vectors)
     fn with_dimension(dimension: usize) -> Self {
         let enabled = dimension > 0;
@@ -2053,7 +2146,7 @@ impl VectorIndex {
             })
             .collect();
 
-        // Sort by score (descending) and take top k
+        // Sort by score (descending) and take top results
         results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         results.truncate(top_k.unwrap_or(10));
         
@@ -2163,12 +2256,21 @@ impl HybridSearchEngine {
         }
     }
     
+    /// Create with schema and tokenizer configuration
+    fn with_schema_and_tokenizer(schema: &Schema, tokenizer_config: TokenizerConfig) -> Self {
+        Self {
+            collection: Collection::with_schema(schema),
+            text_index: TextIndex::with_full_config(BM25Config::new(schema), tokenizer_config),
+            vector_index: VectorIndex::with_dimension(VectorIndex::DEFAULT_DIMENSION),
+        }
+    }
+    
     /// Add a document to the index with BM25FS⁺ scoring and language support
     fn add_document(&mut self, document: Document, language: Language) -> Result<(), IndexError> {
         // Validate document first
         document.validate()?;
         
-        // Register document with collection using proper method
+        // Register document with collection
         let entry_index = self.collection.add_document(document.id.clone())?;
         
         // Index text attributes with field-aware BM25FS⁺ scoring
@@ -2197,6 +2299,56 @@ impl HybridSearchEngine {
                             token.index,
                             token.position,
                             attr_name, // Field name for BM25F weights
+                            tf,
+                            field_length,
+                        );
+                    }
+                }
+            }
+        }
+        
+        // Index vector if present
+        if let Some(ref vector) = document.vector {
+            self.vector_index.insert(entry_index, Some(vector))?;
+        }
+        
+        Ok(())
+    }
+    
+    /// Add a document with configurable text processing
+    fn add_document_with_tokenizer(&mut self, document: Document, language: Language, tokenizer_config: &TokenizerConfig) -> Result<(), IndexError> {
+        // Validate document first
+        document.validate()?;
+        
+        // Register document with collection
+        let entry_index = self.collection.add_document(document.id.clone())?;
+        
+        // Index text attributes with configurable tokenization
+        for (attr_name, values) in &document.attributes {
+            for (value_idx, value) in values.iter().enumerate() {
+                let attr_index = self.collection.get_or_register_attribute(attr_name, value)?;
+                let value_index = ValueIndex(value_idx as u8);
+                
+                if let Value::Text(text) = value {
+                    let tokens = TextIndex::process_text_with_config(text, language, tokenizer_config);
+                    let field_length = tokens.len() as f32;
+                    
+                    // Build term frequency map for BM25FS⁺ calculation
+                    let mut tf_map = HashMap::new();
+                    for token in &tokens {
+                        *tf_map.entry(&token.term).or_insert(0u32) += 1;
+                    }
+                    
+                    for token in tokens {
+                        let tf = tf_map[&token.term];
+                        self.text_index.insert(
+                            entry_index,
+                            attr_index,
+                            value_index,
+                            &token.term,
+                            token.index,
+                            token.position,
+                            attr_name,
                             tf,
                             field_length,
                         );
@@ -2598,8 +2750,8 @@ fn load_index_from_storage(key: &str) -> Option<Vec<u8>> {
 ```rust
 // Define schema with tag fields
 let schema = Schema::builder()
-    .title_field("title")
-    .body_field("content")
+    .title_field("Rust WebAssembly Tutorial")
+    .body_field("Learn how to build fast web applications...")
     .tag_field("categories")        // Field for exact-match categories
     .tag_field("tags")             // Field for keywords/labels
     .build();
