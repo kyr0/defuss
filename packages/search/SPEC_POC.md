@@ -726,6 +726,12 @@ impl Document {
         self.vector = Some(vector);
         self
     }
+
+    /// Complete the document builder (optional - document is ready to use without this)
+    /// This method is provided for consistency with builder patterns but is not required
+    pub fn build(self) -> Self {
+        self
+    }
 }
 ```
 
@@ -1764,6 +1770,16 @@ impl TokenizerConfig {
             min_length: 2,      // Skip single letters but keep "AI", "ML"
             max_length: 30,     // Reasonable upper bound
             include_numbers: false,
+            include_mixed: true,
+        }
+    }
+    
+    /// Technical configuration for code or technical content (includes all tokens)
+    pub fn technical() -> Self {
+        Self {
+            min_length: 1,      // Include all tokens
+            max_length: 100,    // Allow very long tokens
+            include_numbers: true,
             include_mixed: true,
         }
     }

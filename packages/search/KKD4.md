@@ -2,9 +2,9 @@
 
 ## Ein axiomatischer Rahmen zur universellen Sinnhaftigkeit
 
-**Autor\*innen:** …\
-**Institution:** …\
-**Korrespondenz:** \<E‑Mail>
+**Autor\*innen:** …  
+**Institution:** …  
+**Korrespondenz:** <E‑Mail>
 
 ---
 
@@ -14,7 +14,7 @@
 
 **Methode.** Sechs essenzielle Axiome — Existenz, Kausal‑Totalität, zeitliche Halbordnung, Lokalität, stetige Dynamik, stochastische Übergänge — bilden die Grundlage für den KKD‑Graphen. Vier kosmologische Topologien (Branching‑DAG, Zyklus, Wurzelbaum, Hybride) werden formal beschrieben, visuell in MermaidJS umgesetzt und quantitativ durch Pfadfrequenzspektren verglichen. Eine Python‑Simulation demonstriert Pfaddämpfung in zyklischen Systemen.
 
-**Ergebnisse.** Theorem 1 (Sinn‑Existenz) garantiert, dass jede Entität mindestens eine Ursache besitzt. Pfadmetriken ermöglichen eine zuverlässige Topologie‑Unterscheidung; Simulationsergebnisse zeigen Konvergenz bei Dämpfung (ρ<1) und Divergenz am kritischen Schwellenwert (ρ→1).
+**Ergebnisse.** Theorem 1 (Sinn‑Existenz) garantiert, dass jede Entität mindestens eine Ursache besitzt. Pfadmetriken ermöglichen eine zuverlässige Topologie‑Unterscheidung; Simulationsergebnisse zeigen Konvergenz bei Dämpfung (\( \rho < 1 \)) und Divergenz am kritischen Schwellenwert (\( \rho \to 1 \)).
 
 **Schlüsselwörter:** Kausalität · Halbordnung · Kontinuität · Graphentheorie · Relativität · Quantenmechanik · Stochastik · Simulation
 
@@ -37,51 +37,66 @@ KKD knüpft an Leibniz’ *Principium Rationis Sufficientis* an und verbindet Ph
 
 ## 2 Axiomatische Grundlagen
 
-Sei \(U\) eine nichtleere Menge von Ereignissen mit Zeitstempeln \(t(x)\). Die kausale Indikatorfunktion \(C: U \times U \to \{0,1\}\) erfüllt:
+Sei \( U \) eine nichtleere Menge von Ereignissen mit Zeitstempeln \( t(x) \). Die kausale Indikatorfunktion \( C: U \times U \to \{0,1\} \) erfüllt:
 
-1. **Existenz:** \(U \neq \varnothing.\)
-2. **Kausal‑Totalität:** \(\forall x \in U:\; \exists y \in U: \;C(y,x)=1.\)
+1. **Existenz:**  
+   $$ U \neq \varnothing $$
+
+2. **Kausal‑Totalität:**  
+   $$ \forall x \in U:\; \exists y \in U: \;C(y,x)=1 $$
+
 3. **Zeitliche Halbordnung:**
-   - **Irreflexivität:** \(C(x,x)=0.\)
-   - **Transitivität:** \(C(y,x)=1\) und \(C(x,z)=1\) implizieren \(C(y,z)=1.\)
-   - **Konsistente Zeitrichtung:** \(C(y,x)=1\implies t(y)<t(x).\)
-4. **Lokalität:** \(C(y,x)=1\) nur wenn \(d(y,x)\le c\, (t(x)-t(y))\), mit Lichtgeschwindigkeit $$c$$.
-5. **Stetige Dynamik:** Zustandsänderung folgt einer Lipschitz-stetigen DGL $$\dot{x}(t)=F(x(t),t).$$
-6. **Stochastische Übergänge:** Für $$\Delta t\to0.$$ gilt
+   - **Irreflexivität:**  
+     $$ C(x,x)=0 $$
+   - **Transitivität:**  
+     $$ C(y,x)=1 \land C(x,z)=1 \Rightarrow C(y,z)=1 $$
+   - **Konsistente Zeitrichtung:**  
+     $$ C(y,x)=1 \Rightarrow t(y)<t(x) $$
 
+4. **Lokalität:**  
+   $$ C(y,x)=1 \Rightarrow d(y,x)\le c\, (t(x)-t(y)) $$  
+   mit Lichtgeschwindigkeit \( c \).
+
+5. **Stetige Dynamik:**  
+   $$ \dot{x}(t)=F(x(t),t) $$
+
+6. **Stochastische Übergänge:** Für \( \Delta t\to0 \) gilt
    $$
-     P\bigl(y\to x;\Delta t\bigr)=\lambda(y,x)\,\Delta t + o(\Delta t).
+   P\bigl(y\to x;\Delta t\bigr)=\lambda(y,x)\,\Delta t + o(\Delta t)
    $$
+   wobei \( \lambda(y,x) \) die kausale Übergangsrate ist.
 
-   wobei \(\lambda(y,x)\) die kausale Übergangsrate ist.
+**Theorem 1 (Sinn-Existenz).** Aus Axiom 2 folgt für alle \( x\in U \):
 
-**Theorem 1 (Sinn-Existenz).** Aus Axiom 2 folgt für alle \(x\in U\):
-
-\[
-   S(x)=\{y\mid C(y,x)=1\}\neq \varnothing
-\]
+$$
+S(x)=\{y\mid C(y,x)=1\}\neq \varnothing
+$$
 
 ∎
 
 *Folgerung:* Keine Entität ist kausal isoliert.
 
 ## 3 Graphentheoretische Struktur
-Der **KKD‑Graph** \(G=(U,E)\) mit \(E=\{(y,x)\mid C(y,x)=1\}\) ist quellenfrei, transitiv und zyklusfrei (unter zeitlicher Entfaltung).
+
+Der **KKD‑Graph** \( G=(U,E) \) mit \( E=\{(y,x)\mid C(y,x)=1\} \) ist quellenfrei, transitiv und zyklusfrei (unter zeitlicher Entfaltung).
 
 ```mermaid
 graph LR
   A((A, t)) --> B((B, t+Δt))
   B --> A2((A, t+2Δt))
-```
+````
+
 *Abb. 1:* Feedback in KKD ohne zeitgleiche Zyklen.
 
 ### 3.1 Pfadfrequenzspektren
+
 Die **gewichtete Pfadzahl**
-\[
-  W(x)=\sum_{n=1}^\infty \rho^n\,F_n(x),
+
+$$
+W(x)=\sum_{n=1}^\infty \rho^n\,F_n(x)
 $$
 
-mit Dämpfungsfaktor \(0<\rho<1\) quantifiziert indirekte Ursachen und dient als Topologie-Fingerprint.
+mit Dämpfungsfaktor $0<\rho<1$ quantifiziert indirekte Ursachen und dient als Topologie-Fingerprint.
 
 ## 4 Kosmologische Topologien
 
@@ -102,9 +117,9 @@ graph TD
 
 **Merkmale:**
 
-- Keine Wurzel (keine eindeutige Erstursache).
-- Pfadfrequenz divergiert für Dämpfungsfaktor ρ ≥ 1.
-- Repräsentativ für unendliches Regressmodell.
+* Keine Wurzel (keine eindeutige Erstursache).
+* Pfadfrequenz divergiert für Dämpfungsfaktor $\rho \ge 1$.
+* Repräsentativ für unendliches Regressmodell.
 
 ### 4.2 Zyklischer Graph (Conformal Cyclic Cosmology)
 
@@ -119,9 +134,9 @@ graph TD
 
 **Merkmale:**
 
-- Jeder Knoten liegt in mindestens einem Zyklus.
-- Endliche Pfadlängen, periodische Struktur.
-- Modelliert Big Bounce oder ewige Wiederholung des Universums.
+* Jeder Knoten liegt in mindestens einem Zyklus.
+* Endliche Pfadlängen, periodische Struktur.
+* Modelliert Big Bounce oder ewige Wiederholung des Universums.
 
 ### 4.3 Wurzelbaum (Urknall-Modell)
 
@@ -136,15 +151,13 @@ graph TD
 
 **Merkmale:**
 
-- Eindeutige Quelle r; für alle x≠r gilt in-deg(x)≥1.
-- Pfadfrequenzen wachsen exponentiell mit der Pfadlänge.
-- Standardmodell der kosmologischen Expansion.
+* Eindeutige Quelle $r$; für alle $x \ne r$ gilt $\text{in-deg}(x) \ge 1$.
+* Pfadfrequenzen wachsen exponentiell mit der Pfadlänge.
+* Standardmodell der kosmologischen Expansion.
 
 ### 4.4 Hybride Topologien
 
 Kombinationen zyklischer und verzweigter Strukturen entstehen in Simulationstheorie-Szenarien oder Multiplattform-Kausalnetzen.
-
-Beispiel:
 
 ```mermaid
 graph TD
@@ -158,16 +171,16 @@ graph TD
 
 **Merkmale:**
 
-- Gemischte Eigenschaften: sowohl Wurzelstruktur als auch lokale Zyklen.
-- Eignet sich für mehrstufige Simulationsrahmen, in denen verschiedene Ebenen kausal interagieren.
+* Gemischte Eigenschaften: sowohl Wurzelstruktur als auch lokale Zyklen.
+* Eignet sich für mehrstufige Simulationsrahmen, in denen verschiedene Ebenen kausal interagieren.
 
-## 5 Empirische Validierung & Simulation & Simulation
+## 5 Empirische Validierung & Simulation
 
 ### 5.1 Vergleich mit Beobachtungen
 
-- **CMB‑Anisotropien:** Kleinräumige Fluktuationen passen zu Wurzelbaum- und Zyklus‑Szenarien.
-- **Entropiepfeil:** Monotones Wachstum unterstützt Wurzelbaum, zyklischer Reset hypothetisch möglich.
-- **Primordial Wellen:** PTA, LISA und CMB-Lensing werden unterscheidende Daten liefern.
+* **CMB‑Anisotropien:** Kleinräumige Fluktuationen passen zu Wurzelbaum- und Zyklus‑Szenarien.
+* **Entropiepfeil:** Monotones Wachstum unterstützt Wurzelbaum, zyklischer Reset hypothetisch möglich.
+* **Primordial Wellen:** PTA, LISA und CMB-Lensing werden unterscheidende Daten liefern.
 
 ### 5.2 Pfaddämpfung in Zyklus-Modellen
 
@@ -181,24 +194,24 @@ W = sum(rho**n * np.linalg.matrix_power(A,n) for n in range(1,21))
 print("Trace:", W.trace())
 ```
 
-*Ergebnis:* Konvergenz für \(\rho<1\), Divergenz bei \(\rho\to1\).
+*Ergebnis:* Konvergenz für $\rho < 1$, Divergenz bei $\rho \to 1$.
 
 ## 6 Physikalische Anschlussfähigkeit
 
 KKD respektiert:
 
-- **Relativität:** Lichtkegelprinzip, keine Überlicht-Einflüsse.
-- **Quantenmechanik:** No‑signalling, statistische Übergangsraten.
-- **Thermodynamik:** Synchronität von Zeit- und Entropiepfeil.
-- **Causal Sets:** Diskrete Modelle als Spezialfall kontinuierlicher KKD.
+* **Relativität:** Lichtkegelprinzip, keine Überlicht-Einflüsse.
+* **Quantenmechanik:** No‑signalling, statistische Übergangsraten.
+* **Thermodynamik:** Synchronität von Zeit- und Entropiepfeil.
+* **Causal Sets:** Diskrete Modelle als Spezialfall kontinuierlicher KKD.
 
 ## 7 Diskussion & Ausblick
 
 KKD vereint:
 
-- **Philosophie:** Präzision des Principium Rationis Sufficientis.
-- **Mathematik:** Axiome, Pfadmetriken, Transitivität.
-- **Physik:** Kompatibilität mit Kerntheorien und kosmologischen Daten.
+* **Philosophie:** Präzision des Principium Rationis Sufficientis.
+* **Mathematik:** Axiome, Pfadmetriken, Transitivität.
+* **Physik:** Kompatibilität mit Kerntheorien und kosmologischen Daten.
 
 **Zukünftige Arbeiten:**
 
@@ -218,7 +231,6 @@ KKD stellt einen universellen Rahmen bereit, der Ursache‑Wirkungs‑Netzwerke 
 2. Bombelli, L., Lee, J., Meyer, D., Sorkin, R.: "Space-Time as a Causal Set", *Phys. Rev. Lett.* 59, 521–524 (1987).
 3. Penrose, R.: *Cycles of Time*, Vintage, 2014.
 4. Sorkin, R.: "Causal Sets and the Deep Structure of Spacetime", 2003.
-5. Planck Collaboration: "Planck 2018 results. VI. Cosmological parameters", *A&A* 641, A6 (2020).
+5. Planck Collaboration: "Planck 2018 results. VI. Cosmological parameters", *A\&A* 641, A6 (2020).
 
 *MermaidJS für Diagramme*
-
