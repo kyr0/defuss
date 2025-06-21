@@ -127,9 +127,16 @@ Where `α ≃ 0.3-0.5` for most corpora. CombSUM and its cousin CombMNZ originat
 | `k1` | TF saturation | 1.2 | Elastic defaults work well across corpora |
 | `b` | Length normalization | 0.75 | Standard BM25 parameter (Elastic default) |
 | `δ` | Lower bound | 0.5 | Lv & Zhai used 1.0; 0.25-0.5 gentler on short docs |
-| `w_title` | Title field weight | 2.5 | High signal-to-noise ratio for concise titles |
-| `w_body` | Body field weight | 1.0 | Baseline field weight |
-| `w_description` | Description field weight | 1.5 | Medium importance structured field |
+| **Semantic Field Weights** | **BM25F automatic assignment** | | |
+| `Title` | Primary titles/headings | 2.5, b=0.75 | High signal-to-noise ratio for concise titles |
+| `Heading` | Secondary headings | 2.0, b=0.75 | Important structural content |
+| `Description` | Summaries/descriptions | 1.5, b=0.75 | Medium importance structured field |
+| `Body` | Main content | 1.0, b=0.75 | Baseline field weight |
+| `Tags` | Keywords/categories | 1.8, b=0.5 | High weight, low length normalization |
+| `Author` | Creator names | 1.2, b=0.6 | Moderate importance |
+| `Date` | Timestamps | 0.8, b=0.5 | Lower weight for metadata |
+| `Reference` | URLs/links | 0.6, b=0.5 | Lowest weight for references |
+| **Fusion Parameters** | | | |
 | `k` (RRF) | Rank shift | 60.0 | Cormack & Clarke 2009 optimal across datasets |
 | `α` (CombSUM) | Dense/sparse blend | 0.4 | Default blend ratio for most corpora |
 | `topK` | Results count | 10 | Default number of results to return |
@@ -215,6 +222,46 @@ enum Kind {
     Text,
 }
 
+/// Semantic meaning of a field for automatic BM25F weight assignment
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum SemanticKind {
+    /// Primary title or heading (weight: 2.5, b: 0.75)
+    Title,
+    /// Secondary heading or subtitle (weight: 2.0, b: 0.75)  
+    Heading,
+    /// Brief description or summary (weight: 1.5, b: 0.75)
+    Description,
+    /// Main body content (weight: 1.0, b: 0.75)
+    Body,
+    /// Tags, keywords, or categories (weight: 1.8, b: 0.5)
+    Tags,
+    /// Author or creator name (weight: 1.2, b: 0.6)
+    Author,
+    /// Date or timestamp (weight: 0.8, b: 0.5)
+    Date,
+    /// URL or reference (weight: 0.6, b: 0.5)
+    Reference,
+    /// Custom field with default weights (weight: 1.0, b: 0.75)
+    Custom,
+}
+
+impl SemanticKind {
+    /// Get the appropriate BM25F weights for this semantic kind
+    fn to_field_weight(self) -> FieldWeight {
+        match self {
+            SemanticKind::Title => FieldWeight { weight: 2.5, b: 0.75 },
+            SemanticKind::Heading => FieldWeight { weight: 2.0, b: 0.75 },
+            SemanticKind::Description => FieldWeight { weight: 1.5, b: 0.75 },
+            SemanticKind::Body => FieldWeight { weight: 1.0, b: 0.75 },
+            SemanticKind::Tags => FieldWeight { weight: 1.8, b: 0.5 },
+            SemanticKind::Author => FieldWeight { weight: 1.2, b: 0.6 },
+            SemanticKind::Date => FieldWeight { weight: 0.8, b: 0.5 },
+            SemanticKind::Reference => FieldWeight { weight: 0.6, b: 0.5 },
+            SemanticKind::Custom => FieldWeight::default(),
+        }
+    }
+}
+
 /// A value that can be indexed with optional BM25F weight
 enum Value {
     Tag(String),
@@ -240,6 +287,7 @@ impl Default for FieldWeight {
 struct Schema {
     attributes: HashMap<String, Kind>,
     field_weights: HashMap<String, FieldWeight>,
+    semantic_kinds: HashMap<String, SemanticKind>,
 }
 
 impl Schema {
@@ -252,13 +300,29 @@ impl Schema {
 struct SchemaBuilder {
     attributes: HashMap<String, Kind>,
     field_weights: HashMap<String, FieldWeight>,
+    semantic_kinds: HashMap<String, SemanticKind>,
 }
 
 impl SchemaBuilder {
+    /// Add an attribute with semantic meaning for automatic weight assignment
+    pub fn attribute_semantic(mut self, name: impl Into<String>, kind: Kind, semantic: SemanticKind) -> Self {
+        let name_str = name.into();
+        self.attributes.insert(name_str.clone(), kind);
+        self.semantic_kinds.insert(name_str.clone(), semantic);
+        
+        // Apply semantic weight for text fields only
+        if matches!(kind, Kind::Text) {
+            self.field_weights.insert(name_str, semantic.to_field_weight());
+        }
+        
+        self
+    }
+    
     /// Add an attribute with optional dynamic BM25F weight for scoring
     pub fn attribute(mut self, name: impl Into<String>, kind: Kind) -> Self {
         let name_str = name.into();
         self.attributes.insert(name_str.clone(), kind);
+        self.semantic_kinds.insert(name_str.clone(), SemanticKind::Custom);
         
         // Apply default weight for text fields
         if matches!(kind, Kind::Text) {
@@ -272,6 +336,7 @@ impl SchemaBuilder {
     pub fn attribute_with_weight(mut self, name: impl Into<String>, kind: Kind, weight: f32, b: Option<f32>) -> Self {
         let name_str = name.into();
         self.attributes.insert(name_str.clone(), kind);
+        self.semantic_kinds.insert(name_str.clone(), SemanticKind::Custom);
         
         // Only apply weights to text fields (tags don't participate in BM25F scoring)
         if matches!(kind, Kind::Text) {
@@ -284,9 +349,30 @@ impl SchemaBuilder {
         self
     }
     
+    /// Convenience method for title fields
+    pub fn title_field(mut self, name: impl Into<String>) -> Self {
+        self.attribute_semantic(name, Kind::Text, SemanticKind::Title)
+    }
+    
+    /// Convenience method for body/content fields
+    pub fn body_field(mut self, name: impl Into<String>) -> Self {
+        self.attribute_semantic(name, Kind::Text, SemanticKind::Body)
+    }
+    
+    /// Convenience method for description fields
+    pub fn description_field(mut self, name: impl Into<String>) -> Self {
+        self.attribute_semantic(name, Kind::Text, SemanticKind::Description)
+    }
+    
+    /// Convenience method for tag fields
+    pub fn tags_field(mut self, name: impl Into<String>) -> Self {
+        self.attribute_semantic(name, Kind::Text, SemanticKind::Tags)
+    }
+    
     pub fn text_field(mut self, name: impl Into<String>, weight: f32, b: Option<f32>) -> Self {
         let name_str = name.into();
         self.attributes.insert(name_str.clone(), Kind::Text);
+        self.semantic_kinds.insert(name_str.clone(), SemanticKind::Custom);
         self.field_weights.insert(name_str, FieldWeight { 
             weight, 
             b: b.unwrap_or(0.75) 
@@ -295,7 +381,9 @@ impl SchemaBuilder {
     }
     
     pub fn tag_field(mut self, name: impl Into<String>) -> Self {
-        self.attributes.insert(name.into(), Kind::Tag);
+        let name_str = name.into();
+        self.attributes.insert(name_str.clone(), Kind::Tag);
+        self.semantic_kinds.insert(name_str, SemanticKind::Custom);
         self
     }
 
@@ -303,6 +391,7 @@ impl SchemaBuilder {
         Schema {
             attributes: self.attributes,
             field_weights: self.field_weights,
+            semantic_kinds: self.semantic_kinds,
         }
     }
 }
@@ -412,6 +501,8 @@ struct BM25Config {
     delta: f32,
     /// Dynamic field weights from schema
     field_weights: HashMap<String, FieldWeight>,
+    /// Semantic kinds for automatic weight assignment
+    semantic_kinds: HashMap<String, SemanticKind>,
 }
 
 impl BM25Config {
@@ -420,18 +511,46 @@ impl BM25Config {
             k1: 1.2,
             delta: 0.5,
             field_weights: schema.field_weights.clone(),
+            semantic_kinds: schema.semantic_kinds.clone(),
         }
     }
     
-    fn with_defaults() -> Self {
-        let mut field_weights = HashMap::new();
-        field_weights.insert("title".to_string(), FieldWeight { weight: 2.5, b: 0.75 });
-        field_weights.insert("body".to_string(), FieldWeight { weight: 1.0, b: 0.75 });
+    /// Get field weight for a field, using semantic kind or sensible defaults if not configured
+    fn get_field_weight(&self, field_name: &str) -> FieldWeight {
+        // First, try explicit field weight
+        if let Some(weight) = self.field_weights.get(field_name) {
+            return weight.clone();
+        }
         
+        // Then, try semantic kind if field is registered in schema
+        if let Some(semantic) = self.semantic_kinds.get(field_name) {
+            return semantic.to_field_weight();
+        }
+        
+        // Finally, fall back to name-based heuristics for dynamic fields
+        self.field_weights.get(field_name).cloned().unwrap_or_else(|| {
+            // Provide sensible defaults based on common field names
+            match field_name {
+                "title" | "name" | "heading" => FieldWeight { weight: 2.5, b: 0.75 },
+                "description" | "summary" | "excerpt" => FieldWeight { weight: 1.5, b: 0.75 },
+                "body" | "content" | "text" => FieldWeight { weight: 1.0, b: 0.75 },
+                "tags" | "keywords" | "categories" => FieldWeight { weight: 1.8, b: 0.5 },
+                "author" | "creator" => FieldWeight { weight: 1.2, b: 0.6 },
+                "date" | "timestamp" | "created" | "updated" => FieldWeight { weight: 0.8, b: 0.5 },
+                "url" | "link" | "reference" | "href" => FieldWeight { weight: 0.6, b: 0.5 },
+                _ => FieldWeight::default(), // Default: weight 1.0, b 0.75
+            }
+        })
+    }
+}
+
+impl Default for BM25Config {
+    fn default() -> Self {
         Self {
             k1: 1.2,
             delta: 0.5,
-            field_weights,
+            field_weights: HashMap::new(), // Start empty, use get_field_weight for defaults
+            semantic_kinds: HashMap::new(), // Start empty, populated from schema
         }
     }
 }
@@ -568,9 +687,7 @@ impl BM25Scorer {
         field_length: f32,
         _document_frequency: u32, // For future IDF calculations
     ) -> f32 {
-        let field_weight = self.config.field_weights
-            .get(field_name)
-            .unwrap_or(&FieldWeight::default());
+        let field_weight = self.config.get_field_weight(field_name);
         
         let avg_length = self.field_avg_lengths
             .get(field_name)
