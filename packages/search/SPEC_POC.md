@@ -211,6 +211,7 @@ web_sys = { version = "0.3", features = [
     "console",
     "Response",                        # For fetch API
     "Request",                         # For network requests
+    "RequestInit",                     # For fetch configuration
     "Storage",                         # For localStorage
     "Promise",                         # For async operations
 ] }
@@ -1995,12 +1996,21 @@ const EMBEDDED_INDEX: &[u8] = include_bytes!("search_index.rkyv");
 
 // 2. Network loading (fetch API)
 async fn load_index_from_network(url: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    use web_sys::window;
+    use web_sys::{window, Request, RequestInit};
     use wasm_bindgen_futures::JsFuture;
     
     let window = window().ok_or("No global window object")?;
-    let resp_value = JsFuture::from(window.fetch_with_str(url)).await?;
+    
+    // Create request
+    let mut opts = RequestInit::new();
+    opts.method("GET");
+    let request = Request::new_with_str_and_init(url, &opts)?;
+    
+    // Fetch and get response
+    let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
     let resp: web_sys::Response = resp_value.dyn_into()?;
+    
+    // Get binary data
     let array_buffer = JsFuture::from(resp.array_buffer()?).await?;
     let uint8_array = js_sys::Uint8Array::new(&array_buffer);
     Ok(uint8_array.to_vec())
