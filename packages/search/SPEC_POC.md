@@ -2413,14 +2413,14 @@ impl HybridSearchEngine {
     fn search_hybrid_rrf(
         &self, 
         text_query: Option<&str>, 
-        language: Option<Language>,
-        vector_query: Option<&[f32]>, 
+        vector_query: Option<&[f32]>,
+        language: Language,
+        attribute: Option<AttributeIndex>,
         top_k: Option<usize>
     ) -> Vec<(DocumentId, f32)> {
-        let language = language.unwrap_or(Language::English);
         let top_k = top_k.unwrap_or(10);
         let sparse_results = if let Some(query) = text_query {
-            let results = self.search_text_bm25(query, Some(language), None, Some(top_k * 2));
+            let results = self.search_text_bm25(query, Some(language), attribute, Some(top_k * 2));
             results.into_iter()
                 .enumerate()
                 .map(|(rank, (doc_id, _))| {
@@ -2463,17 +2463,17 @@ impl HybridSearchEngine {
     fn search_hybrid_combsum(
         &self, 
         text_query: Option<&str>, 
-        language: Option<Language>,
-        vector_query: Option<&[f32]>, 
+        vector_query: Option<&[f32]>,
+        language: Language,
+        attribute: Option<AttributeIndex>,
         top_k: Option<usize>,
         alpha: Option<f32>
     ) -> Vec<(DocumentId, f32)> {
-        let language = language.unwrap_or(Language::English);
         let top_k = top_k.unwrap_or(10);
         let alpha = alpha.unwrap_or(0.4);
         
         let sparse_results = if let Some(query) = text_query {
-            let results = self.search_text_bm25(query, Some(language), None, Some(top_k * 2));
+            let results = self.search_text_bm25(query, Some(language), attribute, Some(top_k * 2));
             results.into_iter()
                 .map(|(doc_id, score)| {
                     if let Some(&entry_idx) = self.collection.entries_by_name.get(&doc_id) {
@@ -2525,10 +2525,10 @@ impl HybridSearchEngine {
         
         match fusion_strategy {
             FusionStrategy::RRF => {
-                self.search_hybrid_rrf(text_query, Some(language), vector_query, Some(top_k))
+                self.search_hybrid_rrf(text_query, vector_query, language, None, Some(top_k))
             }
             FusionStrategy::CombSUM => {
-                self.search_hybrid_combsum(text_query, Some(language), vector_query, Some(top_k), alpha)
+                self.search_hybrid_combsum(text_query, vector_query, language, None, Some(top_k), alpha)
             }
         }
     }
