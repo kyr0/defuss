@@ -98,7 +98,7 @@ let query_tokens = TextIndex::process_text(query, language);
 score[doc] += impact; // one add per document, done
 ```
 
-**Language Support:** The engine supports 15 languages through the `stop-words` and `rust-stemmers` crates, ensuring proper text normalization for international content.
+**Language Support:** The engine supports 15 languages through the `stop-words` and `rust-stemmers` crates, ensuring proper text normalization for international content with both stop-word filtering and native stemming support.
 
 Latency now depends almost entirely on document-list size, not floating-point math.
 
@@ -239,72 +239,72 @@ web_sys = { version = "0.3", features = [
 
 ```rust
 /// Supported languages for text processing with stop words and stemming
+/// Only includes languages supported by both rust-stemmers and stop-words crates
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Language {
+    Arabic,
+    Danish,
+    Dutch,
     English,
-    Spanish,
     French,
     German,
+    Hungarian,
     Italian,
-    Portuguese,
-    Russian,
-    Dutch,
-    Swedish,
     Norwegian,
-    Danish,
-    Finnish,
-    Arabic,
-    Chinese,
-    Japanese,
+    Portuguese,
+    Romanian,
+    Russian,
+    Spanish,
+    Swedish,
+    Turkish,
 }
 
 impl Language {
     /// Convert to stop_words crate language identifier
     fn to_stop_words_language(self) -> stop_words::Language {
         match self {
+            Language::Arabic => stop_words::ARABIC,
+            Language::Danish => stop_words::DANISH,
+            Language::Dutch => stop_words::DUTCH,
             Language::English => stop_words::ENGLISH,
-            Language::Spanish => stop_words::SPANISH,
             Language::French => stop_words::FRENCH,
             Language::German => stop_words::GERMAN,
+            Language::Hungarian => stop_words::HUNGARIAN,
             Language::Italian => stop_words::ITALIAN,
-            Language::Portuguese => stop_words::PORTUGUESE,
-            Language::Russian => stop_words::RUSSIAN,
-            Language::Dutch => stop_words::DUTCH,
-            Language::Swedish => stop_words::SWEDISH,
             Language::Norwegian => stop_words::NORWEGIAN,
-            Language::Danish => stop_words::DANISH,
-            Language::Finnish => stop_words::FINNISH,
-            Language::Arabic => stop_words::ARABIC,
-            Language::Chinese => stop_words::CHINESE,
-            Language::Japanese => stop_words::JAPANESE,
+            Language::Portuguese => stop_words::PORTUGUESE,
+            Language::Romanian => stop_words::ROMANIAN,
+            Language::Russian => stop_words::RUSSIAN,
+            Language::Spanish => stop_words::SPANISH,
+            Language::Swedish => stop_words::SWEDISH,
+            Language::Turkish => stop_words::TURKISH,
         }
     }
     
     /// Convert to rust_stemmers algorithm
     fn to_stemmer_algorithm(self) -> rust_stemmers::Algorithm {
         match self {
+            Language::Arabic => rust_stemmers::Algorithm::Arabic,
+            Language::Danish => rust_stemmers::Algorithm::Danish,
+            Language::Dutch => rust_stemmers::Algorithm::Dutch,
             Language::English => rust_stemmers::Algorithm::English,
-            Language::Spanish => rust_stemmers::Algorithm::Spanish,
             Language::French => rust_stemmers::Algorithm::French,
             Language::German => rust_stemmers::Algorithm::German,
+            Language::Hungarian => rust_stemmers::Algorithm::Hungarian,
             Language::Italian => rust_stemmers::Algorithm::Italian,
-            Language::Portuguese => rust_stemmers::Algorithm::Portuguese,
-            Language::Russian => rust_stemmers::Algorithm::Russian,
-            Language::Dutch => rust_stemmers::Algorithm::Dutch,
-            Language::Swedish => rust_stemmers::Algorithm::Swedish,
             Language::Norwegian => rust_stemmers::Algorithm::Norwegian,
-            Language::Danish => rust_stemmers::Algorithm::Danish,
-            Language::Finnish => rust_stemmers::Algorithm::Finnish,
-            // Fallback to English for languages without direct stemming support
-            // Note: These languages will still benefit from stop-word filtering
-            Language::Arabic | Language::Chinese | Language::Japanese => rust_stemmers::Algorithm::English,
+            Language::Portuguese => rust_stemmers::Algorithm::Portuguese,
+            Language::Romanian => rust_stemmers::Algorithm::Romanian,
+            Language::Russian => rust_stemmers::Algorithm::Russian,
+            Language::Spanish => rust_stemmers::Algorithm::Spanish,
+            Language::Swedish => rust_stemmers::Algorithm::Swedish,
+            Language::Turkish => rust_stemmers::Algorithm::Turkish,
         }
     }
     
-    /// Check if language has native stemming support
+    /// Check if language has native stemming support (all supported languages do)
     fn has_native_stemming(self) -> bool {
-        !matches!(self, Language::Arabic | Language::Chinese | Language::Japanese)
-    }
+        true // All languages in this enum have both stemming and stop-word support
     }
 }
 
