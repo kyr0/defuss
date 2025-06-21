@@ -148,7 +148,7 @@ Where `α ≃ 0.3-0.5` for most corpora. CombSUM and its cousin CombMNZ originat
 | **Fusion Parameters** | | | |
 | `k` (RRF) | Rank shift | 60.0 | Cormack & Clarke 2009 optimal across datasets |
 | `α` (CombSUM) | Dense/sparse blend | 0.4 | Default blend ratio for most corpora |
-| `topK` | Results count | 10 | Default number of results to return |
+| `top_k` | Results count | 10 | Default number of results to return |
 | `language` | Text processing | English | Default language for stop words and stemming |
 
 **Grounded in Research:**
@@ -1984,15 +1984,15 @@ impl HybridSearchEngine {
         text_query: Option<&str>, 
         language: Option<Language>,
         vector_query: Option<&[f32]>, 
-        topK: Option<usize>,
+        top_k: Option<usize>,
         alpha: Option<f32>
     ) -> Vec<(DocumentId, f32)> {
         let language = language.unwrap_or(Language::English);
-        let topK = topK.unwrap_or(10);
+        let top_k = top_k.unwrap_or(10);
         let alpha = alpha.unwrap_or(0.4);
         
         let sparse_results = if let Some(query) = text_query {
-            let results = self.search_text_bm25(query, Some(language), None, Some(topK * 2));
+            let results = self.search_text_bm25(query, Some(language), None, Some(top_k * 2));
             results.into_iter()
                 .map(|(doc_id, score)| {
                     if let Some(&entry_idx) = self.collection.entries_by_name.get(&doc_id) {
@@ -2008,7 +2008,7 @@ impl HybridSearchEngine {
         };
         
         let dense_results = if let Some(query) = vector_query {
-            if let Ok(results) = self.vector_index.search(Some(query), topK * 2) {
+            if let Ok(results) = self.vector_index.search(Some(query), top_k * 2) {
                 results
             } else {
                 Vec::new()
@@ -2018,7 +2018,7 @@ impl HybridSearchEngine {
         };
         
         // Apply CombSUM fusion
-        let fused = comb_sum_fuse(alpha, &dense_results, &sparse_results, topK);
+        let fused = comb_sum_fuse(alpha, &dense_results, &sparse_results, top_k);
         
         // Convert back to DocumentId
         fused.into_iter()
@@ -2035,19 +2035,19 @@ impl HybridSearchEngine {
         text_query: Option<&str>,
         language: Option<Language>,
         vector_query: Option<&[f32]>,
-        topK: Option<usize>,
+        top_k: Option<usize>,
         fusion_strategy: FusionStrategy,
         alpha: Option<f32>
     ) -> Vec<(DocumentId, f32)> {
         let language = language.unwrap_or(Language::English);
-        let topK = topK.unwrap_or(10);
+        let top_k = top_k.unwrap_or(10);
         
         match fusion_strategy {
             FusionStrategy::RRF => {
-                self.search_hybrid_rrf(text_query, Some(language), vector_query, Some(topK))
+                self.search_hybrid_rrf(text_query, Some(language), vector_query, Some(top_k))
             }
             FusionStrategy::CombSUM => {
-                self.search_hybrid_combsum(text_query, Some(language), vector_query, Some(topK), alpha)
+                self.search_hybrid_combsum(text_query, Some(language), vector_query, Some(top_k), alpha)
             }
         }
     }
@@ -2058,7 +2058,7 @@ fn rrf_fuse(
     k: f32,
     dense_results: &[(EntryIndex, f32)],
     sparse_results: &[(EntryIndex, f32)],
-    topK: usize
+    top_k: usize
 ) -> Vec<(EntryIndex, f32)> {
     use std::collections::HashMap;
     
@@ -2078,7 +2078,7 @@ fn rrf_fuse(
     // Sort by RRF score and return top results
     let mut final_results: Vec<_> = scores.into_iter().collect();
     final_results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    final_results.truncate(topK);
+    final_results.truncate(top_k);
     final_results
 }
 
@@ -2087,7 +2087,7 @@ fn comb_sum_fuse(
     alpha: f32,
     dense_results: &[(EntryIndex, f32)],
     sparse_results: &[(EntryIndex, f32)],
-    topK: usize
+    top_k: usize
 ) -> Vec<(EntryIndex, f32)> {
     use std::collections::HashMap;
     
@@ -2109,7 +2109,7 @@ fn comb_sum_fuse(
     // Sort by combined score and return top results
     let mut final_results: Vec<_> = scores.into_iter().collect();
     final_results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    final_results.truncate(topK);
+    final_results.truncate(top_k);
     final_results
 }
 
@@ -2315,7 +2315,7 @@ This specification has been enhanced to achieve "genius-level" perfection with t
 ### 5. **Memory Safety & Performance** ✅
 - Fixed Collection document registration with proper duplicate detection
 - Added document deletion support with cleanup
-- Consistent parameter naming (`top_k` throughout, not mixed `topK`/`top_k`/`max_results`)
+- Consistent parameter naming (`top_k` throughout, not mixed `top_k`/`top_k`/`max_results`)
 
 ### 6. **Production-Ready Architecture** ✅
 - Proper capacity management for 100k document limit
