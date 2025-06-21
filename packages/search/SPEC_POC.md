@@ -412,6 +412,23 @@ impl From<&str> for Value {
     }
 }
 
+impl Value {
+    /// Create a tag value from a single string
+    pub fn tag(s: impl Into<String>) -> Self {
+        Value::Tag(s.into())
+    }
+    
+    /// Create a tag value from a collection of strings (joined with spaces)
+    pub fn tags(tags: impl IntoIterator<Item = impl AsRef<str>>) -> Self {
+        let joined = tags
+            .into_iter()
+            .map(|s| s.as_ref())
+            .collect::<Vec<_>>()
+            .join(" ");
+        Value::Tag(joined)
+    }
+}
+
 /// Field configuration for BM25F scoring
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 struct FieldWeight {
@@ -532,6 +549,11 @@ impl SchemaBuilder {
         self
     }
 
+    /// Create a tags field with semantic tags type (recommended for keyword/category fields)
+    pub fn tags_field(mut self, name: impl Into<String>) -> Self {
+        self.attribute_semantic(name, Kind::Text, SemanticKind::Tags)
+    }
+
     pub fn build(self) -> Schema {
         Schema {
             attributes: self.attributes,
@@ -625,6 +647,18 @@ impl Document {
 
     pub fn attribute(mut self, name: impl AsRef<str>, value: impl Into<Value>) -> Self {
         self.attributes.entry(name.as_ref().into()).or_default().push(value.into());
+        self
+    }
+
+    /// Add a tag field with a single tag value
+    pub fn tag(mut self, name: impl AsRef<str>, tag: impl Into<String>) -> Self {
+        self.attributes.entry(name.as_ref().into()).or_default().push(Value::tag(tag));
+        self
+    }
+
+    /// Add a tag field with multiple tag values (joined with spaces)
+    pub fn tags(mut self, name: impl AsRef<str>, tags: impl IntoIterator<Item = impl AsRef<str>>) -> Self {
+        self.attributes.entry(name.as_ref().into()).or_default().push(Value::tags(tags));
         self
     }
 
@@ -823,14 +857,31 @@ impl Collection {
         }
     }
     
-    /// Lazy attribute registration with kind inference
+    /// Create collection with pre-defined schema
+    fn with_schema(schema: &Schema) -> Self {
+        let mut collection = Self::new();
+        
+        // Pre-register schema attributes
+        for (name, &kind) in &schema.attributes {
+            let attr_idx = AttributeIndex(collection.attributes_by_name.len() as u8);
+            let name_box: Box<str> = name.clone().into();
+            
+            collection.attributes_by_name.insert(name_box.clone(), attr_idx);
+            collection.attributes_by_index.insert(attr_idx, name_box);
+            collection.attribute_kinds.insert(attr_idx, kind);
+        }
+        
+        collection
+    }
+    
+    /// Lazy attribute registration with kind inference and flexible type compatibility
     fn register_attribute_if_needed(&mut self, name: &str, value: &Value) -> Result<AttributeIndex, IndexError> {
         // Check if attribute already exists
         if let Some(&attr_idx) = self.attributes_by_name.get(name) {
-            // Verify type compatibility
+            // Verify type compatibility with flexible matching
             let inferred_kind = Self::infer_kind(value);
             if let Some(&existing_kind) = self.attribute_kinds.get(&attr_idx) {
-                if existing_kind != inferred_kind {
+                if !Self::are_kinds_compatible(existing_kind, inferred_kind) {
                     return Err(IndexError::TypeMismatch(existing_kind, inferred_kind));
                 }
             }
@@ -852,6 +903,23 @@ impl Collection {
         self.attribute_kinds.insert(attr_idx, inferred_kind);
         
         Ok(attr_idx)
+    }
+    
+    /// Check if two kinds are compatible for indexing
+    /// 
+    /// ISSUE FIXED: Previously, SchemaBuilder::tag_field() registered fields as Kind::Tag,
+    /// but Document::attribute() always created Value::Text, causing TypeMismatch errors.
+    /// 
+    /// SOLUTION: Tags and Text are semantically compatible since both can be tokenized
+    /// and searched. This allows flexible usage where users can mix .tag()/.tags() methods
+    /// (which create Value::Tag) with .attribute() (which creates Value::Text) on the same field.
+    fn are_kinds_compatible(kind1: Kind, kind2: Kind) -> bool {
+        match (kind1, kind2) {
+            // Exact matches are always compatible
+            (Kind::Tag, Kind::Tag) | (Kind::Text, Kind::Text) => true,
+            // Tags and Text are compatible - both can be tokenized and searched
+            (Kind::Tag, Kind::Text) | (Kind::Text, Kind::Tag) => true,
+        }
     }
     
     /// Simple type inference from first value encountered
@@ -2070,12 +2138,20 @@ impl HybridSearchEngine {
     
     /// Create hybrid search engine with schema-driven BM25F field weights
     fn with_schema(schema: &Schema) -> Self {
-        Self::with_config(BM25Config::new(schema), VectorIndex::DEFAULT_DIMENSION)
+        Self {
+            collection: Collection::with_schema(schema),
+            text_index: TextIndex::with_config(BM25Config::new(schema)),
+            vector_index: VectorIndex::with_dimension(VectorIndex::DEFAULT_DIMENSION),
+        }
     }
     
     /// Create with schema and custom vector dimensions
     fn with_schema_and_vector_dimension(schema: &Schema, vector_dimension: usize) -> Self {
-        Self::with_config(BM25Config::new(schema), vector_dimension)
+        Self {
+            collection: Collection::with_schema(schema),
+            text_index: TextIndex::with_config(BM25Config::new(schema)),
+            vector_index: VectorIndex::with_dimension(vector_dimension),
+        }
     }
     
     /// Create with custom BM25FS⁺ and vector configuration
@@ -2371,7 +2447,7 @@ fn normalize_scores(results: &[(EntryIndex, f32)]) -> Vec<(EntryIndex, f32)> {
     let min_score = results.iter().map(|(_, score)| *score).fold(f32::INFINITY, f32::min);
     let max_score = results.iter().map(|(_, score)| *score).fold(f32::NEG_INFINITY, f32::max);
     
-    if (max_score - min_score).abs() < f32::EPSILON {
+    if (max_score - min_score).abs() < 1e-6 {
         // All scores are the same, return uniform scores
         return results.iter().map(|&(doc_id, _)| (doc_id, 1.0)).collect();
     }
@@ -2516,6 +2592,58 @@ fn load_index_from_storage(key: &str) -> Option<Vec<u8>> {
 ```
 
 ## Example Usage
+
+### Schema Definition with Tag Fields
+
+```rust
+// Define schema with tag fields
+let schema = Schema::builder()
+    .title_field("title")
+    .body_field("content")
+    .tag_field("categories")        // Field for exact-match categories
+    .tag_field("tags")             // Field for keywords/labels
+    .build();
+
+let mut engine = HybridSearchEngine::with_schema(&schema);
+```
+
+### Document Creation with Tags
+
+```rust
+// Create documents with different tag approaches
+let doc1 = Document::new("doc1")
+    .attribute("title", "Rust WebAssembly Tutorial")
+    .attribute("content", "Learn how to build fast web applications...")
+    .tag("categories", "tutorial")           // Single tag
+    .tags("tags", ["rust", "webassembly", "performance"])  // Multiple tags
+    .build();
+
+let doc2 = Document::new("doc2")
+    .attribute("title", "JavaScript Performance Tips")
+    .attribute("content", "Optimize your JavaScript applications...")
+    .tags("categories", ["tutorial", "performance"])  // Multiple categories
+    .tag("tags", "javascript")              // Single tag
+    .build();
+
+// Tags are automatically converted to Value::Tag and joined with spaces
+// e.g., ["rust", "webassembly", "performance"] becomes "rust webassembly performance"
+
+// Add documents to index
+engine.add_document(doc1, Language::English)?;
+engine.add_document(doc2, Language::English)?;
+```
+
+### Type Compatibility
+
+The fix ensures that tag fields accept both:
+- **Schema-defined tags**: `tag_field()` registers as `Kind::Tag`
+- **Document tags**: `.tag()` and `.tags()` create `Value::Tag`
+- **Flexible compatibility**: `Kind::Tag` and `Kind::Text` are compatible for indexing
+
+This prevents the `TypeMismatch` error that occurred when:
+1. Schema defined a field as `Kind::Tag`
+2. Document used `.attribute()` which created `Value::Text`
+3. Type inference returned `Kind::Text` ≠ `Kind::Tag`
 
 ### Schema Definition with Semantic Field Types
 
