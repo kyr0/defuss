@@ -574,9 +574,38 @@ impl Document {
     /// Create document with optional ID (generates one if None provided)
     pub fn new_optional(id: Option<impl AsRef<str>>) -> Self {
         match id {
-            Some(id) => Self::new(id),
+            Some(id) => {
+                let id_str = id.as_ref();
+                if id_str.trim().is_empty() {
+                    Self::new_auto() // Generate ID for empty strings
+                } else {
+                    Self::new(id_str)
+                }
+            },
             None => Self::new_auto(),
         }
+    }
+    
+    /// Validate document before indexing
+    pub fn validate(&self) -> Result<(), IndexError> {
+        // Check for empty document ID
+        if self.id.as_str().trim().is_empty() {
+            return Err(IndexError::InvalidDocumentId);
+        }
+        
+        // Check attribute count
+        if self.attributes.len() > Collection::MAX_ATTRIBUTES {
+            return Err(IndexError::AttributeCapacityExceeded);
+        }
+        
+        // Check values per attribute
+        for values in self.attributes.values() {
+            if values.len() > Collection::MAX_VALUES_PER_ATTRIBUTE {
+                return Err(IndexError::ValueCapacityExceeded);
+            }
+        }
+        
+        Ok(())
     }
 
     pub fn attribute(mut self, name: impl AsRef<str>, value: impl Into<Value>) -> Self {
@@ -837,7 +866,7 @@ impl Collection {
         
         // Check for duplicate document ID
         if self.entries_by_name.contains_key(&document_id) {
-            return Err(IndexError::DocumentNotFound); // Reuse existing error or add DuplicateDocument
+            return Err(IndexError::DuplicateDocument);
         }
         
         let entry_index = EntryIndex(self.document_count as u32);
@@ -873,8 +902,11 @@ enum IndexError {
     AttributeCapacityExceeded,
     ValueCapacityExceeded,
     DocumentNotFound,
+    DuplicateDocument,
     TypeMismatch(Kind, Kind),
     VectorDimensionMismatch,
+    InvalidDocumentId,
+    SerializationError(String),
     // Note: Use VectorError::NotNormalized for vector normalization errors
 }
 
@@ -885,8 +917,11 @@ impl std::fmt::Display for IndexError {
             IndexError::AttributeCapacityExceeded => write!(f, "Maximum attribute capacity exceeded"),
             IndexError::ValueCapacityExceeded => write!(f, "Maximum values per attribute exceeded"),
             IndexError::DocumentNotFound => write!(f, "Document not found"),
+            IndexError::DuplicateDocument => write!(f, "Document with this ID already exists"),
             IndexError::TypeMismatch(expected, found) => write!(f, "Type mismatch: expected {:?}, found {:?}", expected, found),
             IndexError::VectorDimensionMismatch => write!(f, "Vector dimension mismatch"),
+            IndexError::InvalidDocumentId => write!(f, "Invalid or empty document ID"),
+            IndexError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
         }
     }
 }
@@ -1118,7 +1153,7 @@ impl TextIndex {
     }
     
     /// Search with BM25FS⁺ scoring and memory pool-optimized aggregation
-    fn search_bm25(&self, query: &str, language: Language, attribute: Option<AttributeIndex>, topK: usize) -> Vec<(EntryIndex, f32)> {
+    fn search_bm25(&self, query: &str, language: Language, attribute: Option<AttributeIndex>, top_k: usize) -> Vec<(EntryIndex, f32)> {
         use std::collections::{HashMap, BinaryHeap};
         use ordered_float::OrderedFloat;
         
@@ -1162,8 +1197,8 @@ impl TextIndex {
                 .map(|(doc, score)| (OrderedFloat(score), doc))
                 .collect();
         
-        let mut results = Vec::with_capacity(topK);
-        for _ in 0..topK {
+        let mut results = Vec::with_capacity(top_k);
+        for _ in 0..top_k {
             if let Some((score, doc)) = heap.pop() {
                 results.push((doc, score.0));
             } else {
@@ -1681,7 +1716,7 @@ impl VectorIndex {
         dot_product
     }
 
-    fn search(&self, query: Option<&[f32]>, topK: Option<usize>) -> Result<Vec<(EntryIndex, f32)>, VectorError> {
+    fn search(&self, query: Option<&[f32]>, top_k: usize) -> Result<Vec<(EntryIndex, f32)>, VectorError> {
         if !self.enabled {
             return Ok(Vec::new()); // Return empty results when disabled
         }
@@ -1711,7 +1746,7 @@ impl VectorIndex {
 
         // Sort by score (descending) and take top k
         results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        results.truncate(topK.unwrap_or(10));
+        results.truncate(top_k);
         
         Ok(results)
     }
@@ -1803,6 +1838,9 @@ impl HybridSearchEngine {
     
     /// Add a document to the index with BM25FS⁺ scoring and language support
     fn add_document(&mut self, document: Document, language: Language) -> Result<(), IndexError> {
+        // Validate document first
+        document.validate()?;
+        
         // Register document with collection using proper method
         let entry_index = self.collection.add_document(document.id.clone())?;
         
@@ -1863,11 +1901,11 @@ impl HybridSearchEngine {
     }
     
     /// Search using BM25FS⁺ text scoring with language support
-    fn search_text_bm25(&self, query: &str, language: Option<Language>, attribute: Option<&str>, topK: Option<usize>) -> Vec<(DocumentId, f32)> {
+    fn search_text_bm25(&self, query: &str, language: Option<Language>, attribute: Option<&str>, top_k: Option<usize>) -> Vec<(DocumentId, f32)> {
         let language = language.unwrap_or(Language::English);
-        let topK = topK.unwrap_or(10);
+        let top_k = top_k.unwrap_or(10);
         let attr_index = attribute.and_then(|name| self.collection.get_attribute_index(name));
-        let results = self.text_index.search_bm25(query, language, attr_index, topK);
+        let results = self.text_index.search_bm25(query, language, attr_index, top_k);
         
         results.into_iter()
             .filter_map(|(entry_idx, score)| {
@@ -1878,9 +1916,9 @@ impl HybridSearchEngine {
     }
     
     /// Search vectors with SIMD optimization
-    fn search_vector(&self, query: &[f32], topK: Option<usize>) -> Result<Vec<(DocumentId, f32)>, VectorError> {
-        let topK = topK.unwrap_or(10);
-        let results = self.vector_index.search(Some(query), topK)?;
+    fn search_vector(&self, query: &[f32], top_k: Option<usize>) -> Result<Vec<(DocumentId, f32)>, VectorError> {
+        let top_k = top_k.unwrap_or(10);
+        let results = self.vector_index.search(Some(query), top_k)?;
         
         Ok(results.into_iter()
             .filter_map(|(entry_idx, score)| {
@@ -1896,12 +1934,12 @@ impl HybridSearchEngine {
         text_query: Option<&str>, 
         language: Option<Language>,
         vector_query: Option<&[f32]>, 
-        topK: Option<usize>
+        top_k: Option<usize>
     ) -> Vec<(DocumentId, f32)> {
         let language = language.unwrap_or(Language::English);
-        let topK = topK.unwrap_or(10);
+        let top_k = top_k.unwrap_or(10);
         let sparse_results = if let Some(query) = text_query {
-            let results = self.search_text_bm25(query, Some(language), None, Some(topK * 2));
+            let results = self.search_text_bm25(query, Some(language), None, Some(top_k * 2));
             results.into_iter()
                 .enumerate()
                 .map(|(rank, (doc_id, _))| {
