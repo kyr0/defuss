@@ -199,14 +199,22 @@ rust_stemmers = "1.2"
 lru = "0.12"
 ordered-float = "4.2"
 regex = "1.10"
-memmap2 = "0.9"
 
-# Web APIs for hardware detection
+# WebAssembly-specific utilities
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+base64 = "0.22"                        # For encoding/decoding stored data
+wasm-bindgen-futures = "0.4"           # For async operations
+
+# Web APIs for hardware detection and storage
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web_sys = { version = "0.3", features = [
     "Navigator", 
     "Window", 
     "console",
+    "Response",                        # For fetch API
+    "Request",                         # For network requests
+    "Storage",                         # For localStorage
+    "Promise",                         # For async operations
 ] }
 wasm-bindgen = "0.2"
 js_sys = "0.3"
@@ -1894,13 +1902,12 @@ fn normalize_scores(results: &[(EntryIndex, f32)]) -> Vec<(EntryIndex, f32)> {
 
 ## Zero-Copy Serialization
 
-The FileIndex implements high-performance serialization using the `rkyv` crate for true zero-copy deserialization:
+The FileIndex implements high-performance serialization using the `rkyv` crate for WebAssembly-compatible zero-copy deserialization:
 
 ```rust
 use rkyv::{Archive, Deserialize, Serialize};
 use rkyv::ser::{Serializer, serializers::AllocSerializer};
 use std::collections::HashMap;
-use memmap2::Mmap;
 
 /// Zero-copy serializable index structure
 #[derive(Archive, Deserialize, Serialize, Debug, Clone)]
@@ -1951,7 +1958,7 @@ impl FileIndex {
         Ok(serializer.into_serializer().into_inner().to_vec())
     }
     
-    /// Deserialize with zero-copy access to archived data
+    /// Deserialize with zero-copy access to archived data (WebAssembly compatible)
     fn deserialize_index(data: &[u8]) -> Result<&rkyv::Archived<SerializableIndex>, Box<dyn std::error::Error>> {
         // Zero-copy access - no deserialization cost!
         let archived = unsafe { rkyv::archived_root::<SerializableIndex>(data) };
@@ -1959,18 +1966,32 @@ impl FileIndex {
         Ok(archived)
     }
     
-    /// Memory-map file and return zero-copy access to index
-    fn load(path: &std::path::Path) -> Result<(Mmap, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
-        let file = std::fs::File::open(path)?;
-        let mmap = unsafe { Mmap::map(&file)? };
-        let archived = Self::deserialize_index(&mmap)?;
-        
-        // SAFETY: mmap lifetime tied to returned reference
-        Ok((mmap, archived))
+    /// Load index from byte slice (WebAssembly compatible - no memory mapping)
+    fn load_from_bytes(data: &[u8]) -> Result<&rkyv::Archived<SerializableIndex>, Box<dyn std::error::Error>> {
+        Self::deserialize_index(data)
     }
     
-    /// Save index with rkyv serialization
-    fn save(
+    /// Save index with rkyv serialization (WebAssembly compatible)
+    fn save_to_bytes(
+        text_index: &TextIndex,
+        vector_index: &VectorIndex,
+        collection: &Collection,
+        schema: &Schema
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        Self::serialize_index(text_index, vector_index, collection, schema)
+    }
+    
+    /// Load from file using standard file I/O (fallback for native platforms)
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_from_file(path: &std::path::Path) -> Result<(Vec<u8>, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
+        let data = std::fs::read(path)?;
+        let archived = Self::deserialize_index(&data)?;
+        Ok((data, archived))
+    }
+    
+    /// Save to file using standard file I/O (fallback for native platforms)
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_to_file(
         path: &std::path::Path,
         text_index: &TextIndex,
         vector_index: &VectorIndex,
@@ -1981,6 +2002,47 @@ impl FileIndex {
         std::fs::write(path, serialized)?;
         Ok(())
     }
+    
+    /// WebAssembly-compatible loading from browser storage or network
+    #[cfg(target_arch = "wasm32")]
+    fn load_from_web_source(data: Vec<u8>) -> Result<(Vec<u8>, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
+        let archived = Self::deserialize_index(&data)?;
+        Ok((data, archived))
+    }
+}
+```
+
+### WebAssembly Loading Strategies
+
+For WebAssembly deployment, the index can be loaded through several methods:
+
+```rust
+// 1. Pre-embedded index (compile-time inclusion)
+const EMBEDDED_INDEX: &[u8] = include_bytes!("search_index.rkyv");
+
+// 2. Network loading (fetch API)
+#[cfg(target_arch = "wasm32")]
+async fn load_index_from_network(url: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use web_sys::window;
+    use wasm_bindgen_futures::JsFuture;
+    
+    let window = window().ok_or("No global window object")?;
+    let resp_value = JsFuture::from(window.fetch_with_str(url)).await?;
+    let resp: web_sys::Response = resp_value.dyn_into()?;
+    let array_buffer = JsFuture::from(resp.array_buffer()?).await?;
+    let uint8_array = js_sys::Uint8Array::new(&array_buffer);
+    Ok(uint8_array.to_vec())
+}
+
+// 3. Browser storage loading (localStorage/indexedDB)
+#[cfg(target_arch = "wasm32")]
+fn load_index_from_storage(key: &str) -> Option<Vec<u8>> {
+    use web_sys::window;
+    
+    let storage = window()?.local_storage().ok()??;
+    let data_str = storage.get_item(key).ok()??;
+    // Decode from base64 or use binary format
+    base64::decode(data_str).ok()
 }
 ```
 
