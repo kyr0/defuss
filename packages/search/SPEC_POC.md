@@ -548,6 +548,36 @@ impl Document {
             vector: None,
         }
     }
+    
+    /// Create document with auto-generated UUID if no ID provided
+    pub fn new_auto() -> Self {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        use std::sync::atomic::{AtomicU64, Ordering};
+        
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        
+        // Generate unique ID: timestamp_microseconds + counter for collision resistance
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_micros() as u64;
+        let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let unique_id = format!("doc_{}_{}", timestamp, counter);
+        
+        Self {
+            id: DocumentId(unique_id.into()),
+            attributes: Default::default(),
+            vector: None,
+        }
+    }
+    
+    /// Create document with optional ID (generates one if None provided)
+    pub fn new_optional(id: Option<impl AsRef<str>>) -> Self {
+        match id {
+            Some(id) => Self::new(id),
+            None => Self::new_auto(),
+        }
+    }
 
     pub fn attribute(mut self, name: impl AsRef<str>, value: impl Into<Value>) -> Self {
         self.attributes.entry(name.as_ref().into()).or_default().push(value.into());
@@ -798,9 +828,42 @@ impl Collection {
         self.attributes_by_name.get(name).copied()
     }
     
-    /// Get attribute kind for validation
-    fn get_attribute_kind(&self, attr_idx: AttributeIndex) -> Option<Kind> {
-        self.attribute_kinds.get(&attr_idx).copied()
+    /// Add a document to the collection with proper index management
+    fn add_document(&mut self, document_id: DocumentId) -> Result<EntryIndex, IndexError> {
+        // Check capacity before adding
+        if self.document_count >= Self::MAX_DOCUMENTS {
+            return Err(IndexError::CapacityExceeded);
+        }
+        
+        // Check for duplicate document ID
+        if self.entries_by_name.contains_key(&document_id) {
+            return Err(IndexError::DocumentNotFound); // Reuse existing error or add DuplicateDocument
+        }
+        
+        let entry_index = EntryIndex(self.document_count as u32);
+        
+        self.entries_by_index.insert(entry_index, document_id.clone());
+        self.entries_by_name.insert(document_id, entry_index);
+        self.document_count += 1;
+        
+        Ok(entry_index)
+    }
+    
+    /// Remove a document from the collection
+    fn remove_document(&mut self, document_id: &DocumentId) -> Option<EntryIndex> {
+        if let Some(entry_index) = self.entries_by_name.remove(document_id) {
+            self.entries_by_index.remove(&entry_index);
+            // Note: We don't reuse EntryIndex values to avoid complications
+            // This means document_count represents ever-allocated slots, not current count
+            Some(entry_index)
+        } else {
+            None
+        }
+    }
+    
+    /// Get current active document count (not including deleted documents)
+    fn active_document_count(&self) -> usize {
+        self.entries_by_name.len()
     }
 }
 
@@ -812,7 +875,7 @@ enum IndexError {
     DocumentNotFound,
     TypeMismatch(Kind, Kind),
     VectorDimensionMismatch,
-    VectorNotNormalized,
+    // Note: Use VectorError::NotNormalized for vector normalization errors
 }
 
 impl std::fmt::Display for IndexError {
@@ -824,7 +887,6 @@ impl std::fmt::Display for IndexError {
             IndexError::DocumentNotFound => write!(f, "Document not found"),
             IndexError::TypeMismatch(expected, found) => write!(f, "Type mismatch: expected {:?}, found {:?}", expected, found),
             IndexError::VectorDimensionMismatch => write!(f, "Vector dimension mismatch"),
-            IndexError::VectorNotNormalized => write!(f, "Vector is not L2 normalized"),
         }
     }
 }
@@ -870,11 +932,12 @@ impl BM25Scorer {
             .copied()
             .unwrap_or(1.0);
         
-        // BM25FS⁺ formula: w_f × BM25(tf) + δ
+        // BM25FS⁺ formula: w_f × BM25(tf) + δ (matches mathematical specification)
         let tf_component = (self.config.k1 + 1.0) * tf as f32;
         let normalization = self.config.k1 * (1.0 - field_weight.b + field_weight.b * field_length / avg_length) + tf as f32;
+        let bm25_score = tf_component / normalization;
         
-        field_weight.weight * (tf_component / normalization) + self.config.delta
+        field_weight.weight * bm25_score + self.config.delta
     }
     
     /// Update field statistics during indexing
@@ -1538,7 +1601,7 @@ impl VectorIndex {
         Self::with_dimension(Self::DEFAULT_DIMENSION)
     }
     
-    /// Create vector index with specific dimensions (0 = disabled)
+    /// Create vector index with specific dimensions (0 = disable vectors)
     fn with_dimension(dimension: usize) -> Self {
         let enabled = dimension > 0;
         let capacity = if enabled { Self::MAX_DOCUMENTS * dimension } else { 0 };
@@ -1618,7 +1681,7 @@ impl VectorIndex {
         dot_product
     }
 
-    fn search(&self, query: Option<&[f32]>, k: usize) -> Result<Vec<(EntryIndex, f32)>, VectorError> {
+    fn search(&self, query: Option<&[f32]>, topK: Option<usize>) -> Result<Vec<(EntryIndex, f32)>, VectorError> {
         if !self.enabled {
             return Ok(Vec::new()); // Return empty results when disabled
         }
@@ -1648,7 +1711,7 @@ impl VectorIndex {
 
         // Sort by score (descending) and take top k
         results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        results.truncate(k);
+        results.truncate(topK.unwrap_or(10));
         
         Ok(results)
     }
@@ -1740,11 +1803,8 @@ impl HybridSearchEngine {
     
     /// Add a document to the index with BM25FS⁺ scoring and language support
     fn add_document(&mut self, document: Document, language: Language) -> Result<(), IndexError> {
-        // Register document with collection
-        let entry_index = EntryIndex(self.collection.document_count as u32);
-        self.collection.entries_by_index.insert(entry_index, document.id.clone());
-        self.collection.entries_by_name.insert(document.id.clone(), entry_index);
-        self.collection.document_count += 1;
+        // Register document with collection using proper method
+        let entry_index = self.collection.add_document(document.id.clone())?;
         
         // Index text attributes with field-aware BM25FS⁺ scoring
         for (attr_name, values) in &document.attributes {
@@ -1786,6 +1846,20 @@ impl HybridSearchEngine {
         }
         
         Ok(())
+    }
+    
+    /// Remove a document from all indexes
+    fn remove_document(&mut self, document_id: &DocumentId) -> Result<bool, IndexError> {
+        // Remove from collection first
+        if let Some(entry_index) = self.collection.remove_document(document_id) {
+            // Note: For simplicity in this POC, we don't remove from text index
+            // In production, you'd want to implement text index deletion
+            // For now, just remove from vector index
+            self.vector_index.delete(entry_index);
+            Ok(true)
+        } else {
+            Ok(false) // Document wasn't found
+        }
     }
     
     /// Search using BM25FS⁺ text scoring with language support
