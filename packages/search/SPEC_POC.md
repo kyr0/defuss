@@ -595,11 +595,6 @@ impl SchemaBuilder {
         self
     }
 
-    /// Create a tags field with semantic tags type (recommended for keyword/category fields)
-    pub fn tags_field(mut self, name: impl Into<String>) -> Self {
-        self.attribute_semantic(name, Kind::Text, SemanticKind::Tags)
-    }
-
     /// Configure tokenizer for text processing
     pub fn with_tokenizer(mut self, tokenizer_config: TokenizerConfig) -> Self {
         self.tokenizer_config = tokenizer_config;
