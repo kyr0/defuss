@@ -54,24 +54,31 @@ The **BM25FS⁺** algorithm welded together ("F" = field weights, "S" = eager *S
 |-----------|-----------|----------------|
 | **BM25F** | Per-field weights (title, body, etc.) with individual weight *w_f* | Sum BM25 score over fields after multiplying TF by *w_f* |
 | **BM25⁺** | Add small δ so any match beats "no match", fixing long-doc bias | Wrap BM25 fraction in `[...] + δ` |
-| **BM25S** | Pre-compute term impact at indexing time → query becomes sparse dot-product | Store the complete *impact* instead of raw tf |
+| **BM25S** | Pre-compute term impact at indexing time → query becomes sparse dot-product | Store the complete *impact* including IDF instead of raw tf |
+| **IDF** | Inverse Document Frequency: rare terms score higher than common terms | `ln((N - df + 0.5) / (df + 0.5))` with +0.5 smoothing |
 
 ### BM25FS⁺ Formula
 
 For term *t* in field *f* of document *D*:
 
 ```
-impact_{t,f,D} = w_f × ((k1 + 1) × tf_{t,f,D}) / (k1 × (1 - b_f + b_f × |D_f| / avg_len_f) + tf_{t,f,D}) + δ
+impact_{t,f,D} = w_f × IDF(t) × ((k1 + 1) × tf_{t,f,D}) / (k1 × (1 - b_f + b_f × |D_f| / avg_len_f) + tf_{t,f,D}) + δ
 ```
 
 Where:
 - `w_f` = field weight for field *f*
+- `IDF(t)` = inverse document frequency: `ln((N - df_t + 0.5) / (df_t + 0.5))`
+- `N` = total number of documents in the collection
+- `df_t` = document frequency of term *t* (number of documents containing *t*)
 - `k1` = TF saturation parameter (typically 1.2)
 - `tf_{t,f,D}` = term frequency of *t* in field *f* of document *D*
 - `b_f` = length normalization parameter for field *f* (typically 0.75)
 - `|D_f|` = length of field *f* in document *D*
 - `avg_len_f` = average length of field *f* across all documents
 - `δ` = lower bound shift parameter (typically 0.5)
+
+**Optimization Strategy:**
+For maximum query performance, the normalization factor `1 / (k1 × (1 - b_f + b_f × |D_f| / avg_len_f) + tf_{t,f,D})` is pre-computed during indexing and stored alongside each document entry, converting expensive runtime division into fast multiplication.
 
 **Key Benefits:**
 - **Field weights (BM25F)** rescue high-signal zones (titles, headings)  
@@ -85,8 +92,14 @@ let tokens = TextIndex::process_text(text, language);
 let stop_words = get(language.to_stop_words_language());
 let stemmer = Stemmer::create(language.to_stemmer_algorithm());
 
-// BM25FS⁺ impact calculation
-let impact = w_f * ((k1 + 1.0) * tf as f32) / (k1 * (1.0 - b + b * field_len / avg_len) + tf as f32) + delta;
+// Update term document frequency for IDF calculation
+scorer.update_term_frequency(&term);
+
+// BM25FS⁺ impact calculation with IDF
+let doc_freq = scorer.term_frequencies.get(&term).unwrap_or(&1) as f32;
+let idf = ((total_docs as f32 - doc_freq + 0.5) / (doc_freq + 0.5)).ln();
+let norm = 1.0 / (k1 * (1.0 - b + b * field_len / avg_len) + tf as f32);
+let impact = w_f * idf * ((k1 + 1.0) * tf as f32) * norm + delta;
 // store (term, doc_id, impact) in sparse matrix
 ```
 
@@ -94,8 +107,10 @@ At query time:
 ```rust
 // Process query with same language settings
 let query_tokens = TextIndex::process_text(query, language);
-// Score aggregation
-score[doc] += impact; // one add per document, done
+// Score aggregation becomes pure sparse dot-product
+for doc_entry in document_list {
+    score[doc] += doc_entry.impact; // Pre-computed impact includes IDF, field weights, and normalization
+}
 ```
 
 **Language Support:** The engine supports 15 languages through the `stop-words` and `rust-stemmers` crates, ensuring proper text normalization for international content with both stop-word filtering and native stemming support.
@@ -934,52 +949,146 @@ impl std::error::Error for IndexError {}
 ### BM25FS⁺ Scoring Engine
 
 ```rust
-/// BM25FS⁺ scoring engine with pre-computed impacts
+/// BM25FS⁺ scorer for text search results with pre-computed normalization
 struct BM25Scorer {
-    config: BM25Config,
-    /// Per-field average document lengths (computed during indexing)
-    field_avg_lengths: HashMap<String, f32>,
-    /// Document count for IDF calculations
-    total_documents: usize,
+    k1: f32,
+    b: f32,
+    delta: f32,
+    field_weights: HashMap<AttributeIndex, f32>,
+    avg_doc_lengths: HashMap<AttributeIndex, f32>,
+    doc_count: usize,
+    term_frequencies: HashMap<String, usize>, // For IDF calculation
+    /// Pre-computed normalization factors: 1 / (k1·(1-b+b·len/avg)+tf)
+    /// Stored alongside each impact to replace runtime division with multiplication
+    doc_length_norms: HashMap<(EntryIndex, AttributeIndex), f32>,
+    /// Field name to AttributeIndex mapping for dynamic field access
+    field_name_mapping: HashMap<String, AttributeIndex>,
 }
 
 impl BM25Scorer {
-    fn new(config: BM25Config) -> Self {
+    fn new() -> Self {
         Self {
-            config,
-            field_avg_lengths: HashMap::new(),
-            total_documents: 0,
+            k1: 1.2,
+            b: 0.75,
+            delta: 0.5,
+            field_weights: HashMap::new(),
+            avg_doc_lengths: HashMap::new(),
+            doc_count: 0,
+            term_frequencies: HashMap::new(),
+            doc_length_norms: HashMap::new(),
+            field_name_mapping: HashMap::new(),
         }
     }
     
-    /// Compute BM25FS⁺ impact score for a term at indexing time with dynamic field weights
+    fn with_config(config: BM25Config) -> Self {
+        let mut scorer = Self::new();
+        scorer.k1 = config.k1;
+        scorer.delta = config.delta;
+        // Convert field weights from string-based to AttributeIndex-based
+        // This will be populated during schema registration
+        scorer
+    }
+    
+    /// Register field with its AttributeIndex for efficient lookup
+    fn register_field(&mut self, field_name: &str, attr_idx: AttributeIndex, weight: f32) {
+        self.field_weights.insert(attr_idx, weight);
+        self.field_name_mapping.insert(field_name.to_string(), attr_idx);
+    }
+    
+    /// Pre-compute document length normalization during indexing
+    fn precompute_length_norms(&mut self, docs: &[(EntryIndex, AttributeIndex, u32, u32)]) {
+        for &(entry_idx, attr_idx, doc_length, term_freq) in docs {
+            let avg_len = self.avg_doc_lengths.get(&attr_idx).unwrap_or(&1.0);
+            let norm = 1.0 / (self.k1 * (1.0 - self.b + self.b * doc_length as f32 / avg_len) + term_freq as f32);
+            self.doc_length_norms.insert((entry_idx, attr_idx), norm);
+        }
+    }
+    
+    /// Update term document frequency for IDF calculation
+    fn update_term_frequency(&mut self, term: &str) {
+        *self.term_frequencies.entry(term.to_string()).or_insert(0) += 1;
+    }
+    
+    /// Compute BM25FS⁺ impact score for a term at indexing time
     fn compute_impact(
         &self,
+        term: &str,
         field_name: &str,
         tf: u32,
         field_length: f32,
-        _document_frequency: u32, // For future IDF calculations
+        entry_index: EntryIndex,
     ) -> f32 {
-        let field_weight = self.config.get_field_weight(field_name);
+        // Get AttributeIndex for the field
+        let attr_idx = self.field_name_mapping.get(field_name).copied().unwrap_or(AttributeIndex(0));
         
-        let avg_length = self.field_avg_lengths
-            .get(field_name)
+        let weight = self.field_weights.get(&attr_idx).unwrap_or(&1.0);
+        let avg_length = self.avg_doc_lengths.get(&attr_idx).copied().unwrap_or(1.0);
+        let doc_freq = self.term_frequencies.get(term).unwrap_or(&1) as f32;
+        
+        // IDF component with +0.5 smoothing to prevent negative values
+        let idf = ((self.doc_count as f32 - doc_freq + 0.5) / (doc_freq + 0.5)).ln();
+        
+        // Use pre-computed normalization if available, otherwise compute on-the-fly
+        let norm = self.doc_length_norms
+            .get(&(entry_index, attr_idx))
             .copied()
-            .unwrap_or(1.0);
+            .unwrap_or_else(|| {
+                1.0 / (self.k1 * (1.0 - self.b + self.b * field_length / avg_length) + tf as f32)
+            });
         
-        // BM25FS⁺ formula: w_f × BM25(tf) + δ (matches mathematical specification)
-        let tf_component = (self.config.k1 + 1.0) * tf as f32;
-        let normalization = self.config.k1 * (1.0 - field_weight.b + field_weight.b * field_length / avg_length) + tf as f32;
-        let bm25_score = tf_component / normalization;
+        let tf_component = ((self.k1 + 1.0) * tf as f32) * norm;
         
-        field_weight.weight * bm25_score + self.config.delta
+        // BM25FS⁺ formula: w_f × IDF × TF_norm + δ
+        weight * idf * tf_component + self.delta
+    }
+
+    fn score_term(
+        &self,
+        term: &str,
+        attribute: AttributeIndex,
+        entry_index: EntryIndex,
+        term_freq: u32,
+    ) -> f32 {
+        let weight = self.field_weights.get(&attribute).unwrap_or(&1.0);
+        let doc_freq = self.term_frequencies.get(term).unwrap_or(&1) as f32;
+        
+        // IDF component with smoothing
+        let idf = ((self.doc_count as f32 - doc_freq + 0.5) / (doc_freq + 0.5)).ln();
+        
+        // Use pre-computed normalization (multiplication instead of division)
+        let norm = self.doc_length_norms
+            .get(&(entry_index, attribute))
+            .unwrap_or(&1.0);
+        
+        let tf_component = ((self.k1 + 1.0) * term_freq as f32) * norm;
+        
+        // BM25FS⁺ formula with optimized multiplication
+        weight * idf * tf_component + self.delta
+    }
+
+    fn score_fuzzy_match(
+        &self,
+        query_term: &str,
+        matched_term: &str,
+        attribute: AttributeIndex,
+        entry_index: EntryIndex,
+        term_freq: u32,
+    ) -> f32 {
+        let base_score = self.score_term(matched_term, attribute, entry_index, term_freq);
+        
+        // Apply fuzzy penalty based on edit distance
+        let edit_distance = levenshtein(query_term, matched_term);
+        let max_len = query_term.len().max(matched_term.len());
+        let similarity = 1.0 - (edit_distance as f32 / max_len as f32);
+        
+        base_score * similarity.powf(0.5) // Square root to moderate the penalty
     }
     
     /// Update field statistics during indexing
-    fn update_field_stats(&mut self, field_name: &str, total_length: f32, doc_count: usize) {
+    fn update_field_stats(&mut self, attr_idx: AttributeIndex, total_length: f32, doc_count: usize) {
         let avg_length = total_length / doc_count as f32;
-        self.field_avg_lengths.insert(field_name.to_string(), avg_length);
-        self.total_documents = doc_count;
+        self.avg_doc_lengths.insert(attr_idx, avg_length);
+        self.doc_count = doc_count;
     }
 }
 ```
@@ -1105,7 +1214,7 @@ impl TextIndex {
         }
     }
     
-    /// Insert a term with BM25FS⁺ impact calculation
+    /// Insert a term with BM25FS⁺ impact calculation including IDF
     fn insert(
         &mut self,
         entry_index: EntryIndex,
@@ -1118,8 +1227,11 @@ impl TextIndex {
         tf: u32,
         field_length: f32,
     ) -> bool {
-        // Compute BM25FS⁺ impact at indexing time
-        let impact = self.scorer.compute_impact(field_name, tf, field_length, 1);
+        // Update term document frequency for IDF calculation
+        self.scorer.update_term_frequency(term);
+        
+        // Compute BM25FS⁺ impact at indexing time with IDF
+        let impact = self.scorer.compute_impact(term, field_name, tf, field_length, entry_index);
         
         let text_doc = TextDocumentEntry::new(
             entry_index, attribute_index, value_index, 
