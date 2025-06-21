@@ -191,11 +191,15 @@ rayon = { version = "1.10", features = ["web_spin_lock"] }
 # Serialization with zero-copy optimization
 rkyv = { version = "0.7", features = ["validation", "archive_be", "archive_le"] }
 
-# Stop words
+# Stop words and text processing
 stop_words = "0.8"
-
-# Text processing and stemming
 rust_stemmers = "1.2"
+
+# Search and utility crates
+lru = "0.12"
+ordered-float = "4.2"
+regex = "1.10"
+memmap2 = "0.9"
 
 # Web APIs for hardware detection
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -210,10 +214,84 @@ js_sys = "0.3"
 
 ## Type System & Schema
 
+### Language Support
+
+```rust
+/// Supported languages for text processing with stop words and stemming
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Language {
+    English,
+    Spanish,
+    French,
+    German,
+    Italian,
+    Portuguese,
+    Russian,
+    Dutch,
+    Swedish,
+    Norwegian,
+    Danish,
+    Finnish,
+    Arabic,
+    Chinese,
+    Japanese,
+}
+
+impl Language {
+    /// Convert to stop_words crate language identifier
+    fn to_stop_words_language(self) -> stop_words::Language {
+        match self {
+            Language::English => stop_words::ENGLISH,
+            Language::Spanish => stop_words::SPANISH,
+            Language::French => stop_words::FRENCH,
+            Language::German => stop_words::GERMAN,
+            Language::Italian => stop_words::ITALIAN,
+            Language::Portuguese => stop_words::PORTUGUESE,
+            Language::Russian => stop_words::RUSSIAN,
+            Language::Dutch => stop_words::DUTCH,
+            Language::Swedish => stop_words::SWEDISH,
+            Language::Norwegian => stop_words::NORWEGIAN,
+            Language::Danish => stop_words::DANISH,
+            Language::Finnish => stop_words::FINNISH,
+            Language::Arabic => stop_words::ARABIC,
+            Language::Chinese => stop_words::CHINESE,
+            Language::Japanese => stop_words::JAPANESE,
+        }
+    }
+    
+    /// Convert to rust_stemmers algorithm
+    fn to_stemmer_algorithm(self) -> rust_stemmers::Algorithm {
+        match self {
+            Language::English => rust_stemmers::Algorithm::English,
+            Language::Spanish => rust_stemmers::Algorithm::Spanish,
+            Language::French => rust_stemmers::Algorithm::French,
+            Language::German => rust_stemmers::Algorithm::German,
+            Language::Italian => rust_stemmers::Algorithm::Italian,
+            Language::Portuguese => rust_stemmers::Algorithm::Portuguese,
+            Language::Russian => rust_stemmers::Algorithm::Russian,
+            Language::Dutch => rust_stemmers::Algorithm::Dutch,
+            Language::Swedish => rust_stemmers::Algorithm::Swedish,
+            Language::Norwegian => rust_stemmers::Algorithm::Norwegian,
+            Language::Danish => rust_stemmers::Algorithm::Danish,
+            Language::Finnish => rust_stemmers::Algorithm::Finnish,
+            // Fallback to English for languages without stemming support
+            Language::Arabic | Language::Chinese | Language::Japanese => rust_stemmers::Algorithm::English,
+        }
+    }
+}
+
+impl Default for Language {
+    fn default() -> Self {
+        Language::English
+    }
+}
+```
+
 ### Core Types
 
 ```rust
 /// Represents the possible data types that can be indexed
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Archive, Deserialize, Serialize)]
 enum Kind {
     /// Single tokens that require exact matching (e.g. email addresses, IDs)
     Tag,
@@ -222,7 +300,7 @@ enum Kind {
 }
 
 /// Semantic meaning of a field for automatic BM25F weight assignment
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Archive, Deserialize, Serialize)]
 enum SemanticKind {
     /// Primary title or heading (weight: 2.5, b: 0.75)
     Title,
@@ -268,7 +346,7 @@ enum Value {
 }
 
 /// Field configuration for BM25F scoring
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 struct FieldWeight {
     /// BM25F weight for this field (default: 1.0)
     weight: f32,
@@ -283,6 +361,7 @@ impl Default for FieldWeight {
 }
 
 /// Defines the structure and rules for indexable documents with BM25F weights
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 struct Schema {
     attributes: HashMap<String, Kind>,
     field_weights: HashMap<String, FieldWeight>,
@@ -492,7 +571,7 @@ struct FieldConfig {
 }
 
 /// BM25FS⁺ parameters for consistent scoring with dynamic field weights
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 struct BM25Config {
     /// TF saturation parameter (default: 1.2)
     k1: f32,
@@ -792,7 +871,7 @@ struct TextIndex {
     /// BM25FS⁺ scoring engine
     scorer: BM25Scorer,
     /// LRU cache for recent queries (autocomplete optimization)
-    query_cache: std::sync::Mutex<lru::LruCache<String, Vec<(Doc,Score)>>>,
+    query_cache: std::sync::Mutex<lru::LruCache<String, Vec<(EntryIndex, f32)>>>,
 }
 
 impl TextIndex {
@@ -860,7 +939,8 @@ impl TextIndex {
     
     /// Search with BM25FS⁺ scoring and memory pool-optimized aggregation
     fn search_bm25(&self, query: &str, language: Language, attribute: Option<AttributeIndex>, topK: usize) -> Vec<(EntryIndex, f32)> {
-        use std::collections::HashMap;
+        use std::collections::{HashMap, BinaryHeap};
+        use ordered_float::OrderedFloat;
         
         // Check LRU cache first for repeated queries (autocomplete optimization)
         let cache_key = format!("{}:{:?}:{:?}", query, language, attribute);
@@ -946,7 +1026,7 @@ impl TextIndex {
     }
     
     /// Search for terms with a given prefix
-    fn search_prefix(&self, prefix: &str, attribute: Option<AttributeIndex>) -> Vec<EntryIndex> {
+    fn search_prefix(&self, prefix: &str, attribute: Option<AttributeIndex>) -> Option<Vec<EntryIndex>> {
         let found_node = self.trie_index.find_starts_with(prefix.chars())?;
         let mut results = Vec::new();
         
@@ -956,7 +1036,7 @@ impl TextIndex {
         
         results.sort_unstable();
         results.dedup();
-        results
+        Some(results)
     }
     
     /// Fuzzy search using bigram pre-filtering
@@ -1053,6 +1133,10 @@ impl TextIndex {
 ### Text Processing
 
 ```rust
+use regex::Regex;
+use stop_words::{get, Language as StopWordsLanguage};
+use rust_stemmers::{Algorithm, Stemmer};
+
 /// Token processing for text indexing
 #[derive(Debug, Clone)]
 struct Token {
@@ -1064,8 +1148,6 @@ struct Token {
 impl TextIndex {
     /// Process text input into tokens for indexing with language support
     fn process_text(input: &str, language: Language) -> Vec<Token> {
-        use regex::Regex;
-        
         let word_regex = Regex::new(r"(\w{3,20})").unwrap();
         let mut tokens = Vec::new();
         
@@ -1104,6 +1186,9 @@ impl TextIndex {
 ### Supporting Indexes
 
 ```rust
+use std::collections::{BTreeMap, VecDeque, HashSet};
+use std::sync::Arc;
+
 /// Trie node for prefix search
 #[derive(Default)]
 struct TrieNode {
@@ -1119,7 +1204,7 @@ impl TrieNode {
         }
     }
     
-    fn iter_terms(&self) -> impl Iterator<Item = &str> {
+    fn iter_terms(&self) -> TrieNodeTermIterator {
         TrieNodeTermIterator::new(self)
     }
 }
@@ -1136,8 +1221,8 @@ impl<'t> TrieNodeTermIterator<'t> {
     }
 }
 
-impl Iterator for TrieNodeTermIterator<'_> {
-    type Item = String;
+impl<'n> Iterator for TrieNodeTermIterator<'n> {
+    type Item = &'n str;
     
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(node) = self.queue.pop_front() {
@@ -1148,7 +1233,7 @@ impl Iterator for TrieNodeTermIterator<'_> {
             
             // Return term if this node has one
             if let Some(ref term) = node.term {
-                return Some(term.to_string());
+                return Some(term.as_ref());
             }
         }
         None
@@ -1312,6 +1397,8 @@ fn levenshtein(s1: &str, s2: &str) -> usize {
 ## VectorIndex Implementation
 
 ```rust
+use rayon::prelude::*;
+
 /// Flat vector storage optimized for SIMD operations
 struct VectorIndex {
     /// Flat vector storage: Structure-of-Arrays for SIMD efficiency
@@ -1390,12 +1477,15 @@ impl VectorIndex {
         
         let mut dot_product = 0.0f32;
         
-        // Process 4 f32 values simultaneously when possible
+        // Process 4 f32 values simultaneously with SIMD-style operations
+        // Note: Actual SIMD intrinsics would require wasm-simd feature and std::arch::wasm32
         let chunks = query.chunks_exact(4).zip(doc_vector.chunks_exact(4));
         for (q_chunk, d_chunk) in chunks {
-            for i in 0..4 {
-                dot_product += q_chunk[i] * d_chunk[i];
-            }
+            // Manual unrolling for better performance (compiler may vectorize)
+            dot_product += q_chunk[0] * d_chunk[0];
+            dot_product += q_chunk[1] * d_chunk[1];
+            dot_product += q_chunk[2] * d_chunk[2];
+            dot_product += q_chunk[3] * d_chunk[3];
         }
         
         // Handle remaining elements
@@ -1426,10 +1516,10 @@ impl VectorIndex {
             return Ok(Vec::new());
         }
 
-        // Brute-force SIMD computation across all documents
+        // Brute-force SIMD computation across all documents using parallel iteration
         let mut results: Vec<(EntryIndex, f32)> = self.vectors
-            .chunks_exact(self.dimension)
-            .zip(self.entry_mapping.iter())
+            .par_chunks_exact(self.dimension)
+            .zip(self.entry_mapping.par_iter())
             .map(|(doc_vector, &entry_index)| {
                 let score = Self::cosine_similarity_simd(query, doc_vector);
                 (entry_index, score)
@@ -1475,6 +1565,17 @@ enum VectorError {
 ## Hybrid Search Engine
 
 ```rust
+use std::collections::HashMap;
+
+/// Fusion strategy for combining text and vector search results
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FusionStrategy {
+    /// Reciprocal Rank Fusion (RRF) - parameter-free, excellent recall
+    RRF,
+    /// CombSUM fusion - weighted combination, tunable via alpha
+    CombSUM,
+}
+
 /// Main hybrid search engine combining text and vector search
 struct HybridSearchEngine {
     /// Document collection with dynamic schema
@@ -1605,7 +1706,7 @@ impl HybridSearchEngine {
                         None
                     }
                 })
-                .flatten()
+                .filter_map(|x| x)
                 .collect::<Vec<_>>()
         } else {
             Vec::new()
@@ -1656,7 +1757,7 @@ impl HybridSearchEngine {
                         None
                     }
                 })
-                .flatten()
+                .filter_map(|x| x)
                 .collect::<Vec<_>>()
         } else {
             Vec::new()
@@ -1706,15 +1807,6 @@ impl HybridSearchEngine {
             }
         }
     }
-}
-
-/// Fusion strategy for combining text and vector search results
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum FusionStrategy {
-    /// Reciprocal Rank Fusion (RRF) - parameter-free, excellent recall
-    RRF,
-    /// CombSUM fusion - weighted combination, tunable via alpha
-    CombSUM,
 }
 
 /// Reciprocal Rank Fusion implementation
@@ -1807,7 +1899,8 @@ The FileIndex implements high-performance serialization using the `rkyv` crate f
 ```rust
 use rkyv::{Archive, Deserialize, Serialize};
 use rkyv::ser::{Serializer, serializers::AllocSerializer};
-use rkyv::de::deserializers::AllocDeserializer;
+use std::collections::HashMap;
+use memmap2::Mmap;
 
 /// Zero-copy serializable index structure
 #[derive(Archive, Deserialize, Serialize, Debug, Clone)]
@@ -1815,19 +1908,21 @@ use rkyv::de::deserializers::AllocDeserializer;
 struct SerializableIndex {
     /// Document count for validation
     doc_count: u32,
-    /// Term dictionary with sorted keys for binary search
-    terms: rkyv::collections::ArchivedBTreeMap<String, Vec<DocumentEntry>>,
+    /// Term dictionary with document entries (converted from HashMap)
+    terms: Vec<(String, Vec<TextDocumentEntry>)>,
     /// Vector embeddings as flat f32 array
     vectors: Vec<f32>,
     /// Vector dimension (0 if disabled)
     vector_dim: u16,
-    /// Document ID to index mappings
-    doc_mappings: rkyv::collections::ArchivedHashMap<String, u32>,
+    /// Document ID to index mappings (converted from HashMap)
+    doc_mappings: Vec<(String, u32)>,
     /// BM25 configuration for consistent scoring
     bm25_config: BM25Config,
     /// Schema with field weights
     schema: Schema,
 }
+
+struct FileIndex;
 
 impl FileIndex {
     /// Serialize index using rkyv for zero-copy access
@@ -1839,13 +1934,14 @@ impl FileIndex {
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let serializable = SerializableIndex {
             doc_count: collection.document_count as u32,
-            terms: text_index.document_lists.clone().into(),
+            terms: text_index.document_lists.iter()
+                .map(|(term, entries)| (term.to_string(), entries.clone()))
+                .collect(),
             vectors: vector_index.vectors.clone(),
             vector_dim: vector_index.dimension as u16,
             doc_mappings: collection.entries_by_name.iter()
                 .map(|(doc_id, entry_idx)| (doc_id.0.to_string(), entry_idx.0))
-                .collect::<HashMap<_, _>>()
-                .into(),
+                .collect(),
             bm25_config: BM25Config::new(schema),
             schema: schema.clone(),
         };
@@ -1864,9 +1960,9 @@ impl FileIndex {
     }
     
     /// Memory-map file and return zero-copy access to index
-    fn load(path: &std::path::Path) -> Result<(memmap2::Mmap, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
+    fn load(path: &std::path::Path) -> Result<(Mmap, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
         let file = std::fs::File::open(path)?;
-        let mmap = unsafe { memmap2::Mmap::map(&file)? };
+        let mmap = unsafe { Mmap::map(&file)? };
         let archived = Self::deserialize_index(&mmap)?;
         
         // SAFETY: mmap lifetime tied to returned reference
