@@ -140,6 +140,66 @@ Where `α ≃ 0.3-0.5` for most corpora. CombSUM and its cousin CombMNZ originat
 - **RRF**: Cormack & Clarke, "Reciprocal Rank Fusion Outperforms Condorcet" (SIGIR 2009)
 - **CombSUM**: Fox & Shaw, "Combination of Multiple Evidence in IR" (1994)
 
+## Rayon Parallelism, SIMD, wasm-bindgen
+The POC uses **Rayon** for parallel processing, enabling efficient multicore utilization. 
+
+```rust
+use wasm_bindgen::prelude::*;
+use rayon::prelude::*;
+```
+
+
+### Required Rust Toolchain Configuration
+
+```toml
+# Cargo.toml - WebAssembly-optimized build configuration
+[profile.release]
+opt-level = 3              # Maximum optimization level (-O3 equivalent)
+lto = true                # Link-time optimization for cross-crate inlining
+codegen-units = 1         # Single codegen unit for maximum optimization
+panic = "abort"           # Reduce binary size by removing unwinding code
+strip = true              # Strip debug symbols from final binary
+
+[profile.release.package."*"]
+opt-level = 3             # Ensure all dependencies use maximum optimization
+
+# WebAssembly-specific target configuration
+[target.wasm32-unknown-unknown]
+rustflags = [
+    "-C", "target-feature=+simd128",     # Enable WebAssembly SIMD 128-bit vectors
+    "-C", "target-feature=+bulk-memory", # Enable bulk memory operations
+    "-C", "target-feature=+mutable-globals", # Required for some optimizations
+    "-C", "target-cpu=generic",          # Generic CPU for broad compatibility
+]
+```
+
+### Dependencies Optimized for WebAssembly
+
+```toml
+[dependencies]
+# Parallel processing with WebAssembly support
+rayon = { version = "1.10", features = ["web_spin_lock"] }
+
+# Serialization with zero-copy optimization
+rkyv = { version = "0.7", features = ["validation", "archive_be", "archive_le"] }
+
+# Stop words
+stop_words = "0.8"
+
+# Text processing and stemming
+rust_stemmers = "1.2"
+
+# Web APIs for hardware detection
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web_sys = { version = "0.3", features = [
+    "Navigator", 
+    "Window", 
+    "console",
+] }
+wasm-bindgen = "0.2"
+js_sys = "0.3"
+```
+
 ## Type System & Schema
 
 ### Core Types
@@ -919,6 +979,7 @@ impl TextIndex {
         }
         
         tokens
+    }
 }
 ```
 
