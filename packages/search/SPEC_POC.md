@@ -35,7 +35,7 @@ The engine prioritizes **simplicity and speed** through:
 
 | Optimization | Implementation | Performance Benefit |
 |--------------|----------------|-------------------|
-| **Stop-list at ingest** | Hard-coded `&["the", "and", ...]` slice with `continue` on match | Eliminates ~15% of documents, speeds every subsequent query |
+| **Stop-list at ingest** | Language-aware stop-word filtering using `stop-words` crate | Eliminates ~15% of documents, speeds every subsequent query |
 | **Query-term de-dupe** | `query_terms.sort_unstable(); query_terms.dedup();` before lookup | Skips scoring identical words in natural-language queries |
 | **Early-exit top-k** | Stop merging when `heap.peek().score ≥ max_possible_remaining_score` | Saves 20-30% dot-products when k ≪ N with no accuracy loss |
 | **BM25FS⁺ eager impacts** | Pre-store complete BM25FS⁺ `impact = w_f × BM25(tf) + δ` beside each document entry | Cuts query CPU by 10-500×, reduces scoring to sparse dot-product |
@@ -71,14 +71,25 @@ impact_{t,f,D} = w_f × ((k1 + 1) × tf_{t,f,D}) / (k1 × (1 - b + b × |D_f| / 
 
 At indexing time (Rust snippet):
 ```rust
+// Language-aware text processing
+let tokens = TextIndex::process_text(text, language);
+let stop_words = get(language.to_stop_words_language());
+let stemmer = Stemmer::create(language.to_stemmer_algorithm());
+
+// BM25FS⁺ impact calculation
 let impact = w_f * ((k1 + 1.0) * tf as f32) / (k1 * (1.0 - b + b * field_len / avg_len) + tf as f32) + delta;
 // store (term, doc_id, impact) in sparse matrix
 ```
 
 At query time:
 ```rust
+// Process query with same language settings
+let query_tokens = TextIndex::process_text(query, language);
+// Score aggregation
 score[doc] += impact; // one add per document, done
 ```
+
+**Language Support:** The engine supports 15 languages through the `stop-words` and `rust-stemmers` crates, ensuring proper text normalization for international content.
 
 Latency now depends almost entirely on document-list size, not floating-point math.
 
@@ -573,12 +584,12 @@ impl TextIndex {
     }
     
     /// Search with BM25FS⁺ scoring and arena-optimized aggregation
-    fn search_bm25(&self, query: &str, attribute: Option<AttributeIndex>, limit: usize) -> Vec<(EntryIndex, f32)> {
+    fn search_bm25(&self, query: &str, language: Language, attribute: Option<AttributeIndex>, limit: usize) -> Vec<(EntryIndex, f32)> {
         use bumpalo::Bump;
         use bumpalo::collections::HashMap as ArenaHashMap;
         
         // Check LRU cache first for repeated queries (autocomplete optimization)
-        let cache_key = format!("{}:{:?}", query, attribute);
+        let cache_key = format!("{}:{:?}:{:?}", query, language, attribute);
         if let Ok(mut cache) = self.query_cache.try_lock() {
             if let Some(cached_result) = cache.get(&cache_key) {
                 return cached_result.clone();
@@ -589,8 +600,11 @@ impl TextIndex {
         let arena = Bump::new();
         let mut scores = ArenaHashMap::new_in(&arena);
         
+        // Process query with language-specific stop words and stemming
+        let query_tokens = Self::process_text(query, language);
+        let mut query_terms: Vec<&str> = query_tokens.iter().map(|t| t.term.as_str()).collect();
+        
         // Query-term de-duplication to skip scoring identical words
-        let mut query_terms: Vec<&str> = query.split_whitespace().collect();
         query_terms.sort_unstable();
         query_terms.dedup();
         
@@ -775,26 +789,32 @@ struct Token {
 }
 
 impl TextIndex {
-    /// Process text input into tokens for indexing
-    fn process_text(input: &str) -> Vec<Token> {
+    /// Process text input into tokens for indexing with language support
+    fn process_text(input: &str, language: Language) -> Vec<Token> {
         use regex::Regex;
         
         let word_regex = Regex::new(r"(\w{3,20})").unwrap();
         let mut tokens = Vec::new();
         
+        // Get stop words for the specified language
+        let stop_words = get(language.to_stop_words_language());
+        
+        // Create stemmer for the specified language
+        let stemmer = Stemmer::create(language.to_stemmer_algorithm());
+        
         for (token_idx, capture) in word_regex.find_iter(input).enumerate() {
             let term = capture.as_str().to_lowercase();
             
-            // Skip stop words to eliminate ~15% of documents
-            if Self::STOP_WORDS.contains(&term.as_str()) {
+            // Skip stop words using language-specific stop word list
+            if stop_words.contains(&term) {
                 continue;
             }
             
             // Use token index as position for consistency across phrase matching
             let position = Position(token_idx as u32);
             
-            // Apply stemming
-            let stemmed = Self::stem_word(&term);
+            // Apply language-specific stemming
+            let stemmed = stemmer.stem(&term).to_string();
             
             tokens.push(Token {
                 term: stemmed,
@@ -804,29 +824,6 @@ impl TextIndex {
         }
         
         tokens
-    }
-    
-    /// Common English stop words (hard-coded for performance)
-    const STOP_WORDS: &'static [&'static str] = &[
-        "the", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by",
-        "a", "an", "is", "are", "was", "were", "be", "been", "have", "has", "had",
-        "do", "does", "did", "will", "would", "could", "should", "may", "might",
-        "this", "that", "these", "those", "i", "you", "he", "she", "it", "we", "they"
-    ];
-    
-    /// Simple stemming (use rust-stemmers crate in production)
-    fn stem_word(word: &str) -> String {
-        if word.ends_with("ing") && word.len() > 4 {
-            return word[..word.len() - 3].to_string();
-        }
-        if word.ends_with("ed") && word.len() > 3 {
-            return word[..word.len() - 2].to_string();
-        }
-        if word.ends_with("s") && word.len() > 3 {
-            return word[..word.len() - 1].to_string();
-        }
-        word.to_string()
-    }
 }
 ```
 
@@ -1234,8 +1231,8 @@ impl HybridSearchEngine {
         }
     }
     
-    /// Add a document to the index with BM25FS⁺ scoring
-    fn add_document(&mut self, document: Document) -> Result<(), IndexError> {
+    /// Add a document to the index with BM25FS⁺ scoring and language support
+    fn add_document(&mut self, document: Document, language: Language) -> Result<(), IndexError> {
         // Register document with collection
         let entry_index = EntryIndex(self.collection.document_count as u32);
         self.collection.entries_by_index.insert(entry_index, document.id.clone());
@@ -1249,7 +1246,7 @@ impl HybridSearchEngine {
                 let value_index = ValueIndex(value_idx as u8);
                 
                 if let Value::Text(text) = value {
-                    let tokens = TextIndex::process_text(text);
+                    let tokens = TextIndex::process_text(text, language);
                     let field_length = tokens.len() as f32;
                     
                     // Build term frequency map for BM25FS⁺ calculation
@@ -1284,10 +1281,10 @@ impl HybridSearchEngine {
         Ok(())
     }
     
-    /// Search using BM25FS⁺ text scoring
-    fn search_text_bm25(&self, query: &str, attribute: Option<&str>, limit: usize) -> Vec<(DocumentId, f32)> {
+    /// Search using BM25FS⁺ text scoring with language support
+    fn search_text_bm25(&self, query: &str, language: Language, attribute: Option<&str>, limit: usize) -> Vec<(DocumentId, f32)> {
         let attr_index = attribute.and_then(|name| self.collection.get_attribute_index(name));
-        let results = self.text_index.search_bm25(query, attr_index, limit);
+        let results = self.text_index.search_bm25(query, language, attr_index, limit);
         
         results.into_iter()
             .filter_map(|(entry_idx, score)| {
@@ -1309,15 +1306,16 @@ impl HybridSearchEngine {
             .collect())
     }
     
-    /// Hybrid search using Reciprocal Rank Fusion (RRF)
+    /// Hybrid search using Reciprocal Rank Fusion (RRF) with language support
     fn search_hybrid_rrf(
         &self, 
         text_query: Option<&str>, 
+        language: Language,
         vector_query: Option<&[f32]>, 
         limit: usize
     ) -> Vec<(DocumentId, f32)> {
         let sparse_results = if let Some(query) = text_query {
-            let results = self.search_text_bm25(query, None, limit * 2);
+            let results = self.search_text_bm25(query, language, None, limit * 2);
             results.into_iter()
                 .enumerate()
                 .map(|(rank, (doc_id, _))| {
@@ -1356,10 +1354,11 @@ impl HybridSearchEngine {
             .collect()
     }
     
-    /// Hybrid search using CombSUM fusion (α=0.4 default)
+    /// Hybrid search using CombSUM fusion (α=0.4 default) with language support
     fn search_hybrid_combsum(
         &self, 
         text_query: Option<&str>, 
+        language: Language,
         vector_query: Option<&[f32]>, 
         limit: usize,
         alpha: Option<f32>
@@ -1367,7 +1366,7 @@ impl HybridSearchEngine {
         let alpha = alpha.unwrap_or(0.4);
         
         let sparse_results = if let Some(query) = text_query {
-            let results = self.search_text_bm25(query, None, limit * 2);
+            let results = self.search_text_bm25(query, language, None, limit * 2);
             results.into_iter()
                 .map(|(doc_id, score)| {
                     if let Some(&entry_idx) = self.collection.entries_by_name.get(&doc_id) {
@@ -1404,10 +1403,10 @@ impl HybridSearchEngine {
             .collect()
     }
     
-    /// Legacy hybrid search for backward compatibility
-    fn search_hybrid(&self, text_query: Option<&str>, vector_query: Option<&[f32]>, limit: usize) -> Vec<(DocumentId, f32)> {
+    /// Legacy hybrid search for backward compatibility with language support
+    fn search_hybrid(&self, text_query: Option<&str>, language: Language, vector_query: Option<&[f32]>, limit: usize) -> Vec<(DocumentId, f32)> {
         // Default to RRF fusion for best recall/precision balance
-        self.search_hybrid_rrf(text_query, vector_query, limit)
+        self.search_hybrid_rrf(text_query, language, vector_query, limit)
     }
 }
 ```
@@ -1430,11 +1429,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .attribute("content", Value::Text("Modern JavaScript development with ES6 features".to_string()))
         .with_vector(vec![0.2; 768]); // Normalized vector embedding
         
-    engine.add_document(doc1)?;
-    engine.add_document(doc2)?;
+    // Add documents with English language processing
+    engine.add_document(doc1, Language::English)?;
+    engine.add_document(doc2, Language::English)?;
     
-    // Text search with BM25FS⁺ scoring
-    let text_results = engine.search_text_bm25("Rust programming", None, 10);
+    // Text search with BM25FS⁺ scoring and English stop words/stemming
+    let text_results = engine.search_text_bm25("Rust programming", Language::English, None, 10);
     println!("Text search: {:?}", text_results);
     
     // Vector search with SIMD optimization
@@ -1445,6 +1445,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Hybrid search with RRF fusion (default)
     let hybrid_results = engine.search_hybrid(
         Some("programming language"), 
+        Language::English,
         Some(&query_vector), 
         10
     );
@@ -1453,11 +1454,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Hybrid search with CombSUM fusion
     let combsum_results = engine.search_hybrid_combsum(
         Some("programming language"), 
+        Language::English,
         Some(&query_vector), 
         10,
         Some(0.4) // α = 0.4 (dense weight)
     );
     println!("Hybrid CombSUM: {:?}", combsum_results);
+    
+    // Multi-language example with Spanish
+    let spanish_doc = Document::new("doc3")
+        .attribute("title", Value::Text("Programación en Rust".to_string()))
+        .attribute("content", Value::Text("Aprende el lenguaje de programación Rust con seguridad y rendimiento".to_string()))
+        .with_vector(vec![0.12; 768]);
+        
+    engine.add_document(spanish_doc, Language::Spanish)?;
+    
+    let spanish_results = engine.search_text_bm25("programación", Language::Spanish, None, 10);
+    println!("Spanish search: {:?}", spanish_results);
     
     Ok(())
 }
