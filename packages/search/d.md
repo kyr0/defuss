@@ -2517,8 +2517,6 @@ fn load_index_from_storage(key: &str) -> Option<Vec<u8>> {
 
 ## Example Usage
 
-### Schema Definition with Semantic Field Types
-
 - **Semantic clarity**: Users specify meaning, not numbers
 - **Arbitrary field names**: Can use any field name with semantic meaning
 - **Research-grounded**: Weights based on information retrieval research
@@ -2534,15 +2532,6 @@ let schema = Schema::builder()
     .attribute_semantic("custom_heading", Kind::Text, SemanticKind::Heading)
     .build();
 
-// Still supports manual weights when needed
-let schema_custom = Schema::builder()
-    .attribute_with_weight("special_field", Kind::Text, 3.0, Some(0.8))
-    .build();
-```
-
-### Schema-to-Engine Integration
-
-```rust
 // BEFORE: Field weights ignored (always uses defaults)
 let mut engine_old = HybridSearchEngine::new(); // BM25Config::default() with empty field_weights
 
@@ -2565,3 +2554,5 @@ engine.add_document(doc, Language::English)?;
 // Schema field weights now properly influence BM25FS⁺ scoring
 let results = engine.search_text_bm25("machine learning", Some(Language::English), None, Some(10));
 ```
+
+### Key Benefits of Schema-Driven Field Weights
