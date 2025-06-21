@@ -8,11 +8,11 @@ This POC provides a **genius-level hybrid search engine** with:
 
 **Core Components:**
 - **BM25FS⁺ Scoring**: Field-weighted, δ-shifted, eager sparse scoring for 10-500× faster queries
-- **SIMD Vector Search**: Brute-force exact cosine similarity with 4x parallelized operations
+- **Optimized Vector Search**: Brute-force exact cosine similarity with 4x parallelized operations via manual unrolling
 - **Memory Pool Fusion**: RRF and CombSUM strategies with efficient memory reuse
 
 **Performance Features:**
-- **WASM-Optimized**: Memory pools, SIMD intrinsics, and lock-free concurrent access
+- **WASM-Optimized**: Memory pools, manual SIMD unrolling, and lock-free concurrent access
 - **Multicore Ready**: Rayon parallel processing across all available cores
 - **Micro-Optimized**: Stop-lists, Bloom filters, query de-duplication, early-exit top-k
 
@@ -28,7 +28,7 @@ The result is a **genius-level, extremely fast hybrid search engine** that maint
 The engine prioritizes **simplicity and speed** through:
 - **Flattened Document Lists**: Cache-linear `Vec<DocumentEntry>` storage
 - **Memory Pool Management**: Intelligent buffer reuse for reduced allocation overhead
-- **SIMD Vector Operations**: 4x parallelized vector f32 operations with manual unrolling
+- **SIMD Vector Operations**: 4x parallelized vector f32 operations with manual unrolling for broad WASM compatibility
 - **BM25FS⁺ Eager Scoring**: Novel fusion of BM25F + BM25⁺ + BM25S for 10-500× query speedup to sparse dot-product
 
 ### Micro-Optimizations for 100k Document Workloads
@@ -230,6 +230,10 @@ web_sys = { version = "0.3", features = [
     "Document",                        # For DOM access
     "Element",                         # For DOM manipulation
     "HtmlElement",                     # For HTML elements
+    "Performance",                     # For timing measurements
+    "PerformanceTiming",               # For performance metrics
+    "ArrayBuffer",                     # For binary data handling
+    "Uint8Array",                      # For byte arrays
 ] }
 ```
 
@@ -320,6 +324,7 @@ impl Default for Language {
 ```rust
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::fmt;
 use rkyv::{Archive, Deserialize, Serialize};
 
 /// Represents the possible data types that can be indexed
@@ -372,7 +377,7 @@ impl SemanticKind {
 }
 
 /// A value that can be indexed with optional BM25F weight
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Value {
     /// Exact-match tokens (IDs, categories, etc.)
     Tag(String),
@@ -560,7 +565,7 @@ impl Document {
 
 ```rust
 /// Strongly-typed document identifier
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 struct DocumentId(Arc<str>);
 
 impl DocumentId {
@@ -1583,9 +1588,10 @@ impl VectorIndex {
         Ok(())
     }
 
-    /// SIMD-optimized cosine similarity using WebAssembly SIMD 128
-    /// Note: This implementation uses manual unrolling for broad compatibility.
-    /// For actual SIMD intrinsics, enable the wasm-simd feature and use std::arch::wasm32
+    /// SIMD-optimized cosine similarity using manual unrolling for broad compatibility
+    /// Note: This implementation uses manual unrolling rather than explicit WASM SIMD intrinsics
+    /// to ensure compatibility across different WebAssembly environments. Modern compilers may
+    /// auto-vectorize this code when SIMD features are available.
     fn cosine_similarity_simd(query: &[f32], doc_vector: &[f32]) -> f32 {
         debug_assert_eq!(query.len(), doc_vector.len());
         
