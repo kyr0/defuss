@@ -198,6 +198,22 @@ impl SchemaBuilder {
         self
     }
     
+    /// Add an attribute with dynamic BM25F weight for scoring
+    pub fn attribute_with_weight(mut self, name: impl Into<String>, kind: Kind, weight: f32, b: Option<f32>) -> Self {
+        let name_str = name.into();
+        self.attributes.insert(name_str.clone(), kind);
+        
+        // Only apply weights to text fields (tags don't participate in BM25F scoring)
+        if matches!(kind, Kind::Text) {
+            self.field_weights.insert(name_str, FieldWeight { 
+                weight, 
+                b: b.unwrap_or(0.75) 
+            });
+        }
+        
+        self
+    }
+    
     pub fn text_field(mut self, name: impl Into<String>, weight: f32, b: Option<f32>) -> Self {
         let name_str = name.into();
         self.attributes.insert(name_str.clone(), Kind::Text);
@@ -554,7 +570,7 @@ struct TextIndex {
     /// BM25FS⁺ scoring engine
     scorer: BM25Scorer,
     /// LRU cache for recent queries (autocomplete optimization)
-    query_cache: std::sync::Mutex<lru::LruCache<String, Vec<(EntryIndex, f32)>>>,
+    query_cache: std::sync::Mutex<lru::LruCache<String, Vec<(Doc,Score)>>>,
 }
 
 impl TextIndex {
@@ -1723,304 +1739,413 @@ unsafe impl Send for FileIndex {}
 unsafe impl Sync for FileIndex {}
 ```
 
-## WASM Zero-Copy Memory Handling
+## Enhanced Zero-Copy Serialization with rkyv
 
-### SharedArrayBuffer Integration
-
-The search engine is designed for optimal WASM performance using zero-copy memory access between JavaScript and WebAssembly:
+The FileIndex implements high-performance serialization using the `rkyv` crate for true zero-copy deserialization:
 
 ```rust
-/// WASM-specific memory interface for zero-copy JS/TS integration
-#[cfg(target_arch = "wasm32")]
-pub mod wasm_interface {
-    use wasm_bindgen::prelude::*;
-    use js_sys::{SharedArrayBuffer, Uint8Array, Float32Array};
-    
-    /// Zero-copy search engine interface for JavaScript
-    #[wasm_bindgen]
-    pub struct WasmSearchEngine {
-        engine: crate::HybridSearchEngine,
-        shared_buffer: Option<SharedArrayBuffer>,
-        memory_offset: u32,
+use rkyv::{Archive, Deserialize, Serialize};
+use rkyv::ser::{Serializer, serializers::AllocSerializer};
+use rkyv::de::deserializers::AllocDeserializer;
+
+/// Zero-copy serializable index structure
+#[derive(Archive, Deserialize, Serialize, Debug, Clone)]
+#[archive(compare(PartialEq), check_bytes)]
+struct SerializableIndex {
+    /// Document count for validation
+    doc_count: u32,
+    /// Term dictionary with sorted keys for binary search
+    terms: rkyv::collections::ArchivedBTreeMap<String, Vec<DocumentEntry>>,
+    /// Vector embeddings as flat f32 array
+    vectors: Vec<f32>,
+    /// Vector dimension (0 if disabled)
+    vector_dim: u16,
+    /// Document ID to index mappings
+    doc_mappings: rkyv::collections::ArchivedHashMap<String, u32>,
+    /// BM25 configuration for consistent scoring
+    bm25_config: BM25Config,
+    /// Schema with field weights
+    schema: Schema,
+}
+
+impl FileIndex {
+    /// Serialize index using rkyv for zero-copy access
+    fn serialize_index(
+        text_index: &TextIndex, 
+        vector_index: &VectorIndex, 
+        collection: &FlexibleCollection,
+        schema: &Schema
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let serializable = SerializableIndex {
+            doc_count: collection.document_count as u32,
+            terms: text_index.document_lists.clone().into(),
+            vectors: vector_index.vectors.clone(),
+            vector_dim: vector_index.dimension as u16,
+            doc_mappings: collection.entries_by_name.iter()
+                .map(|(doc_id, entry_idx)| (doc_id.0.to_string(), entry_idx.0))
+                .collect::<HashMap<_, _>>()
+                .into(),
+            bm25_config: BM25Config::new(schema),
+            schema: schema.clone(),
+        };
+        
+        let mut serializer = AllocSerializer::<4096>::default();
+        serializer.serialize_value(&serializable)?;
+        Ok(serializer.into_serializer().into_inner().to_vec())
     }
     
-    #[wasm_bindgen]
-    impl WasmSearchEngine {
-        /// Create engine with shared memory buffer
-        #[wasm_bindgen(constructor)]
-        pub fn new(vector_dim: usize, shared_buffer: Option<SharedArrayBuffer>) -> WasmSearchEngine {
-            WasmSearchEngine {
-                engine: crate::HybridSearchEngine::with_vector_dimension(vector_dim),
-                shared_buffer,
-                memory_offset: 0,
-            }
-        }
+    /// Deserialize with zero-copy access to archived data
+    fn deserialize_index(data: &[u8]) -> Result<&rkyv::Archived<SerializableIndex>, Box<dyn std::error::Error>> {
+        // Zero-copy access - no deserialization cost!
+        let archived = unsafe { rkyv::archived_root::<SerializableIndex>(data) };
+        rkyv::check_archived_root::<SerializableIndex>(data)?;
+        Ok(archived)
+    }
+    
+    /// Memory-map file and return zero-copy access to index
+    fn open_zero_copy(path: &std::path::Path) -> Result<(memmap2::Mmap, &rkyv::Archived<SerializableIndex>), Box<dyn std::error::Error>> {
+        let file = std::fs::File::open(path)?;
+        let mmap = unsafe { memmap2::Mmap::map(&file)? };
+        let archived = Self::deserialize_index(&mmap)?;
         
-        /// Add document using zero-copy vector data from SharedArrayBuffer
-        #[wasm_bindgen]
-        pub fn add_document_from_buffer(
-            &mut self, 
-            doc_id: &str,
-            text_fields: &JsValue, // JSON object with field names and text
-            vector_offset: u32,    // Offset in SharedArrayBuffer
-            language_code: u8      // Language enum as u8
-        ) -> Result<(), JsValue> {
-            let language = self.u8_to_language(language_code);
-            
-            // Parse text fields from JS object
-            let fields: std::collections::HashMap<String, String> = 
-                serde_wasm_bindgen::from_value(text_fields.clone())?;
-            
-            // Create document
-            let mut doc = crate::Document::new(doc_id);
-            
-            for (field_name, text) in fields {
-                doc = doc.attribute(field_name, crate::Value::Text(text));
-            }
-            
-            // Zero-copy vector access from SharedArrayBuffer
-            if let Some(ref buffer) = self.shared_buffer {
-                let vector = self.get_vector_from_shared_buffer(buffer, vector_offset)?;
-                doc = doc.with_vector(vector);
-            }
-            
-            self.engine.add_document(doc, language)
-                .map_err(|e| JsValue::from_str(&format!("Error: {:?}", e)))?;
-            
-            Ok(())
-        }
-        
-        /// Search with results written directly to SharedArrayBuffer
-        #[wasm_bindgen]
-        pub fn search_to_buffer(
-            &self,
-            query: &str,
-            language_code: u8,
-            vector_offset: Option<u32>,
-            results_offset: u32,  // Where to write results in SharedArrayBuffer
-            max_results: usize
-        ) -> Result<u32, JsValue> {
-            let language = self.u8_to_language(language_code);
-            
-            // Get query vector from SharedArrayBuffer if provided
-            let query_vector = if let (Some(offset), Some(ref buffer)) = (vector_offset, &self.shared_buffer) {
-                Some(self.get_vector_from_shared_buffer(buffer, offset)?)
-            } else {
-                None
-            };
-            
-            // Perform hybrid search
-            let results = self.engine.search_hybrid(
-                Some(query),
-                language,
-                query_vector.as_deref(),
-                max_results
-            );
-            
-            // Write results directly to SharedArrayBuffer
-            if let Some(ref buffer) = self.shared_buffer {
-                self.write_results_to_shared_buffer(buffer, results_offset, &results)?;
-            }
-            
-            Ok(results.len() as u32)
-        }
-        
-        /// Load index from memory-mapped file data
-        #[wasm_bindgen]
-        pub fn load_from_buffer(&mut self, index_data: &Uint8Array) -> Result<(), JsValue> {
-            // Convert Uint8Array to Rust slice for zero-copy file index loading
-            let data_ptr = index_data.raw_copy_to_ptr() as *const u8;
-            let data_len = index_data.length() as usize;
-            
-            // Create FileIndex from raw data
-            let file_index = unsafe {
-                crate::FileIndex::from_raw_data(data_ptr, data_len)
-            }.map_err(|e| JsValue::from_str(&format!("Load error: {:?}", e)))?;
-            
-            // Update engine with loaded index
-            self.engine.load_file_index(file_index);
-            
-            Ok(())
-        }
-        
-        // Private helper methods
-        fn u8_to_language(&self, code: u8) -> crate::Language {
-            match code {
-                0 => crate::Language::English,
-                1 => crate::Language::Spanish,
-                2 => crate::Language::French,
-                3 => crate::Language::German,
-                4 => crate::Language::Italian,
-                5 => crate::Language::Portuguese,
-                6 => crate::Language::Russian,
-                7 => crate::Language::Dutch,
-                8 => crate::Language::Danish,
-                9 => crate::Language::Finnish,
-                10 => crate::Language::Hungarian,
-                11 => crate::Language::Norwegian,
-                12 => crate::Language::Romanian,
-                13 => crate::Language::Swedish,
-                14 => crate::Language::Turkish,
-                _ => crate::Language::English,
-            }
-        }
-        
-        fn get_vector_from_shared_buffer(&self, buffer: &SharedArrayBuffer, offset: u32) -> Result<Vec<f32>, JsValue> {
-            let float_array = Float32Array::new_with_byte_offset_and_length(
-                buffer,
-                offset,
-                self.engine.vector_index.dimension as u32
-            );
-            
-            // Zero-copy conversion to Rust Vec
-            let mut vector = vec![0.0f32; self.engine.vector_index.dimension];
-            float_array.copy_to(&mut vector);
-            
-            Ok(vector)
-        }
-        
-        fn write_results_to_shared_buffer(
-            &self, 
-            buffer: &SharedArrayBuffer, 
-            offset: u32, 
-            results: &[(crate::DocumentId, f32)]
-        ) -> Result<(), JsValue> {
-            // Write results as: [count: u32][doc_id_len: u32, doc_id: bytes, score: f32]...
-            let uint8_array = Uint8Array::new_with_byte_offset(buffer, offset);
-            let mut write_offset = 0;
-            
-            // Write result count
-            let count_bytes = (results.len() as u32).to_le_bytes();
-            for (i, &byte) in count_bytes.iter().enumerate() {
-                uint8_array.set_index(write_offset + i as u32, byte);
-            }
-            write_offset += 4;
-            
-            // Write each result
-            for (doc_id, score) in results {
-                let doc_id_bytes = doc_id.0.as_bytes();
-                let doc_id_len = doc_id_bytes.len() as u32;
-                
-                // Write doc_id length
-                let len_bytes = doc_id_len.to_le_bytes();
-                for (i, &byte) in len_bytes.iter().enumerate() {
-                    uint8_array.set_index(write_offset + i as u32, byte);
-                }
-                write_offset += 4;
-                
-                // Write doc_id
-                for (i, &byte) in doc_id_bytes.iter().enumerate() {
-                    uint8_array.set_index(write_offset + i as u32, byte);
-                }
-                write_offset += doc_id_len;
-                
-                // Write score
-                let score_bytes = score.to_le_bytes();
-                for (i, &byte) in score_bytes.iter().enumerate() {
-                    uint8_array.set_index(write_offset + i as u32, byte);
-                }
-                write_offset += 4;
-            }
-            
-            Ok(())
-        }
+        // SAFETY: mmap lifetime tied to returned reference
+        Ok((mmap, archived))
+    }
+    
+    /// Save index with rkyv serialization
+    fn save_zero_copy(
+        path: &std::path::Path,
+        text_index: &TextIndex,
+        vector_index: &VectorIndex,
+        collection: &FlexibleCollection,
+        schema: &Schema
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let serialized = Self::serialize_index(text_index, vector_index, collection, schema)?;
+        std::fs::write(path, serialized)?;
+        Ok(())
     }
 }
 ```
 
-### TypeScript Integration
+### WASM Zero-Copy Memory Handling via SharedArrayBuffer
 
-```typescript
-// TypeScript interface for zero-copy WASM search engine
-export interface SearchResult {
-  docId: string;
-  score: number;
+The engine provides comprehensive zero-copy memory access between JavaScript/TypeScript and WebAssembly using SharedArrayBuffer and pointer arithmetic:
+
+```rust
+use wasm_bindgen::prelude::*;
+use js_sys::{SharedArrayBuffer, Uint8Array, Float32Array, Uint32Array};
+
+/// Advanced WASM memory interface with zero-copy SharedArrayBuffer operations
+#[wasm_bindgen]
+pub struct WasmSearchEngine {
+    engine: crate::HybridSearchEngine,
+    shared_buffer: Option<SharedArrayBuffer>,
+    /// Current memory offset for allocation tracking
+    memory_offset: u32,
+    /// Memory layout metadata for zero-copy access
+    memory_layout: WasmMemoryLayout,
 }
 
-export class WasmSearchEngine {
-  private wasmEngine: any;
-  private sharedBuffer: SharedArrayBuffer;
-  private vectorDimension: number;
-  
-  constructor(vectorDimension: number, sharedBufferSize: number = 64 * 1024 * 1024) {
-    this.vectorDimension = vectorDimension;
-    this.sharedBuffer = new SharedArrayBuffer(sharedBufferSize);
-    this.wasmEngine = new wasm.WasmSearchEngine(vectorDimension, this.sharedBuffer);
-  }
-  
-  // Add document with zero-copy vector data
-  addDocument(
-    docId: string, 
-    textFields: Record<string, string>, 
-    vector: Float32Array,
-    language: Language = Language.English
-  ): void {
-    // Write vector to SharedArrayBuffer
-    const vectorOffset = this.allocateVector();
-    const vectorView = new Float32Array(this.sharedBuffer, vectorOffset, this.vectorDimension);
-    vectorView.set(vector);
-    
-    // Add document via WASM (zero-copy vector access)
-    this.wasmEngine.add_document_from_buffer(
-      docId, 
-      textFields, 
-      vectorOffset, 
-      language as number
-    );
-  }
-  
-  // Search with zero-copy result handling
-  search(
-    query: string, 
-    queryVector?: Float32Array, 
-    language: Language = Language.English,
-    maxResults: number = 10
-  ): SearchResult[] {
-    const resultsOffset = this.allocateResults(maxResults);
-    
-    let vectorOffset: number | undefined;
-    if (queryVector) {
-      vectorOffset = this.allocateVector();
-      const vectorView = new Float32Array(this.sharedBuffer, vectorOffset, this.vectorDimension);
-      vectorView.set(queryVector);
+/// Memory layout tracking for efficient SharedArrayBuffer usage
+#[derive(Debug, Clone)]
+struct WasmMemoryLayout {
+    /// Document vectors section (offset, size)
+    vectors_section: (u32, u32),
+    /// Query results section (offset, size)  
+    results_section: (u32, u32),
+    /// Temporary computation section (offset, size)
+    scratch_section: (u32, u32),
+    /// Vector dimension for stride calculations
+    vector_dim: u32,
+    /// Maximum number of documents supported
+    max_documents: u32,
+}
+
+impl WasmMemoryLayout {
+    fn new(vector_dim: usize, max_docs: usize, buffer_size: u32) -> Self {
+        let vector_dim = vector_dim as u32;
+        let max_documents = max_docs as u32;
+        
+        // Calculate memory sections with 64-byte alignment for SIMD
+        let vectors_size = max_documents * vector_dim * 4; // f32 = 4 bytes
+        let vectors_section = (0, vectors_size);
+        
+        let results_size = max_documents * 8; // (doc_id: u32, score: f32) = 8 bytes
+        let results_offset = align_to_64(vectors_size);
+        let results_section = (results_offset, results_size);
+        
+        let scratch_offset = align_to_64(results_offset + results_size);
+        let scratch_size = buffer_size - scratch_offset;
+        let scratch_section = (scratch_offset, scratch_size);
+        
+        Self {
+            vectors_section,
+            results_section,
+            scratch_section,
+            vector_dim,
+            max_documents,
+        }
     }
     
-    // Perform search with results written directly to SharedArrayBuffer
-    const resultCount = this.wasmEngine.search_to_buffer(
-      query,
-      language as number,
-      vectorOffset,
-      resultsOffset,
-      maxResults
-    );
+    /// Get vector pointer for document at index
+    fn get_vector_ptr(&self, doc_index: u32) -> u32 {
+        self.vectors_section.0 + (doc_index * self.vector_dim * 4)
+    }
     
-    // Zero-copy result parsing
-    return this.parseResultsFromBuffer(resultsOffset, resultCount);
-  }
-  
-  // Load pre-built index from ArrayBuffer (zero-copy)
-  loadIndex(indexData: ArrayBuffer): void {
-    const uint8Array = new Uint8Array(indexData);
-    this.wasmEngine.load_from_buffer(uint8Array);
-  }
-  
-  private allocateVector(): number {
-    // Simple bump allocator for demo - production would use proper memory management
-    static nextOffset = 0;
-    const offset = nextOffset;
-    nextOffset += this.vectorDimension * 4; // 4 bytes per f32
-    return offset;
-  }
-  
-  private allocateResults(maxResults: number): number {
-    // Allocate space for results
-    static resultsBase = 32 * 1024 * 1024; // Start results at 32MB
-    return resultsBase;
-  }
-  
-  private parseResultsFromBuffer(offset: number, count: number): SearchResult[] {
-    const view = new DataView(this.sharedBuffer, offset);
-    let readOffset = 4; // Skip count (already provided)
+    /// Get result slot pointer for position
+    fn get_result_ptr(&self, position: u32) -> u32 {
+        self.results_section.0 + (position * 8)
+    }
+}
+
+/// Align offset to 64-byte boundary for optimal SIMD performance
+fn align_to_64(offset: u32) -> u32 {
+    (offset + 63) & !63
+}
+
+#[wasm_bindgen]
+impl WasmSearchEngine {
+    /// Create engine with advanced SharedArrayBuffer memory management
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        vector_dim: usize, 
+        shared_buffer: Option<SharedArrayBuffer>,
+        max_documents: Option<usize>
+    ) -> WasmSearchEngine {
+        let max_docs = max_documents.unwrap_or(100_000);
+        let buffer_size = shared_buffer.as_ref()
+            .map(|buf| buf.byte_length() as u32)
+            .unwrap_or(0);
+            
+        let memory_layout = WasmMemoryLayout::new(vector_dim, max_docs, buffer_size);
+        
+        WasmSearchEngine {
+            engine: crate::HybridSearchEngine::with_vector_dimension(vector_dim),
+            shared_buffer,
+            memory_offset: 0,
+            memory_layout,
+        }
+    }
     
-    const results: SearchResult[] = [];
+    /// Add document with zero-copy vector access via pointer arithmetic
+    #[wasm_bindgen]
+    pub fn add_document_zero_copy(
+        &mut self, 
+        doc_id: &str,
+        text_fields: &JsValue,
+        doc_index: u32,        // Document index for vector placement
+        language_code: u8
+    ) -> Result<(), JsValue> {
+        let language = self.u8_to_language(language_code);
+        
+        // Parse text fields from JS object
+        let fields: std::collections::HashMap<String, String> = 
+            serde_wasm_bindgen::from_value(text_fields.clone())?;
+        
+        // Create document
+        let mut doc = crate::Document::new(doc_id);
+        
+        for (field_name, text) in fields {
+            doc = doc.attribute(field_name, crate::Value::Text(text));
+        }
+        
+        // Zero-copy vector access using pointer arithmetic
+        if let Some(ref buffer) = self.shared_buffer {
+            let vector_ptr = self.memory_layout.get_vector_ptr(doc_index);
+            let vector = self.get_vector_from_pointer(buffer, vector_ptr)?;
+            doc = doc.with_vector(vector);
+        }
+        
+        self.engine.add_document(doc, language)
+            .map_err(|e| JsValue::from_str(&format!("Error: {:?}", e)))?;
+        
+        Ok(())
+    }
     
+    /// High-performance search with results written to specific memory locations
+    #[wasm_bindgen]
+    pub fn search_zero_copy(
+        &self,
+        query: &str,
+        language_code: u8,
+        query_vector_index: Option<u32>, // Index in vectors section for query vector
+        limit: usize,
+        results_offset: Option<u32>      // Custom offset for results
+    ) -> Result<u32, JsValue> {
+        let language = self.u8_to_language(language_code);
+        
+        // Get query vector using zero-copy access
+        let vector_query = if let Some(vec_idx) = query_vector_index {
+            if let Some(ref buffer) = self.shared_buffer {
+                let vector_ptr = self.memory_layout.get_vector_ptr(vec_idx);
+                Some(self.get_vector_from_pointer(buffer, vector_ptr)?)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        
+        // Perform hybrid search
+        let results = self.engine.search_hybrid_rrf(
+            Some(query), 
+            language, 
+            vector_query.as_deref(), 
+            limit
+        );
+        
+        // Write results directly to SharedArrayBuffer using pointer arithmetic
+        if let Some(ref buffer) = self.shared_buffer {
+            let results_ptr = results_offset.unwrap_or(self.memory_layout.results_section.0);
+            self.write_results_to_buffer(buffer, results_ptr, &results)?;
+        }
+        
+        Ok(results.len() as u32)
+    }
+    
+    /// Direct memory access for bulk vector operations
+    #[wasm_bindgen]
+    pub fn bulk_vector_similarity(
+        &self,
+        query_vector_index: u32,
+        doc_indices: &[u32],
+        results_offset: u32
+    ) -> Result<(), JsValue> {
+        if let Some(ref buffer) = self.shared_buffer {
+            let query_ptr = self.memory_layout.get_vector_ptr(query_vector_index);
+            let query_vector = self.get_vector_from_pointer(buffer, query_ptr)?;
+            
+            // Compute similarities using SIMD operations
+            for (i, &doc_idx) in doc_indices.iter().enumerate() {
+                let doc_ptr = self.memory_layout.get_vector_ptr(doc_idx);
+                let doc_vector = self.get_vector_from_pointer(buffer, doc_ptr)?;
+                
+                // SIMD cosine similarity
+                let similarity = self.simd_cosine_similarity(&query_vector, &doc_vector);
+                
+                // Write result directly to memory
+                let result_ptr = results_offset + (i as u32 * 8);
+                self.write_f32_to_buffer(buffer, result_ptr, similarity)?;
+                self.write_u32_to_buffer(buffer, result_ptr + 4, doc_idx)?;
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Get memory layout information for JS/TS integration
+    #[wasm_bindgen(getter)]
+    pub fn memory_layout(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.memory_layout).unwrap_or(JsValue::NULL)
+    }
+    
+    // Private helper methods for zero-copy memory operations
+    fn get_vector_from_pointer(&self, buffer: &SharedArrayBuffer, ptr: u32) -> Result<Vec<f32>, JsValue> {
+        let float_array = Float32Array::new_with_byte_offset_and_length(
+            buffer, 
+            ptr, 
+            self.memory_layout.vector_dim
+        );
+        Ok(float_array.to_vec())
+    }
+    
+    fn write_results_to_buffer(
+        &self,
+        buffer: &SharedArrayBuffer, 
+        offset: u32, 
+        results: &[(crate::DocumentId, f32)]
+    ) -> Result<(), JsValue> {
+        for (i, (doc_id, score)) in results.iter().enumerate() {
+            let pos = offset + (i as u32 * 8);
+            
+            // Write document index (assuming we can map doc_id to u32)
+            let doc_index = self.engine.collection.entries_by_name
+                .get(doc_id)
+                .map(|idx| idx.0)
+                .unwrap_or(0);
+                
+            self.write_u32_to_buffer(buffer, pos, doc_index)?;
+            self.write_f32_to_buffer(buffer, pos + 4, *score)?;
+        }
+        Ok(())
+    }
+    
+    fn write_f32_to_buffer(&self, buffer: &SharedArrayBuffer, offset: u32, value: f32) -> Result<(), JsValue> {
+        let float_array = Float32Array::new_with_byte_offset_and_length(buffer, offset, 1);
+        float_array.set_index(0, value);
+        Ok(())
+    }
+    
+    fn write_u32_to_buffer(&self, buffer: &SharedArrayBuffer, offset: u32, value: u32) -> Result<(), JsValue> {
+        let uint_array = Uint32Array::new_with_byte_offset_and_length(buffer, offset, 1);
+        uint_array.set_index(0, value);
+        Ok(())
+    }
+    
+    /// SIMD-optimized cosine similarity for WebAssembly
+    fn simd_cosine_similarity(&self, a: &[f32], b: &[f32]) -> f32 {
+        // Use WebAssembly SIMD 128-bit operations for 4x parallelization
+        #[cfg(target_feature = "simd128")]
+        unsafe {
+            use std::arch::wasm32::*;
+            
+            let mut dot_product = f32x4_splat(0.0);
+            let mut norm_a = f32x4_splat(0.0);
+            let mut norm_b = f32x4_splat(0.0);
+            
+            // Process 4 elements at a time
+            for chunk in a.chunks_exact(4).zip(b.chunks_exact(4)) {
+                let va = v128_load(chunk.0.as_ptr() as *const v128);
+                let vb = v128_load(chunk.1.as_ptr() as *const v128);
+                
+                dot_product = f32x4_add(dot_product, f32x4_mul(va, vb));
+                norm_a = f32x4_add(norm_a, f32x4_mul(va, va));
+                norm_b = f32x4_add(norm_b, f32x4_mul(vb, vb));
+            }
+            
+            // Reduce SIMD vectors to scalars
+            let dot_sum = f32x4_extract_lane::<0>(dot_product) + 
+                         f32x4_extract_lane::<1>(dot_product) +
+                         f32x4_extract_lane::<2>(dot_product) + 
+                         f32x4_extract_lane::<3>(dot_product);
+                         
+            let norm_a_sum = f32x4_extract_lane::<0>(norm_a) + 
+                            f32x4_extract_lane::<1>(norm_a) +
+                            f32x4_extract_lane::<2>(norm_a) + 
+                            f32x4_extract_lane::<3>(norm_a);
+                            
+            let norm_b_sum = f32x4_extract_lane::<0>(norm_b) + 
+                            f32x4_extract_lane::<1>(norm_b) +
+                            f32x4_extract_lane::<2>(norm_b) + 
+                            f32x4_extract_lane::<3>(norm_b);
+            
+            // Handle remaining elements
+            let remainder_start = (a.len() / 4) * 4;
+            let mut dot_remainder = 0.0;
+            let mut norm_a_remainder = 0.0;
+            let mut norm_b_remainder = 0.0;
+            
+            for i in remainder_start..a.len() {
+                dot_remainder += a[i] * b[i];
+                norm_a_remainder += a[i] * a[i];
+                norm_b_remainder += b[i] * b[i];
+            }
+            
+            let total_dot = dot_sum + dot_remainder;
+            let total_norm_a = (norm_a_sum + norm_a_remainder).sqrt();
+            let total_norm_b = (norm_b_sum + norm_b_remainder).sqrt();
+            
+            if total_norm_a == 0.0 || total_norm_b == 0.0 {
+                0.0
+            } else {
+                total_dot / (total_norm_a * total_norm_b)
+            }
+        }
+        #[cfg(not(target_feature = "simd128"))]
+        {
+            // Fallback to scalar implementation
+            crate::VectorIndex::cosine_similarity(a, b)
+        }
+    }
+}
+```
