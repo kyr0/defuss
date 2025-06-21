@@ -1,0 +1,6 @@
+| Formel                                                                           | Bedeutung in Worten                                                                                        |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **1. Nicht-Leeres Universum:**  $\displaystyle U\neq\varnothing$                        | *Es gibt überhaupt Dinge/Ereignisse – das „Universum“ $U$ ist nicht leer.*                                   |
+| **2. Kausalitäts-Axiom:**  $\displaystyle\forall x\in U\;\exists y\in U:\;C(y,x)$ | *Für jedes Ding $x$ findet sich **mindestens ein** anderes Ding $y$, das der Grund (die Ursache) für seine Existenz ist.* |
+| **3. Definition „Sinn“:**  $\displaystyle S(x):=\{\,y\mid C(y,x)\,\}$             | *Der „Sinn“ von $x$ (jedem beliebigen Ding) **ist einfach** die Menge seiner Ursachen.*                                            |
+| **4. Hauptsatz:**  $\displaystyle\forall x\in U:\;S(x)\neq\varnothing$            | *Also hat **jedes** Ding einen Sinn, weil seine Ursachenmenge nie leer ist.*                               |
