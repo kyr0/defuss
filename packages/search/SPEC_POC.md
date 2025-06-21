@@ -375,11 +375,11 @@ impl BM25Config {
 }
 ```
 
-## FlexibleCollection Implementation
+## Collection Implementation
 
 ```rust
 /// Enhanced collection with dynamic attribute registration
-struct FlexibleCollection {
+struct Collection {
     /// Document mappings (single index, no splitting)
     entries_by_index: HashMap<EntryIndex, DocumentId>,
     entries_by_name: HashMap<DocumentId, EntryIndex>,
@@ -392,7 +392,7 @@ struct FlexibleCollection {
     document_count: usize,
 }
 
-impl FlexibleCollection {
+impl Collection {
     const MAX_DOCUMENTS: usize = 100_000;
     const MAX_ATTRIBUTES: usize = 255;
     const MAX_VALUES_PER_ATTRIBUTE: usize = 255;
@@ -1299,7 +1299,7 @@ enum VectorError {
 /// Main hybrid search engine combining text and vector search
 struct HybridSearchEngine {
     /// Document collection with dynamic schema
-    collection: FlexibleCollection,
+    collection: Collection,
     /// Text search index
     text_index: TextIndex,
     /// Vector search index (optional)
@@ -1320,7 +1320,7 @@ impl HybridSearchEngine {
     /// Create with custom BM25FS⁺ and vector configuration
     fn with_config(bm25_config: BM25Config, vector_dimension: usize) -> Self {
         Self {
-            collection: FlexibleCollection::new(),
+            collection: Collection::new(),
             text_index: TextIndex::with_config(bm25_config),
             vector_index: VectorIndex::with_dimension(vector_dimension),
         }
@@ -1499,7 +1499,7 @@ impl HybridSearchEngine {
     }
     
     /// Main hybrid search with configurable fusion strategy
-    fn search_hybrid_with_strategy(
+    fn search(
         &self,
         text_query: Option<&str>,
         language: Language,
@@ -1516,12 +1516,6 @@ impl HybridSearchEngine {
                 self.search_hybrid_combsum(text_query, language, vector_query, limit, alpha)
             }
         }
-    }
-    
-    /// Legacy hybrid search for backward compatibility with language support
-    fn search_hybrid(&self, text_query: Option<&str>, language: Language, vector_query: Option<&[f32]>, limit: usize) -> Vec<(DocumentId, f32)> {
-        // Default to RRF fusion for best recall/precision balance
-        self.search_hybrid_rrf(text_query, language, vector_query, limit)
     }
 }
 
@@ -1687,7 +1681,7 @@ impl FileIndex {
     }
     
     /// Serialize index to file with zero-copy layout
-    fn save(&self, path: &std::path::Path, text_index: &TextIndex, vector_index: &VectorIndex, collection: &FlexibleCollection) -> Result<(), std::io::Error> {
+    fn save(&self, path: &std::path::Path, text_index: &TextIndex, vector_index: &VectorIndex, collection: &Collection) -> Result<(), std::io::Error> {
         use std::io::Write;
         
         let mut file = std::fs::File::create(path)?;
@@ -1821,7 +1815,7 @@ impl FileIndex {
         })
     }
     
-    fn write_metadata(&self, file: &mut std::fs::File, text_index: &TextIndex, vector_index: &VectorIndex, collection: &FlexibleCollection) -> Result<(), std::io::Error> {
+    fn write_metadata(&self, file: &mut std::fs::File, text_index: &TextIndex, vector_index: &VectorIndex, collection: &Collection) -> Result<(), std::io::Error> {
         use std::io::Write;
         
         file.write_all(&(collection.document_count as u32).to_le_bytes())?;
@@ -1874,7 +1868,7 @@ impl FileIndex {
         Ok(())
     }
     
-    fn write_document_mappings(&self, file: &mut std::fs::File, collection: &FlexibleCollection) -> Result<(), std::io::Error> {
+    fn write_document_mappings(&self, file: &mut std::fs::File, collection: &Collection) -> Result<(), std::io::Error> {
         use std::io::Write;
         
         // Write document ID mappings for reverse lookup
@@ -1926,7 +1920,7 @@ impl FileIndex {
     fn serialize_index(
         text_index: &TextIndex, 
         vector_index: &VectorIndex, 
-        collection: &FlexibleCollection,
+        collection: &Collection,
         schema: &Schema
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let serializable = SerializableIndex {
@@ -1970,7 +1964,7 @@ impl FileIndex {
         path: &std::path::Path,
         text_index: &TextIndex,
         vector_index: &VectorIndex,
-        collection: &FlexibleCollection,
+        collection: &Collection,
         schema: &Schema
     ) -> Result<(), Box<dyn std::error::Error>> {
         let serialized = Self::serialize_index(text_index, vector_index, collection, schema)?;
@@ -1979,291 +1973,3 @@ impl FileIndex {
     }
 }
 ```
-
-### WASM Zero-Copy Memory Handling via SharedArrayBuffer
-
-The engine provides comprehensive zero-copy memory access between JavaScript/TypeScript and WebAssembly using SharedArrayBuffer and pointer arithmetic:
-
-```rust
-use wasm_bindgen::prelude::*;
-use js_sys::{SharedArrayBuffer, Uint8Array, Float32Array, Uint32Array};
-
-/// Advanced WASM memory interface with zero-copy SharedArrayBuffer operations
-#[wasm_bindgen]
-pub struct WasmSearchEngine {
-    engine: crate::HybridSearchEngine,
-    shared_buffer: Option<SharedArrayBuffer>,
-    /// Current memory offset for allocation tracking
-    memory_offset: u32,
-    /// Memory layout metadata for zero-copy access
-    memory_layout: WasmMemoryLayout,
-}
-
-/// Memory layout tracking for efficient SharedArrayBuffer usage
-#[derive(Debug, Clone)]
-struct WasmMemoryLayout {
-    /// Document vectors section (offset, size)
-    vectors_section: (u32, u32),
-    /// Query results section (offset, size)  
-    results_section: (u32, u32),
-    /// Temporary computation section (offset, size)
-    scratch_section: (u32, u32),
-    /// Vector dimension for stride calculations
-    vector_dim: u32,
-    /// Maximum number of documents supported
-    max_documents: u32,
-}
-
-impl WasmMemoryLayout {
-    fn new(vector_dim: usize, max_docs: usize, buffer_size: u32) -> Self {
-        let vector_dim = vector_dim as u32;
-        let max_documents = max_docs as u32;
-        
-        // Calculate memory sections with 64-byte alignment for optimal SIMD
-        let vectors_size = max_documents * vector_dim * 4; // f32 = 4 bytes
-        let vectors_section = (0, vectors_size);
-        
-        let results_size = max_documents * 8; // (doc_id: u32, score: f32) = 8 bytes
-        let results_offset = align_to_64(vectors_size);
-        let results_section = (results_offset, results_size);
-        
-        let scratch_offset = align_to_64(results_offset + results_size);
-        let scratch_size = buffer_size - scratch_offset;
-        let scratch_section = (scratch_offset, scratch_size);
-        
-        Self {
-            vectors_section,
-            results_section,
-            scratch_section,
-            vector_dim,
-            max_documents,
-        }
-    }
-    
-    /// Get vector pointer for document at index
-    fn get_vector_ptr(&self, doc_index: u32) -> u32 {
-        self.vectors_section.0 + (doc_index * self.vector_dim * 4)
-    }
-    
-    /// Get result slot pointer for position
-    fn get_result_ptr(&self, position: u32) -> u32 {
-        self.results_section.0 + (position * 8)
-    }
-}
-
-/// Align offset to 64-byte boundary for optimal SIMD performance
-fn align_to_64(offset: u32) -> u32 {
-    (offset + 63) & !63
-}
-
-#[wasm_bindgen]
-impl WasmSearchEngine {
-    /// Create engine with advanced SharedArrayBuffer memory management
-    #[wasm_bindgen(constructor)]
-    pub fn new(
-        vector_dim: number, 
-        shared_buffer: Option<SharedArrayBuffer>,
-        max_documents: Option<number>
-    ) -> WasmSearchEngine {
-        let max_docs = max_documents.unwrap_or(100_000);
-        let buffer_size = shared_buffer.as_ref()
-            .map(|buf| buf.byte_length() as u32)
-            .unwrap_or(0);
-            
-        let memory_layout = WasmMemoryLayout::new(vector_dim, max_docs, buffer_size);
-        
-        WasmSearchEngine {
-            engine: new DefussSearchEngine(vector_dim, shared_buffer, max_documents),
-            shared_buffer,
-            memory_offset: 0,
-            memory_layout,
-        }
-    }
-    
-    /**
-     * Add document with zero-copy vector placement
-     */
-    #[wasm_bindgen]
-    pub fn add_document_zero_copy(
-        &mut self, 
-        doc_id: &str,
-        text_fields: &JsValue,
-        doc_index: u32,        // Document index for vector placement
-        language_code: u8
-    ) -> Result<(), JsValue> {
-        let language = self.u8_to_language(language_code);
-        
-        // Parse text fields from JS object
-        let fields: std::collections::HashMap<String, String> = 
-            serde_wasm_bindgen::from_value(text_fields.clone())?;
-        
-        // Create document
-        let mut doc = crate::Document::new(doc_id);
-        
-        for (field_name, text) in fields {
-            doc = doc.attribute(field_name, crate::Value::Text(text));
-        }
-        
-        // Zero-copy vector access using pointer arithmetic
-        if let Some(ref buffer) = self.shared_buffer {
-            let vector_ptr = self.memory_layout.get_vector_ptr(doc_index);
-            let vector = self.get_vector_from_pointer(buffer, vector_ptr)?;
-            doc = doc.with_vector(vector);
-        }
-        
-        self.engine.add_document(doc, language)
-            .map_err(|e| JsValue::from_str(&format!("Error: {:?}", e)))?;
-        
-        Ok(())
-    }
-    
-    /**
-     * High-performance hybrid search with zero-copy results and configurable fusion strategy
-     */
-    #[wasm_bindgen]
-    pub fn search_zero_copy(
-        &self,
-        query: &str,
-        language_code: u8,
-        query_vector_index: Option<u32>, // Index in vectors section for query vector
-        limit: usize,
-        fusion_strategy: u8,             // 0 = RRF, 1 = CombSUM
-        alpha: Option<f32>,              // Alpha parameter for CombSUM (ignored for RRF)
-        results_offset: Option<u32>      // Custom offset for results
-    ) -> Result<u32, JsValue> {
-        let language = self.u8_to_language(language_code);
-        let strategy = match fusion_strategy {
-            0 => FusionStrategy::RRF,
-            1 => FusionStrategy::CombSUM,
-            _ => FusionStrategy::RRF, // Default fallback
-        };
-        
-        // Get query vector using zero-copy access
-        let vector_query = if let Some(vec_idx) = query_vector_index {
-            if let Some(ref buffer) = self.shared_buffer {
-                let vector_ptr = self.memory_layout.get_vector_ptr(vec_idx);
-                Some(self.get_vector_from_pointer(buffer, vector_ptr)?)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-        
-        // Perform hybrid search with strategy selection
-        let results = self.engine.search_hybrid_with_strategy(
-            if query.is_empty() { None } else { Some(query) },
-            language,
-            vector_query,
-            limit,
-            strategy,
-            alpha
-        );
-        
-        // Write results to SharedArrayBuffer and return count
-        self.write_results_to_buffer(&results, results_offset)
-    }
-    
-    /**
-     * Batch vector similarity computation
-     */
-    async function computeSimilarities(
-      queryVector: Float32Array,
-      docIndices: number[]
-    ): Promise<Array<{ docIndex: number; similarity: number }>> {
-      // Write query vector to scratch space
-      const scratchOffset = this.memoryLayout.scratch_section[0] / 4;
-      this.vectorView.set(queryVector, scratchOffset);
-      const queryIndex = scratchOffset / this.memoryLayout.vector_dim;
-    
-      // Prepare document indices array
-      const docIndicesArray = new Uint32Array(docIndices);
-      
-      // Compute similarities using WASM SIMD operations
-      const resultsOffset = this.memoryLayout.results_section[0];
-      this.wasmEngine.bulk_vector_similarity(
-        queryIndex,
-        docIndicesArray,
-        resultsOffset
-      );
-      
-      // Read results
-      const similarities: Array<{ docIndex: number; similarity: number }> = [];
-      for (let i = 0; i < docIndices.length; i++) {
-        const offset = i * 8; // 8 bytes per result
-        const similarity = this.resultsView.getFloat32(offset, true); // little-endian
-        const docIndex = this.resultsView.getUint32(offset + 4, true);
-        similarities.push({ docIndex, similarity });
-      }
-      
-      return similarities.sort((a, b) => b.similarity - a.similarity);
-    }
-  }
-  
-  /**
-   * Direct memory access for advanced users
-   */
-  getVectorView(docIndex: number): Float32Array {
-    const offset = docIndex * this.memoryLayout.vector_dim;
-    return this.vectorView.subarray(offset, offset + this.memoryLayout.vector_dim);
-  }
-  
-  /**
-   * Memory statistics for monitoring
-   */
-  getMemoryStats(): {
-    totalSize: number;
-    vectorsUsed: number;
-    vectorsAvailable: number;
-    bufferUtilization: number;
-  } {
-    const totalSize = this.sharedBuffer.byteLength;
-    const vectorsUsed = this.docIndex;
-    const vectorsAvailable = this.memoryLayout.max_documents - vectorsUsed;
-    const bufferUtilization = (vectorsUsed / this.memoryLayout.max_documents) * 100;
-    
-    return {
-      totalSize,
-      vectorsUsed,
-      vectorsAvailable,
-      bufferUtilization
-    };
-  }
-  
-  // Private helper methods
-  private alignTo64(size: number): number {
-    return (size + 63) & ~63;
-  }
-  
-  private readResultsFromBuffer(count: number): SearchResult[] {
-    const results: SearchResult[] = [];
-    
-    for (let i = 0; i < count; i++) {
-      const offset = i * 8;
-      const docIndex = this.resultsView.getUint32(offset, true);
-      const score = this.resultsView.getFloat32(offset + 4, true);
-      
-      results.push({
-        docId: `doc_${docIndex}`, // In practice, you'd maintain a reverse mapping
-        score,
-        snippets: undefined // Would be populated by text highlighting
-      });
-    }
-    
-    return results;
-  }
-}
-```
-
-### Performance Best Practices
-
-This pure TypeScript integration provides:
-
-- **Zero-copy memory operations** through SharedArrayBuffer
-- **Type-safe APIs** with comprehensive TypeScript support
-- **Web Worker compatibility** for non-blocking operations
-- **Performance monitoring** with built-in benchmarking
-- **Memory-efficient caching** with LRU eviction
-- **Batch processing** optimizations for large datasets
-
-The design ensures minimal overhead when transferring data between JavaScript and WebAssembly, making it ideal for high-performance search applications in modern web browsers.
