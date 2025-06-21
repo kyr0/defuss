@@ -10,7 +10,7 @@ let schema = Schema::builder()
     .title_field("title")       // BM25F weight: 2.5, b: 0.75
     .body_field("content")      // BM25F weight: 1.0, b: 0.75  
     .tags_field("tags")         // BM25F weight: 1.8, b: 0.5
-    .with_technical_tokenizer() // Include numbers, longer tokens for technical content
+    .with_technical_tokenizer() // Optional: Include numbers, longer tokens for technical content (conservative is default)
     .build();
 
 // Create hybrid search engine with schema
@@ -39,7 +39,7 @@ let results = engine.search_hybrid_rrf(
 - **Consistency**: All text processing uses the same tokenizer configuration
 - **Simplicity**: No need to pass tokenizer config to every method
 - **Schema-Driven**: Tokenizer behavior is part of the index definition
-- **Flexibility**: Easy to switch between conservative, technical, or custom tokenizer configs
+- **Flexibility**: Easy to switch between conservative (default), technical, or custom tokenizer configs
 
 ## Architecture Overview
 
@@ -601,7 +601,7 @@ impl SchemaBuilder {
         self
     }
     
-    /// Use conservative tokenizer configuration (min_length: 2, excludes numbers)
+    /// Use conservative tokenizer configuration (default - min_length: 2, excludes numbers)
     pub fn with_conservative_tokenizer(mut self) -> Self {
         self.tokenizer_config = TokenizerConfig::conservative();
         self
@@ -1754,17 +1754,13 @@ struct TokenizerConfig {
 
 impl Default for TokenizerConfig {
     fn default() -> Self {
-        Self {
-            min_length: 1,      // Include single-letter tokens and short acronyms
-            max_length: 50,     // Allow longer technical terms and identifiers
-            include_numbers: true,
-            include_mixed: true,
-        }
+        Self::conservative()  // Conservative tokenizer is now the default
     }
 }
 
 impl TokenizerConfig {
-    /// Conservative configuration for general text (excludes very short tokens)
+    /// Conservative configuration for general text (default configuration)
+    /// Excludes very short tokens and numbers for cleaner search results
     pub fn conservative() -> Self {
         Self {
             min_length: 2,      // Skip single letters but keep "AI", "ML"
@@ -1775,10 +1771,11 @@ impl TokenizerConfig {
     }
     
     /// Technical configuration for code or technical content (includes all tokens)
+    /// More permissive configuration for technical documents, code, and identifiers
     pub fn technical() -> Self {
         Self {
-            min_length: 1,      // Include all tokens
-            max_length: 100,    // Allow very long tokens
+            min_length: 1,      // Include all tokens including single letters
+            max_length: 100,    // Allow very long tokens (URLs, technical identifiers)
             include_numbers: true,
             include_mixed: true,
         }
