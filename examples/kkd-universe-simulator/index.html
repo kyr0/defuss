@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>KKD Universe Simulator mit Pseudowahrscheinlichkeiten</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    svg { width: 100vw; height: 100vh; background: #111; display: block; }
+    .link { stroke: #888; stroke-width: 1px; opacity: 0.6; }
+    .node { fill: #6cf; stroke: #fff; stroke-width: 0.5px; opacity: 0.8; }
+    #controls {
+      position: absolute; top: 10px; left: 10px; color: #fff;
+      background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px;
+      font-family: sans-serif; font-size: 14px; z-index: 10;
+    }
+    #controls label, #controls select, #controls input { display: block; margin-bottom: 5px; }
+    #controls input[type=range] { width: 150px; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label for="variant">Topologie:</label>
+    <select id="variant">
+      <option value="branching">Branching-DAG</option>
+      <option value="zyclic">Zyklischer Graph</option>
+      <option value="wurzelbaum">Wurzelbaum</option>
+      <option value="hybrid">Hybride Topologie</option>
+    </select>
+    <label for="spawnScale">Spawn-Skala λ (Max): <span id="spawnScaleVal">1.0</span></label>
+    <input id="spawnScale" type="range" min="0" max="2" step="0.1" value="1.0">
+    <label for="endScale">End-Skala μ (Max): <span id="endScaleVal">0.5</span></label>
+    <input id="endScale" type="range" min="0" max="1" step="0.05" value="0.5">
+    <label for="cycProb">Zyklus-Skala κ (Max): <span id="cycProbVal">0.5</span></label>
+    <input id="cycProb" type="range" min="0" max="2" step="0.1" value="0.5">
+    <label for="speed">Schrittgeschwindigkeit (ms): <span id="speedVal">200</span></label>
+    <input id="speed" type="range" min="10" max="1000" step="10" value="200">
+    <button id="restart">Neu starten</button>
+  </div>
+  <svg></svg>
+
+  <script type="module">
+    const MAX_NODES = 1000;
+    const svg = d3.select('svg');
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    let intervalId, simulation;
+
+    // Pseudowahrscheinlichkeit basierend auf Abstand
+    function pseudoProb(dist, scale) {
+      return Math.max(0, scale * Math.exp(-dist / 100));
+    }
+
+    function init() {
+      clearInterval(intervalId);
+      if (simulation) simulation.stop();
+      svg.selectAll('*').remove();
+
+      const variant = document.getElementById('variant').value;
+      const spawnScale = +document.getElementById('spawnScale').value;
+      const endScale = +document.getElementById('endScale').value;
+      const cycScale = +document.getElementById('cycProb').value;
+      const speed = +document.getElementById('speed').value;
+      document.getElementById('spawnScaleVal').textContent = spawnScale.toFixed(1);
+      document.getElementById('endScaleVal').textContent = endScale.toFixed(2);
+      document.getElementById('cycProbVal').textContent = cycScale.toFixed(1);
+      document.getElementById('speedVal').textContent = speed;
+
+      let nodes = [{ id: 0, x: width / 2, y: height / 2, t: 0 }];
+      let links = [];
+      let active = [0];
+      let nextId = 1;
+
+      // Container für Zoom & Pan
+      const container = svg.append('g');
+      const linkGroup = container.append('g');
+      const nodeGroup = container.append('g');
+
+      svg.call(d3.zoom()
+        .scaleExtent([0.1, 5])
+        .on('zoom', (event) => container.attr('transform', event.transform))
+      );
+
+      simulation = d3.forceSimulation(nodes)
+        .velocityDecay(0.7)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(50).strength(0.3))
+        .force('charge', d3.forceManyBody().strength(-30))
+        .force('center', d3.forceCenter(width / 2, height / 2));
+
+      function step() {
+        if (nodes.length >= MAX_NODES || active.length === 0) {
+          clearInterval(intervalId);
+          simulation.stop();
+          return;
+        }
+        const newActive = [];
+        active.forEach(parentId => {
+          const parent = nodes.find(n => n.id === parentId);
+          const endP = Math.min(1, endScale * (1 - Math.exp(-parent.t)));
+          if (Math.random() < endP) return;
+
+          const angle = Math.random() * 2 * Math.PI;
+          const dist = 30 + Math.random() * 70;
+          const dx = dist * Math.cos(angle);
+          const dy = dist * Math.sin(angle);
+          const spawnP = pseudoProb(dist, spawnScale);
+          if (Math.random() < spawnP && nodes.length < MAX_NODES) {
+            const child = { id: nextId++, x: parent.x + dx, y: parent.y + dy, t: parent.t + 1 };
+            nodes.push(child);
+            links.push({ source: parentId, target: child.id });
+            if (variant === 'zyclic') {
+              const cycP = pseudoProb(dist, cycScale);
+              if (Math.random() < cycP) {
+                links.push({ source: child.id, target: 0 });
+              }
+            }
+            newActive.push(child.id);
+          }
+          newActive.push(parentId);
+        });
+        active = newActive;
+
+        // Update links
+        linkGroup.selectAll('line')
+          .data(links, d => `${d.source}->${d.target}`)
+          .join('line').attr('class', 'link');
+
+        // Update nodes
+        nodeGroup.selectAll('circle')
+          .data(nodes, d => d.id)
+          .join('circle')
+          .attr('class', 'node')
+          .attr('r', 4)
+          .call(d3.drag()
+            .on('start', dragstarted)
+            .on('drag', dragged)
+            .on('end', dragended));
+
+        simulation.nodes(nodes);
+        simulation.force('link').links(links);
+        simulation.alpha(0.6).restart();
+      }
+
+      intervalId = setInterval(step, speed);
+      simulation.on('tick', () => {
+        linkGroup.selectAll('line')
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
+        nodeGroup.selectAll('circle')
+          .attr('cx', d => d.x)
+          .attr('cy', d => d.y);
+      });
+    }
+
+    function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+    function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+    function dragended(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+
+    ['spawnScale','endScale','cycProb','speed','variant'].forEach(id =>
+      document.getElementById(id).addEventListener('input', init)
+    );
+    document.getElementById('restart').addEventListener('click', init);
+
+    init();
+  </script>
+</body>
+</html>
