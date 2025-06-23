@@ -977,10 +977,7 @@ impl Collection {
     
     /// Check if two kinds are compatible for indexing
     /// 
-    /// ISSUE FIXED: Previously, SchemaBuilder::tag_field() registered fields as Kind::Tag,
-    /// but Document::attribute() always created Value::Text, causing TypeMismatch errors.
-    /// 
-    /// SOLUTION: Tags and Text are semantically compatible since both can be tokenized
+    /// Tags and Text are semantically compatible since both can be tokenized
     /// and searched. This allows flexible usage where users can mix .tag()/.tags() methods
     /// (which create Value::Tag) with .attribute() (which creates Value::Text) on the same field.
     fn are_kinds_compatible(kind1: Kind, kind2: Kind) -> bool {

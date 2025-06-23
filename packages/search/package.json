@@ -1,0 +1,71 @@
+{
+  "name": "defuss-search",
+  "version": "0.0.1",
+  "type": "module",
+  "packageManager": "pnpm@9.14.2",
+  "description": "Hybrid Text & Vector Search",
+  "repository": "https://github.com/kyr0/defuss",
+  "scripts": {
+    "prebuild": "rm -rf ./pkg",
+    "build": "wasm-pack build --target web --out-dir pkg",
+    "postbuild": "pnpm decompile && pkgroll",
+    "clean": "rm -rf pkg",
+    "decompile": "wasm2wat --generate-names --verbose --enable-threads pkg/defuss_search_bg.wasm -o pkg/defuss_search_bg.wast > pkg/defuss_search_bg.log 2>&1",
+    "pretest": "pnpm build",
+    "test": "vitest run",
+    "prebench": "pnpm test",
+    "bench": "vitest run --config vitest.bench.config.ts",
+    "release": "sh scripts/release.sh"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    },
+    "./wasm": {
+      "import": {
+        "types": "./pkg/defuss_search.d.ts",
+        "default": "./pkg/defuss_search.js"
+      }
+    },
+    "./js": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "files": ["pkg/*", "dist/*"],
+  "devDependencies": {
+    "@types/web": "^0.0.241",
+    "@testing-library/dom": "^10.4.0",
+    "@vitest/browser": "^3.2.3",
+    "pkgroll": "^2.12.2",
+    "playwright": "^1.53.0",
+    "tinybench": "^4.0.1",
+    "vitest": "^3.2.3",
+    "wasm-pack": "^0.12.1"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "keywords": [
+    "search",
+    "wasm",
+    "multicore",
+    "rust",
+    "javascript",
+    "typescript",
+    "webassembly",
+    "browser",
+    "web-workers"
+  ],
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "license": "MIT"
+}
