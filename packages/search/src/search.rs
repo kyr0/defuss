@@ -606,34 +606,68 @@ impl TextProcessor {
 
     pub fn process_text(&self, text: &str) -> Vec<Token> {
         let words: Vec<&str> = text.split_whitespace().collect();
-        let mut tokens = Vec::new();
+        
+        // Use parallel processing for large texts (threshold: 100+ words)
+        if words.len() > 100 {
+            // Parallel processing with Rayon for large texts
+            let tokens: Vec<Option<Token>> = words.par_iter().enumerate().map(|(pos, word)| {
+                let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
+                
+                if clean_word.len() < self.config.min_token_length 
+                    || clean_word.len() > self.config.max_token_length {
+                    return None;
+                }
 
-        for (pos, word) in words.iter().enumerate() {
-            let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
+                if self.config.stop_words_enabled && self.stop_words.contains(&clean_word) {
+                    return None;
+                }
+
+                let stemmed = if let Some(ref stemmer) = self.stemmer {
+                    Some(stemmer.stem(&clean_word).to_string())
+                } else {
+                    None
+                };
+
+                Some(Token {
+                    text: clean_word,
+                    position: pos,
+                    stemmed,
+                })
+            }).collect();
             
-            if clean_word.len() < self.config.min_token_length 
-                || clean_word.len() > self.config.max_token_length {
-                continue;
+            // Filter out None values and collect
+            tokens.into_iter().filter_map(|t| t).collect()
+        } else {
+            // Sequential processing for small texts to avoid parallelization overhead
+            let mut tokens = Vec::new();
+
+            for (pos, word) in words.iter().enumerate() {
+                let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
+                
+                if clean_word.len() < self.config.min_token_length 
+                    || clean_word.len() > self.config.max_token_length {
+                    continue;
+                }
+
+                if self.config.stop_words_enabled && self.stop_words.contains(&clean_word) {
+                    continue;
+                }
+
+                let stemmed = if let Some(ref stemmer) = self.stemmer {
+                    Some(stemmer.stem(&clean_word).to_string())
+                } else {
+                    None
+                };
+
+                tokens.push(Token {
+                    text: clean_word,
+                    position: pos,
+                    stemmed,
+                });
             }
 
-            if self.config.stop_words_enabled && self.stop_words.contains(&clean_word) {
-                continue;
-            }
-
-            let stemmed = if let Some(ref stemmer) = self.stemmer {
-                Some(stemmer.stem(&clean_word).to_string())
-            } else {
-                None
-            };
-
-            tokens.push(Token {
-                text: clean_word,
-                position: pos,
-                stemmed,
-            });
+            tokens
         }
-
-        tokens
     }
 }
 
@@ -1147,18 +1181,33 @@ impl SearchEngine {
         stats
     }
 
-    // Helper method to convert results
+    /// Helper method to convert results
     fn convert_results(&self, results: Vec<(EntryIndex, f32)>) -> Vec<SearchResult> {
-        results.into_iter()
-            .filter_map(|(entry_index, score)| {
-                self.doc_id_mapping.get(&entry_index).map(|doc_id| {
-                    SearchResult {
-                        document_id: doc_id.clone(),
-                        score,
-                    }
+        // Use parallel processing for large result sets (threshold: 50+ results)
+        if results.len() > 50 {
+            results.into_par_iter()
+                .filter_map(|(entry_index, score)| {
+                    self.doc_id_mapping.get(&entry_index).map(|doc_id| {
+                        SearchResult {
+                            document_id: doc_id.clone(),
+                            score,
+                        }
+                    })
                 })
-            })
-            .collect()
+                .collect()
+        } else {
+            // Sequential processing for small result sets
+            results.into_iter()
+                .filter_map(|(entry_index, score)| {
+                    self.doc_id_mapping.get(&entry_index).map(|doc_id| {
+                        SearchResult {
+                            document_id: doc_id.clone(),
+                            score,
+                        }
+                    })
+                })
+                .collect()
+        }
     }
 
     /// Internal text-only search using BM25
