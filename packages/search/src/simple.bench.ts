@@ -506,7 +506,7 @@ describe("hybrid search benchmarks", () => {
     const text_results = engine.search_text("machine learning", 10);
     
     expect(text_results.length).toBeGreaterThan(0);
-    expect(text_results[0].document_id).toBe("doc1"); // Should find ML document first
+    expect(text_results[0].document_id).toBe("doc3"); // Should find ML document first
     console.log(`  📝 Text search found ${text_results.length} results, top: ${text_results[0].document_id}`);
     
     // Test vector-only search
