@@ -89,11 +89,15 @@ pub fn batch_dot_product_ultimate(
     vector_length: usize,
     num_pairs: usize
 ) -> f64 {
+    #[cfg(target_arch = "wasm32")]
     let start_time = web_sys::window()
         .unwrap()
         .performance()
         .unwrap()
         .now();
+    
+    #[cfg(not(target_arch = "wasm32"))]
+    let start_time = 0.0;
     
     unsafe {
         // Validate input parameters
@@ -131,11 +135,15 @@ pub fn batch_dot_product_ultimate(
         }
     }
     
+    #[cfg(target_arch = "wasm32")]
     let end_time = web_sys::window()
         .unwrap()
         .performance()
         .unwrap()
         .now();
+    
+    #[cfg(not(target_arch = "wasm32"))]
+    let end_time = 0.0;
     
     end_time - start_time
 }
@@ -486,12 +494,12 @@ fn simd_dot_product_streaming(a: &[f32], b: &[f32]) -> f32 {
 
 /// Memory prefetching hint (no-op in WASM but helps with native compilation)
 #[inline(always)]
-fn prefetch_data(ptr: *const f32, offset: usize, length: usize) {
+fn prefetch_data(_ptr: *const f32, _offset: usize, _length: usize) {
     // In WASM, this is a no-op, but provides hints for future optimizations
     #[cfg(not(target_arch = "wasm32"))]
     {
         unsafe {
-            let prefetch_ptr = ptr.add(offset);
+            let prefetch_ptr = _ptr.add(_offset);
             // Use platform-specific prefetch if available
             std::ptr::read_volatile(prefetch_ptr);
         }
@@ -572,11 +580,15 @@ pub fn batch_dot_product_ultimate_external(
     }
     
     // Call batch_dot_product_ultimate with slice pointers (same as test_ultimate_performance)
+    #[cfg(target_arch = "wasm32")]
     let start_time = web_sys::window()
         .unwrap()
         .performance()
         .unwrap()
         .now();
+    
+    #[cfg(not(target_arch = "wasm32"))]
+    let start_time = 0.0;
     
     let execution_time = batch_dot_product_ultimate(
         a_slice.as_ptr(),
@@ -586,11 +598,15 @@ pub fn batch_dot_product_ultimate_external(
         num_pairs
     );
     
+    #[cfg(target_arch = "wasm32")]
     let end_time = web_sys::window()
         .unwrap()
         .performance()
         .unwrap()
         .now();
+    
+    #[cfg(not(target_arch = "wasm32"))]
+    let end_time = 0.0;
     
     let total_time = end_time - start_time;
     

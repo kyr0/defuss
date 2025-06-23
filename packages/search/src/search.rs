@@ -8,6 +8,9 @@ use std::sync::Mutex;
 use lru::LruCache;
 use std::num::NonZeroUsize;
 
+// Import the ultimate optimized vector operations from the crate root
+use crate::vector::batch_dot_product_ultimate;
+
 /// Query cache for repeated searches (LRU with 32 entries)
 thread_local! {
     static QUERY_CACHE: std::cell::RefCell<LruCache<String, Vec<(String, f32)>>> = 
@@ -742,55 +745,60 @@ impl VectorIndex {
             return Vec::new();
         }
 
-        // Use rayon for parallel vector similarity computation (normalized vectors = dot product only)
-        let similarities: Vec<(EntryIndex, f32)> = (0..num_vectors)
-            .into_par_iter()
-            .map(|i| {
-                let start_idx = i * self.dimension;
-                let end_idx = start_idx + self.dimension;
-                let stored_vector = &self.vectors[start_idx..end_idx];
+        // Use the ULTIMATE optimized batch dot product from vector.rs
+        // Since vectors are normalized, cosine similarity = dot product
+        let similarities = self.compute_batch_dot_products_ultimate(query, num_vectors);
 
-                // Since vectors are normalized, cosine similarity = dot product
-                let similarity = self.compute_dot_product_optimized(query, stored_vector);
-                (self.doc_mapping[i], similarity)
-            })
+        // Combine results with document mappings and sort
+        let mut scored_results: Vec<(EntryIndex, f32)> = similarities
+            .into_iter()
+            .enumerate()
+            .map(|(i, score)| (self.doc_mapping[i], score))
             .collect();
 
-        // Sort by similarity (descending) and return top_k with early exit
-        let mut sorted_similarities = similarities;
-        sorted_similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        sorted_similarities.truncate(top_k);
+        // Sort by similarity (descending) and return top_k
+        scored_results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored_results.truncate(top_k);
         
         #[cfg(target_arch = "wasm32")]
-        web_sys::console::log_1(&format!("✅ Vector search returning {} results", sorted_similarities.len()).into());
-        sorted_similarities
+        web_sys::console::log_1(&format!("✅ Vector search returning {} results", scored_results.len()).into());
+        scored_results
     }
 
-    /// Optimized dot product for normalized vectors (replaces cosine similarity calculation)
-    fn compute_dot_product_optimized(&self, query: &[f32], stored: &[f32]) -> f32 {
-        let len = query.len();
-        let mut dot_product = 0.0f32;
+    /// ULTIMATE batch dot product computation using optimized vector.rs functions
+    /// This leverages the 22.63 GFLOPS performance from vector.rs
+    fn compute_batch_dot_products_ultimate(&self, query: &[f32], num_vectors: usize) -> Vec<f32> {
+        // Prepare query data - replicate query for each stored vector
+        let total_query_elements = num_vectors * self.dimension;
+        let mut query_data = Vec::with_capacity(total_query_elements);
         
-        // Process 4 elements at a time (manual SIMD unrolling)
-        let chunks = len / 4;
-        let remainder = len % 4;
-        
-        for i in 0..chunks {
-            let base = i * 4;
-            
-            // 4x parallel dot product accumulation
-            dot_product += query[base] * stored[base];
-            dot_product += query[base + 1] * stored[base + 1];
-            dot_product += query[base + 2] * stored[base + 2];
-            dot_product += query[base + 3] * stored[base + 3];
+        // Replicate query vector for batch processing
+        for _ in 0..num_vectors {
+            query_data.extend_from_slice(query);
         }
         
-        // Handle remainder elements
-        for i in (chunks * 4)..(chunks * 4 + remainder) {
-            dot_product += query[i] * stored[i];
-        }
+        // Prepare results vector
+        let mut results = vec![0.0f32; num_vectors];
         
-        dot_product
+        #[cfg(target_arch = "wasm32")]
+        web_sys::console::log_1(&format!("🚀 Using ULTIMATE batch dot product: {} vectors × {} dims", 
+            num_vectors, self.dimension).into());
+        
+        // Call the ULTIMATE optimized batch dot product function
+        // self.vectors is already flattened: [vec1_dim1, vec1_dim2, ..., vec2_dim1, vec2_dim2, ...]
+        // query_data is replicated: [query_dim1, query_dim2, ..., query_dim1, query_dim2, ...]
+        let _execution_time = batch_dot_product_ultimate(
+            query_data.as_ptr(),           // a_ptr: replicated query vectors
+            self.vectors.as_ptr(),         // b_ptr: stored vectors (already flattened)
+            results.as_mut_ptr(),          // results_ptr: output dot products
+            self.dimension,                // vector_length: dimension of each vector
+            num_vectors                    // num_pairs: number of dot products to compute
+        );
+        
+        #[cfg(target_arch = "wasm32")]
+        web_sys::console::log_1(&format!("⚡ ULTIMATE batch computation completed in {:.3}ms", _execution_time).into());
+        
+        results
     }
 }
 
@@ -1293,7 +1301,7 @@ impl SearchEngine {
         let scores = Mutex::new(HashMap::<EntryIndex, f32>::new());
 
         // Parallel processing of text and vector results
-        [text_results, vector_results].par_iter().enumerate().for_each(|(source_idx, results)| {
+        [text_results, vector_results].par_iter().enumerate().for_each(|(_source_idx, results)| {
             let mut local_scores = HashMap::new();
             for (rank, (doc_id, _)) in results.iter().enumerate() {
                 let rrf_score = 1.0 / (k + (rank + 1) as f32);
@@ -1324,7 +1332,7 @@ impl SearchEngine {
         [
             (text_results, 1.0 - alpha, "text"),
             (vector_results, alpha, "vector")
-        ].par_iter().for_each(|(results, weight, result_type)| {
+        ].par_iter().for_each(|(results, weight, _result_type)| {
             if !results.is_empty() {
                 let max_score = results[0].1;
                 let mut local_scores = HashMap::new();

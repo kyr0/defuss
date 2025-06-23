@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 pub use wasm_bindgen_rayon::init_thread_pool;
 
 mod search;
+pub mod vector; // Add the vector module here
 
 // Re-export main types for both Rust and JavaScript usage
 pub use search::{
@@ -12,6 +13,9 @@ pub use search::{
     DocumentId, IndexError, VectorError, BM25Config, FieldWeight,
     SearchResult,
 };
+
+// Re-export vector functions for benchmarking
+pub use vector::batch_dot_product_ultimate;
 
 #[wasm_bindgen(start)]
 pub fn main() {
