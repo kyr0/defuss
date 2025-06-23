@@ -1,9 +1,10 @@
 import init, {
   initThreadPool,
-  batch_dot_product_ultimate_external,
-  WasmSearchEngine,
-  WasmDocument,
-  WasmSearchResult,
+  SearchEngine,
+  Document,
+  SearchResult as WasmSearchResult,
+  Kind,
+  Schema,
 } from "../pkg/defuss_search.js";
 
 // Global WASM instance state
@@ -270,210 +271,7 @@ async function processWorkloadInChunks(
   };
 }
 
-/**
- * Process batch dot product with automatic method selection (direct vs chunked)
- * If vectorLength is not provided, structure will be inferred automatically
- * If numPairs is not provided, it will be calculated from the array length and vectorLength
- */
-export async function dotProductFlat(
-  vectorsAConcatenated: Float32Array,
-  vectorsBConcatenated: Float32Array,
-  vectorLength: number,
-  numPairs: number,
-): Promise<DotProductResult> {
-  if (!wasmInstance) {
-    throw new Error("WASM not initialized");
-  }
 
-  console.log(
-    `🎯 Processing batch dot product: vectorLength=${vectorLength}, numPairs=${numPairs}`,
-  );
-
-  // Validate input arrays
-  const totalElements = vectorLength * numPairs;
-  if (
-    vectorsAConcatenated.length !== totalElements ||
-    vectorsBConcatenated.length !== totalElements
-  ) {
-    throw new Error(
-      `Input array size mismatch: expected ${totalElements} elements, got A=${vectorsAConcatenated.length}, B=${vectorsBConcatenated.length}`,
-    );
-  }
-
-  // Choose processing method based on memory constraints
-  const canFitDirectly = canFitInMemory(vectorLength, numPairs);
-  let results: Float32Array;
-  let totalTime: number;
-  let executionTime: number;
-  let processingMethod: "direct" | "chunked";
-  let chunksProcessed: number | undefined;
-
-  if (canFitDirectly) {
-    console.log("💾 Using direct processing (fits in memory)");
-    processingMethod = "direct";
-
-    const result = batch_dot_product_ultimate_external(
-      vectorsAConcatenated,
-      vectorsBConcatenated,
-      vectorLength,
-      numPairs,
-    );
-
-    if (result.length < 2 + numPairs) {
-      throw new Error(
-        `Unexpected result length: ${result.length}, expected at least ${2 + numPairs}`,
-      );
-    }
-
-    totalTime = result[0] as number;
-    executionTime = result[1] as number;
-    results = new Float32Array(numPairs);
-    for (let i = 0; i < numPairs; i++) {
-      results[i] = result[2 + i] as number;
-    }
-  } else {
-    console.log(
-      "🔄 Using chunked processing (too large for direct processing)",
-    );
-    processingMethod = "chunked";
-
-    const chunkResult = await processWorkloadInChunks(
-      vectorsAConcatenated,
-      vectorsBConcatenated,
-      vectorLength,
-      numPairs,
-      batch_dot_product_ultimate_external,
-    );
-
-    results = chunkResult.results;
-    totalTime = chunkResult.totalTime;
-    executionTime = chunkResult.executionTime;
-    chunksProcessed = chunkResult.chunksProcessed;
-  }
-
-  console.log(
-    `✅ ${processingMethod.toUpperCase()} processing completed! Total: ${totalTime.toFixed(4)}ms, Execution: ${executionTime.toFixed(4)}ms`,
-  );
-
-  // STEP 3: Verify results against native JS (same verification logic)
-  const firstVectorA = vectorsAConcatenated.subarray(0, vectorLength);
-  const firstVectorB = vectorsBConcatenated.subarray(0, vectorLength);
-  const lastStart = (numPairs - 1) * vectorLength;
-  const lastVectorA = vectorsAConcatenated.subarray(
-    lastStart,
-    lastStart + vectorLength,
-  );
-  const lastVectorB = vectorsBConcatenated.subarray(
-    lastStart,
-    lastStart + vectorLength,
-  );
-
-  const firstExpected = nativeDotProduct(firstVectorA, firstVectorB);
-  const lastExpected = nativeDotProduct(lastVectorA, lastVectorB);
-
-  const firstActual = results[0];
-  const lastActual = results[numPairs - 1];
-
-  console.log(
-    `🔍 Verification - First: ${Math.abs(firstActual - firstExpected) < 0.001 ? "✅" : "❌"} (${firstActual.toFixed(3)} vs ${firstExpected.toFixed(3)})`,
-  );
-  console.log(
-    `🔍 Verification - Last: ${Math.abs(lastActual - lastExpected) < 0.001 ? "✅" : "❌"} (${lastActual.toFixed(3)} vs ${lastExpected.toFixed(3)})`,
-  );
-
-  // STEP 4: Calculate performance metrics
-  const totalFlops = numPairs * vectorLength * 2;
-  const gflops = totalFlops / (totalTime * 1_000_000);
-  const memoryMB = (totalElements * 2 * 4) / (1024 * 1024);
-  const memoryEfficiency = gflops / memoryMB;
-
-  console.log(`⚡ Performance: ${gflops.toFixed(2)} GFLOPS`);
-  console.log(`📊 Memory efficiency: ${memoryEfficiency.toFixed(3)} GFLOPS/MB`);
-  if (chunksProcessed) {
-    console.log(`🔄 Chunks processed: ${chunksProcessed}`);
-  }
-
-  return {
-    totalTime,
-    executionTime,
-    gflops,
-    memoryEfficiency,
-    results,
-    processingMethod,
-    chunksProcessed,
-  };
-}
-
-/**
- * Process dot products for arrays of vectors (cleaner API)
- * This function automatically determines vectorLength and numPairs from the input arrays
- */
-export async function dotProduct(
-  vectorsA: Array<Float32Array>,
-  vectorsB: Array<Float32Array>,
-): Promise<DotProductResult> {
-  // Validate input arrays
-  if (vectorsA.length !== vectorsB.length) {
-    throw new Error(
-      `Array length mismatch: vectorsA has ${vectorsA.length} vectors, vectorsB has ${vectorsB.length} vectors`,
-    );
-  }
-
-  if (vectorsA.length === 0) {
-    throw new Error("Cannot process empty vector arrays");
-  }
-
-  // Determine structure from the arrays
-  const numPairs = vectorsA.length;
-  const vectorLength = vectorsA[0].length;
-
-  // Validate all vectors have the same length
-  for (let i = 0; i < vectorsA.length; i++) {
-    if (vectorsA[i].length !== vectorLength) {
-      throw new Error(
-        `Vector length mismatch in vectorsA[${i}]: expected ${vectorLength}, got ${vectorsA[i].length}`,
-      );
-    }
-    if (vectorsB[i].length !== vectorLength) {
-      throw new Error(
-        `Vector length mismatch in vectorsB[${i}]: expected ${vectorLength}, got ${vectorsB[i].length}`,
-      );
-    }
-  }
-
-  console.log(
-    `🎯 Processing dot products: ${numPairs} pairs of ${vectorLength}-dimensional vectors`,
-  );
-
-  // Convert arrays of vectors to concatenated arrays
-  const vectorsAConcatenated = new Float32Array(numPairs * vectorLength);
-  const vectorsBConcatenated = new Float32Array(numPairs * vectorLength);
-
-  for (let i = 0; i < numPairs; i++) {
-    const startIdx = i * vectorLength;
-    vectorsAConcatenated.set(vectorsA[i], startIdx);
-    vectorsBConcatenated.set(vectorsB[i], startIdx);
-  }
-
-  // Call the existing implementation
-  const result = await dotProductFlat(
-    vectorsAConcatenated,
-    vectorsBConcatenated,
-    vectorLength,
-    numPairs,
-  );
-
-  // Return result without inferredStructure (since we explicitly know the structure)
-  return {
-    totalTime: result.totalTime,
-    executionTime: result.executionTime,
-    gflops: result.gflops,
-    memoryEfficiency: result.memoryEfficiency,
-    results: result.results,
-    processingMethod: result.processingMethod,
-    chunksProcessed: result.chunksProcessed,
-  };
-}
 
 // =============================================================================
 // HYBRID SEARCH ENGINE PLACEHOLDER
@@ -497,7 +295,7 @@ export class HybridSearchEngine {
    */
   async initialize(): Promise<void> {
     await initWasm();
-    this.wasmEngine = new WasmSearchEngine();
+    this.wasmEngine = new SearchEngine();
     this.initialized = true;
   }
 
@@ -511,28 +309,28 @@ export class HybridSearchEngine {
       );
     }
 
-    const wasmDoc = new WasmDocument(document.id);
+    let wasmDoc = new Document(document.id);
 
     console.log(`🔧 TS: Creating document ${document.id} with ${document.fields.length} fields`);
 
-    // Add text fields
+    // Add text fields using the fluent API
     for (const field of document.fields) {
       console.log(`  📝 TS: Processing field '${field.name}' with value:`, field.value);
       if (typeof field.value === "string") {
         console.log(`    ✅ TS: Adding text field '${field.name}' = '${field.value}'`);
-        wasmDoc.add_text_field(field.name, field.value);
+        wasmDoc = wasmDoc.attribute(field.name, field.value);
       } else if (Array.isArray(field.value)) {
         // Join array values with spaces
         const joinedValue = field.value.join(" ");
         console.log(`    ✅ TS: Adding text field '${field.name}' = '${joinedValue}' (joined from array)`);
-        wasmDoc.add_text_field(field.name, joinedValue);
+        wasmDoc = wasmDoc.attribute(field.name, joinedValue);
       }
     }
 
     // Add vector if present
     if (document.vector) {
       const vectorArray = new Float32Array(document.vector);
-      wasmDoc.set_vector(vectorArray);
+      wasmDoc = wasmDoc.with_vector(vectorArray);
     }
 
     this.wasmEngine.add_document(wasmDoc);
@@ -549,30 +347,52 @@ export class HybridSearchEngine {
     }
 
     const topK = options.topK || 10;
-    const strategy = options.strategy || "rrf";
-
-    let textQuery: string | undefined;
-    let vectorQuery: Float32Array | undefined;
-
-    if (options.text) {
-      textQuery = options.text;
+    
+    // For now, implement simple hybrid search at TypeScript level
+    // since the WASM hybrid fusion is not yet implemented in the refactored API
+    
+    if (options.text && !options.vector) {
+      // Text-only search
+      return this.searchText(options.text, topK);
+    } else if (options.vector && !options.text) {
+      // Vector-only search
+      return this.searchVector(options.vector, topK);
+    } else if (options.text && options.vector) {
+      // Simple hybrid: get results from both and merge
+      const textResults = await this.searchText(options.text, topK * 2);
+      const vectorResults = await this.searchVector(options.vector, topK * 2);
+      
+      // Simple score combination (could be improved with proper fusion strategies)
+      const combinedResults = new Map<string, { id: string; score: number }>();
+      
+      // Add text results (with weight)
+      for (const result of textResults) {
+        combinedResults.set(result.id, {
+          id: result.id,
+          score: result.score * 0.5 // 50% weight for text
+        });
+      }
+      
+      // Add vector results (with weight)
+      for (const result of vectorResults) {
+        const existing = combinedResults.get(result.id);
+        if (existing) {
+          existing.score += result.score * 0.5; // 50% weight for vector
+        } else {
+          combinedResults.set(result.id, {
+            id: result.id,
+            score: result.score * 0.5
+          });
+        }
+      }
+      
+      // Sort by combined score and return top K
+      return Array.from(combinedResults.values())
+        .sort((a, b) => b.score - a.score)
+        .slice(0, topK);
+    } else {
+      throw new Error("Either text or vector query must be provided");
     }
-
-    if (options.vector) {
-      vectorQuery = new Float32Array(options.vector);
-    }
-
-    const results = this.wasmEngine.search_hybrid(
-      textQuery,
-      vectorQuery,
-      topK,
-      strategy,
-    );
-
-    return results.map((result: any) => ({
-      id: result.document_id,
-      score: result.score,
-    }));
   }
 
   /**

@@ -28,7 +28,7 @@ describe("hybrid search benchmarks", () => {
   });
 
   it("should index documents and perform text search", async () => {
-    console.log("� Testing document indexing and text search...");
+    console.log("Testing document indexing and text search...");
     
     const documents: DocumentInput[] = [
       {

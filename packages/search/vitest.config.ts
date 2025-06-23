@@ -8,19 +8,6 @@ export default defineConfig({
     },
   },
   test: {
-    exclude: ["**/*.bench.ts"],
-    browser: {
-      enabled: true,
-      headless: true,
-      provider: "playwright",
-      providerOptions: {
-        launch: {
-          args: ["--enable-features=web-machine-learning-neural-network"],
-        },
-      },
-      screenshotFailures: false,
-      // https://vitest.dev/guide/browser/playwright
-      instances: [{ browser: "chromium" }],
-    },
+    exclude: ["**/*.bench.ts"]
   },
 });

@@ -8,6 +8,13 @@ mod search;
 mod search_engine;
 // mod document_store;
 
+// Re-export main types for both Rust and JavaScript usage
+pub use search_engine::{
+    SearchEngine, Schema, SchemaBuilder, Document, Kind, Language,
+    DocumentId, IndexError, VectorError, BM25Config, FieldWeight,
+    SearchResult,
+};
+
 #[wasm_bindgen(start)]
 pub fn main() {
   std::panic::set_hook(Box::new(console_error_panic_hook::hook));

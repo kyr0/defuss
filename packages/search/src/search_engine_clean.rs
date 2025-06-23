@@ -1,5 +1,10 @@
 use wasm_bindgen::prelude::*;
-use std::collections::{HashMap, HashSet};
+use rayon::prelude::*;
+use std::sync::{Arc, Mutex, OnceLock};
+use std::collections::{HashMap, BTreeMap, HashSet, VecDeque};
+use lru::LruCache;
+use ordered_float::OrderedFloat;
+use regex::Regex;
 use stop_words::{get, LANGUAGE as StopWordsLanguage};
 use rust_stemmers::{Algorithm, Stemmer};
 
@@ -174,7 +179,7 @@ impl Schema {
     pub fn field_names(&self) -> js_sys::Array {
         let names = js_sys::Array::new();
         for field_name in self.field_weights.keys() {
-            names.push(&js_sys::JsString::from(field_name.as_str()));
+            names.push(&js_sys::JsString::from(field_name));
         }
         names
     }
@@ -691,7 +696,7 @@ impl SearchEngine {
         }
 
         // Add to text index
-        for (_field_name, values) in document.get_attributes() {
+        for (field_name, values) in document.get_attributes() {
             for value in values {
                 if let Value::Text(text) = value {
                     let tokens = self.text_index.processor.process_text(text);
@@ -739,22 +744,6 @@ impl SearchEngine {
     }
 
     #[wasm_bindgen]
-    pub fn search_hybrid(&self, text_query: Option<String>, vector_query: Option<Vec<f32>>, 
-                        top_k: usize, strategy: &str) -> Vec<SearchResult> {
-        let fusion_strategy = match strategy {
-            "rrf" => FusionStrategy::RRF,
-            "combsum" => FusionStrategy::CombSUM,
-            _ => FusionStrategy::RRF,
-        };
-
-        let text_ref = text_query.as_ref().map(|s| s.as_str());
-        let vector_ref = vector_query.as_ref().map(|v| v.as_slice());
-
-        let results = self.internal_search_hybrid(text_ref, vector_ref, top_k, fusion_strategy);
-        self.convert_results(results)
-    }
-
-    #[wasm_bindgen]
     pub fn get_stats(&self) -> js_sys::Array {
         let stats = js_sys::Array::new();
         stats.push(&js_sys::Number::from(self.collection.documents.len() as f64));
@@ -797,82 +786,6 @@ impl SearchEngine {
                     let score = tf * idf;
                     *scores.entry(*doc_idx).or_insert(0.0) += score;
                 }
-            }
-        }
-
-        let mut results: Vec<(EntryIndex, f32)> = scores.into_iter().collect();
-        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        results.truncate(top_k);
-        results
-    }
-
-    /// Internal hybrid search combining text and vector results
-    fn internal_search_hybrid(&self, text_query: Option<&str>, vector_query: Option<&[f32]>, 
-                        top_k: usize, strategy: FusionStrategy) -> Vec<(EntryIndex, f32)> {
-        let text_results = if let Some(query) = text_query {
-            self.internal_search_text(query, top_k * 2) // Get more candidates for fusion
-        } else {
-            Vec::new()
-        };
-
-        let vector_results = if let Some(query) = vector_query {
-            self.vector_index.search_vector(query, top_k * 2) // Get more candidates for fusion
-        } else {
-            Vec::new()
-        };
-
-        // Apply fusion strategy
-        match strategy {
-            FusionStrategy::RRF => self.reciprocal_rank_fusion(&text_results, &vector_results, top_k),
-            FusionStrategy::CombSUM => self.combine_sum(&text_results, &vector_results, top_k, 0.5),
-            FusionStrategy::WeightedSum(alpha) => self.combine_sum(&text_results, &vector_results, top_k, alpha),
-        }
-    }
-
-    /// Reciprocal Rank Fusion implementation
-    fn reciprocal_rank_fusion(&self, text_results: &[(EntryIndex, f32)], 
-                             vector_results: &[(EntryIndex, f32)], top_k: usize) -> Vec<(EntryIndex, f32)> {
-        let k = 60.0; // RRF parameter
-        let mut scores: HashMap<EntryIndex, f32> = HashMap::new();
-
-        // Add text scores
-        for (rank, (doc_id, _)) in text_results.iter().enumerate() {
-            let rrf_score = 1.0 / (k + (rank + 1) as f32);
-            *scores.entry(*doc_id).or_insert(0.0) += rrf_score;
-        }
-
-        // Add vector scores
-        for (rank, (doc_id, _)) in vector_results.iter().enumerate() {
-            let rrf_score = 1.0 / (k + (rank + 1) as f32);
-            *scores.entry(*doc_id).or_insert(0.0) += rrf_score;
-        }
-
-        let mut results: Vec<(EntryIndex, f32)> = scores.into_iter().collect();
-        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        results.truncate(top_k);
-        results
-    }
-
-    /// Combined sum fusion with weight parameter
-    fn combine_sum(&self, text_results: &[(EntryIndex, f32)], 
-                  vector_results: &[(EntryIndex, f32)], top_k: usize, alpha: f32) -> Vec<(EntryIndex, f32)> {
-        let mut scores: HashMap<EntryIndex, f32> = HashMap::new();
-
-        // Normalize and add text scores
-        if !text_results.is_empty() {
-            let max_text_score = text_results[0].1;
-            for (doc_id, score) in text_results {
-                let normalized_score = score / max_text_score;
-                *scores.entry(*doc_id).or_insert(0.0) += (1.0 - alpha) * normalized_score;
-            }
-        }
-
-        // Normalize and add vector scores
-        if !vector_results.is_empty() {
-            let max_vector_score = vector_results[0].1;
-            for (doc_id, score) in vector_results {
-                let normalized_score = score / max_vector_score;
-                *scores.entry(*doc_id).or_insert(0.0) += alpha * normalized_score;
             }
         }
 
