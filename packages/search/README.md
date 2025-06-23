@@ -8,7 +8,7 @@
 
 <sup align="center">
 
-Hybrid Text & Vector Search
+_Fast_ CPU-only Hybrid Text & Vector Search
 
 </sup>
 
@@ -21,8 +21,9 @@ Hybrid Text & Vector Search
 - 🎯 **BM25FS⁺ Algorithm**: Novel fusion of BM25F (field weights) + BM25⁺ (δ-shift) + BM25S (eager sparse scoring) for 10-500× faster queries
 - 🧠 **Hybrid Search**: Combines lexical text search with dense vector embeddings using Reciprocal Rank Fusion (RRF) and CombSUM strategies
 - ⚡ **Extreme Performance**: Memory pools, SIMD operations, parallel processing with Rayon, and micro-optimizations for sub-millisecond search
-- 🌐 **WebAssembly Native**: Built specifically for WASM deployment with zero-copy serialization using rkyv
-- 📊 **Schema-Driven**: Flexible schemas paired with automatic BM25F weight assignment based on semantic field types (title, body, tags, etc.)
+- 🌐 **WebAssembly Native**: Built specifically for WASM deployment 
+-  **Precise**: No HNSW, KNN - we brute force vector search for the best precision
+- 🏗️ **Schema-Driven**: Flexible schemas paired with automatic BM25F weight assignment based on semantic field types (title, body, tags, etc.)
 - 🌍 **Multilingual**: Support for 15 languages with proper stop-word filtering and stemming
 - 🔍 **Document Store**: Separate compressed storage for full document retrieval, supporting efficient updates and deletions
 - 🏷️ **Document Attributes**: Store and search by multiple attributes (title, content, tags) with customizable weights
