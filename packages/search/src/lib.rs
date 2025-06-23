@@ -6,6 +6,7 @@ pub use wasm_bindgen_rayon::init_thread_pool;
 
 mod search;
 pub mod vector; // Add the vector module here
+//pub mod embeddings; // Removed - using TypeScript implementation instead
 
 // Re-export main types for both Rust and JavaScript usage
 pub use search::{

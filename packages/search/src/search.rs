@@ -1162,11 +1162,136 @@ impl SearchEngine {
             _ => FusionStrategy::RRF,
         };
 
-        let text_ref = text_query.as_ref().map(|s| s.as_str());
-        let vector_ref = vector_query.as_ref().map(|v| v.as_slice());
-
-        let results = self.internal_search_hybrid(text_ref, vector_ref, top_k, fusion_strategy);
+        let results = self.internal_search_hybrid(
+            text_query.as_deref(),
+            vector_query.as_deref(),
+            top_k,
+            fusion_strategy
+        );
         self.convert_results(results)
+    }
+
+    /// Internal hybrid search implementation
+    fn internal_search_hybrid(
+        &self,
+        text_query: Option<&str>,
+        vector_query: Option<&[f32]>,
+        top_k: usize,
+        strategy: FusionStrategy,
+    ) -> Vec<(EntryIndex, f32)> {
+        let mut text_results = Vec::new();
+        let mut vector_results = Vec::new();
+
+        // Get text search results if query provided
+        if let Some(query) = text_query {
+            text_results = self.text_index.search(query, top_k * 2); // Get more for fusion
+        }
+
+        // Get vector search results if query provided
+        if let Some(query_vec) = vector_query {
+            vector_results = self.vector_index.search_vector(query_vec, top_k * 2); // Get more for fusion
+        }
+
+        // Combine results using fusion strategy
+        self.fuse_results(text_results, vector_results, top_k, strategy)
+    }
+
+    /// Fuse text and vector search results using the specified strategy
+    fn fuse_results(
+        &self,
+        text_results: Vec<(EntryIndex, f32)>,
+        vector_results: Vec<(EntryIndex, f32)>,
+        top_k: usize,
+        strategy: FusionStrategy,
+    ) -> Vec<(EntryIndex, f32)> {
+        match strategy {
+            FusionStrategy::RRF => self.reciprocal_rank_fusion(text_results, vector_results, top_k),
+            FusionStrategy::CombSUM => self.comb_sum_fusion(text_results, vector_results, top_k),
+            FusionStrategy::WeightedSum(weight) => self.weighted_sum_fusion(text_results, vector_results, top_k, weight),
+        }
+    }
+
+    /// Reciprocal Rank Fusion (RRF)
+    fn reciprocal_rank_fusion(
+        &self,
+        text_results: Vec<(EntryIndex, f32)>,
+        vector_results: Vec<(EntryIndex, f32)>,
+        top_k: usize,
+    ) -> Vec<(EntryIndex, f32)> {
+        let mut scores = HashMap::new();
+        let k = 60.0; // RRF parameter
+
+        // Add text scores
+        for (rank, (doc_id, _score)) in text_results.iter().enumerate() {
+            let rrf_score = 1.0 / (k + (rank + 1) as f32);
+            *scores.entry(*doc_id).or_insert(0.0) += rrf_score;
+        }
+
+        // Add vector scores
+        for (rank, (doc_id, _score)) in vector_results.iter().enumerate() {
+            let rrf_score = 1.0 / (k + (rank + 1) as f32);
+            *scores.entry(*doc_id).or_insert(0.0) += rrf_score;
+        }
+
+        // Sort and return top_k
+        let mut results: Vec<(EntryIndex, f32)> = scores.into_iter().collect();
+        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        results.truncate(top_k);
+        results
+    }
+
+    /// CombSUM fusion
+    fn comb_sum_fusion(
+        &self,
+        text_results: Vec<(EntryIndex, f32)>,
+        vector_results: Vec<(EntryIndex, f32)>,
+        top_k: usize,
+    ) -> Vec<(EntryIndex, f32)> {
+        let mut scores = HashMap::new();
+
+        // Add text scores
+        for (doc_id, score) in text_results {
+            *scores.entry(doc_id).or_insert(0.0) += score;
+        }
+
+        // Add vector scores
+        for (doc_id, score) in vector_results {
+            *scores.entry(doc_id).or_insert(0.0) += score;
+        }
+
+        // Sort and return top_k
+        let mut results: Vec<(EntryIndex, f32)> = scores.into_iter().collect();
+        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        results.truncate(top_k);
+        results
+    }
+
+    /// Weighted sum fusion
+    fn weighted_sum_fusion(
+        &self,
+        text_results: Vec<(EntryIndex, f32)>,
+        vector_results: Vec<(EntryIndex, f32)>,
+        top_k: usize,
+        text_weight: f32,
+    ) -> Vec<(EntryIndex, f32)> {
+        let mut scores = HashMap::new();
+        let vector_weight = 1.0 - text_weight;
+
+        // Add weighted text scores
+        for (doc_id, score) in text_results {
+            *scores.entry(doc_id).or_insert(0.0) += score * text_weight;
+        }
+
+        // Add weighted vector scores
+        for (doc_id, score) in vector_results {
+            *scores.entry(doc_id).or_insert(0.0) += score * vector_weight;
+        }
+
+        // Sort and return top_k
+        let mut results: Vec<(EntryIndex, f32)> = scores.into_iter().collect();
+        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        results.truncate(top_k);
+        results
     }
 
     #[wasm_bindgen]
@@ -1204,158 +1329,6 @@ impl SearchEngine {
                 })
                 .collect()
         }
-    }
-
-    /// Internal text-only search using BM25
-    fn internal_search_text(&self, query: &str, top_k: usize) -> Vec<(EntryIndex, f32)> {
-        #[cfg(target_arch = "wasm32")]
-        web_sys::console::log_1(&format!("🔍 Text search for: '{}'", query).into());
-        
-        let query_tokens = self.text_index.processor.process_text(query);
-        #[cfg(target_arch = "wasm32")]
-        web_sys::console::log_1(&format!("  🔤 Query tokens: {} ({:?})", query_tokens.len(), 
-            query_tokens.iter().map(|t| &t.text).collect::<Vec<_>>()).into());
-        
-        if query_tokens.is_empty() {
-            #[cfg(target_arch = "wasm32")]
-            web_sys::console::log_1(&"  ❌ No valid query tokens".into());
-            return Vec::new();
-        }
-
-        // Parallel processing of query tokens with Rayon
-        let scores = Mutex::new(HashMap::<EntryIndex, f32>::new());
-
-        query_tokens.par_iter().for_each(|token| {
-            #[cfg(target_arch = "wasm32")]
-            web_sys::console::log_1(&format!("    🔍 Looking for token: '{}'", token.text).into());
-            
-            if let Some(postings) = self.text_index.inverted_index.get(&token.text) {
-                let doc_freq = postings.len() as f32;
-                let total_docs = self.collection.documents.len() as f32;
-                let idf = (total_docs / doc_freq).ln();
-                
-                #[cfg(target_arch = "wasm32")]
-                web_sys::console::log_1(&format!("      📊 Found in {} docs, IDF: {:.3}", doc_freq, idf).into());
-
-                let mut local_scores = HashMap::new();
-                for (doc_idx, _field_name, positions) in postings {
-                    let tf = positions.len() as f32;
-                    let score = tf * idf;
-                    *local_scores.entry(*doc_idx).or_insert(0.0) += score;
-                    #[cfg(target_arch = "wasm32")]
-                    web_sys::console::log_1(&format!("        📈 Doc {}: TF={}, Score={:.3}", doc_idx, tf, score).into());
-                }
-                
-                // Merge local scores into global scores with mutex protection
-                if let Ok(mut global_scores) = scores.lock() {
-                    for (doc_idx, score) in local_scores {
-                        *global_scores.entry(doc_idx).or_insert(0.0) += score;
-                    }
-                }
-            } else {
-                #[cfg(target_arch = "wasm32")]
-                web_sys::console::log_1(&format!("      ❌ Token '{}' not found in index", token.text).into());
-            }
-        });
-
-        let final_scores = scores.into_inner().unwrap_or_default();
-        #[cfg(target_arch = "wasm32")]
-        web_sys::console::log_1(&format!("  📊 Total matching documents: {}", final_scores.len()).into());
-
-        let mut results: Vec<(EntryIndex, f32)> = final_scores.into_iter().collect();
-        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        results.truncate(top_k);
-        
-        #[cfg(target_arch = "wasm32")]
-        web_sys::console::log_1(&format!("  ✅ Returning {} results", results.len()).into());
-        results
-    }
-
-    /// Internal hybrid search combining text and vector results
-    fn internal_search_hybrid(&self, text_query: Option<&str>, vector_query: Option<&[f32]>, 
-                        top_k: usize, strategy: FusionStrategy) -> Vec<(EntryIndex, f32)> {
-        let text_results = if let Some(query) = text_query {
-            self.text_index.search(query, top_k * 2) // Use enhanced search with caching
-        } else {
-            Vec::new()
-        };
-
-        let vector_results = if let Some(query) = vector_query {
-            self.vector_index.search_vector(query, top_k * 2) // Get more candidates for fusion
-        } else {
-            Vec::new()
-        };
-
-        // Apply fusion strategy
-        match strategy {
-            FusionStrategy::RRF => self.reciprocal_rank_fusion(&text_results, &vector_results, top_k),
-            FusionStrategy::CombSUM => self.combine_sum(&text_results, &vector_results, top_k, 0.5),
-            FusionStrategy::WeightedSum(alpha) => self.combine_sum(&text_results, &vector_results, top_k, alpha),
-        }
-    }
-
-    /// Reciprocal Rank Fusion implementation
-    fn reciprocal_rank_fusion(&self, text_results: &[(EntryIndex, f32)], 
-                             vector_results: &[(EntryIndex, f32)], top_k: usize) -> Vec<(EntryIndex, f32)> {
-        let k = 60.0; // RRF parameter
-        let scores = Mutex::new(HashMap::<EntryIndex, f32>::new());
-
-        // Parallel processing of text and vector results
-        [text_results, vector_results].par_iter().enumerate().for_each(|(_source_idx, results)| {
-            let mut local_scores = HashMap::new();
-            for (rank, (doc_id, _)) in results.iter().enumerate() {
-                let rrf_score = 1.0 / (k + (rank + 1) as f32);
-                *local_scores.entry(*doc_id).or_insert(0.0) += rrf_score;
-            }
-            
-            // Merge local scores into global scores
-            if let Ok(mut global_scores) = scores.lock() {
-                for (doc_id, score) in local_scores {
-                    *global_scores.entry(doc_id).or_insert(0.0) += score;
-                }
-            }
-        });
-
-        let final_scores = scores.into_inner().unwrap_or_default();
-        let mut results: Vec<(EntryIndex, f32)> = final_scores.into_iter().collect();
-        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        results.truncate(top_k);
-        results
-    }
-
-    /// Combined sum fusion with weight parameter
-    fn combine_sum(&self, text_results: &[(EntryIndex, f32)], 
-                  vector_results: &[(EntryIndex, f32)], top_k: usize, alpha: f32) -> Vec<(EntryIndex, f32)> {
-        let scores = Mutex::new(HashMap::<EntryIndex, f32>::new());
-
-        // Parallel normalization and score addition
-        [
-            (text_results, 1.0 - alpha, "text"),
-            (vector_results, alpha, "vector")
-        ].par_iter().for_each(|(results, weight, _result_type)| {
-            if !results.is_empty() {
-                let max_score = results[0].1;
-                let mut local_scores = HashMap::new();
-                
-                for (doc_id, score) in results.iter() {
-                    let normalized_score = score / max_score;
-                    *local_scores.entry(*doc_id).or_insert(0.0) += weight * normalized_score;
-                }
-                
-                // Merge local scores into global scores
-                if let Ok(mut global_scores) = scores.lock() {
-                    for (doc_id, score) in local_scores {
-                        *global_scores.entry(doc_id).or_insert(0.0) += score;
-                    }
-                }
-            }
-        });
-
-        let final_scores = scores.into_inner().unwrap_or_default();
-        let mut results: Vec<(EntryIndex, f32)> = final_scores.into_iter().collect();
-        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        results.truncate(top_k);
-        results
     }
 }
 
