@@ -6,7 +6,6 @@ pub use wasm_bindgen_rayon::init_thread_pool;
 
 mod search;
 mod search_engine;
-// mod document_store;
 
 // Re-export main types for both Rust and JavaScript usage
 pub use search_engine::{

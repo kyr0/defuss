@@ -41,16 +41,10 @@ rust-stemmers = "1.2"
 lru = "0.12"
 ordered-float = "4.2"
 regex = "1.10"
-# bson = "2.15.0"  # Temporarily disabled to avoid getrandom conflicts
 base64 = "0.22"
 
 [dev-dependencies]
 wasmprinter = "0.2"
-
-# Force correct getrandom version for WASM compatibility
-[dependencies.getrandom]
-version = "0.2"
-features = ["js"]
 
 [profile.release]
 # Tell `rustc` to optimize for performance

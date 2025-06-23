@@ -784,7 +784,7 @@ impl VectorIndex {
 pub struct TextIndex {
     pub config: BM25Config,
     pub term_stats: HashMap<String, u32>,
-    pub inverted_index: HashMap<String, Vec<(EntryIndex, Vec<Position>)>>,
+    pub inverted_index: HashMap<String, Vec<(EntryIndex, String, Vec<Position>)>>, // Include field name
     pub processor: TextProcessor,
     pub bloom_filter: BloomFilter, // Fast term existence checking
     pub scorer: BM25Scorer,       // BM25FS⁺ scorer with impact computation
@@ -830,15 +830,15 @@ impl TextIndex {
             // Update term frequency in document
             *term_frequencies.entry(term.clone()).or_insert(0) += 1;
             
-            // Add to inverted index
+            // Add to inverted index with field name
             let postings = self.inverted_index.entry(term.clone()).or_insert_with(Vec::new);
             if let Some(last) = postings.last_mut() {
-                if last.0 == doc_id {
-                    last.1.push(token.position);
+                if last.0 == doc_id && last.1 == field_name {
+                    last.2.push(token.position);
                     continue;
                 }
             }
-            postings.push((doc_id, vec![token.position]));
+            postings.push((doc_id, field_name.to_string(), vec![token.position]));
             
             // Update global term statistics
             self.term_stats.entry(term.clone()).and_modify(|count| *count += 1).or_insert(1);
@@ -895,11 +895,11 @@ impl TextIndex {
             }
             
             if let Some(postings) = self.inverted_index.get(term) {
-                for (doc_id, positions) in postings {
+                for (doc_id, field_name, positions) in postings {
                     let tf = positions.len() as u32;
                     
-                    // Use BM25FS⁺ impact computation for each field
-                    let impact = self.scorer.compute_impact(term, "default", tf, *doc_id as usize);
+                    // Use BM25FS⁺ impact computation for the specific field
+                    let impact = self.scorer.compute_impact(term, field_name, tf, *doc_id as usize);
                     *doc_scores.entry(*doc_id).or_insert(0.0) += impact;
                 }
             }
@@ -1188,7 +1188,7 @@ impl SearchEngine {
                 #[cfg(target_arch = "wasm32")]
                 web_sys::console::log_1(&format!("      📊 Found in {} docs, IDF: {:.3}", doc_freq, idf).into());
 
-                for (doc_idx, positions) in postings {
+                for (doc_idx, _field_name, positions) in postings {
                     let tf = positions.len() as f32;
                     let score = tf * idf;
                     *scores.entry(*doc_idx).or_insert(0.0) += score;
