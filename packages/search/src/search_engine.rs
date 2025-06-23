@@ -983,4 +983,71 @@ mod tests {
         assert_eq!(special_weight.b, 0.8);
         assert_eq!(special_weight.kind, Kind::TEXT);
     }
+
+    #[test]
+    fn test_readme_examples() {
+        // Test the exact example from README
+        let schema = Schema::builder()
+            .attribute("title", Kind::TITLE)        // Weight: 2.5, b: 0.75
+            .attribute("content", Kind::CONTENT)    // Weight: 1.0, b: 0.75
+            .attribute("categories", Kind::TAGS)    // Weight: 1.8, b: 0.5
+            .build();
+
+        // Create hybrid search engine
+        let mut engine = SearchEngine::with_schema(schema);
+
+        // Add documents with optional vector embeddings
+        let embedding_vector = vec![0.1, 0.2, 0.3, 0.4, 0.5]; // Example vector
+        let doc = Document::new("doc1")
+            .attribute("title", "Machine Learning with Rust")
+            .attribute("content", "Learn how to build ML models using Rust...")
+            .with_vector(embedding_vector);
+
+        let result = engine.add_document(doc);
+        assert!(result.is_ok());
+
+        // Add more test documents
+        let doc2 = Document::new("doc2")
+            .attribute("title", "Python for Data Science")
+            .attribute("content", "Master data science with Python libraries...")
+            .with_vector(vec![0.2, 0.1, 0.4, 0.3, 0.6]);
+
+        engine.add_document(doc2).unwrap();
+
+        let doc3 = Document::new("doc3")
+            .attribute("title", "Rust Programming Guide")
+            .attribute("content", "Complete guide to Rust programming language...")
+            .with_vector(vec![0.3, 0.4, 0.1, 0.5, 0.2]);
+
+        engine.add_document(doc3).unwrap();
+
+        // Test text-only search
+        let text_results = engine.search_text("machine learning", 10);
+        assert!(!text_results.is_empty());
+        assert_eq!(text_results[0].document_id, "doc1"); // Should find the ML document first
+
+        // Test vector-only search
+        let query_vector = vec![0.1, 0.2, 0.3, 0.4, 0.5]; // Similar to doc1's vector
+        let vector_results = engine.search_vector(query_vector.clone(), 10);
+        assert!(!vector_results.is_empty());
+
+        // Test hybrid search
+        let hybrid_results = engine.search_hybrid(
+            Some("machine learning rust".to_string()),  // Text query
+            Some(query_vector),                         // Vector query  
+            10,                                        // Top-k results
+            "rrf"                                      // Strategy
+        );
+        assert!(!hybrid_results.is_empty());
+        
+        // Should find relevant results
+        let result_ids: Vec<String> = hybrid_results.iter()
+            .map(|r| r.document_id.clone())
+            .collect();
+        assert!(result_ids.contains(&"doc1".to_string()));
+
+        // Verify we have the expected number of documents in the engine
+        assert_eq!(engine.collection.documents.len(), 3);
+        assert!(engine.text_index.term_stats.len() > 0);
+    }
 }

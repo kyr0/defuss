@@ -187,4 +187,125 @@ describe("hybrid search benchmarks", () => {
 
     console.log("🎉 Statistics test passed!");
   });
+
+  it("should work with README examples (comprehensive test)", async () => {
+    console.log("📖 Testing README examples comprehensively...");
+    
+    // Create a fresh search engine for this test
+    const readmeEngine = new HybridSearchEngine();
+    await readmeEngine.initialize();
+    
+    // Example 1: Basic schema creation and document indexing (following README)
+    console.log("  Testing basic document indexing from README...");
+    
+    const basicDocuments: DocumentInput[] = [
+      {
+        id: "article1",
+        fields: [
+          { name: "title", value: "WebAssembly Search Engine" },
+          { name: "content", value: "Fast hybrid search with Rust and WASM for modern web applications..." },
+          { name: "tags", value: "wasm rust search" }
+        ],
+        vector: new Float32Array([0.1, 0.2, 0.3, 0.4, 0.5])
+      },
+      {
+        id: "article2", 
+        fields: [
+          { name: "title", value: "Machine Learning in the Browser" },
+          { name: "content", value: "Implementing ML models using WebAssembly for client-side inference..." },
+          { name: "tags", value: "machine-learning browser wasm" }
+        ],
+        vector: new Float32Array([0.2, 0.1, 0.4, 0.3, 0.6])
+      },
+      {
+        id: "article3",
+        fields: [
+          { name: "title", value: "Rust Performance Guide" },
+          { name: "content", value: "Optimizing Rust code for maximum performance in systems programming..." },
+          { name: "tags", value: "rust performance optimization" }
+        ],
+        vector: new Float32Array([0.3, 0.4, 0.1, 0.5, 0.2])
+      }
+    ];
+
+    // Index all documents
+    for (const doc of basicDocuments) {
+      await readmeEngine.addDocument(doc);
+    }
+    
+    // Example 2: Text search (as shown in README)
+    console.log("  Testing text search from README...");
+    const textResults = await readmeEngine.searchText("WebAssembly search", 10);
+    expect(textResults.length).toBeGreaterThan(0);
+    expect(textResults[0].id).toBe("article1"); // Should find the WebAssembly article first
+    console.log(`    Text search found ${textResults.length} results, top result: ${textResults[0].id}`);
+    
+    // Example 3: Vector search (as shown in README)  
+    console.log("  Testing vector search from README...");
+    const queryVector = new Float32Array([0.1, 0.2, 0.3, 0.4, 0.5]); // Similar to article1
+    const vectorResults = await readmeEngine.searchVector(queryVector, 10);
+    expect(vectorResults.length).toBeGreaterThan(0);
+    console.log(`    Vector search found ${vectorResults.length} results, top result: ${vectorResults[0].id}`);
+    
+    // Example 4: Hybrid search with different fusion strategies (as shown in README)
+    console.log("  Testing hybrid search with RRF fusion...");
+    const rrfResults = await readmeEngine.search({
+      text: "WebAssembly rust search",
+      vector: queryVector,
+      topK: 5,
+      strategy: "rrf"
+    });
+    expect(rrfResults.length).toBeGreaterThan(0);
+    console.log(`    RRF hybrid search found ${rrfResults.length} results`);
+    
+    console.log("  Testing hybrid search with CombSUM fusion...");
+    const combsumResults = await readmeEngine.search({
+      text: "machine learning browser",
+      vector: new Float32Array([0.2, 0.1, 0.4, 0.3, 0.6]),
+      topK: 5,
+      strategy: "combsum"
+    });
+    expect(combsumResults.length).toBeGreaterThan(0);
+    console.log(`    CombSUM hybrid search found ${combsumResults.length} results`);
+    
+    // Example 5: Engine statistics (as shown in README)
+    console.log("  Testing engine statistics from README...");
+    const stats = readmeEngine.getStats();
+    expect(stats.documentCount).toBe(3); // 3 documents indexed
+    expect(stats.indexSize).toBeGreaterThan(0); // Should have some index data
+    console.log(`    Engine stats: ${stats.documentCount} docs, index size: ${stats.indexSize}`);
+    
+    // Example 6: Test search result structure (as shown in README)
+    console.log("  Validating search result structure...");
+    const testResults = await readmeEngine.searchText("rust", 3);
+    expect(testResults.length).toBeGreaterThan(0);
+    
+    for (const result of testResults) {
+      expect(result.id).toBeDefined();
+      expect(typeof result.id).toBe("string");
+      expect(result.score).toBeDefined();
+      expect(typeof result.score).toBe("number");
+      expect(result.score).toBeGreaterThan(0);
+    }
+    console.log(`    All ${testResults.length} results have valid structure`);
+    
+    // Example 7: Test edge cases mentioned in README
+    console.log("  Testing edge cases...");
+    
+    // Empty query should return empty results
+    const emptyResults = await readmeEngine.searchText("", 10);
+    expect(emptyResults.length).toBe(0);
+    
+    // Non-existent terms should return empty results
+    const noMatchResults = await readmeEngine.searchText("nonexistentterm12345", 10);
+    expect(noMatchResults.length).toBe(0);
+    
+    // Zero topK should return empty results
+    const zeroResults = await readmeEngine.searchText("rust", 0);
+    expect(zeroResults.length).toBe(0);
+    
+    console.log("    All edge cases handled correctly");
+    
+    console.log("🎉 README examples test passed comprehensively!");
+  });
 });
