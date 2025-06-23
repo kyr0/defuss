@@ -742,7 +742,7 @@ impl VectorIndex {
             return Vec::new();
         }
 
-        // Use rayon for parallel vector similarity computation
+        // Use rayon for parallel vector similarity computation (normalized vectors = dot product only)
         let similarities: Vec<(EntryIndex, f32)> = (0..num_vectors)
             .into_par_iter()
             .map(|i| {
@@ -750,8 +750,8 @@ impl VectorIndex {
                 let end_idx = start_idx + self.dimension;
                 let stored_vector = &self.vectors[start_idx..end_idx];
 
-                // Manual SIMD-style unrolling for 4x parallelized operations
-                let similarity = self.compute_cosine_similarity_optimized(query, stored_vector);
+                // Since vectors are normalized, cosine similarity = dot product
+                let similarity = self.compute_dot_product_optimized(query, stored_vector);
                 (self.doc_mapping[i], similarity)
             })
             .collect();
@@ -766,11 +766,10 @@ impl VectorIndex {
         sorted_similarities
     }
 
-    /// SIMD-style manual unrolling for 4x parallelized f32 operations
-    fn compute_cosine_similarity_optimized(&self, query: &[f32], stored: &[f32]) -> f32 {
+    /// Optimized dot product for normalized vectors (replaces cosine similarity calculation)
+    fn compute_dot_product_optimized(&self, query: &[f32], stored: &[f32]) -> f32 {
         let len = query.len();
         let mut dot_product = 0.0f32;
-        let mut magnitude = 0.0f32;
         
         // Process 4 elements at a time (manual SIMD unrolling)
         let chunks = len / 4;
@@ -784,25 +783,14 @@ impl VectorIndex {
             dot_product += query[base + 1] * stored[base + 1];
             dot_product += query[base + 2] * stored[base + 2];
             dot_product += query[base + 3] * stored[base + 3];
-            
-            // 4x parallel magnitude accumulation
-            magnitude += stored[base] * stored[base];
-            magnitude += stored[base + 1] * stored[base + 1];
-            magnitude += stored[base + 2] * stored[base + 2];
-            magnitude += stored[base + 3] * stored[base + 3];
         }
         
         // Handle remainder elements
         for i in (chunks * 4)..(chunks * 4 + remainder) {
             dot_product += query[i] * stored[i];
-            magnitude += stored[i] * stored[i];
         }
         
-        if magnitude > 0.0 {
-            dot_product / magnitude.sqrt()
-        } else {
-            0.0
-        }
+        dot_product
     }
 }
 
