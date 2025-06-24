@@ -1,6 +1,6 @@
 import init, {
   initThreadPool,
-  batch_dot_product_zero_copy,
+  batch_dot_product_ultimate,
   alloc_f32_array,
   dealloc_f32_array,
   get_memory,
@@ -136,7 +136,7 @@ function processChunkZeroCopy(
 
     // Perform computation in WASM heap with timing
     const startTime = performance.now();
-    batch_dot_product_zero_copy(aPtr, bPtr, resultsPtr, vectorLength, numPairs);
+    batch_dot_product_ultimate(aPtr, bPtr, resultsPtr, vectorLength, numPairs);
     const endTime = performance.now();
 
     // Return copy of results and timing info
@@ -293,7 +293,7 @@ export async function dotProductFlat(
 
       // Perform computation entirely in WASM heap - zero copy!
       const startTime = performance.now();
-      batch_dot_product_zero_copy(
+      batch_dot_product_ultimate(
         aPtr,
         bPtr,
         resultsPtr,

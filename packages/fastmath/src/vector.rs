@@ -955,17 +955,3 @@ pub fn dealloc_f32_array(ptr: *mut f32, length: usize) {
 pub fn get_memory() -> js_sys::WebAssembly::Memory {
     wasm_bindgen::memory().into()
 }
-
-/// Zero-copy batch dot product that works entirely with WASM heap memory
-/// All pointers must point to valid WASM heap memory allocated with alloc_f32_array
-#[wasm_bindgen]
-pub fn batch_dot_product_zero_copy(
-    a_ptr: *const f32,
-    b_ptr: *const f32,
-    results_ptr: *mut f32,
-    vector_length: usize,
-    num_pairs: usize
-) {
-    // Just call the existing optimized function
-    batch_dot_product_ultimate(a_ptr, b_ptr, results_ptr, vector_length, num_pairs);
-}
