@@ -3,7 +3,7 @@ import init, {
   batch_dot_product_zero_copy,
   alloc_f32_array,
   dealloc_f32_array,
-  get_memory,
+  get_memory
 } from "../pkg/defuss_fastmath.js";
 
 // Global WASM instance state
@@ -106,7 +106,7 @@ function processChunkZeroCopy(
   chunkB: Float32Array,
   vectorLength: number,
   numPairs: number,
-): Float32Array {
+): { results: Float32Array; executionTime: number } {
   const totalElements = vectorLength * numPairs;
 
   // Allocate WASM heap memory
@@ -130,17 +130,20 @@ function processChunkZeroCopy(
     const resultsView = memoryBuffer.subarray(
       resultsPtrOffset,
       resultsPtrOffset + numPairs,
-    );
-
-    // Copy data directly into WASM heap
+    );    // Copy data directly into WASM heap
     aView.set(chunkA);
     bView.set(chunkB);
-
-    // Perform computation in WASM heap
+    
+    // Perform computation in WASM heap with timing
+    const startTime = performance.now();
     batch_dot_product_zero_copy(aPtr, bPtr, resultsPtr, vectorLength, numPairs);
-
-    // Return copy of results
-    return new Float32Array(resultsView);
+    const endTime = performance.now();
+    
+    // Return copy of results and timing info
+    return {
+      results: new Float32Array(resultsView),
+      executionTime: endTime - startTime
+    };
   } finally {
     // Always deallocate WASM memory
     dealloc_f32_array(aPtr, totalElements);
@@ -162,7 +165,7 @@ async function processWorkloadInChunks(
     b: Float32Array,
     vlen: number,
     npairs: number,
-  ) => Float32Array,
+  ) => { results: Float32Array; executionTime: number },
 ): Promise<ChunkedResult> {
   const chunkSize = calculateOptimalChunkSize(vectorLength, numPairs);
   const allResults = new Float32Array(numPairs);
@@ -184,15 +187,17 @@ async function processWorkloadInChunks(
     //console.log(`🔄 Processing chunk ${chunksProcessed + 1}: pairs ${startPair}-${startPair + currentChunkSize - 1}`);
 
     // Process chunk using zero-copy function
-    const chunkResults = processingFunction(
+    const chunkResult = processingFunction(
       chunkA,
       chunkB,
       vectorLength,
       currentChunkSize,
     );
 
-    // Copy results to main array
-    allResults.set(chunkResults, startPair);
+    // Copy results to main array and accumulate timing
+    allResults.set(chunkResult.results, startPair);
+    totalExecutionTime += chunkResult.executionTime;
+    totalTime += chunkResult.executionTime;
 
     chunksProcessed++;
 
@@ -282,13 +287,12 @@ export async function dotProductFlat(
       const resultsView = memoryBuffer.subarray(
         resultsPtrOffset,
         resultsPtrOffset + numPairs,
-      );
-
-      // Copy data directly into WASM heap (single copy operation)
+      );      // Copy data directly into WASM heap (single copy operation)
       aView.set(vectorsAConcatenated);
       bView.set(vectorsBConcatenated);
 
       // Perform computation entirely in WASM heap - zero copy!
+      const startTime = performance.now();
       batch_dot_product_zero_copy(
         aPtr,
         bPtr,
@@ -296,13 +300,14 @@ export async function dotProductFlat(
         vectorLength,
         numPairs,
       );
+      const endTime = performance.now();
 
       // Read results directly from WASM heap memory
       results = new Float32Array(resultsView);
-
-      // No timing info needed from WASM anymore
-      totalTime = 0;
-      executionTime = 0;
+      
+      // Calculate timing
+      totalTime = endTime - startTime;
+      executionTime = totalTime; // For zero-copy, execution time = total time
     } finally {
       // Always deallocate WASM memory to prevent leaks
       dealloc_f32_array(aPtr, totalElements);
@@ -355,20 +360,17 @@ export async function dotProductFlat(
   );
   console.log(
     `🔍 Verification - Last: ${Math.abs(lastActual - lastExpected) < 0.001 ? "✅" : "❌"} (${lastActual.toFixed(3)} vs ${lastExpected.toFixed(3)})`,
-  );
-
-  // STEP 4: Calculate performance metrics (without timing since we're zero-copy now)
+  );  // STEP 4: Calculate performance metrics using real timing data
   const totalFlops = numPairs * vectorLength * 2;
   const memoryMB = (totalElements * 2 * 4) / (1024 * 1024);
+  
+  // Calculate GFLOPS from actual timing
+  const gflops = totalTime > 0 ? totalFlops / (totalTime * 1_000_000) : 0;
+  const memoryEfficiency = memoryMB > 0 ? gflops / memoryMB : 0;
 
-  // Since we don't have timing anymore, use a placeholder for GFLOPS
-  const gflops = 0; // Will be calculated by benchmarking code if needed
-  const memoryEfficiency = 0; // Will be calculated by benchmarking code if needed
-
-  console.log(
-    `⚡ Zero-copy processing completed - no data copying between JS and WASM!`,
-  );
-  console.log(`📊 Memory usage: ${memoryMB.toFixed(2)} MB`);
+  console.log(`⚡ Performance: ${gflops.toFixed(2)} GFLOPS`);
+  console.log(`📊 Memory efficiency: ${memoryEfficiency.toFixed(3)} GFLOPS/MB`);
+  console.log(`⏱️ Total time: ${totalTime.toFixed(2)}ms`);
   if (chunksProcessed) {
     console.log(`🔄 Chunks processed: ${chunksProcessed}`);
   }
