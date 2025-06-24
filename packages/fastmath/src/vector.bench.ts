@@ -63,6 +63,10 @@ describe("vector", () => {
       { vectorLength: 4096, numPairs: 100, name: "XL vectors, small batch" },
     ];
 
+    const iterations = 60;
+    const warmupPercent = 20; // Exclude first 20% as warmup
+    const warmupRuns = Math.floor((iterations * warmupPercent) / 100);
+
     for (const config of testConfigs) {
       const { vectorLength, numPairs, name } = config;
       const memoryMB = (vectorLength * numPairs * 2 * 4) / (1024 * 1024);
@@ -71,32 +75,84 @@ describe("vector", () => {
         `\n📊 Running benchmarks for: ${name} (${vectorLength}x${numPairs})`,
       );
       console.log(`💾 Estimated memory: ${memoryMB.toFixed(1)}MB`);
+      console.log(
+        `🔄 Running ${iterations} iterations (excluding first ${warmupRuns} warmup runs)`,
+      );
 
       // Check memory before running
       const memStats = getWasmMemoryInfo();
       console.log("🔍 WASM memory used:", memStats.usedMB, "MB");
 
       try {
-        // STEP 1: Generate test vectors
+        // STEP 1: Generate test vectors once
         const { vectorsA, vectorsB } = generateBenchmarkVectors(
           vectorLength,
           numPairs,
         );
 
-        // STEP 2: Process the vectors
-        const results = await dotProductFlat(
-          vectorsA,
-          vectorsB,
-          vectorLength,
-          numPairs,
-        );
+        // STEP 2: Run multiple iterations
+        const allResults: any[] = [];
+        const times: number[] = [];
+        const gflopsValues: number[] = [];
+        const memoryEfficiencyValues: number[] = [];
+
+        for (let i = 0; i < iterations; i++) {
+          const results = await dotProductFlat(
+            vectorsA,
+            vectorsB,
+            vectorLength,
+            numPairs,
+          );
+
+          allResults.push(results);
+          times.push(results.totalTime);
+          gflopsValues.push(results.gflops);
+          memoryEfficiencyValues.push(results.memoryEfficiency);
+
+          // Show progress every 20 iterations
+          if ((i + 1) % 20 === 0) {
+            console.log(
+              `   Progress: ${i + 1}/${iterations} iterations completed`,
+            );
+          }
+        }
+
+        // Calculate statistics excluding warmup phase
+        const validTimes = times.slice(warmupRuns);
+        const validGflops = gflopsValues.slice(warmupRuns);
+        const validMemoryEfficiency = memoryEfficiencyValues.slice(warmupRuns);
+
+        const avgTime =
+          validTimes.reduce((sum, val) => sum + val, 0) / validTimes.length;
+        const avgGflops =
+          validGflops.reduce((sum, val) => sum + val, 0) / validGflops.length;
+        const avgMemoryEfficiency =
+          validMemoryEfficiency.reduce((sum, val) => sum + val, 0) /
+          validMemoryEfficiency.length;
+
+        const minTime = Math.min(...validTimes);
+        const maxTime = Math.max(...validTimes);
+        const minGflops = Math.min(...validGflops);
+        const maxGflops = Math.max(...validGflops);
+
+        // Calculate standard deviation for GFLOPS
+        const gflopsVariance =
+          validGflops.reduce((sum, val) => sum + (val - avgGflops) ** 2, 0) /
+          validGflops.length;
+        const gflopsStdDev = Math.sqrt(gflopsVariance);
 
         console.log(`✅ Completed: ${name}`);
-        console.log(`⏱️  Total time: ${results.totalTime.toFixed(2)}ms`);
+        console.log(`📈 Statistics (excluding ${warmupRuns} warmup runs):`);
         console.log(
-          ` Memory efficiency: ${results.memoryEfficiency.toFixed(3)} GFLOPS/MB`,
+          `⏱️  Average time: ${avgTime.toFixed(2)}ms (min: ${minTime.toFixed(2)}ms, max: ${maxTime.toFixed(2)}ms)`,
         );
-        console.log(`⚡ Performance: ${results.gflops.toFixed(2)} GFLOPS`);
+        console.log(
+          `⚡ Average performance: ${avgGflops.toFixed(2)} ± ${gflopsStdDev.toFixed(2)} GFLOPS (min: ${minGflops.toFixed(2)}, max: ${maxGflops.toFixed(2)})`,
+        );
+        console.log(
+          `💡 Memory efficiency: ${avgMemoryEfficiency.toFixed(3)} GFLOPS/MB`,
+        );
+        console.log(`📊 Processing method: ${allResults[0].processingMethod}`);
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
@@ -106,6 +162,10 @@ describe("vector", () => {
   });
 
   it("should work with the Array-based dotProduct function as well", async () => {
+    const iterations = 60;
+    const warmupPercent = 20;
+    const warmupRuns = Math.floor((iterations * warmupPercent) / 100);
+
     // Example: Create some test data as individual vectors
     const vectorLength = 1024;
     const numPairs = 100_000;
@@ -129,13 +189,46 @@ describe("vector", () => {
     }
 
     console.log("=== dotProduct with arrays of vectors ===");
-    const results = await dotProduct(vectorsA, vectorsB);
-
-    console.log(`⏱️  Total time: ${results.totalTime.toFixed(2)}ms`);
     console.log(
-      ` Memory efficiency: ${results.memoryEfficiency.toFixed(3)} GFLOPS/MB`,
+      `🔄 Running ${iterations} iterations (excluding first ${warmupRuns} warmup runs)`,
     );
-    console.log(`⚡ Performance: ${results.gflops.toFixed(2)} GFLOPS`);
+
+    // Run multiple iterations
+    const allResults: any[] = [];
+    const times: number[] = [];
+    const gflopsValues: number[] = [];
+
+    for (let i = 0; i < iterations; i++) {
+      const results = await dotProduct(vectorsA, vectorsB);
+      allResults.push(results);
+      times.push(results.totalTime);
+      gflopsValues.push(results.gflops);
+
+      if ((i + 1) % 20 === 0) {
+        console.log(`   Progress: ${i + 1}/${iterations} iterations completed`);
+      }
+    }
+
+    // Calculate statistics excluding warmup
+    const validTimes = times.slice(warmupRuns);
+    const validGflops = gflopsValues.slice(warmupRuns);
+
+    const avgTime =
+      validTimes.reduce((sum, val) => sum + val, 0) / validTimes.length;
+    const avgGflops =
+      validGflops.reduce((sum, val) => sum + val, 0) / validGflops.length;
+    const gflopsVariance =
+      validGflops.reduce((sum, val) => sum + (val - avgGflops) ** 2, 0) /
+      validGflops.length;
+    const gflopsStdDev = Math.sqrt(gflopsVariance);
+
+    console.log(`⏱️  Average time: ${avgTime.toFixed(2)}ms`);
+    console.log(
+      `⚡ Average performance: ${avgGflops.toFixed(2)} ± ${gflopsStdDev.toFixed(2)} GFLOPS`,
+    );
+    console.log(
+      `💡 Memory efficiency: ${allResults[0].memoryEfficiency.toFixed(3)} GFLOPS/MB`,
+    );
 
     // Compare with concatenated array approach (for performance comparison)
     console.log("\n=== Comparison: concatenated array approach ===");
@@ -148,18 +241,43 @@ describe("vector", () => {
       vectorsBConcatenated.set(vectorsB[i], startIdx);
     }
 
-    const resultsFlat = await dotProductFlat(
-      vectorsAConcatenated,
-      vectorsBConcatenated,
-      vectorLength,
-      numPairs,
+    // Run multiple iterations for concatenated approach
+    const flatResults: any[] = [];
+    const flatTimes: number[] = [];
+    const flatGflopsValues: number[] = [];
+
+    for (let i = 0; i < iterations; i++) {
+      const resultsFlat = await dotProductFlat(
+        vectorsAConcatenated,
+        vectorsBConcatenated,
+        vectorLength,
+        numPairs,
+      );
+      flatResults.push(resultsFlat);
+      flatTimes.push(resultsFlat.totalTime);
+      flatGflopsValues.push(resultsFlat.gflops);
+    }
+
+    const validFlatGflops = flatGflopsValues.slice(warmupRuns);
+    const avgFlatGflops =
+      validFlatGflops.reduce((sum, val) => sum + val, 0) /
+      validFlatGflops.length;
+    const flatGflopsVariance =
+      validFlatGflops.reduce(
+        (sum, val) => sum + (val - avgFlatGflops) ** 2,
+        0,
+      ) / validFlatGflops.length;
+    const flatGflopsStdDev = Math.sqrt(flatGflopsVariance);
+
+    console.log(
+      `Average performance: ${avgFlatGflops.toFixed(2)} ± ${flatGflopsStdDev.toFixed(2)} GFLOPS`,
     );
-    console.log(`Performance: ${resultsFlat.gflops.toFixed(2)} GFLOPS`);
-    console.log(`Processing method: ${resultsFlat.processingMethod}`);
+    console.log(`Processing method: ${flatResults[0].processingMethod}`);
 
     // Verify results are identical
-    const resultsMatch = results.results.every(
-      (val, idx) => Math.abs(val - resultsFlat.results[idx]) < 0.0001,
+    const resultsMatch = allResults[0].results.every(
+      (val: number, idx: number) =>
+        Math.abs(val - flatResults[0].results[idx]) < 0.0001,
     );
     console.log(`Results match: ${resultsMatch ? "✅" : "❌"}`);
 
@@ -195,15 +313,54 @@ describe("vector", () => {
       queries.push(query);
     }
 
-    const embeddingResult = await dotProduct(embeddings, queries);
+    // Run embedding benchmark with multiple iterations
+    const embeddingResults: any[] = [];
+    const embeddingTimes: number[] = [];
+    const embeddingGflopsValues: number[] = [];
+
+    console.log(
+      `🔄 Running ${iterations} embedding iterations (excluding first ${warmupRuns} warmup runs)`,
+    );
+
+    for (let i = 0; i < iterations; i++) {
+      const embeddingResult = await dotProduct(embeddings, queries);
+      embeddingResults.push(embeddingResult);
+      embeddingTimes.push(embeddingResult.totalTime);
+      embeddingGflopsValues.push(embeddingResult.gflops);
+
+      if ((i + 1) % 20 === 0) {
+        console.log(
+          `   Embedding progress: ${i + 1}/${iterations} iterations completed`,
+        );
+      }
+    }
+
+    const validEmbeddingGflops = embeddingGflopsValues.slice(warmupRuns);
+    const avgEmbeddingGflops =
+      validEmbeddingGflops.reduce((sum, val) => sum + val, 0) /
+      validEmbeddingGflops.length;
+    const embeddingGflopsVariance =
+      validEmbeddingGflops.reduce(
+        (sum, val) => sum + (val - avgEmbeddingGflops) ** 2,
+        0,
+      ) / validEmbeddingGflops.length;
+    const embeddingGflopsStdDev = Math.sqrt(embeddingGflopsVariance);
+
+    const validEmbeddingTimes = embeddingTimes.slice(warmupRuns);
+    const avgEmbeddingTime =
+      validEmbeddingTimes.reduce((sum, val) => sum + val, 0) /
+      validEmbeddingTimes.length;
+
     console.log(
       `Computed ${embeddings.length} cosine similarities for 1024D embeddings`,
     );
-    console.log(`Performance: ${embeddingResult.gflops.toFixed(2)} GFLOPS`);
     console.log(
-      `Average similarity: ${(embeddingResult.results.reduce((sum, val) => sum + val, 0) / embeddingResult.results.length).toFixed(4)}`,
+      `Average performance: ${avgEmbeddingGflops.toFixed(2)} ± ${embeddingGflopsStdDev.toFixed(2)} GFLOPS`,
     );
-    console.log(`Processing method: ${embeddingResult.processingMethod}`);
-    console.log(`Total time: ${embeddingResult.totalTime.toFixed(2)}ms`);
+    console.log(
+      `Average similarity: ${(embeddingResults[0].results.reduce((sum: number, val: number) => sum + val, 0) / embeddingResults[0].results.length).toFixed(4)}`,
+    );
+    console.log(`Processing method: ${embeddingResults[0].processingMethod}`);
+    console.log(`Average time: ${avgEmbeddingTime.toFixed(2)}ms`);
   });
 });
