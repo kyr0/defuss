@@ -3,7 +3,7 @@ import init, {
   batch_dot_product_zero_copy,
   alloc_f32_array,
   dealloc_f32_array,
-  get_memory
+  get_memory,
 } from "../pkg/defuss_fastmath.js";
 
 // Global WASM instance state
@@ -130,19 +130,19 @@ function processChunkZeroCopy(
     const resultsView = memoryBuffer.subarray(
       resultsPtrOffset,
       resultsPtrOffset + numPairs,
-    );    // Copy data directly into WASM heap
+    ); // Copy data directly into WASM heap
     aView.set(chunkA);
     bView.set(chunkB);
-    
+
     // Perform computation in WASM heap with timing
     const startTime = performance.now();
     batch_dot_product_zero_copy(aPtr, bPtr, resultsPtr, vectorLength, numPairs);
     const endTime = performance.now();
-    
+
     // Return copy of results and timing info
     return {
       results: new Float32Array(resultsView),
-      executionTime: endTime - startTime
+      executionTime: endTime - startTime,
     };
   } finally {
     // Always deallocate WASM memory
@@ -287,7 +287,7 @@ export async function dotProductFlat(
       const resultsView = memoryBuffer.subarray(
         resultsPtrOffset,
         resultsPtrOffset + numPairs,
-      );      // Copy data directly into WASM heap (single copy operation)
+      ); // Copy data directly into WASM heap (single copy operation)
       aView.set(vectorsAConcatenated);
       bView.set(vectorsBConcatenated);
 
@@ -304,7 +304,7 @@ export async function dotProductFlat(
 
       // Read results directly from WASM heap memory
       results = new Float32Array(resultsView);
-      
+
       // Calculate timing
       totalTime = endTime - startTime;
       executionTime = totalTime; // For zero-copy, execution time = total time
@@ -360,10 +360,10 @@ export async function dotProductFlat(
   );
   console.log(
     `🔍 Verification - Last: ${Math.abs(lastActual - lastExpected) < 0.001 ? "✅" : "❌"} (${lastActual.toFixed(3)} vs ${lastExpected.toFixed(3)})`,
-  );  // STEP 4: Calculate performance metrics using real timing data
+  ); // STEP 4: Calculate performance metrics using real timing data
   const totalFlops = numPairs * vectorLength * 2;
   const memoryMB = (totalElements * 2 * 4) / (1024 * 1024);
-  
+
   // Calculate GFLOPS from actual timing
   const gflops = totalTime > 0 ? totalFlops / (totalTime * 1_000_000) : 0;
   const memoryEfficiency = memoryMB > 0 ? gflops / memoryMB : 0;
