@@ -2,5 +2,7 @@
 rustflags = [
   "-C", "target-feature=+bulk-memory",
   "-C", "target-feature=+mutable-globals",
+  "-C", "target-feature=+atomics",
+  "-C", "target-feature=+simd128",
   "-C", "link-arg=--max-memory=268435456"  # 4GB = 4 * 1024 * 1024 * 1024 bytes
 ]

@@ -1,0 +1,27 @@
+{
+  "target": "wasm32-unknown-unknown",
+  "crates": [
+    {
+      "root_module": "packages/search/src/lib.rs",
+      "edition": "2021",
+      "deps": [],
+      "cfg": [],
+      "target": "wasm32-unknown-unknown"
+    },
+    {
+      "root_module": "packages/fastmath/src/lib.rs",
+      "edition": "2021",
+      "deps": [],
+      "cfg": [],
+      "target": "wasm32-unknown-unknown"
+    },
+    {
+      "root_module": "packages/lightningimg/lightningimg-wasm/src/lib.rs",
+      "edition": "2021",
+      "deps": [],
+      "cfg": [],
+      "target": "wasm32-unknown-unknown"
+    }
+  ],
+  "sysroot": null
+}

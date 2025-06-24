@@ -1,0 +1,13 @@
+[workspace]
+members = [
+    "packages/fastmath",
+    "packages/lightningimg/lightningimg-wasm",
+    "packages/search"
+]
+resolver = "2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = "symbols"
