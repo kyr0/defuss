@@ -31,7 +31,7 @@
     "dev": "npm run build && node test.js"
   },
   "devDependencies": {
-    "wasm-pack": "^0.12.1"
+    "wasm-pack": "^0.13.1"
   },
   "engines": {
     "node": ">= 10"

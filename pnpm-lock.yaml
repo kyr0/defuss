@@ -121,7 +121,7 @@ importers:
         version: link:../../packages/defuss
       defuss-astro:
         specifier: ^1.4.3
-        version: 1.4.3(@swc/helpers@0.5.17)(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3)
+        version: 1.4.3(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3)
       defuss-desktop:
         specifier: workspace:*
         version: link:../../packages/desktop
@@ -191,7 +191,7 @@ importers:
         version: 2.1.0
       defuss-astro:
         specifier: ^1.4.3
-        version: 1.4.3(@swc/helpers@0.5.17)(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3)
+        version: 1.4.3(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3)
       defuss-dson:
         specifier: workspace:*
         version: link:../../packages/dson
@@ -248,7 +248,7 @@ importers:
         version: link:../../packages/defuss
       defuss-astro:
         specifier: ^1.4.3
-        version: 1.4.3(@swc/helpers@0.5.17)(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3)
+        version: 1.4.3(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3)
       fslightbox:
         specifier: ^3.6.0
         version: 3.6.0
@@ -302,7 +302,7 @@ importers:
         version: 2.0.7
       defuss-astro:
         specifier: ^1.4.3
-        version: 1.4.3(@swc/helpers@0.5.17)(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3)
+        version: 1.4.3(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3)
       defuss-squeezy:
         specifier: ^0.0.3
         version: 0.0.3
@@ -454,8 +454,8 @@ importers:
         specifier: ^4.24.3
         version: 4.24.5
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^2.1.1
+        version: 2.1.1
       defuss-squeezy:
         specifier: ^0.0.4
         version: 0.0.4
@@ -760,8 +760,12 @@ importers:
   packages/lightningimg/lightningimg-wasm:
     devDependencies:
       wasm-pack:
-        specifier: ^0.12.1
-        version: 0.12.1
+        specifier: ^0.13.1
+        version: 0.13.1
+
+  packages/lightningimg/lightningimg-wasm/pkg-bundler: {}
+
+  packages/lightningimg/lightningimg-wasm/pkg-node: {}
 
   packages/rpc:
     dependencies:
@@ -816,10 +820,6 @@ importers:
         version: 3.1.4(@types/debug@4.1.12)(@types/node@22.15.29)(happy-dom@17.6.3)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(sass-embedded@1.89.0)(tsx@4.19.4)
 
   packages/search:
-    dependencies:
-      openai-fetch:
-        specifier: ^3.4.2
-        version: 3.4.2
     devDependencies:
       '@testing-library/dom':
         specifier: ^10.4.0
@@ -2178,7 +2178,7 @@ packages:
     resolution: {integrity: sha512-46ryTE9RZO/rfDd7pEqFl7etuyzekzEhUbTW3BvmeO/BcCMEgq59BKhek3dXDWgAj4oMK6OZi+vRr1wPW6qjEQ==}
     peerDependencies:
       msw: ^2.4.9
-      vite: '>=6.0.12'
+      vite: '>=6.0.9'
     peerDependenciesMeta:
       msw:
         optional: true
@@ -3562,13 +3562,8 @@ packages:
     resolution: {integrity: sha512-GMk/3yJ4ov9mLRwkr+ffbTtlyGMd+HMMPks8+/kZWJyIfD3Esy+cSVLN8wX+iJRQXNZfPfOBxaqQpxXA0AHLEA==}
     engines: {node: '>= 4.7.0'}
 
-  ky@1.8.1:
-    resolution: {integrity: sha512-7Bp3TpsE+L+TARSnnDpk3xg8Idi8RwSLdj6CMbNWoOARIrGrbuLGusV0dYwbZOm4bB3jHNxSw8Wk/ByDqJEnDw==}
-    engines: {node: '>=18'}
-
   libsql@0.5.11:
     resolution: {integrity: sha512-P2xY1nL2Jl7oM75LcguAEYqouVcevWhLWT8RU/p9ldaqQx5s/chF9t5ZFXPWP0x9myQQ4SguRqPO+FqdnCzKQg==}
-    cpu: [x64, arm64, wasm32, arm]
     os: [darwin, linux, win32]
 
   lightningcss-darwin-arm64@1.30.1:
@@ -4047,10 +4042,6 @@ packages:
   open@8.4.2:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
-
-  openai-fetch@3.4.2:
-    resolution: {integrity: sha512-8EcOGJk/JXFaoGjeFM53Z3zBnwOpKtZeu5X0wts67WqA1PTnsmwRgUw9aGAsQ5V6cuTfJUv282h1ypFgDGPDSA==}
-    engines: {node: '>=18'}
 
   opener@1.5.2:
     resolution: {integrity: sha512-ur5UIdyw5Y7yEj9wLzhqXiy6GZ3Mwx0yGI+5sMn2r0N0v3cKJvUmFH5yPP+WXh9e0xfyzyJX95D8l088DNFj7A==}
@@ -5231,7 +5222,7 @@ packages:
   vitefu@1.0.6:
     resolution: {integrity: sha512-+Rex1GlappUyNN6UfwbVZne/9cYC4+R2XDk9xkNXBKMw6HQagdX9PgZ8V2v1WUSK1wfBLp7qbI1+XSNIlB1xmA==}
     peerDependencies:
-      vite: '>=5.4.12'
+      vite: '>=6.0.9'
     peerDependenciesMeta:
       vite:
         optional: true
@@ -5329,6 +5320,10 @@ packages:
 
   wasm-pack@0.12.1:
     resolution: {integrity: sha512-dIyKWUumPFsGohdndZjDXRFaokUT/kQS+SavbbiXVAvA/eN4riX5QNdB6AhXQx37zNxluxQkuixZUgJ8adKjOg==}
+    hasBin: true
+
+  wasm-pack@0.13.1:
+    resolution: {integrity: sha512-P9exD4YkjpDbw68xUhF3MDm/CC/3eTmmthyG5bHJ56kalxOTewOunxTke4SyF8MTXV6jUtNjXggPgrGmMtczGg==}
     hasBin: true
 
   web-namespaces@2.0.1:
@@ -7507,7 +7502,7 @@ snapshots:
 
   defu@6.1.4: {}
 
-  defuss-astro@1.4.3(@swc/helpers@0.5.17)(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3):
+  defuss-astro@1.4.3(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3):
     dependencies:
       astro: 5.8.1(@types/node@22.15.29)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.41.1)(sass-embedded@1.89.0)(tsx@4.19.4)(typescript@5.8.3)
       defuss: 2.0.7
@@ -8549,8 +8544,6 @@ snapshots:
 
   konsta@4.0.1: {}
 
-  ky@1.8.1: {}
-
   libsql@0.5.11:
     dependencies:
       '@neon-rs/load': 0.0.4
@@ -9148,10 +9141,6 @@ snapshots:
       define-lazy-prop: 2.0.0
       is-docker: 2.2.1
       is-wsl: 2.2.0
-
-  openai-fetch@3.4.2:
-    dependencies:
-      ky: 1.8.1
 
   opener@1.5.2: {}
 
@@ -10800,6 +10789,12 @@ snapshots:
       loose-envify: 1.4.0
 
   wasm-pack@0.12.1:
+    dependencies:
+      binary-install: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  wasm-pack@0.13.1:
     dependencies:
       binary-install: 1.1.0
     transitivePeerDependencies:

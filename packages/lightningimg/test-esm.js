@@ -2,7 +2,7 @@
  * Test script for LightningImg ESM WASM-only implementation
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { convertImageBuffer, getImageInfo } from "./index.js";
 
 async function testESMWasmOnly() {
@@ -39,6 +39,9 @@ async function testESMWasmOnly() {
         console.log(`Resized to: ${resizedInfo.width}×${resizedInfo.height}`);
         console.log(`Resized size: ${resizedBuffer.length} bytes`);
         console.log("✅ Resize functionality works!\n");
+
+        mkdirSync("./test_output", { recursive: true });
+        writeFileSync("./test_output/converted_image.webp", convertedBuffer);
 
         console.log(
           "🎉 All tests passed! ESM WASM-only implementation is working correctly.",
