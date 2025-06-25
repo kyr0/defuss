@@ -1,6 +1,4 @@
-import init, {
-  initThreadPool,
-} from "../pkg/defuss_search.js";
+import init, { initThreadPool } from "../pkg/defuss_search.js";
 
 // Global WASM instance state
 let wasmInitialized = false;
@@ -107,15 +105,17 @@ export async function initWasm(): Promise<any> {
       console.log("🔧 Loading WASM module...");
       wasmInstance = await init();
       console.log("✅ WASM module loaded");
-    
-      initThreadPool(navigator.hardwareConcurrency || 4);
-      console.log("🔧 Initializing thread pool for parallel processing...");
-    
+
+      await initThreadPool(navigator.hardwareConcurrency || 8); // Use available cores or default to 4
+      console.log("✅ Thread pool initialized successfully");
+
       wasmInitialized = true;
       console.log("✅ WASM initialization complete");
     } catch (error) {
       console.error("❌ WASM initialization failed:", error);
-      throw new Error(`WASM initialization failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `WASM initialization failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
   return wasmInstance;

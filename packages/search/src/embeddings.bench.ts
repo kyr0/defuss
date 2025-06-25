@@ -10,7 +10,7 @@ const EMBEDDING_MODEL = "text-embedding-qwen3-embedding-0.6b";
 
 describe("Embedding API Tests", () => {
   beforeAll(() => {
-    console.log(`Testing embedding API with OpenAI client`);
+    console.log("Testing embedding API with OpenAI client");
     console.log(`Using model: ${EMBEDDING_MODEL}`);
   });
 
@@ -20,7 +20,7 @@ describe("Embedding API Tests", () => {
       { model: EMBEDDING_MODEL, input: text },
       {
         baseURL: "http://127.0.0.1:1234/v1",
-      }
+      },
     );
 
     expect(response).toBeDefined();
@@ -33,19 +33,19 @@ describe("Embedding API Tests", () => {
     const texts = [
       "First text to embed",
       "Second text to embed",
-      "Third text to embed"
+      "Third text to embed",
     ];
-    
+
     const response = await openAIEmbed(
       { model: EMBEDDING_MODEL, input: texts },
       {
         baseURL: "http://127.0.0.1:1234/v1",
-      }
+      },
     );
 
     expect(response).toBeDefined();
     expect(response.data).toHaveLength(texts.length);
-    
+
     for (const item of response.data) {
       expect(item.embedding).toBeInstanceOf(Array);
       expect(item.embedding.length).toBeGreaterThan(0);
@@ -54,12 +54,12 @@ describe("Embedding API Tests", () => {
 
   it("should handle large text input", async () => {
     const largeText = "This is a large text. ".repeat(100);
-    
+
     const response = await openAIEmbed(
       { model: EMBEDDING_MODEL, input: largeText },
       {
         baseURL: "http://127.0.0.1:1234/v1",
-      }
+      },
     );
 
     expect(response).toBeDefined();
@@ -68,18 +68,24 @@ describe("Embedding API Tests", () => {
   });
 
   it("should process concurrent requests", async () => {
-    const texts = Array.from({ length: 5 }, (_, i) => `Concurrent text ${i + 1}`);
-    
-    const promises = texts.map(text =>
-      openAIEmbed({ model: EMBEDDING_MODEL, input: text }, {
-        baseURL: "http://127.0.0.1:1234/v1",
-      })
+    const texts = Array.from(
+      { length: 5 },
+      (_, i) => `Concurrent text ${i + 1}`,
     );
-    
+
+    const promises = texts.map((text) =>
+      openAIEmbed(
+        { model: EMBEDDING_MODEL, input: text },
+        {
+          baseURL: "http://127.0.0.1:1234/v1",
+        },
+      ),
+    );
+
     const responses = await Promise.all(promises);
-    
+
     expect(responses).toHaveLength(texts.length);
-    
+
     for (const response of responses) {
       expect(response.data).toHaveLength(1);
       expect(response.data[0].embedding).toBeInstanceOf(Array);
@@ -143,7 +149,7 @@ describe("Vector Utility Tests", () => {
 
     const distance = euclideanDistance(sampleVector1, sampleVector2);
     expect(distance).toBeGreaterThan(0);
-    
+
     const zeroDistance = euclideanDistance(sampleVector1, sampleVector1);
     expect(zeroDistance).toBe(0);
   });
@@ -154,12 +160,14 @@ describe("Vector Utility Tests", () => {
       if (norm === 0) {
         return vector.slice();
       }
-      return vector.map(val => val / norm);
+      return vector.map((val) => val / norm);
     };
 
     const normalized = normalize(sampleVector1);
-    const magnitude = Math.sqrt(normalized.reduce((sum, val) => sum + val * val, 0));
-    
+    const magnitude = Math.sqrt(
+      normalized.reduce((sum, val) => sum + val * val, 0),
+    );
+
     expect(magnitude).toBeCloseTo(1, 5); // Should be unit vector
   });
 
@@ -178,17 +186,17 @@ describe("Vector Utility Tests", () => {
       normA = Math.sqrt(normA);
       normB = Math.sqrt(normB);
 
-      return (normA > 0 && normB > 0) ? dotProduct / (normA * normB) : 0;
+      return normA > 0 && normB > 0 ? dotProduct / (normA * normB) : 0;
     };
 
     const findMostSimilar = (
       queryVector: number[],
       vectors: number[][],
-      topK: number = 3
+      topK = 3,
     ): Array<{ index: number; similarity: number }> => {
       const similarities = vectors.map((vector, index) => ({
         index,
-        similarity: cosineSimilarity(queryVector, vector)
+        similarity: cosineSimilarity(queryVector, vector),
       }));
 
       return similarities
@@ -205,7 +213,7 @@ describe("Vector Utility Tests", () => {
     ];
 
     const results = findMostSimilar(queryVector, testVectors, 2);
-    
+
     expect(results).toHaveLength(2);
     expect(results[0].similarity).toBeGreaterThanOrEqual(results[1].similarity);
     expect(results[0].similarity).toBeCloseTo(1); // Should find the identical vector

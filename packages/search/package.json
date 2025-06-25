@@ -13,7 +13,7 @@
     "decompile": "wasm2wat --generate-names --verbose --enable-threads pkg/defuss_search_bg.wasm -o pkg/defuss_search_bg.wast > pkg/defuss_search_bg.log 2>&1",
     "pretest": "pnpm build",
     "test": "cargo test && vitest run",
-    "prebench": "pnpm test",
+    "prebench": "pnpm build",
     "bench": "vitest run --config vitest.bench.config.ts",
     "release": "sh scripts/release.sh"
   },

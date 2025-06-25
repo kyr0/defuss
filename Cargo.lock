@@ -174,7 +174,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures 0.4.50",
  "wasm-bindgen-rayon",
- "wasmprinter",
  "web-sys",
 ]
 

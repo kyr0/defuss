@@ -6,3 +6,7 @@ rustflags = [
   "-C", "target-feature=+simd128",
   "-C", "link-arg=--max-memory=268435456"  # 4GB = 4 * 1024 * 1024 * 1024 bytes
 ]
+
+
+#[unstable]
+#build-std = ["panic_abort", "std"]

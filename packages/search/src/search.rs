@@ -1,9 +1,9 @@
 use wasm_bindgen::prelude::*;
+use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use stop_words::{get, LANGUAGE as StopWordsLanguage};
 use rust_stemmers::{Algorithm, Stemmer};
 
-use rayon::prelude::*;
 use std::sync::Mutex;
 use lru::LruCache;
 use std::num::NonZeroUsize;
