@@ -18,18 +18,19 @@ _Fast_ CPU-only Hybrid Text & Vector Search
 
 ## Key Features
 
-- 🎯 **BM25FS⁺ Algorithm**: Novel fusion of BM25F (field weights) + BM25⁺ (δ-shift) + BM25S (eager sparse scoring) for 10-500× faster queries
+- 🎯 **BM25FS⁺ Algorithm**: Novel fusion of BM25F (field weights) + BM25⁺ (δ-shift, smaller documents) + BM25S (eager sparse scoring) for 10-500× faster queries, better recall and precision 
 - 🧠 **Hybrid Search**: Combines lexical text search with dense vector embeddings using Reciprocal Rank Fusion (RRF) and CombSUM strategies
 - ⚡ **Extreme Performance**: Memory pools, SIMD operations, parallel processing with Rayon, and micro-optimizations for sub-millisecond search
 - 🌐 **WebAssembly Native**: Built specifically for WASM deployment 
--  **Precise**: No HNSW, KNN - we brute force vector search for the best precision
-- 🏗️ **Schema-Driven**: Flexible schemas paired with automatic BM25F weight assignment based on semantic field types (title, body, tags, etc.)
+-  **Precise**: No HNSW, KNN - we brute force vector search for the highest precision (no loss because of KNN approximations)
+- 🏗️ **Schema-Driven**: Flexible schemas paired with automatic BM25F weight assignment based on semantic field types and sensible defaults (title, body, tags, etc.)
 - 🌍 **Multilingual**: Support for 15 languages with proper stop-word filtering and stemming
 - 🔍 **Document Store**: Separate compressed storage for full document retrieval, supporting efficient updates and deletions
 - 🏷️ **Document Attributes**: Store and search by multiple attributes (title, content, tags) with customizable weights
 - ⚡ **Fast Indexing**: Efficient document ingestion with optional vector embeddings
+- **Vector Embeddings**: Supports optional vector embeddings for documents, enabling semantic search capabilities (default adapter for all OpenAI-compatible `/v1/embeddings` endpoints)
 - 🔄 **Query Flexibility**: Supports both text-only and hybrid vector queries
-- 🛠️ **Advanced Features**: Fuzzy search, prefix matching, query caching, and Bloom filters for performance
+- 🛠️ **Advanced Optimization**: Fuzzy search, prefix matching, query caching, and Bloom filters
 
 ## Quick Start
 
@@ -52,6 +53,7 @@ let doc = Document::new("doc1")
     .attribute("content", "Learn how to build ML models using Rust...")
     .attribute("categories", ["rust", "machine-learning", "tutorial"])
     .with_vector(embedding_vector);  // Optional 
+    .build();
 
 engine.add_document(doc, Language::English)?;
 
@@ -171,7 +173,8 @@ async function setupSearch() {
   // Add documents
   const doc = Document.new("doc1")
     .attribute("title", "WebAssembly Search Engine")
-    .attribute("content", "Fast hybrid search with Rust and WASM...");
+    .attribute("content", "Fast hybrid search with Rust and WASM...")
+    .build();
     
   engine.add_document(doc, "English");
   
@@ -189,7 +192,7 @@ Cross-Origin-Opener-Policy: same-origin
 ## Language Support
 
 Supports 15 languages with proper stop-word filtering and stemming:
-Arabic, Danish, Dutch, English, Finnish, French, German, Hungarian, Italian, Norwegian, Portuguese, Romanian, Russian, Spanish, Swedish, Turkish
+Arabic (`ar`), Danish (`da`), Dutch (`nl`), English (`en`), Finnish (`fi`), French (`fr`), German (`de`), Hungarian (`hu`), Italian (`it`), Norwegian (`no`), Portuguese (`pt`), Romanian (`ro`), Russian (`ru`), Spanish (`es`), Swedish (`sv`), Turkish (`tr`)
 
 ## Document Store
 
@@ -206,3 +209,18 @@ let serialized = store.serialize_to_bytes()?;
 // Retrieve full documents by ID
 let retrieved = store.get_document(&DocumentId::new("doc1"))?;
 ```
+
+## Benchmarks
+
+We're benchmarking for:
+
+- Search speed
+- Indexing speed
+- Memory usage
+- Code size
+- Index size (on disk, in memory, in transit)
+- Parallel query performance 
+- Parallel indexing performance
+- Hybrid search quality (precision, recall) against MIRACL dataset (RRF vs. CombSUM)
+- Full-text search quality (precision, recall) against MIRACL dataset (BM25FS⁺ vs. BM25)
+- Vector search quality (precision, recall) against MIRACL dataset
