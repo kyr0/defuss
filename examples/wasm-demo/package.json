@@ -1,0 +1,60 @@
+{
+  "name": "@example/wasm-demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "A playful demo of how to port code to WebAssembly using C or Rust - with multicore/worker support.",
+  "scripts": {
+    "clean": "rm -rf node_modules/.vite && rm -rf ./dist && rm -rf ./turbo",
+
+    "compile_c": "tsx ./scripts/compile_c.ts",
+    "postcompile_c": "pnpm decompile_c",
+    "decompile_c": "wasm2wat --generate-names --verbose --enable-threads ./public/wasm_c/wasm_c.wasm -o ./public/wasm_c/wasm_c.wast > ./public/wasm_c/wasm_c.log 2>&1",
+
+    "compile_rust": "tsx ./scripts/compile_rust.ts",
+    "postcompile_rust": "pnpm decompile_rust",
+    "decompile_rust": "wasm2wat --generate-names --verbose --enable-threads ./public/wasm_rust/defuss_wasm_demo_bg.wasm -o ./public/wasm_rust/defuss_wasm_demo_bg.wast > ./public/wasm_rust/defuss_wasm_demo_bg.log 2>&1",
+
+    "compile_js": "pkgroll",
+
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "types": "./dist/types.d.cts",
+  "exports": {
+    "./wasm_c": {
+      "import": {
+        "types": "./dist/wasm_c.d.ts",
+        "default": "./dist/wasm_c.js"
+      }
+    },
+    "./wasm_rust": {
+      "import": {
+        "types": "./public/wasm_rust/wasm_rust.d.ts",
+        "default": "./public/wasm_rust/wasm_rust.js"
+      }
+    },
+    "./js": {
+      "import": {
+        "types": "./dist/js.d.ts",
+        "default": "./dist/js.js"
+      }
+    },
+    "./js_jit": {
+      "import": {
+        "types": "./dist/js_jit.d.ts",
+        "default": "./dist/js_jit.js"
+      }
+    }
+  },
+  "dependencies": {
+    "@biomejs/biome": "^2.0.6",
+    "defuss": "^2.1.1",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4",
+    "pkgroll": "^2.13.1",
+    "defuss-vite": "^1.1.3"
+  },
+  "packageManager": "pnpm@9.13.2"
+}
