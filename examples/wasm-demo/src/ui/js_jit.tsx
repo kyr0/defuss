@@ -1,19 +1,14 @@
 import { dot_product_js_jit_serial } from "../js_jit.js";
-import { generateSampleData } from "../utils/math.js";
-
-// 2 x 1024 float32 vectors with 1024 dimensions, seeded random
-const sampleData20kx1024dims = generateSampleData(
-  31337 /* seed */,
-  1024 /* dimensions */,
-  100000 /* samples */,
-);
+import { shuffle, vectorsA, vectorsB } from "./sample_data.js";
 
 export const JsJit = () => {
   const compute = () => {
+    shuffle();
+    console.log("Input vectorsA[0][0]", vectorsA[0][0]);
     const now = performance.now();
     const resultArray: Float32Array = dot_product_js_jit_serial(
-      sampleData20kx1024dims.vectorsA,
-      sampleData20kx1024dims.vectorsB,
+      vectorsA,
+      vectorsB,
     );
     const elapsed = performance.now() - now;
     console.log(
@@ -25,7 +20,7 @@ export const JsJit = () => {
   return (
     <>
       <button type="button" onClick={compute}>
-        🐢 Run
+        🦆 Run
       </button>
     </>
   );

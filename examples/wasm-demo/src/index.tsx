@@ -7,32 +7,14 @@ import { render } from "defuss/client";
 import { WasmRust } from "./ui/wasm_rust";
 import { Js } from "./ui/js";
 import { JsJit } from "./ui/js_jit";
+import { SampleData } from "./ui/sample_data";
 
 function App() {
-  const onLinkClick = (e: MouseEvent) => {
-    try {
-      e.preventDefault();
-      alert("You clicked a link!");
-      throw new Error("I am an error!");
-    } catch (e) {
-      console.error("An error happened:", e);
-    }
-  };
-
-  const onMount = () => {
-    console.log("onMount called");
-  };
-
   return (
     // fragments work
     <>
-      <div class="pt-lg vbox justify-center" onMount={onMount}>
-        <a
-          href="https://vite.dev"
-          target="_blank"
-          rel="noreferrer"
-          onClick={onLinkClick}
-        >
+      <div class="pt-lg vbox justify-center">
+        <a href="https://vite.dev" target="_blank" rel="noreferrer">
           {/* class works */}
           <img src={viteLogo} class="logo" alt="Vite logo" />
         </a>
@@ -62,25 +44,30 @@ function App() {
       </div>
 
       <h1>WebAssembly Demo</h1>
+
       <div class="p-lg vbox justify-center">
-        <div class="hbox justify-center p-md">
-          <h3>C/emscripten</h3>
-          <WasmC />
-        </div>
+        <SampleData />
+      </div>
 
-        <div class="hbox justify-center p-md">
-          <h3>Rust</h3>
-          <WasmRust />
-        </div>
-
+      <div class="p-lg vbox justify-center">
         <div class="hbox justify-center p-md">
           <h3>Pure JS</h3>
           <Js />
         </div>
 
         <div class="hbox justify-center p-md">
+          <h3>C/emscripten</h3>
+          <WasmC />
+        </div>
+
+        <div class="hbox justify-center p-md">
           <h3>JIT-optimized JS</h3>
           <JsJit />
+        </div>
+
+        <div class="hbox justify-center p-md">
+          <h3>Rust</h3>
+          <WasmRust />
         </div>
       </div>
 

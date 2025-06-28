@@ -1,5 +1,11 @@
 import { vectorAData, vectorBData } from "./precomputed_samples.js";
 
+export interface SampleData {
+  vectorsA: Array<Float32Array>;
+  vectorsB: Array<Float32Array>;
+  dims: number;
+}
+
 // a simple PRNG based on a seed
 export const seededRandom = (seed: number) => () => {
   const x = Math.sin(seed++) * 10000;
@@ -28,7 +34,7 @@ export const generateSampleData = (
   seed = 31337,
   dims = 1024,
   size = 20000,
-) => ({
+): SampleData => ({
   // generate 2 x 20000 unique vectors á 1024 dimensions, seeded
   vectorsA: Array.from({ length: size }, (_v: number, k) =>
     Float32Array.from(seededShuffle(vectorAData, seed + k)),

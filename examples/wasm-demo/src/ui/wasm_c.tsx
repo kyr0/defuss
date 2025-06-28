@@ -1,14 +1,7 @@
 import { $ } from "defuss";
-import { generateSampleData } from "../utils/math.js";
 // @ts-ignore: TS cannot resolve ?url imports, remove it and see that it works just fine
 import { init_wasm_c, dot_product_c, dot_product_c_flat } from "../wasm_c.js";
-
-// 2 x 1024 float32 vectors with 1024 dimensions, seeded random
-const sampleData20kx1024dims = generateSampleData(
-  31337 /* seed */,
-  1024 /* dimensions */,
-  100000 /* samples */,
-);
+import { shuffle, vectorsA, vectorsB } from "./sample_data.js";
 
 export const WasmC = () => {
   $(async () => {
@@ -16,19 +9,15 @@ export const WasmC = () => {
   });
 
   const compute = (type: "flat" | "serial") => () => {
+    shuffle();
+    console.log("Input vectorsA[0][0]", vectorsA[0][0]);
     const now = performance.now();
     console.log("WASM C: computing dot product...");
 
     const resultArray: Float32Array =
       type === "flat"
-        ? dot_product_c_flat(
-            sampleData20kx1024dims.vectorsA,
-            sampleData20kx1024dims.vectorsB,
-          )
-        : dot_product_c(
-            sampleData20kx1024dims.vectorsA,
-            sampleData20kx1024dims.vectorsB,
-          );
+        ? dot_product_c_flat(vectorsA, vectorsB)
+        : dot_product_c(vectorsA, vectorsB);
 
     const elapsed = performance.now() - now;
     console.log(
@@ -40,11 +29,11 @@ export const WasmC = () => {
   return (
     <>
       <button type="button" onClick={compute("flat")}>
-        🦆 Flat, chunked
+        🐢 Flat, chunked
       </button>
 
-      <button type="button" onClick={compute("serial")}>
-        🦆 Serial
+      <button type="button" class="m-md" onClick={compute("serial")}>
+        🐢 Serial
       </button>
     </>
   );
