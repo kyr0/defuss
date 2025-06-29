@@ -1,8 +1,18 @@
 import { windowManager, type CreateWindowOptions } from "../../window.js";
-import { createRef, type Props, $ } from "defuss";
+import { createRef, type Props, $, type Ref } from "defuss";
 import { throttle } from "defuss-runtime";
 
 export interface WindowProps extends Props, CreateWindowOptions {}
+
+export interface WindowRefState {
+  onClose: () => void;
+  onMinimize: () => void;
+  onMaximize: () => void;
+  minimize: () => void;
+  maximize: () => void;
+  restore: () => void;
+  close: () => void;
+}
 
 export function Window({
   title = "Untitled",
@@ -11,11 +21,14 @@ export function Window({
   x = 50,
   y = 100,
   children,
-  ref = createRef(),
+  ref = createRef<WindowRefState>(),
   resizable = true,
   minimizable = true,
   maximizable = true,
   id = undefined,
+  onClose = () => {},
+  onMinimize = () => {},
+  onMaximize = () => {},
 }: WindowProps) {
   let isDragging = false;
 
@@ -32,6 +45,38 @@ export function Window({
   });
 
   let dragStart = { x: initialWindowState.x, y: initialWindowState.y };
+
+  ref.state = {
+    onClose: () => {
+      console.log("Window closed");
+      onClose();
+    },
+    onMinimize: () => {
+      console.log("Window minimized");
+      onMinimize();
+    },
+    onMaximize: () => {
+      console.log("Window maximized");
+      onMaximize();
+    },
+
+    minimize: () => {
+      windowManager.minimizeWindow(initialWindowState.id);
+    },
+
+    maximize: () => {
+      windowManager.maximizeWindow(initialWindowState.id);
+    },
+
+    restore: () => {
+      windowManager.restoreWindow(initialWindowState.id);
+    },
+
+    close: () => {
+      console.log("Closing window");
+      windowManager.closeWindow(initialWindowState.id);
+    },
+  } as WindowRefState;
 
   const updateWindowState = throttle(
     (newState: Partial<CreateWindowOptions>) => {
@@ -102,12 +147,27 @@ export function Window({
   const onWindowMounted = () => {
     windowManager.updateWindow(initialWindowState.id, {
       el: ref.current as HTMLElement,
+      ref: ref as Ref<WindowRefState>,
     });
     windowManager.setActiveWindow(initialWindowState.id);
   };
 
-  const onWindowCloseClick = () =>
-    windowManager.removeWindow(initialWindowState.id);
+  const onCloseClick = () => windowManager.closeWindow(initialWindowState.id);
+
+  const onMaximizeClick = async () => {
+    const currentState = windowManager.getWindow(initialWindowState.id);
+
+    if (currentState?.maximized) {
+      windowManager.restoreWindow(initialWindowState.id);
+    } else {
+      // If the window is not maximized, maximize it
+      windowManager.maximizeWindow(initialWindowState.id);
+    }
+  };
+
+  const onMinimizeClick = async () => {
+    windowManager.minimizeWindow(initialWindowState.id);
+  };
 
   return (
     <div
@@ -131,12 +191,20 @@ export function Window({
       >
         <div class="title-bar-text">{title}</div>
         <div class="title-bar-controls">
-          <button type="button" aria-label="Minimize"></button>
-          <button type="button" aria-label="Maximize"></button>
+          <button
+            type="button"
+            aria-label="Minimize"
+            onClick={onMinimizeClick}
+          ></button>
+          <button
+            type="button"
+            aria-label="Maximize"
+            onClick={onMaximizeClick}
+          ></button>
           <button
             type="button"
             aria-label="Close"
-            onClick={onWindowCloseClick}
+            onClick={onCloseClick}
           ></button>
         </div>
       </div>

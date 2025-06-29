@@ -2,7 +2,11 @@
 members = [
     "packages/fastmath",
     "packages/lightningimg/lightningimg-wasm",
-    "packages/search"
+    "packages/search",
+    "packages/langid",
+]
+exclude = [
+    "examples/wasm-demo",
 ]
 resolver = "2"
 

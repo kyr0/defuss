@@ -1,4 +1,6 @@
-import { $ } from "defuss";
+import { $, type Ref } from "defuss";
+import type { WindowRefState } from "./regui/components/window.js";
+import { desktopManager } from "./index.js";
 
 export interface CreateWindowOptions {
   id?: string;
@@ -21,10 +23,14 @@ export interface CreateWindowOptions {
 export interface WindowState {
   id: string;
   el: HTMLElement;
+  ref: Ref<WindowRefState>;
   title: string;
   icon: string;
   width: number;
   height: number;
+  // Previous position before maximization or minimization
+  prevX: number;
+  prevY: number;
   x: number;
   y: number;
   resizable: boolean;
@@ -115,6 +121,8 @@ export class WindowManager {
       icon: options.icon || defaultWindowOptions.icon,
       width: options.width || defaultWindowOptions.width,
       height: options.height || defaultWindowOptions.height,
+      prevX: options.x || defaultWindowOptions.x,
+      prevY: options.y || defaultWindowOptions.y,
       x: options.x || defaultWindowOptions.x,
       y: options.y || defaultWindowOptions.y,
       resizable:
@@ -157,14 +165,25 @@ export class WindowManager {
     id: string,
     options: Partial<WindowState>,
   ): WindowState | undefined {
-    const window = this.getWindow(id);
-    if (!window) return undefined;
+    const win = this.getWindow(id);
+    if (!win) return undefined;
+
+    // special case for prevX and prevY
+    if (win.x) {
+      options.prevX = win.x;
+    }
+
+    if (win.y) {
+      options.prevY = win.y;
+    }
 
     const updatedWindow: WindowState = {
-      ...window,
+      ...win,
       ...options,
-      id: window.id, // ensure ID remains unchanged
+      id: win.id, // ensure ID remains unchanged
     };
+
+    console.log("window move update stattus", updatedWindow);
 
     // Update the window status in the list
     this.windows = this.windows.map((win) =>
@@ -178,16 +197,112 @@ export class WindowManager {
     return updatedWindow;
   }
 
-  removeWindow(id: string) {
-    const window = this.getWindow(id);
+  closeWindow(id: string) {
+    const win = this.getWindow(id);
 
-    if (!window) return;
+    if (!win) return;
 
-    $(window.el).remove(); // Remove the window element from the DOM
+    $(win.el).remove(); // Remove the window element from the DOM
 
     this.windows = this.windows.filter((win) => win.id !== id);
 
     this.renderWindowsActivationState();
+
+    win.ref.state?.onClose?.(); // Trigger the close callback if provided
+  }
+
+  maximizeWindow(id: string) {
+    let win = this.getWindow(id);
+    if (!win) return;
+
+    // x and y position update (update prev to current position)
+    // updateWindow will internally update prevX and prevY
+    win = this.updateWindow(id, { prevX: win.x, prevY: win.y })!;
+
+    console.log("[WindowManager] Maximizing window:", id, win);
+    // Toggle maximized state
+    const isMaximized = !win.maximized;
+
+    // Update the window state
+    win = this.updateWindow(id, {
+      maximized: isMaximized,
+      width: isMaximized ? win.el.clientWidth : win.width,
+      height: isMaximized ? win.el.clientHeight : win.height,
+      x: isMaximized ? 0 : win.x,
+      y: isMaximized ? 0 : win.y,
+    })!;
+
+    const desktopDimensions = desktopManager.getDimensions();
+
+    const $win = $(win.el);
+    $win.css({
+      width: isMaximized ? `${desktopDimensions.width}px` : `${win.width}px`,
+      height: isMaximized ? `${desktopDimensions.height}px` : `${win.height}px`,
+      left: isMaximized ? "0px" : `${win.x}px`,
+      top: isMaximized ? "0px" : `${win.y}px`,
+    });
+
+    // Trigger the maximize callback if provided
+    if (isMaximized) {
+      win.ref.state?.onMaximize?.();
+    }
+  }
+
+  minimizeWindow(id: string) {
+    let win = this.getWindow(id);
+    if (!win) return;
+
+    // x and y position update (update prev to current position)
+    win = this.updateWindow(id, { prevX: win.x, prevY: win.y })!;
+
+    // Toggle minimized state
+    const isMinimized = !win.minimized;
+
+    // Update the window state
+    win = this.updateWindow(id, {
+      minimized: isMinimized,
+      width: isMinimized ? 0 : win.width,
+      height: isMinimized ? 0 : win.height,
+      x: isMinimized ? -10000 : win.x, // Move off-screen when minimized
+      y: isMinimized ? -10000 : win.y,
+    })!;
+
+    const $win = $(win.el);
+    $win.css({
+      width: isMinimized ? "0px" : `${win.width}px`,
+      height: isMinimized ? "0px" : `${win.height}px`,
+      left: isMinimized ? "-10000px" : `${win.x}px`,
+      top: isMinimized ? "-10000px" : `${win.y}px`,
+    });
+
+    // Trigger the minimize callback if provided
+    if (isMinimized) {
+      win.ref.state?.onMinimize?.();
+    }
+  }
+
+  restoreWindow(id: string) {
+    let win = this.getWindow(id);
+    if (!win) return;
+
+    console.log("[WindowManager] Restoring window:", id, win);
+
+    // Restore the window to its previous position and size
+    win = this.updateWindow(id, {
+      maximized: false,
+      width: win.prevX ? win.width : 800, // Default width if not set
+      height: win.prevY ? win.height : 600, // Default height if not set
+      x: win.prevX || 0,
+      y: win.prevY || 0,
+    })!;
+
+    const $win = $(win.el);
+    $win.css({
+      width: `${win.width}px`,
+      height: `${win.height}px`,
+      left: `${win.x}px`,
+      top: `${win.y}px`,
+    });
   }
 }
 

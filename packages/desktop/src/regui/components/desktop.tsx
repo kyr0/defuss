@@ -1,6 +1,6 @@
 import { createRef, type Props, $ } from "defuss";
 import { Button } from "./button.js";
-import { Window } from "./window.js";
+import { Window, type WindowRefState } from "./window.js";
 
 export function Desktop({ ref }: Props) {
   $(() => {
@@ -8,12 +8,45 @@ export function Desktop({ ref }: Props) {
   });
 
   const onOpenWindow = async () => {
+    const winRef = createRef<WindowRefState>();
+
     await $(ref).append(
-      <Window width={300} height={200} title="Test Window">
+      <Window
+        width={300}
+        height={200}
+        title="Test Window"
+        ref={winRef}
+        onClose={() => {
+          console.log("I WAS CLOSED!");
+        }}
+        onMaximize={() => {
+          console.log("I WAS MAXIMIZED!");
+        }}
+        onMinimize={() => {
+          console.log("I WAS MINIMIZED!");
+        }}
+      >
         <p>Hello, world!</p>
-        <section class="field-row" style="justify-content: flex-end">
-          <button type="button">OK</button>
-          <button type="button">Cancel</button>
+        <section class="field-row" style="justify-content: space-between;">
+          <button
+            type="button"
+            onClick={() => {
+              console.log("Cancel clicked");
+              winRef.state?.close();
+            }}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              console.log("OK clicked");
+              winRef.state?.close();
+            }}
+          >
+            OK
+          </button>
         </section>
       </Window>,
     );

@@ -1,6 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  publicDir: "public",
   server: {
     headers: {
       "Cross-Origin-Embedder-Policy": "require-corp",

@@ -1,19 +1,19 @@
 {
-  "name": "defuss-search",
+  "name": "defuss-langid",
   "version": "0.0.1",
   "type": "module",
   "packageManager": "pnpm@9.14.2",
-  "description": "Hybrid Text & Vector Search",
+  "description": "Extremely fast, small and accurate language detection for the web, written in Rust and compiled to WebAssembly.",
   "repository": "https://github.com/kyr0/defuss",
   "scripts": {
     "prebuild": "rm -rf ./pkg",
     "build": "wasm-pack build --target web --out-dir pkg",
     "postbuild": "pnpm decompile && pkgroll",
     "clean": "rm -rf pkg",
-    "decompile": "wasm2wat --generate-names --verbose --enable-threads pkg/defuss_search_bg.wasm -o pkg/defuss_search_bg.wast > pkg/defuss_search_bg.log 2>&1",
+    "decompile": "wasm2wat --generate-names --verbose --enable-threads pkg/defuss_langid_bg.wasm -o pkg/defuss_langid_bg.wast > pkg/defuss_langid_bg.log 2>&1",
     "pretest": "pnpm build",
     "test": "cargo test && vitest run",
-    "prebench": "pnpm build && mkdir -p public && cp -R tools/WebFAQ/dataset/*_flat.json public/",
+    "prebench": "pnpm build && mkdir -p public && cp dataset/lid16.ftz public/",
     "bench": "vitest run --config vitest.bench.config.ts",
     "release": "sh scripts/release.sh"
   },

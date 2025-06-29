@@ -79,6 +79,7 @@ export const hydrate = (
     // update ref.current if ref is provided
     if (vnode.attributes!.ref) {
       vnode.attributes!.ref.current = element;
+      element._defussRef = vnode.attributes!.ref; // store ref on element for later access
     }
 
     // attach event listeners

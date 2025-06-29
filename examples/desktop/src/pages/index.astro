@@ -26,8 +26,9 @@ const defaultBackgroundImagePath = "/defuss_bliss_4k.webp";
 
 	<body>
 		<!-- Starts the boot process, only in-browser (no SSR here) -->
+		 {/* 
 		<BootProcess client:only bootDelayMs={2500} />
-		{/* 
+		*/}
 		<Shell
 			client:only
 			desktopConfig={{
@@ -36,6 +37,5 @@ const defaultBackgroundImagePath = "/defuss_bliss_4k.webp";
 				backgroundImage: defaultBackgroundImagePath,
 			}}
 		/>
-		*/}
 	</body>
 </html>

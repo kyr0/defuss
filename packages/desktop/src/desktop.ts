@@ -1,4 +1,6 @@
 import type { DefussApp } from "./app.js";
+import { taskbarManager } from "./index.js";
+import type { Dimensions2D } from "./types.js";
 
 export interface DesktopIconConfig {
   name: string;
@@ -71,6 +73,16 @@ export class DesktopManager {
   addIcon(icon: DefussDesktopAppIcon) {
     this.options.icons.push(icon);
     console.log(`Icon added: ${icon.config.name}`);
+  }
+
+  getDimensions(): Dimensions2D {
+    if (!this.el) {
+      throw new Error("Desktop not initialized. Call init() first.");
+    }
+    return {
+      width: this.el.offsetWidth,
+      height: this.el.offsetHeight - taskbarManager.getDimensions().height, // destop is root element minus taskbar height
+    };
   }
 }
 

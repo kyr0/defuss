@@ -30,10 +30,11 @@ import {
   type TransitionConfig,
 } from "./transitions.js";
 
-const CLASS_ATTRIBUTE_NAME = "class";
-const XLINK_ATTRIBUTE_NAME = "xlink";
-const XMLNS_ATTRIBUTE_NAME = "xmlns";
-const REF_ATTRIBUTE_NAME = "ref";
+export const CLASS_ATTRIBUTE_NAME = "class";
+export const XLINK_ATTRIBUTE_NAME = "xlink";
+export const XMLNS_ATTRIBUTE_NAME = "xmlns";
+export const REF_ATTRIBUTE_NAME = "ref";
+export const DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE = "dangerouslySetInnerHTML";
 
 const nsMap = {
   [XMLNS_ATTRIBUTE_NAME]: "http://www.w3.org/2000/xmlns/",
@@ -318,13 +319,13 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       // attributes not set (undefined) are ignored; use null value to reset an attributes state
       if (typeof value === "undefined") return; // if not set, ignore
 
-      // TODO: use DANGROUSLY_SET_INNER_HTML_ATTRIBUTE here
-      if (name === "dangerouslySetInnerHTML") return; // special case, handled elsewhere
+      if (name === DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE) return; // special case, handled elsewhere
 
       // save ref as { current: DOMElement } in ref object
       // allows for ref={someRef}
       if (name === REF_ATTRIBUTE_NAME && typeof value !== "function") {
         value.current = domElement; // update ref
+        (domElement as any)._defussRef = value; // store ref on element for later access
         return; // but do not render the ref as a string [object Object] into the DOM
       }
 

@@ -1,5 +1,4 @@
-import type { Globals, NodeType } from "../render/index.js";
-import type { TransitionConfig } from "../render/transitions.js";
+import type { Globals, NodeType, Ref } from "../render/index.js";
 
 export type FormFieldValue = string | boolean;
 export interface FormKeyValues {

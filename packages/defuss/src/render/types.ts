@@ -7,6 +7,12 @@ export type * as CSS from "csstype";
 
 export type Globals = Performance & Window & typeof globalThis;
 
+declare global {
+  interface HTMLElement {
+    _defussRef?: Ref;
+  }
+}
+
 // --- Types & Helpers ---
 export type NodeType =
   | Node

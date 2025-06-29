@@ -1,3 +1,5 @@
+import type { Dimensions2D } from "./types.js";
+
 export interface CreateTaskbarOptions {
   position?: "top" | "bottom" | "left" | "right";
   stateful?: boolean; // if stateful, and if it has an id, it uses windowManagerStore to save its state
@@ -30,6 +32,17 @@ export class TaskbarManager {
     if (options.stateful) {
       // Load state from windowManagerStore if available
     }
+  }
+
+  getDimensions(): Dimensions2D {
+    const el = document.querySelector(".taskbar");
+    if (!el) {
+      return { width: 0, height: 0 };
+    }
+    return {
+      width: el.clientWidth,
+      height: el.clientHeight,
+    };
   }
 }
 

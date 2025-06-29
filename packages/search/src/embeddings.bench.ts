@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { openAIEmbed } from "./embeddings.js";
+import { embed } from "./embeddings.js";
 
 // Configuration for local embedding server
 // NOTE: These tests require a running OpenAI-compatible embedding server
@@ -16,7 +16,7 @@ describe("Embedding API Tests", () => {
 
   it("should embed a single text", async () => {
     const text = "Hello, world!";
-    const response = await openAIEmbed(
+    const response = await embed(
       { model: EMBEDDING_MODEL, input: text },
       {
         baseURL: "http://127.0.0.1:1234/v1",
@@ -36,7 +36,7 @@ describe("Embedding API Tests", () => {
       "Third text to embed",
     ];
 
-    const response = await openAIEmbed(
+    const response = await embed(
       { model: EMBEDDING_MODEL, input: texts },
       {
         baseURL: "http://127.0.0.1:1234/v1",
@@ -55,7 +55,7 @@ describe("Embedding API Tests", () => {
   it("should handle large text input", async () => {
     const largeText = "This is a large text. ".repeat(100);
 
-    const response = await openAIEmbed(
+    const response = await embed(
       { model: EMBEDDING_MODEL, input: largeText },
       {
         baseURL: "http://127.0.0.1:1234/v1",
@@ -74,7 +74,7 @@ describe("Embedding API Tests", () => {
     );
 
     const promises = texts.map((text) =>
-      openAIEmbed(
+      embed(
         { model: EMBEDDING_MODEL, input: text },
         {
           baseURL: "http://127.0.0.1:1234/v1",
