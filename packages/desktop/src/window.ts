@@ -236,11 +236,18 @@ export class WindowManager {
 
     const $win = $(win.el);
     $win.css({
-      width: isMaximized ? `${desktopDimensions.width}px` : `${win.width}px`,
-      height: isMaximized ? `${desktopDimensions.height}px` : `${win.height}px`,
-      left: isMaximized ? "0px" : `${win.x}px`,
-      top: isMaximized ? "0px" : `${win.y}px`,
+      width: isMaximized
+        ? `${desktopDimensions.width + 6}px`
+        : `${win.width}px`,
+      height: isMaximized
+        ? `${desktopDimensions.height + 9}px`
+        : `${win.height}px`,
+      left: isMaximized ? "-3px" : `${win.x}px`,
+      top: isMaximized ? "-3px" : `${win.y}px`,
     });
+
+    // Update the title bar button state
+    this.toggleTitleBarMaximizedButtonState(id);
 
     // Trigger the maximize callback if provided
     if (isMaximized) {
@@ -303,6 +310,47 @@ export class WindowManager {
       left: `${win.x}px`,
       top: `${win.y}px`,
     });
+
+    // Update the title bar button state
+    this.toggleTitleBarMaximizedButtonState(id);
+  }
+
+  toggleTitleBarMaximizedButtonState(id: string) {
+    console.log(
+      "[WindowManager] Toggling maximized button state for window:",
+      id,
+    );
+
+    const win = this.getWindow(id);
+    if (!win) return;
+
+    // Toggle maximized state
+    const isMaximized = !win.maximized;
+
+    console.log(
+      "[WindowManager] Toggling maximized button state for window:",
+      win,
+    );
+
+    $(win.el)
+      .query(
+        isMaximized
+          ? "button[aria-label='Restore']"
+          : "button[aria-label='Maximize']",
+      )
+      .debug((el) => {
+        console.log(
+          "[WindowManager] Found title bar button for window:",
+          id,
+          el,
+        );
+      })
+      .attr("aria-label", isMaximized ? "Maximize" : "Restore");
+
+    console.log(
+      "[WindowManager] Updated title bar button state for window:",
+      id,
+    );
   }
 }
 

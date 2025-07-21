@@ -104,12 +104,12 @@ Before looping, subtract fixed-size blocks from the **250 kB target**:
 
 | Block                                 | Size        |
 | ------------------------------------- | ----------- |
-| Header (§ 9, offsets 0 – 39)          | **40 B**    |
+| Header (§ 9, offsets 0 – 39)          | 40 B        |
 | Script masks (44 B × `LANG_COUNT`)    | 4 400 B     |
 | ISO-639-1 codes (2 B × `LANG_COUNT`)  | 200 B       |
 | Offset table (6 × u32 × `LANG_COUNT`) | 2 400 B     |
-| **Slack padding**                     | **512 B**   |
-| Fallback byte-pair table (§ 13)       | **3 072 B** |
+| --Slack padding--                     | 512 B       |
+| Fallback byte-pair table (§ 13)       | 3 072 B     |
 
 ```text
 bytes_left = 250*1024 − fixed_blocks
@@ -118,7 +118,7 @@ bytes_left = 250*1024 − fixed_blocks
 bytes_left -= 110*1024
 
 for n = 4 downto 1 {
-    bytes_needed = Σ_L Kₙ(L) × 3   // delta-encoded ID-list bytes (worst-case)
+    bytes_needed = Σ_L Kₙ(L) × 3  // delta-encoded ID-list bytes (worst-case)
     if bytes_needed > bytes_left {
         scale   = bytes_left / bytes_needed
         Kₙ(L)   = floor(Kₙ(L) × scale)   // for all L
@@ -145,7 +145,7 @@ Candidate formulas (grid-searched on dev set):
 
 * **df(g)** stored as **u8** (clamped ≥ 1).
 * |V| read from header; *n* inferred from ID range (§ 9).
-* Winning formula’s index (0 – 3) saved in `WEIGHT_ID`.
+* Winning formula's index (0 – 3) saved in `WEIGHT_ID`.
 * `W(g)` computed at load-time.
 
 ---
@@ -167,7 +167,9 @@ for n in 1..=4 {
 
 ---
 
-## 9  Binary model format “.lidm v1”
+## 9  Binary model format ".dlidm"
+
+`dlidm` = **defuss language id model**; **LIDM** is the file extension.
 
 *Little-endian throughout; header size = 40 B.*
 
@@ -179,7 +181,7 @@ for n in 1..=4 {
 | 1   | u8      | VERSION        | 0x01                     |
 | 2   | u8      | SPLIT\_MARK    | 0x07                     |
 | 3   | u8      | MAX\_N         | 0x04                     |
-| 4   | u8      | BITS\_PER\_ID  | **14 – 16** (abort > 16) |
+| 4   | u8      | BITS\_PER\_ID  | 14 – 16 (abort > 16)     |
 | 5   | u8      | WEIGHT\_ID     | 0 – 3                    |
 | 6   | u16     | LANG\_COUNT    |                          |
 | 8   | u32     | VOCAB\_COUNT   | (≤ 65 535)               |
@@ -281,7 +283,7 @@ grid_search_weights();                  // 0–3
 optimise_tau();                         // Nelder–Mead
 
 // 6. Serialise
-write_lidm();                           // §9 format
+write_dlidm();                          // §9 format
 ```
 
 ---
@@ -419,7 +421,7 @@ match model.weight_id {
 ## 16  Reviewer checklist
 
 1. Header is 40 B; CRC passes; offsets non-overlapping.
-2. `.lidm` ≤ 250 kB; stripped Wasm ≈ 38 kB.
+2. `.dlidm` ≤ 250 kB; stripped Wasm ≈ 38 kB.
 3. Macro-F₁ on held-out test ≥ 0.95 for ≥ 50-char inputs; no language recall < 0.80.
 4. ≥ 0.75 accuracy on 3–4-char inputs via fallback.
 5. Resident memory ≤ 250 kB; latency < 1 ms on 200-char input.

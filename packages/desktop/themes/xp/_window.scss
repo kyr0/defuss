@@ -26,7 +26,7 @@
 .title-bar {
     font-family: "Trebuchet MS";
     background: linear-gradient(180deg, #2c90ff 4%, #0055e5 12%, #0055ea 40%,  #0364f9 65%, #036afe 90%, #0360fc 55%, #004de4 98%, #0043cf 100%);
-    padding: 3px 5px 3px 3px;
+    padding: 3px 3px 2px 3px;
     border-top: 1px solid #0831d9;
     border-left: 1px solid #0831d9;
     border-right: 1px solid #001ea0;
@@ -55,8 +55,8 @@
 .title-bar-controls {
     display: flex;
     button {
-        min-width: 21px;
-        min-height: 21px;
+        min-width: 22px;
+        min-height: 22px;
         margin-left: 2px;
         background-repeat: no-repeat;
         background-position: center;
