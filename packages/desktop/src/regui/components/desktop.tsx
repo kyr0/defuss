@@ -38,6 +38,8 @@ export function Desktop({ ref }: Props) {
             Cancel
           </button>
 
+          <Button onClick={onOpenWindow}>Open Window</Button>
+
           <button
             type="button"
             onClick={() => {

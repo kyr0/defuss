@@ -97,7 +97,13 @@ export class WindowManager {
   }
 
   getActiveWindow(): WindowState | undefined {
-    return this.windows[this.windows.length - 1]; // Return the last window as active
+    // Find the last non-minimized window
+    for (let i = this.windows.length - 1; i >= 0; i--) {
+      if (!this.windows[i].minimized) {
+        return this.windows[i];
+      }
+    }
+    return undefined; // Return undefined if all windows are minimized
   }
 
   getWindow(id?: string): WindowState | undefined {
