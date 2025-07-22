@@ -103,16 +103,15 @@ ul.taskbar {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 22px;
-  height: 22px;
+  width: 21px;
+  height: 21px;
   margin-right: -11px;
-  margin-top: 4px;
+  margin-top: 4.5px;
   border-radius: 50%;
-  cursor: pointer;
   background-image: radial-gradient(
     ellipse 75% 70% at 15% 15%,
-    #8ed6f9 0%,
-    #0671eb 90%
+      #c3e5f9 0%,
+      #0d98e8 90%
   );
 
   &::before {
@@ -123,10 +122,8 @@ ul.taskbar {
     right: 0;
     bottom: 0;
     border-radius: 50%;
-    padding: 1px;
-    background: linear-gradient(to bottom right, #10225e 20%, #ced6e6 80%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: destination-out;
+    padding: 1.25px;
+    background: linear-gradient(to bottom right, #10225ecc 20%, #ced6e6cc 80%);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: exclude;
   }
@@ -146,8 +143,8 @@ ul.taskbar {
   &:hover {
     background-image: radial-gradient(
       ellipse 75% 70% at 15% 15%,
-      #c3e5f9 0%,
-      #0d98e8 90%
+      #e1f1fa 0%,
+      #41b0f1 90%
     );
   }
 
@@ -155,8 +152,8 @@ ul.taskbar {
   &.active {
     background-image: radial-gradient(
       ellipse 60% 60% at 10% 10%,
-      #86caec 0%,
-      #0147be 90%
+      #90d7f9 0%,
+      #1a7bea 90%
     );
     .arrow {
       border-top-color: #6dcaf8;
