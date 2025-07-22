@@ -5,6 +5,9 @@ export const Taskbar = () => {
     <div class="bar crt">
       <StartButton />
       <ul class="taskbar"></ul>
+      <div class="tray-toggle">
+        <div class="arrow"></div>
+      </div>
       <div class="taskbar__clock">
         <span>7:02 AM</span>
       </div>

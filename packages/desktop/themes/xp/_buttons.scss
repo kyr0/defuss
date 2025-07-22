@@ -1,3 +1,5 @@
+@use "variables" as *;
+
 /*-------------------------------------------*\
     Buttons
 \*-------------------------------------------*/
@@ -39,5 +41,45 @@ button {
     }
     &::-moz-focus-inner {
         border: 0;
+    }
+}
+
+.start-button {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    background-image: url("#{$icon-base-path}startbutton.webp");
+    background-repeat: no-repeat;
+    background-position: 0 -30px;
+    background-size: auto 90px;
+    height: 30px;
+    width: 85px;
+    align-items: center;
+    justify-content: space-evenly;
+
+    &:hover,
+    &.hover {
+    background-position: 0 0;
+    }
+
+    &:active,
+    &.active {
+        background-position: 0 -60px;
+    }
+
+    a {
+        cursor: inherit;
+        display: flex;
+        height: 24px;
+        font-family: Arial;
+        text-decoration: none;
+        -webkit-font-smoothing: antialiased;
+        font-style: italic;
+        font-size: 18px;
+        font-weight: bold;
+        color: #fff;
+        text-shadow: 0px 0px 4px #000;
+        user-select: none;
+        outline: none;
     }
 }

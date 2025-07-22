@@ -18,6 +18,8 @@ export class DefussDesktopAppIcon {
   constructor(public config: DesktopIconConfig) {}
 }
 
+export type DesktopResizeCallback = (dimensions: Dimensions2D) => void;
+
 export interface CreateDesktopOptions {
   icons: DefussDesktopAppIcon[];
   iconSize?: "small" | "medium" | "large";
@@ -36,6 +38,8 @@ export const defaultDesktopOptions: CreateDesktopOptions = {
 export class DesktopManager {
   el?: HTMLElement;
   state?: DesktopState;
+  resizeObserver?: ResizeObserver;
+  resizeCallbacks: Set<DesktopResizeCallback> = new Set();
 
   constructor(public options: CreateDesktopOptions = defaultDesktopOptions) {}
 
@@ -47,6 +51,9 @@ export class DesktopManager {
     this.state = this.state || {
       icons: this.options.icons.map((icon) => icon.config),
     };
+
+    // Set up resize observer for the desktop element
+    this.setupResizeObserver();
 
     this.render(el);
   }
@@ -82,6 +89,45 @@ export class DesktopManager {
     return {
       width: this.el.offsetWidth,
       height: this.el.offsetHeight - taskbarManager.getDimensions().height, // destop is root element minus taskbar height
+    };
+  }
+
+  private setupResizeObserver() {
+    if (!this.el) return;
+
+    // Clean up existing observer
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+
+    // Create new ResizeObserver
+    this.resizeObserver = new ResizeObserver(() => {
+      const dimensions = this.getDimensions();
+      // Notify all registered callbacks
+      this.resizeCallbacks.forEach((callback) => {
+        try {
+          callback(dimensions);
+        } catch (error) {
+          console.error("Error in desktop resize callback:", error);
+        }
+      });
+    });
+
+    // Start observing the desktop element
+    this.resizeObserver.observe(this.el);
+  }
+
+  /**
+   * Register a callback for desktop resize events
+   * @param callback Function to call when desktop is resized
+   * @returns Unregister function to remove the callback
+   */
+  onResize(callback: DesktopResizeCallback): () => void {
+    this.resizeCallbacks.add(callback);
+
+    // Return unregister function
+    return () => {
+      this.resizeCallbacks.delete(callback);
     };
   }
 }

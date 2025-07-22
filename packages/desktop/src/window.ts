@@ -1,6 +1,8 @@
 import { $, type Ref } from "defuss";
 import type { WindowRefState } from "./regui/components/window.js";
 import { desktopManager } from "./index.js";
+import type { Dimensions2D } from "./types.js";
+import { debounce } from "defuss-runtime";
 
 export interface CreateWindowOptions {
   id?: string;
@@ -28,9 +30,13 @@ export interface WindowState {
   icon: string;
   width: number;
   height: number;
-  // Previous position before maximization or minimization
+  // Previous position and size before maximization or minimization
   prevX: number;
   prevY: number;
+  prevWidth: number;
+  prevHeight: number;
+  // Flag to track if original dimensions have been stored
+  originalDimensionsStored: boolean;
   x: number;
   y: number;
   resizable: boolean;
@@ -60,6 +66,35 @@ export const defaultWindowOptions: CreateWindowOptions = {
 
 export class WindowManager {
   windows: Array<WindowState> = [];
+
+  constructor() {
+    $(() => {
+      // Initialize the window manager
+      desktopManager.onResize(debounce(this.onDesktopResized.bind(this), 50));
+    });
+  }
+
+  onDesktopResized(dimensions: Dimensions2D) {
+    // Update all maximized windows to fit the new desktop dimensions
+    this.windows.forEach((win) => {
+      if (win.maximized) {
+        // Update the window state with new dimensions
+        this.updateWindow(win.id, {
+          width: dimensions.width,
+          height: dimensions.height,
+        });
+
+        // Update the actual DOM element styling
+        const $win = $(win.el);
+        $win.css({
+          width: `${dimensions.width + 6}px`,
+          height: `${dimensions.height + 9}px`,
+          left: "-3px",
+          top: "-3px",
+        });
+      }
+    });
+  }
 
   getActiveWindow(): WindowState | undefined {
     return this.windows[this.windows.length - 1]; // Return the last window as active
@@ -123,6 +158,9 @@ export class WindowManager {
       height: options.height || defaultWindowOptions.height,
       prevX: options.x || defaultWindowOptions.x,
       prevY: options.y || defaultWindowOptions.y,
+      prevWidth: options.width || defaultWindowOptions.width,
+      prevHeight: options.height || defaultWindowOptions.height,
+      originalDimensionsStored: false,
       x: options.x || defaultWindowOptions.x,
       y: options.y || defaultWindowOptions.y,
       resizable:
@@ -183,8 +221,6 @@ export class WindowManager {
       id: win.id, // ensure ID remains unchanged
     };
 
-    console.log("window move update stattus", updatedWindow);
-
     // Update the window status in the list
     this.windows = this.windows.map((win) =>
       win.id === id
@@ -215,24 +251,45 @@ export class WindowManager {
     let win = this.getWindow(id);
     if (!win) return;
 
-    // x and y position update (update prev to current position)
-    // updateWindow will internally update prevX and prevY
-    win = this.updateWindow(id, { prevX: win.x, prevY: win.y })!;
-
-    console.log("[WindowManager] Maximizing window:", id, win);
     // Toggle maximized state
     const isMaximized = !win.maximized;
+
+    // Store current ACTUAL dimensions before maximizing (only once)
+    if (isMaximized) {
+      // Only store original dimensions if we've never stored them before
+      if (!win.originalDimensionsStored) {
+        // Get actual rendered dimensions
+        const actualWidth = win.el.offsetWidth || win.width;
+        const actualHeight = win.el.offsetHeight || win.height;
+        win = this.updateWindow(id, {
+          prevX: win.x,
+          prevY: win.y,
+          prevWidth: actualWidth,
+          prevHeight: actualHeight,
+          originalDimensionsStored: true,
+        })!;
+      } else {
+        // Just update position but keep original dimensions
+        win = this.updateWindow(id, {
+          prevX: win.x,
+          prevY: win.y,
+        })!;
+      }
+    }
+
+    const desktopDimensions = desktopManager.getDimensions();
+
+    // Get fresh window data after storing previous values
+    const freshWin = this.getWindow(id)!;
 
     // Update the window state
     win = this.updateWindow(id, {
       maximized: isMaximized,
-      width: isMaximized ? win.el.clientWidth : win.width,
-      height: isMaximized ? win.el.clientHeight : win.height,
-      x: isMaximized ? 0 : win.x,
-      y: isMaximized ? 0 : win.y,
+      width: isMaximized ? desktopDimensions.width : freshWin.prevWidth,
+      height: isMaximized ? desktopDimensions.height : freshWin.prevHeight,
+      x: isMaximized ? 0 : freshWin.prevX,
+      y: isMaximized ? 0 : freshWin.prevY,
     })!;
-
-    const desktopDimensions = desktopManager.getDimensions();
 
     const $win = $(win.el);
     $win.css({
@@ -292,13 +349,11 @@ export class WindowManager {
     let win = this.getWindow(id);
     if (!win) return;
 
-    console.log("[WindowManager] Restoring window:", id, win);
-
     // Restore the window to its previous position and size
     win = this.updateWindow(id, {
       maximized: false,
-      width: win.prevX ? win.width : 800, // Default width if not set
-      height: win.prevY ? win.height : 600, // Default height if not set
+      width: win.prevWidth || 800, // Use stored previous width
+      height: win.prevHeight || 600, // Use stored previous height
       x: win.prevX || 0,
       y: win.prevY || 0,
     })!;
@@ -316,21 +371,11 @@ export class WindowManager {
   }
 
   toggleTitleBarMaximizedButtonState(id: string) {
-    console.log(
-      "[WindowManager] Toggling maximized button state for window:",
-      id,
-    );
-
     const win = this.getWindow(id);
     if (!win) return;
 
     // Toggle maximized state
     const isMaximized = !win.maximized;
-
-    console.log(
-      "[WindowManager] Toggling maximized button state for window:",
-      win,
-    );
 
     $(win.el)
       .query(
@@ -338,19 +383,7 @@ export class WindowManager {
           ? "button[aria-label='Restore']"
           : "button[aria-label='Maximize']",
       )
-      .debug((el) => {
-        console.log(
-          "[WindowManager] Found title bar button for window:",
-          id,
-          el,
-        );
-      })
       .attr("aria-label", isMaximized ? "Maximize" : "Restore");
-
-    console.log(
-      "[WindowManager] Updated title bar button state for window:",
-      id,
-    );
   }
 }
 

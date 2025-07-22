@@ -4,7 +4,7 @@
   position: fixed;
   bottom: 0;
   left: 0;
-  height: 40px;
+  height: 30px;
   width: 100%;
   background-color: $barBlue;
   z-index: 2;
@@ -95,5 +95,71 @@ ul.taskbar {
   span {
     width: 60px; // so the container width doesn't change when the time changes
     font-size: 14px;
+  }
+}
+
+.tray-toggle {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: -11px;
+  margin-top: 4px;
+  border-radius: 50%;
+  cursor: pointer;
+  background-image: radial-gradient(
+    ellipse 75% 70% at 15% 15%,
+    #8ed6f9 0%,
+    #0671eb 90%
+  );
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50%;
+    padding: 1px;
+    background: linear-gradient(to bottom right, #10225e 20%, #ced6e6 80%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+
+  .arrow {
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid white;
+    filter: drop-shadow(0 0 4px #077eed);
+    z-index: 1;
+    transform: rotate(90deg);
+    margin-right: 2px;
+  }
+
+  &:hover {
+    background-image: radial-gradient(
+      ellipse 75% 70% at 15% 15%,
+      #c3e5f9 0%,
+      #0d98e8 90%
+    );
+  }
+
+  &:active,
+  &.active {
+    background-image: radial-gradient(
+      ellipse 60% 60% at 10% 10%,
+      #86caec 0%,
+      #0147be 90%
+    );
+    .arrow {
+      border-top-color: #6dcaf8;
+    }
   }
 }
