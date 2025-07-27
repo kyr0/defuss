@@ -55,7 +55,7 @@ button {
     height: 30px;
     width: 85px;
     align-items: center;
-    justify-content: space-evenly;
+    justify-content: center;
 
     &:hover,
     &.hover {
@@ -81,5 +81,15 @@ button {
         text-shadow: 0px 0px 4px #000;
         user-select: none;
         outline: none;
+        margin-right: 6px;
     }
+}
+
+.start-button-icon {
+    display: block;
+    width: 18px;
+    height: 16px;
+    margin-top: -4px;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+    margin-right: 2px;
 }
