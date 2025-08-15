@@ -12,7 +12,7 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/node": "^9.1.1",
+    "@astrojs/node": "^9.4.1",
     "@canburaks/text-align-editorjs": "^1.1.0",
     "@coolbytes/editorjs-quote": "^1.0.2",
     "@editorjs/delimiter": "^1.4.2",
