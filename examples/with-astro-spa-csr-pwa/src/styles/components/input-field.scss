@@ -1,0 +1,49 @@
+// Input Field Component Styles
+.form-group {
+	@apply space-y-1;
+}
+
+.form-label {
+	@apply block text-sm font-medium text-gray-700;
+}
+
+.form-label.error {
+	@apply text-red-600;
+}
+
+.input-container {
+	@apply mt-1 relative rounded-md shadow-sm;
+}
+
+.input-icon {
+	@apply absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none;
+}
+
+.input-icon .material-icons {
+	@apply text-gray-400;
+}
+
+.input-field {
+	@apply bg-amber-50 border border-amber-200 text-gray-700 rounded-xl block w-full pr-3 py-3 text-sm bg-white;
+	padding-left: 0.75rem; /* Default padding when no icon */
+}
+
+.input-field:focus {
+	@apply border-amber-300 ring-1 ring-amber-300 outline-none;
+}
+
+.input-field.error {
+	@apply border-red-300 ring-red-300 bg-red-50;
+}
+
+.input-field:disabled {
+	@apply bg-gray-100 text-gray-500 cursor-not-allowed;
+}
+
+.field-error {
+	@apply text-red-600 text-sm mt-1;
+}
+
+[data-field-error] {
+	/* Container for field error messages */
+}

@@ -1,0 +1,56 @@
+.dashboard-screen {
+	min-height: 100vh;
+}
+
+.dashboard-header {
+	background-color: #FAF3E0;
+	color: #4A5568;
+}
+
+.dashboard-main {
+	min-height: 100vh;
+}
+
+.post-card {
+	background-color: #FFF8E7;
+	border: 1px solid #FDE68A;
+	border-radius: 1.5rem;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.post-profile-icon {
+	background-color: #A0D2DB; /* Default color from the HTML */
+}
+
+.post-username {
+	color: #2D3748;
+}
+
+.post-content {
+	color: #4A5568;
+}
+
+.post-time {
+	color: #A0AEC0;
+}
+
+.send-bottle-btn {
+	background-color: #FBBF24;
+	color: #422006;
+	border: none;
+	border-radius: 1.5rem !important;
+	transition: background-color 0.2s ease-in-out;
+}
+
+.send-bottle-btn:hover {
+	background-color: #F59E0B;
+}
+
+.create-post-btn {
+	background-color: #F59E0B;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.create-post-btn:hover {
+	background-color: #D97706;
+}

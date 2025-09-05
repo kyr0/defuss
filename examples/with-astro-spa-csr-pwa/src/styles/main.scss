@@ -1,0 +1,48 @@
+@use './screens/home';
+@use './screens/tos';
+@use './screens/login';
+@use './screens/signup';
+@use './screens/forgot-password';
+@use './screens/about';
+@use './screens/dashboard';
+@use './screens/bottle-details';
+@use './screens/settings';
+@use './screens/help';
+@use './screens/profile';
+@use './screens/create-bottle';
+@use './components/language-chooser';
+@use './components/swiper';
+@use './components/footer';
+@use './components/container-main';
+@use './components/input-field';
+@use './components/error-container';
+@use './components/checkbox-field';
+@use './components/navigation-menu';
+@use './components/waves';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@config "../../tailwind.config.ts";
+
+
+body {
+	font-family: "Inter", sans-serif;
+	background-color: #16213b;
+	color: #4a5568;
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	overflow-x: hidden;
+	min-height: max(884px, 100dvh);
+	padding-top: 3rem; /* Add space for bottle neck and cap */
+}
+
+.main-content {
+	max-width: 1200px;
+	min-width: 50px;
+	margin-top: 2rem; /* Additional space for bottle shape */
+}

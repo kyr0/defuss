@@ -1,0 +1,132 @@
+.login-container {
+	@apply p-8 md:p-10 space-y-8;
+}
+
+.login-header {
+	@apply text-center;
+}
+
+.app-icon {
+	@apply text-6xl text-amber-500 mb-4;
+}
+
+.app-title {
+	@apply text-orange-600 font-bold text-3xl;
+}
+
+.welcome-text {
+	@apply text-gray-600 mt-2;
+}
+
+.login-form {
+	@apply space-y-6;
+}
+
+.form-group {
+	@apply space-y-1;
+}
+
+.form-label {
+	@apply block text-sm font-medium text-gray-700;
+}
+
+.input-container {
+	@apply mt-1 relative rounded-md shadow-sm;
+}
+
+.input-icon {
+	@apply absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none;
+}
+
+.input-icon .material-icons {
+	@apply text-gray-400;
+}
+
+.input-field {
+	@apply bg-amber-50 border border-amber-200 text-gray-700 rounded-xl block w-full pl-10 pr-3 py-3 text-sm;
+}
+
+.input-field:focus {
+	@apply border-amber-300 ring-amber-300;
+}
+
+.form-options {
+	@apply flex items-center justify-between;
+}
+
+.remember-me {
+	@apply flex items-center;
+}
+
+.forgot-password {
+	@apply text-sm text-center pt-4;
+}
+
+.text-link {
+	@apply font-medium text-orange-600 hover:text-orange-700 cursor-pointer bg-transparent border-none;
+}
+
+.login-button {
+	@apply bg-amber-300 text-amber-900 rounded-xl w-full flex justify-center py-3 px-4 border border-transparent shadow-sm text-sm font-medium transition-colors duration-200;
+}
+
+.login-button:hover {
+	@apply bg-amber-400;
+}
+
+.login-button:focus {
+	@apply outline-none ring-2 ring-offset-2 ring-amber-400;
+}
+
+.divider {
+	@apply relative;
+}
+
+.divider-line {
+	@apply absolute inset-0 flex items-center;
+}
+
+.divider-line::before {
+	@apply w-full border-t border-gray-300;
+	content: '';
+}
+
+.divider-content {
+	@apply relative flex justify-center text-sm;
+}
+
+.divider-text {
+	@apply px-2 bg-amber-50 text-gray-500;
+}
+
+.social-login {
+	@apply space-y-4;
+}
+
+.social-buttons {
+	@apply grid grid-cols-2 gap-4;
+}
+
+.social-button {
+	@apply bg-amber-50 border border-amber-200 text-gray-700 rounded-xl w-full inline-flex justify-center py-3 px-4 shadow-sm text-sm font-medium transition-colors duration-200 cursor-pointer;
+}
+
+.social-button:hover {
+	@apply bg-amber-100;
+}
+
+.social-button:focus {
+	@apply outline-none ring-2 ring-offset-2 ring-amber-400;
+}
+
+.social-icon {
+	@apply w-5 h-5 mr-2;
+}
+
+.signup-link {
+	@apply text-sm text-center;
+}
+
+.signup-text {
+	@apply text-gray-600;
+}

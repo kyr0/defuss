@@ -1,0 +1,80 @@
+.container-main {
+	@apply bg-amber-50 border border-amber-200 w-full max-w-md overflow-visible relative;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+	
+	/* Bottle body shape - wider bottom, narrower top */
+	border-radius: 1.5rem 1.5rem 3rem 3rem; /* Top corners smaller, bottom corners larger */
+	position: relative;
+	margin-top: 3rem; /* Space for neck and cap */
+	
+	/* Create bottle neck with ::before pseudo-element */
+	&::before {
+		content: '';
+		@apply absolute bg-amber-50 border-l border-r border-t border-amber-200;
+		top: -2.5rem;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 50%; /* Narrower than the main container */
+		height: 2.5rem;
+		border-radius: 0.8rem 0.8rem 0 0; /* Rounded neck top, straight bottom */
+		box-shadow: 
+			0 -4px 10px rgba(0, 0, 0, 0.04),
+			inset 0 1px 2px rgba(255, 255, 255, 0.1);
+		z-index: 0;
+		
+		/* Create neck indentation for more realistic bottle look */
+		background: linear-gradient(to bottom, #fef3c7, #fde68a);
+	}
+	
+	/* Create bottle cap/cork with ::after pseudo-element */
+	&::after {
+		content: '';
+		@apply absolute;
+		background: linear-gradient(to bottom, #92400e, #78350f);
+		top: -3.2rem;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 35%; /* Smaller than the neck */
+		height: 1rem;
+		border-radius: 0.5rem 0.5rem 0.2rem 0.2rem;
+		box-shadow: 
+			0 2px 4px rgba(0, 0, 0, 0.2),
+			inset 0 1px 2px rgba(255, 255, 255, 0.2);
+		z-index: 1;
+		
+		/* Add cork texture */
+		border: 1px solid #451a03;
+	}
+	
+	/* Bottle neck button utility - for buttons positioned in the neck area */
+	.bottle-neck-button {
+		@apply absolute flex items-center justify-center text-sm font-medium text-amber-800 hover:text-amber-900;
+		/* Position in the bottle neck area */
+		top: -2.3rem;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 50%; /* Match the neck width */
+		height: 2.3rem; /* Match the neck height */
+		z-index: 10; /* Above the neck pseudo-element */
+		
+		/* Text styling for the link */
+		text-decoration: none;
+		transition: all 0.2s ease-in-out;
+		
+		/* Ensure proper spacing between icon and text */
+		gap: 0.375rem;
+		
+		&:hover {
+			@apply text-amber-700; 
+		}
+		
+		.material-icons {
+			@apply text-lg;
+		}
+	}
+
+	/* Additional utility for pages using bottle container */
+	&.bottle-container {
+		margin-top: 3rem; /* Ensure space for neck and cap */
+	}
+}

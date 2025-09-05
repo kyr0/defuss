@@ -1,0 +1,262 @@
+// Create Bottle Screen Styles
+.create-bottle-screen {
+  min-height: 100vh;
+  background-color: #faf3e0;
+}
+
+// Header styling
+.create-bottle-header {
+  background-color: transparent;
+  color: #4a5568;
+}
+
+// Main content container
+.create-bottle-main {
+  padding-bottom: 2rem !important;
+}
+
+// Card styling for create bottle sections
+.card {
+  background-color: #fff8e7;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #fde68a;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+// Message input styling
+.message-label {
+  color: #2d3748;
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.message-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #fde68a;
+  border-radius: 0.75rem;
+  background-color: #fffbeb;
+  color: #4a5568;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 120px;
+  transition: border-color 0.2s ease-in-out;
+
+  &:focus {
+    outline: none;
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+  }
+
+  &::placeholder {
+    color: #9ca3af;
+    font-style: italic;
+  }
+}
+
+// Mood selection styling
+.mood-label {
+  color: #2d3748;
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.mood-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #fde68a;
+  border-radius: 0.75rem;
+  background-color: #fffbeb;
+  color: #4a5568;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+  }
+}
+
+// Anonymous toggle styling
+.anonymous-label {
+  color: #2d3748;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.anonymous-description {
+  color: #718096;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+// Toggle switch styling (inherited from settings)
+.toggle-bg {
+  &::after {
+    border-color: #fbbf24;
+    background-color: white;
+  }
+}
+
+input:checked + .toggle-bg {
+  background-color: #fbbf24;
+
+  &::after {
+    border-color: white;
+  }
+}
+
+// Action buttons container
+.action-buttons {
+  margin-top: 2rem;
+}
+
+// Button base styles
+.preview-btn,
+.send-btn,
+.save-draft-btn,
+.edit-btn {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
+  border: 2px solid transparent;
+
+  .material-icons {
+    font-size: 1.25rem;
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+  }
+}
+
+// Preview button
+.preview-btn {
+  background-color: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
+
+  &:hover {
+    background-color: #e5e7eb;
+    border-color: #9ca3af;
+  }
+}
+
+// Send button (primary)
+.send-btn {
+  background-color: #fbbf24;
+  color: #422006;
+  border-color: #fbbf24;
+
+  &:hover {
+    background-color: #f59e0b;
+    border-color: #f59e0b;
+  }
+}
+
+// Save draft button
+.save-draft-btn {
+  background-color: transparent;
+  color: #6b7280;
+  border-color: #d1d5db;
+
+  &:hover {
+    background-color: #f9fafb;
+    color: #374151;
+  }
+}
+
+// Edit button
+.edit-btn {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+
+  &:hover {
+    background-color: #2563eb;
+  }
+}
+
+// Preview section styling
+.preview-card {
+  background-color: #fff8e7;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #fde68a;
+  padding: 1.5rem;
+}
+
+.preview-title {
+  color: #2d3748;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+// Bottle preview styling (similar to dashboard post cards)
+.bottle-preview {
+  background-color: #fffbeb;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid #fde68a;
+  margin-bottom: 1.5rem;
+}
+
+.profile-icon {
+  width: 48px;
+  height: 48px;
+  background-color: #fbbf24;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+
+  .material-icons {
+    font-size: 1.5rem;
+  }
+}
+
+.mood-badge {
+  background-color: #fde68a;
+  color: #92400e;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+// Preview actions
+.preview-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+
+  .edit-btn,
+  .send-btn {
+    flex: 1;
+  }
+}
+
+// Character count styling
+#characters-remaining {
+  transition: color 0.2s ease-in-out;
+}

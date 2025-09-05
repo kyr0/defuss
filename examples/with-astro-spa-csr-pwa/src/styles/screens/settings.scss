@@ -1,0 +1,139 @@
+// Settings Screen Styles
+.settings-screen {
+  min-height: 100vh;
+  background-color: #faf3e0;
+}
+
+// Header styling
+.settings-header {
+  background-color: transparent;
+  color: #4a5568;
+}
+
+// Main content container
+.settings-main {
+  padding-bottom: 2rem !important; // Ensure proper bottom spacing
+}
+
+// Card styling for settings sections
+.card {
+  background-color: #fff8e7;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #fde68a;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem; // Add margin between cards
+}
+
+// Settings section title styling
+.settings-section-title {
+  color: #4a5568;
+  border-bottom: 1px solid #fde68a;
+  text-align: left;
+  font-size: 1.125rem;
+  font-weight: 600;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+// Setting labels
+.setting-label {
+  color: #2d3748;
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+// Setting descriptions
+.setting-description {
+  color: #718096;
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+// Select input styling
+.select-input {
+  margin-top: 0.25rem;
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #fde68a;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background-color: #fffbeb;
+  color: #4a5568;
+  font-size: 0.875rem;
+
+  &:focus {
+    outline: none;
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 1px #fbbf24;
+  }
+}
+
+// Toggle switch styling
+.toggle-bg {
+  &::after {
+    border-color: #fbbf24;
+    background-color: white;
+  }
+}
+
+input:checked + .toggle-bg {
+  background-color: #fbbf24;
+
+  &::after {
+    border-color: white;
+  }
+}
+
+// Input field styling
+.input-field {
+  margin-top: 0.25rem;
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #fde68a;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background-color: #fffbeb;
+  color: #4a5568;
+  font-size: 0.875rem;
+
+  &:focus {
+    outline: none;
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 1px #fbbf24;
+  }
+}
+
+// Save button container with proper margin
+.save-button-container {
+  padding-top: 1.5rem;
+  padding-bottom: 1rem;
+  margin-top: 1rem;
+}
+
+// Save button styling
+.save-btn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: #fbbf24;
+  color: #422006;
+  transition: background-color 0.15s ease-in-out;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.5);
+  }
+
+  &:hover {
+    background-color: #f59e0b;
+  }
+}

@@ -1,0 +1,26 @@
+---
+import Layout from "../layouts/layout.astro";
+import { App } from "../main.js";
+
+export function getStaticPaths() {
+	return [
+		{ params: { path: undefined } },
+		{ params: { path: "tos" } },
+		{ params: { path: "privacy-policy" } },
+		{ params: { path: "login" } },
+		{ params: { path: "forgot-password" } },
+		{ params: { path: "signup" } },
+		{ params: { path: "about" } },
+		{ params: { path: "dashboard" } },
+		{ params: { path: "bottle-details" } },
+		{ params: { path: "settings" } },
+		{ params: { path: "help" } },
+		{ params: { path: "profile" } },
+		{ params: { path: "create-bottle" } },
+	];
+}
+---
+
+<Layout title="Light in a Bottle - Home">
+	<App client:only />
+</Layout>

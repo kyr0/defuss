@@ -1,0 +1,125 @@
+.swiper-container {
+	@apply w-full h-auto relative;
+}
+	
+.swiper-wrapper {
+	@apply flex transition-transform duration-300 ease-out;
+}
+
+.swiper-slide {
+	@apply flex-shrink-0 w-full h-full box-border flex flex-col items-center justify-center p-6 text-center;
+}
+
+.swiper-slide img {
+	@apply w-[120px] h-[120px] object-contain mb-4 rounded-xl;
+}
+
+.swiper-slide h3 {
+	@apply text-xl font-semibold text-orange-600 mb-2;
+}
+
+.swiper-slide p {
+	@apply text-sm text-gray-600 leading-relaxed max-w-[300px];
+}
+
+.swiper-pagination {
+	@apply absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2;
+}
+
+.swiper-pagination-bullet {
+	@apply w-2 h-2 rounded-full bg-gray-300 cursor-pointer;
+}
+
+.swiper-pagination-bullet-active {
+	@apply bg-amber-400;
+}
+
+.nav-button {
+	@apply absolute top-1/2 transform -translate-y-1/2 bg-white bg-opacity-70 text-orange-600 rounded-full p-6 w-9 h-9 flex items-center justify-center cursor-pointer z-10 border border-amber-200;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	user-select: none;
+}
+
+.nav-button:hover {
+	@apply bg-amber-50 bg-opacity-90;
+}
+
+.nav-button.prev {
+	@apply left-2;
+}
+
+.nav-button.next {
+	@apply right-2;
+}
+
+.action-button {
+	@apply bg-amber-400 text-amber-900 rounded-xl transition-colors duration-200 inline-flex items-center justify-center py-3 px-6 border border-transparent shadow-sm text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400;
+}
+
+.action-button:hover {
+	@apply bg-amber-500;
+}
+
+.app-title {
+	@apply text-orange-600 font-bold;
+}
+
+.text-link {
+	@apply text-orange-600 hover:text-orange-700;
+}
+
+/* Home page navigation links in bottle neck */
+.home-nav-links {
+	@apply absolute flex items-center justify-center text-sm font-medium;
+	/* Position in the bottle neck area, similar to bottle-neck-button */
+	top: -2.3rem;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 50%; /* Match the neck width */
+	height: 2.3rem; /* Match the neck height */
+	z-index: 10; /* Above the neck pseudo-element */
+	gap: 0.5rem;
+}
+
+.bottle-neck-link {
+	@apply flex items-center space-x-1 text-amber-800 hover:text-amber-900 bg-transparent border-none cursor-pointer text-xs font-medium;
+	text-decoration: none;
+	transition: all 0.2s ease-in-out;
+}
+
+.bottle-neck-link:hover {
+	@apply text-amber-700;
+}
+
+.bottle-neck-link .material-icons {
+	@apply text-sm;
+}
+
+.nav-divider {
+	@apply text-amber-700 opacity-60;
+}
+
+/* Home page action buttons */
+.home-action-buttons {
+	@apply flex flex-col sm:flex-row gap-3 justify-center items-center mb-2;
+}
+
+.action-button.primary {
+	@apply bg-amber-400 text-amber-900 rounded-xl transition-colors duration-200 inline-flex items-center justify-center py-3 px-6 border border-transparent shadow-sm text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400;
+}
+
+.action-button.primary:hover {
+	@apply bg-amber-500;
+}
+
+.action-button.secondary {
+	@apply bg-transparent text-amber-800 border border-amber-300 rounded-xl transition-colors duration-200 inline-flex items-center justify-center py-3 px-6 shadow-sm text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400;
+}
+
+.action-button.secondary:hover {
+	@apply bg-amber-50;
+}
+
+.action-button .material-icons {
+	@apply mr-2 text-lg;
+}

@@ -1,0 +1,37 @@
+
+// Error Container Component Styles
+// Extracted from login.scss for reusability across all screens
+
+.error-container {
+	@apply bg-red-50 border border-red-200 rounded-xl p-4 mb-6;
+}
+
+.error-container.hidden {
+	display: none;
+}
+
+.error-box {
+	@apply space-y-2;
+}
+
+.error-message {
+	@apply text-red-600 text-sm font-medium;
+}
+
+.field-error {
+	@apply text-red-600 text-sm mt-1;
+}
+
+// Input field error states (used with InputField component)
+.input-field.error {
+	@apply border-red-300 ring-red-300 bg-red-50;
+}
+
+.form-label.error {
+	@apply text-red-600;
+}
+
+// Generic error state selector for custom field error handling
+[data-field-error] {
+	// Reserved for custom field error styling
+}

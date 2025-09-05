@@ -1,0 +1,61 @@
+// TOS (Terms of Service) Page Styles
+.page-header {
+	@apply bg-amber-50 p-6 border-amber-200 flex items-center justify-between;
+}
+
+.page-title {
+	@apply text-orange-600 font-bold text-2xl leading-tight;
+}
+
+.content-section {
+	@apply p-6 leading-relaxed text-sm;
+}
+
+.content-section h2 {
+	@apply text-orange-700 text-xl font-semibold mt-6 mb-3 border-b border-amber-200 pb-2;
+}
+
+.content-section h3 {
+	@apply text-orange-600 text-lg font-semibold mt-4 mb-2;
+}
+
+.content-section p,
+.content-section ul {
+	@apply mb-4;
+}
+
+.content-section ul {
+	@apply list-disc pl-6;
+}
+
+.content-section strong {
+	@apply font-semibold text-amber-900;
+}
+
+.footer-text {
+	@apply text-xs text-gray-500 text-center p-4;
+}
+
+.tabs {
+	@apply flex border-b border-amber-200 bg-amber-50;
+}
+
+.tab-button {
+	@apply px-6 py-3 text-sm font-medium text-amber-800 border-none bg-transparent cursor-pointer flex-grow text-center transition-all duration-200 border-r border-amber-200;
+}
+
+.tab-button:last-child {
+	@apply border-r-0;
+}
+
+.tab-button.active {
+	@apply bg-amber-50 text-orange-600 font-semibold border-b-2 border-amber-300 -mb-px;
+}
+
+.tab-content {
+	@apply hidden;
+}
+
+.tab-content.active {
+	@apply block;
+}

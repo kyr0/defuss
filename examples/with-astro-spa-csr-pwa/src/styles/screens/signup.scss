@@ -1,0 +1,113 @@
+// Signup screen styles - converted from custom CSS to Tailwind @apply
+.signup-container {
+	@apply p-8 md:p-10 space-y-6;
+}
+
+.signup-header {
+	@apply text-center;
+}
+
+.app-icon {
+	@apply text-6xl text-amber-500 mb-3;
+}
+
+.app-title {
+	@apply text-orange-600 font-bold text-3xl;
+}
+
+.welcome-text {
+	@apply text-gray-600 mt-2;
+}
+
+.error-container {
+	@apply space-y-2;
+}
+
+.success-container {
+	@apply space-y-2;
+}
+
+.error-box {
+	@apply bg-red-50 border border-red-200 rounded-xl p-4;
+}
+
+.error-message {
+	@apply text-red-600 text-sm;
+}
+
+.success-box {
+	@apply bg-green-50 border border-green-200 rounded-xl p-4;
+}
+
+.success-message {
+	@apply text-green-600 text-sm;
+}
+
+.field-error {
+	@apply text-red-600 text-xs mt-1;
+}
+
+.signup-form {
+	@apply space-y-5;
+}
+
+.form-group {
+	@apply space-y-1;
+}
+
+.form-label {
+	@apply block text-sm font-medium text-gray-700;
+}
+
+.form-label.error {
+	@apply text-red-600;
+}
+
+.input-container {
+	@apply mt-1 relative rounded-md shadow-sm;
+}
+
+.input-icon {
+	@apply absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none;
+}
+
+.input-icon .material-icons {
+	@apply text-gray-400;
+}
+
+.input-field {
+	@apply bg-amber-50 border border-amber-200 text-gray-700 rounded-xl block w-full pl-10 pr-3 py-3 text-sm;
+}
+
+.input-field:focus {
+	@apply border-amber-400 ring-1 ring-amber-400 outline-none;
+}
+
+.input-field.error {
+	@apply border-red-400 ring-1 ring-red-400;
+}
+
+.terms-agreement {
+	@apply flex items-start space-x-3;
+}
+
+.signup-button {
+	@apply bg-amber-400 text-amber-900 rounded-xl transition-colors duration-200 w-full flex justify-center py-3 px-4 border border-transparent shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400;
+}
+
+.signup-button:hover {
+	@apply bg-amber-500;
+}
+
+.login-link {
+	@apply text-sm text-center;
+}
+
+.login-text {
+	@apply text-gray-600;
+}
+
+.text-link {
+	@apply text-orange-600 hover:text-orange-700 font-medium;
+}
+

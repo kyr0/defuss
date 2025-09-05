@@ -1,0 +1,119 @@
+// Profile Screen Styles
+.profile-screen {
+  min-height: 100vh;
+  background-color: #faf3e0;
+}
+
+// Header styling
+.profile-header {
+  background-color: transparent;
+  color: #4a5568;
+}
+
+// Main content container
+.profile-main {
+  padding-bottom: 2rem !important; // Ensure proper bottom spacing for FAB
+}
+
+// Card styling for posts
+.card {
+  background-color: #fff8e7;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #fde68a;
+  margin-bottom: 1.5rem;
+}
+
+// Profile icon styling
+.profile-icon {
+  background-color: #a0d2db;
+  color: white;
+}
+
+// Username styling
+.username {
+  color: #2d3748;
+}
+
+// Bio text styling
+.bio {
+  color: #4a5568;
+}
+
+// Post text styling
+.post-text {
+  color: #4a5568;
+}
+
+// Time ago styling
+.time-ago {
+  color: #a0aec0;
+}
+
+// Edit profile and settings button styling
+.edit-profile-btn,
+.settings-btn {
+  background-color: #fbbf24;
+  color: #422006;
+  border-radius: 9999px;
+  transition: background-color 0.15s ease-in-out;
+
+  &:hover {
+    background-color: #f59e0b;
+  }
+}
+
+// Floating Action Button styling
+.fab {
+  background-color: #fbbf24;
+  color: #422006;
+  transition: background-color 0.15s ease-in-out, transform 0.2s ease-in-out;
+
+  &:hover {
+    background-color: #f59e0b;
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+// Stats styling
+.stat-label {
+  color: #a0aec0;
+}
+
+.stat-value {
+  color: #2d3748;
+}
+
+// Tab styling
+.tab {
+  color: #a0aec0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+
+  &.active,
+  &:hover {
+    color: #fbbf24;
+    border-bottom-color: #fbbf24;
+  }
+}
+
+// Action buttons (edit/delete) styling
+.text-amber-600 {
+  transition: color 0.15s ease-in-out;
+
+  &:hover {
+    color: #d97706;
+  }
+}
+
+.text-red-500 {
+  transition: color 0.15s ease-in-out;
+
+  &:hover {
+    color: #dc2626;
+  }
+}

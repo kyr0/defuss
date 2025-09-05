@@ -1,0 +1,352 @@
+{
+	"common": {
+		"loading": "Lädt...",
+		"error": "Ein Fehler ist aufgetreten",
+		"not_found": "Nicht gefunden",
+		"back": "Zurück"
+	},
+	"home": {
+		"title": "Light in a Bottle",
+		"description": "Flaschenpost für Dich",
+		"cta_text": "Bereit, dein Licht zu teilen und authentisch zu verbinden?",
+		"features": {
+			"support": {
+				"title": "Echte Unterstützung",
+				"description": "Baue eine Gemeinschaft tiefer, echter Unterstützung auf. Teile deine Gedanken und Gefühle in einem sicheren, ermutigenden Raum. Verantwortungspartnerschaften, die aufmuntern und inspirieren."
+			},
+			"bottles": {
+				"title": "Jeden Tag eine Flaschenpost",
+				"description": "Sende deine \"Nachricht in einer Flasche\" an die Gemeinschaft. Dies sind durchdachte Ausdrücke, die einmal täglich geteilt werden und achtsame Kommunikation fördern."
+			},
+			"reactions": {
+				"title": "Nur Ermutigende Reaktionen",
+				"description": "Reagiere auf Flaschen mit Freundlichkeit. Unsere Plattform filtert Negativität heraus und stellt sicher, dass jede Interaktion positiv und erhebend ist. Keine Ironie, kein Sarkasmus, nur reine Unterstützung."
+			},
+			"connections": {
+				"title": "Durchdachte Verbindungen",
+				"description": "Gefällt dir eine Flasche? Füge den Absender als Freund hinzu. Betrachte ihre Flaschen und reagiere, indem du deine eigenen sendest. Keine direkten Nachrichten, bis eine bedeutsame, langfristige Bindung entstanden ist (30 bidirektionale Flaschen)."
+			},
+			"mindful": {
+				"title": "Eine Flaschenpost pro Tag",
+				"description": "Jeder kann nur eine Flasche pro Tag senden. Dies fördert Achtsamkeit in der Kommunikation und stellt sicher, dass die meisten Nachricht von hoher Qualität sind. Wer mehr als 30 Flaschen in den Ozean ausgesendet hat, darf zwei Flaschen senden."
+			}
+		}
+	},
+	"login": {
+		"app_name": "Light in a Bottle",
+		"welcome_message": "Willkommen zurück! Bitte melden Sie sich an, um fortzufahren.",
+		"email_label": "E-Mail-Adresse",
+		"password_label": "Passwort",
+		"remember_me": "Angemeldet bleiben",
+		"forgot_password": "Passwort vergessen?",
+		"sign_in_button": "Anmelden",
+		"or_continue_with": "Oder fortfahren mit",
+		"no_account": "Haben Sie noch kein Konto?",
+		"sign_up_link": "Registrieren"
+	},
+	"signup": {
+		"title": "Konto erstellen",
+		"subtitle": "Treten Sie uns bei und lassen Sie Ihr Licht scheinen.",
+		"full_name_label": "Vollständiger Name",
+		"email_label": "E-Mail-Adresse",
+		"password_label": "Passwort",
+		"confirm_password_label": "Passwort bestätigen",
+		"agree_to_terms": "Ich stimme den",
+		"terms_link": "Nutzungsbedingungen",
+		"sign_up_button": "Registrieren",
+		"already_have_account": "Haben Sie bereits ein Konto?",
+		"sign_in_link": "Anmelden"
+	},
+	"forgot_password": {
+		"title": "Passwort vergessen?",
+		"subtitle": "Keine Sorge, wir senden Ihnen Anweisungen zum Zurücksetzen.",
+		"email_label": "E-Mail-Adresse",
+		"send_reset_button": "Reset-Link senden",
+		"back_to_login": "Zurück zur Anmeldung"
+	},
+	"tos": {
+		"title": "Rechtliche Vereinbarungen",
+		"terms_of_service": "Nutzungsbedingungen",
+		"privacy_policy": "Datenschutzerklärung",
+		"last_updated": "Zuletzt aktualisiert: 26. Oktober 2023",
+		"terms": {
+			"intro": "Willkommen bei Light in a Bottle (\"uns\", \"wir\" oder \"unser\"). Diese Nutzungsbedingungen regeln Ihre Nutzung unserer mobilen Anwendung (der \"Dienst\"). Bitte lesen Sie diese Nutzungsbedingungen sorgfältig durch, bevor Sie den Dienst nutzen.",
+			"acceptance": "Ihr Zugriff auf und die Nutzung des Dienstes hängt von Ihrer Annahme und Einhaltung dieser Bedingungen ab. Diese Bedingungen gelten für alle Besucher, Nutzer und andere, die auf den Dienst zugreifen oder ihn nutzen.",
+			"agreement": "Durch den Zugriff auf oder die Nutzung des Dienstes erklären Sie sich mit diesen Bedingungen einverstanden. Wenn Sie mit einem Teil der Bedingungen nicht einverstanden sind, dürfen Sie nicht auf den Dienst zugreifen.",
+			"eligibility": {
+				"title": "1. Berechtigung",
+				"content": "Sie müssen mindestens 13 Jahre alt sein, um den Dienst zu nutzen. Durch die Zustimmung zu diesen Bedingungen versichern Sie uns, dass: (a) Sie mindestens 13 Jahre alt sind; (b) Sie zuvor nicht vom Dienst suspendiert oder entfernt wurden; und (c) Ihre Registrierung und Nutzung des Dienstes mit allen geltenden Gesetzen und Vorschriften übereinstimmt."
+			},
+			"accounts": {
+				"title": "2. Konten",
+				"content1": "Wenn Sie ein Konto bei uns erstellen, müssen Sie uns jederzeit genaue, vollständige und aktuelle Informationen zur Verfügung stellen. Das Versäumnis, dies zu tun, stellt einen Verstoß gegen die Bedingungen dar, was zur sofortigen Kündigung Ihres Kontos in unserem Dienst führen kann.",
+				"content2": "Sie sind verantwortlich für den Schutz des Passworts, das Sie für den Zugriff auf den Dienst verwenden, und für alle Aktivitäten oder Handlungen unter Ihrem Passwort, egal ob Ihr Passwort bei unserem Dienst oder einem Drittanbieterdienst ist. Sie verpflichten sich, Ihr Passwort niemandem mitzuteilen. Sie müssen uns unverzüglich über jede Sicherheitsverletzung oder unbefugte Nutzung Ihres Kontos informieren."
+			},
+			"features": {
+				"title": "3. Kernfunktionen und Verhalten",
+				"messages": {
+					"title": "3.1. Nachrichten in der Flasche",
+					"content": "Sie können eine \"Nachricht in der Flasche\" pro Tag teilen (dies kann auf zwei pro Tag erhöht werden, nachdem 30 bidirektional geteilte Flaschen mit einer etablierten Verbindung entstanden sind). Diese Nachrichten sind für durchdachte Ausdrucksweise und positive Gemeinschaftsbeteiligung gedacht. Inhalte müssen respektvoll und konstruktiv sein."
+				},
+				"reactions": {
+					"title": "3.2. Positive Reaktionen",
+					"content": "Der Dienst ist darauf ausgelegt, eine unterstützende Umgebung zu fördern. Reaktionen auf Nachrichten sollten ermutigend und freundlich sein. Wir setzen Filter und Gemeinschaftsmoderation ein, um Negativität, Ironie oder Sarkasmus zu entmutigen. Wir behalten uns das Recht vor, Inhalte zu entfernen, die gegen diese Prinzipien verstoßen."
+				},
+				"connections": {
+					"title": "3.3. Verbindungen aufbauen",
+					"content": "Sie können andere Nutzer als Freunde hinzufügen, wenn Sie ihre \"Nachrichten in der Flasche\" schätzen. Direktnachrichten-Funktionen sind absichtlich begrenzt und werden erst nach einer anhaltenden Phase gegenseitiger positiver Interaktion verfügbar (z.B. 30 bidirektional geteilte und positiv bewertete Flaschen zwischen zwei Nutzern). Dies soll bedeutungsvolle Verbindungen vor privater Kommunikation fördern."
+				},
+				"prohibited": {
+					"title": "3.4. Verbotenes Verhalten",
+					"intro": "Sie verpflichten sich, den Dienst nicht zu verwenden, um:",
+					"list": {
+						"1": "Inhalte zu veröffentlichen, die rechtswidrig, schädlich, bedrohlich, missbräuchlich, belästigend, verleumderisch, vulgär, obszön, verleumderisch, die Privatsphäre anderer verletzend, hasserfüllt oder rassisch, ethnisch oder anderweitig anstößig sind.",
+						"2": "Minderjährige in irgendeiner Weise zu schädigen.",
+						"3": "Sich als eine Person oder Entität auszugeben oder fälschlicherweise anzugeben oder anderweitig falsch darzustellen, dass Sie mit einer Person oder Entität verbunden sind.",
+						"4": "Unerwünschte oder nicht autorisierte Werbung, Werbematerialien, \"Junk-Mail\", \"Spam\", \"Kettenbriefe\", \"Pyramidensysteme\" oder jede andere Form der Werbung zu veröffentlichen.",
+						"5": "Material zu veröffentlichen, das Software-Viren oder anderen Computercode, Dateien oder Programme enthält, die darauf ausgelegt sind, die Funktionalität von Computer-Software oder -Hardware oder Telekommunikationsausrüstung zu unterbrechen, zu zerstören oder zu begrenzen.",
+						"6": "Den Dienst oder Server oder Netzwerke, die mit dem Dienst verbunden sind, zu stören oder zu unterbrechen."
+					}
+				}
+			},
+			"ip": {
+				"title": "4. Geistiges Eigentum",
+				"content1": "Der Dienst und seine ursprünglichen Inhalte (ausgenommen von Nutzern bereitgestellte Inhalte), Funktionen und Funktionalitäten sind und bleiben das ausschließliche Eigentum von Light in a Bottle und seinen Lizenzgebern. Der Dienst ist durch Urheberrechts-, Marken- und andere Gesetze sowohl der Vereinigten Staaten als auch ausländischer Länder geschützt. Unsere Marken und unser Handelsaufzug dürfen nicht in Verbindung mit einem Produkt oder einer Dienstleistung ohne die vorherige schriftliche Zustimmung von Light in a Bottle verwendet werden.",
+				"content2": "Durch das Veröffentlichen von Inhalten im Dienst gewähren Sie uns eine weltweite, nicht-exklusive, lizenzgebührenfreie Lizenz (mit dem Recht zur Unterlizenzierung), solche Inhalte in allen Medien oder Vertriebsmethoden (jetzt bekannt oder später entwickelt) zu verwenden, zu kopieren, zu reproduzieren, zu verarbeiten, anzupassen, zu modifizieren, zu veröffentlichen, zu übertragen, anzuzeigen und zu verteilen."
+			},
+			"termination": {
+				"title": "5. Kündigung",
+				"content1": "Wir können Ihr Konto sofort, ohne vorherige Ankündigung oder Haftung, aus irgendeinem Grund kündigen oder sperren, einschließlich ohne Einschränkung, wenn Sie gegen die Bedingungen verstoßen.",
+				"content2": "Bei Kündigung erlischt Ihr Recht zur Nutzung des Dienstes sofort. Wenn Sie Ihr Konto kündigen möchten, können Sie einfach aufhören, den Dienst zu nutzen."
+			},
+			"liability": {
+				"title": "6. Haftungsbeschränkung",
+				"content": "In keinem Fall haften Light in a Bottle noch seine Direktoren, Mitarbeiter, Partner, Vertreter, Lieferanten oder verbundenen Unternehmen für indirekte, zufällige, besondere, Folge- oder Strafschäden, einschließlich ohne Einschränkung Verlust von Gewinnen, Daten, Nutzung, Goodwill oder anderen immateriellen Verlusten, die sich ergeben aus (i) Ihrem Zugriff auf oder Nutzung oder Unfähigkeit, auf den Dienst zuzugreifen oder ihn zu nutzen; (ii) jedem Verhalten oder Inhalt einer dritten Partei im Dienst; (iii) jedem Inhalt, der vom Dienst erhalten wurde; und (iv) unbefugtem Zugriff, Nutzung oder Änderung Ihrer Übertragungen oder Inhalte, unabhängig davon, ob auf Garantie, Vertrag, unerlaubter Handlung (einschließlich Fahrlässigkeit) oder einer anderen Rechtstheorie basierend, unabhängig davon, ob wir über die Möglichkeit solcher Schäden informiert wurden, und selbst wenn sich herausstellt, dass ein hierin aufgeführtes Rechtsmittel seinen wesentlichen Zweck verfehlt hat."
+			},
+			"disclaimer": {
+				"title": "7. Haftungsausschluss",
+				"content1": "Ihre Nutzung des Dienstes erfolgt auf eigenes Risiko. Der Dienst wird \"WIE BESEHEN\" und \"WIE VERFÜGBAR\" bereitgestellt. Der Dienst wird ohne Garantien jeglicher Art bereitgestellt, weder ausdrücklich noch stillschweigend, einschließlich, aber nicht beschränkt auf stillschweigende Garantien der Marktgängigkeit, Eignung für einen bestimmten Zweck, Nichtverletzung oder Kursleistung.",
+				"content2": "Light in a Bottle, seine Tochtergesellschaften, verbundenen Unternehmen und seine Lizenzgeber garantieren nicht, dass a) der Dienst ununterbrochen, sicher oder zu einem bestimmten Zeitpunkt oder Ort verfügbar funktioniert; b) Fehler oder Mängel korrigiert werden; c) der Dienst frei von Viren oder anderen schädlichen Komponenten ist; oder d) die Ergebnisse der Nutzung des Dienstes Ihren Anforderungen entsprechen."
+			},
+			"law": {
+				"title": "8. Geltendes Recht",
+				"content": "Diese Bedingungen unterliegen den Gesetzen der Gerichtsbarkeit, in der Light in a Bottle etabliert ist, ohne Berücksichtigung seiner Kollisionsnormen. Unser Versäumnis, ein Recht oder eine Bestimmung dieser Bedingungen durchzusetzen, wird nicht als Verzicht auf diese Rechte betrachtet. Wenn eine Bestimmung dieser Bedingungen von einem Gericht für ungültig oder nicht durchsetzbar befunden wird, bleiben die verbleibenden Bestimmungen dieser Bedingungen in Kraft. Diese Bedingungen stellen die gesamte Vereinbarung zwischen uns bezüglich unseres Dienstes dar und ersetzen alle vorherigen Vereinbarungen, die wir möglicherweise bezüglich des Dienstes zwischen uns hatten."
+			},
+			"changes": {
+				"title": "9. Änderungen der Bedingungen",
+				"content": "Wir behalten uns das Recht vor, nach unserem alleinigen Ermessen diese Bedingungen jederzeit zu ändern oder zu ersetzen. Wenn eine Revision wesentlich ist, werden wir versuchen, mindestens 30 Tage vor Inkrafttreten neuer Bedingungen zu benachrichtigen. Was eine wesentliche Änderung darstellt, wird nach unserem alleinigen Ermessen bestimmt. Durch die fortgesetzte Nutzung oder den Zugriff auf unseren Dienst, nachdem diese Revisionen wirksam werden, erklären Sie sich mit den überarbeiteten Bedingungen einverstanden. Wenn Sie den neuen Bedingungen nicht zustimmen, hören Sie bitte auf, den Dienst zu nutzen."
+			},
+			"contact": {
+				"title": "10. Kontakt",
+				"content": "Wenn Sie Fragen zu diesen Bedingungen haben, kontaktieren Sie uns bitte unter: support@lightinabottle.app"
+			}
+		},
+		"privacy": {
+			"intro": "Diese Datenschutzerklärung beschreibt, wie Light in a Bottle (\"uns\", \"wir\" oder \"unser\") Informationen über Sie sammelt, verwendet und teilt, wenn Sie unsere mobile Anwendung (der \"Dienst\") nutzen.",
+			"collection": {
+				"title": "1. Informationen, die wir sammeln",
+				"intro": "Wir sammeln Informationen, die Sie uns direkt zur Verfügung stellen, und Informationen, die wir automatisch sammeln, wenn Sie den Dienst nutzen.",
+				"provided": {
+					"title": "1.1. Informationen, die Sie uns zur Verfügung stellen",
+					"account": {
+						"title": "Kontoinformationen",
+						"content": "Wenn Sie ein Konto erstellen, sammeln wir Informationen wie Ihren Benutzernamen, Ihr Passwort (gehasht) und Ihre E-Mail-Adresse (optional)."
+					},
+					"content": {
+						"title": "Benutzerinhalte",
+						"content": "Wir sammeln die Inhalte, die Sie im Dienst erstellen und teilen, wie Ihre \"Nachrichten in der Flasche\", Reaktionen und alle Direktnachrichten, die mit anderen Nutzern ausgetauscht werden, sobald diese Funktion aktiviert ist."
+					},
+					"comms": {
+						"title": "Kommunikation",
+						"content": "Wenn Sie uns direkt kontaktieren, erhalten wir möglicherweise zusätzliche Informationen über Sie, wie Ihren Namen, Ihre E-Mail-Adresse, den Inhalt der Nachricht und/oder Anhänge, die Sie uns senden könnten, und alle anderen Informationen, die Sie wählen könnten, zur Verfügung zu stellen."
+					}
+				},
+				"automatic": {
+					"title": "1.2. Informationen, die wir automatisch sammeln",
+					"usage": {
+						"title": "Nutzungsinformationen",
+						"content": "Wir sammeln Informationen über Ihre Aktivität im Dienst, wie die Nachrichten, die Sie anzeigen, Ihre Interaktionen mit anderen Nutzern, die Funktionen, die Sie nutzen, und die Zeit, Häufigkeit und Dauer Ihrer Aktivitäten."
+					},
+					"device": {
+						"title": "Geräteinformationen",
+						"content": "Wir sammeln Informationen über das Gerät, das Sie für den Zugriff auf den Dienst verwenden, einschließlich Hardware-Modell, Betriebssystem und Version, eindeutige Gerätekennungen und mobile Netzwerkinformationen."
+					},
+					"log": {
+						"title": "Protokollinformationen",
+						"content": "Wenn Sie unseren Dienst nutzen, sammeln und speichern wir automatisch bestimmte Informationen in Server-Protokollen. Dies umfasst Details darüber, wie Sie unseren Dienst genutzt haben, IP-Adresse, Geräteereignisinformationen wie Abstürze, Systemaktivität, Hardware-Einstellungen, Browser-Typ, Browser-Sprache, Datum und Uhrzeit Ihrer Anfrage und Verweis-URL."
+					}
+				}
+			},
+			"usage": {
+				"title": "2. Wie wir Ihre Informationen verwenden",
+				"intro": "Wir verwenden die gesammelten Informationen, um:",
+				"list": {
+					"1": "Unseren Dienst bereitzustellen, zu betreiben und zu warten;",
+					"2": "Unseren Dienst zu verbessern, zu personalisieren und zu erweitern;",
+					"3": "Zu verstehen und zu analysieren, wie Sie unseren Dienst nutzen;",
+					"4": "Neue Produkte, Dienstleistungen, Funktionen und Funktionalitäten zu entwickeln;",
+					"5": "Mit Ihnen zu kommunizieren, entweder direkt oder über einen unserer Partner, einschließlich für Kundendienst, um Ihnen Updates und andere Informationen bezüglich des Dienstes zur Verfügung zu stellen und für Marketing- und Werbezwecke (mit Ihrer Zustimmung, wo erforderlich);",
+					"6": "Ihre Transaktionen zu verarbeiten;",
+					"7": "Ihnen Push-Benachrichtigungen zu senden (mit Ihrer Zustimmung);",
+					"8": "Betrug und Missbrauch zu finden und zu verhindern; und",
+					"9": "Für Compliance-Zwecke, einschließlich der Durchsetzung unserer Nutzungsbedingungen oder anderer gesetzlicher Rechte, oder wie es von geltenden Gesetzen und Vorschriften gefordert oder von gerichtlichen Verfahren oder Regierungsbehörden angefordert werden kann."
+				}
+			},
+			"sharing": {
+				"title": "3. Wie wir Ihre Informationen teilen",
+				"intro": "Wir können die gesammelten Informationen auf verschiedene Weise teilen, einschließlich der folgenden:",
+				"users": {
+					"title": "Mit anderen Nutzern",
+					"content": "Ihr Benutzername und die Inhalte, die Sie als \"Nachrichten in der Flasche\" teilen, sind für andere Nutzer des Dienstes sichtbar. Wenn Sie Freunde hinzufügen oder sich an Direktnachrichten beteiligen (wenn verfügbar), sehen diese Nutzer Ihre Interaktionen mit ihnen."
+				},
+				"vendors": {
+					"title": "Anbieter und Dienstleister",
+					"content": "Wir können Informationen mit Drittanbietern und Dienstleistern teilen, die Dienstleistungen in unserem Namen erbringen, wie Hosting, Datenanalyse, Kundendienst und Marketing."
+				},
+				"legal": {
+					"title": "Wie gesetzlich vorgeschrieben und ähnliche Offenlegungen",
+					"content": "Wir können auf Ihre Informationen zugreifen, sie bewahren und offenlegen, wenn wir glauben, dass dies erforderlich oder angemessen ist, um: (a) Strafverfolgungsanfragen und rechtlichen Verfahren, wie Gerichtsbeschlüssen oder Vorladungen, zu entsprechen; (b) auf Ihre Anfragen zu antworten; oder (c) Ihre, unsere oder die Rechte, das Eigentum oder die Sicherheit anderer zu schützen."
+				},
+				"merger": {
+					"title": "Fusion, Verkauf oder andere Vermögensübertragungen",
+					"content": "Wenn wir an einer Fusion, Akquisition, Finanzierungsaufgaben-Due-Diligence, Reorganisation, Konkurs, Zwangsverwaltung, Verkauf von Unternehmensvermögen oder Übergang des Dienstes zu einem anderen Anbieter beteiligt sind, können Ihre Informationen als Teil einer solchen Transaktion verkauft oder übertragen werden, wie es nach geltendem Recht und/oder Vertrag zulässig ist."
+				},
+				"consent": {
+					"title": "Mit Ihrer Zustimmung",
+					"content": "Wir können Ihre Informationen für andere Zwecke mit Ihrer Zustimmung teilen."
+				}
+			},
+			"retention": {
+				"title": "4. Datenspeicherung",
+				"content": "Wir bewahren Ihre persönlichen Informationen so lange auf, wie es notwendig ist, um den Dienst bereitzustellen und die von Ihnen angeforderten Transaktionen zu erfüllen, oder für andere wesentliche Zwecke wie die Erfüllung unserer rechtlichen Verpflichtungen, die Beilegung von Streitigkeiten und die Durchsetzung unserer Vereinbarungen. Benutzerinhalte wie Nachrichten können aufbewahrt werden, um die Integrität der Plattform und das Gemeinschaftserlebnis zu erhalten."
+			},
+			"choices": {
+				"title": "5. Ihre Wahlmöglichkeiten",
+				"intro": "Sie haben mehrere Wahlmöglichkeiten bezüglich Ihrer Informationen:"
+			}
+		}
+	},
+	"about": {
+		"title": "Über Light in a Bottle",
+		"subtitle": "Entdecken Sie die Geschichte hinter unserer App.",
+		"welcome": "Willkommen bei Light in a Bottle, einer Anwendung, die mit der Vision entwickelt wurde, etwas mehr Ruhe, Achtsamkeit und Positivität in Ihr tägliches Leben zu bringen. In einer Welt, die oft schnelllebig und überwältigend erscheint, wollten wir einen ruhigen digitalen Raum schaffen, in dem Nutzer innehalten, reflektieren und wieder mit sich selbst in Verbindung treten können.",
+		"creator_title": "Lernen Sie die Entwicklerin kennen",
+		"creator_subtitle": "Jane Doe - Leitende Entwicklerin & Visionärin",
+		"creator_story": "Diese App entstand aus einer persönlichen Reise, Ruhe inmitten des Chaos zu finden. Als leitende Entwicklerin, Jane Doe, stellte ich mir ein Werkzeug vor, das nicht nur funktional war, sondern auch ein Erlebnis – eine sanfte Erinnerung daran, die kleinen Momente zu schätzen und inneren Frieden zu kultivieren. Das Konzept \"Light in a Bottle\" symbolisiert das Einfangen jener flüchtigen Momente der Klarheit, Inspiration und Hoffnung, die unsere Wege erhellen können.",
+		"mission": "Unsere Mission ist es, eine einfache, intuitive und ästhetisch ansprechende Plattform bereitzustellen, die Ihr Wohlbefinden unterstützt. Wir glauben, dass Technologie, wenn sie durchdacht gestaltet wird, ein mächtiger Verbündeter bei der Förderung der geistigen und emotionalen Gesundheit sein kann. Jede Funktion, jede Farbwahl und jede Interaktion in dieser App wurde sorgfältig durchdacht, um mit unseren Grundwerten von Ruhe, Einfachheit und moderner Eleganz im Einklang zu stehen.",
+		"closing": "Vielen Dank, dass Sie Teil unserer Gemeinschaft sind. Wir hoffen, Light in a Bottle hilft Ihnen, Ihren eigenen Funken zu finden.",
+		"back_to_home": "Zurück zur Startseite"
+	},
+	"navigation": {
+		"menu": "Menü",
+		"home": "Startseite",
+		"profile": "Profil",
+		"settings": "Einstellungen",
+		"help": "Hilfe",
+		"logout": "Abmelden"
+	},
+	"dashboard": {
+		"send_bottle": "Flasche senden",
+		"view_details": "Details anzeigen",
+		"welcome": "Teile dein Licht mit der Gemeinschaft",
+		"create_post": "Neuen Beitrag erstellen"
+	},
+	"bottle_details": {
+		"title": "Flaschen-Details",
+		"from": "Von",
+		"received": "Erhalten",
+		"like": "Gefällt mir",
+		"save": "Speichern",
+		"send_message": "Eigene Nachricht senden",
+		"toss_into_sea": "Ins Meer werfen"
+	},
+	"settings": {
+		"title": "Einstellungen",
+		"notification_settings": "Benachrichtigungseinstellungen",
+		"notification_frequency": "Benachrichtigungshäufigkeit",
+		"notification_frequency_description": "Wählen Sie, wie oft Sie Benachrichtigungen erhalten möchten.",
+		"frequency_options": {
+			"instantly": "Sofort",
+			"daily": "Tägliche Zusammenfassung",
+			"weekly": "Wöchentliche Zusammenfassung",
+			"never": "Nie"
+		},
+		"security": "Sicherheit",
+		"enable_pin": "PIN-Code aktivieren",
+		"pin_description": "Sichern Sie Ihre App mit einem 4-stelligen PIN-Code.",
+		"current_pin": "Aktuelle PIN (bei Änderung)",
+		"current_pin_description": "Lassen Sie dies leer, wenn Sie zum ersten Mal eine PIN einrichten.",
+		"new_pin": "Neue 4-stellige PIN",
+		"confirm_pin": "Neue PIN bestätigen",
+		"save_changes": "Änderungen speichern"
+	},
+	"help": {
+		"title": "Hilfe-Center",
+		"faq": "Häufig gestellte Fragen",
+		"contact_support": "Support kontaktieren",
+		"contact_description": "Wenn Sie die Antwort auf Ihre Frage nicht in unserem FAQ gefunden haben, wenden Sie sich gerne an unser Support-Team.",
+		"contact_us": "Kontaktieren Sie uns",
+		"questions": {
+			"change_password": {
+				"question": "Wie ändere ich mein Passwort?",
+				"answer": "Sie können Ihr Passwort auf der Einstellungsseite ändern. Navigieren Sie zu \"Einstellungen\" und finden Sie dann den Bereich \"Sicherheit\". Dort finden Sie eine Option zum Aktualisieren Ihres Passworts. Sie müssen Ihr aktuelles Passwort und dann zweimal Ihr neues Passwort eingeben."
+			},
+			"notification_frequency": {
+				"question": "Wie kann ich die Benachrichtigungshäufigkeit anpassen?",
+				"answer": "Um Ihre Benachrichtigungshäufigkeit anzupassen, gehen Sie zur \"Einstellungen\"-Seite. Unter \"Benachrichtigungseinstellungen\" finden Sie ein Dropdown-Menü mit der Bezeichnung \"Benachrichtigungshäufigkeit\". Wählen Sie Ihre bevorzugte Option (z.B. Sofort, Tägliche Zusammenfassung, Wöchentliche Zusammenfassung oder Nie) und speichern Sie Ihre Änderungen."
+			},
+			"pin_code": {
+				"question": "Was ist die PIN-Code-Funktion?",
+				"answer": "Die PIN-Code-Funktion fügt eine zusätzliche Sicherheitsebene zu Ihrer App hinzu. Wenn aktiviert, müssen Sie eine 4-stellige PIN eingeben, um auf die App zuzugreifen. Sie können Ihre PIN im Bereich \"Sicherheit\" auf der \"Einstellungen\"-Seite aktivieren, deaktivieren oder ändern."
+			},
+			"forgot_pin": {
+				"question": "Ich habe meine PIN vergessen. Was soll ich tun?",
+				"answer": "Wenn Sie Ihre PIN vergessen haben, müssen Sie sie normalerweise zurücksetzen. Dieser Prozess kann die Verifizierung Ihrer Identität über Ihre E-Mail oder andere Sicherheitsfragen beinhalten. Suchen Sie nach einer \"PIN vergessen?\"-Option auf dem PIN-Eingabebildschirm oder wenden Sie sich an den Support."
+			}
+		}
+	},
+	"profile": {
+		"title": "Mein Profil",
+		"edit_profile": "Profil bearbeiten",
+		"bio_placeholder": "Finde Licht an unerwarteten Orten. Verbreite Freundlichkeit, eine Flasche nach der anderen.",
+		"stats": {
+			"bottles_sent": "Versendete Flaschen",
+			"bottles_received": "Erhaltene Flaschen",
+			"connections": "Verbindungen"
+		},
+		"tabs": {
+			"my_posts": "Meine Beiträge",
+			"saved_bottles": "Gespeicherte Flaschen"
+		},
+		"actions": {
+			"edit": "Bearbeiten",
+			"delete": "Löschen"
+		}
+	},
+	"create_bottle": {
+		"title": "Erstelle deine Flasche",
+		"subtitle": "Teile dein Licht mit der Gemeinschaft",
+		"message_label": "Deine Nachricht",
+		"message_placeholder": "Was möchtest du heute teilen? Vielleicht einen Gedanken, ein Gefühl oder einen Moment der Inspiration...",
+		"character_count": "Zeichen",
+		"character_limit": "280 Zeichen Limit",
+		"mood_label": "Wie fühlst du dich?",
+		"mood_options": {
+			"peaceful": "Friedlich",
+			"grateful": "Dankbar",
+			"hopeful": "Hoffnungsvoll",
+			"reflective": "Nachdenklich",
+			"joyful": "Freudig",
+			"contemplative": "Besinnlich"
+		},
+		"anonymous_label": "Anonym posten",
+		"anonymous_description": "Dein Benutzername wird vor anderen Nutzern verborgen",
+		"preview": "Vorschau deiner Flasche",
+		"send_bottle": "Flasche ins Meer werfen",
+		"cancel": "Abbrechen",
+		"draft_saved": "Entwurf gespeichert",
+		"message_required": "Bitte gib eine Nachricht ein",
+		"success_message": "Deine Flasche wurde ins Meer geworfen! 🌊",
+		"daily_limit": "Du hast dein tägliches Flaschen-Limit erreicht. Komm morgen wieder!"
+	}
+}
