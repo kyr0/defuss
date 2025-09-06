@@ -1,0 +1,22 @@
+---
+title: Terms of Service
+---
+
+import { Footer } from '../components/footer.js'
+export const year = 2025;
+export const someData = await import('../data.json');
+
+<html>
+<head>
+  <title>{ meta.title }</title>
+</head>
+<body>
+
+  # { meta.title }
+
+  The terms of service are cool! { someData.firstName } { someData.lastName }
+
+  <Footer year={year} />
+
+</body>
+</html>

@@ -1,0 +1,30 @@
+---
+title: My Page
+---
+
+import { Footer } from '../../components/footer.js'
+import { Header } from '../../components/header.js'
+export const year = 2025;
+export const someData = await import('../../data.json');
+
+<html>
+<head>
+  <title>{ meta.title }</title>
+</head>
+<body>
+
+  <Header />
+
+  # Blog { meta.title }
+
+  <h1>{ meta.title }</h1>
+  <p>Blog of website!</p>
+
+  <Footer year={year} />
+
+  $$
+    L = \frac{1}{2} \rho v^2 S C_L
+  $$
+
+</body>
+</html>
