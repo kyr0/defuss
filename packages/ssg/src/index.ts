@@ -88,6 +88,8 @@ export interface SsgPlugin {
    */
   phase: "pre" | "page-vdom" | "page-dom" | "page-html" | "post";
 
+  // TODO: mode! `serve` | `build` | `both` for only-serve or only-build or both
+
   /**
    * The plugin function to execute
    * @param config The current SsgConfig object
