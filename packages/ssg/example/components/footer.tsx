@@ -7,7 +7,9 @@ export const Footer = ({ year }: { year: number }) => {
         paddingTop: "1rem",
       }}
     >
-      <p>&copy; {year} My Static Site. All rights reserved.</p>
+      <p>
+        &copy; {year} <i>defuss</i> by Aron Homberg
+      </p>
     </footer>
   );
 };

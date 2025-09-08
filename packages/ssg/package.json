@@ -1,6 +1,6 @@
 {
   "name": "defuss-ssg",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -83,7 +83,11 @@
     "esbuild": "^0.25.9",
     "rehype-mdx-title": "^3.2.0",
     "rehype-katex": "^7.0.1",
+    "rehype-stringify": "^10.0.1",
+    "remark-rehype": "^11.1.2",
     "remark-math": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
     "remark-frontmatter": "^5.0.0",
     "remark-mdx-frontmatter": "^5.2.0",
     "fast-glob": "^3.3.3",

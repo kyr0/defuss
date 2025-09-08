@@ -1,5 +1,5 @@
 ---
-title: My Page
+title: Home
 ---
 
 import { Head } from "../components/head.js"
@@ -11,19 +11,64 @@ export const someData = await import('../data.json');
 <html>
 <Head meta={meta} />
 <body>
+<main class="container">
 
-  <Header year={year} />
+<Header active={"index"} />
 
-  # Test { meta.title }
+# { meta.title }
 
-  <h1>{ meta.title }</h1>
-  <p>Welcome to my website! {year} </p>
+Welcome to the defuss-ssg example website! We can use dynamic variables! Look: {someData.firstName} {someData.lastName} has been read from <code>../data.json</code> at generation time.
 
-  $$
-    L = \frac{1}{2} \rho v^2 S C_L
-  $$
+Currently we can render buttons, but the client-side interactivity is not yet implemented:
 
-  <Footer year={year} />
+<button type="button" class="secondary" onClick={() => alert("Button clicked!")}>Button</button>
 
+We also have **infinite** layout options, because you can mix Markdown and HTML:
+
+## Grid layout
+
+<div class="grid">
+  <div>1</div>
+  <div>2</div>
+  <div>3</div>
+  <div>4</div>
+</div>
+
+## Math support 
+
+We can use KaTeX for math rendering, both inline $( L = \frac{1}{2} \rho v^2 S C_L )$ and block:
+
+$$
+  L = \frac{1}{2} \rho v^2 S C_L.
+$$
+
+# GFM support
+
+### Autolink literals
+
+The following links are automatically converted into clickable links:
+
+www.example.com, https://example.com, and contact@example.com.
+
+### Strikethrough
+
+~one~ or ~~two~~ tildes.
+
+### Table
+
+| a | b  |  c |  d  |
+| - | :- | -: | :-: |
+| 1 | 2  |  3 |  4  |
+| 5 | 6  |  7 |  8  |
+| 9 | 10 | 11 | 12 |
+
+### Tasklist
+
+- [ ] to do
+- [ ] another to do
+
+<Footer year={year} />
+
+</main>
 </body>
 </html>

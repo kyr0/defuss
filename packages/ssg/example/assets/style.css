@@ -1,0 +1,12 @@
+.bold {
+  font-weight: bold;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+}
+
+.brand img {
+  margin-right: 0.5rem;
+}

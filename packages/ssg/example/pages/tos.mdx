@@ -4,18 +4,23 @@ title: Terms of Service
 
 import { Head } from "../components/head.js"
 import { Footer } from '../components/footer.js'
+import { Header } from '../components/header.js'
 export const year = 2025;
 export const someData = await import('../data.json');
 
 <html>
 <Head meta={meta} />
 <body>
+<main class="container">
 
-  # { meta.title }
+<Header active={"tos"} />
 
-  The terms of service are cool! { someData.firstName } { someData.lastName }
+# { meta.title }
 
-  <Footer year={year} />
+The terms of service are cool! { someData.firstName } { someData.lastName }
 
+<Footer year={year} />
+
+</main>
 </body>
 </html>

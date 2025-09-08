@@ -1,21 +1,43 @@
-export const Header = ({ year }: { year: number }) => {
+import type { Props } from "defuss";
+
+import { Aside } from "./aside.js";
+
+export interface HeaderProps extends Props {
+  active: string;
+}
+
+export const Header = ({ active }: HeaderProps) => {
+  console.log("Header active for this site:", active);
   return (
-    <header>
-      <h1>Welcome to My Static Site</h1>
-      <p>Current year: {year}</p>
-      <button type="button" onClick={() => alert("Button clicked!")}>
-        Click Me
-      </button>
+    <>
       <nav>
         <ul>
           <li>
-            <a href="/">Home</a>
+            <a href="/" className="brand">
+              <img
+                width={32}
+                src="https://github.com/kyr0/defuss/blob/main/assets/defuss_mascott.png?raw=true"
+                alt="defuss-ssg logo"
+              />
+              <strong>defuss-ssg</strong>
+            </a>
+          </li>
+        </ul>
+        <ul>
+          <li>
+            <a href="/" className={active === "index" ? "bold" : ""}>
+              Home
+            </a>
           </li>
           <li>
-            <a href="/tos.html">Terms of Service</a>
+            <a href="/tos.html" className={active === "tos" ? "bold" : ""}>
+              Terms of Service
+            </a>
           </li>
         </ul>
       </nav>
-    </header>
+
+      <Aside active={active} />
+    </>
   );
 };

@@ -1,6 +1,7 @@
 import { build } from "./build.js";
 import { serve } from "./serve.js";
 import { resolve } from "node:path";
+import { setup } from "./setup.js";
 
 (async () => {
   const args = process.argv.slice(2);
@@ -14,6 +15,9 @@ import { resolve } from "node:path";
   }
 
   const projectDir = resolve(folder);
+
+  // initialize the project (if not already done)
+  await setup(projectDir);
 
   if (command === "build") {
     console.log(`Building ${folder}...`);

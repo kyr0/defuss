@@ -53,6 +53,8 @@ export const serve = async ({
     isBuilding = true;
     try {
       await build({ projectDir, debug, mode: "serve" });
+    } catch (error) {
+      console.error("Build failed. Waiting for code change to fix that...");
     } finally {
       isBuilding = false;
       if (pendingBuild) {

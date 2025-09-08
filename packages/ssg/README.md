@@ -1,14 +1,16 @@
 <h1 align="center">
 
-<img src="assets/defuss_mascott.png" width="100px" />
+<img src="https://github.com/kyr0/defuss/blob/main/assets/defuss_mascott.png?raw=true" width="100px" />
 
 <p align="center">
+  
   <code>defuss-ssg</code>
+
 </p>
 
 <sup align="center">
 
-Simple Static Site Generator (SSG) for defuss - with support for Markdown, MDX, and Jinja2 templates
+Static Site Generator (SSG) for defuss
 
 </sup>
 
@@ -18,7 +20,7 @@ Simple Static Site Generator (SSG) for defuss - with support for Markdown, MDX, 
 Usage
 </h3>
 
-Simply generate a static site from a content directory to an output directory with full `defuss`-MDX (GFM + Frontmatter) support:
+Simply generate a static site from a content directory to an output directory with full defuss-MDX (GFM + Frontmatter) support:
 
 ```bash
 npx defuss-ssg build ./folder

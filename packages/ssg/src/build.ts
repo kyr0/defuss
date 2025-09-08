@@ -25,7 +25,6 @@ import type {
 } from "./types.js";
 import { readConfig } from "./config.js";
 import { validateProjectDir } from "./validation.js";
-import { setup } from "./setup.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -41,9 +40,6 @@ export const build = async ({
 }: BuildOptions): Promise<Status> => {
   const projectDirStatus = validateProjectDir(projectDir);
   if (projectDirStatus.code !== "OK") return projectDirStatus;
-
-  // initialize the project (if not already done)
-  await setup(projectDir);
 
   // TODO: implement detailed error handing and status tracking (see setup.ts)
 
