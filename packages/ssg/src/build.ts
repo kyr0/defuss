@@ -137,19 +137,17 @@ export const build = async ({
   // temporary components folder, so that it can be used by MDX files
   // and compiles with esbuild's tree shaking and code splitting.
   await cp(
-    // because of this the packaging of defuss-ssg must be done with "files" including the "components" folder
     // in a built situation, __dirname is the dist folder of defuss-ssg
-    resolve(join(__dirname, "..", "src", "components", "hydrate.tsx")),
-    join(tmpComponentsDir, "hydrate.tsx"),
+    resolve(join(__dirname, "components", "index.mjs")),
+    join(tmpComponentsDir, "hydrate.tsx"), // any valid JS is always a valid TS file
   );
 
   // this code is injected in the vdom that makes up each HTML file as a script for hydration,
   // only if the vdom contains at least one Hydrate component (and therefore interactive CSR is required).
   await cp(
-    // because of this the packaging of defuss-ssg must be done with "files" including the "runtime" file
     // in a built situation, __dirname is the dist folder of defuss-ssg
-    resolve(join(__dirname, "..", "src", "runtime.ts")),
-    join(tmpComponentsDir, "runtime.ts"),
+    resolve(join(__dirname, "runtime.mjs")),
+    join(tmpComponentsDir, "runtime.ts"), // any valid JS is always a valid TS file
   );
 
   // compile all MDX files from content into .js files into the temp output folder
