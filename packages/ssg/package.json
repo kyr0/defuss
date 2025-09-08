@@ -87,8 +87,8 @@
     "fast-glob": "^3.3.3",
     "@types/express": "^5.0.3",
     "@types/serve-static": "^1.15.8",
-    "defuss": "workspace:*",
-    "defuss-runtime": "workspace:*"
+    "defuss": "^2.1.1",
+    "defuss-runtime": "^1.2.0"
   },
   "devDependencies": {
     "pkgroll": "^2.5.1",
