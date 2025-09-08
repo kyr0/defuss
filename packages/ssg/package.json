@@ -54,6 +54,16 @@
         "types": "./dist/runtime.d.mts",
         "default": "./dist/runtime.mjs"
       }
+    },
+    "./plugins": {
+      "require": {
+        "types": "./dist/plugins/index.d.cts",
+        "default": "./dist/plugins/index.cjs"
+      },
+      "import": {
+        "types": "./dist/plugins/index.d.mts",
+        "default": "./dist/plugins/index.mjs"
+      }
     }
   },
   "main": "./dist/index.cjs",
@@ -75,6 +85,8 @@
     "remark-frontmatter": "^5.0.0",
     "remark-mdx-frontmatter": "^5.2.0",
     "fast-glob": "^3.3.3",
+    "@types/express": "^5.0.3",
+    "@types/serve-static": "^1.15.8",
     "defuss": "workspace:*",
     "defuss-runtime": "workspace:*"
   },
@@ -83,8 +95,6 @@
     "typescript": "^5.6.3",
     "vitest": "^3.1.3",
     "happy-dom": "^15.11.7",
-    "@vitest/coverage-v8": "^3.1.3",
-    "@types/express": "^5.0.3",
-    "@types/serve-static": "^1.15.8"
+    "@vitest/coverage-v8": "^3.1.3"
   }
 }

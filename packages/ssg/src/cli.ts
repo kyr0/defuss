@@ -1,4 +1,5 @@
-import { build, serve } from "./index.js";
+import { build } from "./build.js";
+import { serve } from "./serve.js";
 import { resolve } from "node:path";
 
 (async () => {
@@ -19,12 +20,14 @@ import { resolve } from "node:path";
     await build({
       projectDir,
       debug: true,
+      mode: "build",
     });
   } else if (command === "serve") {
     console.log(`Serving ${folder}...`);
     await serve({
       projectDir,
       debug: true,
+      mode: "serve",
     });
   } else {
     console.error(usage);

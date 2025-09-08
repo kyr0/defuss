@@ -227,15 +227,63 @@ Available plugin phases:
 - **page-html**: After HTML serialization for each page
 - **post**: After build completes
 
+
 <h3 align="center">
+
 MDX Features
+
 </h3>
 
-`defuss-ssg` supports full MDX with:
+`defuss-ssg` supports full MDX with `defuss` components and common GFM Markdown features:
 
-- **Frontmatter**: YAML/TOML metadata extraction
+- **Frontmatter**: YAML/TOML metadata extraction - the `meta` object holds frontmatter data - use e.g. `{ meta.title }` for page title defined in frontmatter like this: 
+```mdx
+--- 
+title: My Page 
+---
+```
+
 - **JSX Components**: Use `defuss` components in your content
 - **Math Support**: KaTeX rendering with `$...$` and `$$...$$`
 - **Custom Plugins**: Extend MDX processing with remark/rehype plugins
 
+<h3 align="center">
 
+Build Process
+
+</h3>
+
+The build process follows these steps:
+
+1. **Copy Project**: Copy all files to temporary directory
+2. **Compile MDX**: Process MDX files to ESM JavaScript
+3. **Compile Components**: Bundle components with esbuild
+4. **Evaluate Pages**: Run page functions to generate VDOM
+5. **Render HTML**: Convert VDOM to HTML using defuss/server
+6. **Run Plugins**: Execute plugins at various phases
+7. **Copy Assets**: Copy static assets to output
+8. **Clean Up**: Remove temporary files (unless debug mode)
+
+<h3 align="center">
+
+CLI Reference 
+
+</h3>
+
+```bash
+defuss-ssg <command> <folder>
+
+Commands:
+  build <folder>    Build the static site
+  serve <folder>    Serve with auto-rebuild on changes
+```
+
+<p align="center">
+
+  <img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/assets/defuss_comic.png" width="400px" />
+
+</p>
+
+<p align="center">
+  <i><b>Come visit us on <code>defuss</code> Island!</b></i>
+</p>
