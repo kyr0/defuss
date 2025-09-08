@@ -57,9 +57,17 @@ Changes trigger automatic rebuilds, with the last change always taking priority 
 Advanced users may want to use the library programmatically:
 
 ```typescript
-import { build, serve } from "defuss-ssg";
+import { setup, build, serve } from "defuss-ssg";
 
 (async () => {
+
+  // Setup project initially
+  const setupStatus = await setup("./my-site");
+  if (setupStatus.code !== "OK") { 
+    console.error("Setup failed:", setupStatus.message);
+    process.exit(1);
+  }
+
   // One-time build
   await build({
     projectDir: "./my-site",

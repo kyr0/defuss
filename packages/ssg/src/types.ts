@@ -4,6 +4,21 @@ import type { VNode } from "defuss/server";
 export type RemarkPlugins = Options["remarkPlugins"];
 export type RehypePlugins = Options["rehypePlugins"];
 
+export type StatusCode =
+  | "OK"
+  | "MISSING_PROJECT_DIR"
+  | "MISSING_PACKAGE_JSON"
+  | "INVALID_JSON"
+  | "UNSUPPORTED_PM"
+  | "INSTALL_FAILED"
+  | "INVALID_CONFIG"
+  | "INVALID_PROJECT_DIR";
+
+export type Status = {
+  code: StatusCode;
+  message: string;
+};
+
 export type PluginFnPageHtml = (
   html: string,
   relativeOutputHtmlFilePath: string,

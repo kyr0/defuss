@@ -5,7 +5,16 @@ import esbuild from "esbuild";
 import { rehypePlugins, remarkPlugins } from "./mdx-plugins.js";
 import { tailwindPlugin } from "./plugins/tailwind.js";
 
-export const readConfig = async (projectDir: string, debug: boolean) => {
+/**
+ * Reads the SSG configuration from the project directory.
+ * @param projectDir The path to the project directory.
+ * @param debug Whether to enable debug logging.
+ * @returns The SSG configuration.
+ */
+export const readConfig = async (
+  projectDir: string,
+  debug: boolean,
+): Promise<SsgConfig> => {
   const configPath = join(projectDir, "config.ts");
   let config = {} as SsgConfig;
 

@@ -1,4 +1,4 @@
-import type { BuildOptions, SsgConfig } from "./types.js";
+import type { BuildOptions, SsgConfig, Status } from "./types.js";
 
 import chokidar from "chokidar";
 import express from "express";
@@ -12,9 +12,13 @@ import { join } from "node:path";
  * Also watches the input, components and assets folders for changes and rebuilds the site on-the-fly.
  * @param projectDir The root directory of the project to build
  */
-export const serve = async ({ projectDir, debug = false }: BuildOptions) => {
-  // TODO: Implement serve mode
+export const serve = async ({
+  projectDir,
+  debug = false,
+}: BuildOptions): Promise<Status> => {
   const config = (await readConfig(projectDir, debug)) as SsgConfig;
+
+  // TODO: implement detailed error handing and status tracking (see setup.ts)
 
   // TODO: reuse code for path construction
   const outputDir = join(projectDir, config.output);
@@ -22,7 +26,7 @@ export const serve = async ({ projectDir, debug = false }: BuildOptions) => {
   const componentsDir = join(projectDir, config.components);
   const assetsDir = join(projectDir, config.assets);
 
-  // initial build
+  // initial build (and setup)
   await build({ projectDir, debug, mode: "serve" });
 
   // Set up Express server
@@ -88,4 +92,6 @@ export const serve = async ({ projectDir, debug = false }: BuildOptions) => {
     }
     await triggerBuild();
   });
+
+  return { code: "OK", message: "Server is running" };
 };

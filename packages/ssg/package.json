@@ -1,6 +1,6 @@
 {
   "name": "defuss-ssg",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -10,13 +10,7 @@
   },
   "license": "MIT",
   "description": "A simple static site generator (SSG) built with defuss.",
-  "keywords": [
-    "ssg",
-    "static",
-    "site",
-    "generator",
-    "defuss"
-  ],
+  "keywords": ["ssg", "static", "site", "generator", "defuss"],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -77,9 +71,7 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },

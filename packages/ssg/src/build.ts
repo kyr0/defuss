@@ -21,8 +21,11 @@ import type {
   PluginFnPageVdom,
   PluginFnPrePost,
   SsgConfig,
+  Status,
 } from "./types.js";
 import { readConfig } from "./config.js";
+import { validateProjectDir } from "./validation.js";
+import { setup } from "./setup.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -35,7 +38,15 @@ export const build = async ({
   projectDir,
   debug = false,
   mode = "build",
-}: BuildOptions) => {
+}: BuildOptions): Promise<Status> => {
+  const projectDirStatus = validateProjectDir(projectDir);
+  if (projectDirStatus.code !== "OK") return projectDirStatus;
+
+  // initialize the project (if not already done)
+  await setup(projectDir);
+
+  // TODO: implement detailed error handing and status tracking (see setup.ts)
+
   const startTime = performance.now();
 
   const config = (await readConfig(projectDir, debug)) as SsgConfig;
@@ -349,4 +360,6 @@ export const build = async ({
   const endTime = performance.now();
   const totalTime = (endTime - startTime) / 1000; // Convert to seconds
   console.log(`Build completed in ${totalTime.toFixed(2)} seconds.`);
+
+  return { code: "OK", message: "Build completed successfully" };
 };
