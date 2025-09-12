@@ -1,26 +1,27 @@
-# APL Python Implementation
+# defuss-apl-demo
 
-A minimal Python implementation of the Agentic Prompting Language (APL) according to specification v1.1.
-
-## Features
-
-- **Full Jinja2 Support** - Use Jinja2 templates in all phases with variable assignment and control flow
-- **Multi-step Workflows** - Create complex branching workflows with `next_step` control
-- **Native Tool Calling** - Execute Python functions directly from LLM tool calls
-- **Provider Agnostic** - Works with OpenAI API or custom providers
-- **Multimodal Support** - Handle images, audio, and files with inline attachments
-- **Minimal Dependencies** - Only requires `jinja2`, optionally `openai`
+Simple tool that uses the defuss APL agentic programming language and OpenAI-compatible inference APIs to demonstrate its capabilities.
 
 ## Installation
 
 ```bash
-pip install defuss-apl
+# Create virtual environment
+python -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-For OpenAI support:
+## Demo
+
 ```bash
-pip install defuss-apl[openai]
+# Run the demo script
+python src/demo.py
 ```
+
 
 ## Quick Start
 

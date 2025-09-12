@@ -1,0 +1,4 @@
+defuss-apl[openai]>=1.1.0
+asyncio>=3.4.3
+dotenv>=0.9.9
+qdrant_client>=1.15
