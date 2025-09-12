@@ -147,15 +147,15 @@ export function parse(content: string): EnvMap {
  * - When injecting, does **not** override existing variables unless `override` is true.
  *
  * @param filePath Path to the .env file. Default: ".env".
- * @param inject   If true, write parsed values into `process.env`. Default: false.
- * @param override If true, allow overwriting existing `process.env` values. Default: false.
+ * @param inject   If true, write parsed values into `process.env`. Default: true.
+ * @param override If true, allow overwriting existing `process.env` values. Default: true.
  * @returns        Parsed key/value map.
  * @throws         If not in Node, file too large, or value exceeds size cap.
  */
 export function load(
   filePath = ".env",
-  inject = false,
-  override = false,
+  inject = true,
+  override = true,
 ): EnvMap {
   if (!isNode) throw new Error("Env loader must run on Node.js (server-only).");
 
