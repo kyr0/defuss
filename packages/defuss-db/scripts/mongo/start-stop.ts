@@ -4,30 +4,31 @@ import { getEnv } from "../../src/env";
 export const startMongo = async () => {
   const containerName = getEnv("MONGO_CONTAINER_NAME");
 
+  if (!containerName) {
+    throw new Error("MONGO_CONTAINER_NAME is not set in env.");
+  }
+
+  console.log(`Checking MongoDB container '${containerName}'...`);
+
   try {
-    // Check if container exists and get its status
+    // Check if container exists by trying to inspect it
     const containerInfo = execSync(
-      `docker ps -a --filter name=^${containerName}$ --format "{{.Status}}"`,
+      `docker inspect ${containerName} --format "{{.State.Status}}"`,
       { encoding: "utf8", stdio: "pipe" },
     ).trim();
 
-    if (containerInfo) {
-      // Container exists, check if it's running
-      if (containerInfo.startsWith("Up")) {
-        console.log(`MongoDB container '${containerName}' is already running.`);
-        return;
-      } else {
-        // Container exists but is stopped, start it
-        console.log(
-          `Starting existing MongoDB container '${containerName}'...`,
-        );
-        execSync(`docker start ${containerName}`, { stdio: "inherit" });
-        console.log("MongoDB started.");
-        return;
-      }
+    if (containerInfo === "running") {
+      console.log(`MongoDB container '${containerName}' is already running.`);
+      return;
+    } else if (containerInfo === "exited") {
+      // Container exists but is stopped, start it
+      console.log(`Starting existing MongoDB container '${containerName}'...`);
+      execSync(`docker start ${containerName}`, { stdio: "inherit" });
+      console.log("MongoDB started.");
+      return;
     }
   } catch (error) {
-    // Container doesn't exist or other error, proceed to create it
+    // Container doesn't exist, proceed to create it
   }
 
   // Container doesn't exist, create and start it
@@ -40,11 +41,21 @@ export const startMongo = async () => {
 };
 
 export const stopMongo = async () => {
-  execSync(`docker stop ${getEnv("MONGO_CONTAINER_NAME")}`, {
-    stdio: "inherit",
-  });
-  execSync(`docker rm ${getEnv("MONGO_CONTAINER_NAME")}`, {
-    stdio: "inherit",
-  });
+  try {
+    execSync(`docker stop ${getEnv("MONGO_CONTAINER_NAME")}`, {
+      stdio: "inherit",
+    });
+  } catch (error) {
+    // Container might not be running, continue with removal
+  }
+
+  try {
+    execSync(`docker rm ${getEnv("MONGO_CONTAINER_NAME")}`, {
+      stdio: "inherit",
+    });
+  } catch (error) {
+    // Container might not exist, ignore error
+  }
+
   console.log("MongoDB stopped.");
 };
