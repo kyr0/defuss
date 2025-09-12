@@ -174,7 +174,7 @@ describe("parse", () => {
 });
 
 describe("load", () => {
-  it("loads from disk and does not inject by default", () => {
+  it("loads from disk and does inject by default", () => {
     const tmp = tempDir();
     try {
       const p = tmp.write("a.env", `FOO=bar\nBAR="baz"`);
@@ -183,9 +183,9 @@ describe("load", () => {
         const env = load(p);
         expect(env.FOO).toBe("bar");
         expect(env.BAR).toBe("baz");
-        // No injection by default
-        expect(process.env.FOO).toBeUndefined();
-        expect(process.env.BAR).toBeUndefined();
+        // Injection by default
+        expect(process.env.FOO).toBeDefined();
+        expect(process.env.BAR).toBeDefined();
       });
     } finally {
       tmp.cleanup();
