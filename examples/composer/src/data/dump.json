@@ -1,0 +1,6386 @@
+[
+  {
+    "tMs": 1082,
+    "pitchHz": 1121.122929783399,
+    "volDbRms": -42.34,
+    "chroma": 1,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 1182,
+    "pitchHz": 1121.122929783399,
+    "volDbRms": -39.94,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 1241,
+    "pitchHz": 1121.122929783399,
+    "volDbRms": -36.34,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 1282,
+    "pitchHz": 1121.122929783399,
+    "volDbRms": -38.23,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 1361,
+    "pitchHz": 1121.122929783399,
+    "volDbRms": -35.3,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 1401,
+    "pitchHz": 1108.1482288912835,
+    "volDbRms": -54.83,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 1421,
+    "pitchHz": 1121.3656091931498,
+    "volDbRms": -54.35,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 1482,
+    "pitchHz": null,
+    "volDbRms": -55.62,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 1601,
+    "pitchHz": 1359.0290411018827,
+    "volDbRms": -27.63,
+    "chroma": 5,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 1682,
+    "pitchHz": 1347.1808734332847,
+    "volDbRms": -28.64,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 1721,
+    "pitchHz": 1325.6672806117263,
+    "volDbRms": -30.75,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 1761,
+    "pitchHz": 1309.8118451669864,
+    "volDbRms": -30.85,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 1801,
+    "pitchHz": 1297.014381598755,
+    "volDbRms": -29.93,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 1882,
+    "pitchHz": 1297.014381598755,
+    "volDbRms": -34.43,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 1922,
+    "pitchHz": 1297.014381598755,
+    "volDbRms": -46.17,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 1961,
+    "pitchHz": 1297.014381598755,
+    "volDbRms": -51.14,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 2001,
+    "pitchHz": 1319.1425735519042,
+    "volDbRms": -55.87,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 2041,
+    "pitchHz": 1319.1425735519042,
+    "volDbRms": -37.95,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 2081,
+    "pitchHz": 1423.261244010106,
+    "volDbRms": -40.5,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 2141,
+    "pitchHz": 1404.0385310742424,
+    "volDbRms": -43.43,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 2201,
+    "pitchHz": 1419.7894402571937,
+    "volDbRms": -42.12,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 2241,
+    "pitchHz": 1419.7894402571937,
+    "volDbRms": -48.9,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 2281,
+    "pitchHz": 1407.074807825978,
+    "volDbRms": -60.42,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 2321,
+    "pitchHz": 1407.074807825978,
+    "volDbRms": -67.45,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 2461,
+    "pitchHz": 1656.138664449485,
+    "volDbRms": -41.37,
+    "chroma": 8,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 2491,
+    "pitchHz": 1640.7947501737187,
+    "volDbRms": -43.94,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 2561,
+    "pitchHz": 1662.7971643811748,
+    "volDbRms": -43.1,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 2621,
+    "pitchHz": 1662.7971643811748,
+    "volDbRms": -43.8,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 2683,
+    "pitchHz": 1662.7971643811748,
+    "volDbRms": -55.24,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 2733,
+    "pitchHz": null,
+    "volDbRms": -69.79,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 2941,
+    "pitchHz": 1081.358526225929,
+    "volDbRms": -40.98,
+    "chroma": 1,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 3001,
+    "pitchHz": 1081.358526225929,
+    "volDbRms": -39.42,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 3041,
+    "pitchHz": 1050.4921070554806,
+    "volDbRms": -45.85,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 3081,
+    "pitchHz": 1061.5315449448335,
+    "volDbRms": -46.71,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 3161,
+    "pitchHz": 1061.5315449448335,
+    "volDbRms": -48.33,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 3201,
+    "pitchHz": 1061.5315449448335,
+    "volDbRms": -53.62,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 3241,
+    "pitchHz": 1078.5414717274111,
+    "volDbRms": -55.01,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 3281,
+    "pitchHz": 1078.5414717274111,
+    "volDbRms": -55.16,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 5921,
+    "pitchHz": 1098.6109849067382,
+    "volDbRms": -33.71,
+    "chroma": 1,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 5961,
+    "pitchHz": 1098.6109849067382,
+    "volDbRms": -35.81,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 5981,
+    "pitchHz": 1098.6109849067382,
+    "volDbRms": -38.24,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6041,
+    "pitchHz": 1098.6109849067382,
+    "volDbRms": -41.37,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6061,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -39.91,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 6091,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -37.8,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6161,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -40.95,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6201,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -38.6,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6281,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -42.28,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6301,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -44.57,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6331,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -53.82,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6361,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -63.15,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6411,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -58.1,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6441,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -39.85,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6461,
+    "pitchHz": 1087.3933909525301,
+    "volDbRms": -35.07,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6481,
+    "pitchHz": 1307.6153456980471,
+    "volDbRms": -34.73,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 6521,
+    "pitchHz": 1307.6153456980471,
+    "volDbRms": -37.26,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6561,
+    "pitchHz": 1293.7124930022092,
+    "volDbRms": -43.43,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 6601,
+    "pitchHz": 1315.0291726300643,
+    "volDbRms": -57.84,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 6640,
+    "pitchHz": 1315.0291726300643,
+    "volDbRms": -61.07,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6681,
+    "pitchHz": null,
+    "volDbRms": -63.78,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 6841,
+    "pitchHz": 1005.1382369137077,
+    "volDbRms": -39.81,
+    "chroma": 11,
+    "octave": 5,
+    "event": "ON"
+  },
+  {
+    "tMs": 6891,
+    "pitchHz": 1005.1382369137077,
+    "volDbRms": -36.37,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 6961,
+    "pitchHz": 1055.9740398947017,
+    "volDbRms": -37.93,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 7001,
+    "pitchHz": 1055.9740398947017,
+    "volDbRms": -39.59,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 7021,
+    "pitchHz": 1055.9740398947017,
+    "volDbRms": -43.71,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 7051,
+    "pitchHz": 1066.3088941173255,
+    "volDbRms": -43.13,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 7083,
+    "pitchHz": 1066.3088941173255,
+    "volDbRms": -42.11,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 7121,
+    "pitchHz": 1066.3088941173255,
+    "volDbRms": -45.95,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 7161,
+    "pitchHz": 1066.3088941173255,
+    "volDbRms": -51.84,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 7241,
+    "pitchHz": 1066.3088941173255,
+    "volDbRms": -49.05,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 7281,
+    "pitchHz": 1053.5669397594156,
+    "volDbRms": -48.46,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 7361,
+    "pitchHz": 1065.1090609212363,
+    "volDbRms": -55.65,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 7401,
+    "pitchHz": 1065.1090609212363,
+    "volDbRms": -61.16,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 7481,
+    "pitchHz": null,
+    "volDbRms": -59.94,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 8161,
+    "pitchHz": 1061.491328591097,
+    "volDbRms": -34.5,
+    "chroma": 0,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 8201,
+    "pitchHz": 1061.491328591097,
+    "volDbRms": -36.36,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 8251,
+    "pitchHz": 1061.491328591097,
+    "volDbRms": -37.94,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 8321,
+    "pitchHz": 1061.491328591097,
+    "volDbRms": -36.42,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 8380,
+    "pitchHz": 1061.491328591097,
+    "volDbRms": -41.55,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 8441,
+    "pitchHz": 1061.491328591097,
+    "volDbRms": -45.77,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 8482,
+    "pitchHz": 1046.8111154773228,
+    "volDbRms": -53.37,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 8572,
+    "pitchHz": null,
+    "volDbRms": -67.15,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 9001,
+    "pitchHz": 1047.7931139841778,
+    "volDbRms": -35.75,
+    "chroma": 0,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 9051,
+    "pitchHz": 1058.7733445173994,
+    "volDbRms": -36.71,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 9161,
+    "pitchHz": 1080.558927589553,
+    "volDbRms": -37.63,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 9282,
+    "pitchHz": 1071.6444941323057,
+    "volDbRms": -35.98,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 9341,
+    "pitchHz": 1071.6444941323057,
+    "volDbRms": -38.75,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 9361,
+    "pitchHz": 1098.2640528394118,
+    "volDbRms": -36.82,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 9401,
+    "pitchHz": 1098.2640528394118,
+    "volDbRms": -56.03,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 9441,
+    "pitchHz": 1122.2768592122493,
+    "volDbRms": -60.51,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 9481,
+    "pitchHz": 1122.2768592122493,
+    "volDbRms": -42.34,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 9521,
+    "pitchHz": 1122.2768592122493,
+    "volDbRms": -33.5,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 9561,
+    "pitchHz": 1273.2306861408128,
+    "volDbRms": -33.04,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 9601,
+    "pitchHz": 1273.2306861408128,
+    "volDbRms": -39.46,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 9660,
+    "pitchHz": 1273.2306861408128,
+    "volDbRms": -34.96,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 9683,
+    "pitchHz": 1291.4109115395092,
+    "volDbRms": -34.36,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 9801,
+    "pitchHz": 1291.4109115395092,
+    "volDbRms": -38.16,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 9821,
+    "pitchHz": 1291.4109115395092,
+    "volDbRms": -35.21,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 9841,
+    "pitchHz": 1291.4109115395092,
+    "volDbRms": -36.88,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 9901,
+    "pitchHz": 1291.4109115395092,
+    "volDbRms": -40.59,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 9921,
+    "pitchHz": 1291.4109115395092,
+    "volDbRms": -37.4,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10001,
+    "pitchHz": 1291.4109115395092,
+    "volDbRms": -43.32,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10041,
+    "pitchHz": 1291.4109115395092,
+    "volDbRms": -42.03,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10082,
+    "pitchHz": 1278.05009625516,
+    "volDbRms": -43.86,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 10121,
+    "pitchHz": 1255.5703146497992,
+    "volDbRms": -39.65,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 10141,
+    "pitchHz": 1255.5703146497992,
+    "volDbRms": -41.36,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10161,
+    "pitchHz": 1255.5703146497992,
+    "volDbRms": -58.79,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10201,
+    "pitchHz": 1255.5703146497992,
+    "volDbRms": -57.82,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10241,
+    "pitchHz": null,
+    "volDbRms": -58.9,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 10321,
+    "pitchHz": 1408.8463078630614,
+    "volDbRms": -39.93,
+    "chroma": 5,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 10361,
+    "pitchHz": 1408.8463078630614,
+    "volDbRms": -37.42,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10411,
+    "pitchHz": 1386.9821350883578,
+    "volDbRms": -39.36,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 10441,
+    "pitchHz": 1386.9821350883578,
+    "volDbRms": -43.1,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10482,
+    "pitchHz": 1373.432624793698,
+    "volDbRms": -38.43,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 10561,
+    "pitchHz": 1386.100443961794,
+    "volDbRms": -38.31,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10621,
+    "pitchHz": 1386.100443961794,
+    "volDbRms": -42.07,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10641,
+    "pitchHz": 1386.100443961794,
+    "volDbRms": -46.4,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10682,
+    "pitchHz": 1386.100443961794,
+    "volDbRms": -58.66,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10721,
+    "pitchHz": 1386.100443961794,
+    "volDbRms": -60.5,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10761,
+    "pitchHz": 1386.100443961794,
+    "volDbRms": -63.9,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 10882,
+    "pitchHz": 1414.157317546236,
+    "volDbRms": -35.51,
+    "chroma": 5,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 10921,
+    "pitchHz": 1393.629307931679,
+    "volDbRms": -36.53,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 10961,
+    "pitchHz": 1393.629307931679,
+    "volDbRms": -40.49,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 11001,
+    "pitchHz": 1393.629307931679,
+    "volDbRms": -38.57,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 11041,
+    "pitchHz": 1373.089258651851,
+    "volDbRms": -40.13,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 11081,
+    "pitchHz": 1373.089258651851,
+    "volDbRms": -51.84,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 11121,
+    "pitchHz": 1373.089258651851,
+    "volDbRms": -55.75,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 11161,
+    "pitchHz": 1663.517599782725,
+    "volDbRms": -47.9,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 11211,
+    "pitchHz": 1663.517599782725,
+    "volDbRms": -45.77,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 11261,
+    "pitchHz": 1565.3050349751668,
+    "volDbRms": -46.72,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 11282,
+    "pitchHz": 1565.3050349751668,
+    "volDbRms": -50.1,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 11341,
+    "pitchHz": 1581.5042226608778,
+    "volDbRms": -53.51,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 11371,
+    "pitchHz": null,
+    "volDbRms": -69.8,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 15641,
+    "pitchHz": 1482.2267321555964,
+    "volDbRms": -40.34,
+    "chroma": 6,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 15661,
+    "pitchHz": 1496.3113676922205,
+    "volDbRms": -50.88,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 15681,
+    "pitchHz": 1475.1012117042956,
+    "volDbRms": -43.39,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 15721,
+    "pitchHz": 1495.7047050298697,
+    "volDbRms": -55.7,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 15761,
+    "pitchHz": 1476.934318315238,
+    "volDbRms": -55.94,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 15801,
+    "pitchHz": null,
+    "volDbRms": -64.59,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 15901,
+    "pitchHz": 1397.8363396056588,
+    "volDbRms": -42.27,
+    "chroma": 5,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 15921,
+    "pitchHz": 1378.51786495871,
+    "volDbRms": -43.21,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 15961,
+    "pitchHz": 1407.6379266594508,
+    "volDbRms": -59.21,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 16001,
+    "pitchHz": 1407.6379266594508,
+    "volDbRms": -60.85,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 16140,
+    "pitchHz": 1315.5995194724633,
+    "volDbRms": -37.58,
+    "chroma": 4,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 16160,
+    "pitchHz": 1301.2366794940392,
+    "volDbRms": -37.35,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 16201,
+    "pitchHz": 1301.2366794940392,
+    "volDbRms": -37.61,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 16240,
+    "pitchHz": 1301.2366794940392,
+    "volDbRms": -39.22,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 16282,
+    "pitchHz": 1301.2366794940392,
+    "volDbRms": -41.6,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 16321,
+    "pitchHz": 1235.7136879835807,
+    "volDbRms": -40.08,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 16361,
+    "pitchHz": 1258.820710963311,
+    "volDbRms": -37.25,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 16411,
+    "pitchHz": 1258.820710963311,
+    "volDbRms": -39.34,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 16441,
+    "pitchHz": 1258.820710963311,
+    "volDbRms": -43.02,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 16481,
+    "pitchHz": 1290.5950237862046,
+    "volDbRms": -52.19,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 16521,
+    "pitchHz": 1312.058968121219,
+    "volDbRms": -64.15,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 16541,
+    "pitchHz": 1312.058968121219,
+    "volDbRms": -68.45,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 16601,
+    "pitchHz": null,
+    "volDbRms": -69.35,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 16721,
+    "pitchHz": 983.286934346357,
+    "volDbRms": -42.82,
+    "chroma": 11,
+    "octave": 5,
+    "event": "ON"
+  },
+  {
+    "tMs": 16761,
+    "pitchHz": 969.0844147089671,
+    "volDbRms": -42.29,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 16891,
+    "pitchHz": 991.3242609620953,
+    "volDbRms": -41.99,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 16971,
+    "pitchHz": 991.3242609620953,
+    "volDbRms": -46,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 17001,
+    "pitchHz": 991.3242609620953,
+    "volDbRms": -57.68,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 17041,
+    "pitchHz": 991.3242609620953,
+    "volDbRms": -60.27,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 17082,
+    "pitchHz": null,
+    "volDbRms": -62.05,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 17281,
+    "pitchHz": 1206.1455513952153,
+    "volDbRms": -35.02,
+    "chroma": 2,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 17321,
+    "pitchHz": 1169.1579915144966,
+    "volDbRms": -34.59,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 17361,
+    "pitchHz": 1153.0613088188381,
+    "volDbRms": -36.95,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 17441,
+    "pitchHz": 1153.0613088188381,
+    "volDbRms": -34.02,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 17481,
+    "pitchHz": 1139.707876536944,
+    "volDbRms": -34.13,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 17581,
+    "pitchHz": 1176.6767144058401,
+    "volDbRms": -34.77,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 17611,
+    "pitchHz": 1176.6767144058401,
+    "volDbRms": -39.09,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 17681,
+    "pitchHz": 1191.9353011055293,
+    "volDbRms": -39.75,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 17851,
+    "pitchHz": 1191.9353011055293,
+    "volDbRms": -43.39,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 17881,
+    "pitchHz": 1191.9353011055293,
+    "volDbRms": -45.47,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 17921,
+    "pitchHz": 1191.9353011055293,
+    "volDbRms": -49.6,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 17961,
+    "pitchHz": 1181.5986716211642,
+    "volDbRms": -50.54,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 18041,
+    "pitchHz": null,
+    "volDbRms": -50.88,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 18601,
+    "pitchHz": 1198.078475904493,
+    "volDbRms": -33.16,
+    "chroma": 2,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 18651,
+    "pitchHz": 1198.078475904493,
+    "volDbRms": -35.13,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 18762,
+    "pitchHz": 1198.078475904493,
+    "volDbRms": -39.03,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 18811,
+    "pitchHz": 1198.078475904493,
+    "volDbRms": -38.17,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 18841,
+    "pitchHz": 1052.8815596530303,
+    "volDbRms": -35.61,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 18891,
+    "pitchHz": 1052.8815596530303,
+    "volDbRms": -40.34,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 18941,
+    "pitchHz": 1052.8815596530303,
+    "volDbRms": -42.19,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 19001,
+    "pitchHz": 1064.9506803431962,
+    "volDbRms": -58.34,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 19021,
+    "pitchHz": 1064.9506803431962,
+    "volDbRms": -61.3,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 19081,
+    "pitchHz": 1097.6516654165328,
+    "volDbRms": -49.09,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 19121,
+    "pitchHz": 1115.8373318875588,
+    "volDbRms": -33.66,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 19161,
+    "pitchHz": 1098.6775496388066,
+    "volDbRms": -38.59,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 19201,
+    "pitchHz": 1098.6775496388066,
+    "volDbRms": -43.96,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 19241,
+    "pitchHz": 1098.6775496388066,
+    "volDbRms": -47.04,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 19280,
+    "pitchHz": 1098.6775496388066,
+    "volDbRms": -58.06,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 19361,
+    "pitchHz": null,
+    "volDbRms": -58.9,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 19741,
+    "pitchHz": 941.7145049545559,
+    "volDbRms": -40.2,
+    "chroma": 10,
+    "octave": 5,
+    "event": "ON"
+  },
+  {
+    "tMs": 19801,
+    "pitchHz": 941.7145049545559,
+    "volDbRms": -34.33,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 19841,
+    "pitchHz": 941.7145049545559,
+    "volDbRms": -39.26,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 19884,
+    "pitchHz": 941.7145049545559,
+    "volDbRms": -43.39,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 19921,
+    "pitchHz": 941.7145049545559,
+    "volDbRms": -33.22,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 19961,
+    "pitchHz": 1127.2737659676632,
+    "volDbRms": -28.38,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 20011,
+    "pitchHz": 1127.2737659676632,
+    "volDbRms": -30.18,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20082,
+    "pitchHz": 1127.2737659676632,
+    "volDbRms": -34.68,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20121,
+    "pitchHz": 1106.7628584702557,
+    "volDbRms": -32.13,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 20161,
+    "pitchHz": 1106.7628584702557,
+    "volDbRms": -28.72,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20221,
+    "pitchHz": 1106.7628584702557,
+    "volDbRms": -33.7,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20241,
+    "pitchHz": 1337.9689142291948,
+    "volDbRms": -36.19,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 20332,
+    "pitchHz": 1320.448936279556,
+    "volDbRms": -39.13,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20361,
+    "pitchHz": 1320.448936279556,
+    "volDbRms": -44.95,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20382,
+    "pitchHz": 1254.2426421123369,
+    "volDbRms": -52.88,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 20461,
+    "pitchHz": 1254.2426421123369,
+    "volDbRms": -40.76,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20481,
+    "pitchHz": 1254.2426421123369,
+    "volDbRms": -34.93,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20521,
+    "pitchHz": 1042.4883967071212,
+    "volDbRms": -28.94,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 20641,
+    "pitchHz": 1060.4355413457195,
+    "volDbRms": -32.11,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 20683,
+    "pitchHz": 1060.4355413457195,
+    "volDbRms": -34.52,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20732,
+    "pitchHz": 1060.4355413457195,
+    "volDbRms": -38.04,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20801,
+    "pitchHz": 1060.4355413457195,
+    "volDbRms": -40.15,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20841,
+    "pitchHz": 1060.4355413457195,
+    "volDbRms": -41.01,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20861,
+    "pitchHz": 1095.2327711351015,
+    "volDbRms": -41.68,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 20921,
+    "pitchHz": 1095.2327711351015,
+    "volDbRms": -38.96,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 20971,
+    "pitchHz": 1095.2327711351015,
+    "volDbRms": -42.9,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 21001,
+    "pitchHz": 1070.9446515241584,
+    "volDbRms": -44.13,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 21041,
+    "pitchHz": 1070.9446515241584,
+    "volDbRms": -48.58,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 21082,
+    "pitchHz": 1070.9446515241584,
+    "volDbRms": -62.02,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 21121,
+    "pitchHz": 1094.8384608251895,
+    "volDbRms": -55.68,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 21161,
+    "pitchHz": 1094.8384608251895,
+    "volDbRms": -47.14,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 21283,
+    "pitchHz": 1051.4061604297535,
+    "volDbRms": -51.11,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 21321,
+    "pitchHz": 1041.5228255071909,
+    "volDbRms": -51.75,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 21361,
+    "pitchHz": 1041.5228255071909,
+    "volDbRms": -54.87,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 21401,
+    "pitchHz": null,
+    "volDbRms": -74.49,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 24161,
+    "pitchHz": 1615.4500963119965,
+    "volDbRms": -42.2,
+    "chroma": 8,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 24201,
+    "pitchHz": 1643.9126050500524,
+    "volDbRms": -40.35,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 24221,
+    "pitchHz": 1643.9126050500524,
+    "volDbRms": -45.71,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 24281,
+    "pitchHz": 1643.9126050500524,
+    "volDbRms": -47.43,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 24321,
+    "pitchHz": 1643.9126050500524,
+    "volDbRms": -46,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 24361,
+    "pitchHz": 1371.2086256427538,
+    "volDbRms": -33.25,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 24401,
+    "pitchHz": 1400.3588396145446,
+    "volDbRms": -41.5,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 24441,
+    "pitchHz": 1400.3588396145446,
+    "volDbRms": -50.07,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 24461,
+    "pitchHz": 1400.3588396145446,
+    "volDbRms": -58.94,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 24481,
+    "pitchHz": 1400.3588396145446,
+    "volDbRms": -56.9,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 24522,
+    "pitchHz": null,
+    "volDbRms": -61.48,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 24842,
+    "pitchHz": 1298.2955433321456,
+    "volDbRms": -36.34,
+    "chroma": 4,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 24881,
+    "pitchHz": 1298.2955433321456,
+    "volDbRms": -33.05,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 24942,
+    "pitchHz": 1298.2955433321456,
+    "volDbRms": -38.1,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25001,
+    "pitchHz": 1298.2955433321456,
+    "volDbRms": -48.98,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25021,
+    "pitchHz": 1298.2955433321456,
+    "volDbRms": -58.96,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25041,
+    "pitchHz": 1298.2955433321456,
+    "volDbRms": -61.91,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25081,
+    "pitchHz": 1298.2955433321456,
+    "volDbRms": -65.64,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25121,
+    "pitchHz": null,
+    "volDbRms": -69.6,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 25241,
+    "pitchHz": 1266.0020871065258,
+    "volDbRms": -40.94,
+    "chroma": 3,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 25280,
+    "pitchHz": 1266.0020871065258,
+    "volDbRms": -41.33,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25360,
+    "pitchHz": 1331.159955892184,
+    "volDbRms": -44.83,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 25400,
+    "pitchHz": 1331.159955892184,
+    "volDbRms": -43.36,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25420,
+    "pitchHz": 1331.159955892184,
+    "volDbRms": -39.8,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25480,
+    "pitchHz": 1186.179117625585,
+    "volDbRms": -40.33,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 25520,
+    "pitchHz": 1186.179117625585,
+    "volDbRms": -42.92,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25561,
+    "pitchHz": 1233.5978798105866,
+    "volDbRms": -42.56,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 25601,
+    "pitchHz": 1233.5978798105866,
+    "volDbRms": -41.15,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25641,
+    "pitchHz": 1233.5978798105866,
+    "volDbRms": -42.05,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25681,
+    "pitchHz": 1200.9141146841064,
+    "volDbRms": -47.03,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 25721,
+    "pitchHz": 1200.9141146841064,
+    "volDbRms": -50.49,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25761,
+    "pitchHz": 1200.9141146841064,
+    "volDbRms": -62.55,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 25841,
+    "pitchHz": null,
+    "volDbRms": -75.04,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 26082,
+    "pitchHz": 1197.02706847084,
+    "volDbRms": -29.67,
+    "chroma": 2,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 26201,
+    "pitchHz": 1197.02706847084,
+    "volDbRms": -33.08,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 26241,
+    "pitchHz": 1197.02706847084,
+    "volDbRms": -30.96,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 26281,
+    "pitchHz": 1216.8781487448746,
+    "volDbRms": -32.54,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 26321,
+    "pitchHz": 1216.8781487448746,
+    "volDbRms": -34.69,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 26361,
+    "pitchHz": 1216.8781487448746,
+    "volDbRms": -38,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 26561,
+    "pitchHz": 1227.5411121330128,
+    "volDbRms": -33.72,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 26620,
+    "pitchHz": 1227.5411121330128,
+    "volDbRms": -35.27,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 26640,
+    "pitchHz": 1227.5411121330128,
+    "volDbRms": -39.57,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 26681,
+    "pitchHz": 1196.6275208299353,
+    "volDbRms": -39.59,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 26721,
+    "pitchHz": 1196.6275208299353,
+    "volDbRms": -56.65,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 26761,
+    "pitchHz": 1196.6275208299353,
+    "volDbRms": -64.48,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 26801,
+    "pitchHz": 1237.313623504048,
+    "volDbRms": -69.06,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 26921,
+    "pitchHz": 1254.3204953596592,
+    "volDbRms": -44.45,
+    "chroma": 3,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 26941,
+    "pitchHz": 1254.3204953596592,
+    "volDbRms": -49.83,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 27001,
+    "pitchHz": 1254.3204953596592,
+    "volDbRms": -58.99,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 27041,
+    "pitchHz": 1254.3204953596592,
+    "volDbRms": -66.48,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 27201,
+    "pitchHz": 1478.9424379374293,
+    "volDbRms": -40.01,
+    "chroma": 6,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 27241,
+    "pitchHz": 1478.9424379374293,
+    "volDbRms": -41.36,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 27341,
+    "pitchHz": 1478.9424379374293,
+    "volDbRms": -43.82,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 27401,
+    "pitchHz": 1458.362183388351,
+    "volDbRms": -48.18,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 27441,
+    "pitchHz": 1458.362183388351,
+    "volDbRms": -43.43,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 27521,
+    "pitchHz": 1458.362183388351,
+    "volDbRms": -49.33,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 27641,
+    "pitchHz": 1458.362183388351,
+    "volDbRms": -49.26,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 27691,
+    "pitchHz": 1427.859446063595,
+    "volDbRms": -50.7,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 27721,
+    "pitchHz": 1427.859446063595,
+    "volDbRms": -52.42,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 27761,
+    "pitchHz": 1427.859446063595,
+    "volDbRms": -56.44,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 28001,
+    "pitchHz": 1298.2642651640497,
+    "volDbRms": -33.75,
+    "chroma": 4,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 28041,
+    "pitchHz": 1298.2642651640497,
+    "volDbRms": -35.75,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 28121,
+    "pitchHz": 1298.2642651640497,
+    "volDbRms": -40.96,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 28161,
+    "pitchHz": 1298.2642651640497,
+    "volDbRms": -44.6,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 28201,
+    "pitchHz": 1314.3408123866845,
+    "volDbRms": -44.74,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 28241,
+    "pitchHz": 1314.3408123866845,
+    "volDbRms": -50.54,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 28282,
+    "pitchHz": 1314.3408123866845,
+    "volDbRms": -68.97,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 28360,
+    "pitchHz": null,
+    "volDbRms": -75.45,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 28561,
+    "pitchHz": 1236.1752344573677,
+    "volDbRms": -38.35,
+    "chroma": 3,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 28601,
+    "pitchHz": 1236.1752344573677,
+    "volDbRms": -44.47,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 28651,
+    "pitchHz": 1221.1755747403688,
+    "volDbRms": -49.59,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 28685,
+    "pitchHz": 1221.1755747403688,
+    "volDbRms": -51.9,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 28721,
+    "pitchHz": 1235.916656466358,
+    "volDbRms": -61.02,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 28781,
+    "pitchHz": null,
+    "volDbRms": -60.2,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 29001,
+    "pitchHz": 956.9449904712332,
+    "volDbRms": -40.18,
+    "chroma": 10,
+    "octave": 5,
+    "event": "ON"
+  },
+  {
+    "tMs": 29081,
+    "pitchHz": 956.9449904712332,
+    "volDbRms": -50.65,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 29131,
+    "pitchHz": 956.9449904712332,
+    "volDbRms": -49.37,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 29161,
+    "pitchHz": 972.6558770875394,
+    "volDbRms": -52.71,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 29201,
+    "pitchHz": 972.6558770875394,
+    "volDbRms": -65.33,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 29261,
+    "pitchHz": null,
+    "volDbRms": -65.46,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 29401,
+    "pitchHz": 1090.055313065285,
+    "volDbRms": -38.43,
+    "chroma": 1,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 29441,
+    "pitchHz": 1090.055313065285,
+    "volDbRms": -42.55,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 29681,
+    "pitchHz": 1064.4518204776543,
+    "volDbRms": -46.33,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 29720,
+    "pitchHz": 1064.4518204776543,
+    "volDbRms": -50.1,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 29761,
+    "pitchHz": 1064.4518204776543,
+    "volDbRms": -48.34,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 29801,
+    "pitchHz": 1064.4518204776543,
+    "volDbRms": -46.27,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 29851,
+    "pitchHz": 1064.4518204776543,
+    "volDbRms": -48.42,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 29881,
+    "pitchHz": 1054.960872243881,
+    "volDbRms": -48.71,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 29921,
+    "pitchHz": 1054.960872243881,
+    "volDbRms": -50.04,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 29980,
+    "pitchHz": 1027.4516716418386,
+    "volDbRms": -56.72,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 30000,
+    "pitchHz": 1027.4516716418386,
+    "volDbRms": -62.87,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 30042,
+    "pitchHz": null,
+    "volDbRms": -71.32,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 31840,
+    "pitchHz": 1355.7705471336305,
+    "volDbRms": -37.57,
+    "chroma": 4,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 31877,
+    "pitchHz": 1334.6601692634536,
+    "volDbRms": -41.51,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 31898,
+    "pitchHz": 1334.6601692634536,
+    "volDbRms": -38.79,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 31919,
+    "pitchHz": 1312.1178129665968,
+    "volDbRms": -41.87,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 31963,
+    "pitchHz": 1333.4999991018879,
+    "volDbRms": -39.81,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 32000,
+    "pitchHz": 1301.8649481483924,
+    "volDbRms": -37.41,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 32080,
+    "pitchHz": 1334.83185355486,
+    "volDbRms": -36.48,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 32138,
+    "pitchHz": 1320.7975051376884,
+    "volDbRms": -35.23,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 32203,
+    "pitchHz": 1333.6488278053353,
+    "volDbRms": -38.58,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 32240,
+    "pitchHz": 1314.0681440764884,
+    "volDbRms": -38.69,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 32277,
+    "pitchHz": 1327.0630771816334,
+    "volDbRms": -45.69,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 32320,
+    "pitchHz": 1327.0630771816334,
+    "volDbRms": -50.99,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 32400,
+    "pitchHz": 1342.9606973493405,
+    "volDbRms": -43.91,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 32445,
+    "pitchHz": 1342.9606973493405,
+    "volDbRms": -45.91,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 32522,
+    "pitchHz": 1390.0591804628127,
+    "volDbRms": -39.28,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 32567,
+    "pitchHz": 1390.0591804628127,
+    "volDbRms": -44.97,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 32688,
+    "pitchHz": 1416.4038594760018,
+    "volDbRms": -42.07,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 32741,
+    "pitchHz": 1416.4038594760018,
+    "volDbRms": -45.71,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 32762,
+    "pitchHz": 1416.4038594760018,
+    "volDbRms": -56.29,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 32805,
+    "pitchHz": 1416.4038594760018,
+    "volDbRms": -59.76,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 32843,
+    "pitchHz": null,
+    "volDbRms": -68.94,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 33003,
+    "pitchHz": 1430.879525183856,
+    "volDbRms": -41.18,
+    "chroma": 5,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 33046,
+    "pitchHz": 1430.879525183856,
+    "volDbRms": -42.95,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33082,
+    "pitchHz": 1430.879525183856,
+    "volDbRms": -48.27,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33104,
+    "pitchHz": 1430.879525183856,
+    "volDbRms": -37.93,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33124,
+    "pitchHz": 1430.879525183856,
+    "volDbRms": -34.1,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33168,
+    "pitchHz": 1430.879525183856,
+    "volDbRms": -36.63,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33205,
+    "pitchHz": 1430.879525183856,
+    "volDbRms": -38.28,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33243,
+    "pitchHz": 1246.7104054291551,
+    "volDbRms": -43.69,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 33284,
+    "pitchHz": 1246.7104054291551,
+    "volDbRms": -45.06,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33322,
+    "pitchHz": 1264.6671765749893,
+    "volDbRms": -48.67,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33344,
+    "pitchHz": 1264.6671765749893,
+    "volDbRms": -44.22,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33366,
+    "pitchHz": 1264.6671765749893,
+    "volDbRms": -46.88,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33408,
+    "pitchHz": 1264.6671765749893,
+    "volDbRms": -40.05,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 33446,
+    "pitchHz": 1291.7522289674032,
+    "volDbRms": -44.72,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 33482,
+    "pitchHz": 1312.6635347540682,
+    "volDbRms": -52.99,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 33524,
+    "pitchHz": 1294.4928703179162,
+    "volDbRms": -60.89,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 33562,
+    "pitchHz": null,
+    "volDbRms": -64.62,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 33768,
+    "pitchHz": 1258.0706638266277,
+    "volDbRms": -40.23,
+    "chroma": 3,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 33802,
+    "pitchHz": 1236.336013587368,
+    "volDbRms": -41.18,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 33941,
+    "pitchHz": 1236.336013587368,
+    "volDbRms": -43.93,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34043,
+    "pitchHz": 1221.9329726747542,
+    "volDbRms": -45.98,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 34063,
+    "pitchHz": 1221.9329726747542,
+    "volDbRms": -51.23,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34085,
+    "pitchHz": 1221.9329726747542,
+    "volDbRms": -56.89,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34128,
+    "pitchHz": 1221.9329726747542,
+    "volDbRms": -63.14,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34325,
+    "pitchHz": 1023.0903535437483,
+    "volDbRms": -39.61,
+    "chroma": 0,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 34368,
+    "pitchHz": 1023.0903535437483,
+    "volDbRms": -36.47,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34405,
+    "pitchHz": 1023.0903535437483,
+    "volDbRms": -41.54,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34443,
+    "pitchHz": 972.7394902052241,
+    "volDbRms": -38.98,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 34486,
+    "pitchHz": 972.7394902052241,
+    "volDbRms": -52.45,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34522,
+    "pitchHz": 972.7394902052241,
+    "volDbRms": -48.23,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34544,
+    "pitchHz": 972.7394902052241,
+    "volDbRms": -50.56,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34565,
+    "pitchHz": 935.956636912817,
+    "volDbRms": -50.14,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 34608,
+    "pitchHz": 949.1832882332857,
+    "volDbRms": -46.2,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 34661,
+    "pitchHz": 949.1832882332857,
+    "volDbRms": -45.1,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34725,
+    "pitchHz": 949.1832882332857,
+    "volDbRms": -46.65,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34763,
+    "pitchHz": 949.1832882332857,
+    "volDbRms": -51.39,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34805,
+    "pitchHz": 949.1832882332857,
+    "volDbRms": -47.19,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34850,
+    "pitchHz": 949.1832882332857,
+    "volDbRms": -49.39,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 34922,
+    "pitchHz": 977.6053274140139,
+    "volDbRms": -45.92,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 34967,
+    "pitchHz": 968.6110245509291,
+    "volDbRms": -47.46,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 35045,
+    "pitchHz": 968.6110245509291,
+    "volDbRms": -48.23,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 35088,
+    "pitchHz": 968.6110245509291,
+    "volDbRms": -51.02,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 35125,
+    "pitchHz": 968.6110245509291,
+    "volDbRms": -52.61,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 35162,
+    "pitchHz": 951.2351358261827,
+    "volDbRms": -51.39,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 35205,
+    "pitchHz": 951.2351358261827,
+    "volDbRms": -53.83,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 35243,
+    "pitchHz": null,
+    "volDbRms": -54.03,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 36245,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -36.45,
+    "chroma": 8,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 36288,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -38.53,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36325,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -42.12,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36486,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -39.97,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36527,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -38,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36565,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -43.64,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36603,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -40.26,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36645,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -41.84,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36683,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -46.78,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36724,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -43.39,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36768,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -47.13,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36886,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -44.35,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36922,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -46.91,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 36966,
+    "pitchHz": 1642.0160294999764,
+    "volDbRms": -49.38,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37008,
+    "pitchHz": 1596.4234372386006,
+    "volDbRms": -50.62,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 37083,
+    "pitchHz": 1596.4234372386006,
+    "volDbRms": -48.4,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37125,
+    "pitchHz": 1596.4234372386006,
+    "volDbRms": -46.85,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37162,
+    "pitchHz": 1596.4234372386006,
+    "volDbRms": -52.64,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37184,
+    "pitchHz": 1596.4234372386006,
+    "volDbRms": -64.24,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37248,
+    "pitchHz": null,
+    "volDbRms": -73.41,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 37365,
+    "pitchHz": 1403.736035121758,
+    "volDbRms": -37.22,
+    "chroma": 5,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 37423,
+    "pitchHz": 1418.5207613443686,
+    "volDbRms": -39.17,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37445,
+    "pitchHz": 1418.5207613443686,
+    "volDbRms": -46.41,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37488,
+    "pitchHz": 1418.5207613443686,
+    "volDbRms": -43.13,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37524,
+    "pitchHz": 1388.227036745673,
+    "volDbRms": -37.44,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37606,
+    "pitchHz": 1267.5266037554966,
+    "volDbRms": -35.58,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 37663,
+    "pitchHz": 1267.5266037554966,
+    "volDbRms": -43.1,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37687,
+    "pitchHz": 1297.8174568336601,
+    "volDbRms": -44.31,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 37782,
+    "pitchHz": 1297.8174568336601,
+    "volDbRms": -40.78,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37845,
+    "pitchHz": 1297.8174568336601,
+    "volDbRms": -45.16,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37883,
+    "pitchHz": 1322.81780430289,
+    "volDbRms": -46.47,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 37904,
+    "pitchHz": 1336.2505743595445,
+    "volDbRms": -47.02,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 37925,
+    "pitchHz": 1336.2505743595445,
+    "volDbRms": -44.37,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 37967,
+    "pitchHz": 1336.2505743595445,
+    "volDbRms": -51.62,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38005,
+    "pitchHz": 1336.2505743595445,
+    "volDbRms": -63.38,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38042,
+    "pitchHz": 1313.6960666923299,
+    "volDbRms": -66.26,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 38085,
+    "pitchHz": null,
+    "volDbRms": -51.53,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 38165,
+    "pitchHz": 1177.4182690443283,
+    "volDbRms": -33.26,
+    "chroma": 2,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 38245,
+    "pitchHz": 1193.5146543292562,
+    "volDbRms": -33.26,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 38324,
+    "pitchHz": 1193.5146543292562,
+    "volDbRms": -42.78,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38362,
+    "pitchHz": 1193.5146543292562,
+    "volDbRms": -44.79,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38384,
+    "pitchHz": 1193.5146543292562,
+    "volDbRms": -41.18,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38448,
+    "pitchHz": 1193.5146543292562,
+    "volDbRms": -44.25,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38485,
+    "pitchHz": 1193.5146543292562,
+    "volDbRms": -44.32,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38688,
+    "pitchHz": 1193.5146543292562,
+    "volDbRms": -48.38,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38725,
+    "pitchHz": 1193.5146543292562,
+    "volDbRms": -46.46,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38885,
+    "pitchHz": 1193.5146543292562,
+    "volDbRms": -48.63,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38928,
+    "pitchHz": 1193.5146543292562,
+    "volDbRms": -58.05,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 38980,
+    "pitchHz": 1179.5742249801856,
+    "volDbRms": -60.67,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 39045,
+    "pitchHz": null,
+    "volDbRms": -55.36,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 39824,
+    "pitchHz": 1177.7969962893549,
+    "volDbRms": -31.98,
+    "chroma": 2,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 39846,
+    "pitchHz": 1177.7969962893549,
+    "volDbRms": -36.02,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 39888,
+    "pitchHz": 1177.7969962893549,
+    "volDbRms": -38.75,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 39935,
+    "pitchHz": 1177.7969962893549,
+    "volDbRms": -62.57,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 39973,
+    "pitchHz": 1163.1744568404565,
+    "volDbRms": -63.06,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 40018,
+    "pitchHz": null,
+    "volDbRms": -64.34,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 40138,
+    "pitchHz": 1271.6737804301238,
+    "volDbRms": -32.27,
+    "chroma": 3,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 40176,
+    "pitchHz": 1245.430932313746,
+    "volDbRms": -34.51,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 40213,
+    "pitchHz": 1263.9769574826466,
+    "volDbRms": -36.85,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 40256,
+    "pitchHz": 1249.4032744730882,
+    "volDbRms": -49.13,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 40292,
+    "pitchHz": 1263.481389539796,
+    "volDbRms": -55.59,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 40336,
+    "pitchHz": 1263.481389539796,
+    "volDbRms": -45.09,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 40378,
+    "pitchHz": 1435.0184216100374,
+    "volDbRms": -33.65,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 40416,
+    "pitchHz": 1420.6205789630624,
+    "volDbRms": -35.87,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 40453,
+    "pitchHz": 1420.6205789630624,
+    "volDbRms": -39.42,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 40533,
+    "pitchHz": 1453.4102579428466,
+    "volDbRms": -41.21,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 40576,
+    "pitchHz": 1453.4102579428466,
+    "volDbRms": -42.78,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 40618,
+    "pitchHz": 1470.5539560500752,
+    "volDbRms": -51.38,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 40659,
+    "pitchHz": 1470.5539560500752,
+    "volDbRms": -55.93,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 40693,
+    "pitchHz": 1470.5539560500752,
+    "volDbRms": -42.26,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 40736,
+    "pitchHz": 1470.5539560500752,
+    "volDbRms": -36.85,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 40816,
+    "pitchHz": 1408.5042921369184,
+    "volDbRms": -37.88,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 40861,
+    "pitchHz": 1423.5543055911612,
+    "volDbRms": -38.13,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 40911,
+    "pitchHz": 1423.5543055911612,
+    "volDbRms": -39.82,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 40933,
+    "pitchHz": 1423.5543055911612,
+    "volDbRms": -44.79,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 40976,
+    "pitchHz": 1423.5543055911612,
+    "volDbRms": -48.98,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41013,
+    "pitchHz": 1454.149471991162,
+    "volDbRms": -49.51,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 41035,
+    "pitchHz": 1468.3410538054356,
+    "volDbRms": -49.92,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 41055,
+    "pitchHz": 1482.0183312603228,
+    "volDbRms": -47.41,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 41098,
+    "pitchHz": 1482.0183312603228,
+    "volDbRms": -44.16,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41151,
+    "pitchHz": 1460.8521036027203,
+    "volDbRms": -45.07,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41274,
+    "pitchHz": 1460.8521036027203,
+    "volDbRms": -47.52,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41296,
+    "pitchHz": 1460.8521036027203,
+    "volDbRms": -45.13,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41339,
+    "pitchHz": 1460.8521036027203,
+    "volDbRms": -47.31,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41375,
+    "pitchHz": 1460.8521036027203,
+    "volDbRms": -47.42,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41413,
+    "pitchHz": 1417.9080059588694,
+    "volDbRms": -46.59,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 41456,
+    "pitchHz": 1417.9080059588694,
+    "volDbRms": -45.73,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41493,
+    "pitchHz": 1417.9080059588694,
+    "volDbRms": -49.94,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41536,
+    "pitchHz": 1468.8738015928022,
+    "volDbRms": -46.34,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 41578,
+    "pitchHz": 1468.8738015928022,
+    "volDbRms": -58.59,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41616,
+    "pitchHz": 1468.8738015928022,
+    "volDbRms": -54.51,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41653,
+    "pitchHz": 1468.8738015928022,
+    "volDbRms": -63.22,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41695,
+    "pitchHz": null,
+    "volDbRms": -75.67,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 41819,
+    "pitchHz": 1347.212475835653,
+    "volDbRms": -39.41,
+    "chroma": 4,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 41856,
+    "pitchHz": 1347.212475835653,
+    "volDbRms": -37.78,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41893,
+    "pitchHz": 1347.212475835653,
+    "volDbRms": -39.46,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 41936,
+    "pitchHz": 1299.1069056460244,
+    "volDbRms": -39.37,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 42059,
+    "pitchHz": 1212.7522850585437,
+    "volDbRms": -34.45,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 42096,
+    "pitchHz": 1212.7522850585437,
+    "volDbRms": -38.03,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 42133,
+    "pitchHz": 1231.610703050572,
+    "volDbRms": -41.69,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 42176,
+    "pitchHz": 1231.610703050572,
+    "volDbRms": -46.94,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 42213,
+    "pitchHz": 1231.610703050572,
+    "volDbRms": -40.11,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 42235,
+    "pitchHz": 1231.610703050572,
+    "volDbRms": -42.69,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 42256,
+    "pitchHz": 1231.610703050572,
+    "volDbRms": -44.76,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 42297,
+    "pitchHz": 1231.610703050572,
+    "volDbRms": -47.04,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 42336,
+    "pitchHz": 1231.610703050572,
+    "volDbRms": -54.68,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 42415,
+    "pitchHz": null,
+    "volDbRms": -75.05,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 43135,
+    "pitchHz": 961.0218015321703,
+    "volDbRms": -42.83,
+    "chroma": 11,
+    "octave": 5,
+    "event": "ON"
+  },
+  {
+    "tMs": 43215,
+    "pitchHz": 975.7913600013842,
+    "volDbRms": -45.54,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 43259,
+    "pitchHz": 996.6093170992049,
+    "volDbRms": -41.14,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 43434,
+    "pitchHz": 983.6819551637686,
+    "volDbRms": -44.01,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 43455,
+    "pitchHz": 983.6819551637686,
+    "volDbRms": -46.32,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 43535,
+    "pitchHz": 983.6819551637686,
+    "volDbRms": -51.04,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 43573,
+    "pitchHz": 983.6819551637686,
+    "volDbRms": -52.68,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 43632,
+    "pitchHz": null,
+    "volDbRms": -61.78,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 44224,
+    "pitchHz": 1253.6787206579063,
+    "volDbRms": -36.57,
+    "chroma": 3,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 44261,
+    "pitchHz": 1241.8549779450084,
+    "volDbRms": -57.38,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 44299,
+    "pitchHz": 1256.918199583924,
+    "volDbRms": -49.82,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 44341,
+    "pitchHz": 1256.918199583924,
+    "volDbRms": -69.95,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44379,
+    "pitchHz": 1256.918199583924,
+    "volDbRms": -64.7,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44400,
+    "pitchHz": 1256.918199583924,
+    "volDbRms": -62.85,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44421,
+    "pitchHz": 1256.918199583924,
+    "volDbRms": -57.3,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44464,
+    "pitchHz": 1256.918199583924,
+    "volDbRms": -32.71,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44501,
+    "pitchHz": 1302.3742602499462,
+    "volDbRms": -34.65,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 44538,
+    "pitchHz": 1302.3742602499462,
+    "volDbRms": -46.03,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44581,
+    "pitchHz": 1302.3742602499462,
+    "volDbRms": -52.3,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44618,
+    "pitchHz": 1302.3742602499462,
+    "volDbRms": -54.08,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44639,
+    "pitchHz": 1302.3742602499462,
+    "volDbRms": -57.23,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44660,
+    "pitchHz": 1302.3742602499462,
+    "volDbRms": -60.52,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44704,
+    "pitchHz": null,
+    "volDbRms": -63.83,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 44821,
+    "pitchHz": 1286.441151155776,
+    "volDbRms": -44.84,
+    "chroma": 4,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 44859,
+    "pitchHz": 1286.441151155776,
+    "volDbRms": -56.96,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44880,
+    "pitchHz": 1286.441151155776,
+    "volDbRms": -50.48,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44901,
+    "pitchHz": 1286.441151155776,
+    "volDbRms": -57.39,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 44944,
+    "pitchHz": null,
+    "volDbRms": -66.56,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 45098,
+    "pitchHz": 1306.1076524452662,
+    "volDbRms": -34.34,
+    "chroma": 4,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 45183,
+    "pitchHz": 1318.6935367909134,
+    "volDbRms": -39.21,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 45237,
+    "pitchHz": 1293.9316457300474,
+    "volDbRms": -41.66,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 45258,
+    "pitchHz": 1293.9316457300474,
+    "volDbRms": -39.13,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 45301,
+    "pitchHz": 1293.9316457300474,
+    "volDbRms": -41.3,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 45338,
+    "pitchHz": 1153.1088190365756,
+    "volDbRms": -36.29,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 45359,
+    "pitchHz": 1163.3930055048625,
+    "volDbRms": -34.7,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 45381,
+    "pitchHz": 1182.5710823380764,
+    "volDbRms": -36.37,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 45424,
+    "pitchHz": 1182.5710823380764,
+    "volDbRms": -39.22,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 45461,
+    "pitchHz": 1182.5710823380764,
+    "volDbRms": -40.86,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 45541,
+    "pitchHz": 1225.0080835028698,
+    "volDbRms": -41.13,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 45578,
+    "pitchHz": 1225.0080835028698,
+    "volDbRms": -43.97,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 45600,
+    "pitchHz": 1225.0080835028698,
+    "volDbRms": -47.12,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 45621,
+    "pitchHz": 1225.0080835028698,
+    "volDbRms": -60.48,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 45717,
+    "pitchHz": null,
+    "volDbRms": -70.17,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 45904,
+    "pitchHz": 1206.7296802096876,
+    "volDbRms": -33.12,
+    "chroma": 2,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 45942,
+    "pitchHz": 1206.7296802096876,
+    "volDbRms": -36.93,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46021,
+    "pitchHz": 1221.229288005679,
+    "volDbRms": -40.87,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 46058,
+    "pitchHz": 1221.229288005679,
+    "volDbRms": -34.31,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46080,
+    "pitchHz": 1221.229288005679,
+    "volDbRms": -32.67,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46101,
+    "pitchHz": 1176.7205033143334,
+    "volDbRms": -33.57,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 46143,
+    "pitchHz": 1176.7205033143334,
+    "volDbRms": -39.87,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46165,
+    "pitchHz": 1176.7205033143334,
+    "volDbRms": -42.92,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46186,
+    "pitchHz": 1176.7205033143334,
+    "volDbRms": -44.75,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46223,
+    "pitchHz": 1176.7205033143334,
+    "volDbRms": -48.4,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46266,
+    "pitchHz": 1217.2379636553103,
+    "volDbRms": -49.7,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 46304,
+    "pitchHz": 1217.2379636553103,
+    "volDbRms": -64.35,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46325,
+    "pitchHz": 1217.2379636553103,
+    "volDbRms": -58.76,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46346,
+    "pitchHz": 1217.2379636553103,
+    "volDbRms": -67.49,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46388,
+    "pitchHz": null,
+    "volDbRms": -79.8,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 46586,
+    "pitchHz": 1086.9613794791271,
+    "volDbRms": -41.2,
+    "chroma": 1,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 46683,
+    "pitchHz": 1086.9613794791271,
+    "volDbRms": -42.82,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46748,
+    "pitchHz": 1086.9613794791271,
+    "volDbRms": -40.2,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46783,
+    "pitchHz": 1086.9613794791271,
+    "volDbRms": -45.06,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46827,
+    "pitchHz": 1107.6436630993162,
+    "volDbRms": -54.03,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 46874,
+    "pitchHz": 1107.6436630993162,
+    "volDbRms": -61.51,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 46911,
+    "pitchHz": null,
+    "volDbRms": -71.65,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 47114,
+    "pitchHz": 1126.8409189795257,
+    "volDbRms": -44.49,
+    "chroma": 1,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 47152,
+    "pitchHz": 1126.8409189795257,
+    "volDbRms": -38.79,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47236,
+    "pitchHz": 1195.7319634625733,
+    "volDbRms": -41.1,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 47268,
+    "pitchHz": 1176.4111174638067,
+    "volDbRms": -41.74,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 47291,
+    "pitchHz": 1176.4111174638067,
+    "volDbRms": -39.99,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47355,
+    "pitchHz": 1190.0589110076826,
+    "volDbRms": -40.85,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 47392,
+    "pitchHz": 1190.0589110076826,
+    "volDbRms": -42.38,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47508,
+    "pitchHz": 1190.0589110076826,
+    "volDbRms": -44.42,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47530,
+    "pitchHz": 1190.0589110076826,
+    "volDbRms": -42.02,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47551,
+    "pitchHz": 1190.0589110076826,
+    "volDbRms": -45,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47593,
+    "pitchHz": 1190.0589110076826,
+    "volDbRms": -42.87,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47632,
+    "pitchHz": 1190.0589110076826,
+    "volDbRms": -44.64,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47728,
+    "pitchHz": 1190.0589110076826,
+    "volDbRms": -47.48,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47770,
+    "pitchHz": 1190.0589110076826,
+    "volDbRms": -52.84,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47791,
+    "pitchHz": 1190.0589110076826,
+    "volDbRms": -66.05,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 47850,
+    "pitchHz": null,
+    "volDbRms": -72.74,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 49515,
+    "pitchHz": 1473.0107991199677,
+    "volDbRms": -44.78,
+    "chroma": 6,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 49568,
+    "pitchHz": 1490.7290228763052,
+    "volDbRms": -54.97,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 49589,
+    "pitchHz": 1490.7290228763052,
+    "volDbRms": -42.7,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 49631,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -43.85,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 49691,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -41.16,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 49712,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -35.65,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 49771,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -38.62,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 49792,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -44.24,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 49871,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -39.11,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 49994,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -44.34,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50032,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -42.09,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50069,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -38.55,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50175,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -40.8,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50197,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -39.17,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50239,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -43.64,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50259,
+    "pitchHz": 1460.9797179836075,
+    "volDbRms": -39.33,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50292,
+    "pitchHz": 1474.3844750990881,
+    "volDbRms": -41.33,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50356,
+    "pitchHz": 1459.6146932926872,
+    "volDbRms": -55.35,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 50395,
+    "pitchHz": 1459.6146932926872,
+    "volDbRms": -43.42,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50437,
+    "pitchHz": 1459.6146932926872,
+    "volDbRms": -46.19,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50480,
+    "pitchHz": 1459.6146932926872,
+    "volDbRms": -55.9,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50518,
+    "pitchHz": 1459.6146932926872,
+    "volDbRms": -63.95,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50555,
+    "pitchHz": 1459.6146932926872,
+    "volDbRms": -43.44,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50598,
+    "pitchHz": 1308.1805848796369,
+    "volDbRms": -39.88,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 50633,
+    "pitchHz": 1295.2053894967419,
+    "volDbRms": -35.62,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50655,
+    "pitchHz": 1295.2053894967419,
+    "volDbRms": -37.48,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50719,
+    "pitchHz": 1269.0139484521294,
+    "volDbRms": -39.43,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 50757,
+    "pitchHz": 1269.0139484521294,
+    "volDbRms": -36.43,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50794,
+    "pitchHz": 1220.5903161402186,
+    "volDbRms": -33.88,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 50837,
+    "pitchHz": 1220.5903161402186,
+    "volDbRms": -31.01,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50875,
+    "pitchHz": 1220.5903161402186,
+    "volDbRms": -32.52,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50896,
+    "pitchHz": 1220.5903161402186,
+    "volDbRms": -28.11,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50917,
+    "pitchHz": 1172.8028556232998,
+    "volDbRms": -29.59,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 50960,
+    "pitchHz": 1172.8028556232998,
+    "volDbRms": -32.3,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 50999,
+    "pitchHz": 1172.8028556232998,
+    "volDbRms": -39.15,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 51077,
+    "pitchHz": 1172.8028556232998,
+    "volDbRms": -33.61,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 51117,
+    "pitchHz": 1154.5971534430164,
+    "volDbRms": -33.33,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 51157,
+    "pitchHz": 1154.5971534430164,
+    "volDbRms": -37.12,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 51200,
+    "pitchHz": 1154.5971534430164,
+    "volDbRms": -50.65,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 51237,
+    "pitchHz": 1154.5971534430164,
+    "volDbRms": -55.7,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 51318,
+    "pitchHz": null,
+    "volDbRms": -71.53,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 51444,
+    "pitchHz": 1028.317340245666,
+    "volDbRms": -31.92,
+    "chroma": 0,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 51476,
+    "pitchHz": 1028.317340245666,
+    "volDbRms": -41.41,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 51513,
+    "pitchHz": 1028.317340245666,
+    "volDbRms": -40.25,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 51557,
+    "pitchHz": 1028.317340245666,
+    "volDbRms": -48.16,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 51594,
+    "pitchHz": 1050.9884202435671,
+    "volDbRms": -59.75,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 51615,
+    "pitchHz": 1026.562142559455,
+    "volDbRms": -56.89,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 51680,
+    "pitchHz": null,
+    "volDbRms": -66.94,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 51995,
+    "pitchHz": 891.6572842807907,
+    "volDbRms": -36.52,
+    "chroma": 9,
+    "octave": 5,
+    "event": "ON"
+  },
+  {
+    "tMs": 52037,
+    "pitchHz": 891.6572842807907,
+    "volDbRms": -39.82,
+    "chroma": 9,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52117,
+    "pitchHz": 882.4699448218857,
+    "volDbRms": -39.23,
+    "chroma": 9,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 52160,
+    "pitchHz": 874.7615268568151,
+    "volDbRms": -40.23,
+    "chroma": 9,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 52197,
+    "pitchHz": 874.7615268568151,
+    "volDbRms": -36.21,
+    "chroma": 9,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52235,
+    "pitchHz": 874.7615268568151,
+    "volDbRms": -38.61,
+    "chroma": 9,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52282,
+    "pitchHz": 836.3843408448346,
+    "volDbRms": -42.71,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 52319,
+    "pitchHz": 826.2658673984156,
+    "volDbRms": -44.21,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 52340,
+    "pitchHz": 826.2658673984156,
+    "volDbRms": -42.08,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52405,
+    "pitchHz": 836.7322452190855,
+    "volDbRms": -44.84,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 52443,
+    "pitchHz": 836.7322452190855,
+    "volDbRms": -39.36,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52522,
+    "pitchHz": 836.7322452190855,
+    "volDbRms": -38.08,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52559,
+    "pitchHz": 836.7322452190855,
+    "volDbRms": -42.27,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52582,
+    "pitchHz": 836.7322452190855,
+    "volDbRms": -39.21,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52645,
+    "pitchHz": 836.7322452190855,
+    "volDbRms": -45.21,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52682,
+    "pitchHz": 836.7322452190855,
+    "volDbRms": -55.68,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52719,
+    "pitchHz": 836.7322452190855,
+    "volDbRms": -53.93,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 52762,
+    "pitchHz": null,
+    "volDbRms": -51.29,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 53893,
+    "pitchHz": 1478.364075630642,
+    "volDbRms": -33.15,
+    "chroma": 6,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 53930,
+    "pitchHz": 1506.297178562921,
+    "volDbRms": -38.65,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 53973,
+    "pitchHz": 1506.297178562921,
+    "volDbRms": -33.16,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54032,
+    "pitchHz": 1506.297178562921,
+    "volDbRms": -35.55,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54053,
+    "pitchHz": 1506.297178562921,
+    "volDbRms": -40.98,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54097,
+    "pitchHz": 1599.4095921665496,
+    "volDbRms": -37.74,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 54150,
+    "pitchHz": 1599.4095921665496,
+    "volDbRms": -35,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54170,
+    "pitchHz": 1599.4095921665496,
+    "volDbRms": -38.05,
+    "chroma": 7,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54213,
+    "pitchHz": 1633.3187221354985,
+    "volDbRms": -36.28,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 54251,
+    "pitchHz": 1653.244510784497,
+    "volDbRms": -35.22,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 54336,
+    "pitchHz": 1672.0689465227586,
+    "volDbRms": -40.52,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 54388,
+    "pitchHz": 1672.0689465227586,
+    "volDbRms": -38.88,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54470,
+    "pitchHz": 1672.0689465227586,
+    "volDbRms": -42.33,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54490,
+    "pitchHz": 1672.0689465227586,
+    "volDbRms": -43.87,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54512,
+    "pitchHz": 1672.0689465227586,
+    "volDbRms": -46.3,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54533,
+    "pitchHz": 1672.0689465227586,
+    "volDbRms": -44.09,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54577,
+    "pitchHz": 1709.9527417073646,
+    "volDbRms": -41.65,
+    "chroma": 9,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 54613,
+    "pitchHz": 1731.663595241069,
+    "volDbRms": -42.56,
+    "chroma": 9,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 54709,
+    "pitchHz": 1731.663595241069,
+    "volDbRms": -43.73,
+    "chroma": 9,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54752,
+    "pitchHz": 1731.663595241069,
+    "volDbRms": -41.36,
+    "chroma": 9,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54815,
+    "pitchHz": 1731.663595241069,
+    "volDbRms": -50.76,
+    "chroma": 9,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54854,
+    "pitchHz": 1731.663595241069,
+    "volDbRms": -57.56,
+    "chroma": 9,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54891,
+    "pitchHz": 1731.663595241069,
+    "volDbRms": -62.06,
+    "chroma": 9,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54933,
+    "pitchHz": 1731.663595241069,
+    "volDbRms": -42.31,
+    "chroma": 9,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54971,
+    "pitchHz": 1731.663595241069,
+    "volDbRms": -39.53,
+    "chroma": 9,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 54992,
+    "pitchHz": 1731.663595241069,
+    "volDbRms": -37.84,
+    "chroma": 9,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55013,
+    "pitchHz": 1624.2736447309019,
+    "volDbRms": -37.99,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 55093,
+    "pitchHz": 1641.6328299657368,
+    "volDbRms": -39.03,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 55130,
+    "pitchHz": 1641.6328299657368,
+    "volDbRms": -43.15,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55174,
+    "pitchHz": 1641.6328299657368,
+    "volDbRms": -46.75,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55209,
+    "pitchHz": 1641.6328299657368,
+    "volDbRms": -41.02,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55232,
+    "pitchHz": 1641.6328299657368,
+    "volDbRms": -34.73,
+    "chroma": 8,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55253,
+    "pitchHz": 1171.8126510964073,
+    "volDbRms": -32.49,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 55312,
+    "pitchHz": 1156.8174370904765,
+    "volDbRms": -32.5,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 55333,
+    "pitchHz": 1180.5179783025922,
+    "volDbRms": -33.64,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 55371,
+    "pitchHz": 1197.714859410559,
+    "volDbRms": -44.25,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55413,
+    "pitchHz": 1197.714859410559,
+    "volDbRms": -47.92,
+    "chroma": 2,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55450,
+    "pitchHz": 1240.2182251708155,
+    "volDbRms": -48.25,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 55493,
+    "pitchHz": 1240.2182251708155,
+    "volDbRms": -45.61,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55535,
+    "pitchHz": 1240.2182251708155,
+    "volDbRms": -55.4,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55573,
+    "pitchHz": 1238.3417804155133,
+    "volDbRms": -59.73,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 55653,
+    "pitchHz": null,
+    "volDbRms": -74.33,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 55850,
+    "pitchHz": 1030.6755791624696,
+    "volDbRms": -35.19,
+    "chroma": 0,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 55893,
+    "pitchHz": 1030.6755791624696,
+    "volDbRms": -39.46,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55931,
+    "pitchHz": 1030.6755791624696,
+    "volDbRms": -42.82,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 55973,
+    "pitchHz": 967.1843580525059,
+    "volDbRms": -51.4,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 56016,
+    "pitchHz": 967.1843580525059,
+    "volDbRms": -47.42,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 56053,
+    "pitchHz": 967.1843580525059,
+    "volDbRms": -55.26,
+    "chroma": 11,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 56091,
+    "pitchHz": 910.1389195164797,
+    "volDbRms": -47.69,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 56133,
+    "pitchHz": 925.6069200962409,
+    "volDbRms": -47.83,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 56192,
+    "pitchHz": 925.6069200962409,
+    "volDbRms": -52.1,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 56213,
+    "pitchHz": 925.6069200962409,
+    "volDbRms": -54.11,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 56255,
+    "pitchHz": 934.8114549815568,
+    "volDbRms": -54.39,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 57893,
+    "pitchHz": 1300.3410833816797,
+    "volDbRms": -42.49,
+    "chroma": 4,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 57935,
+    "pitchHz": 1300.3410833816797,
+    "volDbRms": -38.31,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 58011,
+    "pitchHz": 1300.3410833816797,
+    "volDbRms": -40.01,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 58053,
+    "pitchHz": 1264.6385790597433,
+    "volDbRms": -55.28,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 58091,
+    "pitchHz": 1264.6385790597433,
+    "volDbRms": -61.76,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 58112,
+    "pitchHz": 1264.6385790597433,
+    "volDbRms": -66.39,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 58133,
+    "pitchHz": null,
+    "volDbRms": -64.88,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 58534,
+    "pitchHz": 1448.913828084339,
+    "volDbRms": -36.8,
+    "chroma": 6,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 58596,
+    "pitchHz": 1448.913828084339,
+    "volDbRms": -34.82,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 58618,
+    "pitchHz": 1462.0945580862015,
+    "volDbRms": -39.54,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 58661,
+    "pitchHz": 1462.0945580862015,
+    "volDbRms": -33.79,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 58715,
+    "pitchHz": 1462.0945580862015,
+    "volDbRms": -38.03,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 58778,
+    "pitchHz": 1462.0945580862015,
+    "volDbRms": -34.59,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 58816,
+    "pitchHz": 1462.0945580862015,
+    "volDbRms": -32.36,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 58901,
+    "pitchHz": 1462.0945580862015,
+    "volDbRms": -34.02,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 58976,
+    "pitchHz": 1462.0945580862015,
+    "volDbRms": -36.12,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59018,
+    "pitchHz": 1462.0945580862015,
+    "volDbRms": -37.85,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59055,
+    "pitchHz": 1462.0945580862015,
+    "volDbRms": -51.76,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59077,
+    "pitchHz": 1462.0945580862015,
+    "volDbRms": -43.99,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59097,
+    "pitchHz": 1475.7871332498555,
+    "volDbRms": -44.92,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 59141,
+    "pitchHz": 1475.7871332498555,
+    "volDbRms": -52.8,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59178,
+    "pitchHz": 1459.7074367854743,
+    "volDbRms": -47.13,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 59216,
+    "pitchHz": 1459.7074367854743,
+    "volDbRms": -53.68,
+    "chroma": 6,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59259,
+    "pitchHz": 1429.4042528897717,
+    "volDbRms": -59.28,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 59316,
+    "pitchHz": 1429.4042528897717,
+    "volDbRms": -49.5,
+    "chroma": 5,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59338,
+    "pitchHz": 1242.100385557071,
+    "volDbRms": -33.21,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 59381,
+    "pitchHz": 1242.100385557071,
+    "volDbRms": -30.16,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59419,
+    "pitchHz": 1242.100385557071,
+    "volDbRms": -28.6,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59455,
+    "pitchHz": 1242.100385557071,
+    "volDbRms": -32.49,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59499,
+    "pitchHz": 1310.9309913808,
+    "volDbRms": -42.97,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 59557,
+    "pitchHz": 1296.3475317433647,
+    "volDbRms": -51.64,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59579,
+    "pitchHz": 1296.3475317433647,
+    "volDbRms": -46.67,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59621,
+    "pitchHz": 1296.3475317433647,
+    "volDbRms": -50.18,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59658,
+    "pitchHz": 1103.672162292291,
+    "volDbRms": -41.03,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 59695,
+    "pitchHz": 1108.9230568608143,
+    "volDbRms": -31.32,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 59775,
+    "pitchHz": 1108.9230568608143,
+    "volDbRms": -30.36,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59819,
+    "pitchHz": 1131.2723822493297,
+    "volDbRms": -30.91,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 59860,
+    "pitchHz": 1131.2723822493297,
+    "volDbRms": -33.3,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 59978,
+    "pitchHz": 1121.3475820008446,
+    "volDbRms": -39.92,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 60016,
+    "pitchHz": 1121.3475820008446,
+    "volDbRms": -47.09,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 60036,
+    "pitchHz": 1121.3475820008446,
+    "volDbRms": -55.53,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 60058,
+    "pitchHz": 1121.3475820008446,
+    "volDbRms": -53.82,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 60100,
+    "pitchHz": 1121.3475820008446,
+    "volDbRms": -60.09,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 60282,
+    "pitchHz": 1090.3961916666706,
+    "volDbRms": -33.84,
+    "chroma": 1,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 60347,
+    "pitchHz": 1090.3961916666706,
+    "volDbRms": -44.99,
+    "chroma": 1,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 60384,
+    "pitchHz": 1071.8086527635535,
+    "volDbRms": -55.76,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 60421,
+    "pitchHz": 1071.8086527635535,
+    "volDbRms": -58.83,
+    "chroma": 0,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 60463,
+    "pitchHz": null,
+    "volDbRms": -65.87,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 60784,
+    "pitchHz": 825.1581959793439,
+    "volDbRms": -34.4,
+    "chroma": 8,
+    "octave": 5,
+    "event": "ON"
+  },
+  {
+    "tMs": 60827,
+    "pitchHz": 825.1581959793439,
+    "volDbRms": -36.47,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 60901,
+    "pitchHz": 837.9195718547106,
+    "volDbRms": -36.14,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 60944,
+    "pitchHz": 837.9195718547106,
+    "volDbRms": -34.36,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 61024,
+    "pitchHz": 837.9195718547106,
+    "volDbRms": -32.15,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 61066,
+    "pitchHz": 837.9195718547106,
+    "volDbRms": -33.78,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 61104,
+    "pitchHz": 846.2071661343743,
+    "volDbRms": -33.34,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 61142,
+    "pitchHz": 846.2071661343743,
+    "volDbRms": -42.54,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 61200,
+    "pitchHz": 846.2071661343743,
+    "volDbRms": -48.86,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 61221,
+    "pitchHz": 846.2071661343743,
+    "volDbRms": -55.28,
+    "chroma": 8,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 61306,
+    "pitchHz": null,
+    "volDbRms": -66.3,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 61909,
+    "pitchHz": 1267.5102651849809,
+    "volDbRms": -30.46,
+    "chroma": 3,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 61946,
+    "pitchHz": 1267.5102651849809,
+    "volDbRms": -30.5,
+    "chroma": 3,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 61988,
+    "pitchHz": 1281.621195131574,
+    "volDbRms": -31.24,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 62031,
+    "pitchHz": 1330.8692486201642,
+    "volDbRms": -32.07,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 62107,
+    "pitchHz": 1310.560832489879,
+    "volDbRms": -43.09,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 62148,
+    "pitchHz": 1322.8829239228774,
+    "volDbRms": -40.94,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 62186,
+    "pitchHz": 1322.8829239228774,
+    "volDbRms": -52.31,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 62272,
+    "pitchHz": null,
+    "volDbRms": -60.8,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 62470,
+    "pitchHz": 894.7404770059718,
+    "volDbRms": -37.78,
+    "chroma": 9,
+    "octave": 5,
+    "event": "ON"
+  },
+  {
+    "tMs": 62591,
+    "pitchHz": 945.8706928200392,
+    "volDbRms": -33.08,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 62634,
+    "pitchHz": 945.8706928200392,
+    "volDbRms": -38.39,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 62672,
+    "pitchHz": 945.8706928200392,
+    "volDbRms": -41.83,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 62693,
+    "pitchHz": 945.8706928200392,
+    "volDbRms": -45.95,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 62714,
+    "pitchHz": 935.0134537219959,
+    "volDbRms": -37.43,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 62757,
+    "pitchHz": 935.0134537219959,
+    "volDbRms": -40.92,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 62794,
+    "pitchHz": 935.0134537219959,
+    "volDbRms": -47.12,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 62874,
+    "pitchHz": 935.0134537219959,
+    "volDbRms": -45.27,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 62911,
+    "pitchHz": 935.0134537219959,
+    "volDbRms": -50.18,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 62933,
+    "pitchHz": 950.5683300137097,
+    "volDbRms": -58.68,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 62954,
+    "pitchHz": 950.5683300137097,
+    "volDbRms": -43.93,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 62997,
+    "pitchHz": 950.5683300137097,
+    "volDbRms": -49.85,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 63051,
+    "pitchHz": 950.5683300137097,
+    "volDbRms": -53.25,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 63115,
+    "pitchHz": 940.1917146453972,
+    "volDbRms": -66.73,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 63152,
+    "pitchHz": null,
+    "volDbRms": -67.88,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 64112,
+    "pitchHz": 1306.0322940117453,
+    "volDbRms": -31.53,
+    "chroma": 4,
+    "octave": 6,
+    "event": "ON"
+  },
+  {
+    "tMs": 64133,
+    "pitchHz": 1306.0322940117453,
+    "volDbRms": -34.13,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 64197,
+    "pitchHz": 1306.0322940117453,
+    "volDbRms": -38.24,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 64234,
+    "pitchHz": 1306.0322940117453,
+    "volDbRms": -46.74,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 64272,
+    "pitchHz": 1338.176321810603,
+    "volDbRms": -44.42,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 64314,
+    "pitchHz": 1321.6790596702003,
+    "volDbRms": -42.7,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 64351,
+    "pitchHz": 1321.6790596702003,
+    "volDbRms": -64.8,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 64373,
+    "pitchHz": 1321.6790596702003,
+    "volDbRms": -62.37,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 64394,
+    "pitchHz": 1321.6790596702003,
+    "volDbRms": -67.34,
+    "chroma": 4,
+    "octave": 6,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 64437,
+    "pitchHz": null,
+    "volDbRms": -70.67,
+    "chroma": null,
+    "octave": null,
+    "event": "OFF"
+  },
+  {
+    "tMs": 64795,
+    "pitchHz": 910.3031777580028,
+    "volDbRms": -37.62,
+    "chroma": 10,
+    "octave": 5,
+    "event": "ON"
+  },
+  {
+    "tMs": 64831,
+    "pitchHz": 922.0793190949406,
+    "volDbRms": -37.57,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 64874,
+    "pitchHz": 932.5175562517956,
+    "volDbRms": -42.75,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 64916,
+    "pitchHz": 932.5175562517956,
+    "volDbRms": -44.41,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 64953,
+    "pitchHz": 923.265210813492,
+    "volDbRms": -42.36,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 64991,
+    "pitchHz": 923.265210813492,
+    "volDbRms": -39.42,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 65050,
+    "pitchHz": 914.4239433282462,
+    "volDbRms": -38.64,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 65093,
+    "pitchHz": 914.4239433282462,
+    "volDbRms": -41.29,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 65161,
+    "pitchHz": 914.4239433282462,
+    "volDbRms": -43.94,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 65194,
+    "pitchHz": 923.4100410303465,
+    "volDbRms": -48.07,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_PITCH"
+  },
+  {
+    "tMs": 65312,
+    "pitchHz": 914.573585680998,
+    "volDbRms": -48.02,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 65333,
+    "pitchHz": 914.573585680998,
+    "volDbRms": -50.64,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  },
+  {
+    "tMs": 65353,
+    "pitchHz": 914.573585680998,
+    "volDbRms": -56.22,
+    "chroma": 10,
+    "octave": 5,
+    "event": "CHANGE_VOLUME"
+  }
+]

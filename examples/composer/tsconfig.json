@@ -1,0 +1,10 @@
+{
+  "extends": "astro/tsconfigs/base",
+
+  "compilerOptions": {
+    /* defuss JSX */
+    "jsx": "react-jsx",
+    "jsxImportSource": "defuss",
+    "types": ["@types/audioworklet"]
+  }
+}
