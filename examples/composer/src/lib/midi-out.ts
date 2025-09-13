@@ -84,6 +84,7 @@ export function parseKey(name: MusicalKeyName): MusicalKey {
 export class MidiOutAdapter {
   private midi: MIDIAccess | null = null;
   private out: MIDIOutput | null = null;
+  private outId: string | null = null;
   private pollTimer: number | null = null;
   private lastIdx = 0;
   private lastBaseNote: number | null = null; // last sent base MIDI note (in-key)
@@ -96,6 +97,7 @@ export class MidiOutAdapter {
   private winStartMs = 0;
   private winIdentities: number[] = [];
   private winProvisionalBase: number | null = null;
+  private winProvisionalSent = false;
 
   // Articulation guard
   private minArticulationMs = 150;
@@ -112,6 +114,8 @@ export class MidiOutAdapter {
   private metroTimer: number | null = null;
   private metroNextBeat = 0; // integer index since start
   private metroLookaheadSec = 0.25;
+  private primed = false; // whether we've sent initial CCs/bend to ensure audible output
+  private pendingOn: { ev: NoteEvent; base: number } | null = null;
 
   constructor(recorder: RecorderLike, cfg?: MidiOutConfig) {
     this.rec = recorder;
@@ -150,13 +154,27 @@ export class MidiOutAdapter {
 
   setOutput(id: string | null) {
     if (!this.midi) throw new Error("MIDI not initialized");
+    this.outId = id;
     this.out = id ? (this.midi.outputs.get(id) ?? null) : null;
+    // Try to open the port to ensure it is ready to send
+    try {
+      this.out?.open?.();
+    } catch {}
+    this.primed = false;
   }
 
   /** Always-on streaming: start immediately */
   start(): void {
     if (this.pollTimer != null) return;
-    this.lastIdx = 0;
+    // Skip any historical events; resume from current end of log
+    this.lastIdx = this.rec.getLog().length;
+    this.resetWindow();
+    this.lastBaseNote = null;
+    // Allow immediate articulation after (re)start
+    this.lastOnAtMs = Number.NEGATIVE_INFINITY;
+    this.pendingOn = null;
+    // Ensure MIDI output is ready (this will also prime CCs when open)
+    this.ensureOutputReady();
     this.pollTimer = window.setInterval(() => this.tick(), 20);
   }
 
@@ -169,7 +187,11 @@ export class MidiOutAdapter {
     this.lastBaseNote = null;
     // Stop metronome if running
     this.stopMetronome();
+    // Reset articulation guard so next start isn't blocked by stale timestamps
+    this.lastOnAtMs = Number.NEGATIVE_INFINITY;
     this.resetWindow();
+    this.primed = false;
+    this.pendingOn = null;
   }
 
   setKey(name: MusicalKeyName) {
@@ -306,13 +328,80 @@ export class MidiOutAdapter {
   /* ------------- streaming ------------- */
 
   private tick(): void {
-    if (!this.out) return;
+    // Auto-recover MIDI output if missing or closed
+    this.ensureOutputReady();
+    const isOpen = this.isPortOpen();
+    // If we have a queued ON and port is now open, send it
+    if (isOpen && this.pendingOn) {
+      const { ev, base } = this.pendingOn;
+      this.sendOn(ev, base);
+      this.pendingOn = null;
+    }
     const log = this.rec.getLog();
+    // Handle log truncation/resets between stops/starts
+    if (this.lastIdx > log.length) this.lastIdx = 0;
     if (this.lastIdx >= log.length) return;
     const slice = log.slice(this.lastIdx);
     this.lastIdx = log.length;
 
     for (const ev of slice) this.processEvent(ev);
+  }
+
+  private isPortOpen(): boolean {
+    if (!this.out) return false;
+    const anyOut = this.out as any;
+    return anyOut.connection === "open";
+  }
+
+  private ensureOutputReady(): void {
+    if (!this.midi) return;
+    // If we have an output but it's not open, try to open
+    if (this.out) {
+      const anyOut = this.out as any;
+      const connection = anyOut.connection as string | undefined;
+      const state = anyOut.state as string | undefined;
+      if (connection !== "open") {
+        try {
+          this.out.open?.();
+        } catch {}
+      }
+      if (state === "disconnected") {
+        this.out = null;
+      }
+      // If now open and not yet primed, send initial CCs and center bend
+      if (anyOut.connection === "open" && !this.primed) {
+        const ch = this.ch();
+        // Set reasonable defaults for audible output
+        this.cc(ch, 7, 100); // Channel Volume (MSB)
+        this.cc(ch, this.cfg.ccForVolume, 100); // Expression or Volume depending on cfg
+        this.sendPitchBend(ch, 8192); // center
+        this.primed = true;
+      }
+    }
+    // If we don't have an output, try to restore selected or pick first available
+    if (!this.out) {
+      if (this.outId) {
+        const o = this.midi.outputs.get(this.outId);
+        if (o) {
+          this.out = o;
+          try {
+            this.out.open?.();
+          } catch {}
+          this.primed = false;
+          return;
+        }
+      }
+      // fallback: first available
+      const first = Array.from(this.midi.outputs.values())[0];
+      if (first) {
+        this.out = first;
+        this.outId = first.id;
+        try {
+          this.out.open?.();
+        } catch {}
+        this.primed = false;
+      }
+    }
   }
 
   /* ------------- smoothing pipeline ------------- */
@@ -335,6 +424,7 @@ export class MidiOutAdapter {
     this.winStartMs = 0;
     this.winIdentities = [];
     this.winProvisionalBase = null;
+    this.winProvisionalSent = false;
   }
 
   private identityFromEvent(ev: NoteEvent): number | null {
@@ -366,7 +456,9 @@ export class MidiOutAdapter {
           if (this.cfg.smoothingMode === "provisional") {
             // Emit provisional ON immediately
             this.winProvisionalBase = id;
-            this.emitOn(ev, id);
+            // Even if port is closed, buffer and mark as sent to avoid extra delay
+            const sent = this.emitOn(ev, id);
+            this.winProvisionalSent = sent || !!this.pendingOn;
           } else {
             this.winProvisionalBase = null; // no provisional output
           }
@@ -406,7 +498,20 @@ export class MidiOutAdapter {
     const decided = this.decideIdentity(ids, this.cfg.decisionRule);
     if (this.cfg.smoothingMode === "provisional") {
       // Correct if needed: single re-articulation
-      if (
+      if (!this.winProvisionalSent) {
+        // Never got an ON out (e.g., port not open) -> emit now
+        this.emitOn(
+          {
+            tMs: nowMs,
+            pitchHz: this.midiToFreq(decided),
+            volDbRms: -30,
+            chroma: decided % 12,
+            octave: Math.floor(decided / 12) - 1,
+            event: "ON",
+          },
+          decided,
+        );
+      } else if (
         this.winProvisionalBase != null &&
         decided !== this.winProvisionalBase
       ) {
@@ -541,11 +646,20 @@ export class MidiOutAdapter {
     }
   }
 
-  private emitOn(ev: NoteEvent, decidedBase: number) {
-    // send ON with bend and velocity from event
-    if (!this.out) return;
+  private emitOn(ev: NoteEvent, decidedBase: number): boolean {
+    // send ON with bend and velocity from event; returns true if sent
+    if (!this.out || (this.out as any).connection !== "open") {
+      // queue for when port becomes ready
+      this.pendingOn = { ev, base: decidedBase };
+      return false;
+    }
     // enforce min articulation duration
-    if (ev.tMs - this.lastOnAtMs < this.minArticulationMs) return;
+    if (ev.tMs - this.lastOnAtMs < this.minArticulationMs) return false;
+    this.sendOn(ev, decidedBase);
+    return true;
+  }
+
+  private sendOn(ev: NoteEvent, decidedBase: number) {
     const ch = this.ch();
     const mFloat = ev.pitchHz != null ? this.hzToMidi(ev.pitchHz) : decidedBase;
     const bend14 = this.bendFromSemitoneDelta(mFloat - decidedBase);
@@ -560,7 +674,12 @@ export class MidiOutAdapter {
   }
 
   private emitOff(nowMs: number) {
-    if (!this.out) return;
+    if (!this.isPortOpen()) {
+      // Silently clear local state when port is closed
+      this.lastBaseNote = null;
+      this.pendingOn = null;
+      return;
+    }
     const ch = this.ch();
     if (this.lastBaseNote != null) this.noteOff(ch, this.lastBaseNote, 0);
     else this.cc(ch, 123, 0);
@@ -568,12 +687,20 @@ export class MidiOutAdapter {
   }
 
   private handleOff(ev: NoteEvent) {
+    if (!this.isPortOpen()) {
+      // Clear local note state but don't send while closed
+      this.lastBaseNote = null;
+      this.pendingOn = null;
+      return;
+    }
     this.handleEvent(ev);
   }
   private handleChangePitch(ev: NoteEvent) {
+    if (!this.isPortOpen()) return; // skip while closed
     this.handleEvent(ev);
   }
   private handleChangeVolume(ev: NoteEvent) {
+    if (!this.isPortOpen()) return; // skip while closed
     this.handleEvent(ev);
   }
 

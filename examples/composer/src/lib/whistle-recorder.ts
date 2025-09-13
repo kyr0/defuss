@@ -52,7 +52,7 @@ type State = {
 };
 
 const nowMs = () => performance.now();
-const dbg = (...args: any[]) => console.log("[whistle]", ...args);
+const dbg = (...args: any[]) => {} /*console.log("[whistle]", ...args)*/;
 
 /** EXACT loader shape you asked for */
 async function createWorkletNode(
@@ -528,6 +528,27 @@ export const createWhistleRecorder = (
 
   const start = async () => {
     if (graph) return;
+    // Fresh runtime state to avoid lingering timers from previous run
+    const resetRuntimeState = () => {
+      st.startTimeMs = 0;
+      st.lastEventTimeMs = Number.NEGATIVE_INFINITY;
+      st.lastNoteSwitchAtMs = Number.NEGATIVE_INFINITY;
+      st.noteOn = false;
+      st.isVoiced = false;
+      st.currentNoteMidi = 0;
+      st.currentPitchHz = 0;
+      st.lastDb = -100;
+      st.lastVolEventDb = -100;
+      st.candidateSwitchStartMs = 0;
+      st.belowSilenceSinceMs = 0;
+      st.aboveOnSinceMs = 0;
+      st.unvoicedSinceMs = 0;
+      // smoothing state
+      st.mRing = [];
+      st.xMidi = 0;
+      st.vStPerSec = 0;
+    };
+    resetRuntimeState();
     try {
       graph = await buildGraph(cfg, provider);
     } catch (e) {

@@ -63,8 +63,8 @@ const midi = new MidiOutAdapter(rec, {
   ccForVolume: 11,
   key: "C major",
   // Bias rounding toward floor at low register and toward ceil at high register
-  biasLow: 0.4,
-  biasHigh: 0.4,
+  biasLow: 0.2,
+  biasHigh: 0.2,
 });
 
 const ALL_KEYS: MusicalKeyName[] = [
@@ -243,9 +243,9 @@ export function DashboardScreen() {
   const start = async () => {
     // Initialize MIDI & populate outs on first start (gesture-safe).
     if (!midiSelRef.current?.options.length) await populateMidi();
-    await rec.start();
-    // Start MIDI streaming regardless; if no output yet, it no-ops until selected.
+    // Start MIDI streaming first so we don't miss the first ON from recorder
     midi.start();
+    await rec.start();
     UIkit.notification({ message: "Recorder started", status: "success" });
   };
 
