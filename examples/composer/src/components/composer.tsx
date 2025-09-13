@@ -129,7 +129,20 @@ export function DashboardScreen() {
       opt.textContent = d.label || `Mic ${sel.options.length}`;
       sel.appendChild(opt);
     }
-    sel.value = "";
+    // Auto-select preferred microphone
+    const pick = (() => {
+      const prefs = ["built-in", "microphone", "mikrophone"]; // lowercase
+      // search in actual device options (skip system default at index 0)
+      for (let i = 1; i < sel.options.length; i++) {
+        const txt = sel.options[i]!.textContent?.toLowerCase() || "";
+        if (prefs.some((p) => txt.includes(p))) return sel.options[i]!.value;
+      }
+      // else: choose first listed device if any
+      return sel.options.length > 1 ? sel.options[1]!.value : "";
+    })();
+    sel.value = pick;
+    // Apply selection immediately
+    await onMicSelect();
   };
 
   const populateMidi = async () => {
@@ -147,7 +160,13 @@ export function DashboardScreen() {
       opt.textContent = o.name;
       sel.appendChild(opt);
     }
-    sel.value = "";
+    // Auto-select first actual output if present
+    if (sel.options.length > 1) {
+      sel.value = sel.options[1]!.value;
+      onMidiSelect();
+    } else {
+      sel.value = "";
+    }
   };
 
   const populateKeys = () => {
@@ -244,6 +263,8 @@ export function DashboardScreen() {
   // Init selectors on first paint
   queueMicrotask(() => {
     populateMics();
+    // Also populate MIDI outs immediately and auto-select first if present
+    populateMidi();
     populateKeys();
     populateSmoothing();
     setupTimingDefaults();
@@ -255,7 +276,8 @@ export function DashboardScreen() {
     setBpmAndApply(120);
     setTimeSignatureAndApply(4, 4);
     setNoteLengthAndApply("1/16");
-    setMetronomeEnabled(false);
+    // Metronome enabled by default
+    setMetronomeEnabled(true);
   };
 
   const quarterMs = (bpm: number) => 60000 / bpm;

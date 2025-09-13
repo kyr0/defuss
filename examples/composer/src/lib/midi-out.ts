@@ -167,6 +167,8 @@ export class MidiOutAdapter {
     }
     if (this.out) this.cc(this.ch(), 123, 0);
     this.lastBaseNote = null;
+    // Stop metronome if running
+    this.stopMetronome();
     this.resetWindow();
   }
 
