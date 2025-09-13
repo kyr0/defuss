@@ -77,6 +77,10 @@ export interface Config {
 
   /** Add this extra dwell time before allowing an octave switch. */
   octaveSwitchExtraHoldMs: number; // e.g. 50
+
+  /** If the instantaneous slope (|v| in semitones/s) exceeds this in cents/s,
+   *  allow note switching with half the usual dwell. */
+  fastSlopeCentsPerSec: number; // e.g. 900
 }
 
 export const DEFAULTS: Config = {
@@ -130,6 +134,9 @@ export const DEFAULTS: Config = {
   octaveGlueCents: 80,
   octaveGlueDbDelta: 8,
   octaveSwitchExtraHoldMs: 50,
+
+  // Fast slope shortcut
+  fastSlopeCentsPerSec: 900,
 };
 
 // Helpers

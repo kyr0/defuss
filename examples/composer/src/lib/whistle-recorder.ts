@@ -42,6 +42,13 @@ type State = {
   events: NoteEvent[];
 
   lastNoteSwitchAtMs: number;
+
+  // --- Pitch smoothing (MIDI space) state ---
+  // Median-of-3 ring buffer on raw MIDI
+  mRing: number[]; // latest at end
+  // Alpha-Beta filter state
+  xMidi: number; // smoothed MIDI position
+  vStPerSec: number; // velocity in semitones per second
 };
 
 const nowMs = () => performance.now();
@@ -261,6 +268,7 @@ const onFrame = (st: State, r: WorkletReading) => {
     octaveGlueCents,
     octaveGlueDbDelta,
     octaveSwitchExtraHoldMs,
+    fastSlopeCentsPerSec,
   } = st.cfg;
 
   const db = (r as any).db;
@@ -278,9 +286,40 @@ const onFrame = (st: State, r: WorkletReading) => {
   updateVoicing(st, r, tMs);
   const hasPitch = st.isVoiced && (r as any).freq > 0;
 
-  // current continuous MIDI
-  let midi = st.currentNoteMidi;
-  if (hasPitch) midi = freqToMidi((r as any).freq, a4Hz);
+  // ------------------------------------------------------------------
+  // current continuous MIDI (raw), then median-of-3 spike kill, then α-β
+  // ------------------------------------------------------------------
+  // raw MIDI from freq (if pitched)
+  let mRaw = st.currentNoteMidi;
+  if (hasPitch) mRaw = freqToMidi((r as any).freq, a4Hz);
+
+  // Spike killer: maintain 3-sample ring, take median
+  if (!Number.isFinite(mRaw)) mRaw = st.xMidi || st.currentNoteMidi;
+  st.mRing.push(mRaw);
+  if (st.mRing.length > 3) st.mRing.shift();
+  const ring = st.mRing;
+  const mMed = ring.length === 3 ? [...ring].sort((a, b) => a - b)[1] : mRaw;
+
+  // Alpha-Beta filter on MIDI
+  // Map gains from nsdf quality in [0.6 .. 0.9]
+  const nsdf = (r as any).nsdf ?? 0;
+  const qLo = 0.6;
+  const qHi = 0.9;
+  const aLo = 0.25;
+  const aHi = 0.7;
+  const bLo = 0.08;
+  const bHi = 0.35;
+  const t = Math.min(1, Math.max(0, (nsdf - qLo) / (qHi - qLo)));
+  const alpha = aLo + (aHi - aLo) * t;
+  const beta = bLo + (bHi - bLo) * t;
+  const dtSec = st.cfg.hopMs / 1000;
+
+  // Predict
+  const xPred = st.xMidi + st.vStPerSec * dtSec;
+  const rInnov = mMed - xPred;
+  // Update
+  st.xMidi = xPred + alpha * rInnov;
+  st.vStPerSec = st.vStPerSec + (beta * rInnov) / (dtSec || 1e-9);
 
   // ON gate
   if (
@@ -289,7 +328,7 @@ const onFrame = (st: State, r: WorkletReading) => {
     tMs - st.aboveOnSinceMs >= onHoldMs &&
     hasPitch
   ) {
-    const noteNum = Math.round(midi);
+    const noteNum = Math.round(st.xMidi);
     st.currentNoteMidi = noteNum;
     st.currentPitchHz = (r as any).freq;
     st.noteOn = true;
@@ -314,9 +353,10 @@ const onFrame = (st: State, r: WorkletReading) => {
     return;
   }
 
-  // in-note evaluation
+  // in-note evaluation (use smoothed MIDI for cents comparisons)
   const currentNoteHz = midiToHz(st.currentNoteMidi, a4Hz);
-  const centsFromCurrent = centsDiff((r as any).freq, currentNoteHz);
+  const smoothedHz = midiToHz(st.xMidi, a4Hz);
+  const centsFromCurrent = centsDiff(smoothedHz, currentNoteHz);
 
   if (Math.abs(centsFromCurrent) <= holdBandCents) {
     // stay on current note; maybe emit bend
@@ -340,32 +380,33 @@ const onFrame = (st: State, r: WorkletReading) => {
     }
   } else if (Math.abs(centsFromCurrent) >= switchCents) {
     // ──────────────────────────────────────────────────────────────
-    // OLD simple switch hold… with NEW octave glue bias
+    // Switch hold with octave glue bias and fast-slope shortcut
     // ──────────────────────────────────────────────────────────────
     if (!st.candidateSwitchStartMs) st.candidateSwitchStartMs = tMs;
 
     // candidate new note
-    const newNote = Math.round(midi);
+    const newNote = Math.round(st.xMidi);
 
     // Check if this looks like an *octave* of the current note
     const octUp = st.currentNoteMidi + 12;
     const octDn = st.currentNoteMidi - 12;
-    const centsToOctUp = Math.abs(
-      centsDiff((r as any).freq, midiToHz(octUp, a4Hz)),
-    );
-    const centsToOctDn = Math.abs(
-      centsDiff((r as any).freq, midiToHz(octDn, a4Hz)),
-    );
+    const centsToOctUp = Math.abs(centsDiff(smoothedHz, midiToHz(octUp, a4Hz)));
+    const centsToOctDn = Math.abs(centsDiff(smoothedHz, midiToHz(octDn, a4Hz)));
     const looksOctave =
       Math.min(centsToOctUp, centsToOctDn) <= octaveGlueCents &&
       newNote % 12 === st.currentNoteMidi % 12;
 
     // If octave-like, be stickier: add extra hold and require a perceptible level change
-    const neededHold =
-      switchHoldMs + (looksOctave ? octaveSwitchExtraHoldMs : 0);
+    let neededHold = switchHoldMs + (looksOctave ? octaveSwitchExtraHoldMs : 0);
     const enoughDbChange = !looksOctave
       ? true
       : Math.abs(db - st.lastDb) >= octaveGlueDbDelta;
+
+    // Fast-slope shortcut: if moving quickly in pitch, reduce dwell by half
+    const slopeCentsPerSec = Math.abs(st.vStPerSec) * 100;
+    if (slopeCentsPerSec >= fastSlopeCentsPerSec) {
+      neededHold = Math.max(10, Math.round(neededHold * 0.5));
+    }
 
     if (tMs - st.candidateSwitchStartMs >= neededHold && enoughDbChange) {
       if (newNote !== st.currentNoteMidi) {
@@ -438,6 +479,10 @@ export const createWhistleRecorder = (
     aboveOnSinceMs: 0,
     unvoicedSinceMs: 0,
     events: [],
+    // smoothing init
+    mRing: [],
+    xMidi: 0,
+    vStPerSec: 0,
   };
 
   let graph: Graph | null = null;
