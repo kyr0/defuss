@@ -1,6 +1,9 @@
 // Web MIDI adapter with key-quantized note identity and correct pitch-bend.
 // No external deps. Always-on streaming once initialized & an output is chosen.
 
+export type SmoothingMode = "provisional" | "delayed";
+export type DecisionRule = "last" | "majority" | "hmm";
+
 export type MidiOutConfig = {
   channel?: number; // 1..16
   pitchBendRange?: number; // semitones (match your synth/DAW)
@@ -11,6 +14,10 @@ export type MidiOutConfig = {
    *  0 = no bias, 1 = strong bias. */
   biasLow?: number;
   biasHigh?: number;
+  // Smoothing selector
+  smoothingMode?: SmoothingMode; // default: "provisional"
+  decisionRule?: DecisionRule; // default: "last"
+  windowMs?: number; // decision window (e.g., 200-250)
 };
 
 export type NoteEvent = {
@@ -84,6 +91,12 @@ export class MidiOutAdapter {
   private cfg: Required<MidiOutConfig>;
   private key: MusicalKey;
 
+  // Smoothing window state
+  private winActive = false;
+  private winStartMs = 0;
+  private winIdentities: number[] = [];
+  private winProvisionalBase: number | null = null;
+
   constructor(recorder: RecorderLike, cfg?: MidiOutConfig) {
     this.rec = recorder;
     const keyName = cfg?.key ?? ("C major" as MusicalKeyName);
@@ -96,6 +109,9 @@ export class MidiOutAdapter {
       key: keyName,
       biasLow: cfg?.biasLow ?? 0,
       biasHigh: cfg?.biasHigh ?? 0,
+      smoothingMode: cfg?.smoothingMode ?? "provisional",
+      decisionRule: cfg?.decisionRule ?? "last",
+      windowMs: cfg?.windowMs ?? 220,
     };
   }
 
@@ -135,6 +151,7 @@ export class MidiOutAdapter {
     }
     if (this.out) this.cc(this.ch(), 123, 0);
     this.lastBaseNote = null;
+    this.resetWindow();
   }
 
   setKey(name: MusicalKeyName) {
@@ -251,7 +268,189 @@ export class MidiOutAdapter {
     const slice = log.slice(this.lastIdx);
     this.lastIdx = log.length;
 
-    for (const ev of slice) this.handleEvent(ev);
+    for (const ev of slice) this.processEvent(ev);
+  }
+
+  /* ------------- smoothing pipeline ------------- */
+
+  setSmoothingMode(mode: SmoothingMode) {
+    this.cfg = { ...this.cfg, smoothingMode: mode };
+    this.resetWindow();
+  }
+  setDecisionRule(rule: DecisionRule) {
+    this.cfg = { ...this.cfg, decisionRule: rule };
+    this.resetWindow();
+  }
+  setWindowMs(ms: number) {
+    this.cfg = { ...this.cfg, windowMs: Math.max(40, Math.min(600, ms | 0)) };
+    this.resetWindow();
+  }
+
+  private resetWindow() {
+    this.winActive = false;
+    this.winStartMs = 0;
+    this.winIdentities = [];
+    this.winProvisionalBase = null;
+  }
+
+  private identityFromEvent(ev: NoteEvent): number | null {
+    if (ev.pitchHz == null) return null;
+    const mFloat = this.hzToMidi(ev.pitchHz);
+    return this.quantizeToKey(mFloat);
+  }
+
+  private processEvent(ev: NoteEvent) {
+    // Close stale window if new event advances time beyond it
+    if (
+      this.winActive &&
+      ev.tMs - this.winStartMs >= (this.cfg.windowMs ?? 220)
+    ) {
+      this.commitWindow(ev.tMs);
+    }
+
+    switch (ev.event) {
+      case "ON": {
+        const id = this.identityFromEvent(ev);
+        if (id == null) return;
+        if (!this.winActive) {
+          // Start new window
+          this.winActive = true;
+          this.winStartMs = ev.tMs;
+          this.winIdentities = [id];
+          if (this.cfg.smoothingMode === "provisional") {
+            // Emit provisional ON immediately
+            this.winProvisionalBase = id;
+            this.emitOn(ev, id);
+          } else {
+            this.winProvisionalBase = null; // no provisional output
+          }
+        } else {
+          // Already in a window: collect identity
+          this.winIdentities.push(id);
+          // In provisional mode, do not emit additional ONs inside window
+        }
+        break;
+      }
+      case "OFF": {
+        // OFF always flushes; end window and forward OFF statefully
+        this.commitWindow(ev.tMs); // if still active, finalize to reduce surprise
+        this.handleOff(ev);
+        this.resetWindow();
+        break;
+      }
+      case "CHANGE_PITCH": {
+        // Pass pitch bends through in real-time, regardless of window
+        this.handleChangePitch(ev);
+        break;
+      }
+      case "CHANGE_VOLUME": {
+        this.handleChangeVolume(ev);
+        break;
+      }
+    }
+  }
+
+  private commitWindow(nowMs: number) {
+    if (!this.winActive) return;
+    const ids = this.winIdentities;
+    if (ids.length === 0) {
+      this.resetWindow();
+      return;
+    }
+    const decided = this.decideIdentity(ids, this.cfg.decisionRule);
+    if (this.cfg.smoothingMode === "provisional") {
+      // Correct if needed: single re-articulation
+      if (
+        this.winProvisionalBase != null &&
+        decided !== this.winProvisionalBase
+      ) {
+        this.emitOff(nowMs);
+        this.emitOn(
+          {
+            tMs: nowMs,
+            pitchHz: this.midiToFreq(decided),
+            volDbRms: -30,
+            chroma: decided % 12,
+            octave: Math.floor(decided / 12) - 1,
+            event: "ON",
+          },
+          decided,
+        );
+      }
+    } else {
+      // Delayed mode: output ON now
+      this.emitOn(
+        {
+          tMs: nowMs,
+          pitchHz: this.midiToFreq(decided),
+          volDbRms: -30,
+          chroma: decided % 12,
+          octave: Math.floor(decided / 12) - 1,
+          event: "ON",
+        },
+        decided,
+      );
+    }
+    this.resetWindow();
+  }
+
+  private decideIdentity(ids: number[], rule: DecisionRule): number {
+    if (rule === "last") return ids[ids.length - 1];
+    if (rule === "majority") {
+      const counts = new Map<number, number>();
+      for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+      let best = ids[0];
+      let bestC = -1;
+      for (const [k, c] of counts) {
+        if (
+          c > bestC ||
+          (c === bestC && ids.lastIndexOf(k) > ids.lastIndexOf(best))
+        ) {
+          best = k;
+          bestC = c;
+        }
+      }
+      return best;
+    }
+    // small HMM/Viterbi over observed identities
+    const uniq = Array.from(new Set(ids));
+    const N = uniq.length;
+    const T = ids.length;
+    const switchCost = 1.5; // penalty to switch between identities
+    // DP tables
+    const dp: number[][] = Array.from({ length: T }, () =>
+      Array(N).fill(Number.POSITIVE_INFINITY),
+    );
+    const bt: number[][] = Array.from({ length: T }, () => Array(N).fill(-1));
+    // initialize
+    for (let s = 0; s < N; s++) dp[0][s] = uniq[s] === ids[0] ? 0 : 1;
+    // iterate
+    for (let t = 1; t < T; t++) {
+      for (let s = 0; s < N; s++) {
+        let best = Number.POSITIVE_INFINITY;
+        let arg = 0;
+        for (let sp = 0; sp < N; sp++) {
+          const trans = sp === s ? 0 : switchCost;
+          const emit = uniq[s] === ids[t] ? 0 : 1;
+          const cand = dp[t - 1][sp] + trans + emit;
+          if (cand < best) {
+            best = cand;
+            arg = sp;
+          }
+        }
+        dp[t][s] = best;
+        bt[t][s] = arg;
+      }
+    }
+    // backtrace final state with min cost
+    let sBest = 0;
+    let cBest = dp[T - 1][0];
+    for (let s = 1; s < N; s++)
+      if (dp[T - 1][s] < cBest) {
+        cBest = dp[T - 1][s];
+        sBest = s;
+      }
+    return uniq[sBest];
   }
 
   private handleEvent(ev: NoteEvent) {
@@ -265,8 +464,6 @@ export class MidiOutAdapter {
         const base = this.quantizeToKey(mFloat);
         const bend14 = this.bendFromSemitoneDelta(mFloat - base);
         const vel = this.dbToVelocity(ev.volDbRms);
-
-        // re-articulate if we had a different base playing
         if (this.lastBaseNote != null && this.lastBaseNote !== base) {
           this.noteOff(ch, this.lastBaseNote, 0);
         }
@@ -284,11 +481,7 @@ export class MidiOutAdapter {
       case "CHANGE_PITCH": {
         if (ev.pitchHz == null) break;
         const mFloat = this.hzToMidi(ev.pitchHz);
-        if (this.lastBaseNote == null) {
-          // Ignore stray pitch changes before ON; recorder should issue ON first.
-          break;
-        }
-        // Do not step base during CHANGE_PITCH. Bend around current base.
+        if (this.lastBaseNote == null) break;
         const deltaSemis = mFloat - this.lastBaseNote;
         const bend14 = this.bendFromSemitoneDelta(deltaSemis);
         this.sendPitchBend(ch, bend14);
@@ -300,6 +493,39 @@ export class MidiOutAdapter {
         break;
       }
     }
+  }
+
+  private emitOn(ev: NoteEvent, decidedBase: number) {
+    // send ON with bend and velocity from event
+    if (!this.out) return;
+    const ch = this.ch();
+    const mFloat = ev.pitchHz != null ? this.hzToMidi(ev.pitchHz) : decidedBase;
+    const bend14 = this.bendFromSemitoneDelta(mFloat - decidedBase);
+    const vel = this.dbToVelocity(ev.volDbRms);
+    if (this.lastBaseNote != null && this.lastBaseNote !== decidedBase) {
+      this.noteOff(ch, this.lastBaseNote, 0);
+    }
+    this.sendPitchBend(ch, bend14);
+    this.noteOn(ch, decidedBase, vel);
+    this.lastBaseNote = decidedBase;
+  }
+
+  private emitOff(nowMs: number) {
+    if (!this.out) return;
+    const ch = this.ch();
+    if (this.lastBaseNote != null) this.noteOff(ch, this.lastBaseNote, 0);
+    else this.cc(ch, 123, 0);
+    this.lastBaseNote = null;
+  }
+
+  private handleOff(ev: NoteEvent) {
+    this.handleEvent(ev);
+  }
+  private handleChangePitch(ev: NoteEvent) {
+    this.handleEvent(ev);
+  }
+  private handleChangeVolume(ev: NoteEvent) {
+    this.handleEvent(ev);
   }
 
   /* ------------- raw MIDI helpers ------------- */

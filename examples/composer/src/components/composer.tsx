@@ -5,7 +5,12 @@ import {
   createWhistleRecorder,
   listInputDevices,
 } from "../lib/whistle-recorder";
-import { MidiOutAdapter, type MusicalKeyName } from "../lib/midi-out";
+import {
+  MidiOutAdapter,
+  type MusicalKeyName,
+  type SmoothingMode,
+  type DecisionRule,
+} from "../lib/midi-out";
 
 const rec = createWhistleRecorder({
   hpHz: 600,
@@ -94,6 +99,8 @@ export function DashboardScreen() {
   const micSelRef = createRef<null, HTMLSelectElement>();
   const midiSelRef = createRef<null, HTMLSelectElement>();
   const keySelRef = createRef<null, HTMLSelectElement>();
+  const smoothSelRef = createRef<null, HTMLSelectElement>();
+  const ruleSelRef = createRef<null, HTMLSelectElement>();
 
   const updatePre = () => {
     if (!logRef.current) return;
@@ -150,6 +157,28 @@ export function DashboardScreen() {
     sel.value = "C major";
   };
 
+  const populateSmoothing = () => {
+    const sSel = smoothSelRef.current!;
+    sSel.innerHTML = "";
+    for (const v of ["provisional", "delayed"] as SmoothingMode[]) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      sSel.appendChild(opt);
+    }
+    sSel.value = "provisional";
+
+    const rSel = ruleSelRef.current!;
+    rSel.innerHTML = "";
+    for (const v of ["last", "majority", "hmm"] as DecisionRule[]) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      rSel.appendChild(opt);
+    }
+    rSel.value = "last";
+  };
+
   const onMicSelect = async () => {
     const id = micSelRef.current!.value || null;
     await rec.setInputDevice(id);
@@ -176,6 +205,17 @@ export function DashboardScreen() {
     UIkit.notification({ message: `Key: ${k}`, status: "primary" });
   };
 
+  const onSmoothingSelect = () => {
+    const mode = smoothSelRef.current!.value as SmoothingMode;
+    midi.setSmoothingMode(mode);
+    UIkit.notification({ message: `Smoothing: ${mode}`, status: "primary" });
+  };
+  const onRuleSelect = () => {
+    const rule = ruleSelRef.current!.value as DecisionRule;
+    midi.setDecisionRule(rule);
+    UIkit.notification({ message: `Rule: ${rule}`, status: "primary" });
+  };
+
   const start = async () => {
     // Initialize MIDI & populate outs on first start (gesture-safe).
     if (!midiSelRef.current?.options.length) await populateMidi();
@@ -200,6 +240,7 @@ export function DashboardScreen() {
   queueMicrotask(() => {
     populateMics();
     populateKeys();
+    populateSmoothing();
   });
 
   return (
@@ -243,6 +284,29 @@ export function DashboardScreen() {
           id="keySel"
           ref={keySelRef}
           onChange={onKeySelect}
+          class="uk-select"
+        ></select>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label class="min-w-[8rem]" for="smoothSel">
+          Smoothing
+        </label>
+        <select
+          id="smoothSel"
+          ref={smoothSelRef}
+          onChange={onSmoothingSelect}
+          class="uk-select"
+        ></select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="min-w-[8rem]" for="ruleSel">
+          Decision Rule
+        </label>
+        <select
+          id="ruleSel"
+          ref={ruleSelRef}
+          onChange={onRuleSelect}
           class="uk-select"
         ></select>
       </div>
