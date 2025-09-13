@@ -236,6 +236,8 @@ export function DashboardScreen() {
     const mode = smoothSelRef.current!.value as SmoothingMode;
     midi.setSmoothingMode(mode);
     UIkit.notification({ message: `Smoothing: ${mode}`, status: "primary" });
+    // Recompute timing derivations since window depends on mode
+    applyTimingDerived();
   };
   const onRuleSelect = () => {
     const rule = ruleSelRef.current!.value as DecisionRule;
@@ -314,9 +316,15 @@ export function DashboardScreen() {
   const applyTimingDerived = () => {
     const bpm = Number.parseInt(bpmRef.current?.value || "120", 10);
     const nl = noteLenRef.current?.value || "1/16";
+    const mode = (smoothSelRef.current?.value ||
+      "provisional") as SmoothingMode;
     const dur = noteDurMs(bpm, nl);
     const minSwitch = Math.max(120, Math.min(600, Math.round(dur * 0.9)));
-    const win = Math.max(80, Math.min(250, Math.round(dur * 0.45)));
+    // Window policy: provisional gets a short window; delayed locks to 3× min note duration
+    const win =
+      mode === "delayed"
+        ? Math.max(150, Math.min(1500, Math.round(dur * 3)))
+        : Math.max(80, Math.min(250, Math.round(dur * 0.45)));
     // Recorder refractory
     rec.setConfig({ minNoteSwitchMs: minSwitch });
     // Smoothing window
