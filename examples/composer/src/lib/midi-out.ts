@@ -7,6 +7,10 @@ export type MidiOutConfig = {
   dbRange?: [number, number]; // dB window for velocity/CC mapping
   ccForVolume?: number; // 11=Expression (default), or 7=Volume
   key?: MusicalKeyName; // default: "C major"
+  /** Bias rounding toward lower notes at low register and toward higher notes at high register.
+   *  0 = no bias, 1 = strong bias. */
+  biasLow?: number;
+  biasHigh?: number;
 };
 
 export type NoteEvent = {
@@ -90,6 +94,8 @@ export class MidiOutAdapter {
       dbRange: cfg?.dbRange ?? [-60, -20],
       ccForVolume: cfg?.ccForVolume ?? 11,
       key: keyName,
+      biasLow: cfg?.biasLow ?? 0,
+      biasHigh: cfg?.biasHigh ?? 0,
     };
   }
 
@@ -164,15 +170,16 @@ export class MidiOutAdapter {
 
   /** Quantize a floating MIDI to nearest in-key integer note number. */
   private quantizeToKey(mFloat: number): number {
+    const mWarped = this.warpForBias(mFloat);
     let bestNote = 0;
     let bestDist = Number.POSITIVE_INFINITY;
     // examine nearby octaves around the target
-    const centerOct = Math.floor(mFloat / 12);
+    const centerOct = Math.floor(mWarped / 12);
     for (let oct = centerOct - 1; oct <= centerOct + 1; oct++) {
       for (let pc = 0; pc < 12; pc++) {
         if (!this.key.allowedPC[pc]) continue;
         const n = oct * 12 + pc;
-        const d = Math.abs(n - mFloat);
+        const d = Math.abs(n - mWarped);
         if (d < bestDist) {
           bestDist = d;
           bestNote = n;
@@ -180,6 +187,27 @@ export class MidiOutAdapter {
       }
     }
     return bestNote;
+  }
+
+  /** Warp fractional rounding point to bias toward floor at low register and toward ceil at high register. */
+  private warpForBias(mFloat: number): number {
+    const base = Math.floor(mFloat);
+    const f = mFloat - base; // [0,1)
+    // Map register across a musically reasonable whistle range
+    const mLow = 60; // C4
+    const mHigh = 96; // C7
+    const r = clamp((mFloat - mLow) / (mHigh - mLow), 0, 1);
+    const kDown = (this.cfg.biasLow ?? 0) * (1 - r); // stronger at low register
+    const kUp = (this.cfg.biasHigh ?? 0) * r; // stronger at high register
+    const net = kUp - kDown; // >0 bias up; <0 bias down
+    const C = 3; // curvature strength
+    let f2 = f;
+    if (net > 1e-6) {
+      f2 = 1 - (1 - f) ** (1 + net * C);
+    } else if (net < -1e-6) {
+      f2 = f ** (1 + -net * C);
+    }
+    return base + f2;
   }
 
   /** Ensure bend within range by stepping base note along in-key neighbors toward mFloat. */

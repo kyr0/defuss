@@ -57,6 +57,9 @@ const midi = new MidiOutAdapter(rec, {
   dbRange: [-60, -20],
   ccForVolume: 11,
   key: "C major",
+  // Bias rounding toward floor at low register and toward ceil at high register
+  biasLow: 0.4,
+  biasHigh: 0.4,
 });
 
 const ALL_KEYS: MusicalKeyName[] = [
