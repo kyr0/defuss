@@ -18,30 +18,36 @@ const rec = createWhistleRecorder({
   adaptPeriods: 8,
   minWinMs: 24,
   maxWinMs: 60,
-  qualityOn: 0.65,
-  qualityOff: 0.55,
-  nsdfOn: 0.7,
-  nsdfOff: 0.6,
-  snrOnDb: 5,
-  snrOffDb: 3,
-  minEventSpacingMs: 10,
-  onDb: -45,
-  silenceDb: -50,
+  // Voicing: slightly softer to avoid dropouts on airy whistles
+  qualityOn: 0.6,
+  qualityOff: 0.5,
+  nsdfOn: 0.65,
+  nsdfOff: 0.55,
+  snrOnDb: 3,
+  snrOffDb: 1,
+  // Event spacing (UI only; recorder enforces OFF->ON pair bypass for switches)
+  minEventSpacingMs: 12,
+  // Level gates: easier ON, quieter silence
+  onDb: -55,
+  silenceDb: -65,
   volumeDeltaDb: 1.5,
-  pitchChangeCents: 20,
+  // Bend and switch gates tuned for smoothing
+  pitchChangeCents: 25,
   holdBandCents: 10,
-  switchCents: 35,
-  onHoldMs: 30,
-  offHoldMs: 40,
-  switchHoldMs: 30,
-  yinThreshold: 0.125,
+  switchCents: 100,
+  // Stability windows
+  onHoldMs: 60,
+  offHoldMs: 90,
+  switchHoldMs: 35,
+  yinThreshold: 0.12,
   octaveGuardEpsilon: 0.07,
   a4Hz: 440,
-
   // Octave glue
   octaveGlueCents: 80,
-  octaveGlueDbDelta: 10,
-  octaveSwitchExtraHoldMs: 70,
+  octaveGlueDbDelta: 8,
+  octaveSwitchExtraHoldMs: 60,
+  // Explicit refractory: min time between note identity changes
+  minNoteSwitchMs: 150,
 });
 
 // MIDI: always enabled once we init + select an output.

@@ -81,6 +81,10 @@ export interface Config {
   /** If the instantaneous slope (|v| in semitones/s) exceeds this in cents/s,
    *  allow note switching with half the usual dwell. */
   fastSlopeCentsPerSec: number; // e.g. 900
+
+  /** Minimum time between note identity changes (ms). Applies to ON→new note
+   *  and note-to-note switches. Prevents chatter when playing fast. */
+  minNoteSwitchMs: number; // e.g. 150
 }
 
 export const DEFAULTS: Config = {
@@ -137,6 +141,9 @@ export const DEFAULTS: Config = {
 
   // Fast slope shortcut
   fastSlopeCentsPerSec: 900,
+
+  // Minimum time between note identity changes
+  minNoteSwitchMs: 150,
 };
 
 // Helpers

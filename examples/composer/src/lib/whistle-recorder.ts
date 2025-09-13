@@ -329,12 +329,18 @@ const onFrame = (st: State, r: WorkletReading) => {
     hasPitch
   ) {
     const noteNum = Math.round(st.xMidi);
-    st.currentNoteMidi = noteNum;
-    st.currentPitchHz = (r as any).freq;
-    st.noteOn = true;
-    if (gateEvent(st, tMs))
-      emitEvent(st, tMs, "ON", (r as any).freq, db, noteNum);
-    st.lastVolEventDb = db;
+    // Enforce min note switch refractory for new ON if we just switched
+    if (tMs - st.lastNoteSwitchAtMs < st.cfg.minNoteSwitchMs) {
+      // wait; do not turn on yet
+    } else {
+      st.currentNoteMidi = noteNum;
+      st.currentPitchHz = (r as any).freq;
+      st.noteOn = true;
+      st.lastNoteSwitchAtMs = tMs;
+      if (gateEvent(st, tMs))
+        emitEvent(st, tMs, "ON", (r as any).freq, db, noteNum);
+      st.lastVolEventDb = db;
+    }
   }
 
   // OFF gates
@@ -345,6 +351,8 @@ const onFrame = (st: State, r: WorkletReading) => {
   if (st.noteOn && (sustainedSilence || sustainedUnvoiced)) {
     st.noteOn = false;
     if (gateEvent(st, tMs)) emitEvent(st, tMs, "OFF", null, db, null);
+    // Treat OFF as a note identity transition; enforce refractory for next ON
+    st.lastNoteSwitchAtMs = tMs;
     st.candidateSwitchStartMs = 0;
   }
 
@@ -410,18 +418,20 @@ const onFrame = (st: State, r: WorkletReading) => {
 
     if (tMs - st.candidateSwitchStartMs >= neededHold && enoughDbChange) {
       if (newNote !== st.currentNoteMidi) {
-        st.currentNoteMidi = newNote;
-        st.currentPitchHz = (r as any).freq;
-        st.candidateSwitchStartMs = 0;
-        if (gateEvent(st, tMs)) {
-          emitEvent(
-            st,
-            tMs,
-            "CHANGE_PITCH",
-            (r as any).freq,
-            db,
-            st.currentNoteMidi,
-          );
+        // Respect minimum switch time to avoid chatter
+        if (tMs - st.lastNoteSwitchAtMs >= st.cfg.minNoteSwitchMs) {
+          // Quantized note change: emit OFF then ON (single active note)
+          // Bypass minEventSpacing for the paired OFF→ON to preserve both events.
+          if (st.noteOn) {
+            st.noteOn = false;
+            emitEvent(st, tMs, "OFF", null, db, null);
+          }
+          st.currentNoteMidi = newNote;
+          st.currentPitchHz = (r as any).freq;
+          st.candidateSwitchStartMs = 0;
+          st.noteOn = true;
+          st.lastNoteSwitchAtMs = tMs;
+          emitEvent(st, tMs, "ON", (r as any).freq, db, newNote);
         }
       }
     }

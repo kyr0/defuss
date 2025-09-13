@@ -234,8 +234,8 @@ export class MidiOutAdapter {
       case "ON": {
         if (ev.pitchHz == null) break;
         const mFloat = this.hzToMidi(ev.pitchHz);
-        const inKey = this.quantizeToKey(mFloat);
-        const { base, bend14 } = this.chooseBaseAndBend(mFloat, inKey);
+        const base = this.quantizeToKey(mFloat);
+        const bend14 = this.bendFromSemitoneDelta(mFloat - base);
         const vel = this.dbToVelocity(ev.volDbRms);
 
         // re-articulate if we had a different base playing
@@ -256,22 +256,13 @@ export class MidiOutAdapter {
       case "CHANGE_PITCH": {
         if (ev.pitchHz == null) break;
         const mFloat = this.hzToMidi(ev.pitchHz);
-        const preferred =
-          this.lastBaseNote != null
-            ? this.lastBaseNote
-            : this.quantizeToKey(mFloat);
-        const { base, bend14 } = this.chooseBaseAndBend(mFloat, preferred);
-
         if (this.lastBaseNote == null) {
-          // safety: no base note yet, synthesize one
-          this.noteOn(ch, base, 64);
-          this.lastBaseNote = base;
-        } else if (base !== this.lastBaseNote) {
-          // step base note (still in key) when bend would exceed PB range
-          this.noteOff(ch, this.lastBaseNote, 0);
-          this.noteOn(ch, base, 64);
-          this.lastBaseNote = base;
+          // Ignore stray pitch changes before ON; recorder should issue ON first.
+          break;
         }
+        // Do not step base during CHANGE_PITCH. Bend around current base.
+        const deltaSemis = mFloat - this.lastBaseNote;
+        const bend14 = this.bendFromSemitoneDelta(deltaSemis);
         this.sendPitchBend(ch, bend14);
         break;
       }
