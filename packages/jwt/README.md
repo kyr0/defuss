@@ -10,11 +10,55 @@
 
 <sup align="center">
 
-Ed25519 JWT key management library - token minter/signer/validator with pluggable storage. Based on JOSE.
+Ed25519 JWT key management library
 
 </sup>
 
 </h1>
+
+<h3 align="center">
+Overview
+</h3>
+
+defuss-jwt is a minimal, function-only Ed25519 JWT toolkit built on jose that emphasizes safe defaults:
+- Algorithm pinned to EdDSA, OKP/Ed25519 only
+- Deterministic kid via RFC 7638 JWK thumbprint
+- Header peeking (alg/curve guarded) to choose keys before verification
+- Stateless issuance (no persistence) and revocation via tombstones
+- Time validations (exp/nbf/iat) with issuer/audience and clock tolerance
+- Key rotation via extraPublicKeys; optional strict kid via enforceKid
+- TypeScript-first, ESM
+
+<h3 align="center">
+
+Supported algorithms and JWT structure:
+
+</h3>
+
+```json
+// Protected header (example)
+{
+  "alg": "EdDSA",
+  "typ": "JWT",
+  "kid": "RFC7638-thumbprint"
+}
+
+// Claims (example)
+{
+  "sub": "user-123",        // required by validateToken
+  "jti": "uuid-v4",         // auto-set by signJwt; required by validateToken
+  "iat": 1714761600,        // seconds since epoch
+  "exp": 1714765200,        // required
+  "nbf": 1714761630,        // optional (iat + nbfSec)
+  "iss": "https://issuer",  // optional (policy.iss)
+  "aud": "my-audience",     // optional (policy.aud)
+  "scope": ["read", "write"]// optional array
+}
+```
+
+- alg must be EdDSA; curve, if present, must be Ed25519 (enforced in peekHeader).
+- validateToken requires sub, jti, numeric iat and exp.
+- signJwt sets iat, exp, jti; you control sub/scope/nbf; iss/aud are injected via policy.
 
 <h3 align="center">
 Usage
@@ -97,61 +141,6 @@ const result = await auth.validateToken(token);
 await auth.revokeToken(jti, exp);
 ```
 
-<h3 align="center">
-Overview
-</h3>
-
-> defuss-jwt is a minimal, function-only Ed25519 JWT toolkit built on jose that emphasizes safe defaults:
-> - Algorithm pinned to EdDSA, OKP/Ed25519 only
-> - Deterministic kid via RFC 7638 JWK thumbprint
-> - Header peeking (alg/curve guarded) to choose keys before verification
-> - Stateless issuance (no persistence) and revocation via tombstones
-> - Time validations (exp/nbf/iat) with issuer/audience and clock tolerance
-
-<h3 align="center">
-
-Features
-
-</h3>
-
-- Ed25519-only (OKP, crv=Ed25519), alg pinned to EdDSA
-- RFC 7638 thumbprint for kid (stable across runtimes)
-- Header peeking to select the correct public key safely
-- Stateless issuance; revocation via tombstones in your storage
-- Time validation with iss/aud and clockTolerance
-- Key rotation via extraPublicKeys; optional strict kid via enforceKid
-- TypeScript-first, ESM
-
-<h3 align="center">
-
-Supported algorithms and JWT structure
-
-</h3>
-
-```json
-// Protected header (example)
-{
-  "alg": "EdDSA",
-  "typ": "JWT",
-  "kid": "RFC7638-thumbprint"
-}
-
-// Claims (example)
-{
-  "sub": "user-123",        // required by validateToken
-  "jti": "uuid-v4",         // auto-set by signJwt; required by validateToken
-  "iat": 1714761600,        // seconds since epoch
-  "exp": 1714765200,        // required
-  "nbf": 1714761630,        // optional (iat + nbfSec)
-  "iss": "https://issuer",  // optional (policy.iss)
-  "aud": "my-audience",     // optional (policy.aud)
-  "scope": ["read", "write"]// optional array
-}
-```
-
-- alg must be EdDSA; curve, if present, must be Ed25519 (enforced in peekHeader).
-- validateToken requires sub, jti, numeric iat and exp.
-- signJwt sets iat, exp, jti; you control sub/scope/nbf; iss/aud are injected via policy.
 
 <h3 align="center">
 
@@ -213,19 +202,6 @@ Security Features
 
 <h3 align="center">
 
-CLI Tool
-
-</h3>
-
-This package is programmatic only. No CLI is shipped. You can still serialize keys for environment transport:
-
-```bash
-# Example: serialize JWKs and kid to base64url for env usage
-# (programmatic snippet, not a CLI)
-```
-
-<h3 align="center">
-
 Error Handling
 
 </h3>
@@ -244,19 +220,6 @@ await expect(verifyJwtWithKey(expiredToken, publicJwk)).rejects.toThrow();
 await expect(auth.validateToken(await signJwt({}, privateJwk, kid, exp, iat)))
   .rejects.toThrow("Malformed token claims");
 ```
-
-<h3 align="center">
-
-Why defuss-jwt?
-
-</h3>
-
-- Security-first defaults (alg pinning, Ed25519 only)
-- Deterministic, interoperable kid via RFC 7638
-- Simple key rotation and optional strict kid enforcement
-- Stateless issuance with explicit, pluggable revocation
-- Tight, well-tested surface built on jose
-- TypeScript-first, ESM
 
 <p align="center">
 
