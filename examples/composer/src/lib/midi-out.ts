@@ -531,7 +531,18 @@ export class MidiOutAdapter {
         }
       }
     } else {
-      // Delayed mode: output ON now
+      // Delayed mode: output ON at commit, but avoid double notes for small identity changes
+      const lb = this.lastBaseNote;
+      if (lb != null) {
+        const diffSemis = Math.abs(decided - lb);
+        const enoughGap = diffSemis >= 2; // treat ±1 as bend, no re-articulation
+        const enoughTime = nowMs - this.lastOnAtMs >= this.minArticulationMs;
+        if (!enoughGap || !enoughTime) {
+          // Skip re-articulation; keep bending with existing base
+          this.resetWindow();
+          return;
+        }
+      }
       this.emitOn(
         {
           tMs: nowMs,
