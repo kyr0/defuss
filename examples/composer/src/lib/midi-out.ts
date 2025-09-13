@@ -97,6 +97,22 @@ export class MidiOutAdapter {
   private winIdentities: number[] = [];
   private winProvisionalBase: number | null = null;
 
+  // Articulation guard
+  private minArticulationMs = 150;
+  private lastOnAtMs = Number.NEGATIVE_INFINITY;
+
+  // Metronome
+  private metroEnabled = false;
+  private metroNum = 4;
+  private metroDen = 4;
+  private metroBpm = 120;
+  private metroAc: AudioContext | null = null;
+  private metroRunning = false;
+  private metroStartTime = 0; // in AC seconds
+  private metroTimer: number | null = null;
+  private metroNextBeat = 0; // integer index since start
+  private metroLookaheadSec = 0.25;
+
   constructor(recorder: RecorderLike, cfg?: MidiOutConfig) {
     this.rec = recorder;
     const keyName = cfg?.key ?? ("C major" as MusicalKeyName);
@@ -156,6 +172,32 @@ export class MidiOutAdapter {
 
   setKey(name: MusicalKeyName) {
     this.key = parseKey(name);
+  }
+
+  // --- Musical timing controls ---
+  setMinArticulationMs(ms: number) {
+    this.minArticulationMs = Math.max(80, Math.min(600, Math.round(ms)));
+  }
+  setBpm(bpm: number) {
+    this.metroBpm = Math.max(30, Math.min(300, Math.round(bpm)));
+  }
+  setTimeSignature(numerator: number, denominator: 2 | 4 | 8) {
+    this.metroNum = Math.max(1, Math.min(12, Math.round(numerator)));
+    this.metroDen = denominator;
+  }
+  enableMetronome(on: boolean) {
+    this.metroEnabled = !!on;
+    if (!on) this.stopMetronome();
+  }
+
+  private quarterMs(): number {
+    return 60000 / this.metroBpm;
+  }
+  private beatMs(): number {
+    return (4 / this.metroDen) * this.quarterMs();
+  }
+  private barMs(): number {
+    return this.beatMs() * this.metroNum;
   }
 
   /* ------------- core mapping helpers ------------- */
@@ -312,6 +354,8 @@ export class MidiOutAdapter {
       case "ON": {
         const id = this.identityFromEvent(ev);
         if (id == null) return;
+        // Start metronome on first transient if enabled
+        if (this.metroEnabled && !this.metroRunning) this.startMetronome();
         if (!this.winActive) {
           // Start new window
           this.winActive = true;
@@ -498,6 +542,8 @@ export class MidiOutAdapter {
   private emitOn(ev: NoteEvent, decidedBase: number) {
     // send ON with bend and velocity from event
     if (!this.out) return;
+    // enforce min articulation duration
+    if (ev.tMs - this.lastOnAtMs < this.minArticulationMs) return;
     const ch = this.ch();
     const mFloat = ev.pitchHz != null ? this.hzToMidi(ev.pitchHz) : decidedBase;
     const bend14 = this.bendFromSemitoneDelta(mFloat - decidedBase);
@@ -508,6 +554,7 @@ export class MidiOutAdapter {
     this.sendPitchBend(ch, bend14);
     this.noteOn(ch, decidedBase, vel);
     this.lastBaseNote = decidedBase;
+    this.lastOnAtMs = ev.tMs;
   }
 
   private emitOff(nowMs: number) {
@@ -526,6 +573,61 @@ export class MidiOutAdapter {
   }
   private handleChangeVolume(ev: NoteEvent) {
     this.handleEvent(ev);
+  }
+
+  /* ------------- metronome (AudioContext-based) ------------- */
+
+  private startMetronome() {
+    if (this.metroRunning) return;
+    try {
+      this.metroAc =
+        this.metroAc ??
+        new (window.AudioContext || (window as any).webkitAudioContext)();
+    } catch {
+      this.metroEnabled = false;
+      return;
+    }
+    const ac = this.metroAc!;
+    this.metroRunning = true;
+    this.metroStartTime = ac.currentTime;
+    this.metroNextBeat = 0;
+    const loop = () => {
+      if (!this.metroRunning || !this.metroEnabled || !this.metroAc) return;
+      const now = ac.currentTime;
+      const lookahead = this.metroLookaheadSec;
+      const beatSec = this.beatMs() / 1000;
+      while (
+        this.metroStartTime + this.metroNextBeat * beatSec <
+        now + lookahead
+      ) {
+        const t = this.metroStartTime + this.metroNextBeat * beatSec;
+        this.scheduleClick(t, this.metroNextBeat % this.metroNum === 0);
+        this.metroNextBeat++;
+      }
+      this.metroTimer = window.setTimeout(loop, 50);
+    };
+    loop();
+  }
+
+  private stopMetronome() {
+    if (this.metroTimer != null) window.clearTimeout(this.metroTimer);
+    this.metroTimer = null;
+    this.metroRunning = false;
+  }
+
+  private scheduleClick(atSec: number, accent: boolean) {
+    if (!this.metroAc) return;
+    const ac = this.metroAc;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = "square";
+    osc.frequency.value = accent ? 1200 : 900;
+    const g = accent ? 0.08 : 0.05;
+    gain.gain.setValueAtTime(g, atSec);
+    gain.gain.exponentialRampToValueAtTime(0.0001, atSec + 0.03);
+    osc.connect(gain).connect(ac.destination);
+    osc.start(atSec);
+    osc.stop(atSec + 0.03);
   }
 
   /* ------------- raw MIDI helpers ------------- */

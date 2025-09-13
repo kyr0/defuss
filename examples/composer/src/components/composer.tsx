@@ -101,6 +101,11 @@ export function DashboardScreen() {
   const keySelRef = createRef<null, HTMLSelectElement>();
   const smoothSelRef = createRef<null, HTMLSelectElement>();
   const ruleSelRef = createRef<null, HTMLSelectElement>();
+  const bpmRef = createRef<null, HTMLInputElement>();
+  const tsNumRef = createRef<null, HTMLSelectElement>();
+  const tsDenRef = createRef<null, HTMLSelectElement>();
+  const noteLenRef = createRef<null, HTMLSelectElement>();
+  const metroRef = createRef<null, HTMLInputElement>();
 
   const updatePre = () => {
     if (!logRef.current) return;
@@ -241,7 +246,79 @@ export function DashboardScreen() {
     populateMics();
     populateKeys();
     populateSmoothing();
+    setupTimingDefaults();
   });
+
+  // --- Timing / musical grid ---
+  const setupTimingDefaults = () => {
+    // Defaults
+    setBpmAndApply(120);
+    setTimeSignatureAndApply(4, 4);
+    setNoteLengthAndApply("1/16");
+    setMetronomeEnabled(false);
+  };
+
+  const quarterMs = (bpm: number) => 60000 / bpm;
+  const wholeMs = (bpm: number) => 4 * quarterMs(bpm);
+  const noteDurMs = (bpm: number, nl: string) => {
+    const denom = Number.parseInt(nl.split("/")[1]!, 10);
+    return wholeMs(bpm) / denom;
+  };
+
+  const setBpmAndApply = (bpm: number) => {
+    if (bpmRef.current) bpmRef.current.value = String(bpm);
+    midi.setBpm(bpm);
+    applyTimingDerived();
+  };
+  const setTimeSignatureAndApply = (num: number, den: 2 | 4 | 8) => {
+    if (tsNumRef.current) tsNumRef.current.value = String(num);
+    if (tsDenRef.current) tsDenRef.current.value = String(den);
+    midi.setTimeSignature(num, den);
+    applyTimingDerived();
+  };
+  const setNoteLengthAndApply = (nl: string) => {
+    if (noteLenRef.current) noteLenRef.current.value = nl;
+    applyTimingDerived();
+  };
+  const setMetronomeEnabled = (on: boolean) => {
+    if (metroRef.current) metroRef.current.checked = on;
+    midi.enableMetronome(on);
+  };
+
+  const applyTimingDerived = () => {
+    const bpm = Number.parseInt(bpmRef.current?.value || "120", 10);
+    const nl = noteLenRef.current?.value || "1/16";
+    const dur = noteDurMs(bpm, nl);
+    const minSwitch = Math.max(120, Math.min(600, Math.round(dur * 0.9)));
+    const win = Math.max(80, Math.min(250, Math.round(dur * 0.45)));
+    // Recorder refractory
+    rec.setConfig({ minNoteSwitchMs: minSwitch });
+    // Smoothing window
+    midi.setWindowMs(win);
+    // Also guard MIDI-level articulation
+    midi.setMinArticulationMs(minSwitch);
+  };
+
+  const onBpmInput = () => {
+    const bpm = Number.parseInt(bpmRef.current!.value || "120", 10);
+    setBpmAndApply(bpm);
+    UIkit.notification({ message: `BPM: ${bpm}`, status: "primary" });
+  };
+  const onTsChange = () => {
+    const num = Number.parseInt(tsNumRef.current!.value, 10) || 4;
+    const den = Number.parseInt(tsDenRef.current!.value, 10) as 2 | 4 | 8;
+    setTimeSignatureAndApply(num, den);
+    UIkit.notification({ message: `Time: ${num}/${den}`, status: "primary" });
+  };
+  const onNoteLenChange = () => {
+    const nl = noteLenRef.current!.value;
+    setNoteLengthAndApply(nl);
+    UIkit.notification({ message: `Min note: ${nl}`, status: "primary" });
+  };
+  const onMetroToggle = () => {
+    const on = !!metroRef.current!.checked;
+    setMetronomeEnabled(on);
+  };
 
   return (
     <div class="w-full max-w-xl space-y-3">
@@ -255,6 +332,53 @@ export function DashboardScreen() {
           onChange={onMicSelect}
           class="uk-select"
         ></select>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label class="min-w-[8rem]" for="bpm">
+          BPM
+        </label>
+        <input
+          id="bpm"
+          ref={bpmRef}
+          type="range"
+          min="40"
+          max="240"
+          step="1"
+          onInput={onBpmInput}
+          class="uk-range"
+        />
+        <span>{bpmRef.current?.value || "120"}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="min-w-[8rem]" for="ts">
+          Time Signature
+        </label>
+        <select ref={tsNumRef} onChange={onTsChange} class="uk-select">
+          {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+            <option value={n}>{n}</option>
+          ))}
+        </select>
+        <span>/</span>
+        <select ref={tsDenRef} onChange={onTsChange} class="uk-select">
+          {[2, 4, 8].map((d) => (
+            <option value={d}>{d}</option>
+          ))}
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="min-w-[8rem]" for="noteLen">
+          Min Note
+        </label>
+        <select ref={noteLenRef} onChange={onNoteLenChange} class="uk-select">
+          {["1/16", "1/8", "1/4", "1/2", "1/1"].map((l) => (
+            <option value={l}>{l}</option>
+          ))}
+        </select>
+        <label class="ml-4">
+          <input ref={metroRef} type="checkbox" onChange={onMetroToggle} />{" "}
+          Metronome
+        </label>
       </div>
 
       <div class="flex items-center gap-2">
