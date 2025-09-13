@@ -2,7 +2,7 @@
 export type EventName = "ON" | "OFF" | "CHANGE_VOLUME" | "CHANGE_PITCH";
 
 export interface NoteEvent {
-  tMs: number; // ms since start
+  tMs: number; // ms since start (audio clock)
   pitchHz: number | null; // null for OFF
   volDbRms: number; // dBFS-ish
   chroma: number | null; // 0..11
@@ -26,57 +26,52 @@ export interface Config {
   lpHz: number; // low-pass cutoff (48 dB/oct total)
 
   // Analysis timing
-  hopMs: number; // hop size (default 20 ms)
+  hopMs: number; // hop size
   analysisWinMs: number; // default window if adapt disabled
 
   // Adaptive window (period-based)
-  adaptive: boolean; // enable adaptive window
-  adaptPeriods: number; // target # of periods in window (6..12 good)
-  minWinMs: number; // lower clamp for window
-  maxWinMs: number; // upper clamp for window
+  adaptive: boolean;
+  adaptPeriods: number;
+  minWinMs: number;
+  maxWinMs: number;
 
   // Pitch search band (post filtering)
-  fMin: number; // YIN tauMax = sr/fMin (>= hpHz a bit)
-  fMax: number; // YIN tauMin = sr/fMax (<= lpHz)
+  fMin: number;
+  fMax: number;
 
   // Voicing gate (hysteresis)
-  qualityOn: number; // require >= to become voiced
-  qualityOff: number; // drop below to become unvoiced
+  qualityOn: number;
+  qualityOff: number;
   nsdfOn: number;
   nsdfOff: number;
   snrOnDb: number;
   snrOffDb: number;
 
   // Note/volume perception gates
-  minEventSpacingMs: number; // 20 ms
-  silenceDb: number; // OFF below this (sustained)
-  onDb: number; // ON threshold (sustained)
-  volumeDeltaDb: number; // CHANGE_VOLUME gate
-  pitchChangeCents: number; // drift gate within a note
-  holdBandCents: number; // hold same note if within band
-  switchCents: number; // consider switch if beyond band
+  minEventSpacingMs: number;
+  silenceDb: number;
+  onDb: number;
+  volumeDeltaDb: number;
+  pitchChangeCents: number;
+  holdBandCents: number;
+  switchCents: number;
 
   // Stability timers
-  onHoldMs: number; // require this above onDb to fire ON
-  offHoldMs: number; // require this below silenceDb OR unvoiced to fire OFF
-  switchHoldMs: number; // require this beyond switchCents to switch note
+  onHoldMs: number;
+  offHoldMs: number;
+  switchHoldMs: number;
 
   // YIN/selection
-  yinThreshold: number; // CMNDF threshold for first dip
-  octaveGuardEpsilon: number; // tolerance for τ/2,2τ competition
+  yinThreshold: number;
+  octaveGuardEpsilon: number;
 
   // Pitch reference
   a4Hz: number;
 
-  /** If the incoming pitch is within this many cents of an exact octave of the current note,
-   *  bias against switching octave unless extra conditions are also met. */
-  octaveGlueCents: number; // e.g. 80
-
-  /** Require at least this much dB change (|ΔdB|) to allow a fast octave jump. */
-  octaveGlueDbDelta: number; // e.g. 8
-
-  /** Add this extra dwell time before allowing an octave switch. */
-  octaveSwitchExtraHoldMs: number; // e.g. 50
+  // NEW: octave glue (post-detector, pre-event)
+  octaveGlueCents?: number; // how close to ±1200c counts as “octave slip”
+  octaveGlueDbDelta?: number; // allow octave change only if |ΔdB| ≥ this
+  octaveSwitchExtraHoldMs?: number; // extra hold before switching octave family
 }
 
 export const DEFAULTS: Config = {
@@ -120,16 +115,17 @@ export const DEFAULTS: Config = {
   offHoldMs: 80,
   switchHoldMs: 60,
 
+  // YIN
   yinThreshold: 0.1,
   octaveGuardEpsilon: 0.05,
 
-  // Reference tuning
+  // Reference
   a4Hz: 440,
 
-  // Octave glue
+  // Octave glue defaults
   octaveGlueCents: 80,
   octaveGlueDbDelta: 8,
-  octaveSwitchExtraHoldMs: 50,
+  octaveSwitchExtraHoldMs: 40,
 };
 
 // Helpers

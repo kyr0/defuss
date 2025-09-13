@@ -6,7 +6,6 @@ import {
   midiToChromaOct,
   centsDiff,
 } from "./types.js";
-
 import pitchProcessorUrl from "./pitch-worklet.ts?url";
 
 type SourceProvider = (
@@ -24,49 +23,57 @@ type Graph = {
 
 type State = {
   cfg: Config;
-  startTimeMs: number;
-  lastEventTimeMs: number;
 
+  // audio-clock alignment
+  audioT0Ms: number; // first r.tMs
+  lastEventTimeMs: number; // in audio ms
+
+  // note + voicing
   noteOn: boolean;
   isVoiced: boolean;
   currentNoteMidi: number;
   currentPitchHz: number;
+
+  // gating accumulators (audio ms)
+  aboveOnSinceMs: number;
+  belowSilenceSinceMs: number;
+  unvoicedSinceMs: number;
+
+  // re-articulation envelope & valley
+  envDb: number; // decaying envelope for drop measurement
+  valleyMinDb: number; // min dB within current valley
+  belowRearticFrames: number; // consecutive frames below threshold
+  rearticArmed: boolean; // next ON uses rearticOnHoldMs
+  lastOnTimeMs: number; // for cooldown
+
+  // switch hold
+  candidateSwitchFrames: number;
+
+  // housekeeping
   lastDb: number;
   lastVolEventDb: number;
 
-  candidateSwitchStartMs: number;
-  belowSilenceSinceMs: number;
-  aboveOnSinceMs: number;
-  unvoicedSinceMs: number;
-
   events: NoteEvent[];
-
-  lastNoteSwitchAtMs: number;
 };
 
-const nowMs = () => performance.now();
-const dbg = (...args: any[]) => console.log("[whistle]", ...args);
+const dbg = (...a: any[]) => console.log("[whistle]", ...a);
 
-/** EXACT loader shape you asked for */
 async function createWorkletNode(
   context: BaseAudioContext,
   name: string,
   url: string,
 ) {
-  // ensure audioWorklet has been loaded
   try {
     return new AudioWorkletNode(context, name);
-  } catch (err) {
+  } catch {
     await context.audioWorklet.addModule(url);
     return new AudioWorkletNode(context, name);
   }
 }
 
-/** Build a mic source provider; if deviceId is null, default device is used. */
 export const makeMicSourceProvider =
   (deviceId?: string | null): SourceProvider =>
   async (ac) => {
-    dbg("Requesting microphone… deviceId:", deviceId ?? "(default)");
     const constraints: MediaStreamConstraints = {
       audio: {
         deviceId: deviceId ? { exact: deviceId } : undefined,
@@ -76,23 +83,15 @@ export const makeMicSourceProvider =
       },
     };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    dbg(
-      "Got microphone tracks:",
-      stream.getTracks().map((t) => (t as MediaStreamTrack).label),
-    );
     const node = ac.createMediaStreamSource(stream);
     const cleanup = () => {
       try {
         stream.getTracks().forEach((t) => t.stop());
-        dbg("Mic tracks stopped");
-      } catch (e) {
-        console.warn("[whistle] Mic cleanup failed", e);
-      }
+      } catch {}
     };
     return { node, cleanup };
   };
 
-/** Enumerate input devices (mics). Call after getUserMedia permission. */
 export async function listInputDevices(): Promise<MediaDeviceInfo[]> {
   const devs = await navigator.mediaDevices.enumerateDevices();
   return devs.filter((d) => d.kind === "audioinput");
@@ -109,15 +108,11 @@ const buildGraph = async (
   if (ac.state !== "running") {
     try {
       await ac.resume();
-      dbg("AudioContext resumed:", ac.state);
-    } catch (e) {
-      console.warn("[whistle] AudioContext resume failed:", e);
-    }
+    } catch {}
   }
 
   const { node: srcNode, cleanup } = await sourceProvider(ac);
 
-  // 48 dB/oct HP & LP (4× biquad each)
   const hps = Array.from(
     { length: 4 },
     () =>
@@ -137,14 +132,11 @@ const buildGraph = async (
       }),
   );
 
-  // Give worklet an output so it stays in the render graph.
   const worklet = await createWorkletNode(
     ac,
     "pitch-detector",
     pitchProcessorUrl,
   );
-
-  // Post initial config
   worklet.port.postMessage({
     type: "config",
     fMin: cfg.fMin,
@@ -159,7 +151,6 @@ const buildGraph = async (
     octaveGuardEpsilon: cfg.octaveGuardEpsilon,
   });
 
-  // Wire: src -> HPx4 -> LPx4 -> worklet -> mute(0) -> destination
   let node: AudioNode = srcNode;
   for (const hp of hps) {
     node.connect(hp);
@@ -182,12 +173,8 @@ const buildGraph = async (
       cleanup?.();
     } catch {}
     await ac.close();
-    dbg("Audio graph stopped & context closed");
   };
 
-  dbg(
-    "Audio graph built (HP/LP filters, worklet connected, mute to destination)",
-  );
   return { ac, srcNode, filters: [...hps, ...lps], worklet, mute, stop };
 };
 
@@ -214,7 +201,8 @@ const emitEvent = (
 };
 
 const gateEvent = (st: State, tMs: number) => {
-  if (tMs - st.lastEventTimeMs < st.cfg.minEventSpacingMs) return false;
+  const minSpacing = Math.max(st.cfg.minEventSpacingMs, st.cfg.hopMs);
+  if (tMs - st.lastEventTimeMs < minSpacing) return false;
   st.lastEventTimeMs = tMs;
   return true;
 };
@@ -224,48 +212,66 @@ const updateVoicing = (st: State, r: WorkletReading, tMs: number) => {
   const q = (r as any).quality;
   const n = (r as any).nsdf;
   const s = (r as any).snrDb;
+
   if (!st.isVoiced) {
     const pass = q >= qualityOn && n >= nsdfOn && s >= snrOnDb;
     if (pass) {
       st.isVoiced = true;
       st.unvoicedSinceMs = 0;
-    } else {
-      if (!st.unvoicedSinceMs) st.unvoicedSinceMs = tMs;
-    }
+    } else if (!st.unvoicedSinceMs) st.unvoicedSinceMs = tMs;
   } else {
     const fail = q < qualityOff || n < nsdfOff || s < snrOffDb;
     if (fail) {
       if (!st.unvoicedSinceMs) st.unvoicedSinceMs = tMs;
       st.isVoiced = false;
-    } else {
-      st.unvoicedSinceMs = 0;
-    }
+    } else st.unvoicedSinceMs = 0;
   }
 };
 
+// --- NEW: octave glue (normalize freq near ±1 octave if no real energy change)
+const normalizeOctaveFamily = (
+  fHz: number,
+  refMidi: number,
+  a4: number,
+  centsTol: number,
+) => {
+  if (!Number.isFinite(fHz) || fHz <= 0) return fHz;
+  const refHz = midiToHz(refMidi, a4);
+  if (!(refHz > 0)) return fHz;
+  const cents = centsDiff(fHz, refHz);
+  // near +1200c → halve; near -1200c → double
+  if (Math.abs(cents - 1200) <= centsTol) return fHz * 0.5;
+  if (Math.abs(cents + 1200) <= centsTol) return fHz * 2.0;
+  return fHz;
+};
+
 const onFrame = (st: State, r: WorkletReading) => {
-  const tMs = nowMs() - st.startTimeMs;
+  if (st.audioT0Ms === Number.NEGATIVE_INFINITY) st.audioT0Ms = r.tMs;
+  const tMs = r.tMs - st.audioT0Ms;
+
   const {
     onDb,
     silenceDb,
     holdBandCents,
     switchCents,
-    switchHoldMs,
     onHoldMs,
     offHoldMs,
     pitchChangeCents,
     volumeDeltaDb,
     a4Hz,
-
-    // ── NEW: octave glue knobs
-    octaveGlueCents,
-    octaveGlueDbDelta,
-    octaveSwitchExtraHoldMs,
+    rearticDbDrop,
+    rearticMinGapMs,
+    rearticOnHoldMs,
+    rearticCooldownMs = 100,
+    rearticPeakDecayDbPerSec = 12,
+    octaveGlueCents = 80,
+    octaveGlueDbDelta = 8,
+    octaveSwitchExtraHoldMs = 40,
   } = st.cfg;
 
   const db = (r as any).db;
 
-  // level gates
+  // Envelope gates for ON/OFF
   if (db >= onDb) {
     if (!st.aboveOnSinceMs) st.aboveOnSinceMs = tMs;
   } else st.aboveOnSinceMs = 0;
@@ -274,31 +280,97 @@ const onFrame = (st: State, r: WorkletReading) => {
     if (!st.belowSilenceSinceMs) st.belowSilenceSinceMs = tMs;
   } else st.belowSilenceSinceMs = 0;
 
-  // voicing
   updateVoicing(st, r, tMs);
-  const hasPitch = st.isVoiced && (r as any).freq > 0;
+  const rawHasPitch = st.isVoiced && (r as any).freq > 0;
 
-  // current continuous MIDI
-  let midi = st.currentNoteMidi;
-  if (hasPitch) midi = freqToMidi((r as any).freq, a4Hz);
+  let workletFreq = (r as any).freq;
 
-  // ON gate
+  // Octave glue is only meaningful while a note is on (we have a reference)
+  // and when energy hasn't changed a lot (i.e., not a new attack).
+  if (st.noteOn && rawHasPitch) {
+    const dbDelta = Math.abs(db - st.lastDb);
+    const allowFamilyChange =
+      dbDelta >= octaveGlueDbDelta ||
+      (st.belowSilenceSinceMs && tMs - st.belowSilenceSinceMs >= offHoldMs);
+    if (!allowFamilyChange) {
+      workletFreq = normalizeOctaveFamily(
+        workletFreq,
+        st.currentNoteMidi,
+        a4Hz,
+        octaveGlueCents,
+      );
+    }
+  }
+
+  const hasPitch = st.isVoiced && workletFreq > 0;
+
+  // === Re-articulation: decaying envelope + valley frames + cooldown ===
+  if (st.noteOn) {
+    const decayPerFrame = rearticPeakDecayDbPerSec * (st.cfg.hopMs / 1000);
+    if (db > st.envDb) st.envDb = db;
+    else st.envDb = Math.max(db, st.envDb - decayPerFrame);
+
+    const drop = st.envDb - db;
+
+    if (drop >= rearticDbDrop) {
+      st.belowRearticFrames++;
+      st.valleyMinDb = Math.min(st.valleyMinDb, db);
+    } else {
+      st.belowRearticFrames = 0;
+      st.valleyMinDb = db;
+    }
+
+    const framesGapNeeded = Math.max(
+      1,
+      Math.ceil(rearticMinGapMs / Math.max(1, st.cfg.hopMs)),
+    );
+    const unvoicedGap =
+      st.unvoicedSinceMs && tMs - st.unvoicedSinceMs >= rearticMinGapMs;
+    const valleyGap = st.belowRearticFrames >= framesGapNeeded;
+    const cooldownOk = tMs - st.lastOnTimeMs >= rearticCooldownMs;
+
+    if ((unvoicedGap || valleyGap) && cooldownOk) {
+      st.noteOn = false;
+      if (gateEvent(st, tMs)) emitEvent(st, tMs, "OFF", null, db, null);
+
+      st.rearticArmed = true;
+      st.aboveOnSinceMs = 0;
+      st.belowRearticFrames = 0;
+      st.valleyMinDb = db;
+      st.envDb = db;
+      st.candidateSwitchFrames = 0;
+
+      st.lastDb = db;
+      return;
+    }
+  }
+
+  // === ON gate (shorter hold if re-artic armed) ===
+  const neededOnHold = st.rearticArmed ? rearticOnHoldMs : onHoldMs;
   if (
     !st.noteOn &&
     st.aboveOnSinceMs &&
-    tMs - st.aboveOnSinceMs >= onHoldMs &&
+    tMs - st.aboveOnSinceMs >= neededOnHold &&
     hasPitch
   ) {
-    const noteNum = Math.round(midi);
+    const midiFloat = freqToMidi(workletFreq, a4Hz);
+    const noteNum = Math.round(midiFloat);
     st.currentNoteMidi = noteNum;
-    st.currentPitchHz = (r as any).freq;
+    st.currentPitchHz = workletFreq;
     st.noteOn = true;
-    if (gateEvent(st, tMs))
-      emitEvent(st, tMs, "ON", (r as any).freq, db, noteNum);
+    st.rearticArmed = false;
+    st.candidateSwitchFrames = 0;
+
+    st.envDb = db;
+    st.valleyMinDb = db;
+    st.belowRearticFrames = 0;
+    st.lastOnTimeMs = tMs;
+
+    if (gateEvent(st, tMs)) emitEvent(st, tMs, "ON", workletFreq, db, noteNum);
     st.lastVolEventDb = db;
   }
 
-  // OFF gates
+  // === Safety OFF (sustained silence/unvoiced) ===
   const sustainedSilence =
     st.belowSilenceSinceMs && tMs - st.belowSilenceSinceMs >= offHoldMs;
   const sustainedUnvoiced =
@@ -306,7 +378,12 @@ const onFrame = (st: State, r: WorkletReading) => {
   if (st.noteOn && (sustainedSilence || sustainedUnvoiced)) {
     st.noteOn = false;
     if (gateEvent(st, tMs)) emitEvent(st, tMs, "OFF", null, db, null);
-    st.candidateSwitchStartMs = 0;
+    st.candidateSwitchFrames = 0;
+    st.rearticArmed = true;
+    st.aboveOnSinceMs = 0;
+    st.envDb = db;
+    st.valleyMinDb = db;
+    st.belowRearticFrames = 0;
   }
 
   if (!st.noteOn || !hasPitch) {
@@ -314,81 +391,58 @@ const onFrame = (st: State, r: WorkletReading) => {
     return;
   }
 
-  // in-note evaluation
+  // === In-note drift / note switch with extra hold for octave family change ===
   const currentNoteHz = midiToHz(st.currentNoteMidi, a4Hz);
-  const centsFromCurrent = centsDiff((r as any).freq, currentNoteHz);
+  const centsFromCurrent = centsDiff(workletFreq, currentNoteHz);
 
-  if (Math.abs(centsFromCurrent) <= holdBandCents) {
-    // stay on current note; maybe emit bend
-    st.candidateSwitchStartMs = 0;
+  const isOctaveLike =
+    Math.abs(centsFromCurrent - 1200) <= octaveGlueCents + 20 ||
+    Math.abs(centsFromCurrent + 1200) <= octaveGlueCents + 20;
+
+  if (Math.abs(centsFromCurrent) <= st.cfg.holdBandCents) {
     const centsFromPrevPitch = centsDiff(
-      (r as any).freq,
+      workletFreq,
       st.currentPitchHz || currentNoteHz,
     );
-    if (Math.abs(centsFromPrevPitch) >= pitchChangeCents) {
-      st.currentPitchHz = (r as any).freq;
-      if (gateEvent(st, tMs)) {
-        emitEvent(
-          st,
-          tMs,
-          "CHANGE_PITCH",
-          (r as any).freq,
-          db,
-          st.currentNoteMidi,
-        );
-      }
-    }
-  } else if (Math.abs(centsFromCurrent) >= switchCents) {
-    // ──────────────────────────────────────────────────────────────
-    // OLD simple switch hold… with NEW octave glue bias
-    // ──────────────────────────────────────────────────────────────
-    if (!st.candidateSwitchStartMs) st.candidateSwitchStartMs = tMs;
-
-    // candidate new note
-    const newNote = Math.round(midi);
-
-    // Check if this looks like an *octave* of the current note
-    const octUp = st.currentNoteMidi + 12;
-    const octDn = st.currentNoteMidi - 12;
-    const centsToOctUp = Math.abs(
-      centsDiff((r as any).freq, midiToHz(octUp, a4Hz)),
-    );
-    const centsToOctDn = Math.abs(
-      centsDiff((r as any).freq, midiToHz(octDn, a4Hz)),
-    );
-    const looksOctave =
-      Math.min(centsToOctUp, centsToOctDn) <= octaveGlueCents &&
-      newNote % 12 === st.currentNoteMidi % 12;
-
-    // If octave-like, be stickier: add extra hold and require a perceptible level change
-    const neededHold =
-      switchHoldMs + (looksOctave ? octaveSwitchExtraHoldMs : 0);
-    const enoughDbChange = !looksOctave
-      ? true
-      : Math.abs(db - st.lastDb) >= octaveGlueDbDelta;
-
-    if (tMs - st.candidateSwitchStartMs >= neededHold && enoughDbChange) {
-      if (newNote !== st.currentNoteMidi) {
-        st.currentNoteMidi = newNote;
-        st.currentPitchHz = (r as any).freq;
-        st.candidateSwitchStartMs = 0;
-        if (gateEvent(st, tMs)) {
-          emitEvent(
-            st,
-            tMs,
-            "CHANGE_PITCH",
-            (r as any).freq,
-            db,
-            st.currentNoteMidi,
-          );
-        }
-      }
+    if (Math.abs(centsFromPrevPitch) >= st.cfg.pitchChangeCents) {
+      st.currentPitchHz = workletFreq;
+      if (gateEvent(st, tMs))
+        emitEvent(st, tMs, "CHANGE_PITCH", workletFreq, db, st.currentNoteMidi);
     }
   } else {
-    st.candidateSwitchStartMs = 0;
+    const baseHoldMs =
+      st.cfg.switchHoldMs + (isOctaveLike ? octaveSwitchExtraHoldMs : 0);
+    const framesHold = Math.max(
+      1,
+      Math.round(baseHoldMs / Math.max(1, st.cfg.hopMs)),
+    );
+
+    if (Math.abs(centsFromCurrent) >= st.cfg.switchCents) {
+      if (++st.candidateSwitchFrames >= framesHold) {
+        const newNote = Math.round(freqToMidi(workletFreq, a4Hz));
+        if (newNote !== st.currentNoteMidi) {
+          st.currentNoteMidi = newNote;
+          st.currentPitchHz = workletFreq;
+          st.candidateSwitchFrames = 0;
+          if (gateEvent(st, tMs))
+            emitEvent(
+              st,
+              tMs,
+              "CHANGE_PITCH",
+              workletFreq,
+              db,
+              st.currentNoteMidi,
+            );
+        } else {
+          st.candidateSwitchFrames = 0;
+        }
+      }
+    } else {
+      st.candidateSwitchFrames = 0;
+    }
   }
 
-  // volume events (unchanged)
+  // Volume events
   if (Math.abs(db - st.lastVolEventDb) >= volumeDeltaDb) {
     st.lastVolEventDb = db;
     if (gateEvent(st, tMs))
@@ -422,21 +476,32 @@ export const createWhistleRecorder = (
   sourceProvider?: SourceProvider,
 ): RecorderController => {
   let cfg: Config = { ...DEFAULTS, ...initial };
+
   const st: State = {
     cfg,
-    startTimeMs: 0,
+    audioT0Ms: Number.NEGATIVE_INFINITY,
     lastEventTimeMs: Number.NEGATIVE_INFINITY,
-    lastNoteSwitchAtMs: Number.NEGATIVE_INFINITY,
+
     noteOn: false,
     isVoiced: false,
     currentNoteMidi: 0,
     currentPitchHz: 0,
+
+    aboveOnSinceMs: 0,
+    belowSilenceSinceMs: 0,
+    unvoicedSinceMs: 0,
+
+    envDb: -100,
+    valleyMinDb: -100,
+    belowRearticFrames: 0,
+    rearticArmed: false,
+    lastOnTimeMs: Number.NEGATIVE_INFINITY,
+
+    candidateSwitchFrames: 0,
+
     lastDb: -100,
     lastVolEventDb: -100,
-    candidateSwitchStartMs: 0,
-    belowSilenceSinceMs: 0,
-    aboveOnSinceMs: 0,
-    unvoicedSinceMs: 0,
+
     events: [],
   };
 
@@ -447,10 +512,9 @@ export const createWhistleRecorder = (
   let provider: SourceProvider =
     sourceProvider ?? makeMicSourceProvider(deviceId);
 
-  // Debug watchdog: warn if no frames received for a while.
+  // Watchdog (optional)
   let lastMsgAt = 0;
   let watchdogTimer: number | null = null;
-
   const startWatchdog = () => {
     if (watchdogTimer != null) return;
     watchdogTimer = window.setInterval(() => {
@@ -459,7 +523,6 @@ export const createWhistleRecorder = (
         console.warn(
           "[whistle] No worklet messages for",
           lastMsgAt ? `${Math.round(now - lastMsgAt)}ms` : "ever",
-          "— check mic input, permissions, or worklet URL.",
         );
       }
     }, 1500);
@@ -473,34 +536,15 @@ export const createWhistleRecorder = (
 
   const start = async () => {
     if (graph) return;
-    try {
-      graph = await buildGraph(cfg, provider);
-    } catch (e) {
-      console.error("[whistle] buildGraph failed:", e);
-      throw e;
-    }
-    st.startTimeMs = performance.now();
-
+    graph = await buildGraph(cfg, provider);
+    st.audioT0Ms = Number.NEGATIVE_INFINITY;
     graph.worklet.port.onmessage = (e: MessageEvent) => {
       const m: any = e.data;
       lastMsgAt = performance.now();
-
-      if (m?.type === "ready") {
-        dbg("Worklet ready:", m);
-        return;
-      }
-      if (m?.type === "stats") {
-        dbg(
-          "stats",
-          `ringWrite=${m.ringWrite} filled=${m.ringFilled} acc=${m.acc} hop=${m.hopLen} effWin=${m.effWinLen} frames=${m.frames} posts=${m.posts} silence=${m.silence}`,
-        );
-        return;
-      }
+      if (m?.type === "ready" || m?.type === "stats") return;
       onFrame(st, m as WorkletReading);
     };
-
     startWatchdog();
-    dbg("Recorder started");
   };
 
   const stop = async () => {
@@ -509,7 +553,6 @@ export const createWhistleRecorder = (
     await graph.stop();
     graph = null;
     stopWatchdog();
-    dbg("Recorder stopped");
   };
 
   const getLog = () => st.events.slice();
@@ -518,7 +561,6 @@ export const createWhistleRecorder = (
     cfg = { ...cfg, ...patch };
     st.cfg = cfg;
     if (graph) {
-      dbg("Updating config live:", patch);
       graph.worklet.port.postMessage({
         type: "config",
         fMin: cfg.fMin,
@@ -543,9 +585,7 @@ export const createWhistleRecorder = (
   const setInputDevice = async (id: string | null) => {
     deviceId = id;
     provider = sourceProvider ?? makeMicSourceProvider(deviceId);
-    // If running, restart graph with new device.
     if (graph) {
-      dbg("Switching input device to:", deviceId ?? "(default)");
       await stop();
       await start();
     }

@@ -1,4 +1,7 @@
-export type PWConfig = {
+// pitch-worklet.ts
+// Robust YIN+NSDF pitch with harmonic/octave guard and light stickiness.
+
+type PWConfig = {
   fMin: number;
   fMax: number;
   hopMs: number;
@@ -11,7 +14,7 @@ export type PWConfig = {
   octaveGuardEpsilon: number;
 };
 
-export type PWState = {
+type PWState = {
   sr: number;
   cfg: PWConfig;
 
@@ -292,6 +295,7 @@ const computeYinWithNsdf = (
     nsdf[tau] = denom > 0 ? (2 * R) / denom : 0;
   }
 
+  // Initial YIN pick
   let tauSel = -1;
   for (let t = tauMin; t <= tauMax; t++) {
     if (cmndf[t] < yinThreshold) {
@@ -307,6 +311,7 @@ const computeYinWithNsdf = (
       if (cmndf[t] < cmndf[tauSel]) tauSel = t;
   }
 
+  // Parabolic interp around CMNDF minimum
   const t0 = Math.max(1, tauSel - 1);
   const t2 = Math.min(tauMax, tauSel + 1);
   const sA = cmndf[t0];
@@ -319,30 +324,67 @@ const computeYinWithNsdf = (
   return { tauSel, tauInterp };
 };
 
-const octaveGuard = (
-  tau: number,
-  tauMin: number,
-  tauMax: number,
-  cmndf: Float32Array,
-  nsdf: Float32Array,
-  eps: number,
-) => {
-  let bestTau = tau;
-  const baselineNsdf = nsdf[Math.round(tau)] || 0;
-  const baselineCmn = cmndf[Math.round(tau)] || 1;
+// ---------- New: harmonic/octave guard with stickiness ----------
+const pickHarmonicFundamental = (
+  st: PWState,
+  tauRaw: number, // interpolated CMNDF minimum
+): number => {
+  const { tauMin, tauMax, nsdf, cmndf, sr } = st;
 
-  const tryCandidate = (cand: number) => {
-    const tc = Math.round(cand);
-    if (tc < tauMin || tc > tauMax) return;
-    const n = nsdf[tc] || 0;
-    const c = cmndf[tc] || 1;
-    if (n > baselineNsdf * (1 + eps) && c <= baselineCmn + eps) bestTau = tc;
+  // Consider these candidates around the CMNDF minimum:
+  // fundamental, its octave up/down, plus a couple of subharmonics.
+  const cands: number[] = [];
+  const push = (t: number) => {
+    const tt = Math.round(t);
+    if (tt >= tauMin && tt <= tauMax) cands.push(t);
   };
+  push(tauRaw);
+  push(tauRaw * 2);
+  push(tauRaw * 0.5);
+  push(tauRaw * 3);
+  push(tauRaw / 3);
 
-  tryCandidate(tau * 0.5);
-  tryCandidate(tau * 2.0);
+  // Score blends: favor strong NSDF, low CMNDF, harmonic support,
+  // slight bias to LOWER frequency (larger tau), and stickiness to lastFreq.
+  let bestT = tauRaw;
+  let bestScore = -1e9;
 
-  return bestTau;
+  for (const t of cands) {
+    const tt = Math.round(t);
+    const n0 = nsdf[tt] || 0;
+    const c0 = cmndf[tt] || 1;
+
+    const t2 = Math.round(t * 2);
+    const t3 = Math.round(t * 3);
+    const t05 = Math.round(t * 0.5);
+    const n2 = t2 <= tauMax ? nsdf[t2] || 0 : 0;
+    const n3 = t3 <= tauMax ? nsdf[t3] || 0 : 0;
+    const n05 = t05 >= tauMin ? nsdf[t05] || 0 : 0;
+
+    // Harmonic support score: prefer candidates that also “explain” their
+    // lower harmonics (2τ, 3τ) better than their octave-up (τ/2).
+    const harmonicScore = n0 + 0.35 * n2 + 0.2 * n3 - 0.3 * n05;
+
+    // Slight bias for lower frequency if scores are close.
+    const lowerBias = 0.02 * (t / tauMax); // normalized
+
+    // Stickiness to last freq (in cents).
+    const fCand = sr / t;
+    const last = st.lastFreq;
+    const centsDist = Math.abs(
+      1200 * Math.log2((fCand + 1e-12) / (last + 1e-12)),
+    );
+    const stickyPenalty = 0.002 * Math.min(centsDist, 300); // cap at 300c
+
+    const score = harmonicScore - 0.5 * c0 + lowerBias - stickyPenalty;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestT = t;
+    }
+  }
+
+  return bestT;
 };
 
 const rmsDbUnrolled16 = (x: Float32Array, L: number) => {
@@ -409,16 +451,11 @@ const analyzeFrame = (st: PWState) => {
       st.cfg.yinThreshold,
     );
 
-    const tauOG = octaveGuard(
-      sel.tauInterp,
-      st.tauMin,
-      st.tauMax,
-      st.cmndf,
-      st.nsdf,
-      st.cfg.octaveGuardEpsilon,
-    );
+    // Harmonic/octave guard with stickiness
+    const tauGuarded = pickHarmonicFundamental(st, sel.tauInterp);
 
-    const tg = Math.round(tauOG);
+    // Quadratic polish around the guarded tau (using CMNDF curve)
+    const tg = Math.round(tauGuarded);
     const t0 = Math.max(1, tg - 1);
     const t2 = Math.min(st.tauMax, tg + 1);
     const sA = st.cmndf[t0];
@@ -436,7 +473,10 @@ const analyzeFrame = (st: PWState) => {
     }
   }
 
-  if (freq > 0) st.lastFreq = 0.7 * st.lastFreq + 0.3 * freq;
+  if (freq > 0) {
+    // light smoothing of lastFreq for next-frame window sizing and stickiness
+    st.lastFreq = 0.75 * st.lastFreq + 0.25 * freq;
+  }
 
   const snrDb = snrFromNsdf(nsdfPeak);
   return {
@@ -502,11 +542,8 @@ class PitchDetectorProcessor extends AudioWorkletProcessor {
     const out0 = outputs[0]?.[0];
     if (out0) {
       // pass-through (keeps node in the render graph)
-      if (ch0 && ch0.length === out0.length) {
-        out0.set(ch0);
-      } else {
-        out0.fill(0);
-      }
+      if (ch0 && ch0.length === out0.length) out0.set(ch0);
+      else out0.fill(0);
     }
 
     if (!ch0) {

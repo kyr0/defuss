@@ -7,42 +7,72 @@ import {
 } from "../lib/whistle-recorder";
 import { MidiOutAdapter, type MusicalKeyName } from "../lib/midi-out";
 
-const rec = createWhistleRecorder({
-  hpHz: 600,
-  lpHz: 6000,
-  fMin: 600,
-  fMax: 6000,
-  hopMs: 10,
-  analysisWinMs: 30,
-  adaptive: true,
-  adaptPeriods: 8,
-  minWinMs: 24,
-  maxWinMs: 60,
-  qualityOn: 0.65,
-  qualityOff: 0.55,
-  nsdfOn: 0.7,
-  nsdfOff: 0.6,
-  snrOnDb: 5,
-  snrOffDb: 3,
-  minEventSpacingMs: 10,
-  onDb: -45,
-  silenceDb: -50,
-  volumeDeltaDb: 1.5,
-  pitchChangeCents: 20,
-  holdBandCents: 10,
-  switchCents: 35,
-  onHoldMs: 30,
-  offHoldMs: 40,
-  switchHoldMs: 30,
-  yinThreshold: 0.125,
-  octaveGuardEpsilon: 0.07,
-  a4Hz: 440,
+const rec = createWhistleRecorder(
+  // Balanced: cleaner OFF tails, better switches, hears softer notes
+  // Fast-attack, clean-tail config: quicker ON, reliable SWITCH, guaranteed OFF
+  {
+    // Front-end filters & band
+    hpHz: 600,
+    lpHz: 6000,
+    fMin: 600,
+    fMax: 6000,
 
-  // Octave glue
-  octaveGlueCents: 80,
-  octaveGlueDbDelta: 10,
-  octaveSwitchExtraHoldMs: 70,
-});
+    // Analysis cadence (faster = quicker ON/OFF + better staccato)
+    hopMs: 20, // faster frames for rapid changes
+    analysisWinMs: 30, // shorter window reduces tail smearing
+
+    // Adaptive windowing
+    adaptive: true,
+    adaptPeriods: 10,
+    minWinMs: 24,
+    maxWinMs: 30,
+
+    // Voicing (tight OFF so last note doesn't hang; still detects soft ON)
+    qualityOn: 0.7,
+    qualityOff: 0.63, // higher OFF threshold → drop voicing sooner
+    nsdfOn: 0.76,
+    nsdfOff: 0.68, // higher OFF threshold
+    snrOnDb: 6,
+    snrOffDb: 6, // require similar SNR to keep voicing during tail
+
+    // Level gates (allow soft notes; create modest hysteresis)
+    onDb: -49, // easier to trigger ON at low volume
+    silenceDb: -51, // OFF threshold; paired with offHoldMs for clean tail
+    volumeDeltaDb: 1.5,
+
+    // In-note stability vs bend jitter
+    pitchChangeCents: 20, // ignore micro-wobbles below this
+    holdBandCents: 36, // a bit less “sticky” than 40
+
+    // ON/OFF responsiveness (fast attack, decisive release)
+    onHoldMs: 30, // quicker ON so detection feels snappy
+    offHoldMs: 40, // quicker OFF so final note doesn’t hang
+
+    // Event pacing (must be ≥ hop)
+    minEventSpacingMs: 15,
+
+    // Switching (slightly more willing to switch, still stable)
+    switchCents: 55, // need ~65 cents detune to consider new note
+    switchHoldMs: 50, // short dwell before switching (pairs with hop=10)
+
+    // YIN selection & octave guard
+    yinThreshold: 0.1, // avoids shallow dips (prevents octave slips)
+    octaveGuardEpsilon: 0.05,
+    a4Hz: 440,
+
+    // Re-articulation heuristics (kept moderate; supports staccato without doubles)
+    rearticDbDrop: 20, // require a real dip to re-articulate
+    rearticMinGapMs: 10, // minimal OFF gap to count as a new attack
+    rearticOnHoldMs: 30, // brief ON hold for re-attacks
+    rearticCooldownMs: 90, // prevents rapid double-fires
+    rearticPeakDecayDbPerSec: 22, // how fast the peak level decays
+
+    // Octave glue (keep sensible defaults)
+    octaveGlueCents: 80,
+    octaveGlueDbDelta: 8,
+    octaveSwitchExtraHoldMs: 50,
+  },
+);
 
 // MIDI: always enabled once we init + select an output.
 const midi = new MidiOutAdapter(rec, {
@@ -50,10 +80,11 @@ const midi = new MidiOutAdapter(rec, {
   pitchBendRange: 2, // must match synth/DAW
   dbRange: [-60, -20],
   ccForVolume: 11,
-  key: "C major",
+  key: "Chromatic",
 });
 
 const ALL_KEYS: MusicalKeyName[] = [
+  "Chromatic",
   "C major",
   "G major",
   "D major",
@@ -138,7 +169,7 @@ export function DashboardScreen() {
       opt.textContent = k;
       sel.appendChild(opt);
     }
-    sel.value = "C major";
+    sel.value = "Chromatic";
   };
 
   const onMicSelect = async () => {
@@ -219,7 +250,7 @@ export function DashboardScreen() {
         ></select>
         <button
           type="button"
-          class="uk-button uk-button-default"
+          class="uk-button uk-button-primary"
           onClick={populateMidi}
         >
           Refresh
