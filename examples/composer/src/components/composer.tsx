@@ -102,6 +102,7 @@ export function DashboardScreen() {
   const smoothSelRef = createRef<null, HTMLSelectElement>();
   const ruleSelRef = createRef<null, HTMLSelectElement>();
   const bpmRef = createRef<null, HTMLInputElement>();
+  const bpmValRef = createRef<null, HTMLSpanElement>();
   const tsNumRef = createRef<null, HTMLSelectElement>();
   const tsDenRef = createRef<null, HTMLSelectElement>();
   const noteLenRef = createRef<null, HTMLSelectElement>();
@@ -191,6 +192,7 @@ export function DashboardScreen() {
       sSel.appendChild(opt);
     }
     sSel.value = "provisional";
+    midi.setSmoothingMode("provisional");
 
     const rSel = ruleSelRef.current!;
     rSel.innerHTML = "";
@@ -200,7 +202,8 @@ export function DashboardScreen() {
       opt.textContent = v;
       rSel.appendChild(opt);
     }
-    rSel.value = "last";
+    rSel.value = "hmm";
+    midi.setDecisionRule("hmm");
   };
 
   const onMicSelect = async () => {
@@ -275,7 +278,7 @@ export function DashboardScreen() {
     // Defaults
     setBpmAndApply(120);
     setTimeSignatureAndApply(4, 4);
-    setNoteLengthAndApply("1/16");
+    setNoteLengthAndApply("1/8");
     // Metronome enabled by default
     setMetronomeEnabled(true);
   };
@@ -289,6 +292,7 @@ export function DashboardScreen() {
 
   const setBpmAndApply = (bpm: number) => {
     if (bpmRef.current) bpmRef.current.value = String(bpm);
+    if (bpmValRef.current) bpmValRef.current.textContent = String(bpm);
     midi.setBpm(bpm);
     applyTimingDerived();
   };
@@ -324,7 +328,6 @@ export function DashboardScreen() {
   const onBpmInput = () => {
     const bpm = Number.parseInt(bpmRef.current!.value || "120", 10);
     setBpmAndApply(bpm);
-    UIkit.notification({ message: `BPM: ${bpm}`, status: "primary" });
   };
   const onTsChange = () => {
     const num = Number.parseInt(tsNumRef.current!.value, 10) || 4;
@@ -370,7 +373,7 @@ export function DashboardScreen() {
           onInput={onBpmInput}
           class="uk-range"
         />
-        <span>{bpmRef.current?.value || "120"}</span>
+        <span ref={bpmValRef}>120</span>
       </div>
       <div class="flex items-center gap-2">
         <label class="min-w-[8rem]" for="ts">
@@ -397,10 +400,18 @@ export function DashboardScreen() {
             <option value={l}>{l}</option>
           ))}
         </select>
-        <label class="ml-4">
-          <input ref={metroRef} type="checkbox" onChange={onMetroToggle} />{" "}
-          Metronome
-        </label>
+        <div class="flex gap-x-3 ml-4 items-center justify-center">
+          <input
+            class="uk-checkbox mt-1"
+            id="metronome"
+            type="checkbox"
+            ref={metroRef}
+            onChange={onMetroToggle}
+          />
+          <label class="uk-form-label mt-1" for="metronome">
+            Metronome
+          </label>
+        </div>
       </div>
 
       <div class="flex items-center gap-2">
@@ -415,7 +426,7 @@ export function DashboardScreen() {
         ></select>
         <button
           type="button"
-          class="uk-button uk-button-default"
+          class="uk-btn uk-btn-default"
           onClick={populateMidi}
         >
           Refresh
@@ -462,7 +473,7 @@ export function DashboardScreen() {
           type="button"
           id="start"
           onClick={start}
-          class="uk-button uk-button-primary"
+          class="uk-btn uk-btn-primary"
         >
           Start
         </button>
@@ -470,11 +481,11 @@ export function DashboardScreen() {
           type="button"
           id="stop"
           onClick={stop}
-          class="uk-button uk-button-danger"
+          class="uk-btn uk-btn-danger"
         >
           Stop
         </button>
-        <button type="button" id="dump" onClick={dump} class="uk-button">
+        <button type="button" id="dump" onClick={dump} class="uk-btn">
           Dump JSON
         </button>
       </div>
