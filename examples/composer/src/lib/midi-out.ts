@@ -511,22 +511,24 @@ export class MidiOutAdapter {
           },
           decided,
         );
-      } else if (
-        this.winProvisionalBase != null &&
-        decided !== this.winProvisionalBase
-      ) {
-        this.emitOff(nowMs);
-        this.emitOn(
-          {
-            tMs: nowMs,
-            pitchHz: this.midiToFreq(decided),
-            volDbRms: -30,
-            chroma: decided % 12,
-            octave: Math.floor(decided / 12) - 1,
-            event: "ON",
-          },
-          decided,
-        );
+      } else if (this.winProvisionalBase != null) {
+        const diffSemis = Math.abs(decided - this.winProvisionalBase);
+        const enoughGap = diffSemis >= 2; // avoid near-neighbor corrections
+        const enoughTime = nowMs - this.lastOnAtMs >= this.minArticulationMs;
+        if (decided !== this.winProvisionalBase && enoughGap && enoughTime) {
+          this.emitOff(nowMs);
+          this.emitOn(
+            {
+              tMs: nowMs,
+              pitchHz: this.midiToFreq(decided),
+              volDbRms: -30,
+              chroma: decided % 12,
+              octave: Math.floor(decided / 12) - 1,
+              event: "ON",
+            },
+            decided,
+          );
+        }
       }
     } else {
       // Delayed mode: output ON now
