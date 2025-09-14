@@ -3,11 +3,6 @@
   "type": "module",
   "version": "0.0.1",
   "private": true,
-  "scripts": {
-    "clean": "rm -rf ./dist",
-    "build": "defuss-ssg",
-    "preview": ""
-  },
   "dependencies": {
     "autoprefixer": "^10.4.21",
     "defuss": "^2.1.1",

@@ -54,6 +54,28 @@ This starts a local server at http://localhost:3000 and watches for changes in:
 
 Changes trigger automatic rebuilds, with the last change always taking priority to prevent build queueing issues.
 
+<h4>Local development of SSG and running the example</h4>
+
+Unlike other SSG systems, this package is **not** meant to be installed in a project, but rather used as a global CLI tool or programmatically.
+
+Developing this means to clone the repo, install dependencies and run the example site:
+
+```bash
+git clone
+
+cd defuss/packages/ssg
+
+pnpm i && pnpm build
+
+# for building and serving the example site with auto-rebuild:
+pnpm run cli-serve ./example
+
+# for one-time build of the example site:
+pnpm run cli-build ./example
+```
+
+Please create a PR or issue if you find any bugs or have feature requests.
+
 <h4>Programmatic API</h4>
 
 Advanced users may want to use the library programmatically:
