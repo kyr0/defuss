@@ -26,26 +26,26 @@ const rec = createWhistleRecorder({
   maxWinMs: 60,
   // Voicing: slightly softer to avoid dropouts on airy whistles
   qualityOn: 0.6,
-  qualityOff: 0.5,
+  qualityOff: 0.55,
   nsdfOn: 0.65,
-  nsdfOff: 0.55,
+  nsdfOff: 0.4,
   snrOnDb: 3,
   snrOffDb: 1,
   // Event spacing (UI only; recorder enforces OFF->ON pair bypass for switches)
   minEventSpacingMs: 10,
   // Level gates: easier ON, quieter silence
   onDb: -55,
-  silenceDb: -65,
+  silenceDb: -68,
   volumeDeltaDb: 1.0,
   // Bend and switch gates tuned for smoothing
   pitchChangeCents: 25,
-  holdBandCents: 10,
-  switchCents: 100,
+  holdBandCents: 30, // how much bending is allowed before a note switch is considered
+  switchCents: 130, // how much bending is required to allow for a note switch
   // Stability windows
   onHoldMs: 50,
-  offHoldMs: 60,
-  switchHoldMs: 35,
-  yinThreshold: 0.12,
+  offHoldMs: 90,
+  switchHoldMs: 45,
+  yinThreshold: 0.118,
   octaveGuardEpsilon: 0.07,
   a4Hz: 440,
   // Octave glue
@@ -209,10 +209,10 @@ export function DashboardScreen() {
     // Tighten HMM just a bit to avoid nearby-note flicker on staccato
     midi.setHmmParams({
       emissionSigmaCents: 24, // narrower curve
-      priorSelfBias: 1.6, // favor holding current
-      minPosterior: 0.8, // need clearer winner
-      minPosteriorDelta: 0.15, // require margin vs runner-up
-      commitDelayMs: 40, // “wait a little” before switching
+      priorSelfBias: 1.7, // favor holding current
+      minPosterior: 0.9, // need clearer winner
+      minPosteriorDelta: 0.1, // require margin vs runner-up
+      commitDelayMs: 45, // “wait a little” before switching
     });
   };
 
@@ -532,25 +532,25 @@ export function DashboardScreen() {
         <div class="space-y-2">
           {[
             // Test audio files
-            { label: "Bomb Drop", url: "/test_audios/Bomb%20Drop.m4a" },
+            { label: "Drop", url: "/test_audios/Bomb%20Drop.m4a" },
+            { label: "Riser", url: "/test_audios/Riser.m4a" },
             {
               label: "Im Frühtau zu Berge",
               url: "/test_audios/Hoch%20zu%20Berge.m4a",
             },
+            { label: "Slow Melody", url: "/test_audios/Slow%20Melody.m4a" },
             { label: "Settlers 2", url: "/test_audios/Settlers%202.m4a" },
             { label: "Deepest Note", url: "/test_audios/Deepest%20Note.m4a" },
-            { label: "Fast Staccato", url: "/test_audios/Fast%20Staccato.m4a" },
             { label: "Highest Note", url: "/test_audios/Highest%20Note.m4a" },
-            {
-              label: "Normal and Fast Staccato",
-              url: "/test_audios/Normal%20and%20Fast%20Staccato.m4a",
-            },
-            { label: "Riser", url: "/test_audios/Riser.m4a" },
-            { label: "Slow Melody", url: "/test_audios/Slow%20Melody.m4a" },
             {
               label: "Slow Stoccato Octave Switch",
               url: "/test_audios/Slow%20Stoccato%20Octave%20Switch.m4a",
             },
+            {
+              label: "Normal and Fast Staccato",
+              url: "/test_audios/Normal%20and%20Fast%20Staccato.m4a",
+            },
+            { label: "Fast Staccato", url: "/test_audios/Fast%20Staccato.m4a" },
           ].map((t) => (
             <TestAudio rec={rec} src={t.url} label={t.label} />
           ))}

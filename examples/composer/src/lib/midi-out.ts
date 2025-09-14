@@ -112,6 +112,13 @@ export class MidiOutAdapter {
   private winIdentities: number[] = [];
   private winProvisionalBase: number | null = null;
   private winProvisionalSent = false;
+  // Per-window pitch trace for slope/prediction
+  private winPitchTrace: Array<{ tMs: number; mFloat: number }> = [];
+  private winLastPitchSampleMs = 0;
+
+  // Glide heuristics
+  private fastSlopeSemisPerSec = 14; // treat as fast slide if |slope| >= this
+  private predictHorizonMs = 100; // project ~100ms ahead to guess destination
 
   // Articulation guard
   private minArticulationMs = 150;
@@ -447,6 +454,8 @@ export class MidiOutAdapter {
     this.winIdentities = [];
     this.winProvisionalBase = null;
     this.winProvisionalSent = false;
+    this.winPitchTrace = [];
+    this.winLastPitchSampleMs = 0;
   }
 
   private identityFromEvent(ev: NoteEvent): number | null {
@@ -468,6 +477,8 @@ export class MidiOutAdapter {
       case "ON": {
         const id = this.identityFromEvent(ev);
         if (id == null) return;
+        // Seed pitch trace
+        this.pushPitchSample(ev);
         // Start metronome on first transient if enabled
         if (this.metroEnabled && !this.metroRunning) this.startMetronome();
         if (!this.winActive) {
@@ -501,6 +512,20 @@ export class MidiOutAdapter {
       case "CHANGE_PITCH": {
         // Pass pitch bends through in real-time, regardless of window
         this.handleChangePitch(ev);
+        // Record pitch for slope/prediction
+        if (this.winActive) {
+          this.pushPitchSample(ev);
+          // If we observe a fast glide, commit early to predicted destination
+          const slope = this.slopeSemisPerSec();
+          const fast = Math.abs(slope) >= this.fastSlopeSemisPerSec;
+          const enoughTime = ev.tMs - this.winStartMs >= 60; // avoid reacting to the first few ms
+          if (fast && enoughTime) {
+            const pred = this.predictIdentity(this.predictHorizonMs);
+            if (pred != null) {
+              this.commitWindow(ev.tMs, pred);
+            }
+          }
+        }
         break;
       }
       case "CHANGE_VOLUME": {
@@ -510,14 +535,15 @@ export class MidiOutAdapter {
     }
   }
 
-  private commitWindow(nowMs: number) {
+  private commitWindow(nowMs: number, decidedOverride?: number) {
     if (!this.winActive) return;
     const ids = this.winIdentities;
     if (ids.length === 0) {
       this.resetWindow();
       return;
     }
-    const decided = this.decideIdentity(ids, this.cfg.decisionRule);
+    const decided =
+      decidedOverride ?? this.decideIdentity(ids, this.cfg.decisionRule);
     // If using HMM rule, compute simple posteriors from histogram for gating
     let bestPost = 1;
     let secondPost = 0;
@@ -559,6 +585,14 @@ export class MidiOutAdapter {
         const diffSemis = Math.abs(decided - this.winProvisionalBase);
         const enoughGap = diffSemis >= 2; // avoid near-neighbor corrections
         const enoughTime = nowMs - this.lastOnAtMs >= this.minArticulationMs;
+        // If we are still gliding fast and prediction disagrees, avoid pre-final correction
+        const slopeAbs = Math.abs(this.slopeSemisPerSec());
+        const fastGlide = slopeAbs >= this.fastSlopeSemisPerSec * 0.7; // a bit lenient here
+        const predIfFast = fastGlide
+          ? this.predictIdentity(this.predictHorizonMs)
+          : null;
+        const prefinal =
+          fastGlide && predIfFast != null && predIfFast !== decided;
         // HMM gating: only correct if confident
         const passHmm =
           this.cfg.decisionRule !== "hmm" ||
@@ -573,7 +607,8 @@ export class MidiOutAdapter {
           decided !== this.winProvisionalBase &&
           enoughGap &&
           enoughTime &&
-          passHmm
+          passHmm &&
+          !prefinal
         ) {
           this.emitOff(nowMs);
           this.emitOn(
@@ -629,6 +664,51 @@ export class MidiOutAdapter {
       );
     }
     this.resetWindow();
+  }
+
+  // Push a pitch sample into window trace with light rate limiting
+  private pushPitchSample(ev: NoteEvent) {
+    if (ev.pitchHz == null) return;
+    const t = ev.tMs | 0;
+    if (!this.winActive) return;
+    if (t - this.winLastPitchSampleMs < 8) return; // ~125 Hz max
+    const mFloat = this.hzToMidi(ev.pitchHz);
+    this.winPitchTrace.push({ tMs: t, mFloat });
+    this.winLastPitchSampleMs = t;
+    // Keep only recent ~300ms to limit memory
+    const cutoff = t - 300;
+    while (this.winPitchTrace.length && this.winPitchTrace[0].tMs < cutoff) {
+      this.winPitchTrace.shift();
+    }
+  }
+
+  // Estimate semitone slope in semis/second using the last ~60-150ms of data
+  private slopeSemisPerSec(): number {
+    const tr = this.winPitchTrace;
+    if (tr.length < 2) return 0;
+    const lastT = tr[tr.length - 1].tMs;
+    const minSpan = 60; // ms
+    const maxSpan = 180; // ms
+    let i = tr.length - 1;
+    while (i > 0 && lastT - tr[i].tMs < minSpan) i--;
+    // ensure we have at least minSpan; if not, use first
+    while (i > 0 && lastT - tr[i - 1].tMs <= maxSpan) i--;
+    const a = tr[i];
+    const b = tr[tr.length - 1];
+    const dt = b.tMs - a.tMs;
+    if (dt <= 0) return 0;
+    const dm = b.mFloat - a.mFloat; // semitones
+    return (dm * 1000) / dt;
+  }
+
+  // Predict near-future identity by projecting current slope over horizon
+  private predictIdentity(horizonMs: number): number | null {
+    const tr = this.winPitchTrace;
+    if (tr.length === 0) return null;
+    const last = tr[tr.length - 1];
+    const slope = this.slopeSemisPerSec(); // semis/sec
+    const predM = last.mFloat + (slope * horizonMs) / 1000;
+    return this.quantizeToKey(predM);
   }
 
   private decideIdentity(ids: number[], rule: DecisionRule): number {
