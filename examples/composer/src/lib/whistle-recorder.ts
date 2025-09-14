@@ -7,7 +7,9 @@ import {
   centsDiff,
 } from "./types.js";
 
-import pitchProcessorUrl from "./pitch-worklet.ts?url";
+import pitchProcessorUrl from "./pitch-worklet.ts?worker&url";
+
+console.log("[whistle] pitchProcessorUrl:", pitchProcessorUrl);
 
 export type SourceProvider = (
   ac: AudioContext,
@@ -64,7 +66,7 @@ async function createWorkletNode(
   try {
     return new AudioWorkletNode(context, name);
   } catch (err) {
-    await context.audioWorklet.addModule(url);
+    await context.audioWorklet.addModule(new URL(url, import.meta.url));
     return new AudioWorkletNode(context, name);
   }
 }

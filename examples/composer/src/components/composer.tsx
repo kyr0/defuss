@@ -12,6 +12,7 @@ import {
   type DecisionRule,
 } from "../lib/midi-out";
 import { TestAudio } from "./test-audio";
+import { Button } from "defuss-ui";
 
 const rec = createWhistleRecorder({
   hpHz: 600,
@@ -382,10 +383,16 @@ export function DashboardScreen() {
   };
 
   return (
-    <div class="w-full max-w-xl space-y-3">
+    <div class="w-full max-w-sm">
+      <div class="flex items-center gap-2 flex-wrap">
+        <h1 class="min-w-[8rem] font-extrabold uk-h1" for="micSel">
+          Whistle Composer
+        </h1>
+      </div>
+
       <div class="flex items-center gap-2">
-        <label class="min-w-[8rem]" for="micSel">
-          Microphone
+        <label class="min-w-[8rem]" for="bpm">
+          Mic
         </label>
         <select
           id="micSel"
@@ -505,25 +512,15 @@ export function DashboardScreen() {
       </div>
 
       <div class="flex gap-2">
-        <button
-          type="button"
-          id="start"
-          onClick={start}
-          class="uk-btn uk-btn-primary"
-        >
+        <Button type="primary" onClick={start}>
           Start
-        </button>
-        <button
-          type="button"
-          id="stop"
-          onClick={stop}
-          class="uk-btn uk-btn-danger"
-        >
+        </Button>
+        <Button type="destructive" onClick={stop}>
           Stop
-        </button>
-        <button type="button" id="dump" onClick={dump} class="uk-btn">
-          Dump JSON
-        </button>
+        </Button>
+        <Button type="ghost" onClick={dump}>
+          Dump Event Log
+        </Button>
       </div>
 
       <div class="uk-divider-icon" />

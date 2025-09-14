@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "franken-ui/css/franken-ui.css";
 
 @theme {
   --color-background: hsl(var(--background));
