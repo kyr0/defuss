@@ -2,7 +2,6 @@ import { createRef, type Props, type Ref, type VNode } from "defuss";
 
 export interface ButtonProps extends Props {
   className?: string;
-  class?: string;
   ref?: Ref; // allow ref to be passed (forwarded down)
 
   type?:
@@ -55,7 +54,6 @@ export const Button = ({
     iconClass,
     widthClass,
     className,
-    props.class || "", // allow class to be passed in props
   ].filter(Boolean);
 
   const content = (
