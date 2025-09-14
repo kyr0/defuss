@@ -274,6 +274,17 @@ export function DashboardScreen() {
     populateKeys();
     populateSmoothing();
     setupTimingDefaults();
+
+    // Stop metronome when pipeline test-audio playback is paused or ends
+    const hookTestAudioMetronome = () => {
+      const els = Array.from(document.querySelectorAll("audio")) as HTMLAudioElement[];
+      const stopMetro = () => setMetronomeEnabled(false);
+      els.forEach((el) => {
+        el.addEventListener("pause", stopMetro);
+        el.addEventListener("ended", stopMetro);
+      });
+    };
+    hookTestAudioMetronome();
   });
 
   // --- Timing / musical grid ---

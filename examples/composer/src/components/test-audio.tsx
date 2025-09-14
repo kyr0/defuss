@@ -35,8 +35,9 @@ export const TestAudio = ({
 
     const recEl = audioRecordingRef.current! as HTMLAudioElement;
     recEl.pause();
-  };
 
+    document.location.reload();
+  };
   return (
     <div class="uk-card uk-card-default uk-card-body">
       {label && <div class="uk-card-title uk-margin-small mb-2">{label}</div>}
