@@ -1,12 +1,15 @@
-import type { SSRResult } from 'astro';
-import type { DefussVitePluginOptions } from 'defuss-vite';
+import type { SSRResult } from "astro";
+import type { DefussVitePluginOptions } from "defuss-vite";
 
 export type RendererContext = {
-	result: SSRResult;
+  result: SSRResult;
 };
 
 export type ArrayObjectMapping = [string, number | string][];
 
-export interface Options extends Pick<DefussVitePluginOptions, "exclude" | "include"> {
-	devtools?: boolean;
+export interface Options
+  extends Pick<DefussVitePluginOptions, "exclude" | "include"> {
+  devtools?: boolean;
+  disableSvgOptimization?: boolean;
+  disableCssOptimization?: boolean;
 }

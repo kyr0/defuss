@@ -72,6 +72,8 @@ const minifyAndWriteFile = async (
 };
 
 export default function ({
+  disableSvgOptimization = false,
+  disableCssOptimization = false,
   include,
   exclude,
   devtools,
@@ -120,7 +122,7 @@ export default function ({
             ssr: {
               noExternal: ["lightningimg-node"],
             },
-            plugins: [defussPlugin()],
+            plugins: [defussPlugin() as any],
           },
         });
 
@@ -143,18 +145,26 @@ export default function ({
         // Also, when CSS is not embedded/referenced in HTML files, it is considered as not in-scope for optimization
         if (htmlFiles.length === 0 && svgFiles.length === 0) return;
 
-        logMessage(`⚡ Optimizing ${cssFiles.length} CSS stylesheets`);
-
         const minifyAndWritePromises = [];
 
-        for (const filename of cssFiles) {
-          minifyAndWritePromises.push(minifyAndWriteFile(cwd, filename, "css"));
+        if (!disableCssOptimization) {
+          logMessage(`⚡ Optimizing ${cssFiles.length} CSS stylesheets`);
+
+          for (const filename of cssFiles) {
+            minifyAndWritePromises.push(
+              minifyAndWriteFile(cwd, filename, "css"),
+            );
+          }
         }
 
-        logMessage(`⚡ Optimizing ${svgFiles.length} SVG vector graphics`);
+        if (!disableSvgOptimization) {
+          logMessage(`⚡ Optimizing ${svgFiles.length} SVG vector graphics`);
 
-        for (const filename of svgFiles) {
-          minifyAndWritePromises.push(minifyAndWriteFile(cwd, filename, "svg"));
+          for (const filename of svgFiles) {
+            minifyAndWritePromises.push(
+              minifyAndWriteFile(cwd, filename, "svg"),
+            );
+          }
         }
 
         await Promise.all(minifyAndWritePromises);
