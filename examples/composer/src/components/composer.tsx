@@ -11,6 +11,7 @@ import {
   type SmoothingMode,
   type DecisionRule,
 } from "../lib/midi-out";
+import { TestAudio } from "./test-audio";
 
 const rec = createWhistleRecorder({
   hpHz: 600,
@@ -496,6 +497,20 @@ export function DashboardScreen() {
         <button type="button" id="dump" onClick={dump} class="uk-btn">
           Dump JSON
         </button>
+      </div>
+
+      <div class="uk-divider-icon" />
+      <div>
+        <div class="uk-text-bold uk-margin-small">Test audio (virtual mic)</div>
+        <div class="space-y-2">
+          {[
+            { label: "Riser", url: "/test_audios/Riser.m4a" },
+            { label: "Fast Staccato", url: "/test_audios/Fast%20Staccato.m4a" },
+            { label: "Slow Legato", url: "/test_audios/Slow%20Legato.m4a" },
+          ].map((t) => (
+            <TestAudio rec={rec} src={t.url} label={t.label} />
+          ))}
+        </div>
       </div>
 
       <pre

@@ -9,7 +9,7 @@ import {
 
 import pitchProcessorUrl from "./pitch-worklet.ts?url";
 
-type SourceProvider = (
+export type SourceProvider = (
   ac: AudioContext,
 ) => Promise<{ node: AudioNode; cleanup?: () => void }>;
 
@@ -99,6 +99,23 @@ export const makeMicSourceProvider =
     return { node, cleanup };
   };
 
+/** Build a provider that taps an existing HTMLMediaElement (e.g., <audio>) */
+export const makeMediaElementSourceProvider = (
+  el: HTMLMediaElement,
+): SourceProvider => {
+  return async (ac) => {
+    // Note: Each HTMLMediaElement can only be connected to one MediaElementSource per context.
+    // We create a fresh node each time we build a new AudioContext/graph.
+    const node = ac.createMediaElementSource(el);
+    const cleanup = () => {
+      try {
+        node.disconnect();
+      } catch {}
+    };
+  return { node, cleanup };
+  };
+};
+
 /** Enumerate input devices (mics). Call after getUserMedia permission. */
 export async function listInputDevices(): Promise<MediaDeviceInfo[]> {
   const devs = await navigator.mediaDevices.enumerateDevices();
@@ -181,8 +198,10 @@ const buildGraph = async (
   const mute = new GainNode(ac, { gain: 0 });
   worklet.connect(mute).connect(ac.destination);
 
+  // No direct monitor path here; HTMLMediaElement plays to speakers by default.
+
   const stop = async () => {
-    try {
+  try {
       worklet.port.onmessage = null;
     } catch {}
     try {
@@ -466,6 +485,9 @@ export type RecorderController = {
   // mic selection
   setInputDevice: (deviceId: string | null) => Promise<void>;
   getInputDevice: () => string | null;
+
+  // source swap (e.g., virtual mic from <audio>)
+  setSourceProvider: (provider: SourceProvider | null) => Promise<void>;
 };
 
 export const createWhistleRecorder = (
@@ -499,8 +521,10 @@ export const createWhistleRecorder = (
 
   // Device selection
   let deviceId: string | null = null;
+  // Allow dynamic swapping between a custom provider and the selected mic.
+  let customProvider: SourceProvider | null = sourceProvider ?? null;
   let provider: SourceProvider =
-    sourceProvider ?? makeMicSourceProvider(deviceId);
+    customProvider ?? makeMicSourceProvider(deviceId);
 
   // Debug watchdog: warn if no frames received for a while.
   let lastMsgAt = 0;
@@ -618,7 +642,7 @@ export const createWhistleRecorder = (
 
   const setInputDevice = async (id: string | null) => {
     deviceId = id;
-    provider = sourceProvider ?? makeMicSourceProvider(deviceId);
+    provider = customProvider ?? makeMicSourceProvider(deviceId);
     // If running, restart graph with new device.
     if (graph) {
       dbg("Switching input device to:", deviceId ?? "(default)");
@@ -628,6 +652,16 @@ export const createWhistleRecorder = (
   };
   const getInputDevice = () => deviceId;
 
+  const setSourceProvider = async (p: SourceProvider | null) => {
+    customProvider = p;
+    provider = customProvider ?? makeMicSourceProvider(deviceId);
+    if (graph) {
+      dbg("Switching source provider:", customProvider ? "custom" : "mic");
+      await stop();
+      await start();
+    }
+  };
+
   return {
     start,
     stop,
@@ -636,5 +670,6 @@ export const createWhistleRecorder = (
     setConfig,
     setInputDevice,
     getInputDevice,
+    setSourceProvider,
   };
 };
