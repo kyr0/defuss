@@ -504,9 +504,27 @@ export function DashboardScreen() {
         <div class="uk-text-bold uk-margin-small">Test audio (virtual mic)</div>
         <div class="space-y-2">
           {[
-            { label: "Riser", url: "/test_audios/Riser.m4a" },
+            // Test audio files
+            { label: "Bomb Drop", url: "/test_audios/Bomb%20Drop.m4a" },
+            { label: "Deepest Note", url: "/test_audios/Deepest%20Note.m4a" },
             { label: "Fast Staccato", url: "/test_audios/Fast%20Staccato.m4a" },
-            { label: "Slow Legato", url: "/test_audios/Slow%20Legato.m4a" },
+            { label: "Highest Note", url: "/test_audios/Highest%20Note.m4a" },
+            {
+              label: "Hoch zu Berge",
+              url: "/test_audios/Hoch%20zu%20Berge.m4a",
+            },
+            {
+              label: "Normal and Fast Staccato",
+              url: "/test_audios/Normal%20and%20Fast%20Staccato.m4a",
+            },
+            { label: "Riser", url: "/test_audios/Riser.m4a" },
+            { label: "Settlers 2", url: "/test_audios/Settlers%202.m4a" },
+            { label: "Slow Melody", url: "/test_audios/Slow%20Melody.m4a" },
+            {
+              label: "Slow Stoccato Octave Switch",
+              url: "/test_audios/Slow%20Stoccato%20Octave%20Switch.m4a",
+            },
+            { label: "Fast Staccato", url: "/test_audios/Fast%20Staccato.m4a" },
           ].map((t) => (
             <TestAudio rec={rec} src={t.url} label={t.label} />
           ))}

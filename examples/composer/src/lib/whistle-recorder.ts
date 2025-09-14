@@ -112,7 +112,7 @@ export const makeMediaElementSourceProvider = (
         node.disconnect();
       } catch {}
     };
-  return { node, cleanup };
+    return { node, cleanup };
   };
 };
 
@@ -201,7 +201,7 @@ const buildGraph = async (
   // No direct monitor path here; HTMLMediaElement plays to speakers by default.
 
   const stop = async () => {
-  try {
+    try {
       worklet.port.onmessage = null;
     } catch {}
     try {
