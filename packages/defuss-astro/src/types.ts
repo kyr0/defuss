@@ -10,6 +10,6 @@ export type ArrayObjectMapping = [string, number | string][];
 export interface Options
   extends Pick<DefussVitePluginOptions, "exclude" | "include"> {
   devtools?: boolean;
-  disableSvgOptimization?: boolean;
-  disableCssOptimization?: boolean;
+  enableSvgOptimization?: boolean;
+  enableCssOptimization?: boolean;
 }

@@ -72,8 +72,8 @@ const minifyAndWriteFile = async (
 };
 
 export default function ({
-  disableSvgOptimization = false,
-  disableCssOptimization = false,
+  enableSvgOptimization = false,
+  enableCssOptimization = false,
   include,
   exclude,
   devtools,
@@ -147,7 +147,7 @@ export default function ({
 
         const minifyAndWritePromises = [];
 
-        if (!disableCssOptimization) {
+        if (enableCssOptimization) {
           logMessage(`⚡ Optimizing ${cssFiles.length} CSS stylesheets`);
 
           for (const filename of cssFiles) {
@@ -157,7 +157,7 @@ export default function ({
           }
         }
 
-        if (!disableSvgOptimization) {
+        if (enableSvgOptimization) {
           logMessage(`⚡ Optimizing ${svgFiles.length} SVG vector graphics`);
 
           for (const filename of svgFiles) {
