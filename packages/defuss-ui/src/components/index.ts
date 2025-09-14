@@ -1,1 +1,1 @@
-export * from "./common/index.js";
+export * from "./button.js";

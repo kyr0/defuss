@@ -1,8 +1,8 @@
 {
   "name": "defuss-ui",
   "type": "module",
-  "version": "0.0.4",
-  "description": "A component library for defuss.",
+  "version": "0.0.5",
+  "description": "A modern Shadcn-like component library for defuss that build on Tailwind and Franken UI.",
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -25,47 +25,19 @@
         "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
       }
-    },
-    "./components.js": {
-      "require": {
-        "types": "./dist/components/index.d.cts",
-        "default": "./dist/components/index.cjs"
-      },
-      "import": {
-        "types": "./dist/components/index.d.mts",
-        "default": "./dist/components/index.mjs"
-      }
-    },
-    "./themes.js": {
-      "require": {
-        "types": "./dist/themes/index.d.cts",
-        "default": "./dist/themes/index.cjs"
-      },
-      "import": {
-        "types": "./dist/themes/index.d.mts",
-        "default": "./dist/themes/index.mjs"
-      }
-    },
-    "./layouts.js": {
-      "require": {
-        "types": "./dist/layouts/index.d.cts",
-        "default": "./dist/layouts/index.cjs"
-      },
-      "import": {
-        "types": "./dist/layouts/index.d.mts",
-        "default": "./dist/layouts/index.mjs"
-      }
     }
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "keywords": [
     "components",
-    "defuss"
+    "defuss",
+    "ui",
+    "tailwind",
+    "franken-ui",
+    "shadcn"
   ],
   "license": "MIT",
   "devDependencies": {
@@ -80,6 +52,6 @@
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "dependencies": {
-    "defuss": "workspace:*"
+    "defuss": "^2.1.1"
   }
 }
