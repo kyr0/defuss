@@ -64,12 +64,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 
     // Call "guard" hooks
     for (const hook of hooks.filter((h) => h.phase === "guard")) {
-      const allowed = await hook.fn(
-        className,
-        methodName,
-        args,
-        request.clone(),
-      );
+      const allowed = await hook.fn(className, methodName, args, request);
       if (allowed === false) {
         return new Response(JSON.stringify({ error: "Forbidden by hook" }), {
           status: 403,
@@ -115,7 +110,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 
     // Call "result" hooks
     for (const hook of hooks.filter((h) => h.phase === "result")) {
-      await hook.fn(className, methodName, args, request.clone(), result);
+      await hook.fn(className, methodName, args, request, result);
     }
 
     return new Response(await DSON.stringify(result), {
