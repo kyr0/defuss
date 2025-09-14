@@ -18,6 +18,10 @@ export interface ButtonProps extends Props {
   disabled?: boolean;
   as?: "button" | "a";
   href?: string;
+  onClick?: (evt: MouseEvent) => void;
+
+  // allow for any other prop that a button or anchor element can have
+  [key: string]: any;
 }
 
 export const Button = ({
