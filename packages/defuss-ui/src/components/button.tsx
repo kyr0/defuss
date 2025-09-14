@@ -1,6 +1,10 @@
-import type { Props, VNode } from "defuss";
+import { createRef, type Props, type Ref, type VNode } from "defuss";
 
 export interface ButtonProps extends Props {
+  className?: string;
+  class?: string;
+  ref?: Ref; // allow ref to be passed (forwarded down)
+
   type?:
     | "default"
     | "primary"
@@ -12,7 +16,6 @@ export interface ButtonProps extends Props {
   size?: "xs" | "sm" | "md" | "lg";
   icon?: VNode;
   iconOnly?: boolean;
-  className?: string;
   fullWidth?: boolean;
   loading?: boolean;
   disabled?: boolean;
@@ -29,6 +32,7 @@ export const Button = ({
   type = "default",
   size,
   icon,
+  ref = createRef(),
   iconOnly = false,
   className = "",
   fullWidth = false,
@@ -51,13 +55,12 @@ export const Button = ({
     iconClass,
     widthClass,
     className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+    props.class || "", // allow class to be passed in props
+  ].filter(Boolean);
 
   const content = (
     <>
-      {loading && <span className="uk-spinner" />}
+      {loading && <span class="uk-spinner" />}
       {icon}
       {!iconOnly && children}
     </>
@@ -65,7 +68,13 @@ export const Button = ({
 
   if (as === "a" && href) {
     return (
-      <a href={href} className={classes} aria-disabled={disabled} {...props}>
+      <a
+        ref={ref}
+        href={href}
+        class={classes}
+        aria-disabled={disabled}
+        {...props}
+      >
         {content}
       </a>
     );
@@ -73,8 +82,9 @@ export const Button = ({
 
   return (
     <button
+      ref={ref}
       type="button"
-      className={classes}
+      class={classes}
       disabled={disabled || loading}
       {...props}
     >
