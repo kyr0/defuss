@@ -25,7 +25,7 @@ Remote Procedure Call (RPC)
 - ✅ **Automatic serialization**: Uses `defuss-dson` for robust data serialization
 - ✅ **Proxy-based client**: Dynamic client generation with method interception
 - ✅ **Schema introspection**: Automatic API schema generation and discovery
-- ✅ **Authentication support**: Built-in guard function support for access control
+- ✅ **Authentication and logging support**: Built-in custom header and hook function support for access control, logging, performance monitoring and more
 - ✅ **Framework agnostic**: Works with Astro, Express.js, and any framework that supports Request/Response
 - ✅ **Zero runtime dependencies**: Tiny bundle size with minimal overhead
 

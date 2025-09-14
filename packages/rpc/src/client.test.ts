@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { getSchema, getRpcClient, clearSchemaCache } from "./client.js";
+import {
+  getSchema,
+  getRpcClient,
+  clearSchemaCache,
+  addHook,
+  setHeaders,
+} from "./client.js";
 import { TestUserApi, TestProductApi } from "./test-api.js";
 import { withTestServer, TestRpcServer } from "./test-utils.js";
 
@@ -359,6 +365,118 @@ describe("RPC Client", () => {
           expect(userResult).toBe(42);
           expect(productResult).toHaveLength(2);
           expect(productResult[0].name).toBe("multi Product 1");
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      });
+    });
+
+    it("should include custom headers and run hooks in order", async () => {
+      await withTestServer({ TestUserApi, TestProductApi }, async (server) => {
+        clearSchemaCache();
+        const events: string[] = [];
+
+        // Setup headers
+        setHeaders({ Authorization: "Bearer TEST", "X-Custom": "abc" });
+
+        // guard records request
+        addHook({
+          phase: "guard",
+          fn: (cls, meth, args, req) => {
+            events.push(`guard:${cls}.${meth}`);
+            expect(req?.headers).toBeDefined();
+            const headers = req!.headers as Record<string, string>;
+            // Node-fetch RequestInit.headers may be Headers or object; server reads via Express which accepts object
+            expect(headers["Content-Type"] || headers["content-type"]).toBe(
+              "application/json",
+            );
+            expect((headers as any).Authorization).toBe("Bearer TEST");
+            expect(headers["X-Custom"]).toBe("abc");
+            // allow
+            return true;
+          },
+        });
+
+        // Response hook validates status
+        addHook({
+          phase: "response",
+          fn: (cls, meth, args, req, res) => {
+            events.push(`response:${cls}.${meth}`);
+            expect(res).toBeDefined();
+          },
+        });
+
+        // Result hook inspects result
+        addHook({
+          phase: "result",
+          fn: (cls, meth, args, req, res, result) => {
+            events.push(`result:${cls}.${meth}`);
+            expect(typeof result).toBe("number");
+            expect(result).toBe(42);
+          },
+        });
+
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (
+          url: string | URL | Request,
+          options?: RequestInit,
+        ) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          const serverUrl = server.getUrl();
+          if (urlStr.startsWith("/")) {
+            url = `${serverUrl}${urlStr}`;
+          }
+          return originalFetch(url, options);
+        };
+
+        try {
+          const client = await getRpcClient<TestApiNamespace>();
+          const userApi = new client.TestUserApi();
+          const result = await userApi.getUserCount();
+          expect(result).toBe(42);
+
+          // Hooks order
+          expect(events).toEqual([
+            "guard:TestUserApi.getUserCount",
+            "response:TestUserApi.getUserCount",
+            "result:TestUserApi.getUserCount",
+          ]);
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      });
+    });
+
+    it("should block call when guard returns false", async () => {
+      await withTestServer({ TestUserApi, TestProductApi }, async (server) => {
+        clearSchemaCache();
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (
+          url: string | URL | Request,
+          options?: RequestInit,
+        ) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          const serverUrl = server.getUrl();
+          if (urlStr.startsWith("/")) {
+            url = `${serverUrl}${urlStr}`;
+          }
+          return originalFetch(url, options);
+        };
+
+        // Block getProduct
+        addHook({
+          phase: "guard",
+          fn: (cls, meth) => {
+            if (cls === "TestProductApi" && meth === "getProduct") return false;
+          },
+        });
+
+        try {
+          const client = await getRpcClient<TestApiNamespace>();
+          const productApi = new client.TestProductApi();
+          await expect(productApi.getProduct("1")).rejects.toThrow(
+            "RPC call to TestProductApi.getProduct was blocked by an guard",
+          );
         } finally {
           globalThis.fetch = originalFetch;
         }

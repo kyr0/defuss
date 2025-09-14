@@ -1,17 +1,13 @@
 {
   "name": "defuss-rpc",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "license": "MIT",
-  "description": "Remote Procedure Call (RPC) for defuss and Astro.",
-  "keywords": [
-    "rpc",
-    "defuss",
-    "astro"
-  ],
+  "description": "Remote Procedure Call (RPC) for defuss.",
+  "keywords": ["rpc", "defuss", "astro"],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -48,9 +44,7 @@
     }
   },
   "types": "./dist/types.d.cts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@vitest/coverage-v8": "^3.2.2",

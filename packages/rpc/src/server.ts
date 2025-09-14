@@ -4,13 +4,25 @@ import type {
   ApiNamespace,
   RpcApiClass,
   RpcCallDescriptor,
-  RpcGuardFn,
+  ServerHook,
 } from "./types.d.js";
 
 export * from "./types.d.js";
 
 const rpcApiClasses: RpcApiClass[] = [];
-let guardFunction: RpcGuardFn | null = null;
+
+const hooks: ServerHook[] = [];
+
+/**
+ * Adds an hook function that gets called at a specific time BEFORE or AFTER each RPC method invocation.
+ * Can reject calls by returning false (only for guards).
+ *
+ * @param hook - The hook to add
+ * @returns true to allow the call, false to reject it
+ */
+export function addHook(hook: ServerHook) {
+  hooks.push(hook);
+}
 
 export function createRpcServer(ns: ApiNamespace) {
   // Clear existing classes if empty namespace is passed
@@ -25,14 +37,10 @@ export function createRpcServer(ns: ApiNamespace) {
   Object.values(ns).forEach((cls) => rpcApiClasses.push(cls));
 }
 
-export function setGuardFunction(guardFn: RpcGuardFn | null) {
-  guardFunction = guardFn;
-}
-
 // Functions for testing - to clear state between tests
 export function clearRpcServer() {
   createRpcServer({});
-  setGuardFunction(null);
+  hooks.length = 0;
 }
 
 export const rpcRoute: APIRoute = async ({ request }) => {
@@ -49,21 +57,27 @@ export const rpcRoute: APIRoute = async ({ request }) => {
       },
     );
   } else {
-    // Check if a guard function is set and call it
-    if (typeof guardFunction === "function") {
-      const isAllowed = await guardFunction(request.clone());
-      if (!isAllowed) {
-        return new Response(JSON.stringify({ error: "Forbidden" }), {
+    // Handle RPC calls
+    const callDescriptor: RpcCallDescriptor = await request.json();
+
+    const { className, methodName, args } = callDescriptor;
+
+    // Call "guard" hooks
+    for (const hook of hooks.filter((h) => h.phase === "guard")) {
+      const allowed = await hook.fn(
+        className,
+        methodName,
+        args,
+        request.clone(),
+      );
+      if (allowed === false) {
+        return new Response(JSON.stringify({ error: "Forbidden by hook" }), {
           status: 403,
           headers: { "Content-Type": "application/json" },
         });
       }
     }
 
-    // Handle RPC calls
-    const callDescriptor: RpcCallDescriptor = await request.json();
-
-    const { className, methodName, args } = callDescriptor;
     const ApiClass = rpcApiClasses.find(
       (cls) =>
         cls.name === className || cls.prototype.constructor.name === className,
@@ -98,6 +112,12 @@ export const rpcRoute: APIRoute = async ({ request }) => {
         { status: 500, headers: { "Content-Type": "application/json" } },
       );
     }
+
+    // Call "result" hooks
+    for (const hook of hooks.filter((h) => h.phase === "result")) {
+      await hook.fn(className, methodName, args, request.clone(), result);
+    }
+
     return new Response(await DSON.stringify(result), {
       headers: {
         "Content-Type": "application/json",

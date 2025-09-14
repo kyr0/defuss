@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   createRpcServer,
-  setGuardFunction,
+  addHook,
   rpcRoute,
   clearRpcServer,
 } from "./server.js";
@@ -39,13 +39,30 @@ describe("RPC Server", () => {
     });
   });
 
-  describe("setGuardFunction", () => {
-    it("should set a guard function", () => {
-      const guardFn = async (req: Request) => {
-        return req.headers.get("authorization") === "Bearer test-token";
+  describe("addHook", () => {
+    it("should register a guard hook", () => {
+      const guardFn = async (
+        _className: string,
+        _methodName: string,
+        _args: unknown[],
+        request: Request,
+      ) => {
+        return request.headers.get("authorization") === "Bearer test-token";
       };
 
-      expect(() => setGuardFunction(guardFn)).not.toThrow();
+      expect(() => addHook({ phase: "guard", fn: guardFn })).not.toThrow();
+    });
+
+    it("should register a result hook", () => {
+      const resultFn = (
+        _className: string,
+        _methodName: string,
+        _args: unknown[],
+        _request: Request,
+        _result?: unknown,
+      ) => {};
+
+      expect(() => addHook({ phase: "result", fn: resultFn })).not.toThrow();
     });
   });
 
@@ -274,12 +291,20 @@ describe("RPC Server", () => {
     });
   });
 
-  describe("Guard Function", () => {
+  describe("Guard Hooks", () => {
     it("should allow requests when guard function returns true", async () => {
       createRpcServer({ TestUserApi });
 
-      setGuardFunction(async (request: Request) => {
-        return request.headers.get("authorization") === "Bearer valid-token";
+      addHook({
+        phase: "guard",
+        fn: async (
+          _className: string,
+          _methodName: string,
+          _args: unknown[],
+          request: Request,
+        ) => {
+          return request.headers.get("authorization") === "Bearer valid-token";
+        },
       });
 
       const request = new Request("http://localhost/rpc", {
@@ -302,8 +327,16 @@ describe("RPC Server", () => {
     it("should reject requests when guard function returns false", async () => {
       createRpcServer({ TestUserApi });
 
-      setGuardFunction(async (request: Request) => {
-        return request.headers.get("authorization") === "Bearer valid-token";
+      addHook({
+        phase: "guard",
+        fn: async (
+          _className: string,
+          _methodName: string,
+          _args: unknown[],
+          request: Request,
+        ) => {
+          return request.headers.get("authorization") === "Bearer valid-token";
+        },
       });
 
       const request = new Request("http://localhost/rpc", {
@@ -323,7 +356,7 @@ describe("RPC Server", () => {
       expect(response.status).toBe(403);
 
       const error = await response.json();
-      expect(error.error).toBe("Forbidden");
+      expect(error.error).toBe("Forbidden by hook");
     });
 
     it("should work without guard function", async () => {
@@ -344,6 +377,46 @@ describe("RPC Server", () => {
 
       const response = await rpcRoute({ request } as any);
       expect(response.status).toBe(200);
+    });
+
+    it("should call result hooks with the returned value", async () => {
+      createRpcServer({ TestUserApi });
+
+      let called = false;
+      let captured: unknown;
+      addHook({
+        phase: "result",
+        fn: async (
+          className: string,
+          methodName: string,
+          _args: unknown[],
+          _request: Request,
+          result?: unknown,
+        ) => {
+          if (className === "TestUserApi" && methodName === "getUserCount") {
+            called = true;
+            captured = result;
+          }
+        },
+      });
+
+      const request = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          className: "TestUserApi",
+          methodName: "getUserCount",
+          args: [],
+        }),
+      });
+
+      const response = await rpcRoute({ request } as any);
+      expect(response.status).toBe(200);
+
+      expect(called).toBe(true);
+      expect(captured).toBe(42);
     });
   });
 });

@@ -19,4 +19,35 @@ export interface RpcCallDescriptor {
   args: unknown[];
 }
 
-export type RpcGuardFn = (req: Request) => Promise<boolean>;
+// hooks
+
+export type ServerHookPhase = "guard" | "result";
+
+export type ServerHookFn = (
+  className: string,
+  methodName: string,
+  args: unknown[],
+  request: Request,
+  result?: unknown,
+) => boolean | Promise<boolean> | void | Promise<void>;
+
+export type ServerHook = {
+  fn: ServerHookFn;
+  phase: ServerHookPhase;
+};
+
+export type ClientHookPhase = "guard" | "response" | "result";
+
+export type ClientHookFn = (
+  className: string,
+  methodName: string,
+  args: unknown[],
+  request?: RequestInit,
+  response?: Response,
+  data?: unknown,
+) => boolean | Promise<boolean> | void | Promise<void>;
+
+export type ClientHook = {
+  fn: ClientHookFn;
+  phase: ClientHookPhase;
+};
