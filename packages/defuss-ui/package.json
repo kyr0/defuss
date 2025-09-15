@@ -1,7 +1,7 @@
 {
   "name": "defuss-ui",
   "type": "module",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "A modern Shadcn-like component library for defuss that build on Tailwind and Franken UI.",
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
@@ -40,6 +40,11 @@
     "shadcn"
   ],
   "license": "MIT",
+  "dependencies": {
+    "defuss": "^2.1.1",
+    "uikit": "^3.23.13",
+    "@types/uikit": "^3.23.0"
+  },
   "devDependencies": {
     "@types/node": "^20.11.20",
     "@biomejs/biome": "1.9.3",
@@ -50,8 +55,5 @@
   },
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
-  },
-  "dependencies": {
-    "defuss": "^2.1.1"
   }
 }
