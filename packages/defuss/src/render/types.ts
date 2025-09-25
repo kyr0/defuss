@@ -198,10 +198,20 @@ export interface VNodeAttributes extends VAttributes {
   key?: string;
 }
 
+export interface JsxSourceInfo {
+  fileName: string;
+  lineNumber: number;
+  columnNumber: number;
+  exportName?: string;
+  allChildrenAreStatic?: boolean;
+  selfReference?: boolean;
+}
+
 export interface VNode<A = VNodeAttributes> {
   type?: VNodeType;
   attributes?: A;
   children?: VNodeChildren;
+  sourceInfo?: JsxSourceInfo;
 }
 
 // string as in "div" creates an HTMLElement in the renderer

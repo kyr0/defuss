@@ -1,0 +1,185 @@
+openapi: 3.1.1
+info:
+  title: defuss Admin API
+  description: RESTful API for the defuss Admin product.
+  version: 0.0.1
+servers:
+  - url: http://localhost:4321
+    description: Local development environment
+paths:
+
+  /v1/health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the API
+      operationId: getHealthStatus
+      tags:
+        - Health
+      security: [] # public per middleware UnauthenticatedRoutes
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: Health status
+                    example: "OK"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          '500':
+            description: Internal server error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/ping:
+    get:
+      summary: Ping endpoint
+      description: Returns OK for liveness
+      operationId: getPing
+      tags:
+        - Ping
+      security: [] # public per middleware UnauthenticatedRoutes
+      responses:
+        '200':
+          description: API is reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: Liveness status
+                    example: "OK"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          '500':
+            description: Internal server error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/auth/login:
+    post:
+      summary: User login
+      description: Authenticates a user and returns a JWT token.
+      operationId: userLogin
+      tags:
+        - Auth
+      security: [] # Should be public - users need to login to get tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: User logged in successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Use "Authorization: ApiKey <key>"'
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT ID token in Authorization header
+  schemas:
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Bad request
+      required:
+        - error
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    User:
+      type: object
+      properties:
+        uid:
+          type: string
+          description: Unique user identifier
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+        - uid
+        - email
+
+tags:
+  - name: Health
+    description: Endpoints for checking API health status
+  - name: Ping
+    description: Simple liveness endpoint
+  - name: Auth
+    description: Endpoints for user authentication (login, logout, etc.)

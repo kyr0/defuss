@@ -43,9 +43,71 @@ export const hydrate = (
 ) => {
   let elementIndex = 0;
 
+  if (nodes.length !== parentElements.length) {
+    // Last-chance fix: fuse consecutive string/number nodes into a single Text node,
+    // restarting when encountering a non-fusable vnode. Continue scanning afterwards.
+    const fusedNodes: Array<VNode | string | null> = [];
+    let textBuffer: string | null = null;
+
+    const flush = () => {
+      if (textBuffer && textBuffer.length > 0) {
+        fusedNodes.push(textBuffer);
+      }
+      textBuffer = null;
+    };
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i] as any;
+      // Values that produce text in HTML output
+      if (
+        typeof node === "string" ||
+        typeof node === "number" ||
+        typeof node === "bigint"
+      ) {
+        textBuffer = (textBuffer ?? "") + String(node);
+        continue;
+      }
+
+      // Values that render nothing in HTML output (do not break fusion)
+      if (
+        node === null ||
+        typeof node === "undefined" ||
+        typeof node === "boolean"
+      ) {
+        continue;
+      }
+
+      // Non-fusable (VNode/object/etc.) -> boundary: flush and push
+      flush();
+      fusedNodes.push(node);
+    }
+
+    // push any trailing buffered text
+    flush();
+
+    if (fusedNodes.length === parentElements.length) {
+      nodes = fusedNodes;
+      if (debug) {
+        console.debug(
+          "[defuss] Hydration: resolved mismatch via text-node fusion.",
+        );
+      }
+    } else {
+      // Fail hard: we couldn't reconcile vnode count with DOM children
+      throw new Error(
+        `【defuss】Hydration error: Mismatched number of VNodes (${fusedNodes.length}) and DOM elements (${parentElements.length}) after text-node fusion attempt.`,
+      );
+    }
+  }
+
   for (const node of nodes) {
-    if (typeof node === "string" || node === null) {
-      // for text nodes or null, skip DOM elements that are not elements
+    // Text-like nodes: will correspond to a single DOM Text node
+    if (
+      typeof node === "string" ||
+      typeof node === "number" ||
+      typeof node === "bigint"
+    ) {
+      // for text nodes, skip DOM nodes that are not elements or text
       while (
         elementIndex < parentElements.length &&
         parentElements[elementIndex].nodeType !== Node.ELEMENT_NODE &&
@@ -53,8 +115,54 @@ export const hydrate = (
       ) {
         elementIndex++;
       }
-      // optionally, you can add validation here to match text content if necessary
-      elementIndex++;
+
+      if (elementIndex >= parentElements.length) {
+        if (debug) {
+          console.warn(
+            "[defuss] Hydration warning: Ran out of DOM nodes while matching text content.",
+          );
+        }
+        break;
+      }
+
+      const domNode = parentElements[elementIndex];
+      const expected = String(node);
+
+      if (domNode.nodeType === Node.TEXT_NODE) {
+        const textNode = domNode as Text;
+        if (textNode.nodeValue !== expected) {
+          if (debug) {
+            console.warn(
+              `[defuss] Hydration text mismatch: expected "${expected}", got "${textNode.nodeValue ?? ""}". Correcting.`,
+            );
+          }
+          textNode.nodeValue = expected;
+        }
+        elementIndex++;
+        continue;
+      }
+
+      // Encountered an element where a text node was expected
+      if (domNode.nodeType === Node.ELEMENT_NODE) {
+        const message =
+          "[defuss] Hydration error: ELEMENT_NODE encountered where TEXT_NODE was expected for text content.";
+        if (debug) {
+          throw new Error(message);
+        } else {
+          console.warn(message);
+          // Best effort: advance to keep indexes moving; hydration may drift
+          elementIndex++;
+          continue;
+        }
+      }
+    }
+
+    // Values that render nothing: do not consume a DOM node
+    if (
+      node === null ||
+      typeof node === "undefined" ||
+      typeof node === "boolean"
+    ) {
       continue;
     }
 

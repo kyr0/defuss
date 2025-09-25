@@ -1,0 +1,34 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "not_found": "Not found",
+    "back": "Back"
+  },
+  "login": {
+    "app_name": "Light in a Bottle",
+    "welcome_message": "Welcome back! Please sign in to continue.",
+    "email_label": "Email address",
+    "password_label": "Password",
+    "remember_me": "Remember me",
+    "forgot_password": "Forgot your password?",
+    "sign_in_button": "Sign in",
+    "or_continue_with": "Or continue with",
+    "no_account": "Don't have an account?",
+    "sign_up_link": "Sign up"
+  },
+  "navigation": {
+    "menu": "Menu",
+    "home": "Home",
+    "profile": "Profile",
+    "settings": "Settings",
+    "help": "Help",
+    "logout": "Logout"
+  },
+  "dashboard": {
+    "send_bottle": "Send a Bottle",
+    "view_details": "View Details",
+    "welcome": "Share your light with the community",
+    "create_post": "Create New Post"
+  }
+}

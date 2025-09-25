@@ -1,0 +1,80 @@
+---
+import "./base.css";
+
+import core from "franken-ui/js/core.iife?url";
+import icon from "franken-ui/js/icon.iife?url";
+
+interface Props {
+  title: string;
+}
+---
+
+<!doctype html>
+<html class="dark" lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="icon" type="image/webp" href="/favicon.webp" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="keywords"
+			content="Astro, TypeScript, defuss, web development, modern web, frontend"
+		/>
+		<meta
+			name="description"
+			content="Explore the integration of Astro, TypeScript, and defuss for modern web development."
+		/>
+		<title>{Astro.props.title}</title>
+
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Astro</title>
+    <link
+      rel="preload"
+      href="/fonts/geist-font/fonts/GeistVariableVF.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/geist-font/fonts/GeistMonoVariableVF.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/fonts/geist-font/style.css" />
+
+    <script is:inline>
+      const htmlElement = document.documentElement;
+
+      const __FRANKEN__ = JSON.parse(
+        localStorage.getItem("__FRANKEN__") || "{}",
+      );
+
+      if (
+        __FRANKEN__.mode === "dark" ||
+        (!__FRANKEN__.mode &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ) {
+        htmlElement.classList.add("dark");
+      } else {
+        htmlElement.classList.remove("dark");
+      }
+
+      htmlElement.classList.add(__FRANKEN__.theme || "uk-theme-zinc");
+      htmlElement.classList.add(__FRANKEN__.radii || "uk-radii-md");
+      htmlElement.classList.add(__FRANKEN__.shadows || "uk-shadows-sm");
+      htmlElement.classList.add(__FRANKEN__.font || "uk-font-sm");
+      htmlElement.classList.add(__FRANKEN__.chart || "uk-chart-default");
+    </script>
+
+    <script is:inline src={core} type="module"></script>
+	</head>
+
+	<body class="bg-background font-geist-sans text-foreground antialiased">
+		<slot />
+
+    <script is:inline src={icon} type="module"></script>
+	</body>
+</html>

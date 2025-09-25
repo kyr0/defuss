@@ -15,6 +15,7 @@ import type {
   Globals,
   RenderInput,
   Ref,
+  JsxSourceInfo,
 } from "./types.js";
 import {
   domNodeToVNode,
@@ -67,12 +68,22 @@ export const createInPlaceErrorMessageVNode = (error: unknown) => ({
   children: [`FATAL ERROR: ${(error as Error)?.message || error}`],
 });
 
+export type JsxRuntimeHookFn = (
+  type: VNodeType | Function | any,
+  attributes:
+    | (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>)
+    | null,
+  key?: string,
+  sourceInfo?: JsxSourceInfo,
+) => void;
+
 export const jsx = (
   type: VNodeType | Function | any,
   attributes:
     | (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>)
     | null,
   key?: string,
+  sourceInfo?: JsxSourceInfo,
 ): Array<VNode> | VNode => {
   // clone attributes as well
   attributes = { ...attributes };
@@ -126,6 +137,7 @@ export const jsx = (
     type,
     attributes,
     children,
+    sourceInfo,
   } as VNode;
 };
 
@@ -511,12 +523,23 @@ export const jsxDEV = (
     | null,
   key?: string,
   allChildrenAreStatic?: boolean,
-  sourceInfo?: string,
+  sourceInfo?: JsxSourceInfo,
   selfReference?: any,
 ): Array<VNode> | VNode => {
   let renderResult: Array<VNode> | VNode;
   try {
-    renderResult = jsx(type, attributes, key);
+    if (sourceInfo) {
+      if (
+        typeof type === "function" &&
+        type.constructor.name !== "AsyncFunction"
+      ) {
+        // attach sourceInfo to function components for better error messages and for automatic hydration
+        sourceInfo.exportName = type.name || sourceInfo?.exportName;
+      }
+      sourceInfo.allChildrenAreStatic = allChildrenAreStatic;
+      sourceInfo.selfReference = selfReference;
+    }
+    renderResult = jsx(type, attributes, key, sourceInfo);
   } catch (error) {
     console.error(
       "JSX error:",

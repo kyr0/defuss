@@ -1,13 +1,39 @@
 {
   "name": "defuss",
-  "version": "2.1.2",
+  "version": "2.1.7",
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "license": "MIT",
   "description": "Explicit simplicity for the web.",
-  "keywords": ["jsx", "render", "ssr", "isomorphic"],
+  "keywords": [
+    "jsx",
+    "render",
+    "ssr",
+    "ssg",
+    "isomorphic",
+    "jquery-like",
+    "defuss",
+    "react-like",
+    "lightweight",
+    "typescript",
+    "framework",
+    "library",
+    "dom-router",
+    "spa",
+    "csr",
+    "store",
+    "state",
+    "component",
+    "components",
+    "ui",
+    "user-interface",
+    "frontend",
+    "front-end",
+    "web-storage",
+    "async"
+  ],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -18,7 +44,7 @@
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll"
+    "build": "pkgroll --env.PKG_VERSION=$(node -p \"require('./package.json').version\")"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -65,12 +91,12 @@
     },
     "./jsx-dev-runtime": {
       "require": {
-        "types": "./dist/render/index.d.ts",
-        "default": "./dist/render/index.cjs"
+        "types": "./dist/render/dev/index.d.ts",
+        "default": "./dist/render/dev/index.cjs"
       },
       "import": {
-        "types": "./dist/render/index.d.ts",
-        "default": "./dist/render/index.mjs"
+        "types": "./dist/render/dev/index.d.ts",
+        "default": "./dist/render/dev/index.mjs"
       }
     }
   },

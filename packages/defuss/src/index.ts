@@ -1,3 +1,5 @@
+console.log(`defuss v${process.env.PKG_VERSION}`);
+
 export * from "@/common/index.js";
 export * from "@/render/index.js";
 export * from "@/dequery/index.js";

@@ -21,7 +21,7 @@ Defuss follows the principle of "explicit simplicity" - it provides powerful too
 
 ## Who is `defuss` for?
 
-- Junior developers who want to learn web development without getting overwhelmed (`defuss` uses web standards with _very_ thin abstrctions -> you get to learn the _real_ deal, not some framework-specific APIs)
+- Junior developers who want to learn web development without getting overwhelmed (`defuss` uses web standards with _very_ thin abstrctions -> you get to learn the _real_ thing, not some framework-specific APIs)
 - Senior developers who are fed up with heisenbugs from complexity, dependency hells and endless abstractions layers
 - Teams that prefer explicit over implicit code and want to maintain control over complexity, not layer one complexity on top of another because they basically don't understand what is going on anymore
 - Teams focussed on security - favoring minimalism and simplicity for a better security posture

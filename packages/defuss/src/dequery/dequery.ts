@@ -201,20 +201,38 @@ export class CallChainImpl<
 
   // async, wrapped/chainable API methods
 
-  debug(cb: (chain: CallChainImpl<NT, ET>) => void) {
+  debug(cb: (chain: CallChainImpl<NT, ET>) => void): ET {
     return createCall(this, "debug", async () => {
       cb(this);
       return this.nodes as NT;
-    });
+    }) as unknown as ET;
   }
 
   ref(ref: Ref<any, NodeType>) {
     return createCall(this, "ref", async () => {
-      await waitForRef(ref, this.options.timeout!);
+      console.log("🔍 ref() called - ref.current:", ref?.current?.nodeType);
+      console.log(
+        `🔍 ref() waiting for ref with timeout: ${this.options.timeout}ms`,
+      );
+
+      // Check if ref is already available to avoid unnecessary waiting
       if (ref.current) {
+        console.log("✅ ref() - ref already available:", ref.current.nodeType);
+        return [ref.current] as NT;
+      }
+
+      console.log("⏳ ref() - ref not available, calling waitForRef...");
+      await waitForRef(ref, this.options.timeout!);
+
+      if (ref.current) {
+        console.log(
+          "✅ ref() - ref became available after waiting:",
+          ref.current,
+        );
         return [ref.current] as NT;
       } else {
-        throw new Error("Ref is null or undefined");
+        console.log("❌ ref() - ref is still null after timeout");
+        throw new Error("Ref is null or undefined after timeout");
       }
     });
   }
@@ -1093,32 +1111,30 @@ export class CallChainImplThenable<
     return runWithTimeGuard<NT>(
       this.options.timeout!,
       async () => {
-        //console.log("runWithTimeGuard", this.options.timeout);
+        // Track start time for performance metrics (not for timeout - that's handled by runWithTimeGuard)
         const startTime = Date.now();
         let call: Call<NT>;
+
+        // Process all queued calls in the call stack
         while (this.stackPointer < this.callStack.length) {
           call = this.callStack[this.stackPointer];
-          if (Date.now() - startTime > this.options.timeout!) {
-            throw new Error(`Timeout after ${this.options.timeout}ms`);
-          }
 
           try {
-            //console.log("calling", call.name);
-
+            // Execute the current call in the stack
             const callReturnValue = (await call.fn.apply(this)) as NT[];
             this.lastResult = callReturnValue;
 
-            // method returns that return a value directly, don't modify the selection result stack
-            // this allows for getting values from elements or modifying elements (e.g. html()) in
-            // between selection changes without breaking the chain functionally (the chain expects)
+            // Method returns that return a value directly, don't modify the selection result stack.
+            // This allows for getting values from elements or modifying elements (e.g. html()) in
+            // between selection changes without breaking the chain functionally (the chain expects
             // all this.resultStack values to be of a DOM node type)
             if (!isNonChainedReturnCall(call.name)) {
               this.resultStack.push(callReturnValue);
             }
 
             if (Array.isArray(this.lastResult)) {
-              // allow for array-like access, immediately after the call
-              // this is important for the next call to be able to access the result index-wise
+              // Allow for array-like access, immediately after the call.
+              // This is important for the next call to be able to access the result index-wise
               mapArrayIndexAccess(this, this);
             }
 
@@ -1129,19 +1145,21 @@ export class CallChainImplThenable<
           }
         }
 
-        // at this point, we have finished all calls
+        // At this point, we have finished all calls in the stack
         this.isResolved = true;
 
-        // performance metrics tracking
+        // Performance metrics tracking - record the time taken for async chain execution
         this.chainAsyncFinishTime =
           (this.performance.now() ?? 0) - this.chainAsyncStartTime;
 
         return this;
       },
-      [],
+      [this], // ← Pass the chain context as args[0]
+      // Timeout error handler - called by runWithTimeGuard when timeout is exceeded
       (ms, call) => {
-        this.stoppedWithError = new Error(`Timeout after ${ms}ms`);
-
+        this.stoppedWithError = new Error(
+          `Chain execution timeout after ${ms}ms`,
+        );
         // TODO: implement a onMaxTimeExceeded() method and find it here (Call)
         //this.options.onTimeGuardError!(ms, call);
       },
@@ -1465,7 +1483,7 @@ let defaultOptions: DequeryOptions<any> | null = null;
 export function getDefaultDequeryOptions<NT>(): DequeryOptions<NT> {
   if (!defaultOptions) {
     defaultOptions = {
-      timeout: 500 /** ms */,
+      timeout: 5000 /** ms */,
       // even long sync chains would execute in < .1ms
       // so after 1ms, we can assume the "await" in front is
       // missing (intentionally non-blocking in sync code)
@@ -1499,6 +1517,11 @@ export function createCall<NT, ET extends Dequery<NT>>(
   methodName: string,
   handler: () => Promise<NT>,
 ): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
+  // Log when the call is queued (synchronous, doesn't affect execution timing)
+  console.log(
+    `📋 Queuing call: ${methodName} (stack position: ${chain.callStack.length})`,
+  );
+
   chain.callStack.push(new Call<NT>(methodName, handler));
   return subChainForNextAwait(chain);
 }
@@ -1600,10 +1623,48 @@ export function runWithTimeGuard<NT>(
   args: any[],
   onError: (ms: number, call: Call<NT>) => void,
 ): Promise<any> {
+  const operationId = Math.random().toString(36).substr(2, 9);
+
   return createTimeoutPromise(
     timeout,
-    () => fn(...args),
+    async () => {
+      console.log(`🟢 Executing operation [${operationId}]`);
+
+      // Log the call stack to see which calls are being processed
+      const chainContext = args[0] as CallChainImpl<NT, any>;
+      if (chainContext?.callStack && chainContext.stackPointer !== undefined) {
+        const remainingCalls = chainContext.callStack
+          .slice(chainContext.stackPointer)
+          .map((call) => call.name)
+          .join(" -> ");
+        console.log(`📋 Call stack [${operationId}]: ${remainingCalls}`);
+      } else {
+        console.log(`📋 Call stack [${operationId}]: unknown`);
+      }
+
+      const result = await fn(...args);
+      console.log(`✅ Operation [${operationId}] completed successfully`);
+      return result;
+    },
     (ms) => {
+      console.log(`🔴 TIMEOUT [${operationId}] after ${ms}ms`);
+
+      // Log which call was being processed when timeout occurred
+      const chainContext = args[0] as CallChainImpl<NT, any>;
+      if (chainContext?.callStack && chainContext.stackPointer !== undefined) {
+        const currentCall = chainContext.callStack[chainContext.stackPointer];
+        const remainingCalls = chainContext.callStack
+          .slice(chainContext.stackPointer)
+          .map((call) => call.name)
+          .join(" -> ");
+        console.log(
+          `🔴 TIMEOUT occurred during call: ${currentCall?.name || "unknown"}`,
+        );
+        console.log(`🔴 Remaining calls were: ${remainingCalls}`);
+      } else {
+        console.log("🔴 Call stack at timeout: unknown");
+      }
+
       const fakeCall = new Call<NT>("timeout", async () => [] as NT);
       onError(ms, fakeCall);
     },
