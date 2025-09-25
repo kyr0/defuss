@@ -13,19 +13,30 @@ export function createTimeoutPromise<T>(
   timeoutCallback?: (ms: number) => void,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
+    let completed = false;
+
     const timeoutId = setTimeout(() => {
-      timeoutCallback?.(timeoutMs);
-      reject(new Error(`Timeout after ${timeoutMs}ms`));
+      if (!completed) {
+        completed = true;
+        timeoutCallback?.(timeoutMs);
+        reject(new Error(`Timeout after ${timeoutMs}ms`));
+      }
     }, timeoutMs);
 
     Promise.resolve().then(async () => {
       try {
         const result = await operation();
-        clearTimeout(timeoutId);
-        resolve(result);
+        if (!completed) {
+          completed = true;
+          clearTimeout(timeoutId);
+          resolve(result);
+        }
       } catch (error) {
-        clearTimeout(timeoutId);
-        reject(error);
+        if (!completed) {
+          completed = true;
+          clearTimeout(timeoutId);
+          reject(error);
+        }
       }
     });
   });
@@ -37,28 +48,74 @@ export async function waitForWithPolling<T>(
   interval = 1,
 ): Promise<T> {
   const start = Date.now();
+  console.log(
+    `🔍 waitForWithPolling() started - timeout: ${timeout}ms, interval: ${interval}ms`,
+  );
 
-  return createTimeoutPromise(timeout, () => {
-    return new Promise<T>((resolve, reject) => {
-      const timer = setInterval(() => {
-        try {
-          const result = check();
-          if (result != null) {
-            clearInterval(timer);
-            resolve(result);
+  let timer: NodeJS.Timeout;
+
+  const cleanup = () => {
+    if (timer) {
+      console.log("🛑 Cleaning up polling timer");
+      clearInterval(timer);
+    }
+  };
+
+  try {
+    return await createTimeoutPromise(timeout, () => {
+      return new Promise<T>((resolve, reject) => {
+        let pollCount = 0;
+
+        timer = setInterval(() => {
+          pollCount++;
+          const elapsed = Date.now() - start;
+
+          try {
+            const result = check();
+            console.log(
+              `🔄 Poll #${pollCount} (${elapsed}ms elapsed) - result:`,
+              result,
+            );
+
+            if (result != null) {
+              console.log(
+                `✅ waitForWithPolling() resolved after ${pollCount} polls (${elapsed}ms)`,
+              );
+              cleanup();
+              resolve(result);
+            }
+          } catch (err) {
+            console.log(
+              `❌ waitForWithPolling() error on poll #${pollCount}:`,
+              err,
+            );
+            cleanup();
+            reject(err);
           }
-        } catch (err) {
-          clearInterval(timer);
-          reject(err);
-        }
-      }, interval);
+        }, interval);
+      });
     });
-  });
+  } catch (error) {
+    cleanup(); // Ensure cleanup happens on timeout
+    throw error;
+  }
 }
 
 export async function waitForRef<T>(
   ref: { current: T | null },
   timeout: number,
 ): Promise<T> {
-  return waitForWithPolling(() => ref.current, timeout);
+  console.log(
+    "🔍 waitForRef() called - ref.current:",
+    (ref?.current as Node)?.nodeType,
+  );
+  console.log(`🔍 waitForRef() timeout: ${timeout}ms`);
+
+  return waitForWithPolling(() => {
+    console.log(
+      "🔄 waitForRef() polling - ref.current:",
+      (ref?.current as Node)?.nodeType,
+    );
+    return ref.current;
+  }, timeout);
 }
