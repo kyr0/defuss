@@ -5,6 +5,7 @@ import { rpcRoute } from "./server.js";
 export interface ExpressRpcServerOptions {
   port?: number;
   basePath?: string;
+  jsonSizeLimit?: string;
 }
 
 export class ExpressRpcServer {
@@ -12,11 +13,13 @@ export class ExpressRpcServer {
   private server: any;
   private port: number;
   private basePath: string;
+  private jsonSizeLimit: string;
 
   constructor(options: ExpressRpcServerOptions = {}) {
     this.app = express();
     this.port = options.port || 0; // 0 means random available port
     this.basePath = options.basePath || "";
+    this.jsonSizeLimit = options.jsonSizeLimit || "10mb";
 
     this.setupMiddleware();
     this.setupRoutes();
@@ -24,7 +27,7 @@ export class ExpressRpcServer {
 
   private setupMiddleware() {
     // Parse JSON bodies
-    this.app.use(express.json({ limit: "10mb" }));
+    this.app.use(express.json({ limit: this.jsonSizeLimit }));
 
     // CORS middleware for testing
     this.app.use((req, res, next) => {
@@ -48,15 +51,15 @@ export class ExpressRpcServer {
 
   private setupRoutes() {
     // Health check endpoint
-    this.app.get(`${this.basePath}/health`, (req: Request, res: Response) => {
+    this.app.all(`${this.basePath}/health`, (req: Request, res: Response) => {
       res.json({ status: "ok", timestamp: new Date().toISOString() });
     });
 
     // RPC endpoint - forward to the existing rpcRoute handler
-    this.app.post(`${this.basePath}/rpc`, this.handleRpcRequest.bind(this));
+    this.app.all(`${this.basePath}/rpc`, this.handleRpcRequest.bind(this));
 
     // RPC schema endpoint - forward to the existing rpcRoute handler
-    this.app.post(
+    this.app.all(
       `${this.basePath}/rpc/schema`,
       this.handleRpcRequest.bind(this),
     );

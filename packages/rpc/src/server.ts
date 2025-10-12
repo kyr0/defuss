@@ -45,8 +45,9 @@ export function clearRpcServer() {
 
 export const rpcRoute: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
+  const pathname = url.pathname.replace(/\/+$/, ""); // Remove trailing slashes
 
-  if (url.pathname.endsWith("/schema")) {
+  if (pathname.endsWith("/rpc/schema")) {
     // Return schema of RPC classes
     return new Response(
       JSON.stringify(rpcApiClasses.map((c) => describeInstance(c.prototype))),
@@ -66,6 +67,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
     for (const hook of hooks.filter((h) => h.phase === "guard")) {
       const allowed = await hook.fn(className, methodName, args, request);
       if (allowed === false) {
+        console.error("[defuss-rpc] Forbidden by hook", { className, methodName, args, request });
         return new Response(JSON.stringify({ error: "Forbidden by hook" }), {
           status: 403,
           headers: { "Content-Type": "application/json" },
@@ -78,6 +80,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
         cls.name === className || cls.prototype.constructor.name === className,
     );
     if (!ApiClass) {
+      console.error("[defuss-rpc] Class not found", { className, methodName, args, request });
       return new Response(
         JSON.stringify({ error: `Class ${className} not found` }),
         { status: 404, headers: { "Content-Type": "application/json" } },
@@ -86,6 +89,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
     const instance = new ApiClass() as Record<string, unknown>;
     const method = instance[methodName];
     if (typeof method !== "function") {
+      console.error("[defuss-rpc] Method not found", { className, methodName, args, request });
       return new Response(
         JSON.stringify({
           error: `Method ${methodName} not found on class ${className}`,
@@ -100,6 +104,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
         args,
       );
     } catch (error: unknown) {
+      console.error("[defuss-rpc] Error calling method", { className, methodName, args, request, error });
       return new Response(
         JSON.stringify({
           error: `Error calling method ${methodName}: ${error instanceof Error ? error.message : String(error)}`,
