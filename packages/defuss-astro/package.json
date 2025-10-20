@@ -72,7 +72,7 @@
     "defuss": "workspace:*",
     "defuss-vite": "workspace:*",
     "astro": "^5.13.7",
-    "vite": "^7.1.5",
+    "vite": "^7.1.11",
     "fast-glob": "^3.3.2",
     "svgo": "^3.3.2",
     "lightningimg": "^1.0.3",
