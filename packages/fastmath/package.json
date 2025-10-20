@@ -47,7 +47,7 @@
     "@testing-library/dom": "^10.4.0",
     "@vitest/browser": "^3.2.3",
     "pkgroll": "^2.12.2",
-    "playwright": "^1.53.0",
+    "playwright": "^1.55.1",
     "tinybench": "^4.0.1",
     "vitest": "^3.2.3",
     "wasm-pack": "^0.12.1"
