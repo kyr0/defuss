@@ -15,7 +15,7 @@
     "@astrojs/node": "^9.4.3",
     "@tailwindcss/vite": "^4.1.4",
     "@types/uikit": "^3.14.5",
-    "astro": "^5.13.7",
+    "astro": "^5.15.6",
     "browserslist": "^4.24.3",
     "defuss": "^2.1.1",
     "defuss-astro": "^1.4.6",

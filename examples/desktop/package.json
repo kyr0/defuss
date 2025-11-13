@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@astrojs/node": "^9.2.2",
-    "astro": "^5.8.0",
+    "astro": "^5.15.6",
     "defuss": "workspace:*",
     "defuss-astro": "^1.4.3",
     "defuss-desktop": "workspace:*",
