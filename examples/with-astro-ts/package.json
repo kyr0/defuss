@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@astrojs/node": "^9.2.2",
-    "astro": "^5.8.0",
+    "astro": "^5.15.9",
     "defuss": "^2.0.7",
     "defuss-astro": "^1.4.3",
     "defuss-squeezy": "^0.0.3",
