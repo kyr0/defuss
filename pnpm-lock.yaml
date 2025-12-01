@@ -117,28 +117,28 @@ importers:
     dependencies:
       '@capacitor-community/background-geolocation':
         specifier: ^1.2.22
-        version: 1.2.22(@capacitor/core@7.4.3)
+        version: 1.2.22(@capacitor/core@7.4.4)
       '@capacitor/android':
         specifier: ^7.4.0
-        version: 7.4.0(@capacitor/core@7.4.3)
+        version: 7.4.0(@capacitor/core@7.4.4)
       '@capacitor/app':
         specifier: ^7.0.1
-        version: 7.0.1(@capacitor/core@7.4.3)
+        version: 7.0.1(@capacitor/core@7.4.4)
       '@capacitor/background-runner':
         specifier: ^2.1.0
-        version: 2.1.0(@capacitor/core@7.4.3)
+        version: 2.1.0(@capacitor/core@7.4.4)
       '@capacitor/camera':
         specifier: latest
-        version: 7.0.2(@capacitor/core@7.4.3)
+        version: 7.0.2(@capacitor/core@7.4.4)
       '@capacitor/core':
         specifier: latest
-        version: 7.4.3
+        version: 7.4.4
       '@capacitor/ios':
         specifier: ^7.4.0
-        version: 7.4.0(@capacitor/core@7.4.3)
+        version: 7.4.0(@capacitor/core@7.4.4)
       '@capacitor/splash-screen':
         specifier: latest
-        version: 7.0.3(@capacitor/core@7.4.3)
+        version: 7.0.3(@capacitor/core@7.4.4)
       browserslist:
         specifier: ^4.25.0
         version: 4.25.0
@@ -163,7 +163,7 @@ importers:
     devDependencies:
       '@capacitor/cli':
         specifier: latest
-        version: 7.4.3
+        version: 7.4.4
       dotenv:
         specifier: ^16.5.0
         version: 16.5.0
@@ -251,7 +251,7 @@ importers:
         version: link:../../packages/defuss
       defuss-astro:
         specifier: ^1.4.3
-        version: 1.4.3(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.89.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
+        version: 1.4.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.89.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
       defuss-desktop:
         specifier: workspace:*
         version: link:../../packages/desktop
@@ -321,7 +321,7 @@ importers:
         version: 2.1.0
       defuss-astro:
         specifier: ^1.4.3
-        version: 1.4.3(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
+        version: 1.4.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
       defuss-dson:
         specifier: ^1.1.0
         version: 1.1.0
@@ -375,7 +375,7 @@ importers:
         version: link:../../packages/defuss
       defuss-astro:
         specifier: ^1.4.3
-        version: 1.4.3(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
+        version: 1.4.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
       fslightbox:
         specifier: ^3.6.0
         version: 3.6.0
@@ -436,8 +436,6 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.3.2)(@vitest/browser@3.2.4)(happy-dom@17.6.3)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
-
-  examples/wasm-demo/public/wasm_rust: {}
 
   examples/with-astro-pwa-app:
     dependencies:
@@ -504,7 +502,7 @@ importers:
         version: 2.0.7
       defuss-astro:
         specifier: ^1.4.3
-        version: 1.4.3(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
+        version: 1.4.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
       defuss-squeezy:
         specifier: ^0.0.3
         version: 0.0.3
@@ -954,8 +952,6 @@ importers:
         specifier: '>=6.0.15'
         version: 6.3.5(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
 
-  packages/fastmath/pkg: {}
-
   packages/jwt:
     dependencies:
       defuss-env:
@@ -1008,8 +1004,6 @@ importers:
         specifier: ^0.12.1
         version: 0.12.1
 
-  packages/langid/pkg: {}
-
   packages/lightningimg:
     devDependencies:
       http-server:
@@ -1025,18 +1019,14 @@ importers:
         specifier: ^0.13.1
         version: 0.13.1
 
-  packages/lightningimg/lightningimg-wasm/pkg-bundler: {}
-
-  packages/lightningimg/lightningimg-wasm/pkg-node: {}
-
   packages/rpc:
     dependencies:
       astro:
         specifier: ^5.8.1
         version: 5.8.1(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
       defuss-dson:
-        specifier: workspace:*
-        version: link:../dson
+        specifier: ^1.1.1
+        version: 1.1.1
     devDependencies:
       '@types/express':
         specifier: ^5.0.3
@@ -1045,8 +1035,8 @@ importers:
         specifier: ^3.2.2
         version: 3.2.2(vitest@3.2.2(@types/debug@4.1.12)(@types/node@24.3.2)(happy-dom@17.6.3)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1))
       express:
-        specifier: ^5.1.0
-        version: 5.1.0
+        specifier: ^5.2.0
+        version: 5.2.0
       happy-dom:
         specifier: ^17.6.3
         version: 17.6.3
@@ -1108,8 +1098,6 @@ importers:
         specifier: ^0.12.1
         version: 0.12.1
 
-  packages/search/pkg: {}
-
   packages/ssg:
     dependencies:
       '@mdx-js/esbuild':
@@ -1134,8 +1122,8 @@ importers:
         specifier: ^0.25.9
         version: 0.25.9
       express:
-        specifier: ^5.1.0
-        version: 5.1.0
+        specifier: ^5.2.0
+        version: 5.2.0
       fast-glob:
         specifier: ^3.3.3
         version: 3.3.3
@@ -1450,13 +1438,13 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
-  '@capacitor/cli@7.4.3':
-    resolution: {integrity: sha512-SWozpdDgrbQ/ry1nIapugDFvE9z+l22BmU/+fpgL2Zv5487hGdXvCX5+1SluuFBP3IPpx6b4LjsKnBigyJoUWg==}
+  '@capacitor/cli@7.4.4':
+    resolution: {integrity: sha512-J7ciBE7GlJ70sr2s8oz1+H4ZdNk4MGG41fsakUlDHWva5UWgFIZYMiEdDvGbYazAYTaxN3lVZpH9zil9FfZj+Q==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
-  '@capacitor/core@7.4.3':
-    resolution: {integrity: sha512-wCWr8fQ9Wxn0466vPg7nMn0tivbNVjNy1yL4GvDSIZuZx7UpU2HeVGNe9QjN/quEd+YLRFeKEBLBw619VqUiNg==}
+  '@capacitor/core@7.4.4':
+    resolution: {integrity: sha512-xzjxpr+d2zwTpCaN0k+C6wKSZzWFAb9OVEUtmO72ihjr/NEDoLvsGl4WLfjWPcCO2zOy0b2X52tfRWjECFUjtw==}
 
   '@capacitor/ios@7.4.0':
     resolution: {integrity: sha512-xajNljo39eu0+Bw3eVnnMc73VRzWkp0m55S3dqJJOaT2GjqoWl1x0PrnnhYcDMp0X8aDPDBL8oz+XFpMjQiM1Q==}
@@ -3203,7 +3191,7 @@ packages:
   '@tailwindcss/vite@4.1.8':
     resolution: {integrity: sha512-CQ+I8yxNV5/6uGaJjiuymgw0kEQiNKRinYbZXPdx1fk5WgiyReG0VaUx/Xq6aVNSUNJFzxm6o8FNKS5aMaim5A==}
     peerDependencies:
-      vite: '>=6.0.12'
+      vite: '>=5.4.12'
 
   '@testing-library/dom@10.4.0':
     resolution: {integrity: sha512-pemlzrSESWbdAloYml3bAJMEfNh1Z7EduzqPKprCH5S341frlpYnUEW0H72dLxa6IsYr+mPno20GiSm+h9dEdQ==}
@@ -3468,7 +3456,7 @@ packages:
     resolution: {integrity: sha512-46ryTE9RZO/rfDd7pEqFl7etuyzekzEhUbTW3BvmeO/BcCMEgq59BKhek3dXDWgAj4oMK6OZi+vRr1wPW6qjEQ==}
     peerDependencies:
       msw: ^2.4.9
-      vite: '>=6.0.9'
+      vite: '>=5.4.12'
     peerDependenciesMeta:
       msw:
         optional: true
@@ -3743,12 +3731,13 @@ packages:
   binary-install@1.1.0:
     resolution: {integrity: sha512-rkwNGW+3aQVSZoD0/o3mfPN6Yxh3Id0R/xzTVBVVpGNlVz8EGwusksxRlbk/A5iKTZt9zkMn3qIqmAt3vpfbzg==}
     engines: {node: '>=10'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   blob-to-buffer@1.2.9:
     resolution: {integrity: sha512-BF033y5fN6OCofD3vgHmNtwZWRcq9NLyyxyILx9hfMy1sXYy4ojFl765hJ2lP0YaN2fuxPaLO2Vzzoxy0FLFFA==}
 
-  body-parser@2.2.0:
-    resolution: {integrity: sha512-02qvAaxv8tp7fBa/mw1ga98OGm+eCbqzJOKoRt70sLmfEEi+jyBYVTDGfCL/k06/4EMk/z01gCe7HoCH/f2LTg==}
+  body-parser@2.2.1:
+    resolution: {integrity: sha512-nfDwkulwiZYQIGwxdy0RUmowMhKcFVcYXUU7m4QlKYim1rUtg83xm2yjZ40QjDuc291AJjjeSc9b++AWHSgSHw==}
     engines: {node: '>=18'}
 
   boolbase@1.0.0:
@@ -3968,9 +3957,9 @@ packages:
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
 
-  content-disposition@1.0.0:
-    resolution: {integrity: sha512-Au9nRL8VNUut/XSzbQA38+M78dzP4D+eqg3gfJHMIHHYa3bg067xj1KxMUWj+VULbiZMowKngFFbKczUrNJ1mg==}
-    engines: {node: '>= 0.6'}
+  content-disposition@1.0.1:
+    resolution: {integrity: sha512-oIXISMynqSqm241k6kcQ5UwttDILMK4BiurCfGEREw6+X9jkkpEe5T9FZaApyLGGOnFuyMWZpdolTXMtvEJ08Q==}
+    engines: {node: '>=18'}
 
   content-type@1.0.5:
     resolution: {integrity: sha512-nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA==}
@@ -4081,6 +4070,15 @@ packages:
       supports-color:
         optional: true
 
+  debug@4.4.3:
+    resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+
   decimal.js@10.5.0:
     resolution: {integrity: sha512-8vDa8Qxvr/+d94hSh5P3IJwI5t8/c0KsMp+g8bNw9cY2icONa5aPfvKeieW1WlG0WQYwwhJ7mjui2xtiePQSXw==}
 
@@ -4132,6 +4130,10 @@ packages:
 
   defuss-dson@1.1.0:
     resolution: {integrity: sha512-UbzI07y1joJrXwpDZtiBs2BbVRTJL9HnJaQMiXe/Er7h9qbuCnPnikVOz9ecePRc9oMIY4zzld0YcCt+FbfGWw==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-dson@1.1.1:
+    resolution: {integrity: sha512-CvNIjeVM6dqg/aNIzB7wIgFZ0ic7B8EJMsUPRHVIYxFFFKB/lE1+cK+Tq3LZxaZISUYjXf+Siq+bMpXnE7+rVA==}
     engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
 
   defuss-env@1.0.1:
@@ -4526,8 +4528,8 @@ packages:
     resolution: {integrity: sha512-/kP8CAwxzLVEeFrMm4kMmy4CCDlpipyA7MYLVrdJIkV0fYF0UaigQHRsxHiuY/GEea+bh4KSv3TIlgr+2UL6bw==}
     engines: {node: '>=12.0.0'}
 
-  express@5.1.0:
-    resolution: {integrity: sha512-DT9ck5YIRU+8GYzzU5kT3eHGA5iL+1Zd0EutOmTE9Dtk+Tvuzd23VBU+ec7HPNSTxXYO55gPV/hq4pSBJDjFpA==}
+  express@5.2.0:
+    resolution: {integrity: sha512-XdpJDLxfztVY59X0zPI6sibRiGcxhTPXRD3IhJmjKf2jwMvkRGV1j7loB8U+heeamoU3XvihAaGRTR4aXXUN3A==}
     engines: {node: '>= 18'}
 
   extend@3.0.2:
@@ -4602,9 +4604,9 @@ packages:
     resolution: {integrity: sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==}
     engines: {node: '>=8'}
 
-  finalhandler@2.1.0:
-    resolution: {integrity: sha512-/t88Ty3d5JWQbWYgaOGCCYfXRwV1+be02WqYYlL6h0lEiUAMPM8o8qKGO01YIkOHzka2up08wvgYD0mDiI+q3Q==}
-    engines: {node: '>= 0.8'}
+  finalhandler@2.1.1:
+    resolution: {integrity: sha512-S8KoZgRZN+a5rNwqTxlZZePjT/4cnm0ROV70LedRHZ0p8u9fRID0hJUZQpkKLzro8LfmC8sx23bY6tVNxv8pQA==}
+    engines: {node: '>= 18.0.0'}
 
   firebase-admin@13.5.0:
     resolution: {integrity: sha512-QZOpv1DJRJpH8NcWiL1xXE10tw3L/bdPFlgjcWrqU3ufyOJDYfxB1MMtxiVTwxK16NlybQbEM6ciSich2uWEIQ==}
@@ -4919,6 +4921,10 @@ packages:
     resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==}
     engines: {node: '>= 0.8'}
 
+  http-errors@2.0.1:
+    resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
+    engines: {node: '>= 0.8'}
+
   http-parser-js@0.5.10:
     resolution: {integrity: sha512-Pysuw9XpUq5dVc/2SMHpuTY01RFl8fttgcyunjL7eEMhGM3cI4eOmiCycJDVCo/7O7ClfQD3SaI6ftDzqOXYMA==}
 
@@ -4949,6 +4955,10 @@ packages:
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
+    engines: {node: '>=0.10.0'}
+
+  iconv-lite@0.7.0:
+    resolution: {integrity: sha512-cf6L2Ds3h57VVmkZe+Pn+5APsT7FpqJtEhhieDCvrE2MK5Qk9MyffgQyuxQTm6BChfeZNtcOLHp9IcWRVcIcBQ==}
     engines: {node: '>=0.10.0'}
 
   idb@7.1.1:
@@ -5205,6 +5215,7 @@ packages:
 
   libsql@0.5.11:
     resolution: {integrity: sha512-P2xY1nL2Jl7oM75LcguAEYqouVcevWhLWT8RU/p9ldaqQx5s/chF9t5ZFXPWP0x9myQQ4SguRqPO+FqdnCzKQg==}
+    cpu: [x64, arm64, wasm32, arm]
     os: [darwin, linux, win32]
 
   lightningcss-darwin-arm64@1.30.1:
@@ -5595,6 +5606,10 @@ packages:
     resolution: {integrity: sha512-xRc4oEhT6eaBpU1XF7AjpOFD+xQmXNB5OVKwp4tqCuBpHLS/ZbBDrc07mYTDqVMg6PfxUjjNp85O6Cd2Z/5HWA==}
     engines: {node: '>= 0.6'}
 
+  mime-types@3.0.2:
+    resolution: {integrity: sha512-Lbgzdk0h4juoQ9fCKXW4by0UJqj+nOOrI9MJ1sSj4nI8aI2eo1qmvQEie4VD1glsS250n15LsWsYtCugiStS5A==}
+    engines: {node: '>=18'}
+
   mime@1.6.0:
     resolution: {integrity: sha512-x0Vn8spI+wuJ1O6S7gnbaQg8Pxh4NNHb7KSINmEWKiPE4RKOplvijn+NkmYmmRgP68mc70j2EbeTFRsrswaQeg==}
     engines: {node: '>=4'}
@@ -5919,9 +5934,8 @@ packages:
   path-to-regexp@6.3.0:
     resolution: {integrity: sha512-Yhpw4T9C6hPpgPeA28us07OJeqZ5EzQTkbfwuhsUg0c237RomFoETJgmp2sa3F/41gfLE6G5cqcYwznmeEeOlQ==}
 
-  path-to-regexp@8.2.0:
-    resolution: {integrity: sha512-TdrF7fW9Rphjq4RjrW0Kp2AW0Ahwu9sRGTkS6bvDi0SCwZlEZYmcfDbEsTz8RVk0EHIS/Vd1bv3JhG+1xZuAyQ==}
-    engines: {node: '>=16'}
+  path-to-regexp@8.3.0:
+    resolution: {integrity: sha512-7jdwVIRtsP8MYpdXSwOS0YdD0Du+qOoF/AEPIt88PcCFrZCzx41oxku1jD88hZBwbNUIEfpqvuhjFaMAqMTWnA==}
 
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
@@ -6116,6 +6130,7 @@ packages:
   puppeteer@24.9.0:
     resolution: {integrity: sha512-L0pOtALIx8rgDt24Y+COm8X52v78gNtBOW6EmUcEPci0TYD72SAuaXKqasRIx4JXxmg2Tkw5ySKcpPOwN8xXnQ==}
     engines: {node: '>=18'}
+    deprecated: < 24.15.0 is no longer supported
     hasBin: true
 
   purgecss@7.0.2:
@@ -6136,9 +6151,9 @@ packages:
     resolution: {integrity: sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==}
     engines: {node: '>= 0.6'}
 
-  raw-body@3.0.0:
-    resolution: {integrity: sha512-RmkhL8CAyCRPXCE28MMH0z2PNWQBNk2Q09ZdxM9IOOXwxwZbN+qbWaatPkdkWIKL2ZVDImrN/pK5HTRz2PcS4g==}
-    engines: {node: '>= 0.8'}
+  raw-body@3.0.2:
+    resolution: {integrity: sha512-K5zQjDllxWkf7Z5xJdV0/B0WTNqx6vxG70zJE4N0kBs4LovmEYWJzQGxC9bS9RAKu3bgM40lrd5zoLJ12MQ5BA==}
+    engines: {node: '>= 0.10'}
 
   react-dom@16.14.0:
     resolution: {integrity: sha512-1gCeQXDLoIqMgqD3IO2Ah9bnf0w9kzhwN5q4FGnHZ67hBm9yePzB5JJAIQCc8x3pFnNlwFq4RidZggNAAkzWWw==}
@@ -6754,6 +6769,10 @@ packages:
 
   statuses@2.0.1:
     resolution: {integrity: sha512-RwNA9Z/7PrK06rYLIzFMlaF+l73iwpzsqRIFgbMLbTcLD6cOao82TaWefPXQvB2fOC4AjuYSEndS7N/mTCbkdQ==}
+    engines: {node: '>= 0.8'}
+
+  statuses@2.0.2:
+    resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
     engines: {node: '>= 0.8'}
 
   std-env@3.9.0:
@@ -7485,7 +7504,7 @@ packages:
   vitefu@1.0.6:
     resolution: {integrity: sha512-+Rex1GlappUyNN6UfwbVZne/9cYC4+R2XDk9xkNXBKMw6HQagdX9PgZ8V2v1WUSK1wfBLp7qbI1+XSNIlB1xmA==}
     peerDependencies:
-      vite: '>=6.0.9'
+      vite: '>=5.4.12'
     peerDependenciesMeta:
       vite:
         optional: true
@@ -8009,27 +8028,27 @@ snapshots:
 
   '@canburaks/text-align-editorjs@1.1.0': {}
 
-  '@capacitor-community/background-geolocation@1.2.22(@capacitor/core@7.4.3)':
+  '@capacitor-community/background-geolocation@1.2.22(@capacitor/core@7.4.4)':
     dependencies:
-      '@capacitor/core': 7.4.3
+      '@capacitor/core': 7.4.4
 
-  '@capacitor/android@7.4.0(@capacitor/core@7.4.3)':
+  '@capacitor/android@7.4.0(@capacitor/core@7.4.4)':
     dependencies:
-      '@capacitor/core': 7.4.3
+      '@capacitor/core': 7.4.4
 
-  '@capacitor/app@7.0.1(@capacitor/core@7.4.3)':
+  '@capacitor/app@7.0.1(@capacitor/core@7.4.4)':
     dependencies:
-      '@capacitor/core': 7.4.3
+      '@capacitor/core': 7.4.4
 
-  '@capacitor/background-runner@2.1.0(@capacitor/core@7.4.3)':
+  '@capacitor/background-runner@2.1.0(@capacitor/core@7.4.4)':
     dependencies:
-      '@capacitor/core': 7.4.3
+      '@capacitor/core': 7.4.4
 
-  '@capacitor/camera@7.0.2(@capacitor/core@7.4.3)':
+  '@capacitor/camera@7.0.2(@capacitor/core@7.4.4)':
     dependencies:
-      '@capacitor/core': 7.4.3
+      '@capacitor/core': 7.4.4
 
-  '@capacitor/cli@7.4.3':
+  '@capacitor/cli@7.4.4':
     dependencies:
       '@ionic/cli-framework-output': 2.2.8
       '@ionic/utils-subprocess': 3.0.1
@@ -8051,17 +8070,17 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@capacitor/core@7.4.3':
+  '@capacitor/core@7.4.4':
     dependencies:
       tslib: 2.8.1
 
-  '@capacitor/ios@7.4.0(@capacitor/core@7.4.3)':
+  '@capacitor/ios@7.4.0(@capacitor/core@7.4.4)':
     dependencies:
-      '@capacitor/core': 7.4.3
+      '@capacitor/core': 7.4.4
 
-  '@capacitor/splash-screen@7.0.3(@capacitor/core@7.4.3)':
+  '@capacitor/splash-screen@7.0.3(@capacitor/core@7.4.4)':
     dependencies:
-      '@capacitor/core': 7.4.3
+      '@capacitor/core': 7.4.4
 
   '@capsizecss/unpack@2.4.0(encoding@0.1.13)':
     dependencies:
@@ -8917,7 +8936,7 @@ snapshots:
 
   '@ionic/utils-array@2.1.6':
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
@@ -8925,7 +8944,7 @@ snapshots:
   '@ionic/utils-fs@3.1.7':
     dependencies:
       '@types/fs-extra': 8.1.5
-      debug: 4.4.1
+      debug: 4.4.3
       fs-extra: 9.1.0
       tslib: 2.8.1
     transitivePeerDependencies:
@@ -8933,7 +8952,7 @@ snapshots:
 
   '@ionic/utils-object@2.1.6':
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
@@ -8942,7 +8961,7 @@ snapshots:
     dependencies:
       '@ionic/utils-object': 2.1.6
       '@ionic/utils-terminal': 2.3.5
-      debug: 4.4.1
+      debug: 4.4.3
       signal-exit: 3.0.7
       tree-kill: 1.2.2
       tslib: 2.8.1
@@ -8951,7 +8970,7 @@ snapshots:
 
   '@ionic/utils-stream@3.1.7':
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
@@ -10255,7 +10274,7 @@ snapshots:
 
   accepts@2.0.0:
     dependencies:
-      mime-types: 3.0.1
+      mime-types: 3.0.2
       negotiator: 1.0.0
 
   acorn-jsx@5.3.2(acorn@8.14.1):
@@ -10272,7 +10291,7 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -10927,16 +10946,16 @@ snapshots:
 
   blob-to-buffer@1.2.9: {}
 
-  body-parser@2.2.0:
+  body-parser@2.2.1:
     dependencies:
       bytes: 3.1.2
       content-type: 1.0.5
-      debug: 4.4.1
-      http-errors: 2.0.0
-      iconv-lite: 0.6.3
+      debug: 4.4.3
+      http-errors: 2.0.1
+      iconv-lite: 0.7.0
       on-finished: 2.4.1
       qs: 6.14.0
-      raw-body: 3.0.0
+      raw-body: 3.0.2
       type-is: 2.0.1
     transitivePeerDependencies:
       - supports-color
@@ -11141,9 +11160,7 @@ snapshots:
 
   concat-map@0.0.1: {}
 
-  content-disposition@1.0.0:
-    dependencies:
-      safe-buffer: 5.2.1
+  content-disposition@1.0.1: {}
 
   content-type@1.0.5: {}
 
@@ -11239,6 +11256,10 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
+  debug@4.4.3:
+    dependencies:
+      ms: 2.1.3
+
   decimal.js@10.5.0: {}
 
   decode-named-character-reference@1.1.0:
@@ -11253,11 +11274,11 @@ snapshots:
 
   defu@6.1.4: {}
 
-  defuss-astro@1.4.3(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.89.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1):
+  defuss-astro@1.4.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.89.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1):
     dependencies:
       astro: 5.13.7(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.89.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
       defuss: 2.0.7
-      defuss-vite: 1.1.3(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.89.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
+      defuss-vite: 1.1.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.89.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
       fast-glob: 3.3.3
       file-type: 19.6.0
       lightningimg: 1.0.3
@@ -11301,11 +11322,11 @@ snapshots:
       - uploadthing
       - yaml
 
-  defuss-astro@1.4.3(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1):
+  defuss-astro@1.4.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1):
     dependencies:
       astro: 5.13.7(@types/node@24.3.2)(encoding@0.1.13)(jiti@2.4.2)(lightningcss@1.30.1)(rollup@4.44.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
       defuss: 2.0.7
-      defuss-vite: 1.1.3(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
+      defuss-vite: 1.1.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
       fast-glob: 3.3.3
       file-type: 19.6.0
       lightningimg: 1.0.3
@@ -11531,6 +11552,8 @@ snapshots:
 
   defuss-dson@1.1.0: {}
 
+  defuss-dson@1.1.1: {}
+
   defuss-env@1.0.1: {}
 
   defuss-env@1.0.2: {}
@@ -11676,25 +11699,7 @@ snapshots:
       - tsx
       - yaml
 
-  defuss-vite@1.1.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1):
-    dependencies:
-      '@swc/core': 1.11.29(@swc/helpers@0.5.17)
-      vite: 6.3.5(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
-    transitivePeerDependencies:
-      - '@swc/helpers'
-      - '@types/node'
-      - jiti
-      - less
-      - lightningcss
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
-
-  defuss-vite@1.1.3(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.89.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1):
+  defuss-vite@1.1.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.89.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1):
     dependencies:
       '@swc/core': 1.11.29(@swc/helpers@0.5.17)
       vite: 6.3.5(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.89.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
@@ -11712,7 +11717,7 @@ snapshots:
       - tsx
       - yaml
 
-  defuss-vite@1.1.3(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1):
+  defuss-vite@1.1.3(@swc/helpers@0.5.17)(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1):
     dependencies:
       '@swc/core': 1.11.29(@swc/helpers@0.5.17)
       vite: 6.3.5(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
@@ -12095,23 +12100,24 @@ snapshots:
 
   expect-type@1.2.1: {}
 
-  express@5.1.0:
+  express@5.2.0:
     dependencies:
       accepts: 2.0.0
-      body-parser: 2.2.0
-      content-disposition: 1.0.0
+      body-parser: 2.2.1
+      content-disposition: 1.0.1
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.1
+      debug: 4.4.3
+      depd: 2.0.0
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
-      finalhandler: 2.1.0
+      finalhandler: 2.1.1
       fresh: 2.0.0
-      http-errors: 2.0.0
+      http-errors: 2.0.1
       merge-descriptors: 2.0.0
-      mime-types: 3.0.1
+      mime-types: 3.0.2
       on-finished: 2.4.1
       once: 1.4.0
       parseurl: 1.3.3
@@ -12121,7 +12127,7 @@ snapshots:
       router: 2.2.0
       send: 1.2.0
       serve-static: 2.2.0
-      statuses: 2.0.1
+      statuses: 2.0.2
       type-is: 2.0.1
       vary: 1.1.2
     transitivePeerDependencies:
@@ -12131,7 +12137,7 @@ snapshots:
 
   extract-zip@2.0.1:
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       get-stream: 5.2.0
       yauzl: 2.10.0
     optionalDependencies:
@@ -12204,14 +12210,14 @@ snapshots:
     dependencies:
       to-regex-range: 5.0.1
 
-  finalhandler@2.1.0:
+  finalhandler@2.1.1:
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
       parseurl: 1.3.3
-      statuses: 2.0.1
+      statuses: 2.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -12434,7 +12440,7 @@ snapshots:
     dependencies:
       basic-ftp: 5.0.5
       data-uri-to-buffer: 6.0.2
-      debug: 4.4.1
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -12758,13 +12764,21 @@ snapshots:
       statuses: 2.0.1
       toidentifier: 1.0.1
 
+  http-errors@2.0.1:
+    dependencies:
+      depd: 2.0.0
+      inherits: 2.0.4
+      setprototypeof: 1.2.0
+      statuses: 2.0.2
+      toidentifier: 1.0.1
+
   http-parser-js@0.5.10: {}
 
   http-proxy-agent@5.0.0:
     dependencies:
       '@tootallnate/once': 2.0.0
       agent-base: 6.0.2
-      debug: 4.4.1
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -12806,7 +12820,7 @@ snapshots:
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.1
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -12819,6 +12833,10 @@ snapshots:
       - supports-color
 
   iconv-lite@0.6.3:
+    dependencies:
+      safer-buffer: 2.1.2
+
+  iconv-lite@0.7.0:
     dependencies:
       safer-buffer: 2.1.2
 
@@ -13695,7 +13713,7 @@ snapshots:
   micromark@4.0.2:
     dependencies:
       '@types/debug': 4.1.12
-      debug: 4.4.1
+      debug: 4.4.3
       decode-named-character-reference: 1.1.0
       devlop: 1.1.0
       micromark-core-commonmark: 2.0.3
@@ -13728,6 +13746,10 @@ snapshots:
       mime-db: 1.52.0
 
   mime-types@3.0.1:
+    dependencies:
+      mime-db: 1.54.0
+
+  mime-types@3.0.2:
     dependencies:
       mime-db: 1.54.0
 
@@ -13931,7 +13953,7 @@ snapshots:
     dependencies:
       '@tootallnate/quickjs-emscripten': 0.23.0
       agent-base: 7.1.3
-      debug: 4.4.1
+      debug: 4.4.3
       get-uri: 6.0.4
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
@@ -14009,7 +14031,7 @@ snapshots:
 
   path-to-regexp@6.3.0: {}
 
-  path-to-regexp@8.2.0: {}
+  path-to-regexp@8.3.0: {}
 
   pathe@2.0.3: {}
 
@@ -14193,7 +14215,7 @@ snapshots:
   proxy-agent@6.5.0:
     dependencies:
       agent-base: 7.1.3
-      debug: 4.4.1
+      debug: 4.4.3
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
       lru-cache: 7.18.3
@@ -14258,11 +14280,11 @@ snapshots:
 
   range-parser@1.2.1: {}
 
-  raw-body@3.0.0:
+  raw-body@3.0.2:
     dependencies:
       bytes: 3.1.2
-      http-errors: 2.0.0
-      iconv-lite: 0.6.3
+      http-errors: 2.0.1
+      iconv-lite: 0.7.0
       unpipe: 1.0.0
 
   react-dom@16.14.0(react@16.14.0):
@@ -14618,11 +14640,11 @@ snapshots:
 
   router@2.2.0:
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
-      path-to-regexp: 8.2.0
+      path-to-regexp: 8.3.0
     transitivePeerDependencies:
       - supports-color
 
@@ -15041,7 +15063,7 @@ snapshots:
   socks-proxy-agent@8.0.5:
     dependencies:
       agent-base: 7.1.3
-      debug: 4.4.1
+      debug: 4.4.3
       socks: 2.8.4
     transitivePeerDependencies:
       - supports-color
@@ -15077,6 +15099,8 @@ snapshots:
   state-local@1.0.7: {}
 
   statuses@2.0.1: {}
+
+  statuses@2.0.2: {}
 
   std-env@3.9.0: {}
 
@@ -15435,7 +15459,7 @@ snapshots:
     dependencies:
       content-type: 1.0.5
       media-typer: 1.1.0
-      mime-types: 3.0.1
+      mime-types: 3.0.2
 
   typed-query-selector@2.12.0: {}
 
@@ -15692,7 +15716,7 @@ snapshots:
   vite-node@3.2.2(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1):
     dependencies:
       cac: 6.7.14
-      debug: 4.4.1
+      debug: 4.4.3
       es-module-lexer: 1.7.0
       pathe: 2.0.3
       vite: 6.3.6(@types/node@24.3.2)(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
