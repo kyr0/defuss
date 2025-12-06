@@ -56,6 +56,6 @@ transformers==4.52.4
 typing-inspection==0.4.1
 typing_extensions==4.14.0
 tzdata==2025.2
-urllib3==2.5.0
+urllib3==2.6.0
 xxhash==3.5.0
 yarl==1.20.1
