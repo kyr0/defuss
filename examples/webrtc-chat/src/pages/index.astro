@@ -1,0 +1,14 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { App } from "../components/App";
+
+export const prerender = true;
+
+const roomId = Astro.url.searchParams.get("room") || "lobby";
+---
+
+<Layout title="WebRTC Chat">
+	<App client:load roomId={roomId}>
+		<div slot="fallback">Loading...</div>
+	</App>
+</Layout>

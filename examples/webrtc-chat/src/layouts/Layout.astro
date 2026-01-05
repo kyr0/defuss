@@ -1,0 +1,45 @@
+---
+import "./Layout.css";
+
+interface Props {
+	title: string;
+	marginTop?: string;
+}
+
+const { marginTop } = Astro.props as Props;
+---
+
+<!doctype html>
+<html class="dark" lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="icon" type="image/webp" href="/favicon.webp" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="keywords"
+			content="Astro, TypeScript, defuss, web development, modern web, frontend"
+		/>
+		<meta
+			name="description"
+			content="Explore the integration of Astro, TypeScript, and defuss for modern web development."
+		/>
+		<title>{Astro.props.title}</title>
+	</head>
+
+	<body>
+		{
+			typeof marginTop !== "undefined" ? (
+				<div class="vbox justify-center">
+					Please scroll down to load/hydrate/run the interactive JS.
+				</div>
+			) : (
+				""
+			)
+		}
+		<div class="vbox justify-center" style={`margin-top: ${marginTop}`}>
+			<div class="hbox text-center" style="max-width: 1280px;">
+				<slot />
+			</div>
+		</div>
+	</body>
+</html>

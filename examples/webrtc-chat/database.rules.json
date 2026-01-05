@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "rooms": {
+      "$room": {
+        "members": {
+          ".read": "auth != null",
+          "$member": {
+            ".write": "auth != null && (auth.uid === $member || (data.exists() && data.child('lastSeen').val() < (now - 900000) && !newData.exists()))"
+          }
+        },
+        "signals": {
+          "$recipient": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          }
+        }
+      }
+    }
+  }
+}
