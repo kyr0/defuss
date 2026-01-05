@@ -1,9 +1,8 @@
 import "./Chat.css";
-import { type Props, createRef, $ } from "defuss";
-// import { atom } from "nanostores";
-import { initMesh, type Signal } from "../lib/rtc";
+import { type Props, createRef } from "defuss";
+import { initMesh } from "../lib/rtc";
 import { db, auth } from "../lib/firebase";
-import { ref as dbRef, onValue, onChildAdded, set, push, remove, onDisconnect } from "firebase/database";
+import { ref as dbRef, onValue, set, push, remove, onDisconnect } from "firebase/database";
 import { signInAnonymously, signOut } from "firebase/auth";
 
 export interface ChatProps extends Props {
