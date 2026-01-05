@@ -3,10 +3,20 @@
     "rooms": {
       ".read": "auth != null",
       "$room": {
+        "motd": {
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('rooms/' + $room + '/mods/' + auth.uid).val() === true"
+        },
+        "mods": {
+          ".read": "auth != null",
+          "$mod": {
+            ".write": "auth != null && $mod.beginsWith(auth.uid) && !data.exists()"
+          }
+        },
         "members": {
           ".read": "auth != null",
           "$member": {
-            ".write": "auth != null && ($member === auth.uid || $member.beginsWith(auth.uid + '_') || (data.exists() && data.child('lastSeen').val() < (now - 300000) && !newData.exists()))"
+            ".write": "auth != null && ($member === auth.uid || $member.beginsWith(auth.uid + '_') || (data.exists() && data.child('lastSeen').val() < (now - 300000) && !newData.exists()) || root.child('rooms/' + $room + '/mods/' + auth.uid).val() === true)"
           }
         },
         "signals": {
@@ -14,7 +24,8 @@
             ".read": "auth != null",
             ".write": "auth != null"
           }
-        }
+        },
+        ".write": "auth != null && root.child('rooms/' + $room + '/mods/' + auth.uid).val() === true"
       }
     }
   }

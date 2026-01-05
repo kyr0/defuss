@@ -15,9 +15,7 @@ export function App({ roomId: propRoomId }: AppProps) {
   }
 
   return (
-    <div class="vbox gap-md" style="width: 100%; max-width: 1400px; margin: 0 auto;">
-      <h1>WebRTC Chat (Room: {roomId})</h1>
-      <p class="dim">Serverless P2P Chat via Firebase signaling</p>
+    <div class="vbox gap-md" style="width: 100%; margin: 0 auto;">
       <Chat roomId={roomId} />
     </div>
   );

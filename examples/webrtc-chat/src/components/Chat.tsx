@@ -31,6 +31,9 @@ export function Chat({ roomId }: ChatProps) {
     const knownNicks = new Map<string, string>();
     const unsubs: (() => void)[] = [];
     let roomsData: Record<string, any> = {};
+    let isMod = false;
+    let roomMotd = "";
+    const roomMods = new Set<string>(); // UIDs of room moderators
 
     // --- STORES ---
     // 1. User Settings (Global, Persistent)
@@ -108,26 +111,33 @@ export function Chat({ roomId }: ChatProps) {
 
         // Update User List
         await $(userListRef).update(
-            Object.entries(activeMembers).map(([id, data]) => (
-                <li
-                    className={`list-item ${id === myId ? 'active' : ''}`}
-                    onClick={() => {
-                        const input = inputRef.current as HTMLInputElement;
-                        if (input) {
-                            input.value = `/pm ${data.nick} `;
-                            input.focus();
-                        }
-                    }}
-                >
-                    {data?.nick ? data.nick : id.substring(0, 8)}
-                </li>
-            ))
+            Object.entries(activeMembers).map(([id, data]) => {
+                // Check if this user is a mod (UID prefix matches any mod)
+                const uidPrefix = id.split('_')[0]; // Get UID without session suffix
+                const isUserMod = roomMods.has(uidPrefix);
+                const displayName = data?.nick ? data.nick : id.substring(0, 8);
+
+                return (
+                    <li
+                        className={`list-item ${id === myId ? 'active' : ''}`}
+                        onClick={() => {
+                            const input = inputRef.current as HTMLInputElement;
+                            if (input) {
+                                input.value = `/pm ${data.nick} `;
+                                input.focus();
+                            }
+                        }}
+                    >
+                        {isUserMod ? '👑 ' : ''}{displayName}
+                    </li>
+                );
+            })
         );
 
         // Update Room List
         await $(roomListRef).update(
             Object.keys(roomsData).map(r => {
-                const count = roomsData[r].members ? Object.keys(roomsData[r].members).length : 0;
+                const count = roomsData[r]?.memberCount || 0;
                 return (
                     <li
                         className={`list-item ${r === roomId ? 'active' : ''}`}
@@ -205,8 +215,13 @@ export function Chat({ roomId }: ChatProps) {
 /join <room> - Switch to room
 /sep <nick> - Invite user to private "separee"
 /leave - Leave current room
-/help - Show this help
-/clear - Clear local history`,
+/clear - Clear local history
+/debug - Dump debug info
+
+MOD Commands (room creator only):
+/motd <msg> - Set room message of the day
+/kick <nick> - Kick user from room
+/delete - Delete the room`,
                     type: 'MSG'
                 });
                 return;
@@ -241,6 +256,62 @@ export function Chat({ roomId }: ChatProps) {
             // CLEAR
             if (text === '/clear') {
                 historyStore.set("messages", []);
+                return;
+            }
+
+            // MOTD (MOD only)
+            if (text.startsWith('/motd ')) {
+                if (!isMod) {
+                    handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: 'Only MODs can change MOTD.', timestamp: Date.now() });
+                    return;
+                }
+                const newMotd = text.substring(6).trim();
+                set(dbRef(db, `rooms/${roomId}/motd`), newMotd)
+                    .then(() => {
+                        roomMotd = newMotd;
+                        handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `MOTD set to: ${newMotd}`, timestamp: Date.now() });
+                        // Broadcast MOTD to peers
+                        if (chatMesh) chatMesh.broadcast({ type: 'MOTD_UPDATE', motd: newMotd });
+                    })
+                    .catch(e => handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `Failed to set MOTD: ${e.message}`, timestamp: Date.now() }));
+                return;
+            }
+
+            // KICK (MOD only)
+            if (text.startsWith('/kick ')) {
+                if (!isMod) {
+                    handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: 'Only MODs can kick users.', timestamp: Date.now() });
+                    return;
+                }
+                const targetNick = text.substring(6).trim();
+                const targetId = resolveNickToId(targetNick);
+                if (targetId) {
+                    remove(dbRef(db, `rooms/${roomId}/members/${targetId}`))
+                        .then(() => {
+                            handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `${targetNick} has been kicked.`, timestamp: Date.now() });
+                            // Broadcast kick message
+                            if (chatMesh) chatMesh.broadcast({ type: 'KICK', targetId, targetNick });
+                        })
+                        .catch(e => handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `Failed to kick: ${e.message}`, timestamp: Date.now() }));
+                } else {
+                    handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `User '${targetNick}' not found.`, timestamp: Date.now() });
+                }
+                return;
+            }
+
+            // DELETE (MOD only)
+            if (text === '/delete') {
+                if (!isMod) {
+                    handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: 'Only MODs can delete rooms.', timestamp: Date.now() });
+                    return;
+                }
+                if (confirm(`Are you sure you want to delete room '${roomId}'?`)) {
+                    remove(dbRef(db, `rooms/${roomId}`))
+                        .then(() => {
+                            window.location.href = '/';
+                        })
+                        .catch(e => handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `Failed to delete room: ${e.message}`, timestamp: Date.now() }));
+                }
                 return;
             }
 
@@ -397,6 +468,39 @@ export function Chat({ roomId }: ChatProps) {
             });
             onDisconnect(membersRef).remove();
 
+            // Try to register as MOD (only succeeds if we're first - rule checks !data.exists())
+            const authUid = user.uid;
+            try {
+                await set(dbRef(db, `rooms/${roomId}/mods/${authUid}`), true);
+                isMod = true;
+                console.log("[Chat] Registered as room MOD");
+            } catch (e) {
+                // Not first joiner, so not MOD
+                isMod = false;
+                console.log("[Chat] Not a MOD (room already has one)");
+            }
+
+            // Fetch and listen to MOTD
+            const motdListener = onValue(dbRef(db, `rooms/${roomId}/motd`), (snapshot) => {
+                roomMotd = snapshot.val() || "";
+                // Update MOTD display
+                const motdEl = motdRef.current as HTMLElement;
+                if (motdEl) motdEl.textContent = roomMotd;
+            });
+            unsubs.push(motdListener);
+
+            // Listen to mods list
+            const modsListener = onValue(dbRef(db, `rooms/${roomId}/mods`), (snapshot) => {
+                roomMods.clear();
+                const mods = snapshot.val();
+                if (mods) {
+                    Object.keys(mods).forEach(uid => roomMods.add(uid));
+                }
+                console.log("[Chat] Room mods:", Array.from(roomMods));
+                updateView(); // Refresh user list with crown indicators
+            });
+            unsubs.push(modsListener);
+
             // Keepalive (Heartbeat every 30s)
             const liveInterval = setInterval(() => {
                 set(dbRef(db, `rooms/${roomId}/members/${myId}/lastSeen`), Date.now());
@@ -413,6 +517,19 @@ export function Chat({ roomId }: ChatProps) {
                         .catch(e => console.error(`[Chat] Signal send failed to ${targetId}`, e));
                 },
                 (fromId, msg) => {
+                    // Handle special broadcast types
+                    if (msg.type === 'MOTD_UPDATE' && msg.motd !== undefined) {
+                        roomMotd = msg.motd;
+                        const motdEl = motdRef.current as HTMLElement;
+                        if (motdEl) motdEl.textContent = roomMotd;
+                        return;
+                    }
+                    if (msg.type === 'KICK' && msg.targetId === myId) {
+                        handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: 'You have been kicked from this room.', timestamp: Date.now() });
+                        setTimeout(() => window.location.href = '/', 2000);
+                        return;
+                    }
+                    // Normal chat message
                     handleMessage(msg);
                 },
                 (fromId) => {
@@ -505,12 +622,23 @@ export function Chat({ roomId }: ChatProps) {
                     console.timeEnd("[Chat] Shallow Rooms Fetch");
 
                     if (roomKeys) {
-                        // Convert { roomName: true } to { roomName: { members: {} } } for UI compatibility
-                        roomsData = Object.keys(roomKeys).reduce((acc, key) => {
-                            acc[key] = { members: {} }; // Placeholder, we don't need member counts for sidebar
-                            return acc;
-                        }, {} as Record<string, any>);
-                        console.log(`[Chat] Rooms loaded: ${Object.keys(roomsData).length}`);
+                        const roomNames = Object.keys(roomKeys);
+                        console.log(`[Chat] Rooms loaded: ${roomNames.length}`);
+
+                        // Fetch member counts for each room (shallow)
+                        const roomsWithCounts: Record<string, any> = {};
+                        await Promise.all(roomNames.map(async (roomName) => {
+                            try {
+                                const membersRes = await fetch(`${DB_URL}/rooms/${roomName}/members.json?shallow=true&auth=${token}`);
+                                const membersKeys = await membersRes.json();
+                                const memberCount = membersKeys ? Object.keys(membersKeys).length : 0;
+                                roomsWithCounts[roomName] = { memberCount };
+                            } catch {
+                                roomsWithCounts[roomName] = { memberCount: 0 };
+                            }
+                        }));
+
+                        roomsData = roomsWithCounts;
                     } else {
                         roomsData = {};
                     }
@@ -541,14 +669,54 @@ export function Chat({ roomId }: ChatProps) {
         }
     });
 
+    // Sidebar toggle state refs
+    const roomListContainerRef = createRef();
+    const userListContainerRef = createRef();
+    const overlayRef = createRef();
+
+    const toggleSidebar = (side: 'rooms' | 'users') => {
+        const roomEl = roomListContainerRef.current as HTMLElement;
+        const userEl = userListContainerRef.current as HTMLElement;
+        const overlayEl = overlayRef.current as HTMLElement;
+
+        if (side === 'rooms') {
+            roomEl?.classList.toggle('open');
+            userEl?.classList.remove('open');
+        } else {
+            userEl?.classList.toggle('open');
+            roomEl?.classList.remove('open');
+        }
+
+        const anyOpen = roomEl?.classList.contains('open') || userEl?.classList.contains('open');
+        overlayEl?.classList.toggle('visible', anyOpen);
+    };
+
+    const closeSidebars = () => {
+        (roomListContainerRef.current as HTMLElement)?.classList.remove('open');
+        (userListContainerRef.current as HTMLElement)?.classList.remove('open');
+        (overlayRef.current as HTMLElement)?.classList.remove('visible');
+    };
+
+    // MOTD state
+    const motdRef = createRef();
+    let currentMotd = "";
+
     return (
         <div class="chat-container">
-            <div class="room-list">
+            <div class="sidebar-overlay" ref={overlayRef} onClick={closeSidebars}></div>
+
+            <div class="room-list" ref={roomListContainerRef}>
                 <div class="list-header">#️⃣ Active Rooms</div>
                 <ul ref={roomListRef} class="list-content"></ul>
             </div>
 
             <div class="main-chat">
+                <div class="chat-header">
+                    <button class="burger-btn" onClick={() => toggleSidebar('rooms')}>☰</button>
+                    <span class="room-title">#{roomId}</span>
+                    <span class="motd-text" ref={motdRef}></span>
+                    <button class="burger-btn" onClick={() => toggleSidebar('users')}>👥</button>
+                </div>
                 <div class="messages" ref={containerRef}></div>
                 <input
                     type="text"
@@ -559,7 +727,7 @@ export function Chat({ roomId }: ChatProps) {
                 />
             </div>
 
-            <div class="user-list">
+            <div class="user-list" ref={userListContainerRef}>
                 <div class="list-header">👥 Members</div>
                 <ul ref={userListRef} class="list-content"></ul>
             </div>
