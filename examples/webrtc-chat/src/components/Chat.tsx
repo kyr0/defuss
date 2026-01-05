@@ -34,6 +34,7 @@ export function Chat({ roomId }: ChatProps) {
     let isMod = false;
     let roomMotd = "";
     const roomMods = new Set<string>(); // UIDs of room moderators
+    let refreshRoomList: () => void = () => { }; // Will be set in onMount
 
     // --- STORES ---
     // 1. User Settings (Global, Persistent)
@@ -109,34 +110,55 @@ export function Chat({ roomId }: ChatProps) {
             containerRef.current.scrollTop = containerRef.current.scrollHeight;
         }
 
-        // Update User List
+        // Update User List - Filter out ghost users without proper nicks
+        const validMembers = Object.entries(activeMembers).filter(([id, data]) => data?.nick);
+
+        // Sort: Self first, then mods (alphabetically), then others (alphabetically)
+        const sortedMembers = validMembers.sort(([idA, dataA], [idB, dataB]) => {
+            const isSelfA = idA === myId;
+            const isSelfB = idB === myId;
+            if (isSelfA) return -1;
+            if (isSelfB) return 1;
+
+            const isModA = roomMods.has(idA.split('_')[0]);
+            const isModB = roomMods.has(idB.split('_')[0]);
+            if (isModA && !isModB) return -1;
+            if (!isModA && isModB) return 1;
+
+            return (dataA.nick || '').localeCompare(dataB.nick || '');
+        });
+
         await $(userListRef).update(
-            Object.entries(activeMembers).map(([id, data]) => {
+            sortedMembers.map(([id, data]) => {
                 // Check if this user is a mod (UID prefix matches any mod)
                 const uidPrefix = id.split('_')[0]; // Get UID without session suffix
                 const isUserMod = roomMods.has(uidPrefix);
-                const displayName = data?.nick ? data.nick : id.substring(0, 8);
+                const isSelf = id === myId;
+                const displayName = data.nick;
 
                 return (
                     <li
-                        className={`list-item ${id === myId ? 'active' : ''}`}
+                        className={`list-item ${isSelf ? 'active self' : ''}`}
                         onClick={() => {
+                            if (isSelf) return; // Can't PM yourself
                             const input = inputRef.current as HTMLInputElement;
-                            if (input) {
+                            if (input && data.nick) {
                                 input.value = `/pm ${data.nick} `;
                                 input.focus();
                             }
                         }}
                     >
-                        {isUserMod ? '👑 ' : ''}{displayName}
+                        {isUserMod ? '👑 ' : ''}{displayName}{isSelf ? ' (you)' : ''}
                     </li>
                 );
             })
         );
 
-        // Update Room List
+        // Update Room List - Sort alphabetically
+        const sortedRooms = Object.keys(roomsData).sort((a, b) => a.localeCompare(b));
+
         await $(roomListRef).update(
-            Object.keys(roomsData).map(r => {
+            sortedRooms.map(r => {
                 const count = roomsData[r]?.memberCount || 0;
                 return (
                     <li
@@ -454,8 +476,14 @@ MOD Commands (room creator only):
             } else {
                 console.log("[Chat] Reusing existing session:", user.uid);
             }
+
             // Use UID + Session suffix to allow multiple tabs (P2P requires unique IDs)
-            const sessionSuffix = Math.floor(Math.random() * 10000).toString();
+            // Persist suffix in sessionStorage so refresh doesn't create new identity
+            let sessionSuffix = sessionStorage.getItem('chat-session-suffix');
+            if (!sessionSuffix) {
+                sessionSuffix = Math.floor(Math.random() * 10000).toString();
+                sessionStorage.setItem('chat-session-suffix', sessionSuffix);
+            }
             myId = `${user.uid}_${sessionSuffix}`;
             console.timeEnd("[Chat] Auth");
             console.log(`[Chat] Peer ID: ${myId} (Auth: ${user.uid}) in Room ${roomId}`);
@@ -648,6 +676,9 @@ MOD Commands (room creator only):
                 }
             };
 
+            // Expose for refresh button
+            refreshRoomList = fetchRoomList;
+
             // Fetch immediately after auth, don't wait for anything
             fetchRoomList();
 
@@ -706,7 +737,10 @@ MOD Commands (room creator only):
             <div class="sidebar-overlay" ref={overlayRef} onClick={closeSidebars}></div>
 
             <div class="room-list" ref={roomListContainerRef}>
-                <div class="list-header">#️⃣ Active Rooms</div>
+                <div class="list-header">
+                    <span>#️⃣ Active Rooms</span>
+                    <button class="refresh-btn" onClick={() => refreshRoomList()} title="Refresh rooms">🔄</button>
+                </div>
                 <ul ref={roomListRef} class="list-content"></ul>
             </div>
 
@@ -728,7 +762,10 @@ MOD Commands (room creator only):
             </div>
 
             <div class="user-list" ref={userListContainerRef}>
-                <div class="list-header">👥 Members</div>
+                <div class="list-header">
+                    <span>👥 Members</span>
+                    <button class="refresh-btn" onClick={() => updateView()} title="Refresh members">🔄</button>
+                </div>
                 <ul ref={userListRef} class="list-content"></ul>
             </div>
         </div>
