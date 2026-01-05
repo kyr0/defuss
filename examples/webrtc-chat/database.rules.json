@@ -1,11 +1,12 @@
 {
   "rules": {
     "rooms": {
+      ".read": "auth != null",
       "$room": {
         "members": {
           ".read": "auth != null",
           "$member": {
-            ".write": "auth != null && (auth.uid === $member || (data.exists() && data.child('lastSeen').val() < (now - 900000) && !newData.exists()))"
+            ".write": "auth != null && ($member === auth.uid || $member.beginsWith(auth.uid + '_') || (data.exists() && data.child('lastSeen').val() < (now - 300000) && !newData.exists()))"
           }
         },
         "signals": {

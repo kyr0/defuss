@@ -8,7 +8,8 @@ export interface Signal {
 export function initMesh(
     myId: string,
     onSignal: (targetId: string, signal: Signal) => void,
-    onMessage: (fromId: string, msg: any) => void
+    onMessage: (fromId: string, msg: any) => void,
+    onPeerDisconnect: (fromId: string) => void
 ) {
     const peers = new Map<string, { pc: RTCPeerConnection; dc?: RTCDataChannel; candidateQueue: RTCIceCandidateInit[]; makingOffer: boolean; ignoreOffer: boolean }>();
 
@@ -96,6 +97,7 @@ export function initMesh(
         };
         channel.onclose = () => {
             console.log(`[${targetId}] DataChannel CLOSED`);
+            onPeerDisconnect(targetId);
         };
         channel.onerror = (err) => {
             console.error(`[${targetId}] DataChannel ERROR`, err);
@@ -187,11 +189,25 @@ export function initMesh(
 
         broadcast: (msg: any) => {
             const json = JSON.stringify(msg);
-            peers.forEach((p) => {
+            let openCount = 0;
+            let sentTo: string[] = [];
+            peers.forEach((p, id) => {
                 if (p.dc && p.dc.readyState === 'open') {
                     p.dc.send(json);
+                    openCount++;
+                    sentTo.push(id);
                 }
             });
+            console.log(`[RTC] Broadcast to ${openCount} peers:`, sentTo);
+        },
+
+        sendTo: (targetId: string, msg: any) => {
+            const p = peers.get(targetId);
+            if (p && p.dc && p.dc.readyState === 'open') {
+                p.dc.send(JSON.stringify(msg));
+            } else {
+                console.warn(`[RTC] Cannot send to ${targetId}, channel not open`);
+            }
         },
 
         disconnect: () => {
