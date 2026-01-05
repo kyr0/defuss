@@ -23,6 +23,7 @@ export function Chat({ roomId }: ChatProps) {
     const inputRef = createRef();
     const roomListRef = createRef();
     const userListRef = createRef();
+    const emojiModalRef = createRef();
 
     let chatMesh: any;
     let myId: string;
@@ -218,13 +219,46 @@ export function Chat({ roomId }: ChatProps) {
         return Object.entries(activeMembers).find(([_, data]) => data.nick === nick)?.[0];
     };
 
+    // Emoji modal functions
+    const toggleEmojiModal = () => {
+        const modal = emojiModalRef.current as HTMLElement;
+        modal?.classList.toggle('open');
+    };
+
+    const insertEmoji = (emoji: string) => {
+        const textarea = inputRef.current as HTMLTextAreaElement;
+        if (textarea) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            textarea.value = text.substring(0, start) + emoji + text.substring(end);
+            textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+            textarea.focus();
+        }
+        toggleEmojiModal();
+    };
+
     const onKeyArgs = (evt: KeyboardEvent) => {
-        if (evt.key === 'Enter') {
-            const input = evt.target as HTMLInputElement;
-            const text = input.value.trim();
+        const textarea = evt.target as HTMLTextAreaElement;
+
+        // Shift+Enter = newline (let default behavior happen)
+        if (evt.key === 'Enter' && evt.shiftKey) {
+            // Auto-resize textarea
+            setTimeout(() => {
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+            }, 0);
+            return;
+        }
+
+        // Enter only = send message
+        if (evt.key === 'Enter' && !evt.shiftKey) {
+            evt.preventDefault();
+            const text = textarea.value.trim();
             if (!text) return;
 
-            input.value = '';
+            textarea.value = '';
+            textarea.style.height = 'auto'; // Reset height
 
             // HELP
             if (text === '/help') {
@@ -235,14 +269,15 @@ export function Chat({ roomId }: ChatProps) {
 /me <action> - Broadcast an action
 /pm <nick> <msg> - Send private message
 /join <room> - Switch to room
-/sep <nick> - Invite user to private "separee"
+/sep <nick> - Create private separee with user
 /leave - Leave current room
 /clear - Clear local history
 /debug - Dump debug info
 
 MOD Commands (room creator only):
 /motd <msg> - Set room message of the day
-/kick <nick> - Kick user from room
+/invite <nick> - Invite user to separee
+/kick <nick> - Kick user (removes access)
 /delete - Delete the room`,
                     type: 'MSG'
                 });
@@ -299,7 +334,7 @@ MOD Commands (room creator only):
                 return;
             }
 
-            // KICK (MOD only)
+            // KICK (MOD only) - Also removes from allowed list for separees
             if (text.startsWith('/kick ')) {
                 if (!isMod) {
                     handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: 'Only MODs can kick users.', timestamp: Date.now() });
@@ -308,9 +343,18 @@ MOD Commands (room creator only):
                 const targetNick = text.substring(6).trim();
                 const targetId = resolveNickToId(targetNick);
                 if (targetId) {
-                    remove(dbRef(db, `rooms/${roomId}/members/${targetId}`))
+                    const targetUid = targetId.split('_')[0];
+
+                    // Remove from members
+                    const kickPromises = [
+                        remove(dbRef(db, `rooms/${roomId}/members/${targetId}`)),
+                        // Also remove from allowed list (for separees)
+                        remove(dbRef(db, `rooms/${roomId}/allowed/${targetUid}`))
+                    ];
+
+                    Promise.all(kickPromises)
                         .then(() => {
-                            handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `${targetNick} has been kicked.`, timestamp: Date.now() });
+                            handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `${targetNick} has been kicked and removed from room access.`, timestamp: Date.now() });
                             // Broadcast kick message
                             if (chatMesh) chatMesh.broadcast({ type: 'KICK', targetId, targetNick });
                         })
@@ -333,6 +377,37 @@ MOD Commands (room creator only):
                             window.location.href = '/';
                         })
                         .catch(e => handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `Failed to delete room: ${e.message}`, timestamp: Date.now() }));
+                }
+                return;
+            }
+
+            // INVITE (MOD only - for separees)
+            if (text.startsWith('/invite ')) {
+                if (!isMod) {
+                    handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: 'Only MODs can invite users.', timestamp: Date.now() });
+                    return;
+                }
+                const targetNick = text.substring(8).trim();
+                const targetId = resolveNickToId(targetNick);
+                if (targetId) {
+                    const targetUid = targetId.split('_')[0];
+                    set(dbRef(db, `rooms/${roomId}/allowed/${targetUid}`), true)
+                        .then(() => {
+                            handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `${targetNick} has been invited to this room.`, timestamp: Date.now() });
+                            // Send invite notification
+                            const inviteMsg: Message = {
+                                id: crypto.randomUUID(),
+                                senderId: myId,
+                                nick: myNick,
+                                text: `You've been invited to room /?room=${roomId}`,
+                                timestamp: Date.now(),
+                                type: 'PRIVMSG'
+                            };
+                            if (chatMesh) chatMesh.sendTo(targetId, inviteMsg);
+                        })
+                        .catch(e => handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `Failed to invite: ${e.message}`, timestamp: Date.now() }));
+                } else {
+                    handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `User '${targetNick}' not found.`, timestamp: Date.now() });
                 }
                 return;
             }
@@ -381,35 +456,56 @@ MOD Commands (room creator only):
                 return;
             }
 
-            // SEP
+            // SEP (Create private separee room)
             if (text.startsWith('/sep ')) {
                 const targetNick = text.substring(5).trim();
                 const targetId = resolveNickToId(targetNick);
                 if (targetId) {
-                    const array = new Uint8Array(24);
+                    // Get the target user's UID (strip session suffix)
+                    const targetUid = targetId.split('_')[0];
+                    const myUid = myId.split('_')[0];
+
+                    // Generate SHA256-like hash for room name
+                    const array = new Uint8Array(32);
                     crypto.getRandomValues(array);
-                    const hash = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+                    const sepHash = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 
-                    const inviteMsg: Message = {
-                        id: crypto.randomUUID(),
-                        senderId: myId,
-                        nick: myNick,
-                        text: `I invited you to a private separee. Join -> /?room=${hash}`,
-                        timestamp: Date.now(),
-                        type: 'PRIVMSG'
-                    };
-                    if (chatMesh) chatMesh.sendTo(targetId, inviteMsg);
+                    // Create separee room in Firebase with proper structure
+                    const sepRoomRef = dbRef(db, `rooms/${sepHash}`);
+                    set(sepRoomRef, {
+                        type: 'separee',
+                        creator: myUid,
+                        allowed: {
+                            [myUid]: true,
+                            [targetUid]: true
+                        },
+                        mods: {
+                            [myUid]: true
+                        }
+                    }).then(() => {
+                        // Send invite to target user
+                        const inviteMsg: Message = {
+                            id: crypto.randomUUID(),
+                            senderId: myId,
+                            nick: myNick,
+                            text: `I invited you to a private separee. Join -> /?room=${sepHash}`,
+                            timestamp: Date.now(),
+                            type: 'PRIVMSG'
+                        };
+                        if (chatMesh) chatMesh.sendTo(targetId, inviteMsg);
 
-                    handleMessage({
-                        id: 'sys', senderId: 'system', nick: 'System',
-                        text: `Invited ${targetNick} to separee. Switching in 3s...`,
-                        timestamp: Date.now()
+                        handleMessage({
+                            id: 'sys', senderId: 'system', nick: 'System',
+                            text: `Created private separee. Invited ${targetNick}. Switching in 3s...`,
+                            timestamp: Date.now()
+                        });
+
+                        setTimeout(() => {
+                            window.location.href = `/?room=${sepHash}`;
+                        }, 3000);
+                    }).catch(e => {
+                        handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `Failed to create separee: ${e.message}`, timestamp: Date.now() });
                     });
-
-                    setTimeout(() => {
-                        window.location.href = `/?room=${hash}`;
-                    }, 3000);
-
                 } else {
                     handleMessage({ id: 'sys', senderId: 'system', nick: 'System', text: `User '${targetNick}' not found.`, timestamp: Date.now() });
                 }
@@ -738,7 +834,7 @@ MOD Commands (room creator only):
 
             <div class="room-list" ref={roomListContainerRef}>
                 <div class="list-header">
-                    <span>#️⃣ Active Rooms</span>
+                    <span>#️⃣ Rooms</span>
                     <button class="refresh-btn" onClick={() => refreshRoomList()} title="Refresh rooms">🔄</button>
                 </div>
                 <ul ref={roomListRef} class="list-content"></ul>
@@ -752,13 +848,24 @@ MOD Commands (room creator only):
                     <button class="burger-btn" onClick={() => toggleSidebar('users')}>👥</button>
                 </div>
                 <div class="messages" ref={containerRef}></div>
-                <input
-                    type="text"
-                    class="chat-input"
-                    ref={inputRef}
-                    onKeyUp={onKeyArgs}
-                    placeholder="Type a message... (/help for commands)"
-                />
+
+                {/* Emoji Modal */}
+                <div class="emoji-modal" ref={emojiModalRef}>
+                    {['😀', '😂', '😍', '🥰', '😎', '🤔', '😢', '😡', '👍', '👎', '❤️', '🔥', '🎉', '✨', '💯', '🙏', '👋', '🤝', '💪', '🙌', '😱', '🤯', '😴', '🤮', '💀', '👀', '🎵', '🚀', '💡', '⭐'].map(emoji => (
+                        <span class="emoji-item" onClick={() => insertEmoji(emoji)}>{emoji}</span>
+                    ))}
+                </div>
+
+                <div class="chat-input-area">
+                    <textarea
+                        class="chat-input"
+                        ref={inputRef}
+                        onKeyDown={onKeyArgs}
+                        placeholder="Type a message... (/help for commands)"
+                        rows={1}
+                    />
+                    <button class="emoji-btn" onClick={toggleEmojiModal} title="Emoji">😊</button>
+                </div>
             </div>
 
             <div class="user-list" ref={userListContainerRef}>

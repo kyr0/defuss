@@ -9,7 +9,8 @@
     height: 100dvh;
     background: #0d0d0d;
     overflow: hidden;
-    font-size: 1.1rem;
+    font-size: 1.3rem;
+    /* Larger base font (+2 zoom levels) */
     position: relative;
 }
 
@@ -152,7 +153,8 @@
 .room-title {
     color: #fff;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 1.4rem;
+    /* Bigger channel title */
 }
 
 /* Burger Menu Button */
@@ -177,6 +179,10 @@
     flex-direction: column;
     gap: 0.4rem;
     scroll-behavior: smooth;
+    background-image: url('/pattern.webp');
+    background-repeat: repeat;
+    background-size: 400px;
+    background-color: #0a0a0a;
 }
 
 .message {
@@ -206,6 +212,10 @@
 .system-message {
     color: #888;
     font-size: 0.95em;
+    white-space: nowrap;
+    /* No wrap for system messages */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .private-message {
@@ -220,24 +230,90 @@
     font-style: italic;
 }
 
-/* Chat Input */
-.chat-input {
+/* Chat Input Area */
+.chat-input-area {
+    display: flex;
+    align-items: flex-end;
     background: #161616;
-    border: none;
     border-top: 1px solid #2a2a2a;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+
+.chat-input {
+    flex: 1;
+    background: transparent;
+    border: none;
     color: white;
-    padding: 1rem 1.25rem;
-    font-size: 1.1rem;
+    padding: 0.75rem 0;
+    font-size: 1.2rem;
     font-family: inherit;
     outline: none;
+    resize: none;
+    min-height: 1.5em;
+    max-height: 7.5em;
+    /* ~5 lines */
+    overflow-y: auto;
+    line-height: 1.5;
 }
 
 .chat-input:focus {
-    background: #1a1a1a;
+    background: transparent;
 }
 
 .chat-input::placeholder {
     color: #555;
+}
+
+/* Emoji Button */
+.emoji-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+}
+
+.emoji-btn:hover {
+    opacity: 1;
+}
+
+/* Emoji Modal */
+.emoji-modal {
+    position: absolute;
+    bottom: 70px;
+    right: 20px;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 1rem;
+    display: none;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.25rem;
+    max-width: 320px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 200;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.emoji-modal.open {
+    display: grid;
+}
+
+.emoji-item {
+    font-size: 1.5rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: 6px;
+    text-align: center;
+    transition: background 0.1s;
+}
+
+.emoji-item:hover {
+    background: #333;
 }
 
 /* === SCROLLBAR === */
