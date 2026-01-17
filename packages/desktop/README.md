@@ -3,19 +3,19 @@
 <img src="assets/defuss_mascott.png" width="100px" />
 
 <p align="center">
-  <code>defuss-wm</code>
+  <code>defuss-desktop</code>
 </p>
 
 <sup align="center">
 
-Themable Browser-based Desktop Environment
+Themable Desktop Environment
 
 </sup>
 
 </h1>
 
 
-> `defuss-wm` is a comprehensive window manager that enables you to create desktop-like environments directly in the browser. It provides a complete window system with resizable, movable windows, desktop management, task bars, and application launchers - perfect for building complex web applications that need a desktop-style interface.
+> `defuss-desktop` is a comprehensive window manager/desktop environment that enables you to create desktop-like environments directly in the browser - like Windows XP. It provides a complete window system with resizable, movable windows, desktop management, task bars, and application launchers - perfect for building complex web applications that need a desktop-style interface.
 
 <h3 align="center">
 
@@ -40,7 +40,7 @@ Basic Usage
 </h3>
 
 ```typescript
-import { WindowManager, Window } from 'defuss-wm';
+import { WindowManager, Window } from 'defuss-desktop';
 
 // Initialize the window manager
 const wm = new WindowManager({

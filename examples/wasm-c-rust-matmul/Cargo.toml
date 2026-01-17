@@ -1,0 +1,57 @@
+[package]
+name = "defuss-wasm-demo"
+version = "0.0.1"
+edition = "2021"
+publish = false
+description = "Ludicrously fast multicore math for web browsers using WebAssembly, SIMD-128 and Web Workers"
+license = "MIT"
+authors = ["Aron Homberg <info@aron-homberg.de>"]
+keywords = [
+    "fastmath", 
+    "math", 
+    "wasm",
+    "webassembly",
+    "multicore",
+    "rust",
+    "javascript",
+    "typescript",
+    "browser",
+    "web-workers",
+    "audio",
+    "dsp",
+    "ml",
+    "matmul",
+    "oscillators"
+  ]
+repository = "https://github.com/kyr0/defuss"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-rayon = "1.3"
+wasm-bindgen-futures = "0.4"
+rayon = "1.10"
+console_error_panic_hook = "0.1.2"
+web-sys = { version = "0.3", features = [
+  'console',
+  'Performance'
+] }
+js-sys = { version = "0.3" }
+gloo-timers =  { version = "0.3", features = ["futures"] }
+
+[dev-dependencies]
+wasmprinter = "0.2"
+
+[profile.release]
+
+opt-level = 3 # Aggressive optimizations
+lto = true # Link Time Optimization
+codegen-units = 1 # Reduce the number of codegen units to improve inlining and optimizations
+
+[package.metadata.wasm-pack.profile.dev]
+wasm-opt = ["-O4", "--enable-threads", "--enable-bulk-memory", "--enable-simd"]
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-O4", "--enable-threads", "--enable-bulk-memory", "--enable-simd"]
