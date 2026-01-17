@@ -57,6 +57,8 @@ export default (element: HTMLElement) =>
 
       // just call the function tree, but do not render;
       // implementing hydration is atomic and the responsibility of each respective component
+
+      // TODO: try/catch and do not hydrate if it fails?
       let roots = Component(componentProps);
 
       if (!Array.isArray(roots)) {

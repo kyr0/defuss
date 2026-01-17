@@ -9,7 +9,7 @@ import defussPlugin from "defuss-vite";
 import { fileURLToPath } from "node:url";
 import glob from "fast-glob";
 import { performance } from "node:perf_hooks";
-import { optimize } from "svgo";
+import { optimize, type Config } from "svgo";
 import { join } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 import { logMessage } from "./log.js";
@@ -48,7 +48,7 @@ const minifyAndWriteFile = async (
               },
             },
           },
-        ],
+        ] as Config["plugins"],
       });
       await writeFile(filePath, fileMin.data, "utf-8");
       break;
@@ -127,9 +127,9 @@ export default function ({
         });
 
         /**
-				 * if (command === 'dev' && devtools) {
-					injectScript('page', 'import "preact/debug";');
-				}*/
+         * if (command === 'dev' && devtools) {
+          injectScript('page', 'import "preact/debug";');
+        }*/
       },
       "astro:build:done": async ({ dir }) => {
         const start = performance.now();
