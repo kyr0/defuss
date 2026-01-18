@@ -14,15 +14,15 @@ Composer Demo - WebMidi + AudioWorklet
 
 </h1>
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/kyr0/defuss/tree/main/examples/composer)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kyr0/defuss?devcontainer_path=.devcontainer/composer/devcontainer.json)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/kyr0/defuss/tree/main/examples/with-audio-worklet)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kyr0/defuss?devcontainer_path=.devcontainer/with-audio-worklet/devcontainer.json)
 
 > 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
 
-![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/preview.png)
+![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-audio-worklet/public/preview.png)
 
 ### ✨ It's amazing!
-![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/build_result.png)
+![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-audio-worklet/public/build_result.png)
 
 ## 🚀 Project Structure
 

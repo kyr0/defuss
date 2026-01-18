@@ -1,5 +1,5 @@
 {
-  "name": "@example/composer",
+  "name": "@example/with-audio-worklet",
   "type": "module",
   "version": "0.0.1",
   "private": true,
