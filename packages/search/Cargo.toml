@@ -38,7 +38,7 @@ gloo-timers =  { version = "0.3", features = ["futures"] }
 # Search engine dependencies
 stop-words = "0.8"
 rust-stemmers = "1.2"
-lru = "0.12"
+lru = "0.16"
 ordered-float = "4.2"
 regex = "1.10"
 base64 = "0.22"
