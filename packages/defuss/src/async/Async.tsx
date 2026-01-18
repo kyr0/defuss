@@ -105,13 +105,11 @@ export const Async = ({
               loadedClassName || "suspense-loaded",
             );
 
-            console.log("[Async render] start");
             await $(containerRef).jsx(childrenToRender as RenderInput);
-            console.log("[Async render] finished");
           }
         })();
       } catch (error) {
-        containerRef.update("error");
+        containerRef.updateState("error");
         containerRef.error = error;
 
         if (typeof onError === "function") {
@@ -172,6 +170,7 @@ export const Async = ({
         // pass the error up to the parent component
         onError(error);
       }
+      return null; // return null so Promise.all doesn't get undefined
     }
   });
 
@@ -181,9 +180,12 @@ export const Async = ({
 
       Promise.all(promisedChildren)
         .then((awaitedVnodes) => {
-          childrenToRender = awaitedVnodes.flatMap((vnode: VNode) =>
-            vnode?.type === "Fragment" ? vnode.children : vnode,
-          );
+          // Filter out nulls from error catch returns before flatMap
+          childrenToRender = awaitedVnodes
+            .filter((vnode): vnode is VNode => vnode != null)
+            .flatMap((vnode: VNode) =>
+              vnode?.type === "Fragment" ? vnode.children : vnode,
+            );
           containerRef.updateState("loaded");
         })
         .catch((error) => {

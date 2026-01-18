@@ -1,4 +1,4 @@
-console.log(`defuss v${process.env.PKG_VERSION}`);
+// defuss - explicit simplicity for the web
 
 export * from "@/common/index.js";
 export * from "@/render/index.js";

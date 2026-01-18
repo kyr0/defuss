@@ -103,14 +103,14 @@
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "assets"
   ],
   "devDependencies": {
     "@types/node": "^25.0.9",
-    "@vitest/browser": "^3.2.4",
+    "@vitest/browser": "^4.0.17",
     "@vitest/browser-playwright": "^4.0.17",
     "@vitest/coverage-v8": "^4.0.17",
     "jsdom": "^27.4.0",

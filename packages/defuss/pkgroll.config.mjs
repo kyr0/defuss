@@ -3,7 +3,8 @@ import pkg from "./package.json" assert { type: "json" };
 export default {
   rollupOptions: {
     output: {
-      banner: `console.log("Running ${pkg.name} v${pkg.version}");`,
+      // Banner removed - console.log on import breaks pure module expectations
+      banner: `// ${pkg.name} v${pkg.version}`,
     },
   },
 };

@@ -108,14 +108,14 @@
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "assets"
   ],
   "devDependencies": {
     "@types/node": "^25.0.9",
-    "@vitest/browser": "^3.2.4",
+    "@vitest/browser": "^4.0.17",
     "@vitest/browser-playwright": "^4.0.17",
     "@vitest/coverage-v8": "^4.0.17",
     "jsdom": "^27.4.0",
@@ -142,7 +142,8 @@ import pkg from "./package.json" assert { type: "json" };
 export default {
   rollupOptions: {
     output: {
-      banner: `console.log("Running ${pkg.name} v${pkg.version}");`,
+      // Banner removed - console.log on import breaks pure module expectations
+      banner: `// ${pkg.name} v${pkg.version}`,
     },
   },
 };
@@ -275,13 +276,11 @@ export const Async = ({
               loadedClassName || "suspense-loaded",
             );
 
-            console.log("[Async render] start");
             await $(containerRef).jsx(childrenToRender as RenderInput);
-            console.log("[Async render] finished");
           }
         })();
       } catch (error) {
-        containerRef.update("error");
+        containerRef.updateState("error");
         containerRef.error = error;
 
         if (typeof onError === "function") {
@@ -342,6 +341,7 @@ export const Async = ({
         // pass the error up to the parent component
         onError(error);
       }
+      return null; // return null so Promise.all doesn't get undefined
     }
   });
 
@@ -351,9 +351,12 @@ export const Async = ({
 
       Promise.all(promisedChildren)
         .then((awaitedVnodes) => {
-          childrenToRender = awaitedVnodes.flatMap((vnode: VNode) =>
-            vnode?.type === "Fragment" ? vnode.children : vnode,
-          );
+          // Filter out nulls from error catch returns before flatMap
+          childrenToRender = awaitedVnodes
+            .filter((vnode): vnode is VNode => vnode != null)
+            .flatMap((vnode: VNode) =>
+              vnode?.type === "Fragment" ? vnode.children : vnode,
+            );
           containerRef.updateState("loaded");
         })
         .catch((error) => {
@@ -392,7 +395,14 @@ export * from "./Async.js";
 
 ./src/common/devmode.ts:
 ```
-export const inDevMode = true;
+/**
+ * Detect development mode for dev-only warnings and logs.
+ * In production builds, bundlers can dead-code eliminate based on this.
+ */
+export const inDevMode =
+    typeof process !== "undefined" && process.env
+        ? process.env.NODE_ENV !== "production"
+        : false;
 ```
 
 ./src/common/dom.ts:
@@ -3681,7 +3691,7 @@ export const T = Trans;
 
 ./src/index.ts:
 ```
-console.log(`defuss v${process.env.PKG_VERSION}`);
+// defuss - explicit simplicity for the web
 
 export * from "@/common/index.js";
 export * from "@/render/index.js";
@@ -4403,19 +4413,17 @@ const getEventPath = (event: Event): Array<EventTarget> => {
 
 /**
  * Create the dispatch handler for a given phase.
- * Single-dispatch rule: capture phase only fires for non-bubbling events,
- * bubble phase only fires for bubbling events. This prevents double-execution.
+ * Each phase runs its own handlers - capture phase runs capture handlers,
+ * bubble phase runs bubble handlers. This supports onClickCapture semantics.
  */
 const createPhaseHandler = (eventType: string, phase: DelegatedPhase): EventListener => {
     return (event: Event) => {
-        // Single-dispatch rule: only dispatch in the appropriate phase
-        const isBubblePhase = phase === "bubble";
-        if (event.bubbles !== isBubblePhase) return;
-
         const path = getEventPath(event).filter(
             (t): t is HTMLElement => typeof t === "object" && t !== null && (t as HTMLElement).nodeType === Node.ELEMENT_NODE,
         );
 
+        // Capture phase: root -> target (reversed path)
+        // Bubble phase: target -> root (normal path)
         const ordered = phase === "capture" ? [...path].reverse() : path;
 
         for (const target of ordered) {
@@ -4425,17 +4433,28 @@ const createPhaseHandler = (eventType: string, phase: DelegatedPhase): EventList
             const entry = handlersByEvent.get(eventType);
             if (!entry) continue;
 
-            // Execute single handler (JSX mode) - check both phases since we only dispatch once
-            const fn = entry.capture || entry.bubble;
-            if (fn) {
-                fn.call(target, event);
-                if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
-            }
-
-            // Execute handler sets (Dequery multi mode)
-            for (const fnSet of [entry.captureSet, entry.bubbleSet]) {
-                if (fnSet) {
-                    for (const handler of fnSet) {
+            // Execute only the handlers for this phase
+            if (phase === "capture") {
+                // Single handler (JSX mode)
+                if (entry.capture) {
+                    entry.capture.call(target, event);
+                    if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
+                }
+                // Handler set (Dequery multi mode)
+                if (entry.captureSet) {
+                    for (const handler of entry.captureSet) {
+                        handler.call(target, event);
+                        if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
+                    }
+                }
+            } else {
+                // Bubble phase
+                if (entry.bubble) {
+                    entry.bubble.call(target, event);
+                    if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
+                }
+                if (entry.bubbleSet) {
+                    for (const handler of entry.bubbleSet) {
                         handler.call(target, event);
                         if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
                     }

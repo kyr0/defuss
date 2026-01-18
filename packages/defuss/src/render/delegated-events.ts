@@ -97,19 +97,17 @@ const getEventPath = (event: Event): Array<EventTarget> => {
 
 /**
  * Create the dispatch handler for a given phase.
- * Single-dispatch rule: capture phase only fires for non-bubbling events,
- * bubble phase only fires for bubbling events. This prevents double-execution.
+ * Each phase runs its own handlers - capture phase runs capture handlers,
+ * bubble phase runs bubble handlers. This supports onClickCapture semantics.
  */
 const createPhaseHandler = (eventType: string, phase: DelegatedPhase): EventListener => {
     return (event: Event) => {
-        // Single-dispatch rule: only dispatch in the appropriate phase
-        const isBubblePhase = phase === "bubble";
-        if (event.bubbles !== isBubblePhase) return;
-
         const path = getEventPath(event).filter(
             (t): t is HTMLElement => typeof t === "object" && t !== null && (t as HTMLElement).nodeType === Node.ELEMENT_NODE,
         );
 
+        // Capture phase: root -> target (reversed path)
+        // Bubble phase: target -> root (normal path)
         const ordered = phase === "capture" ? [...path].reverse() : path;
 
         for (const target of ordered) {
@@ -119,17 +117,28 @@ const createPhaseHandler = (eventType: string, phase: DelegatedPhase): EventList
             const entry = handlersByEvent.get(eventType);
             if (!entry) continue;
 
-            // Execute single handler (JSX mode) - check both phases since we only dispatch once
-            const fn = entry.capture || entry.bubble;
-            if (fn) {
-                fn.call(target, event);
-                if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
-            }
-
-            // Execute handler sets (Dequery multi mode)
-            for (const fnSet of [entry.captureSet, entry.bubbleSet]) {
-                if (fnSet) {
-                    for (const handler of fnSet) {
+            // Execute only the handlers for this phase
+            if (phase === "capture") {
+                // Single handler (JSX mode)
+                if (entry.capture) {
+                    entry.capture.call(target, event);
+                    if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
+                }
+                // Handler set (Dequery multi mode)
+                if (entry.captureSet) {
+                    for (const handler of entry.captureSet) {
+                        handler.call(target, event);
+                        if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
+                    }
+                }
+            } else {
+                // Bubble phase
+                if (entry.bubble) {
+                    entry.bubble.call(target, event);
+                    if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
+                }
+                if (entry.bubbleSet) {
+                    for (const handler of entry.bubbleSet) {
                         handler.call(target, event);
                         if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
                     }
