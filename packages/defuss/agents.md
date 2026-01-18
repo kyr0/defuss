@@ -413,6 +413,8 @@ import {
   removeDelegatedEvent,
   clearDelegatedEvents,
   clearDelegatedEventsDeep,
+  getRegisteredEventTypes,
+  parseEventPropName,
 } from "../render/delegated-events.js";
 import type { NodeType } from "../render/index.js";
 import { createTimeoutPromise } from "defuss-runtime";
@@ -701,6 +703,19 @@ function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals
     }
   }
 
+  // Remove stale event handlers: compute registered - nextVNodeEvents
+  const registeredEvents = getRegisteredEventTypes(el as HTMLElement);
+  const nextEventTypes = new Set<string>();
+  for (const propName of Object.keys(nextAttrs)) {
+    const parsed = parseEventPropName(propName);
+    if (parsed) nextEventTypes.add(parsed.eventType);
+  }
+  for (const eventType of registeredEvents) {
+    if (!nextEventTypes.has(eventType)) {
+      removeDelegatedEvent(el as HTMLElement, eventType);
+    }
+  }
+
   // set new attributes (includes ref + delegated events via renderer.setAttribute)
   renderer.setAttributes(vnode, el);
 
@@ -886,6 +901,10 @@ export function updateDomWithVdom(
 
   for (const node of remaining) {
     if (node.parentNode === targetRoot) {
+      // Clear delegated events before removal to prevent handler leaks
+      if (node instanceof HTMLElement) {
+        clearDelegatedEventsDeep(node);
+      }
       targetRoot.removeChild(node);
     }
   }
@@ -4305,8 +4324,7 @@ export const CAPTURE_ONLY_EVENTS = new Set<string>([
     "scroll",
     "mouseenter",
     "mouseleave",
-    "focusin",
-    "focusout",
+    // Note: focusin/focusout DO bubble, so they're not included here
 ]);
 
 interface HandlerEntry {
@@ -4481,15 +4499,23 @@ export const registerDelegatedEvent = (
     options: DelegatedEventOptions = {},
 ): void => {
     // Get the correct root for delegation (Document or ShadowRoot)
-    // For detached elements, use document as fallback - delegation will work
-    // when the element is attached to document (no direct binding to avoid double-fire)
-    const root = getEventRoot(element) ?? element.ownerDocument ?? globalThis.document;
+    const root = getEventRoot(element);
 
     // capture-only events should be forced to capture
     const capture = options.capture || CAPTURE_ONLY_EVENTS.has(eventType);
 
-    // Install delegation listener on root
-    ensureRootListener(root, eventType);
+    if (root) {
+        // Element is in DOM - use delegation
+        ensureRootListener(root, eventType);
+    } else if (element.ownerDocument) {
+        // Element has a document but isn't connected yet - install listener on document
+        // Events will work once the element is attached
+        ensureRootListener(element.ownerDocument, eventType);
+    } else {
+        // Truly detached element (no document) - use direct binding
+        // This ensures events work even for elements never attached to DOM
+        element.addEventListener(eventType, handler, capture);
+    }
 
     const byEvent = getOrCreateElementHandlers(element);
     const entry = byEvent.get(eventType) ?? {};
@@ -4582,6 +4608,16 @@ export const clearDelegatedEventsDeep = (root: HTMLElement): void => {
         clearDelegatedEvents(node as HTMLElement);
         node = walker.nextNode();
     }
+};
+
+/**
+ * Get all event types currently registered on an element.
+ * Used to detect which events need to be removed when vnode props change.
+ */
+export const getRegisteredEventTypes = (element: HTMLElement): Set<string> => {
+    const byEvent = elementHandlerMap.get(element);
+    if (!byEvent) return new Set();
+    return new Set(byEvent.keys());
 };
 
 ```
@@ -5038,6 +5074,15 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
           (domElement as HTMLElement).style[prop as any] = String(styleObj[prop]);
         }
       } else if (typeof value === "boolean") {
+        (domElement as any)[name] = value;
+      } else if (
+        // Controlled input props: use property assignment, not setAttribute
+        // setAttribute updates the default value, property updates the live value
+        (name === "value" || name === "checked" || name === "selectedIndex") &&
+        (domElement instanceof HTMLInputElement ||
+          domElement instanceof HTMLTextAreaElement ||
+          domElement instanceof HTMLSelectElement)
+      ) {
         (domElement as any)[name] = value;
       } else {
         domElement.setAttribute(name, String(value));

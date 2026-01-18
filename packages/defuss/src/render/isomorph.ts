@@ -428,6 +428,15 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         }
       } else if (typeof value === "boolean") {
         (domElement as any)[name] = value;
+      } else if (
+        // Controlled input props: use property assignment, not setAttribute
+        // setAttribute updates the default value, property updates the live value
+        (name === "value" || name === "checked" || name === "selectedIndex") &&
+        (domElement instanceof HTMLInputElement ||
+          domElement instanceof HTMLTextAreaElement ||
+          domElement instanceof HTMLSelectElement)
+      ) {
+        (domElement as any)[name] = value;
       } else {
         domElement.setAttribute(name, String(value));
       }

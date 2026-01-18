@@ -14,6 +14,8 @@ import {
   removeDelegatedEvent,
   clearDelegatedEvents,
   clearDelegatedEventsDeep,
+  getRegisteredEventTypes,
+  parseEventPropName,
 } from "../render/delegated-events.js";
 import type { NodeType } from "../render/index.js";
 import { createTimeoutPromise } from "defuss-runtime";
@@ -302,6 +304,19 @@ function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals
     }
   }
 
+  // Remove stale event handlers: compute registered - nextVNodeEvents
+  const registeredEvents = getRegisteredEventTypes(el as HTMLElement);
+  const nextEventTypes = new Set<string>();
+  for (const propName of Object.keys(nextAttrs)) {
+    const parsed = parseEventPropName(propName);
+    if (parsed) nextEventTypes.add(parsed.eventType);
+  }
+  for (const eventType of registeredEvents) {
+    if (!nextEventTypes.has(eventType)) {
+      removeDelegatedEvent(el as HTMLElement, eventType);
+    }
+  }
+
   // set new attributes (includes ref + delegated events via renderer.setAttribute)
   renderer.setAttributes(vnode, el);
 
@@ -487,6 +502,10 @@ export function updateDomWithVdom(
 
   for (const node of remaining) {
     if (node.parentNode === targetRoot) {
+      // Clear delegated events before removal to prevent handler leaks
+      if (node instanceof HTMLElement) {
+        clearDelegatedEventsDeep(node);
+      }
       targetRoot.removeChild(node);
     }
   }

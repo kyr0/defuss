@@ -18,8 +18,7 @@ export const CAPTURE_ONLY_EVENTS = new Set<string>([
     "scroll",
     "mouseenter",
     "mouseleave",
-    "focusin",
-    "focusout",
+    // Note: focusin/focusout DO bubble, so they're not included here
 ]);
 
 interface HandlerEntry {
@@ -194,15 +193,23 @@ export const registerDelegatedEvent = (
     options: DelegatedEventOptions = {},
 ): void => {
     // Get the correct root for delegation (Document or ShadowRoot)
-    // For detached elements, use document as fallback - delegation will work
-    // when the element is attached to document (no direct binding to avoid double-fire)
-    const root = getEventRoot(element) ?? element.ownerDocument ?? globalThis.document;
+    const root = getEventRoot(element);
 
     // capture-only events should be forced to capture
     const capture = options.capture || CAPTURE_ONLY_EVENTS.has(eventType);
 
-    // Install delegation listener on root
-    ensureRootListener(root, eventType);
+    if (root) {
+        // Element is in DOM - use delegation
+        ensureRootListener(root, eventType);
+    } else if (element.ownerDocument) {
+        // Element has a document but isn't connected yet - install listener on document
+        // Events will work once the element is attached
+        ensureRootListener(element.ownerDocument, eventType);
+    } else {
+        // Truly detached element (no document) - use direct binding
+        // This ensures events work even for elements never attached to DOM
+        element.addEventListener(eventType, handler, capture);
+    }
 
     const byEvent = getOrCreateElementHandlers(element);
     const entry = byEvent.get(eventType) ?? {};
@@ -295,4 +302,14 @@ export const clearDelegatedEventsDeep = (root: HTMLElement): void => {
         clearDelegatedEvents(node as HTMLElement);
         node = walker.nextNode();
     }
+};
+
+/**
+ * Get all event types currently registered on an element.
+ * Used to detect which events need to be removed when vnode props change.
+ */
+export const getRegisteredEventTypes = (element: HTMLElement): Set<string> => {
+    const byEvent = elementHandlerMap.get(element);
+    if (!byEvent) return new Set();
+    return new Set(byEvent.keys());
 };
