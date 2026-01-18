@@ -5,7 +5,7 @@
 ```
 {
   "name": "defuss",
-  "version": "2.1.10",
+  "version": "2.1.11",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -49,7 +49,7 @@
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll --env.PKG_VERSION=$(node -p \"require('./package.json').version\")"
+    "build": "node scripts/build.mjs"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -108,25 +108,27 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": ["dist", "assets"],
+  "files": [
+    "dist",
+    "assets"
+  ],
   "devDependencies": {
-    "@types/node": "^22.10.2",
-    "@vitest/coverage-v8": "^3.1.3",
-    "pkgroll": "^2.6.0",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vitest": "^3.1.3",
-    "jsdom": "^26.1.0"
+    "@types/node": "^25.0.9",
+    "@vitest/coverage-v8": "^4.0.17",
+    "pkgroll": "^2.21.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17",
+    "jsdom": "^27.4.0"
   },
   "dependencies": {
     "defuss-runtime": "^1.2.1",
     "@types/w3c-xmlserializer": "^2.0.4",
-    "csstype": "^3.1.3",
-    "happy-dom": "^15.11.7",
+    "csstype": "^3.2.3",
+    "happy-dom": "^20.3.1",
     "w3c-xmlserializer": "^5.0.0"
   }
 }
-
 ```
 
 ./pkgroll.config.mjs:
@@ -140,6 +142,23 @@ export default {
     },
   },
 };
+
+```
+
+./scripts/build.mjs:
+```
+import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
+
+execSync(`npx pkgroll --env.PKG_VERSION=${pkg.version}`, {
+    stdio: 'inherit',
+    cwd: join(__dirname, '..'),
+});
 
 ```
 
@@ -468,7 +487,7 @@ const updateNode = (oldNode: Node, newNode: Node) => {
 };
 
 /********************************************************
- * 1) Define a "valid" child type & utility
+ * 1) Define a "valid" child type & utilities
  ********************************************************/
 export type ValidChild =
   | string
@@ -478,239 +497,381 @@ export type ValidChild =
   | undefined
   | VNode<VNodeAttributes>;
 
+function isTextLike(value: unknown): value is string | number | boolean {
+  return (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
+}
+
+function isVNode(value: unknown): value is VNode<VNodeAttributes> {
+  return Boolean(value && typeof value === "object" && "type" in (value as Record<string, unknown>));
+}
+
 function toValidChild(child: VNodeChild): ValidChild | undefined {
   if (child == null) return child; // null or undefined
-  if (
-    typeof child === "string" ||
-    typeof child === "number" ||
-    typeof child === "boolean"
-  ) {
-    return child;
-  }
-  if (typeof child === "object" && "type" in child) {
-    return child as VNode<VNodeAttributes>;
-  }
+  if (isTextLike(child)) return child;
+
+  if (isVNode(child)) return child;
+
   // e.g. function or {} -> filter out
   return undefined;
+}
+
+/** fuse consecutive text-like nodes to preserve DOM stability (matches hydrate's behavior) */
+function normalizeChildren(input: RenderInput): Array<ValidChild> {
+  const raw: Array<ValidChild> = [];
+
+  const pushChild = (child: unknown) => {
+    if (Array.isArray(child)) {
+      child.forEach(pushChild);
+      return;
+    }
+
+    const valid = toValidChild(child as VNodeChild);
+    if (typeof valid === "undefined") return;
+
+    // unwrap Fragment-ish nodes (defuss sometimes uses "fragment", some code uses "Fragment")
+    if (isVNode(valid) && (valid.type === "fragment" || valid.type === "Fragment")) {
+      const nested = Array.isArray(valid.children) ? valid.children : [];
+      nested.forEach(pushChild);
+      return;
+    }
+
+    // ignore booleans/null/undefined as render-nothing
+    if (valid === null || typeof valid === "undefined" || typeof valid === "boolean") return;
+
+    raw.push(valid);
+  };
+
+  pushChild(input);
+
+  // fuse consecutive text nodes into a single string
+  const fused: Array<ValidChild> = [];
+  let buffer: string | null = null;
+
+  const flush = () => {
+    if (buffer !== null && buffer.length > 0) fused.push(buffer);
+    buffer = null;
+  };
+
+  for (const child of raw) {
+    if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+      buffer = (buffer ?? "") + String(child);
+      continue;
+    }
+
+    flush();
+    fused.push(child);
+  }
+
+  flush();
+  return fused;
+}
+
+function getVNodeMatchKey(child: ValidChild): string | null {
+  if (!child || typeof child !== "object") return null;
+
+  const key = child.attributes?.key;
+  if (typeof key === "string" || typeof key === "number") return `k:${String(key)}`;
+
+  const id = child.attributes?.id;
+  if (typeof id === "string" && id.length > 0) return `id:${id}`;
+
+  return null;
+}
+
+function getDomMatchKeys(node: Node): Array<string> {
+  if (node.nodeType !== Node.ELEMENT_NODE) return [];
+
+  const el = node as HTMLElement;
+  const keys: Array<string> = [];
+
+  // prefer internal key storage, but also accept legacy `key` attribute if present
+  const internalKey = (el as HTMLElement & { _defussKey?: string })._defussKey;
+  if (internalKey) keys.push(`k:${internalKey}`);
+
+  const attrKey = el.getAttribute("key");
+  if (attrKey) keys.push(`k:${attrKey}`);
+
+  const id = el.id;
+  if (id) keys.push(`id:${id}`);
+
+  return keys;
 }
 
 /********************************************************
  * 2) Check if a DOM node and a ValidChild match by type
  ********************************************************/
 function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
-  if (
-    typeof child === "string" ||
-    typeof child === "number" ||
-    typeof child === "boolean"
-  ) {
-    // must be a text node
+  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
     return domNode.nodeType === Node.TEXT_NODE;
-  } else if (child && typeof child === "object") {
-    // must be same tag
-    if (domNode.nodeType !== Node.ELEMENT_NODE) return false;
-    const oldTag = (domNode as Element).tagName.toLowerCase();
-    const newTag = child.type.toLowerCase();
-    return oldTag === newTag;
   }
-  // if child is null/undefined => definitely no match
+
+  if (child && typeof child === "object") {
+    if (domNode.nodeType !== Node.ELEMENT_NODE) return false;
+
+    const oldTag = (domNode as Element).tagName.toLowerCase();
+    const newType = typeof child.type === "string" ? child.type.toLowerCase() : "";
+    if (!newType) return false;
+
+    return oldTag === newType;
+  }
+
   return false;
 }
 
 /********************************************************
- * 3) Patch a single DOM node in place (attributes, text, children)
- ********************************************************/
-function patchDomInPlace(domNode: Node, child: ValidChild, globals: Globals) {
-  const renderer = getRenderer(globals.window.document);
-
-  // textlike
-  if (
-    typeof child === "string" ||
-    typeof child === "number" ||
-    typeof child === "boolean"
-  ) {
-    const newText = String(child);
-    if (domNode.nodeValue !== newText) {
-      domNode.nodeValue = newText;
-    }
-    return;
-  }
-
-  // element
-  if (
-    domNode.nodeType === Node.ELEMENT_NODE &&
-    child &&
-    typeof child === "object"
-  ) {
-    // 1) update attributes
-    // remove old attributes not present
-    const el = domNode as Element;
-    const existingAttrs = Array.from(el.attributes);
-    for (const attr of existingAttrs) {
-      const { name } = attr;
-      if (
-        !Object.prototype.hasOwnProperty.call(child.attributes, name) &&
-        name !== "style" &&
-        !name.startsWith("on") // do not remove event listeners
-      ) {
-        el.removeAttribute(name);
-      }
-    }
-    // set new attributes
-    renderer.setAttributes(child, el);
-
-    // 2) dangerouslySetInnerHTML => skip child updates
-    if (child.attributes?.dangerouslySetInnerHTML) {
-      el.innerHTML = child.attributes.dangerouslySetInnerHTML.__html;
-      return;
-    }
-
-    // 3) recursively do partial updates for children
-    if (child.children) {
-      updateDomWithVdom(el, child.children as any, globals);
-    } else {
-      // remove old children
-      while (el.firstChild) {
-        el.removeChild(el.firstChild);
-      }
-    }
-  }
-}
-
-/********************************************************
- * 4) Create brand new DOM node from a ValidChild
+ * 3) Create brand new DOM node(s) from a ValidChild
  ********************************************************/
 function createDomFromChild(
   child: ValidChild,
   globals: Globals,
-): Node | Node[] | undefined {
+): Node | Array<Node> | undefined {
   const renderer = getRenderer(globals.window.document);
 
   if (child == null) return undefined;
-  if (
-    typeof child === "string" ||
-    typeof child === "number" ||
-    typeof child === "boolean"
-  ) {
+
+  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
     return globals.window.document.createTextNode(String(child));
   }
 
-  // else it's a VNode, create without parent as we don't know where it goes yet
-  // therefore, we need to handle the onMount lifecycle event later too
-  let renderResult = renderer.createElementOrElements(child) as
-    | Node
-    | Node[]
-    | undefined;
+  // create without parent (we'll insert manually and run lifecycle hooks afterwards)
+  const created = renderer.createElementOrElements(child) as Node | Array<Node> | undefined;
 
-  if (renderResult && !Array.isArray(renderResult)) {
-    renderResult = [renderResult];
-  }
-  return renderResult;
+  if (!created) return undefined;
+  return Array.isArray(created) ? (created as Array<Node>) : [created];
 }
 
 /********************************************************
- * 5) Main partial-update function (index-by-index approach)
+ * 4) Patch an element node in place (attributes + children)
+ ********************************************************/
+function shouldPreserveFormStateAttribute(
+  el: Element,
+  attrName: string,
+  vnode: VNode<VNodeAttributes>,
+): boolean {
+  const tag = el.tagName.toLowerCase();
+  const hasExplicit = Object.prototype.hasOwnProperty.call(vnode.attributes ?? {}, attrName);
+
+  if (hasExplicit) return false;
+
+  // preserve uncontrolled input/textarea/select state unless explicitly controlled by VDOM
+  if (tag === "input") return attrName === "value" || attrName === "checked";
+  if (tag === "textarea") return attrName === "value";
+  if (tag === "select") return attrName === "value";
+  return false;
+}
+
+function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals: Globals): void {
+  const renderer = getRenderer(globals.window.document);
+
+  // remove old attributes not present (but preserve uncontrolled form state)
+  const existingAttrs = Array.from(el.attributes);
+  const nextAttrs = vnode.attributes ?? {};
+
+  for (const attr of existingAttrs) {
+    const { name } = attr;
+
+    // do not remove internal key if it ever existed as attribute
+    if (name === "key") continue;
+
+    // do not remove event-ish attributes; handlers are delegated elsewhere
+    if (name.startsWith("on")) continue;
+
+    // treat class/className as equivalent
+    if (name === "class" && (Object.prototype.hasOwnProperty.call(nextAttrs, "class") || Object.prototype.hasOwnProperty.call(nextAttrs, "className"))) {
+      continue;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(nextAttrs, name)) {
+      if (shouldPreserveFormStateAttribute(el, name, vnode)) continue;
+      el.removeAttribute(name);
+    }
+  }
+
+  // set new attributes (includes ref + delegated events via renderer.setAttribute)
+  renderer.setAttributes(vnode, el);
+
+  // dangerouslySetInnerHTML => skip child reconciliation
+  const d = vnode.attributes?.dangerouslySetInnerHTML;
+  if (d && typeof d === "object" && typeof d.__html === "string") {
+    el.innerHTML = d.__html;
+    return;
+  }
+
+  const tag = el.tagName.toLowerCase();
+
+  // preserve textarea live value unless explicitly controlled
+  if (tag === "textarea") {
+    const isControlled = Object.prototype.hasOwnProperty.call(nextAttrs, "value");
+    const isActive = el.ownerDocument?.activeElement === el;
+    if (isActive && !isControlled) return;
+  }
+
+  // reconcile children
+  updateDomWithVdom(el, (vnode.children ?? []) as RenderInput, globals);
+}
+
+/********************************************************
+ * 5) Morph a single DOM node to match a ValidChild
+ ********************************************************/
+function morphNode(domNode: Node, child: ValidChild, globals: Globals): Node | null {
+  // text-like
+  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+    const text = String(child);
+
+    if (domNode.nodeType === Node.TEXT_NODE) {
+      if (domNode.nodeValue !== text) domNode.nodeValue = text;
+      return domNode;
+    }
+
+    const next = globals.window.document.createTextNode(text);
+    domNode.parentNode?.replaceChild(next, domNode);
+    return next;
+  }
+
+  // element-like (VNode)
+  if (child && typeof child === "object") {
+    const newType = typeof child.type === "string" ? child.type : null;
+    if (!newType) return domNode;
+
+    if (domNode.nodeType !== Node.ELEMENT_NODE) {
+      const created = createDomFromChild(child, globals);
+      const first = Array.isArray(created) ? created[0] : created;
+      if (!first) return null;
+
+      domNode.parentNode?.replaceChild(first, domNode);
+      handleLifecycleEventsForOnMount(first as HTMLElement);
+      return first;
+    }
+
+    const el = domNode as Element;
+    const oldTag = el.tagName.toLowerCase();
+    const newTag = newType.toLowerCase();
+
+    if (oldTag !== newTag) {
+      const created = createDomFromChild(child, globals);
+      const first = Array.isArray(created) ? created[0] : created;
+      if (!first) return null;
+
+      el.parentNode?.replaceChild(first, el);
+      handleLifecycleEventsForOnMount(first as HTMLElement);
+      return first;
+    }
+
+    patchElementInPlace(el, child as VNode<VNodeAttributes>, globals);
+    return el;
+  }
+
+  // null/undefined => remove
+  domNode.parentNode?.removeChild(domNode);
+  return null;
+}
+
+/********************************************************
+ * 6) Main state-preserving morph (key/id aware, move-not-replace)
  ********************************************************/
 export function updateDomWithVdom(
   parentElement: Element,
   newVDOM: RenderInput,
   globals: Globals,
-) {
-  //console.log('updateDomWithVdom', newVDOM, parentElement)
+): void {
+  const nextChildren = normalizeChildren(newVDOM);
 
-  // A) Convert newVDOM => array of "valid" children
-  let newChildren: ValidChild[] = [];
-  if (Array.isArray(newVDOM)) {
-    newChildren = newVDOM
-      .map(toValidChild)
-      .filter((c): c is ValidChild => c !== undefined);
-  } else if (
-    typeof newVDOM === "string" ||
-    typeof newVDOM === "number" ||
-    typeof newVDOM === "boolean"
-  ) {
-    newChildren = [newVDOM];
-  } else if (newVDOM) {
-    const child = toValidChild(newVDOM);
-    if (child !== undefined) newChildren = [child];
+  // snapshot existing children once for matching pools
+  const existing = Array.from(parentElement.childNodes);
+
+  const keyedPool = new Map<string, Node>();
+  const nodeKeys = new WeakMap<Node, Array<string>>();
+  const unkeyedPool: Array<Node> = [];
+
+  for (const node of existing) {
+    const keys = getDomMatchKeys(node);
+    if (keys.length > 0) {
+      nodeKeys.set(node, keys);
+      for (const k of keys) {
+        if (!keyedPool.has(k)) keyedPool.set(k, node);
+      }
+    } else {
+      unkeyedPool.push(node);
+    }
   }
 
-  //console.log("new children to render!", newChildren)
+  const consumeKeyedNode = (node: Node) => {
+    const keys = nodeKeys.get(node) ?? [];
+    for (const k of keys) keyedPool.delete(k);
+  };
 
-  // B) Generate brand-new DOM for each new child in an array
-  //    We'll compare them 1:1 with the old nodes.
-  const newDomArray: (Node | Node[] | undefined)[] = newChildren.map(
-    (vdomChild) => createDomFromChild(vdomChild, globals),
-  );
-
-  // C) Snapshot old children
-  const oldNodes = Array.from(parentElement.childNodes);
-
-  // D) Walk up to max length
-  const maxLen = Math.max(oldNodes.length, newDomArray.length);
-  for (let i = 0; i < maxLen; i++) {
-    const oldNode = oldNodes[i];
-    const newDom = newDomArray[i]; // might be a single Node or an array of Nodes
-    const newChild = newChildren[i];
-
-    if (oldNode && newDom !== undefined) {
-      // Both old & new exist
-      // 1) If newDom is an array (multiple root nodes?), we do a bigger replace
-      //    or partial approach. Typically we might place the 1st in oldNode's position
-      //    and then insert the rest right after it, then remove oldNode if needed.
-      if (Array.isArray(newDom)) {
-        if (newDom.length === 0) {
-          // no new => remove old
-          parentElement.removeChild(oldNode);
-        } else {
-          // We might keep the first node and replace oldNode
-          const first = newDom[0];
-          parentElement.replaceChild(first, oldNode);
-
-          // Insert the rest
-          for (let k = 1; k < newDom.length; k++) {
-            if (newDom[k]) {
-              parentElement.insertBefore(newDom[k]!, first.nextSibling);
-
-              if (typeof newDom[k] !== "undefined") {
-                handleLifecycleEventsForOnMount(newDom[k] as HTMLElement);
-              }
-            }
-          }
-
-          if (typeof first !== "undefined") {
-            handleLifecycleEventsForOnMount(first as HTMLElement);
-          }
-        }
-      } else if (newDom) {
-        // single new node
-        // 2) If old & new match => partial patch. Else => replace
-        if (newChild && areNodeAndChildMatching(oldNode, newChild)) {
-          // partial patch
-          patchDomInPlace(oldNode, newChild, globals);
-        } else {
-          // replace
-          parentElement.replaceChild(newDom, oldNode);
-          handleLifecycleEventsForOnMount(newDom as HTMLElement);
-        }
+  const takeUnkeyedMatch = (child: ValidChild): Node | undefined => {
+    // try to find a compatible node (preserves focus/state by moving instead of replacing)
+    for (let i = 0; i < unkeyedPool.length; i++) {
+      const candidate = unkeyedPool[i];
+      if (areNodeAndChildMatching(candidate, child)) {
+        unkeyedPool.splice(i, 1);
+        return candidate;
       }
-    } else if (!oldNode && newDom !== undefined) {
-      // we have more new nodes => append
-      if (Array.isArray(newDom)) {
-        newDom.forEach((newNode) => {
-          const wasAdded = newNode && parentElement.appendChild(newNode);
+    }
 
-          if (wasAdded) {
-            handleLifecycleEventsForOnMount(newNode as HTMLElement);
-          }
-          return wasAdded;
-        });
-      } else if (newDom) {
-        parentElement.appendChild(newDom);
-        handleLifecycleEventsForOnMount(newDom as HTMLElement);
+    // fallback: take the next available unkeyed node
+    return unkeyedPool.shift();
+  };
+
+  let domIndex = 0;
+
+  for (const child of nextChildren) {
+    const key = getVNodeMatchKey(child);
+
+    let match: Node | undefined;
+
+    if (key) {
+      match = keyedPool.get(key);
+      if (match) consumeKeyedNode(match);
+    } else {
+      match = takeUnkeyedMatch(child);
+    }
+
+    const anchor = parentElement.childNodes[domIndex] ?? null;
+
+    if (match) {
+      // move node into place (preserves identity/state)
+      if (match !== anchor) {
+        parentElement.insertBefore(match, anchor);
       }
-    } else if (oldNode && newDom === undefined) {
-      // we have leftover old => remove
-      parentElement.removeChild(oldNode);
+
+      const morphed = morphNode(match, child, globals);
+
+      // if morphNode replaced it, ensure we still have the correct node at domIndex
+      if (morphed && morphed !== match) {
+        // replacement already occurred in-place, nothing else to do
+      }
+
+      domIndex++;
+      continue;
+    }
+
+    // no match => create and insert
+    const created = createDomFromChild(child, globals);
+    if (!created || (Array.isArray(created) && created.length === 0)) continue;
+
+    const nodes = Array.isArray(created) ? created : [created];
+    for (const node of nodes) {
+      parentElement.insertBefore(node, anchor);
+      handleLifecycleEventsForOnMount(node as HTMLElement);
+      domIndex++;
+    }
+  }
+
+  // remove remaining unmatched nodes (both keyed leftovers and unkeyed leftovers)
+  const remaining = new Set<Node>();
+
+  for (const node of unkeyedPool) remaining.add(node);
+  for (const node of keyedPool.values()) remaining.add(node);
+
+  for (const node of remaining) {
+    if (node.parentNode === parentElement) {
+      parentElement.removeChild(node);
     }
   }
 }
@@ -733,8 +894,6 @@ export function replaceDomWithVdom(
   // 2) Re-render from scratch
   const renderer = getRenderer(globals.window.document);
 
-  // Possibly convert `newVDOM` to array if needed,
-  // but `renderer.createElementOrElements` handles it either way:
   const newDom = renderer.createElementOrElements(
     newVDOM as VNode | undefined | Array<VNode | undefined | string>,
   );
@@ -742,10 +901,14 @@ export function replaceDomWithVdom(
   // 3) Append the newly created node(s)
   if (Array.isArray(newDom)) {
     for (const node of newDom) {
-      if (node) parentElement.appendChild(node);
+      if (node) {
+        parentElement.appendChild(node);
+        handleLifecycleEventsForOnMount(node as HTMLElement);
+      }
     }
   } else if (newDom) {
     parentElement.appendChild(newDom);
+    handleLifecycleEventsForOnMount(newDom as HTMLElement);
   }
 }
 
@@ -1002,7 +1165,7 @@ export function domNodeToVNode(node: Node): VNode<VNodeAttributes> | string {
     }
 
     // Convert child nodes recursively
-    const children: (VNode<VNodeAttributes> | string)[] = [];
+    const children: Array<VNode<VNodeAttributes> | string> = [];
     for (let i = 0; i < element.childNodes.length; i++) {
       const childVNode = domNodeToVNode(element.childNodes[i]);
       children.push(childVNode);
@@ -1026,10 +1189,10 @@ export function domNodeToVNode(node: Node): VNode<VNodeAttributes> | string {
 export function htmlStringToVNodes(
   html: string,
   Parser: typeof DOMParser,
-): (VNode<VNodeAttributes> | string)[] {
+): Array<VNode<VNodeAttributes> | string> {
   const parser = new Parser();
   const doc = parser.parseFromString(html, "text/html");
-  const vNodes: (VNode<VNodeAttributes> | string)[] = [];
+  const vNodes: Array<VNode<VNodeAttributes> | string> = [];
 
   // Convert each child node in the body to a VNode
   for (let i = 0; i < doc.body.childNodes.length; i++) {
@@ -1099,31 +1262,6 @@ import type {
 
 // --- Core Async Call & Chain ---
 
-class RefOperationRegistry {
-  private operations = new Map<string, () => void>();
-
-  register(operationId: string, cancelFn: () => void): void {
-    this.operations.set(operationId, cancelFn);
-  }
-
-  cancel(operationId: string): void {
-    const cancelFn = this.operations.get(operationId);
-    if (cancelFn) {
-      cancelFn();
-      this.operations.delete(operationId);
-    }
-  }
-
-  cancelAll(): void {
-    for (const [id, cancelFn] of this.operations) {
-      cancelFn();
-    }
-    this.operations.clear();
-  }
-}
-
-const refOperationRegistry = new RefOperationRegistry();
-
 export class Call<NT> {
   name: string;
   fn: (...args: any[]) => Promise<NT>;
@@ -1186,6 +1324,7 @@ export function isNonChainedReturnCall(callName: string): boolean {
 export const emptyImpl = <T>(nodes: Array<T>) => {
   nodes.forEach((el) => {
     const element = el as HTMLElement;
+    // TODO: looks wrong, acts wrong: should remove the element itself?
     while (element.firstChild) {
       element.firstChild.remove();
     }
@@ -1299,9 +1438,9 @@ export class CallChainImpl<
   ref(ref: Ref<any, NodeType>) {
     return createCall(this, "ref", async () => {
       // Check if ref is already marked as orphaned
-      if ((ref as any).orphan) {
-        throw new Error("Ref has been orphaned from component unmount");
-      }
+      //if ((ref as any).orphan) {
+      //  throw new Error("Ref has been orphaned from component unmount");
+      //}
 
       // Check if ref is already available
       if (ref.current) {
@@ -2390,7 +2529,7 @@ export function delayedAutoStart<
 
 export interface Dequery<NT>
   extends CallChainImplThenable<NT>,
-    CallChainImpl<NT> {}
+  CallChainImpl<NT> { }
 
 export function dequery<
   NT = DequerySyncMethodReturnType,
@@ -3901,6 +4040,7 @@ import {
   globalScopeDomApis,
 } from "./isomorph.js";
 import type { Globals, RenderInput, RenderResult, VNode } from "./types.js";
+import { parseEventPropName, registerDelegatedEvent } from "./delegated-events.js";
 
 export const renderSync = <T extends RenderInput>(
   virtualNode: T,
@@ -4083,26 +4223,25 @@ export const hydrate = (
       element._defussRef = vnode.attributes!.ref; // store ref on element for later access
     }
 
-    // attach event listeners
+    // attach event listeners using delegated events
     for (const key of Object.keys(vnode.attributes!)) {
-      if (key === "ref") continue; // don't override ref.current with [object Object] again
+      if (key === "ref") continue;
 
-      // TODO: refactor: this maybe can be unified with isomorph render logic
-      if (
-        key.startsWith("on") &&
-        typeof vnode.attributes![key] === "function"
-      ) {
-        let eventName = key.substring(2).toLowerCase();
-        let capture = false;
+      const value = vnode.attributes![key];
 
-        // check for specific suffixes to set event options
-        if (eventName.endsWith("capture")) {
-          capture = true;
-          eventName = eventName.replace(/capture$/, "");
-        }
+      // lifecycle is handled elsewhere in hydrate (onMount/onUnmount), don't treat as DOM event
+      if (key === "onMount" || key === "onUnmount" || key === "onmount" || key === "onunmount") continue;
 
-        element.addEventListener(eventName, vnode.attributes![key], capture);
-      }
+      const parsed = parseEventPropName(key);
+      if (!parsed) continue;
+      if (typeof value !== "function") continue;
+
+      const { eventType, capture } = parsed;
+
+      // ignore "mount"/"unmount" pseudo events here (hydrate calls onMount and wires unmount separately)
+      if (eventType === "mount" || eventType === "unmount") continue;
+
+      registerDelegatedEvent(element, eventType, value as EventListener, { capture });
     }
 
     // --- element lifecycle ---
@@ -4141,6 +4280,193 @@ export * from "./index.js";
 
 ```
 
+./src/render/delegated-events.ts:
+```
+export type DelegatedPhase = "bubble" | "capture";
+
+export interface DelegatedEventOptions {
+    capture?: boolean;
+}
+
+export interface ParsedEventProp {
+    eventType: string;
+    capture: boolean;
+}
+
+/** non-bubbling events best handled via capture */
+export const CAPTURE_ONLY_EVENTS = new Set<string>([
+    "focus",
+    "blur",
+    "scroll",
+    "mouseenter",
+    "mouseleave",
+    "focusin",
+    "focusout",
+]);
+
+/** element -> (eventType -> handlers) */
+const elementHandlerMap = new WeakMap<
+    HTMLElement,
+    Map<string, { bubble?: EventListener; capture?: EventListener }>
+>();
+
+/** document -> installed listener keys ("click:bubble", "focus:capture", ...) */
+const installedDocListeners = new WeakMap<Document, Set<string>>();
+
+export const parseEventPropName = (propName: string): ParsedEventProp | null => {
+    if (!propName.startsWith("on")) return null;
+
+    // support onClick / onClickCapture / onclick / onclickcapture
+    const raw = propName.slice(2);
+    if (!raw) return null;
+
+    const lower = raw.toLowerCase();
+    const isCapture = lower.endsWith("capture");
+
+    const eventType = isCapture ? lower.slice(0, -"capture".length) : lower;
+
+    if (!eventType) return null;
+
+    return { eventType, capture: isCapture };
+};
+
+const getOrCreateElementHandlers = (el: HTMLElement) => {
+    const existing = elementHandlerMap.get(el);
+    if (existing) return existing;
+
+    const created = new Map<string, { bubble?: EventListener; capture?: EventListener }>();
+    elementHandlerMap.set(el, created);
+    return created;
+};
+
+const getEventPath = (event: Event): Array<EventTarget> => {
+    // composedPath is best (works with shadow DOM)
+    const composedPath = (event as Event & { composedPath?: () => Array<EventTarget> })
+        .composedPath?.();
+    if (composedPath && composedPath.length > 0) return composedPath;
+
+    // fallback: walk up from target
+    const path: Array<EventTarget> = [];
+    let node: unknown = event.target;
+
+    while (node) {
+        path.push(node as EventTarget);
+
+        // walk DOM parents
+        const maybeNode = node as Node;
+        if (typeof maybeNode === "object" && maybeNode && "parentNode" in maybeNode) {
+            node = (maybeNode as Node).parentNode;
+            continue;
+        }
+
+        break;
+    }
+
+    // ensure document/window are at the end if available
+    const doc = (event.target as Node | null)?.ownerDocument;
+    if (doc && path[path.length - 1] !== doc) path.push(doc);
+    const win = doc?.defaultView;
+    if (win && path[path.length - 1] !== win) path.push(win);
+
+    return path;
+};
+
+const ensureDocumentListener = (doc: Document, eventType: string, phase: DelegatedPhase) => {
+    const installed = installedDocListeners.get(doc) ?? new Set<string>();
+    installedDocListeners.set(doc, installed);
+
+    const key = `${eventType}:${phase}`;
+    if (installed.has(key)) return;
+
+    const useCapture = phase === "capture";
+
+    // single delegating handler for this doc+eventType+phase
+    const handler: EventListener = (event) => {
+        const path = getEventPath(event).filter(
+            (t): t is HTMLElement => typeof t === "object" && t !== null && (t as HTMLElement).nodeType === Node.ELEMENT_NODE,
+        );
+
+        const ordered =
+            phase === "capture" ? [...path].reverse() : path;
+
+        for (const target of ordered) {
+            const handlersByEvent = elementHandlerMap.get(target);
+            if (!handlersByEvent) continue;
+
+            const entry = handlersByEvent.get(eventType);
+            if (!entry) continue;
+
+            const fn = phase === "capture" ? entry.capture : entry.bubble;
+            if (!fn) continue;
+
+            fn.call(target, event);
+
+            // respect stopPropagation semantics
+            if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
+        }
+    };
+
+    doc.addEventListener(eventType, handler, useCapture);
+    installed.add(key);
+};
+
+export const registerDelegatedEvent = (
+    element: HTMLElement,
+    eventType: string,
+    handler: EventListener,
+    options: DelegatedEventOptions = {},
+): void => {
+    const doc = element.ownerDocument ?? globalThis.document;
+
+    // capture-only events should be forced to capture
+    const capture = options.capture || CAPTURE_ONLY_EVENTS.has(eventType);
+
+    ensureDocumentListener(doc, eventType, capture ? "capture" : "bubble");
+
+    const byEvent = getOrCreateElementHandlers(element);
+    const entry = byEvent.get(eventType) ?? {};
+    byEvent.set(eventType, entry);
+
+    // jsx-style semantics: one handler per prop, overwrite to prevent duplicates
+    if (capture) {
+        entry.capture = handler;
+    } else {
+        entry.bubble = handler;
+    }
+};
+
+export const removeDelegatedEvent = (
+    element: HTMLElement,
+    eventType: string,
+    options: DelegatedEventOptions = {},
+): void => {
+    const capture = options.capture || CAPTURE_ONLY_EVENTS.has(eventType);
+    const byEvent = elementHandlerMap.get(element);
+    if (!byEvent) return;
+
+    const entry = byEvent.get(eventType);
+    if (!entry) return;
+
+    if (capture) {
+        entry.capture = undefined;
+    } else {
+        entry.bubble = undefined;
+    }
+
+    if (!entry.capture && !entry.bubble) {
+        byEvent.delete(eventType);
+    }
+};
+
+export const clearDelegatedEvents = (element: HTMLElement): void => {
+    const byEvent = elementHandlerMap.get(element);
+    if (!byEvent) return;
+
+    byEvent.clear();
+};
+
+```
+
 ./src/render/dev/index.ts:
 ```
 export * from "../../render/types.js";
@@ -4156,6 +4482,7 @@ export * from "../render/types.js";
 export * from "../render/isomorph.js";
 export * from "../render/ref.js";
 export * from "../render/transitions.js";
+export * from "../render/delegated-events.js";
 
 ```
 
@@ -4193,6 +4520,7 @@ import {
   DEFAULT_TRANSITION_CONFIG,
   type TransitionConfig,
 } from "./transitions.js";
+import { parseEventPropName, registerDelegatedEvent } from "./delegated-events.js";
 
 export const CLASS_ATTRIBUTE_NAME = "class";
 export const XLINK_ATTRIBUTE_NAME = "xlink";
@@ -4413,16 +4741,9 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         if (virtualNode.attributes) {
           renderer.setAttributes(virtualNode, newEl as Element);
 
-          // Apply dangerouslySetInnerHTML if provided
+          // apply dangerouslySetInnerHTML if provided
           if (virtualNode.attributes.dangerouslySetInnerHTML) {
-            // Old: newEl.innerHTML = virtualNode.attributes.dangerouslySetInnerHTML.__html;
-            // New: use updateDom to handle the innerHTML update
-            updateDom(
-              virtualNode.attributes.dangerouslySetInnerHTML.__html,
-              [newEl],
-              1000, // timeout in ms
-              globalThis.DOMParser,
-            );
+            (newEl as HTMLElement).innerHTML = virtualNode.attributes.dangerouslySetInnerHTML.__html;
           }
         }
 
@@ -4492,66 +4813,66 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       virtualNode: VNode<VNodeAttributes>,
     ) => {
       // attributes not set (undefined) are ignored; use null value to reset an attributes state
-      if (typeof value === "undefined") return; // if not set, ignore
+      if (typeof value === "undefined") return;
 
-      if (name === DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE) return; // special case, handled elsewhere
+      if (name === DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE) return;
+
+      // internal list key: store on element, do not serialize into DOM
+      if (name === "key") {
+        (domElement as HTMLElement & { _defussKey?: string })._defussKey = String(value);
+        return;
+      }
 
       // save ref as { current: DOMElement } in ref object
-      // allows for ref={someRef}
       if (name === REF_ATTRIBUTE_NAME && typeof value !== "function") {
-        value.current = domElement; // update ref
-        (domElement as any)._defussRef = value; // store ref on element for later access
-        // register an unmount handler to mark ref as orphaned when the element is removed from the DOM
+        const ref = value as { current?: unknown; orphan?: boolean };
+        ref.current = domElement;
+        (domElement as HTMLElement)._defussRef = value as any;
+
         (domElement as any).$onUnmount = queueCallback(() => {
-          // DISABLED: mark the ref as orphaned
           // value.orphan = true;
         });
 
         if (domElement.parentNode) {
           observeUnmount(domElement, (domElement as any).$onUnmount);
         } else {
-          // If element doesn't have a parent yet, set it up after a microtask
           queueMicrotask(() => {
             if (domElement.parentNode) {
               observeUnmount(domElement, (domElement as any).$onUnmount);
             }
           });
         }
-        return; // but do not render the ref as a string [object Object] into the DOM
+        return;
       }
 
-      if (name.startsWith("on") && typeof value === "function") {
-        let eventName = name.substring(2).toLowerCase();
-        const capturePos = eventName.indexOf("capture");
-        const doCapture = capturePos > -1;
+      // event props: delegate globally; still keep defuss lifecycle hooks
+      const parsed = parseEventPropName(name);
+      if (parsed && typeof value === "function") {
+        const { eventType, capture } = parsed;
 
-        if (eventName === "mount") {
-          (domElement as any).$onMount = queueCallback(value); // DOM event lifecycle hook
+        if (eventType === "mount") {
+          (domElement as any).$onMount = queueCallback(value as () => void);
+          return;
         }
 
-        if (eventName === "unmount") {
+        if (eventType === "unmount") {
           if ((domElement as any).$onUnmount) {
-            // chain multiple unmount handlers (when ref is used - see above)
-            const existingUnmount = (domElement as any).$onUnmount;
+            const existingUnmount = (domElement as any).$onUnmount as () => void;
             (domElement as any).$onUnmount = () => {
               existingUnmount();
-              value();
+              (value as () => void)();
             };
           } else {
-            (domElement as any).$onUnmount = queueCallback(value); // DOM event lifecycle hook
+            (domElement as any).$onUnmount = queueCallback(value as () => void);
           }
+          return;
         }
 
-        // onClickCapture={...} support
-        if (doCapture) {
-          eventName = eventName.substring(0, capturePos);
-        }
-        domElement.addEventListener(eventName, value, doCapture);
+        registerDelegatedEvent(domElement as HTMLElement, eventType, value as EventListener, { capture });
         return;
       }
 
       // transforms className="..." -> class="..."
-      // allows for React JSX to work seamlessly
       if (name === "className") {
         name = CLASS_ATTRIBUTE_NAME;
       }
@@ -4569,25 +4890,20 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         const namespace = nsMap[ns as keyof typeof nsMap] || null;
         domElement.setAttributeNS(
           namespace,
-          ns === XLINK_ATTRIBUTE_NAME || ns === "xmlns"
+          ns === XLINK_ATTRIBUTE_NAME || ns === XMLNS_ATTRIBUTE_NAME
             ? `${ns}:${attrName}`
             : name,
-          value,
+          String(value),
         );
       } else if (name === "style" && typeof value !== "string") {
-        const propNames = Object.keys(value);
-
-        // allows for style={{ margin: 10 }} etc.
-        for (let i = 0; i < propNames.length; i++) {
-          (domElement as HTMLElement).style[propNames[i] as any] =
-            value[propNames[i]];
+        const styleObj = value as Record<string, string | number>;
+        for (const prop of Object.keys(styleObj)) {
+          (domElement as HTMLElement).style[prop as any] = String(styleObj[prop]);
         }
       } else if (typeof value === "boolean") {
-        // for cases like <button checked={false} />
         (domElement as any)[name] = value;
       } else {
-        // for any other case
-        domElement.setAttribute(name, value);
+        domElement.setAttribute(name, String(value));
       }
     },
 
@@ -5003,7 +5319,7 @@ export const render = <T extends RenderInput>(
 
 export const createRoot = (document: Document): Element => {
   const htmlElement = document.createElement("html");
-  document.appendChild(htmlElement);
+  document.documentElement.appendChild(htmlElement);
   return document.documentElement;
 };
 
@@ -7176,13 +7492,13 @@ export default defineConfig({
     environment: "happy-dom",
     testTimeout: 290000, // 290 seconds per test
     include: ["**/*.test.{ts,tsx}"],
-    exclude: ["**/node_modules/**", "**/dist/**"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/*.md"],
     clearMocks: true,
     globals: true,
     coverage: {
       provider: "v8",
       include: ["src/**/*"],
-      ignoreEmptyLines: true,
+      exclude: ["**/*.{md,html}"]
     },
   },
 });

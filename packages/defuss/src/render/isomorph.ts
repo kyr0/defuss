@@ -30,6 +30,7 @@ import {
   DEFAULT_TRANSITION_CONFIG,
   type TransitionConfig,
 } from "./transitions.js";
+import { parseEventPropName, registerDelegatedEvent } from "./delegated-events.js";
 
 export const CLASS_ATTRIBUTE_NAME = "class";
 export const XLINK_ATTRIBUTE_NAME = "xlink";
@@ -94,9 +95,10 @@ export const jsx = (
   }
 
   // extract children from attributes and ensure it's always an array
+  // Note: only filter null/undefined, keep 0, "", false as valid children
   let children: Array<VNodeChild> = (
     attributes?.children ? [].concat(attributes.children) : []
-  ).filter(Boolean);
+  ).filter((c) => c !== null && c !== undefined);
   delete attributes?.children;
 
   children = filterComments(
@@ -148,7 +150,7 @@ export const observeUnmount = (domNode: Node, onUnmount: () => void): void => {
     );
   }
 
-  const parentNode = domNode.parentNode;
+  let parentNode: Node | null = domNode.parentNode;
   if (!parentNode) {
     throw new Error("The provided domNode does not have a parentNode.");
   }
@@ -158,8 +160,23 @@ export const observeUnmount = (domNode: Node, onUnmount: () => void): void => {
       if (mutation.removedNodes.length > 0) {
         for (const removedNode of mutation.removedNodes) {
           if (removedNode === domNode) {
-            onUnmount(); // Call the onUnmount function
-            observer.disconnect(); // Stop observing after unmount
+            // Defer check: if node is re-inserted (move), it will be connected
+            queueMicrotask(() => {
+              if (!domNode.isConnected) {
+                // Node was actually unmounted
+                onUnmount();
+                observer.disconnect();
+                return;
+              }
+
+              // Node was moved, not unmounted: re-arm observer on new parent
+              const newParent = domNode.parentNode;
+              if (newParent && newParent !== parentNode) {
+                parentNode = newParent;
+                observer.disconnect();
+                observer.observe(parentNode, { childList: true });
+              }
+            });
             return;
           }
         }
@@ -250,16 +267,9 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         if (virtualNode.attributes) {
           renderer.setAttributes(virtualNode, newEl as Element);
 
-          // Apply dangerouslySetInnerHTML if provided
+          // apply dangerouslySetInnerHTML if provided
           if (virtualNode.attributes.dangerouslySetInnerHTML) {
-            // Old: newEl.innerHTML = virtualNode.attributes.dangerouslySetInnerHTML.__html;
-            // New: use updateDom to handle the innerHTML update
-            updateDom(
-              virtualNode.attributes.dangerouslySetInnerHTML.__html,
-              [newEl],
-              1000, // timeout in ms
-              globalThis.DOMParser,
-            );
+            (newEl as HTMLElement).innerHTML = virtualNode.attributes.dangerouslySetInnerHTML.__html;
           }
         }
 
@@ -329,66 +339,66 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       virtualNode: VNode<VNodeAttributes>,
     ) => {
       // attributes not set (undefined) are ignored; use null value to reset an attributes state
-      if (typeof value === "undefined") return; // if not set, ignore
+      if (typeof value === "undefined") return;
 
-      if (name === DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE) return; // special case, handled elsewhere
+      if (name === DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE) return;
+
+      // internal list key: store on element, do not serialize into DOM
+      if (name === "key") {
+        (domElement as HTMLElement & { _defussKey?: string })._defussKey = String(value);
+        return;
+      }
 
       // save ref as { current: DOMElement } in ref object
-      // allows for ref={someRef}
       if (name === REF_ATTRIBUTE_NAME && typeof value !== "function") {
-        value.current = domElement; // update ref
-        (domElement as any)._defussRef = value; // store ref on element for later access
-        // register an unmount handler to mark ref as orphaned when the element is removed from the DOM
+        const ref = value as { current?: unknown; orphan?: boolean };
+        ref.current = domElement;
+        (domElement as HTMLElement)._defussRef = value as any;
+
         (domElement as any).$onUnmount = queueCallback(() => {
-          // DISABLED: mark the ref as orphaned
           // value.orphan = true;
         });
 
         if (domElement.parentNode) {
           observeUnmount(domElement, (domElement as any).$onUnmount);
         } else {
-          // If element doesn't have a parent yet, set it up after a microtask
           queueMicrotask(() => {
             if (domElement.parentNode) {
               observeUnmount(domElement, (domElement as any).$onUnmount);
             }
           });
         }
-        return; // but do not render the ref as a string [object Object] into the DOM
+        return;
       }
 
-      if (name.startsWith("on") && typeof value === "function") {
-        let eventName = name.substring(2).toLowerCase();
-        const capturePos = eventName.indexOf("capture");
-        const doCapture = capturePos > -1;
+      // event props: delegate globally; still keep defuss lifecycle hooks
+      const parsed = parseEventPropName(name);
+      if (parsed && typeof value === "function") {
+        const { eventType, capture } = parsed;
 
-        if (eventName === "mount") {
-          (domElement as any).$onMount = queueCallback(value); // DOM event lifecycle hook
+        if (eventType === "mount") {
+          (domElement as any).$onMount = queueCallback(value as () => void);
+          return;
         }
 
-        if (eventName === "unmount") {
+        if (eventType === "unmount") {
           if ((domElement as any).$onUnmount) {
-            // chain multiple unmount handlers (when ref is used - see above)
-            const existingUnmount = (domElement as any).$onUnmount;
+            const existingUnmount = (domElement as any).$onUnmount as () => void;
             (domElement as any).$onUnmount = () => {
               existingUnmount();
-              value();
+              (value as () => void)();
             };
           } else {
-            (domElement as any).$onUnmount = queueCallback(value); // DOM event lifecycle hook
+            (domElement as any).$onUnmount = queueCallback(value as () => void);
           }
+          return;
         }
 
-        // onClickCapture={...} support
-        if (doCapture) {
-          eventName = eventName.substring(0, capturePos);
-        }
-        domElement.addEventListener(eventName, value, doCapture);
+        registerDelegatedEvent(domElement as HTMLElement, eventType, value as EventListener, { capture });
         return;
       }
 
       // transforms className="..." -> class="..."
-      // allows for React JSX to work seamlessly
       if (name === "className") {
         name = CLASS_ATTRIBUTE_NAME;
       }
@@ -406,25 +416,20 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         const namespace = nsMap[ns as keyof typeof nsMap] || null;
         domElement.setAttributeNS(
           namespace,
-          ns === XLINK_ATTRIBUTE_NAME || ns === "xmlns"
+          ns === XLINK_ATTRIBUTE_NAME || ns === XMLNS_ATTRIBUTE_NAME
             ? `${ns}:${attrName}`
             : name,
-          value,
+          String(value),
         );
       } else if (name === "style" && typeof value !== "string") {
-        const propNames = Object.keys(value);
-
-        // allows for style={{ margin: 10 }} etc.
-        for (let i = 0; i < propNames.length; i++) {
-          (domElement as HTMLElement).style[propNames[i] as any] =
-            value[propNames[i]];
+        const styleObj = value as Record<string, string | number>;
+        for (const prop of Object.keys(styleObj)) {
+          (domElement as HTMLElement).style[prop as any] = String(styleObj[prop]);
         }
       } else if (typeof value === "boolean") {
-        // for cases like <button checked={false} />
         (domElement as any)[name] = value;
       } else {
-        // for any other case
-        domElement.setAttribute(name, value);
+        domElement.setAttribute(name, String(value));
       }
     },
 

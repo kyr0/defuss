@@ -22,6 +22,7 @@ import {
   type NodeType,
   updateDom,
 } from "../render/index.js";
+import { clearDelegatedEventsDeep } from "../render/delegated-events.js";
 import { createTimeoutPromise, waitForRef } from "defuss-runtime";
 import type {
   DequeryOptions,
@@ -98,9 +99,18 @@ export function isNonChainedReturnCall(callName: string): boolean {
 export const emptyImpl = <T>(nodes: Array<T>) => {
   nodes.forEach((el) => {
     const element = el as HTMLElement;
-    // TODO: looks wrong, acts wrong: should remove the element itself?
-    while (element.firstChild) {
-      element.firstChild.remove();
+    // Clear from both light DOM and shadow DOM if present
+    const target = element.shadowRoot ?? element;
+
+    while (target.firstChild) {
+      const node = target.firstChild;
+
+      // Clear delegated events for node + descendants to prevent leaks
+      if (node instanceof HTMLElement) {
+        clearDelegatedEventsDeep(node);
+      }
+
+      node.remove();
     }
   });
   return nodes as T[];
@@ -663,18 +673,49 @@ export class CallChainImpl<
   }
 
   update(
-    input:
+    input?:
       | string
       | RenderInput
       | Ref<any, NodeType>
       | NodeType
       | CallChainImpl<NT>
-      | CallChainImplThenable<NT>,
+      | CallChainImplThenable<NT>
+      | Record<string, unknown>,  // NEW: props object for implicit update
     transitionConfig?: import("../render/transitions.js").TransitionConfig,
   ): ET {
     return createCall(this, "update", async () => {
+      // Check if this is an implicit props update (object with no VNode structure)
+      // Only treat it as props-update if the target is in the component registry
+      if (input && typeof input === "object" && !(input instanceof Node)) {
+        const { getComponentInstance } = await import("../render/component-registry.js");
+        let didImplicitUpdate = false;
+
+        for (const node of this.nodes) {
+          if (!(node instanceof Element)) continue;
+
+          const instance = getComponentInstance(node);
+          if (!instance) continue;
+
+          // This is a registered component - perform implicit props update
+          Object.assign(instance.props, input);
+          const newVNode = instance.renderFn(instance.props);
+
+          // Morph in-place
+          updateDomWithVdom(node as HTMLElement, newVNode, globalThis as Globals);
+          instance.prevVNode = newVNode;
+
+          didImplicitUpdate = true;
+        }
+
+        if (didImplicitUpdate) {
+          return this.nodes as NT;
+        }
+        // Fallthrough: not a registered component, treat as explicit update
+      }
+
+      // Explicit update (existing behavior)
       return (await updateDom(
-        input,
+        input as RenderInput,
         this.nodes,
         this.options.timeout!,
         this.Parser,

@@ -61,13 +61,16 @@ describe("Element creation test", async () => {
 
   it("can add a mouseover event listener to a <div> element", async () => {
     const div = await $<HTMLDivElement>("<div>", { class: "hoverable" });
+    // Element must be in document BEFORE registering for delegated events
+    document.body.appendChild(div[0]);
     let hovered = false;
     await div.on("mouseover", () => {
       hovered = true;
     });
-    const event = new Event("mouseover");
-    div[0].dispatchEvent(event); // Updated to use div[0]
+    const event = new Event("mouseover", { bubbles: true });
+    div[0].dispatchEvent(event);
     expect(hovered).toBe(true); // check that the mouseover event was triggered
+    document.body.removeChild(div[0]);
   });
 
   it("can create a <div> element with text content", async () => {
@@ -257,6 +260,8 @@ describe("Element creation test", async () => {
 describe("Event preservation test", () => {
   it("preserves onClick handlers on deeply nested elements during VDOM updates", async () => {
     const container = await $<HTMLDivElement>("<div>");
+    // Attach to DOM so delegated events can bubble to document
+    document.body.appendChild(container[0]);
 
     let clickCount = 0;
     const handleClick = (e: Event) => {
@@ -352,6 +357,8 @@ describe("Event preservation test", () => {
 
   it("preserves multiple event handlers on nested elements during updates", async () => {
     const container = await $<HTMLDivElement>("<div>");
+    // Attach to DOM so delegated events can bubble to document
+    document.body.appendChild(container[0]);
 
     let clickCount = 0;
     let mouseoverCount = 0;
@@ -372,7 +379,7 @@ describe("Event preservation test", () => {
           <a
             href="#"
             onClick={handleClick}
-            onFocus={() => {}}
+            onFocus={() => { }}
             onMouseOver={handleMouseover}
             id="multi-event-link"
           >
@@ -389,7 +396,7 @@ describe("Event preservation test", () => {
       "#multi-event-link",
     ) as HTMLAnchorElement;
     initialLink.click();
-    initialLink.dispatchEvent(new Event("mouseover"));
+    initialLink.dispatchEvent(new Event("mouseover", { bubbles: true }));
     expect(clickCount).toBe(1);
     expect(mouseoverCount).toBe(1);
 
@@ -400,7 +407,7 @@ describe("Event preservation test", () => {
           <a
             href="#modified"
             onClick={handleClick}
-            onFocus={() => {}}
+            onFocus={() => { }}
             onMouseOver={handleMouseover}
             id="multi-event-link"
             className="modified-link"
@@ -422,13 +429,15 @@ describe("Event preservation test", () => {
     expect(updatedLink.className).toBe("modified-link");
 
     updatedLink.click();
-    updatedLink.dispatchEvent(new Event("mouseover"));
+    updatedLink.dispatchEvent(new Event("mouseover", { bubbles: true }));
     expect(clickCount).toBe(2);
     expect(mouseoverCount).toBe(2);
   });
 
   it("handles onClick when parent structure changes significantly", async () => {
     const container = await $<HTMLDivElement>("<div>");
+    // Attach to DOM so delegated events can bubble to document
+    document.body.appendChild(container[0]);
 
     let clickCount = 0;
     const handleClick = () => clickCount++;

@@ -8,6 +8,7 @@ import {
   globalScopeDomApis,
 } from "./isomorph.js";
 import type { Globals, RenderInput, RenderResult, VNode } from "./types.js";
+import { parseEventPropName, registerDelegatedEvent } from "./delegated-events.js";
 
 export const renderSync = <T extends RenderInput>(
   virtualNode: T,
@@ -190,26 +191,25 @@ export const hydrate = (
       element._defussRef = vnode.attributes!.ref; // store ref on element for later access
     }
 
-    // attach event listeners
+    // attach event listeners using delegated events
     for (const key of Object.keys(vnode.attributes!)) {
-      if (key === "ref") continue; // don't override ref.current with [object Object] again
+      if (key === "ref") continue;
 
-      // TODO: refactor: this maybe can be unified with isomorph render logic
-      if (
-        key.startsWith("on") &&
-        typeof vnode.attributes![key] === "function"
-      ) {
-        let eventName = key.substring(2).toLowerCase();
-        let capture = false;
+      const value = vnode.attributes![key];
 
-        // check for specific suffixes to set event options
-        if (eventName.endsWith("capture")) {
-          capture = true;
-          eventName = eventName.replace(/capture$/, "");
-        }
+      // lifecycle is handled elsewhere in hydrate (onMount/onUnmount), don't treat as DOM event
+      if (key === "onMount" || key === "onUnmount" || key === "onmount" || key === "onunmount") continue;
 
-        element.addEventListener(eventName, vnode.attributes![key], capture);
-      }
+      const parsed = parseEventPropName(key);
+      if (!parsed) continue;
+      if (typeof value !== "function") continue;
+
+      const { eventType, capture } = parsed;
+
+      // ignore "mount"/"unmount" pseudo events here (hydrate calls onMount and wires unmount separately)
+      if (eventType === "mount" || eventType === "unmount") continue;
+
+      registerDelegatedEvent(element, eventType, value as EventListener, { capture });
     }
 
     // --- element lifecycle ---

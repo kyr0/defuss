@@ -192,7 +192,7 @@ export async function fetch(
 ): Promise<FetchResponse> {
   // use native fetch if ProgressSignal is not provided for simplicity and efficiency
   if (!init.progressSignal && typeof globalThis.fetch === "function") {
-    return fetch(input, init) as unknown as FetchResponse;
+    return globalThis.fetch(input, init) as unknown as FetchResponse;
   }
 
   return new Promise((resolve, reject) => {

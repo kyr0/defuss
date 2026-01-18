@@ -1,6 +1,6 @@
 {
   "name": "defuss",
-  "version": "2.1.11",
+  "version": "3.0.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -43,6 +43,7 @@
     "pretest": "pnpm run build",
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
     "prebuild": "pnpm run clean",
     "build": "node scripts/build.mjs"
   },
@@ -109,17 +110,20 @@
   ],
   "devDependencies": {
     "@types/node": "^25.0.9",
+    "@vitest/browser": "^3.2.4",
+    "@vitest/browser-playwright": "^4.0.17",
     "@vitest/coverage-v8": "^4.0.17",
+    "jsdom": "^27.4.0",
     "pkgroll": "^2.21.5",
+    "playwright": "^1.57.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.17",
-    "jsdom": "^27.4.0"
+    "vitest": "^4.0.17"
   },
   "dependencies": {
-    "defuss-runtime": "^1.2.1",
     "@types/w3c-xmlserializer": "^2.0.4",
     "csstype": "^3.2.3",
+    "defuss-runtime": "^1.2.1",
     "happy-dom": "^20.3.1",
     "w3c-xmlserializer": "^5.0.0"
   }

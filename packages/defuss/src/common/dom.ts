@@ -9,6 +9,12 @@ import {
   getRenderer,
   handleLifecycleEventsForOnMount,
 } from "../render/isomorph.js";
+import {
+  registerDelegatedEvent,
+  removeDelegatedEvent,
+  clearDelegatedEvents,
+  clearDelegatedEventsDeep,
+} from "../render/delegated-events.js";
 import type { NodeType } from "../render/index.js";
 import { createTimeoutPromise } from "defuss-runtime";
 
@@ -92,7 +98,7 @@ const updateNode = (oldNode: Node, newNode: Node) => {
 };
 
 /********************************************************
- * 1) Define a "valid" child type & utility
+ * 1) Define a "valid" child type & utilities
  ********************************************************/
 export type ValidChild =
   | string
@@ -102,239 +108,386 @@ export type ValidChild =
   | undefined
   | VNode<VNodeAttributes>;
 
+function isTextLike(value: unknown): value is string | number | boolean {
+  return (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
+}
+
+function isVNode(value: unknown): value is VNode<VNodeAttributes> {
+  return Boolean(value && typeof value === "object" && "type" in (value as Record<string, unknown>));
+}
+
 function toValidChild(child: VNodeChild): ValidChild | undefined {
   if (child == null) return child; // null or undefined
-  if (
-    typeof child === "string" ||
-    typeof child === "number" ||
-    typeof child === "boolean"
-  ) {
-    return child;
-  }
-  if (typeof child === "object" && "type" in child) {
-    return child as VNode<VNodeAttributes>;
-  }
+  if (isTextLike(child)) return child;
+
+  if (isVNode(child)) return child;
+
   // e.g. function or {} -> filter out
   return undefined;
+}
+
+/** fuse consecutive text-like nodes to preserve DOM stability (matches hydrate's behavior) */
+function normalizeChildren(input: RenderInput): Array<ValidChild> {
+  const raw: Array<ValidChild> = [];
+
+  const pushChild = (child: unknown) => {
+    if (Array.isArray(child)) {
+      child.forEach(pushChild);
+      return;
+    }
+
+    const valid = toValidChild(child as VNodeChild);
+    if (typeof valid === "undefined") return;
+
+    // unwrap Fragment-ish nodes (defuss sometimes uses "fragment", some code uses "Fragment")
+    if (isVNode(valid) && (valid.type === "fragment" || valid.type === "Fragment")) {
+      const nested = Array.isArray(valid.children) ? valid.children : [];
+      nested.forEach(pushChild);
+      return;
+    }
+
+    // ignore booleans/null/undefined as render-nothing
+    if (valid === null || typeof valid === "undefined" || typeof valid === "boolean") return;
+
+    raw.push(valid);
+  };
+
+  pushChild(input);
+
+  // fuse consecutive text nodes into a single string
+  const fused: Array<ValidChild> = [];
+  let buffer: string | null = null;
+
+  const flush = () => {
+    if (buffer !== null && buffer.length > 0) fused.push(buffer);
+    buffer = null;
+  };
+
+  for (const child of raw) {
+    if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+      buffer = (buffer ?? "") + String(child);
+      continue;
+    }
+
+    flush();
+    fused.push(child);
+  }
+
+  flush();
+  return fused;
+}
+
+function getVNodeMatchKey(child: ValidChild): string | null {
+  if (!child || typeof child !== "object") return null;
+
+  const key = child.attributes?.key;
+  if (typeof key === "string" || typeof key === "number") return `k:${String(key)}`;
+
+  const id = child.attributes?.id;
+  if (typeof id === "string" && id.length > 0) return `id:${id}`;
+
+  return null;
+}
+
+function getDomMatchKeys(node: Node): Array<string> {
+  if (node.nodeType !== Node.ELEMENT_NODE) return [];
+
+  const el = node as HTMLElement;
+  const keys: Array<string> = [];
+
+  // prefer internal key storage, but also accept legacy `key` attribute if present
+  const internalKey = (el as HTMLElement & { _defussKey?: string })._defussKey;
+  if (internalKey) keys.push(`k:${internalKey}`);
+
+  const attrKey = el.getAttribute("key");
+  if (attrKey) keys.push(`k:${attrKey}`);
+
+  const id = el.id;
+  if (id) keys.push(`id:${id}`);
+
+  return keys;
 }
 
 /********************************************************
  * 2) Check if a DOM node and a ValidChild match by type
  ********************************************************/
 function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
-  if (
-    typeof child === "string" ||
-    typeof child === "number" ||
-    typeof child === "boolean"
-  ) {
-    // must be a text node
+  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
     return domNode.nodeType === Node.TEXT_NODE;
-  } else if (child && typeof child === "object") {
-    // must be same tag
-    if (domNode.nodeType !== Node.ELEMENT_NODE) return false;
-    const oldTag = (domNode as Element).tagName.toLowerCase();
-    const newTag = child.type.toLowerCase();
-    return oldTag === newTag;
   }
-  // if child is null/undefined => definitely no match
+
+  if (child && typeof child === "object") {
+    if (domNode.nodeType !== Node.ELEMENT_NODE) return false;
+
+    const oldTag = (domNode as Element).tagName.toLowerCase();
+    const newType = typeof child.type === "string" ? child.type.toLowerCase() : "";
+    if (!newType) return false;
+
+    return oldTag === newType;
+  }
+
   return false;
 }
 
 /********************************************************
- * 3) Patch a single DOM node in place (attributes, text, children)
- ********************************************************/
-function patchDomInPlace(domNode: Node, child: ValidChild, globals: Globals) {
-  const renderer = getRenderer(globals.window.document);
-
-  // textlike
-  if (
-    typeof child === "string" ||
-    typeof child === "number" ||
-    typeof child === "boolean"
-  ) {
-    const newText = String(child);
-    if (domNode.nodeValue !== newText) {
-      domNode.nodeValue = newText;
-    }
-    return;
-  }
-
-  // element
-  if (
-    domNode.nodeType === Node.ELEMENT_NODE &&
-    child &&
-    typeof child === "object"
-  ) {
-    // 1) update attributes
-    // remove old attributes not present
-    const el = domNode as Element;
-    const existingAttrs = Array.from(el.attributes);
-    for (const attr of existingAttrs) {
-      const { name } = attr;
-      if (
-        !Object.prototype.hasOwnProperty.call(child.attributes, name) &&
-        name !== "style" &&
-        !name.startsWith("on") // do not remove event listeners
-      ) {
-        el.removeAttribute(name);
-      }
-    }
-    // set new attributes
-    renderer.setAttributes(child, el);
-
-    // 2) dangerouslySetInnerHTML => skip child updates
-    if (child.attributes?.dangerouslySetInnerHTML) {
-      el.innerHTML = child.attributes.dangerouslySetInnerHTML.__html;
-      return;
-    }
-
-    // 3) recursively do partial updates for children
-    if (child.children) {
-      updateDomWithVdom(el, child.children as any, globals);
-    } else {
-      // remove old children
-      while (el.firstChild) {
-        el.removeChild(el.firstChild);
-      }
-    }
-  }
-}
-
-/********************************************************
- * 4) Create brand new DOM node from a ValidChild
+ * 3) Create brand new DOM node(s) from a ValidChild
  ********************************************************/
 function createDomFromChild(
   child: ValidChild,
   globals: Globals,
-): Node | Node[] | undefined {
+): Node | Array<Node> | undefined {
   const renderer = getRenderer(globals.window.document);
 
   if (child == null) return undefined;
-  if (
-    typeof child === "string" ||
-    typeof child === "number" ||
-    typeof child === "boolean"
-  ) {
+
+  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
     return globals.window.document.createTextNode(String(child));
   }
 
-  // else it's a VNode, create without parent as we don't know where it goes yet
-  // therefore, we need to handle the onMount lifecycle event later too
-  let renderResult = renderer.createElementOrElements(child) as
-    | Node
-    | Node[]
-    | undefined;
+  // create without parent (we'll insert manually and run lifecycle hooks afterwards)
+  const created = renderer.createElementOrElements(child) as Node | Array<Node> | undefined;
 
-  if (renderResult && !Array.isArray(renderResult)) {
-    renderResult = [renderResult];
-  }
-  return renderResult;
+  if (!created) return undefined;
+  return Array.isArray(created) ? (created as Array<Node>) : [created];
 }
 
 /********************************************************
- * 5) Main partial-update function (index-by-index approach)
+ * 4) Patch an element node in place (attributes + children)
+ ********************************************************/
+function shouldPreserveFormStateAttribute(
+  el: Element,
+  attrName: string,
+  vnode: VNode<VNodeAttributes>,
+): boolean {
+  const tag = el.tagName.toLowerCase();
+  const hasExplicit = Object.prototype.hasOwnProperty.call(vnode.attributes ?? {}, attrName);
+
+  if (hasExplicit) return false;
+
+  // preserve uncontrolled input/textarea/select state unless explicitly controlled by VDOM
+  if (tag === "input") return attrName === "value" || attrName === "checked";
+  if (tag === "textarea") return attrName === "value";
+  if (tag === "select") return attrName === "value";
+  return false;
+}
+
+function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals: Globals): void {
+  const renderer = getRenderer(globals.window.document);
+
+  // remove old attributes not present (but preserve uncontrolled form state)
+  const existingAttrs = Array.from(el.attributes);
+  const nextAttrs = vnode.attributes ?? {};
+
+  for (const attr of existingAttrs) {
+    const { name } = attr;
+
+    // do not remove internal key if it ever existed as attribute
+    if (name === "key") continue;
+
+    // do not remove event-ish attributes; handlers are delegated elsewhere
+    if (name.startsWith("on")) continue;
+
+    // treat class/className as equivalent
+    if (name === "class" && (Object.prototype.hasOwnProperty.call(nextAttrs, "class") || Object.prototype.hasOwnProperty.call(nextAttrs, "className"))) {
+      continue;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(nextAttrs, name)) {
+      if (shouldPreserveFormStateAttribute(el, name, vnode)) continue;
+      el.removeAttribute(name);
+    }
+  }
+
+  // set new attributes (includes ref + delegated events via renderer.setAttribute)
+  renderer.setAttributes(vnode, el);
+
+  // dangerouslySetInnerHTML => skip child reconciliation
+  const d = vnode.attributes?.dangerouslySetInnerHTML;
+  if (d && typeof d === "object" && typeof d.__html === "string") {
+    el.innerHTML = d.__html;
+    return;
+  }
+
+  const tag = el.tagName.toLowerCase();
+
+  // preserve textarea live value unless explicitly controlled
+  if (tag === "textarea") {
+    const isControlled = Object.prototype.hasOwnProperty.call(nextAttrs, "value");
+    const isActive = el.ownerDocument?.activeElement === el;
+    if (isActive && !isControlled) return;
+  }
+
+  // reconcile children
+  updateDomWithVdom(el, (vnode.children ?? []) as RenderInput, globals);
+}
+
+/********************************************************
+ * 5) Morph a single DOM node to match a ValidChild
+ ********************************************************/
+function morphNode(domNode: Node, child: ValidChild, globals: Globals): Node | null {
+  // text-like
+  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+    const text = String(child);
+
+    if (domNode.nodeType === Node.TEXT_NODE) {
+      if (domNode.nodeValue !== text) domNode.nodeValue = text;
+      return domNode;
+    }
+
+    const next = globals.window.document.createTextNode(text);
+    domNode.parentNode?.replaceChild(next, domNode);
+    return next;
+  }
+
+  // element-like (VNode)
+  if (child && typeof child === "object") {
+    const newType = typeof child.type === "string" ? child.type : null;
+    if (!newType) return domNode;
+
+    if (domNode.nodeType !== Node.ELEMENT_NODE) {
+      const created = createDomFromChild(child, globals);
+      const first = Array.isArray(created) ? created[0] : created;
+      if (!first) return null;
+
+      domNode.parentNode?.replaceChild(first, domNode);
+      handleLifecycleEventsForOnMount(first as HTMLElement);
+      return first;
+    }
+
+    const el = domNode as Element;
+    const oldTag = el.tagName.toLowerCase();
+    const newTag = newType.toLowerCase();
+
+    if (oldTag !== newTag) {
+      const created = createDomFromChild(child, globals);
+      const first = Array.isArray(created) ? created[0] : created;
+      if (!first) return null;
+
+      el.parentNode?.replaceChild(first, el);
+      handleLifecycleEventsForOnMount(first as HTMLElement);
+      return first;
+    }
+
+    patchElementInPlace(el, child as VNode<VNodeAttributes>, globals);
+    return el;
+  }
+
+  // null/undefined => remove
+  domNode.parentNode?.removeChild(domNode);
+  return null;
+}
+
+/********************************************************
+ * 6) Main state-preserving morph (key/id aware, move-not-replace)
  ********************************************************/
 export function updateDomWithVdom(
   parentElement: Element,
   newVDOM: RenderInput,
   globals: Globals,
-) {
-  //console.log('updateDomWithVdom', newVDOM, parentElement)
+): void {
+  // If element has shadow DOM, update shadow root instead of light DOM
+  // This fixes the shadow DOM update bug where updates created duplicates
+  const targetRoot: ParentNode & Node =
+    (parentElement as HTMLElement).shadowRoot ?? parentElement;
 
-  // A) Convert newVDOM => array of "valid" children
-  let newChildren: ValidChild[] = [];
-  if (Array.isArray(newVDOM)) {
-    newChildren = newVDOM
-      .map(toValidChild)
-      .filter((c): c is ValidChild => c !== undefined);
-  } else if (
-    typeof newVDOM === "string" ||
-    typeof newVDOM === "number" ||
-    typeof newVDOM === "boolean"
-  ) {
-    newChildren = [newVDOM];
-  } else if (newVDOM) {
-    const child = toValidChild(newVDOM);
-    if (child !== undefined) newChildren = [child];
+  const nextChildren = normalizeChildren(newVDOM);
+
+  // snapshot existing children once for matching pools
+  const existing = Array.from(targetRoot.childNodes);
+
+  const keyedPool = new Map<string, Node>();
+  const nodeKeys = new WeakMap<Node, Array<string>>();
+  const unkeyedPool: Array<Node> = [];
+
+  for (const node of existing) {
+    const keys = getDomMatchKeys(node);
+    if (keys.length > 0) {
+      nodeKeys.set(node, keys);
+      for (const k of keys) {
+        if (!keyedPool.has(k)) keyedPool.set(k, node);
+      }
+    } else {
+      unkeyedPool.push(node);
+    }
   }
 
-  //console.log("new children to render!", newChildren)
+  const consumeKeyedNode = (node: Node) => {
+    const keys = nodeKeys.get(node) ?? [];
+    for (const k of keys) keyedPool.delete(k);
+  };
 
-  // B) Generate brand-new DOM for each new child in an array
-  //    We'll compare them 1:1 with the old nodes.
-  const newDomArray: (Node | Node[] | undefined)[] = newChildren.map(
-    (vdomChild) => createDomFromChild(vdomChild, globals),
-  );
-
-  // C) Snapshot old children
-  const oldNodes = Array.from(parentElement.childNodes);
-
-  // D) Walk up to max length
-  const maxLen = Math.max(oldNodes.length, newDomArray.length);
-  for (let i = 0; i < maxLen; i++) {
-    const oldNode = oldNodes[i];
-    const newDom = newDomArray[i]; // might be a single Node or an array of Nodes
-    const newChild = newChildren[i];
-
-    if (oldNode && newDom !== undefined) {
-      // Both old & new exist
-      // 1) If newDom is an array (multiple root nodes?), we do a bigger replace
-      //    or partial approach. Typically we might place the 1st in oldNode's position
-      //    and then insert the rest right after it, then remove oldNode if needed.
-      if (Array.isArray(newDom)) {
-        if (newDom.length === 0) {
-          // no new => remove old
-          parentElement.removeChild(oldNode);
-        } else {
-          // We might keep the first node and replace oldNode
-          const first = newDom[0];
-          parentElement.replaceChild(first, oldNode);
-
-          // Insert the rest
-          for (let k = 1; k < newDom.length; k++) {
-            if (newDom[k]) {
-              parentElement.insertBefore(newDom[k]!, first.nextSibling);
-
-              if (typeof newDom[k] !== "undefined") {
-                handleLifecycleEventsForOnMount(newDom[k] as HTMLElement);
-              }
-            }
-          }
-
-          if (typeof first !== "undefined") {
-            handleLifecycleEventsForOnMount(first as HTMLElement);
-          }
-        }
-      } else if (newDom) {
-        // single new node
-        // 2) If old & new match => partial patch. Else => replace
-        if (newChild && areNodeAndChildMatching(oldNode, newChild)) {
-          // partial patch
-          patchDomInPlace(oldNode, newChild, globals);
-        } else {
-          // replace
-          parentElement.replaceChild(newDom, oldNode);
-          handleLifecycleEventsForOnMount(newDom as HTMLElement);
-        }
+  const takeUnkeyedMatch = (child: ValidChild): Node | undefined => {
+    // try to find a compatible node (preserves focus/state by moving instead of replacing)
+    for (let i = 0; i < unkeyedPool.length; i++) {
+      const candidate = unkeyedPool[i];
+      if (areNodeAndChildMatching(candidate, child)) {
+        unkeyedPool.splice(i, 1);
+        return candidate;
       }
-    } else if (!oldNode && newDom !== undefined) {
-      // we have more new nodes => append
-      if (Array.isArray(newDom)) {
-        newDom.forEach((newNode) => {
-          const wasAdded = newNode && parentElement.appendChild(newNode);
+    }
 
-          if (wasAdded) {
-            handleLifecycleEventsForOnMount(newNode as HTMLElement);
-          }
-          return wasAdded;
-        });
-      } else if (newDom) {
-        parentElement.appendChild(newDom);
-        handleLifecycleEventsForOnMount(newDom as HTMLElement);
+    // fallback: take the next available unkeyed node
+    return unkeyedPool.shift();
+  };
+
+  let domIndex = 0;
+
+  for (const child of nextChildren) {
+    const key = getVNodeMatchKey(child);
+
+    let match: Node | undefined;
+
+    if (key) {
+      match = keyedPool.get(key);
+      if (match) consumeKeyedNode(match);
+    } else {
+      match = takeUnkeyedMatch(child);
+    }
+
+    const anchor = targetRoot.childNodes[domIndex] ?? null;
+
+    if (match) {
+      // move node into place (preserves identity/state)
+      if (match !== anchor) {
+        targetRoot.insertBefore(match, anchor);
       }
-    } else if (oldNode && newDom === undefined) {
-      // we have leftover old => remove
-      parentElement.removeChild(oldNode);
+
+      const morphed = morphNode(match, child, globals);
+
+      // if morphNode replaced it, ensure we still have the correct node at domIndex
+      if (morphed && morphed !== match) {
+        // replacement already occurred in-place, nothing else to do
+      }
+
+      domIndex++;
+      continue;
+    }
+
+    // no match => create and insert
+    const created = createDomFromChild(child, globals);
+    if (!created || (Array.isArray(created) && created.length === 0)) continue;
+
+    const nodes = Array.isArray(created) ? created : [created];
+    for (const node of nodes) {
+      targetRoot.insertBefore(node, anchor);
+      handleLifecycleEventsForOnMount(node as HTMLElement);
+      domIndex++;
+    }
+  }
+
+  // remove remaining unmatched nodes (both keyed leftovers and unkeyed leftovers)
+  const remaining = new Set<Node>();
+
+  for (const node of unkeyedPool) remaining.add(node);
+  for (const node of keyedPool.values()) remaining.add(node);
+
+  for (const node of remaining) {
+    if (node.parentNode === targetRoot) {
+      targetRoot.removeChild(node);
     }
   }
 }
@@ -357,8 +510,6 @@ export function replaceDomWithVdom(
   // 2) Re-render from scratch
   const renderer = getRenderer(globals.window.document);
 
-  // Possibly convert `newVDOM` to array if needed,
-  // but `renderer.createElementOrElements` handles it either way:
   const newDom = renderer.createElementOrElements(
     newVDOM as VNode | undefined | Array<VNode | undefined | string>,
   );
@@ -366,10 +517,14 @@ export function replaceDomWithVdom(
   // 3) Append the newly created node(s)
   if (Array.isArray(newDom)) {
     for (const node of newDom) {
-      if (node) parentElement.appendChild(node);
+      if (node) {
+        parentElement.appendChild(node);
+        handleLifecycleEventsForOnMount(node as HTMLElement);
+      }
     }
   } else if (newDom) {
     parentElement.appendChild(newDom);
+    handleLifecycleEventsForOnMount(newDom as HTMLElement);
   }
 }
 
@@ -556,14 +711,9 @@ export function addElementEvent(
   eventType: string,
   handler: EventListener,
 ): void {
-  const eventMap = getEventMap(element);
-
-  if (!eventMap.has(eventType)) {
-    eventMap.set(eventType, new Set());
-  }
-
-  eventMap.get(eventType)!.add(handler);
-  element.addEventListener(eventType, handler);
+  // Use delegated events for unified event handling (NEW ALGO)
+  // multi: true allows multiple handlers per element (Dequery mode)
+  registerDelegatedEvent(element, eventType, handler, { multi: true });
 }
 
 export function removeElementEvent(
@@ -571,39 +721,12 @@ export function removeElementEvent(
   eventType: string,
   handler?: EventListener,
 ): void {
-  const eventMap = getEventMap(element);
-
-  if (!eventMap.has(eventType)) return;
-
-  if (handler) {
-    // remove specific handler
-    if (eventMap.get(eventType)!.has(handler)) {
-      element.removeEventListener(eventType, handler);
-      eventMap.get(eventType)!.delete(handler);
-
-      if (eventMap.get(eventType)!.size === 0) {
-        eventMap.delete(eventType);
-      }
-    }
-  } else {
-    // remove all handlers for this event type
-    eventMap.get(eventType)!.forEach((h: EventListener) => {
-      element.removeEventListener(eventType, h);
-    });
-    eventMap.delete(eventType);
-  }
+  // Remove from delegation registry
+  removeDelegatedEvent(element, eventType, handler);
 }
 
 export function clearElementEvents(element: HTMLElement): void {
-  const eventMap = getEventMap(element);
-
-  eventMap.forEach((handlers, eventType) => {
-    handlers.forEach((handler: EventListener) => {
-      element.removeEventListener(eventType, handler);
-    });
-  });
-
-  eventMap.clear();
+  clearDelegatedEvents(element);
 }
 
 /**
@@ -626,7 +749,7 @@ export function domNodeToVNode(node: Node): VNode<VNodeAttributes> | string {
     }
 
     // Convert child nodes recursively
-    const children: (VNode<VNodeAttributes> | string)[] = [];
+    const children: Array<VNode<VNodeAttributes> | string> = [];
     for (let i = 0; i < element.childNodes.length; i++) {
       const childVNode = domNodeToVNode(element.childNodes[i]);
       children.push(childVNode);
@@ -650,10 +773,10 @@ export function domNodeToVNode(node: Node): VNode<VNodeAttributes> | string {
 export function htmlStringToVNodes(
   html: string,
   Parser: typeof DOMParser,
-): (VNode<VNodeAttributes> | string)[] {
+): Array<VNode<VNodeAttributes> | string> {
   const parser = new Parser();
   const doc = parser.parseFromString(html, "text/html");
-  const vNodes: (VNode<VNodeAttributes> | string)[] = [];
+  const vNodes: Array<VNode<VNodeAttributes> | string> = [];
 
   // Convert each child node in the body to a VNode
   for (let i = 0; i < doc.body.childNodes.length; i++) {
