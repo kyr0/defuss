@@ -25,5 +25,11 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm test --filter='!@example/with-editorjs' --filter='!@example/with-astro-ts' --filter='!@example/with-photo-gallery' --filter='!@example/with-desktop-wm'
