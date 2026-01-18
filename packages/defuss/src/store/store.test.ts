@@ -385,10 +385,10 @@ describe("Store", () => {
 
       // Verify listener was called with correct values
       expect(listener).toHaveBeenCalledTimes(1);
-      // The third parameter is undefined, which is correct for a restore operation
+      // oldValue is { count: 0 } (the initial store value), newValue is { count: 50 } (from storage)
       expect(listener).toHaveBeenCalledWith(
         { count: 50 },
-        { count: 50 },
+        { count: 0 },
         undefined,
       );
     });

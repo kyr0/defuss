@@ -271,6 +271,10 @@ export const removeDelegatedEvent = (
         if (entry.bubble === handler) {
             entry.bubble = undefined;
         }
+
+        // Always call removeEventListener for safety (handles detached element direct-binding case)
+        element.removeEventListener(eventType, handler, true);  // capture
+        element.removeEventListener(eventType, handler, false); // bubble
     } else {
         // Remove ALL handlers for this event type (both phases)
         // This is what users expect from .off("click") without specific handler

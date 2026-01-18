@@ -89,10 +89,11 @@ export const createStore = <T>(
       storageKey = key;
       const storedValue = storage.get(key, value);
 
-      // Use configured equality check
-      if (!equals(value, storedValue)) {
+      // Capture oldValue before assignment for correct notification
+      const oldValue = value;
+      if (!equals(oldValue, storedValue)) {
         value = storedValue;
-        notify(value);
+        notify(oldValue);
       }
     },
 

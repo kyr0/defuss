@@ -27,4 +27,19 @@ describe("jQuery API compatibility (core)", async () => {
     const obj = await $("div", { globals });
     expect(obj.length).toBe(58);
   });
+
+  it(".append($(...)) clones for multi-target", async () => {
+    globals.document.body.innerHTML = '<div class="target"></div><div class="target"></div>';
+    const targets = await $(".target", { globals });
+    const child = await $("<span>cloned</span>", { globals });
+
+    await targets.append(child);
+
+    const spans = globals.document.querySelectorAll("span");
+    expect(spans.length).toBe(2);
+    // Both targets should have their own span (cloned), not the same node
+    expect(spans[0]).not.toBe(spans[1]);
+    expect(spans[0].textContent).toBe("cloned");
+    expect(spans[1].textContent).toBe("cloned");
+  });
 });

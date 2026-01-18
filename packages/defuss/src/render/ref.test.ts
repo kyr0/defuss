@@ -307,9 +307,10 @@ describe("Ref tests", () => {
 
       // Verify listener was called with correct values
       expect(refUpdateFn).toHaveBeenCalledTimes(1);
+      // oldValue is { count: 0 } (the initial ref state), newValue is { count: 50 } (from storage)
       expect(refUpdateFn).toHaveBeenCalledWith(
         { count: 50 },
-        { count: 50 },
+        { count: 0 },
         undefined,
       );
     });

@@ -43,7 +43,13 @@ export class WebStorageProvider<T> implements PersistenceProviderImpl<T> {
 
     if (rawValue === null) return defaultValue;
 
-    let value: T = JSON.parse(rawValue);
+    let value: T;
+    try {
+      value = JSON.parse(rawValue);
+    } catch {
+      // Handle corrupted/invalid JSON gracefully
+      return defaultValue;
+    }
 
     if (middlewareFn) {
       value = middlewareFn(key, value);

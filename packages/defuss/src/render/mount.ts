@@ -28,6 +28,11 @@ export function mount<P extends Record<string, unknown>>(
     Component: (props: P) => VNode,
     initialProps: P,
 ): Element {
+    // Clear existing content before mounting (replace semantics, not append)
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
     // Initial render into container
     const vnode = Component(initialProps);
     renderIsomorphicSync(vnode, container as HTMLElement, globalThis as Globals);

@@ -63,8 +63,13 @@ export const Async = ({
 }: AsyncProps) => {
   let childrenToRender: VNodeChild | VNodeChildren = children;
 
+  // Cancellation token to prevent stale async updates from racing
+  let updateToken = 0;
+
   const containerRef: AsyncStateRef = createRef<AsyncState>(
     function onSuspenseUpdate(state: AsyncState) {
+      const currentToken = ++updateToken;
+
       try {
         if (!containerRef.current) {
           if (inDevMode) {
@@ -76,21 +81,20 @@ export const Async = ({
           return;
         }
         (async () => {
-          // to allow for beautiful CSS state transitions
-          await $(containerRef.current).removeClass(
-            loadingClassName || "suspense-loading",
-          );
-          await $(containerRef.current).removeClass(
-            loadedClassName || "suspense-loaded",
-          );
-          await $(containerRef.current).removeClass(
-            errorClassName || "suspense-error",
-          );
+          // Chain class removals to reduce await overhead
+          await $(containerRef.current)
+            .removeClass(loadingClassName || "suspense-loading")
+            .removeClass(loadedClassName || "suspense-loaded")
+            .removeClass(errorClassName || "suspense-error");
+
+          // Check for stale update after first await
+          if (currentToken !== updateToken) return;
 
           if (!children || state === "error") {
             await $(containerRef.current).addClass(
               errorClassName || "suspense-error",
             );
+            if (currentToken !== updateToken) return;
             await $(containerRef).jsx({
               type: "div",
               children: ["Loading error!"],
@@ -99,12 +103,13 @@ export const Async = ({
             await $(containerRef.current).addClass(
               loadingClassName || "suspense-loading",
             );
+            if (currentToken !== updateToken) return;
             await $(containerRef).jsx(fallback);
           } else if (state === "loaded") {
             await $(containerRef.current).addClass(
               loadedClassName || "suspense-loaded",
             );
-
+            if (currentToken !== updateToken) return;
             await $(containerRef).jsx(childrenToRender as RenderInput);
           }
         })();

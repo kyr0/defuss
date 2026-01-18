@@ -235,8 +235,13 @@ export const Async = ({
 }: AsyncProps) => {
   let childrenToRender: VNodeChild | VNodeChildren = children;
 
+  // Cancellation token to prevent stale async updates from racing
+  let updateToken = 0;
+
   const containerRef: AsyncStateRef = createRef<AsyncState>(
     function onSuspenseUpdate(state: AsyncState) {
+      const currentToken = ++updateToken;
+
       try {
         if (!containerRef.current) {
           if (inDevMode) {
@@ -248,21 +253,20 @@ export const Async = ({
           return;
         }
         (async () => {
-          // to allow for beautiful CSS state transitions
-          await $(containerRef.current).removeClass(
-            loadingClassName || "suspense-loading",
-          );
-          await $(containerRef.current).removeClass(
-            loadedClassName || "suspense-loaded",
-          );
-          await $(containerRef.current).removeClass(
-            errorClassName || "suspense-error",
-          );
+          // Chain class removals to reduce await overhead
+          await $(containerRef.current)
+            .removeClass(loadingClassName || "suspense-loading")
+            .removeClass(loadedClassName || "suspense-loaded")
+            .removeClass(errorClassName || "suspense-error");
+
+          // Check for stale update after first await
+          if (currentToken !== updateToken) return;
 
           if (!children || state === "error") {
             await $(containerRef.current).addClass(
               errorClassName || "suspense-error",
             );
+            if (currentToken !== updateToken) return;
             await $(containerRef).jsx({
               type: "div",
               children: ["Loading error!"],
@@ -271,12 +275,13 @@ export const Async = ({
             await $(containerRef.current).addClass(
               loadingClassName || "suspense-loading",
             );
+            if (currentToken !== updateToken) return;
             await $(containerRef).jsx(fallback);
           } else if (state === "loaded") {
             await $(containerRef.current).addClass(
               loadedClassName || "suspense-loaded",
             );
-
+            if (currentToken !== updateToken) return;
             await $(containerRef).jsx(childrenToRender as RenderInput);
           }
         })();
@@ -1744,7 +1749,7 @@ export class CallChainImpl<
 
     return createCall(this, "jsx", async () => {
       this.nodes.forEach((el) =>
-        updateDomWithVdom(el as HTMLElement, vdom, globalThis as Globals),
+        updateDomWithVdom(el as HTMLElement, vdom, this.globals),
       );
       return this.nodes as NT;
     }) as unknown as ET;
@@ -1855,16 +1860,16 @@ export class CallChainImpl<
 
       if (isDequery(content)) {
         // Special handling for Dequery objects which may contain multiple elements
-        this.nodes.forEach((el) => {
-          (content as CallChainImpl<T>).nodes.forEach((childEl) => {
-            if (
-              (childEl as Node).nodeType &&
-              (el as Node).nodeType &&
-              !(childEl as Node).isEqualNode(el) &&
-              el!.parentNode !== childEl
-            ) {
-              (el as HTMLElement).appendChild(childEl as Node);
-            }
+        // Clone for multi-target to match jQuery behavior
+        const children = (content as CallChainImpl<T>).nodes as Node[];
+        this.nodes.forEach((parent, parentIndex) => {
+          children.forEach((child) => {
+            if (!child?.nodeType || !(parent as Node)?.nodeType) return;
+            if ((child as Node).isEqualNode(parent) || parent?.parentNode === child) return;
+
+            // First parent gets the original, others get clones
+            const nodeToInsert = parentIndex === 0 ? child : child.cloneNode(true);
+            (parent as HTMLElement).appendChild(nodeToInsert);
           });
         });
       } else if (
@@ -1949,7 +1954,7 @@ export class CallChainImpl<
           const newVNode = instance.renderFn(instance.props);
 
           // Morph in-place
-          updateDomWithVdom(node as HTMLElement, newVNode, globalThis as Globals);
+          updateDomWithVdom(node as HTMLElement, newVNode, this.globals);
           instance.prevVNode = newVNode;
 
           didImplicitUpdate = true;
@@ -4597,6 +4602,10 @@ export const removeDelegatedEvent = (
         if (entry.bubble === handler) {
             entry.bubble = undefined;
         }
+
+        // Always call removeEventListener for safety (handles detached element direct-binding case)
+        element.removeEventListener(eventType, handler, true);  // capture
+        element.removeEventListener(eventType, handler, false); // bubble
     } else {
         // Remove ALL handlers for this event type (both phases)
         // This is what users expect from .off("click") without specific handler
@@ -5442,6 +5451,11 @@ export function mount<P extends Record<string, unknown>>(
     Component: (props: P) => VNode,
     initialProps: P,
 ): Element {
+    // Clear existing content before mounting (replace semantics, not append)
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
     // Initial render into container
     const vnode = Component(initialProps);
     renderIsomorphicSync(vnode, container as HTMLElement, globalThis as Globals);
@@ -6007,10 +6021,11 @@ export const createStore = <T>(
       storageKey = key;
       const storedValue = storage.get(key, value);
 
-      // Use configured equality check
-      if (!equals(value, storedValue)) {
+      // Capture oldValue before assignment for correct notification
+      const oldValue = value;
+      if (!equals(oldValue, storedValue)) {
         value = storedValue;
-        notify(value);
+        notify(oldValue);
       }
     },
 
@@ -6222,7 +6237,13 @@ export class WebStorageProvider<T> implements PersistenceProviderImpl<T> {
 
     if (rawValue === null) return defaultValue;
 
-    let value: T = JSON.parse(rawValue);
+    let value: T;
+    try {
+      value = JSON.parse(rawValue);
+    } catch {
+      // Handle corrupted/invalid JSON gracefully
+      return defaultValue;
+    }
 
     if (middlewareFn) {
       value = middlewareFn(key, value);
