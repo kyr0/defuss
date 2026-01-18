@@ -1,5 +1,5 @@
 {
-  "name": "defusscapacitor-example",
+  "name": "@example/with-capacitor-native",
   "version": "1.0.0",
   "description": "A Defuss Capacitor Example",
   "type": "module",

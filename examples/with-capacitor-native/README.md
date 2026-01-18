@@ -3,7 +3,7 @@
 <img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/defuss_mascott.png" width="100px" />
 
 <p align="center">
-  <code>defusscapacitor example</code>
+  <code>with-capacitor-native</code>
 </p>
 
 <sup align="center">
