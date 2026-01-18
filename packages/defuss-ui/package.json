@@ -43,16 +43,16 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "defuss": "^2.1.1",
-    "uikit": "^3.23.13",
-    "@types/uikit": "^3.23.0"
+    "@types/uikit": "^3.23.0",
+    "defuss": "^2.1.11",
+    "uikit": "^3.23.13"
   },
   "devDependencies": {
     "@types/node": "^25.0.9",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.17",
     "pkgroll": "^2.21.5",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
   },
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"

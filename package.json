@@ -19,7 +19,6 @@
   },
   "scripts": {
     "build": "turbo run build --concurrency=1",
-    "pretest": "npm run build",
     "test": "turbo run test --concurrency=1",
     "preclean": "rm -rf ./node_modules && pnpm i",
     "clean": "turbo run clean --concurrency=50",

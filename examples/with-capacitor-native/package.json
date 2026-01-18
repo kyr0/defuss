@@ -32,7 +32,7 @@
     "@capacitor/ios": "^7.4.0",
     "@capacitor/splash-screen": "^7.0.4",
     "browserslist": "^4.25.0",
-    "defuss": "^2.1.10",
+    "defuss": "^2.1.11",
     "defuss-vite": "^1.1.3",
     "framework7": "^8.3.4",
     "konsta": "^4.0.1",

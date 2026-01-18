@@ -87,9 +87,10 @@
     "@mdx-js/esbuild": "^3.1.1",
     "@types/express": "^5.0.3",
     "@types/serve-static": "^1.15.8",
+    "@types/ws": "^8.18.1",
     "chokidar": "^4.0.3",
-    "defuss": "^2.1.10",
-    "defuss-runtime": "^1.2.0",
+    "defuss": "^2.1.11",
+    "defuss-runtime": "^1.2.1",
     "esbuild": "^0.25.9",
     "express": "^5.1.0",
     "fast-glob": "^3.3.3",
@@ -104,8 +105,7 @@
     "remark-rehype": "^11.1.2",
     "serve-static": "^2.2.0",
     "unist-util-visit": "^5.0.0",
-    "ws": "^8.18.3",
-    "@types/ws": "^8.18.1"
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "happy-dom": "^15.11.7",
