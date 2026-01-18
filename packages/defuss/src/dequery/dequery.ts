@@ -23,6 +23,7 @@ import {
   updateDom,
 } from "../render/index.js";
 import { clearDelegatedEventsDeep } from "../render/delegated-events.js";
+import { getComponentInstance } from "../render/component-registry.js";
 import { createTimeoutPromise, waitForRef } from "defuss-runtime";
 import type {
   DequeryOptions,
@@ -387,7 +388,7 @@ export class CallChainImpl<
       this,
       "css",
       value,
-      // Getter with caching
+      // Getter with caching - returns computed style (jQuery behavior)
       () => {
         if (this.nodes.length === 0) return "";
 
@@ -399,7 +400,9 @@ export class CallChainImpl<
           return cache.get(cacheKey);
         }
 
-        const result = el.style.getPropertyValue(prop);
+        // Use getComputedStyle for jQuery-compatible behavior
+        const computed = this.window.getComputedStyle(el);
+        const result = computed.getPropertyValue(prop);
         cache.set(cacheKey, result);
         CallChainImpl.resultCache.set(el, cache);
 
@@ -550,15 +553,18 @@ export class CallChainImpl<
       // Render the new content into a DOM node
       const newElement = await renderNode(content, this);
 
-      // For each element to be replaced
-      for (const originalEl of this.nodes) {
+      // For each element to be replaced - clone for multi-target (jQuery behavior)
+      for (let i = 0; i < this.nodes.length; i++) {
+        const originalEl = this.nodes[i];
         if (!originalEl?.parentNode) continue;
-
         if (!newElement) continue;
 
+        // First target gets the original, others get clones
+        const nodeToUse = i === 0 ? newElement : newElement.cloneNode(true);
+
         // Replace the original element with the new one
-        originalEl.parentNode.replaceChild(newElement, originalEl);
-        newElements.push(newElement);
+        originalEl.parentNode.replaceChild(nodeToUse, originalEl);
+        newElements.push(nodeToUse as NodeType);
       }
 
       // Update the result stack with the new elements
@@ -589,14 +595,17 @@ export class CallChainImpl<
 
       if (content instanceof Node) {
         // If content is a Node, append it directly
-        this.nodes.forEach((el) => {
+        // Clone for multi-target to match jQuery behavior (each target gets its own copy)
+        this.nodes.forEach((el, index) => {
           if (
             el &&
             content &&
             !el.isEqualNode(content) &&
             el.parentNode !== content
           ) {
-            (el as HTMLElement).appendChild(content);
+            // First target gets the original, others get clones
+            const nodeToAppend = index === 0 ? content : content.cloneNode(true);
+            (el as HTMLElement).appendChild(nodeToAppend);
           }
         });
         return this.nodes as NT;
@@ -631,10 +640,11 @@ export class CallChainImpl<
           );
         });
       } else {
-        // Single element handling
-        this.nodes.forEach((el) => {
+        // Single element handling - clone for multi-target
+        this.nodes.forEach((el, index) => {
           if (!element) return;
-          (el as HTMLElement).appendChild(element);
+          const nodeToAppend = index === 0 ? element : element.cloneNode(true);
+          (el as HTMLElement).appendChild(nodeToAppend as Node);
         });
       }
 
@@ -687,7 +697,6 @@ export class CallChainImpl<
       // Check if this is an implicit props update (object with no VNode structure)
       // Only treat it as props-update if the target is in the component registry
       if (input && typeof input === "object" && !(input instanceof Node)) {
-        const { getComponentInstance } = await import("../render/component-registry.js");
         let didImplicitUpdate = false;
 
         for (const node of this.nodes) {

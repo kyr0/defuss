@@ -305,7 +305,9 @@ export const clearDelegatedEventsDeep = (root: HTMLElement): void => {
     clearDelegatedEvents(root);
 
     // Walk all descendant elements and clear their handlers
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+    // Use ownerDocument for SSR/multi-doc compatibility
+    const doc = root.ownerDocument ?? document;
+    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
     let node = walker.nextNode();
     while (node) {
         clearDelegatedEvents(node as HTMLElement);

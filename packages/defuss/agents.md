@@ -49,6 +49,7 @@
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
     "test:browser": "vitest run --config vitest.browser.config.ts",
+    "bench": "vitest bench --config vitest.bench.config.ts",
     "prebuild": "pnpm run clean",
     "build": "node scripts/build.mjs"
   },
@@ -1261,6 +1262,7 @@ import {
   updateDom,
 } from "../render/index.js";
 import { clearDelegatedEventsDeep } from "../render/delegated-events.js";
+import { getComponentInstance } from "../render/component-registry.js";
 import { createTimeoutPromise, waitForRef } from "defuss-runtime";
 import type {
   DequeryOptions,
@@ -1625,7 +1627,7 @@ export class CallChainImpl<
       this,
       "css",
       value,
-      // Getter with caching
+      // Getter with caching - returns computed style (jQuery behavior)
       () => {
         if (this.nodes.length === 0) return "";
 
@@ -1637,7 +1639,9 @@ export class CallChainImpl<
           return cache.get(cacheKey);
         }
 
-        const result = el.style.getPropertyValue(prop);
+        // Use getComputedStyle for jQuery-compatible behavior
+        const computed = this.window.getComputedStyle(el);
+        const result = computed.getPropertyValue(prop);
         cache.set(cacheKey, result);
         CallChainImpl.resultCache.set(el, cache);
 
@@ -1788,15 +1792,18 @@ export class CallChainImpl<
       // Render the new content into a DOM node
       const newElement = await renderNode(content, this);
 
-      // For each element to be replaced
-      for (const originalEl of this.nodes) {
+      // For each element to be replaced - clone for multi-target (jQuery behavior)
+      for (let i = 0; i < this.nodes.length; i++) {
+        const originalEl = this.nodes[i];
         if (!originalEl?.parentNode) continue;
-
         if (!newElement) continue;
 
+        // First target gets the original, others get clones
+        const nodeToUse = i === 0 ? newElement : newElement.cloneNode(true);
+
         // Replace the original element with the new one
-        originalEl.parentNode.replaceChild(newElement, originalEl);
-        newElements.push(newElement);
+        originalEl.parentNode.replaceChild(nodeToUse, originalEl);
+        newElements.push(nodeToUse as NodeType);
       }
 
       // Update the result stack with the new elements
@@ -1827,14 +1834,17 @@ export class CallChainImpl<
 
       if (content instanceof Node) {
         // If content is a Node, append it directly
-        this.nodes.forEach((el) => {
+        // Clone for multi-target to match jQuery behavior (each target gets its own copy)
+        this.nodes.forEach((el, index) => {
           if (
             el &&
             content &&
             !el.isEqualNode(content) &&
             el.parentNode !== content
           ) {
-            (el as HTMLElement).appendChild(content);
+            // First target gets the original, others get clones
+            const nodeToAppend = index === 0 ? content : content.cloneNode(true);
+            (el as HTMLElement).appendChild(nodeToAppend);
           }
         });
         return this.nodes as NT;
@@ -1869,10 +1879,11 @@ export class CallChainImpl<
           );
         });
       } else {
-        // Single element handling
-        this.nodes.forEach((el) => {
+        // Single element handling - clone for multi-target
+        this.nodes.forEach((el, index) => {
           if (!element) return;
-          (el as HTMLElement).appendChild(element);
+          const nodeToAppend = index === 0 ? element : element.cloneNode(true);
+          (el as HTMLElement).appendChild(nodeToAppend as Node);
         });
       }
 
@@ -1925,7 +1936,6 @@ export class CallChainImpl<
       // Check if this is an implicit props update (object with no VNode structure)
       // Only treat it as props-update if the target is in the component registry
       if (input && typeof input === "object" && !(input instanceof Node)) {
-        const { getComponentInstance } = await import("../render/component-registry.js");
         let didImplicitUpdate = false;
 
         for (const node of this.nodes) {
@@ -4621,7 +4631,9 @@ export const clearDelegatedEventsDeep = (root: HTMLElement): void => {
     clearDelegatedEvents(root);
 
     // Walk all descendant elements and clear their handlers
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+    // Use ownerDocument for SSR/multi-doc compatibility
+    const doc = root.ownerDocument ?? document;
+    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
     let node = walker.nextNode();
     while (node) {
         clearDelegatedEvents(node as HTMLElement);
@@ -5850,6 +5862,58 @@ export * from "./store.js";
 
 ```
 
+./src/store/store.bench.ts:
+```
+import { bench, describe } from "vitest";
+import { createStore, deepEquals } from "./store.js";
+
+describe("Store Performance", () => {
+    const largeState: Record<string, number> = Array.from({ length: 1000 }).reduce(
+        (acc: Record<string, number>, _, i) => {
+            acc[`key${i}`] = i;
+            return acc;
+        },
+        {} as Record<string, number>
+    );
+
+    // Default is now shallow
+    const defaultStore = createStore(largeState);
+    const deepStore = createStore(largeState, { equals: deepEquals });
+    const pathStore = createStore({ nested: { deep: { value: 1 } } });
+
+    bench("getRaw (O(1))", () => {
+        defaultStore.getRaw();
+    });
+
+    bench("get (path, O(L))", () => {
+        pathStore.get("nested.deep.value");
+    });
+
+    bench("setRaw (default shallow, no change)", () => {
+        defaultStore.setRaw(largeState);
+    });
+
+    bench("setRaw (deep compare, no change, expensive)", () => {
+        deepStore.setRaw(largeState);
+    });
+
+    bench("setRaw (default shallow, change)", () => {
+        // We toggle between two states to force updates
+        const stateA = { ...largeState, id: 1 };
+        defaultStore.setRaw(stateA);
+    });
+
+    bench("set (path update)", () => {
+        pathStore.set("nested.deep.value", Math.random());
+    });
+
+    bench("creation overhead", () => {
+        createStore({ id: 1 });
+    });
+});
+
+```
+
 ./src/store/store.ts:
 ```
 import { getByPath, setByPath } from "defuss-runtime";
@@ -5865,17 +5929,43 @@ export type Listener<T> = (
   changedKey?: string,
 ) => void;
 
+export type EqualsFn<T> = (a: T, b: T) => boolean;
+
+export interface StoreOptions<T> {
+  /** Custom equality function. Default: Object.is (shallow identity) */
+  equals?: EqualsFn<T>;
+}
+
 export interface Store<T> {
   value: T;
+  /** Get value at path, or entire store if no path */
   get: <D = T>(path?: string) => D;
+  /** Set value at path, or replace entire store if no path */
   set: <D = T>(pathOrValue: string | D, value?: D) => void;
+  /** Get entire store value (clearer API than get()) */
+  getRaw: () => T;
+  /** Replace entire store value (clearer API than set(value)) */
+  setRaw: (value: T) => void;
+  /** Reset store to initial value or provided value */
+  reset: (value?: T) => void;
   subscribe: (listener: Listener<T>) => () => void;
   persist: (key: string, provider?: PersistenceProviderType) => void;
   restore: (key: string, provider?: PersistenceProviderType) => void;
 }
 
-export const createStore = <T>(initialValue: T): Store<T> => {
-  let value: T = initialValue; // internal state
+/** Shallow identity comparison (opt-in for performance) */
+export const shallowEquals = <T>(a: T, b: T): boolean => Object.is(a, b);
+
+/** Deep equality via JSON (default - backward compatible) */
+export const deepEquals = <T>(a: T, b: T): boolean =>
+  JSON.stringify(a) === JSON.stringify(b);
+
+export const createStore = <T>(
+  initialValue: T,
+  options: StoreOptions<T> = {},
+): Store<T> => {
+  const equals = options.equals ?? shallowEquals;
+  let value: T = initialValue;
   const listeners: Array<Listener<T>> = [];
 
   const notify = (oldValue: T, changedKey?: string) => {
@@ -5905,37 +5995,61 @@ export const createStore = <T>(initialValue: T): Store<T> => {
     get value() {
       return value;
     },
+
     persist(key: string, provider: PersistenceProviderType = "local") {
       storage = initStorage(provider);
       storageKey = key;
       persistToStorage();
     },
+
     restore(key: string, provider: PersistenceProviderType = "local") {
       storage = initStorage(provider);
       storageKey = key;
       const storedValue = storage.get(key, value);
 
-      // Deep equality comparison would be better here, but for now use JSON comparison
-      const valueAsString = JSON.stringify(value);
-      const storedValueAsString = JSON.stringify(storedValue);
-
-      if (valueAsString !== storedValueAsString) {
+      // Use configured equality check
+      if (!equals(value, storedValue)) {
         value = storedValue;
         notify(value);
       }
     },
+
     get(path?: string) {
       return path ? getByPath(value, path) : value;
     },
+
+    /** Get entire store value (clearer API) */
+    getRaw() {
+      return value;
+    },
+
+    /** Replace entire store value (clearer API) */
+    setRaw(newValue: T) {
+      const oldValue = value;
+      if (!equals(value, newValue)) {
+        value = newValue;
+        notify(oldValue);
+        persistToStorage();
+      }
+    },
+
+    /** Reset to initial or provided value */
+    reset(resetValue?: T) {
+      const oldValue = value;
+      const newValue = resetValue ?? initialValue;
+      if (!equals(value, newValue)) {
+        value = newValue;
+        notify(oldValue);
+        persistToStorage();
+      }
+    },
+
     set(pathOrValue: string | any, newValue?: any) {
       const oldValue = value;
 
       if (newValue === undefined) {
         // replace entire store value
-        const valueAsString = JSON.stringify(value);
-        const newValueAsString = JSON.stringify(pathOrValue);
-
-        if (valueAsString !== newValueAsString) {
+        if (!equals(value, pathOrValue)) {
           value = pathOrValue;
           notify(oldValue);
           persistToStorage();
@@ -5943,10 +6057,8 @@ export const createStore = <T>(initialValue: T): Store<T> => {
       } else {
         // update a specific path
         const updatedValue = setByPath(value, pathOrValue, newValue);
-        const updatedValueAsString = JSON.stringify(updatedValue);
-        const oldValueAsString = JSON.stringify(oldValue);
-
-        if (oldValueAsString !== updatedValueAsString) {
+        // Use configured equals function for consistency
+        if (!equals(value, updatedValue)) {
           value = updatedValue;
           notify(oldValue, pathOrValue);
           persistToStorage();
@@ -6195,6 +6307,19 @@ export const getPersistenceProvider = <T>(
     }
   }
 }
+
+```
+
+./vitest.bench.config.ts:
+```
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+    test: {
+        include: ["**/*.bench.ts"],
+        environment: "node", // Benchmarks usually run faster/cleaner in Node if DOM isn't strictly required, but Store supports both. We'll verify both if possible, but Node is fine for pure JS store logic.
+    },
+});
 
 ```
 

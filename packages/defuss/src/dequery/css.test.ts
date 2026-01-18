@@ -58,7 +58,8 @@ describe("CSS class manipulation", async () => {
   it("can get a single CSS property", async () => {
     document.body.style.backgroundColor = "blue";
     const color = await $(document.body).css("background-color");
-    expect(color).toBe("blue");
+    // Computed style returns rgb format, not color names (jQuery behavior)
+    expect(color === "blue" || color === "rgb(0, 0, 255)").toBe(true);
   });
 
   it("can set multiple CSS properties using an object", async () => {

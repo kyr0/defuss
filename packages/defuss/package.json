@@ -44,6 +44,7 @@
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
     "test:browser": "vitest run --config vitest.browser.config.ts",
+    "bench": "vitest bench --config vitest.bench.config.ts",
     "prebuild": "pnpm run clean",
     "build": "node scripts/build.mjs"
   },

@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { webstorage } from "../webstorage/index.js";
-import { createStore } from "./store.js";
+import { createStore, deepEquals } from "./store.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { PersistenceProviderType } from "../webstorage/index.js";
 
@@ -94,14 +94,25 @@ describe("Store", () => {
       expect(store.value).toEqual({ count: 0, user: { name: "Jane" } });
     });
 
-    it("doesn't notify listeners when setting the same value", () => {
-      const store = createStore({ count: 0 });
+    it("doesn't notify listeners when setting the same value (deep equality opt-in)", () => {
+      const store = createStore({ count: 0 }, { equals: deepEquals });
       const listener = vi.fn();
 
       store.subscribe(listener);
       store.set({ count: 0 });
 
       expect(listener).not.toHaveBeenCalled();
+    });
+
+    it("notifies listeners when setting the same value but new reference (default shallow)", () => {
+      const store = createStore({ count: 0 });
+      const listener = vi.fn();
+
+      store.subscribe(listener);
+      store.set({ count: 0 });
+
+      // Default is shallow, so new object reference trigger updates
+      expect(listener).toHaveBeenCalled();
     });
   });
 
