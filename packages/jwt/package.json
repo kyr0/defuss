@@ -37,11 +37,11 @@
     "defuss-env": "^1.0.2"
   },
   "devDependencies": {
-    "@types/node": "^24.3.2",
-    "pkgroll": "^2.5.1",
-    "typescript": "^5.6.3",
-    "vitest": "^3.2.4",
-    "@vitest/coverage-v8": "^3.1.3"
+    "@types/node": "^25.0.9",
+    "pkgroll": "^2.21.5",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17",
+    "@vitest/coverage-v8": "^4.0.17"
   },
   "exports": {
     ".": {
@@ -58,7 +58,9 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },

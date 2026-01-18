@@ -101,7 +101,7 @@ export function DashboardScreen({ posts = [] }: DashboardScreenProps) {
 				<div class="text-center py-6 px-6">
 					<button
 						type="button"
-						class="create-post-btn bg-amber-500 hover:bg-amber-600 text-white font-semibold py-4 px-8 rounded-full transition-colors duration-300 flex items-center mx-auto"
+						class="create-post-btn bg-amber-500 hover:bg-amber-600 text-white font-semibold py-4 px-8 rounded-md transition-colors duration-300 flex items-center mx-auto"
 						onClick={handleCreatePost}
 					>
 						<span class="material-icons mr-2 text-2xl">add</span>
@@ -145,7 +145,7 @@ export function DashboardScreen({ posts = [] }: DashboardScreenProps) {
 									</p>
 									<button
 										type="button"
-										class="send-bottle-btn px-5 py-2.5 text-sm font-medium flex items-center space-x-1.5 bg-amber-400 text-amber-900 rounded-full hover:bg-amber-500 transition-colors"
+										class="send-bottle-btn px-5 py-2.5 text-sm font-medium flex items-center space-x-1.5 bg-amber-400 text-amber-900 rounded-md hover:bg-amber-500 transition-colors"
 										onClick={() => handleSendBottle(post.id)}
 									>
 										<span class="material-icons text-lg">visibility</span>

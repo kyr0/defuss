@@ -1,15 +1,15 @@
 import type { Props } from "defuss";
 
-import { Aside } from "./aside.js";
+import Aside from "./aside.js";
 
 export interface HeaderProps extends Props {
   active: string;
 }
 
-export const Header = ({ active }: HeaderProps) => {
+export default function Header({ active }: HeaderProps) {
   console.log("Header active for this site:", active);
   return (
-    <>
+    <div>
       <nav>
         <ul>
           <li>
@@ -38,6 +38,6 @@ export const Header = ({ active }: HeaderProps) => {
       </nav>
 
       <Aside active={active} />
-    </>
+    </div>
   );
-};
+}

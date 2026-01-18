@@ -4,7 +4,7 @@ export interface HeadProps extends Props {
   meta: Record<string, any>;
 }
 
-export const Head = ({ meta }: HeadProps) => {
+export default function Head({ meta }: HeadProps) {
   return (
     <head>
       <title>{meta.title}</title>
@@ -27,4 +27,4 @@ export const Head = ({ meta }: HeadProps) => {
       />
     </head>
   );
-};
+}

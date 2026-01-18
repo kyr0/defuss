@@ -1,4 +1,7 @@
-import "./style.css";
+import "./styles/reset.css";
+import "./styles/palette.css";
+import "./styles/squeezy.css";
+import "./styles/style.css";
 
 import typescriptLogo from "./typescript.svg";
 import viteLogo from "/vite.svg";

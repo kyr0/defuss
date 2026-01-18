@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import esbuild from "esbuild";
 import { rehypePlugins, remarkPlugins } from "./mdx-plugins.js";
 import { tailwindPlugin } from "./plugins/tailwind.js";
+import { autoHydratePlugin } from "./plugins/auto-hydrate.js";
 
 /**
  * Reads the SSG configuration from the project directory.
@@ -60,7 +61,7 @@ export const configDefaults: SsgConfig = {
   components: "components",
   assets: "assets",
   tmp: ".ssg-temp",
-  plugins: [tailwindPlugin],
+  plugins: [tailwindPlugin, autoHydratePlugin],
   remarkPlugins,
   rehypePlugins,
 };

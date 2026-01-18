@@ -36,8 +36,7 @@ export function App({ clickCount = 0 }: AppProps) {
           <AstroLogo class="logo" />
         </a>
         <a href="https://www.github.com/kyr0/defuss" target="_blank" rel="noreferrer" aria-label="defuss Website">
-          {/** using <Img /> automatically transforms the image to WEBP */}
-          <Img src="/defuss_logo.png" class="logo" alt="defuss logo" />
+          <img src="/defuss_logo.png" class="logo" alt="defuss logo" />
         </a>
         <a href="https://www.typescriptlang.org/" target="_blank" rel="noreferrer" aria-label="TypeScript Language Website">
           <img src={typescriptLogo.src} class="logo" alt="TypeScript logo" />

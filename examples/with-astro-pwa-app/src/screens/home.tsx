@@ -73,26 +73,17 @@ export function HomeScreen({ news }: HomeScreenProps) {
 							<T tag="p" key="home.features.bottles.description" />
 						</SwipeSlide>
 						<SwipeSlide>
-							<img
-								alt="Positive Reactions Icon"
-								src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0r_Y_Z_X_W_V_U_T_S_R_Q_P_O_N_M_L_K_J_I_H_G_F_E_D_C_B_A_z_y_x_w_v_u_t_s_r_q_p_o_n_m_l_k_j_i_h_g_f_e_d_c_b_a"
-							/>
+							<img alt="Positive Reactions Icon" src="/tour/1.png" />
 							<T tag="h3" key="home.features.reactions.title" />
 							<T tag="p" key="home.features.reactions.description" />
 						</SwipeSlide>
 						<SwipeSlide>
-							<img
-								alt="Building Connections Icon"
-								src="https://lh3.googleusercontent.com/aida-public/AB6AXuAL0g_h_I_j_K_l_M_n_O_p_Q_r_S_t_U_v_W_x_Y_z_A_b_C_d_E_f_G_h_I_j_K_l_M_n_O_p_Q_r_S_t_U_v_W_x_Y_z_A_b_C_d_E_f_G_h"
-							/>
+							<img alt="Building Connections Icon" src="/tour/2.png" />
 							<T tag="h3" key="home.features.connections.title" />
 							<T tag="p" key="home.features.connections.description" />
 						</SwipeSlide>
 						<SwipeSlide>
-							<img
-								alt="Mindful Sharing Icon"
-								src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgpu_GK1B5jx6yDioixQIRTkRUXdMZ4c0L21y1WHvTjq8Hy48W21GMi1Omcn3z-EUI7p3kOCU53qOFUrL6w1f_EsbQ_T8BOUQMPsbYY_EY90DOc7M_zw2MVNLD55VKPscCql0h1mp7sX0_-ffWAAT-yUeKfUqt54vDtDK8q2CtLkAUqI-fDvqZiwAld5TcqsirM-VWvyuHmK_Ct4tcKhTKrQjxGBMaYIb7gg8Iq5hmJ79uQTX9qpsI0wRIaF4KonXqTPW7W2nLJ_OJ"
-							/>
+							<img alt="Mindful Sharing Icon" src="/tour/1.png" />
 							<T tag="h3" key="home.features.mindful.title" />
 							<T tag="p" key="home.features.mindful.description" />
 						</SwipeSlide>

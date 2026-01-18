@@ -98,6 +98,7 @@ export function isNonChainedReturnCall(callName: string): boolean {
 export const emptyImpl = <T>(nodes: Array<T>) => {
   nodes.forEach((el) => {
     const element = el as HTMLElement;
+    // TODO: looks wrong, acts wrong: should remove the element itself?
     while (element.firstChild) {
       element.firstChild.remove();
     }

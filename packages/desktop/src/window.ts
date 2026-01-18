@@ -59,9 +59,9 @@ export const defaultWindowOptions: CreateWindowOptions = {
   height: 600,
   x: 0,
   y: 0,
-  onClose: () => {},
-  onMinimize: () => {},
-  onMaximize: () => {},
+  onClose: () => { },
+  onMinimize: () => { },
+  onMaximize: () => { },
 };
 
 export class WindowManager {
@@ -69,8 +69,10 @@ export class WindowManager {
 
   constructor() {
     $(() => {
-      // Initialize the window manager
-      desktopManager.onResize(debounce(this.onDesktopResized.bind(this), 50));
+      // Initialize the window manager (guard for test environment)
+      if (desktopManager?.onResize) {
+        desktopManager.onResize(debounce(this.onDesktopResized.bind(this), 50));
+      }
     });
   }
 
@@ -231,9 +233,9 @@ export class WindowManager {
     this.windows = this.windows.map((win) =>
       win.id === id
         ? {
-            ...win,
-            ...updatedWindow,
-          }
+          ...win,
+          ...updatedWindow,
+        }
         : win,
     );
     return updatedWindow;

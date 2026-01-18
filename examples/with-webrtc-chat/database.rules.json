@@ -1,0 +1,47 @@
+{
+  "rules": {
+    "rooms": {
+      ".read": "auth != null",
+      "$room": {
+        ".read": "auth != null && (data.child('type').val() !== 'separee' || data.child('allowed/' + auth.uid).val() === true)",
+        ".write": "auth != null && (!data.exists() || root.child('rooms/' + $room + '/mods/' + auth.uid).val() === true)",
+        "type": {
+          ".read": "auth != null",
+          ".write": "auth != null && !data.exists()"
+        },
+        "creator": {
+          ".read": "auth != null",
+          ".write": "auth != null && !data.exists()"
+        },
+        "allowed": {
+          ".read": "auth != null && (root.child('rooms/' + $room + '/type').val() !== 'separee' || root.child('rooms/' + $room + '/allowed/' + auth.uid).val() === true)",
+          "$uid": {
+            ".write": "auth != null && (root.child('rooms/' + $room + '/mods/' + auth.uid).val() === true || ($uid === auth.uid && !data.exists()))"
+          }
+        },
+        "motd": {
+          ".read": "auth != null && (root.child('rooms/' + $room + '/type').val() !== 'separee' || root.child('rooms/' + $room + '/allowed/' + auth.uid).val() === true)",
+          ".write": "auth != null && root.child('rooms/' + $room + '/mods/' + auth.uid).val() === true"
+        },
+        "mods": {
+          ".read": "auth != null && (root.child('rooms/' + $room + '/type').val() !== 'separee' || root.child('rooms/' + $room + '/allowed/' + auth.uid).val() === true)",
+          "$mod": {
+            ".write": "auth != null && $mod.beginsWith(auth.uid) && !data.exists()"
+          }
+        },
+        "members": {
+          ".read": "auth != null && (root.child('rooms/' + $room + '/type').val() !== 'separee' || root.child('rooms/' + $room + '/allowed/' + auth.uid).val() === true)",
+          "$member": {
+            ".write": "auth != null && (root.child('rooms/' + $room + '/type').val() !== 'separee' || root.child('rooms/' + $room + '/allowed/' + auth.uid).val() === true) && ($member === auth.uid || $member.beginsWith(auth.uid + '_') || (data.exists() && data.child('lastSeen').val() < (now - 300000) && !newData.exists()) || root.child('rooms/' + $room + '/mods/' + auth.uid).val() === true)"
+          }
+        },
+        "signals": {
+          "$recipient": {
+            ".read": "auth != null && (root.child('rooms/' + $room + '/type').val() !== 'separee' || root.child('rooms/' + $room + '/allowed/' + auth.uid).val() === true)",
+            ".write": "auth != null && (root.child('rooms/' + $room + '/type').val() !== 'separee' || root.child('rooms/' + $room + '/allowed/' + auth.uid).val() === true)"
+          }
+        }
+      }
+    }
+  }
+}

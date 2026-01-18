@@ -1,4 +1,4 @@
-import { createRef, type CSSProperties } from "defuss";
+import { createRef, type CSSProperties, $ } from "defuss";
 import { DSON } from "defuss-dson";
 import { MonacoEditor } from "./MonacoEditor";
 
@@ -93,7 +93,12 @@ export const Repl = () => {
       false,
     );
 
-    codeRef.update(codeEditor.getDomNode());
+    if (codeRef.current) {
+
+
+      await $(codeRef).empty();
+      await $(codeRef).append(codeEditor.getDomNode()!);
+    }
 
     const resultEditor = new MonacoEditor(
       {
@@ -106,7 +111,11 @@ export const Repl = () => {
       },
       true,
     );
-    serializationRef.update(resultEditor.getDomNode());
+
+    if (serializationRef.current) {
+      await $(serializationRef).empty();
+      await $(serializationRef).append(resultEditor.getDomNode()!);
+    }
 
     const updateResultEditor = (value: string) => {
       resultEditor.setValue({
@@ -115,7 +124,9 @@ export const Repl = () => {
       });
     };
 
-    queueMicrotask(() => {
+    requestAnimationFrame(() => {
+      codeEditor.layout();
+      resultEditor.layout();
       codeEditor.executeCode(codeEditor.getValue());
     });
   };

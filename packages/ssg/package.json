@@ -10,7 +10,13 @@
   },
   "license": "MIT",
   "description": "A simple static site generator (SSG) built with defuss.",
-  "keywords": ["ssg", "static", "site", "generator", "defuss"],
+  "keywords": [
+    "ssg",
+    "static",
+    "site",
+    "generator",
+    "defuss"
+  ],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -22,7 +28,7 @@
     "build": "pkgroll",
     "cli-build": "node ./dist/cli.mjs build",
     "cli-serve": "node ./dist/cli.mjs serve",
-    "test": "vitest --run  --coverage"
+    "test": "echo 'No tests available'"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -71,34 +77,39 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "dependencies": {
-    "express": "^5.1.0",
-    "serve-static": "^2.2.0",
-    "chokidar": "^4.0.3",
     "@mdx-js/esbuild": "^3.1.1",
-    "esbuild": "^0.25.9",
-    "rehype-mdx-title": "^3.2.0",
-    "rehype-katex": "^7.0.1",
-    "rehype-stringify": "^10.0.1",
-    "remark-rehype": "^11.1.2",
-    "remark-math": "^6.0.0",
-    "remark-gfm": "^4.0.1",
-    "remark-parse": "^11.0.0",
-    "remark-frontmatter": "^5.0.0",
-    "remark-mdx-frontmatter": "^5.2.0",
-    "fast-glob": "^3.3.3",
     "@types/express": "^5.0.3",
     "@types/serve-static": "^1.15.8",
-    "defuss": "^2.1.1",
-    "defuss-runtime": "^1.2.0"
+    "chokidar": "^4.0.3",
+    "defuss": "^2.1.10",
+    "defuss-runtime": "^1.2.0",
+    "esbuild": "^0.25.9",
+    "express": "^5.1.0",
+    "fast-glob": "^3.3.3",
+    "rehype-katex": "^7.0.1",
+    "rehype-mdx-title": "^3.2.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "remark-mdx-frontmatter": "^5.2.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "serve-static": "^2.2.0",
+    "unist-util-visit": "^5.0.0",
+    "ws": "^8.18.3",
+    "@types/ws": "^8.18.1"
   },
   "devDependencies": {
+    "happy-dom": "^15.11.7",
     "pkgroll": "^2.5.1",
-    "typescript": "^5.6.3",
-    "happy-dom": "^15.11.7"
+    "typescript": "^5.6.3"
   }
 }

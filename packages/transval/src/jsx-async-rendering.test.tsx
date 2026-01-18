@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { rule, Rules, transval } from "./api.js";
 import type { FieldValidationMessage } from "./types.js";
+import { stripSourceInfo } from "./test-utils.js";
 
 describe("JSX error rendering - Async scenarios", () => {
   it("should format async validation errors as JSX", async () => {
@@ -35,26 +36,33 @@ describe("JSX error rendering - Async scenarios", () => {
 
     // Test async errors formatted as JSX alerts
     expect(
-      validator.getMessages(undefined, (messages: FieldValidationMessage[]) => (
+      stripSourceInfo(
+        validator.getMessages(
+          undefined,
+          (messages: FieldValidationMessage[]) => (
+            <div className="alert alert-danger">
+              <strong>Email Validation Failed:</strong>
+              {messages.map((msg: FieldValidationMessage) => (
+                <div key={msg.message} className="alert-item">
+                  {`• ${msg.message}`}
+                </div>
+              ))}
+            </div>
+          ),
+        ),
+      ),
+    ).toEqual(
+      stripSourceInfo(
         <div className="alert alert-danger">
           <strong>Email Validation Failed:</strong>
-          {messages.map((msg: FieldValidationMessage) => (
-            <div key={msg.message} className="alert-item">
-              {`• ${msg.message}`}
-            </div>
-          ))}
-        </div>
-      )),
-    ).toEqual(
-      <div className="alert alert-danger">
-        <strong>Email Validation Failed:</strong>
-        <div key="Invalid email format" className="alert-item">
-          • Invalid email format
-        </div>
-        <div key="Suspicious email detected" className="alert-item">
-          • Suspicious email detected
-        </div>
-      </div>,
+          <div key="Invalid email format" className="alert-item">
+            • Invalid email format
+          </div>
+          <div key="Suspicious email detected" className="alert-item">
+            • Suspicious email detected
+          </div>
+        </div>,
+      ),
     );
   });
 });

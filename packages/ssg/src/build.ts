@@ -157,12 +157,16 @@ export const build = async ({
     join(tmpComponentsDir, "runtime.ts"), // any valid JS is always a valid TS file
   );
 
+  // @ts-ignore
+  //globalThis.CATCHALL_JSX_PROPS = [];
+
   // compile all MDX files from content into .js files into the temp output folder
   await esbuild.build({
     entryPoints: [join(tmpPagesDir, "**/*.mdx")],
     format: "esm",
     bundle: true,
     sourcemap: true,
+    jsxDev: true,
     target: ["esnext"],
     outdir: tmpPagesDir,
     plugins: [
@@ -170,6 +174,7 @@ export const build = async ({
         // using the defuss jsxImportSource so that the output code contains JSX runtime calls
         // and can be rendered to HTML here on the server (in Node.js).
         jsxImportSource: "defuss",
+        development: true,
 
         // We also use any remark/rehype plugins specified in the config file.
         remarkPlugins: config.remarkPlugins,
@@ -250,9 +255,12 @@ export const build = async ({
           relativeOutputHtmlFilePath,
           projectDir,
           config,
+          exports,
         );
       }
     }
+
+    //console.log("FOUND DATA?", (globalThis as any).CATCHALL_JSX_PROPS);
 
     // setting up a in-memory DOM environment (using defuss/server, backed by happy-dom)
     const browserGlobals = getBrowserGlobals();

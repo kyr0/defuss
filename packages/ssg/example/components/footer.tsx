@@ -1,4 +1,4 @@
-export const Footer = ({ year }: { year: number }) => {
+export default function Footer({ year }: { year: number }) {
   return (
     <footer
       style={{
@@ -8,8 +8,20 @@ export const Footer = ({ year }: { year: number }) => {
       }}
     >
       <p>
-        &copy; {year} <i>defuss</i> by Aron Homberg
+        &copy; {year} <i>defuss</i> by Aron Homberg{" "}
+        <a
+          onMouseOver={() => {
+            console.log("asdasd");
+          }}
+          onFocus={() => {
+            console.log("asdasd");
+          }}
+          href="https://github.com/defuss/defuss"
+        >
+          {" "}
+          (GitHub)
+        </a>
       </p>
     </footer>
   );
-};
+}

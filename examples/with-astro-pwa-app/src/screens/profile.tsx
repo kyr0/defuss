@@ -102,7 +102,7 @@ export function ProfileScreen({ user, posts = [] }: ProfileScreenProps) {
 					</h1>
 					<button
 						type="button"
-						class="settings-btn p-2 rounded-full bg-amber-400 hover:bg-amber-500 transition-colors"
+						class="settings-btn p-2 rounded- bg-amber-400 hover:bg-amber-500 transition-colors"
 						onClick={handleSettings}
 					>
 						<span class="material-icons text-2xl text-amber-900">settings</span>
@@ -119,7 +119,7 @@ export function ProfileScreen({ user, posts = [] }: ProfileScreenProps) {
 							</div>
 							<button
 								type="button"
-								class="absolute bottom-0 right-0 bg-amber-400 hover:bg-amber-500 text-amber-900 p-2 rounded-full shadow-md transition-colors"
+								class="absolute bottom-0 right-0 bg-amber-400 hover:bg-amber-500 text-amber-900 p-2 rounded-md shadow-md transition-colors"
 								onClick={handleEditProfile}
 							>
 								<span class="material-icons text-lg">edit</span>
@@ -133,7 +133,7 @@ export function ProfileScreen({ user, posts = [] }: ProfileScreenProps) {
 						</p>
 						<button
 							type="button"
-							class="edit-profile-btn px-6 py-2.5 text-sm font-medium bg-amber-400 hover:bg-amber-500 text-amber-900 rounded-full transition-colors"
+							class="edit-profile-btn px-6 py-2.5 text-sm font-medium bg-amber-400 hover:bg-amber-500 text-amber-900 rounded-md transition-colors"
 							onClick={handleEditProfile}
 						>
 							<T key="profile.edit_profile" fallback="Edit Profile" />
@@ -210,14 +210,14 @@ export function ProfileScreen({ user, posts = [] }: ProfileScreenProps) {
 										<div class="flex space-x-2">
 											<button
 												type="button"
-												class="text-amber-600 hover:text-amber-700 p-1 rounded-full transition-colors"
+												class="text-amber-600 hover:text-amber-700 p-1 rounded-md transition-colors"
 												onClick={() => handleEditPost(post.id)}
 											>
 												<span class="material-icons text-lg">edit</span>
 											</button>
 											<button
 												type="button"
-												class="text-red-500 hover:text-red-600 p-1 rounded-full transition-colors"
+												class="text-red-500 hover:text-red-600 p-1 rounded-md transition-colors"
 												onClick={() => handleDeletePost(post.id)}
 											>
 												<span class="material-icons text-lg">delete</span>
@@ -234,7 +234,7 @@ export function ProfileScreen({ user, posts = [] }: ProfileScreenProps) {
 			{/* Floating Action Button */}
 			<button
 				type="button"
-				class="fab fixed bottom-6 right-6 w-16 h-16 rounded-full flex items-center justify-center shadow-lg bg-amber-400 hover:bg-amber-500 text-amber-900 transition-colors"
+				class="fab fixed bottom-6 right-6 w-16 h-16 rounded-md flex items-center justify-center shadow-lg bg-amber-400 hover:bg-amber-500 text-amber-900 transition-colors"
 				onClick={handleCreatePost}
 			>
 				<span class="material-icons text-3xl">add</span>

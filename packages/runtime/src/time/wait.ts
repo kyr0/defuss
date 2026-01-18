@@ -48,15 +48,10 @@ export async function waitForWithPolling<T>(
   interval = 1,
 ): Promise<T> {
   const start = Date.now();
-  console.log(
-    `🔍 waitForWithPolling() started - timeout: ${timeout}ms, interval: ${interval}ms`,
-  );
-
   let timer: NodeJS.Timeout;
 
   const cleanup = () => {
     if (timer) {
-      console.log("🛑 Cleaning up polling timer");
       clearInterval(timer);
     }
   };
@@ -72,15 +67,7 @@ export async function waitForWithPolling<T>(
 
           try {
             const result = check();
-            console.log(
-              `🔄 Poll #${pollCount} (${elapsed}ms elapsed) - result:`,
-              result,
-            );
-
             if (result != null) {
-              console.log(
-                `✅ waitForWithPolling() resolved after ${pollCount} polls (${elapsed}ms)`,
-              );
               cleanup();
               resolve(result);
             }
@@ -105,17 +92,12 @@ export async function waitForRef<T>(
   ref: { current: T | null },
   timeout: number,
 ): Promise<T> {
-  console.log(
-    "🔍 waitForRef() called - ref.current:",
-    (ref?.current as Node)?.nodeType,
-  );
-  console.log(`🔍 waitForRef() timeout: ${timeout}ms`);
-
   return waitForWithPolling(() => {
-    console.log(
-      "🔄 waitForRef() polling - ref.current:",
-      (ref?.current as Node)?.nodeType,
-    );
+    // Check if ref has been marked as orphaned
+    if ((ref as any).orphan) {
+      console.log("⚠️ waitForRef() - ref is marked as orphaned, failing fast");
+      //throw new Error("Ref has been orphaned from component unmount");
+    }
     return ref.current;
   }, timeout);
 }

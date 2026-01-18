@@ -24,6 +24,8 @@ export class MonacoEditor {
   public monacoEditor: any;
   public el: HTMLElement | null;
 
+  private editorContainer: HTMLDivElement | null = null;
+
   constructor(
     data: CodeEditorData,
     config: CodeEditorConfig,
@@ -33,38 +35,68 @@ export class MonacoEditor {
     this.config = config;
     this.readOnly = readOnly;
     this.el = null;
+    this.monacoEditor = null;
     this.initializeMonacoEditor();
   }
 
-  private async initializeMonacoEditor() {
+  private initializeMonacoEditor() {
     this.el = document.createElement("div");
     this.el.style.width = "100%";
+    this.el.style.minWidth = "0"; // IMPORTANT for flex layouts
     this.el.className = "hbox";
 
     const editorContainerWrapper = document.createElement("div");
     editorContainerWrapper.className = "vbox w-full";
+    editorContainerWrapper.style.flex = "1";
+    editorContainerWrapper.style.minWidth = "0";
 
-    // create a div element for the editor
+    // editor container
     const editorContainer = document.createElement("div");
     editorContainer.style.width = "100%";
-    editorContainer.style.minHeight = "100%";
-
-    // append the editor and run button to the main element
+    editorContainer.style.minWidth = "0";
+    editorContainer.style.height = "50px"; // give Monaco *some* height immediately
     editorContainerWrapper.appendChild(editorContainer);
     this.el.appendChild(editorContainerWrapper);
 
+    // (optional) output container, unchanged
     const outputContainerWrapper = document.createElement("div");
     outputContainerWrapper.className = "mb-lg";
     outputContainerWrapper.id = `output-${Math.random().toString(36).substring(2, 9)}`;
     this.el.appendChild(outputContainerWrapper);
 
-    this.monacoEditor = monaco.editor.create(editorContainer, {
+    this.editorContainer = editorContainer;
+
+    // ---- the actual Monaco init must wait until the node is CONNECTED + measurable
+    const tryCreate = () => {
+      if (!this.editorContainer) return;
+
+      // must be in DOM
+      if (!this.editorContainer.isConnected) {
+        requestAnimationFrame(tryCreate);
+        return;
+      }
+
+      // must have a real width
+      const { width } = this.editorContainer.getBoundingClientRect();
+      if (width === 0) {
+        requestAnimationFrame(tryCreate);
+        return;
+      }
+
+      this.createMonacoNow();
+    };
+
+    requestAnimationFrame(tryCreate);
+  }
+
+  private createMonacoNow() {
+    if (!this.editorContainer) return;
+
+    this.monacoEditor = monaco.editor.create(this.editorContainer, {
       value: this.data.code,
       language: this.config.language || "javascript",
       automaticLayout: true,
-      minimap: {
-        enabled: false,
-      },
+      minimap: { enabled: false },
       readOnly: this.readOnly,
       lineNumbers: "off",
       fontSize: this.config.fontSize || 16,
@@ -81,27 +113,33 @@ export class MonacoEditor {
 
     monaco.editor.setTheme(this.config.theme || "vs-dark");
 
-    const computedStyle = editorContainer.getBoundingClientRect();
     let ignoreEvent = false;
     const updateHeight = () => {
-      const contentHeight = Math.min(500, this.monacoEditor.getContentHeight());
-      editorContainer.style.height = `${contentHeight}px`;
+      if (ignoreEvent || !this.editorContainer) return;
 
-      const computedStyle = editorContainer.getBoundingClientRect();
+      const contentHeight = Math.min(500, this.monacoEditor.getContentHeight());
+      this.editorContainer.style.height = `${Math.max(50, contentHeight)}px`;
+
+      const rect = this.editorContainer.getBoundingClientRect();
+      if (rect.width === 0) return;
+
       try {
         ignoreEvent = true;
         this.monacoEditor.layout({
-          width: computedStyle.width,
+          width: rect.width,
           height: Math.max(50, contentHeight),
         });
       } finally {
         ignoreEvent = false;
       }
     };
+
     this.monacoEditor.onDidContentSizeChange(updateHeight);
 
-    this.monacoEditor.layout({ width: computedStyle.width, height: 50 });
-    updateHeight();
+    // IMPORTANT: first layout after paint
+    requestAnimationFrame(() => {
+      updateHeight();
+    });
 
     this.monacoEditor.onDidChangeModelContent(() => {
       this.data.code = this.monacoEditor.getValue();
@@ -117,11 +155,14 @@ export class MonacoEditor {
   }
 
   public layout() {
-    this.monacoEditor.layout({});
+    if (!this.monacoEditor || !this.editorContainer) return;
+    const rect = this.editorContainer.getBoundingClientRect();
+    if (rect.width === 0) return;
+    this.monacoEditor.layout({ width: rect.width, height: rect.height || 50 });
   }
 
   public getValue() {
-    return this.monacoEditor.getValue();
+    return this.monacoEditor?.getValue?.() ?? "";
   }
 
   public getDomNode() {
@@ -130,10 +171,10 @@ export class MonacoEditor {
 
   public setValue(data: CodeEditorData) {
     this.data = data;
-    this.monacoEditor.setValue(data.code);
+    this.monacoEditor?.setValue?.(data.code);
   }
 
   public dispose() {
-    this.monacoEditor.dispose();
+    this.monacoEditor?.dispose?.();
   }
 }

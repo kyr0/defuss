@@ -15,7 +15,8 @@
     "test": "cargo test && vitest run",
     "prebench": "pnpm build && mkdir -p public && cp -R tools/WebFAQ/dataset/*_flat.json public/",
     "bench": "vitest run --config vitest.bench.config.ts",
-    "release": "sh scripts/release.sh"
+    "release": "sh scripts/release.sh",
+    "embedding-server": "ollama serve"
   },
   "exports": {
     ".": {
@@ -41,7 +42,10 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": ["pkg/*", "dist/*"],
+  "files": [
+    "pkg/*",
+    "dist/*"
+  ],
   "dependencies": {},
   "devDependencies": {
     "@types/web": "^0.0.241",

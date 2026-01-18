@@ -1,4 +1,7 @@
 packages:
   - 'packages/**/*'
   - 'examples/**/*'
-  - '!packages/*/lightningimg-wasm/pkg'
+  - '!**/pkg'
+  - '!**/.ssg-temp'
+  - '!**/dist'
+  - '!**/public'

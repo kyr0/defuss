@@ -1,10 +1,13 @@
 ---
-import "defuss-squeezy"; // Import the Squeezy CSS framework
+// Import the Squeezy CSS framework
+import "./reset.css";
 import "./Layout.css";
+import "./palette.css";
+import "./squeezy.css";
 
 interface Props {
-  title: string;
-  marginTop?: string;
+	title: string;
+	marginTop?: string;
 }
 
 const { marginTop } = Astro.props as Props;

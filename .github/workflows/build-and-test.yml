@@ -28,4 +28,4 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
       - run: pnpm install --no-frozen-lockfile
-      - run: pnpm test --filter='!@example/notebooks' --filter='!@example/with-astro-ts' --filter='!@example/photo-canvas' --filter='!@example/desktop'
+      - run: pnpm test --filter='!@example/with-editorjs' --filter='!@example/with-astro-ts' --filter='!@example/with-photo-gallery' --filter='!@example/with-desktop-wm'

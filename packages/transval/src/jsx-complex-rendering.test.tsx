@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { rule, Rules, transval } from "./api.js";
 import type { FieldValidationMessage } from "./types.js";
+import { stripSourceInfo } from "./test-utils.js";
 
 describe("JSX error rendering - Complex nested scenarios", () => {
   it("should handle complex nested validation with conditional JSX", async () => {
@@ -40,56 +41,63 @@ describe("JSX error rendering - Complex nested scenarios", () => {
 
     // Test complex conditional JSX formatting
     expect(
-      validator.getMessages(undefined, (messages: FieldValidationMessage[]) => {
-        const profileErrors = messages.filter((msg) =>
-          msg.message.includes("name is required"),
-        );
-        const contactErrors = messages.filter(
-          (msg) =>
-            msg.message.includes("Email") ||
-            msg.message.includes("Valid email"),
-        );
+      stripSourceInfo(
+        validator.getMessages(
+          undefined,
+          (messages: FieldValidationMessage[]) => {
+            const profileErrors = messages.filter((msg) =>
+              msg.message.includes("name is required"),
+            );
+            const contactErrors = messages.filter(
+              (msg) =>
+                msg.message.includes("Email") ||
+                msg.message.includes("Valid email"),
+            );
 
-        return (
-          <div className="validation-summary">
-            {profileErrors.length > 0 && (
-              <div className="profile-errors">
-                <h5>Profile Issues:</h5>
-                {profileErrors.map((error) => (
-                  <p key={error.message} className="profile-error">
-                    {error.message}
-                  </p>
-                ))}
+            return (
+              <div className="validation-summary">
+                {profileErrors.length > 0 && (
+                  <div className="profile-errors">
+                    <h5>Profile Issues:</h5>
+                    {profileErrors.map((error) => (
+                      <p key={error.message} className="profile-error">
+                        {error.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {contactErrors.length > 0 && (
+                  <div className="contact-errors">
+                    <h5>Contact Issues:</h5>
+                    {contactErrors.map((error) => (
+                      <p key={error.message} className="contact-error">
+                        {error.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-            {contactErrors.length > 0 && (
-              <div className="contact-errors">
-                <h5>Contact Issues:</h5>
-                {contactErrors.map((error) => (
-                  <p key={error.message} className="contact-error">
-                    {error.message}
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      }),
+            );
+          },
+        ),
+      ),
     ).toEqual(
-      <div className="validation-summary">
-        <div className="profile-errors">
-          <h5>Profile Issues:</h5>
-          <p key="First name is required" className="profile-error">
-            First name is required
-          </p>
-        </div>
-        <div className="contact-errors">
-          <h5>Contact Issues:</h5>
-          <p key="Email is required" className="contact-error">
-            Email is required
-          </p>
-        </div>
-      </div>,
+      stripSourceInfo(
+        <div className="validation-summary">
+          <div className="profile-errors">
+            <h5>Profile Issues:</h5>
+            <p key="First name is required" className="profile-error">
+              First name is required
+            </p>
+          </div>
+          <div className="contact-errors">
+            <h5>Contact Issues:</h5>
+            <p key="Email is required" className="contact-error">
+              Email is required
+            </p>
+          </div>
+        </div>,
+      ),
     );
   });
 });

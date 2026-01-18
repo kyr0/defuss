@@ -1,5 +1,9 @@
 import { Repl } from "./components/Repl";
-import "./style.css";
+import "./styles/reset.css";
+import "./styles/palette.css";
+import "./styles/squeezy.css";
+import "./styles/style.css";
+
 import typescriptLogo from "./typescript.svg";
 import viteLogo from "/vite.svg";
 import { $ } from "defuss";
@@ -39,14 +43,16 @@ function App() {
         </a>
       </div>
 
-      <h1>Vite + defuss + TypeScript + defuss-dson</h1>
-      <div class="p-lg vbox justify-center">
-        <Repl />
-      </div>
+      <h1>DSON is Definitely Typed JSON</h1>
 
       <p class="dim">
         Check the console for errors and DSON deserialized output!
       </p>
+
+      <div class="p-lg vbox justify-center">
+        <Repl />
+      </div>
+
     </>
   );
 }

@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { rule, Rules, transval } from "./api.js";
 import type { FieldValidationMessage } from "./types.js";
 import type { RenderInput } from "defuss/jsx-runtime";
+import { stripSourceInfo } from "./test-utils.js";
 
 describe("JSX error rendering - Multi-error scenarios", () => {
   it("should format multiple errors per field as JSX", async () => {
@@ -33,33 +34,40 @@ describe("JSX error rendering - Multi-error scenarios", () => {
 
     // Test formatting multiple errors as nested JSX
     expect(
-      validator.getMessages(undefined, (messages: FieldValidationMessage[]) => (
+      stripSourceInfo(
+        validator.getMessages(
+          undefined,
+          (messages: FieldValidationMessage[]) => (
+            <div className="validation-errors">
+              <h4>Password Requirements:</h4>
+              <ul>
+                {messages.map((msg: FieldValidationMessage) => (
+                  <li key={msg.message} className="error">
+                    {msg.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ),
+        ),
+      ),
+    ).toEqual(
+      stripSourceInfo(
         <div className="validation-errors">
           <h4>Password Requirements:</h4>
           <ul>
-            {messages.map((msg: FieldValidationMessage) => (
-              <li key={msg.message} className="error">
-                {msg.message}
-              </li>
-            ))}
+            <li key="Must be at least 5 characters" className="error">
+              Must be at least 5 characters
+            </li>
+            <li key="Must contain uppercase letter" className="error">
+              Must contain uppercase letter
+            </li>
+            <li key="Must contain a number" className="error">
+              Must contain a number
+            </li>
           </ul>
-        </div>
-      )),
-    ).toEqual(
-      <div className="validation-errors">
-        <h4>Password Requirements:</h4>
-        <ul>
-          <li key="Must be at least 5 characters" className="error">
-            Must be at least 5 characters
-          </li>
-          <li key="Must contain uppercase letter" className="error">
-            Must contain uppercase letter
-          </li>
-          <li key="Must contain a number" className="error">
-            Must contain a number
-          </li>
-        </ul>
-      </div>,
+        </div>,
+      ),
     );
   });
 
@@ -78,23 +86,29 @@ describe("JSX error rendering - Multi-error scenarios", () => {
 
     // Test formatting when no errors exist
     expect(
-      validator.getMessages<RenderInput>(
-        undefined,
-        (messages: FieldValidationMessage[]) => {
-          if (messages.length === 0) {
+      stripSourceInfo(
+        validator.getMessages<RenderInput>(
+          undefined,
+          (messages: FieldValidationMessage[]) => {
+            if (messages.length === 0) {
+              return (
+                <div className="success-message">
+                  ✅ All validations passed!
+                </div>
+              );
+            }
             return (
-              <div className="success-message">✅ All validations passed!</div>
+              <div className="error-list">
+                {messages.map((msg) => msg.message).join(", ")}
+              </div>
             );
-          }
-          return (
-            <div className="error-list">
-              {messages.map((msg) => msg.message).join(", ")}
-            </div>
-          );
-        },
+          },
+        ),
       ),
     ).toEqual(
-      <div className="success-message">✅ All validations passed!</div>,
+      stripSourceInfo(
+        <div className="success-message">✅ All validations passed!</div>,
+      ),
     );
   });
 });

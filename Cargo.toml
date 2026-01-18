@@ -1,12 +1,9 @@
 [workspace]
 members = [
-    "packages/fastmath",
-    "packages/lightningimg/lightningimg-wasm",
     "packages/search",
-    "packages/langid",
 ]
 exclude = [
-    "examples/wasm-demo",
+    "examples/with-wasm-c-rust-matmul",
 ]
 resolver = "2"
 

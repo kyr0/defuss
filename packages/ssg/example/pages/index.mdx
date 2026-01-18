@@ -2,9 +2,12 @@
 title: Home
 ---
 
-import { Head } from "../components/head.js"
-import { Footer } from '../components/footer.js'
-import { Header } from '../components/header.js'
+import Head from "../components/head.js"
+import Footer from '../components/footer.js'
+import Header from '../components/header.js'
+import ClickButton from '../components/button.js'
+import { Hydrate } from "defuss-ssg/components"
+
 export const year = 2025;
 export const someData = await import('../data.json');
 
@@ -15,13 +18,13 @@ export const someData = await import('../data.json');
 
 <Header active={"index"} />
 
-# { meta.title }
+# { meta.title } 2
 
 Welcome to the defuss-ssg example website! We can use dynamic variables! Look: {someData.firstName} {someData.lastName} has been read from <code>../data.json</code> at generation time.
 
 Currently we can render buttons, but the client-side interactivity is not yet implemented:
 
-<button type="button" class="secondary" onClick={() => alert("Button clicked!")}>Button</button>
+<ClickButton foo="bar" className="secondary" />
 
 We also have **infinite** layout options, because you can mix Markdown and HTML:
 

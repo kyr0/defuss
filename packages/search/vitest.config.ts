@@ -1,6 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  publicDir: "public",
   server: {
     headers: {
       "Cross-Origin-Embedder-Policy": "require-corp",
@@ -8,6 +9,12 @@ export default defineConfig({
     },
   },
   test: {
-    exclude: ["**/*.bench.ts"]
+    exclude: ["**/*.bench.ts"],
+    browser: {
+      enabled: true,
+      headless: false,
+      provider: "playwright",
+      instances: [{ browser: "chromium" }],
+    },
   },
 });

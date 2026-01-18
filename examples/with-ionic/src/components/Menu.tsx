@@ -105,8 +105,15 @@ const MenuList = () => {
 export const Menu = () => {
   const listRef = createRef<HTMLIonListElement>();
 
-  Router.onRouteChange(() => {
-    $(listRef).update(MenuList());
+  Router.onRouteChange(async () => {
+    console.log("Router.onRouteChange called");
+    // the following is a web component and defuss can't handle that?
+    const list = document.querySelector("#inbox-list");
+    if (list) {
+      // TODO: fixme, fix defuss-dequery's empty() impl?!
+      list.innerHTML = "";
+      await $(list).update(MenuList());
+    }
   });
 
   return (

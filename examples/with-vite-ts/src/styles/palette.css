@@ -1,0 +1,210 @@
+:root {
+
+  --hue-shift-red:        1;
+  --hue-shift-brown:      1;
+  --hue-shift-orange:     1;
+  --hue-shift-yellow:     1;
+  --hue-shift-chartreuse: 1;
+  --hue-shift-lime:       1;
+  --hue-shift-green:      1;
+  --hue-shift-teal:       1;
+  --hue-shift-cyan:       1;
+  --hue-shift-blue:       1;
+  --hue-shift-purple:     1;
+  --hue-shift-pink:       1;
+
+  /* --------------------------------------------------------------------------
+       Calculated Hue Values for Color Families
+  -------------------------------------------------------------------------- */
+  --hue-red:        calc(32 + var(--hue-shift-red));
+  --hue-brown:      calc(60 + var(--hue-shift-brown));
+  --hue-orange:     calc(65 + var(--hue-shift-orange));
+  --hue-yellow:     calc(82 + var(--hue-shift-yellow));
+  --hue-chartreuse: calc(95 + var(--hue-shift-chartreuse));
+  --hue-lime:       calc(105 + var(--hue-shift-lime));
+  --hue-green:      calc(125 + var(--hue-shift-green));
+  --hue-teal:       calc(140 + var(--hue-shift-teal));
+  --hue-cyan:       calc(160 + var(--hue-shift-cyan));
+  --hue-blue:       calc(230 + var(--hue-shift-blue));
+  --hue-purple:     calc(290 + var(--hue-shift-purple));
+  --hue-pink:       calc(320 + var(--hue-shift-pink));
+
+  /* --------------------------------------------------------------------------
+       Global Controls for Color Variants
+  -------------------------------------------------------------------------- */
+  --base-chroma:    0.08;
+  --base-light:     90;
+
+  /* ----------------- MONOCHROME Variants ----------------- */
+  --color-mono-950: oklch(calc(var(--base-light) * 0.95 / 100) 0 0);
+  --color-mono-900: oklch(calc(var(--base-light) * 0.90 / 100) 0 0);
+  --color-mono-800: oklch(calc(var(--base-light) * 0.80 / 100) 0 0);
+  --color-mono-700: oklch(calc(var(--base-light) * 0.70 / 100) 0 0);
+  --color-mono-600: oklch(calc(var(--base-light) * 0.60 / 100) 0 0);
+  --color-mono-500: oklch(calc(var(--base-light) * 0.50 / 100) 0 0);
+  --color-mono-400: oklch(calc(var(--base-light) * 0.40 / 100) 0 0);
+  --color-mono-300: oklch(calc(var(--base-light) * 0.30 / 100) 0 0);
+  --color-mono-200: oklch(calc(var(--base-light) * 0.20 / 100) 0 0);
+  --color-mono-100: oklch(calc(var(--base-light) * 0.10 / 100) 0 0);
+  --color-mono-50:  oklch(calc(var(--base-light) * 0.05 / 100) 0 0);
+
+  /* ----------------- RED Variants ----------------- */
+  --color-red-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-red));
+  --color-red-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-red));
+  --color-red-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-red));
+  --color-red-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-red));
+  --color-red-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-red));
+  --color-red-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-red));
+  --color-red-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-red));
+  --color-red-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-red));
+  --color-red-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-red));
+  --color-red-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-red));
+  --color-red-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-red));
+
+  /* ----------------- BROWN Variants ----------------- */
+  --color-brown-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-brown));
+  --color-brown-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-brown));
+  --color-brown-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-brown));
+  --color-brown-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-brown));
+  --color-brown-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-brown));
+  --color-brown-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-brown));
+  --color-brown-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-brown));
+  --color-brown-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-brown));
+  --color-brown-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-brown));
+  --color-brown-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-brown));
+  --color-brown-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-brown));
+
+  /* ----------------- ORANGE Variants ----------------- */
+  --color-orange-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-orange));
+  --color-orange-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-orange));
+  --color-orange-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-orange));
+  --color-orange-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-orange));
+  --color-orange-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-orange));
+  --color-orange-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-orange));
+  --color-orange-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-orange));
+  --color-orange-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-orange));
+  --color-orange-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-orange));
+  --color-orange-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-orange));
+  --color-orange-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-orange));
+
+  /* ----------------- YELLOW Variants ----------------- */
+  --color-yellow-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-yellow));
+  --color-yellow-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-yellow));
+  --color-yellow-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-yellow));
+  --color-yellow-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-yellow));
+  --color-yellow-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-yellow));
+  --color-yellow-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-yellow));
+  --color-yellow-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-yellow));
+  --color-yellow-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-yellow));
+  --color-yellow-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-yellow));
+  --color-yellow-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-yellow));
+  --color-yellow-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-yellow));
+
+  /* ----------------- CHARTREUSE Variants ----------------- */
+  --color-chartreuse-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-chartreuse));
+  --color-chartreuse-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-chartreuse));
+  --color-chartreuse-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-chartreuse));
+  --color-chartreuse-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-chartreuse));
+  --color-chartreuse-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-chartreuse));
+  --color-chartreuse-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-chartreuse));
+  --color-chartreuse-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-chartreuse));
+  --color-chartreuse-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-chartreuse));
+  --color-chartreuse-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-chartreuse));
+  --color-chartreuse-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-chartreuse));
+  --color-chartreuse-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-chartreuse));
+
+  /* ----------------- LIME Variants ----------------- */
+  --color-lime-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-lime));
+  --color-lime-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-lime));
+  --color-lime-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-lime));
+  --color-lime-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-lime));
+  --color-lime-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-lime));
+  --color-lime-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-lime));
+  --color-lime-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-lime));
+  --color-lime-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-lime));
+  --color-lime-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-lime));
+  --color-lime-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-lime));
+  --color-lime-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-lime));
+
+  /* ----------------- GREEN Variants ----------------- */
+  --color-green-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-green));
+  --color-green-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-green));
+  --color-green-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-green));
+  --color-green-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-green));
+  --color-green-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-green));
+  --color-green-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-green));
+  --color-green-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-green));
+  --color-green-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-green));
+  --color-green-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-green));
+  --color-green-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-green));
+  --color-green-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-green));
+
+  /* ----------------- TEAL Variants ----------------- */
+  --color-teal-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-teal));
+  --color-teal-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-teal));
+  --color-teal-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-teal));
+  --color-teal-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-teal));
+  --color-teal-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-teal));
+  --color-teal-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-teal));
+  --color-teal-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-teal));
+  --color-teal-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-teal));
+  --color-teal-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-teal));
+  --color-teal-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-teal));
+  --color-teal-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-teal));
+
+  /* ----------------- CYAN Variants ----------------- */
+  --color-cyan-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-cyan));
+  --color-cyan-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-cyan));
+  --color-cyan-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-cyan));
+  --color-cyan-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-cyan));
+  --color-cyan-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-cyan));
+  --color-cyan-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-cyan));
+  --color-cyan-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-cyan));
+  --color-cyan-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-cyan));
+  --color-cyan-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-cyan));
+  --color-cyan-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-cyan));
+  --color-cyan-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-cyan));
+
+  /* ----------------- BLUE Variants ----------------- */
+  --color-blue-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-blue));
+  --color-blue-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-blue));
+  --color-blue-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-blue));
+  --color-blue-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-blue));
+  --color-blue-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-blue));
+  --color-blue-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-blue));
+  --color-blue-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-blue));
+  --color-blue-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-blue));
+  --color-blue-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-blue));
+  --color-blue-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-blue));
+  --color-blue-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-blue));
+
+  /* ----------------- PURPLE Variants ----------------- */
+  --color-purple-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-purple));
+  --color-purple-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-purple));
+  --color-purple-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-purple));
+  --color-purple-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-purple));
+  --color-purple-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-purple));
+  --color-purple-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-purple));
+  --color-purple-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-purple));
+  --color-purple-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-purple));
+  --color-purple-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-purple));
+  --color-purple-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-purple));
+  --color-purple-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-purple));
+
+  /* ----------------- PINK Variants ----------------- */
+  --color-pink-950: oklch(calc(var(--base-light) * 0.95 / 100) var(--base-chroma) var(--hue-pink));
+  --color-pink-900: oklch(calc(var(--base-light) * 0.90 / 100) var(--base-chroma) var(--hue-pink));
+  --color-pink-800: oklch(calc(var(--base-light) * 0.80 / 100) var(--base-chroma) var(--hue-pink));
+  --color-pink-700: oklch(calc(var(--base-light) * 0.70 / 100) var(--base-chroma) var(--hue-pink));
+  --color-pink-600: oklch(calc(var(--base-light) * 0.60 / 100) var(--base-chroma) var(--hue-pink));
+  --color-pink-500: oklch(calc(var(--base-light) * 0.50 / 100) var(--base-chroma) var(--hue-pink));
+  --color-pink-400: oklch(calc(var(--base-light) * 0.40 / 100) var(--base-chroma) var(--hue-pink));
+  --color-pink-300: oklch(calc(var(--base-light) * 0.30 / 100) var(--base-chroma) var(--hue-pink));
+  --color-pink-200: oklch(calc(var(--base-light) * 0.20 / 100) var(--base-chroma) var(--hue-pink));
+  --color-pink-100: oklch(calc(var(--base-light) * 0.10 / 100) var(--base-chroma) var(--hue-pink));
+  --color-pink-50:  oklch(calc(var(--base-light) * 0.05 / 100) var(--base-chroma) var(--hue-pink));
+}
+
+.dark {   
+  --base-light:     80;  /* decreased base light for darker colors */
+}

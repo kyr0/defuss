@@ -12,7 +12,8 @@ export type StatusCode =
   | "UNSUPPORTED_PM"
   | "INSTALL_FAILED"
   | "INVALID_CONFIG"
-  | "INVALID_PROJECT_DIR";
+  | "INVALID_PROJECT_DIR"
+  | "PORT_IN_USE";
 
 export type Status = {
   code: StatusCode;
@@ -31,6 +32,7 @@ export type PluginFnPageVdom = (
   relativeOutputHtmlFilePath: string,
   projectDir: string,
   config: SsgConfig,
+  props: Record<string, any>,
 ) => Promise<VNode> | VNode;
 
 export type PluginFnPageDom = (

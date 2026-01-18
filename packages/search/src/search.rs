@@ -1060,7 +1060,296 @@ pub struct SearchEngine {
     vector_index: VectorIndex,
     schema: Schema,
     doc_id_mapping: HashMap<EntryIndex, String>,
+
+    // ultra-minimal store for fast substring/fuzzy scanning
+    flat_text: FlatTextStore,
 }
+
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+fn mask_eq_16(ptr: *const u8, byte: u8) -> u16 {
+    use core::arch::wasm32::*;
+    unsafe {
+        let v = v128_load(ptr as *const v128);
+        let eq = i8x16_eq(v, i8x16_splat(byte as i8));
+        i8x16_bitmask(eq) as u16
+    }
+}
+
+// =============================================================================
+// FAST SUBSTRING / FUZZY SCAN (NO INVERTED INDEX)
+// =============================================================================
+
+/// Normalize text for substring scanning:
+/// - lowercase
+/// - keep only alphanumeric
+/// - all separators collapse to single space
+#[inline]
+fn normalize_for_substring(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut last_was_space = true;
+
+    for ch in input.chars() {
+        if ch.is_alphanumeric() {
+            for lc in ch.to_lowercase() {
+                out.push(lc);
+            }
+            last_was_space = false;
+        } else {
+            if !last_was_space {
+                out.push(' ');
+                last_was_space = true;
+            }
+        }
+    }
+
+    // trim trailing space (if any)
+    if out.ends_with(' ') {
+        out.pop();
+    }
+    out
+}
+
+/// Levenshtein distance with early cutoff.
+/// Returns Some(dist) if dist <= max_dist, else None.
+#[inline]
+fn levenshtein_cutoff(a: &[u8], b: &[u8], max_dist: usize) -> Option<usize> {
+    if a == b {
+        return Some(0);
+    }
+    if a.is_empty() {
+        return (b.len() <= max_dist).then_some(b.len());
+    }
+    if b.is_empty() {
+        return (a.len() <= max_dist).then_some(a.len());
+    }
+
+    if a.len().abs_diff(b.len()) > max_dist {
+        return None;
+    }
+
+    // Allocate based on shorter side to reduce work
+    let (a, b) = if b.len() > a.len() { (b, a) } else { (a, b) };
+
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut curr: Vec<usize> = vec![0; b.len() + 1];
+
+    for (i, &ac) in a.iter().enumerate() {
+        curr[0] = i + 1;
+        let mut row_min = curr[0];
+
+        for (j, &bc) in b.iter().enumerate() {
+            let cost = if ac == bc { 0 } else { 1 };
+
+            let del = prev[j + 1] + 1;
+            let ins = curr[j] + 1;
+            let sub = prev[j] + cost;
+
+            let v = del.min(ins).min(sub);
+            curr[j + 1] = v;
+            row_min = row_min.min(v);
+        }
+
+        if row_min > max_dist {
+            return None;
+        }
+
+        std::mem::swap(&mut prev, &mut curr);
+    }
+
+    let dist = prev[b.len()];
+    (dist <= max_dist).then_some(dist)
+}
+
+/// Minimal store: one normalized flat string per document.
+/// This is intentionally "not a real index": O(N) scan per query.
+#[derive(Debug, Default)]
+pub struct FlatTextStore {
+    texts: Vec<String>,
+}
+
+impl FlatTextStore {
+    pub fn new() -> Self {
+        Self { texts: Vec::new() }
+    }
+
+    fn ensure_len(&mut self, len: usize) {
+        if self.texts.len() < len {
+            self.texts.resize_with(len, String::new);
+        }
+    }
+
+    pub fn add_document(&mut self, doc_idx: EntryIndex, doc: &Document) {
+        let idx = doc_idx as usize;
+        self.ensure_len(idx + 1);
+
+        // concatenate all text fields, then normalize once
+        let mut raw = String::new();
+        for (_field_name, values) in doc.get_attributes() {
+            for v in values {
+                if let Value::Text(t) = v {
+                    raw.push_str(t);
+                    raw.push(' ');
+                }
+            }
+        }
+
+        self.texts[idx] = normalize_for_substring(&raw);
+    }
+
+    /// Exact substring search (normalized).
+    pub fn search_substring(&self, query: &str, top_k: usize) -> Vec<(EntryIndex, f32)> {
+        if top_k == 0 {
+            return Vec::new();
+        }
+
+        let q = normalize_for_substring(query);
+        if q.is_empty() {
+            return Vec::new();
+        }
+
+        // Parallel scan across docs; score = "found early is better"
+        let mut results: Vec<(EntryIndex, f32)> = self
+            .texts
+            .par_iter()
+            .enumerate()
+            .filter_map(|(i, text)| {
+                text.find(&q).map(|pos| {
+                    // Simple scoring: base 1.0, earlier matches slightly higher
+                    let score = 1.0 + 1.0 / (1.0 + pos as f32);
+                    (i as EntryIndex, score)
+                })
+            })
+            .collect();
+
+        results.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        results.truncate(top_k);
+        results
+    }
+
+    /// Fuzzy token search:
+    /// - normalize query -> tokens
+    /// - per token: exact substring OR best Levenshtein match against doc tokens (cutoff)
+    /// - doc score = mean(token_scores), with a small bonus if full query substring matches
+    pub fn search_fuzzy(
+        &self,
+        query: &str,
+        top_k: usize,
+        max_edits: usize,
+    ) -> Vec<(EntryIndex, f32)> {
+        if top_k == 0 {
+            return Vec::new();
+        }
+
+        let q_norm = normalize_for_substring(query);
+        if q_norm.is_empty() {
+            return Vec::new();
+        }
+
+        let q_tokens: Vec<&str> = q_norm.split_whitespace().collect();
+        if q_tokens.is_empty() {
+            return Vec::new();
+        }
+
+        let max_edits = max_edits.min(4);
+
+        let mut results: Vec<(EntryIndex, f32)> = self
+            .texts
+            .par_iter()
+            .enumerate()
+            .filter_map(|(i, text)| {
+                if text.is_empty() {
+                    return None;
+                }
+
+                let full_exact = text.contains(&q_norm);
+
+                let mut sum_score = 0.0f32;
+                let mut any_hit = false;
+
+                for &qt in &q_tokens {
+                    if qt.is_empty() {
+                        continue;
+                    }
+
+                    // exact-ish: token is a substring anywhere
+                    if text.contains(qt) {
+                        sum_score += 1.0;
+                        any_hit = true;
+                        continue;
+                    }
+
+                    // fuzzy against doc tokens
+                    let qt_b = qt.as_bytes();
+                    let mut best_dist: Option<usize> = None;
+                    let mut best_len: usize = 0;
+
+                    for dt in text.split_whitespace() {
+                        let dt_b = dt.as_bytes();
+
+                        // distance can't be smaller than length diff
+                        if qt_b.len().abs_diff(dt_b.len()) > max_edits {
+                            continue;
+                        }
+
+                        if let Some(d) = levenshtein_cutoff(qt_b, dt_b, max_edits) {
+                            match best_dist {
+                                None => {
+                                    best_dist = Some(d);
+                                    best_len = dt_b.len();
+                                    if d == 0 {
+                                        break;
+                                    }
+                                }
+                                Some(cur) if d < cur => {
+                                    best_dist = Some(d);
+                                    best_len = dt_b.len();
+                                    if d == 0 {
+                                        break;
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    if let Some(d) = best_dist {
+                        any_hit = true;
+                        let denom = qt_b.len().max(best_len).max(1) as f32;
+                        let token_score = (1.0 - (d as f32 / denom)).max(0.0);
+                        sum_score += token_score;
+                    }
+                }
+
+                if !any_hit {
+                    return None;
+                }
+
+                let mut score = sum_score / (q_tokens.len() as f32);
+                if full_exact {
+                    score += 0.25; // tiny bump for "phrase" hit
+                }
+
+                Some((i as EntryIndex, score))
+            })
+            .collect();
+
+        results.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        results.truncate(top_k);
+        results
+    }
+
+    pub fn len(&self) -> usize {
+        self.texts.len()
+    }
+}
+
 
 #[wasm_bindgen]
 impl SearchEngine {
@@ -1072,8 +1361,10 @@ impl SearchEngine {
             vector_index: VectorIndex::new(),
             schema: Schema::builder().build(),
             doc_id_mapping: HashMap::new(),
+            flat_text: FlatTextStore::new(),
         }
     }
+
 
     /// Create a new search engine with a schema
     #[wasm_bindgen]
@@ -1091,6 +1382,7 @@ impl SearchEngine {
             vector_index,
             schema,
             doc_id_mapping: HashMap::new(),
+            flat_text: FlatTextStore::new(),
         }
     }
 
@@ -1137,6 +1429,9 @@ impl SearchEngine {
         // Store ID mapping for WASM results
         self.doc_id_mapping.insert(entry_index, document.get_id().0.clone());
 
+        // store a normalized flat string for substring/fuzzy scan
+        self.flat_text.add_document(entry_index, &document);
+
         Ok(())
     }
 
@@ -1144,6 +1439,18 @@ impl SearchEngine {
     pub fn search_text(&self, query: &str, top_k: usize) -> Vec<SearchResult> {
         // Use enhanced text index search with caching and optimizations
         let results = self.text_index.search(query, top_k);
+        self.convert_results(results)
+    }
+
+    #[wasm_bindgen]
+    pub fn search_substring(&self, query: &str, top_k: usize) -> Vec<SearchResult> {
+        let results = self.flat_text.search_substring(query, top_k);
+        self.convert_results(results)
+    }
+
+    #[wasm_bindgen]
+    pub fn search_fuzzy(&self, query: &str, top_k: usize, max_edits: usize) -> Vec<SearchResult> {
+        let results = self.flat_text.search_fuzzy(query, top_k, max_edits);
         self.convert_results(results)
     }
 
@@ -1329,5 +1636,37 @@ impl SearchEngine {
                 })
                 .collect()
         }
+    }
+}
+
+#[cfg(test)]
+mod flat_text_tests {
+    use super::*;
+
+    #[test]
+    fn test_levenshtein_cutoff() {
+        // exact
+        assert_eq!(levenshtein_cutoff(b"machine", b"machine", 2), Some(0));
+        // distance 1
+        assert_eq!(levenshtein_cutoff(b"machne", b"machine", 2), Some(1));
+        // distance 1 (substitution)
+        assert_eq!(levenshtein_cutoff(b"rust", b"tust", 1), Some(1));
+        // distance 2
+        assert_eq!(levenshtein_cutoff(b"kitten", b"sitten", 2), Some(1));
+        assert_eq!(levenshtein_cutoff(b"kitten", b"sitting", 3), Some(3));
+        
+        // beyond cutoff
+        assert_eq!(levenshtein_cutoff(b"abc", b"xyz", 2), None);
+        // length diff > max_dist
+        assert_eq!(levenshtein_cutoff(b"a", b"abcde", 2), None);
+    }
+
+    #[test]
+    fn test_normalize_for_substring() {
+        assert_eq!(normalize_for_substring("Hello, WORLD!"), "hello world");
+        assert_eq!(normalize_for_substring("a---b__c"), "a b c");
+        assert_eq!(normalize_for_substring("  lots   of   spaces  "), "lots of spaces");
+        assert_eq!(normalize_for_substring(""), "");
+        assert_eq!(normalize_for_substring("!@#$%"), "");
     }
 }

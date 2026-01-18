@@ -1,6 +1,6 @@
 {
   "name": "defuss-desktop",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -40,8 +40,8 @@
         "default": "./dist/index.mjs"
       }
     },
-    "./xp": "./xp.scss",
-    "./index": "./index.scss"
+    "./xp": "./dist/xp.scss",
+    "./index": "./dist/index.scss"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

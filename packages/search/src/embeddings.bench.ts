@@ -6,7 +6,7 @@ import { embed } from "./embeddings.js";
 // For example: ollama serve or llama.cpp server with embedding support
 // Server should be running at http://127.0.0.1:1234/v1 with model text-embedding-qwen3-embedding-8b
 
-const EMBEDDING_MODEL = "text-embedding-qwen3-embedding-0.6b";
+const EMBEDDING_MODEL = "qwen3-embedding:0.6b";
 
 describe("Embedding API Tests", () => {
   beforeAll(() => {
@@ -19,7 +19,7 @@ describe("Embedding API Tests", () => {
     const response = await embed(
       { model: EMBEDDING_MODEL, input: text },
       {
-        baseURL: "http://127.0.0.1:1234/v1",
+        baseURL: "http://127.0.0.1:11434/v1",
       },
     );
 

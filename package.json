@@ -1,25 +1,29 @@
 {
   "name": "root",
   "private": true,
-  "version": "1.1.3",
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "license": "MIT",
   "description": "Explicit simplicity for the web.",
-  "keywords": ["jsx", "render", "ssr", "isomorphic"],
+  "keywords": [
+    "jsx",
+    "render",
+    "ssr",
+    "isomorphic"
+  ],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
   },
   "scripts": {
-    "prebuild": "rm -rf ./packages/lightningimg/lightningimg-wasm/pkg && rm -rf ./packages/lightningimg/lightningimg-wasm/pkg-bundler && rm -rf ./packages/lightningimg/lightningimg-wasm/pkg-node",
     "build": "turbo run build --concurrency=1",
-    "pretest": "npm run prebuild",
+    "pretest": "npm run build",
     "test": "turbo run test --concurrency=1",
     "preclean": "rm -rf ./node_modules && pnpm i",
-    "clean": "turbo run clean --concurrency=50"
+    "clean": "turbo run clean --concurrency=50",
+    "update-deps": "pnpm update -r --latest defuss defuss-astro defuss-desktop defuss-runtime defuss-transval defuss-db defuss-ui defuss-vite defuss-dson defuss-env defuss-rpc defuss-jwt"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -29,14 +33,18 @@
     "turbo": "^2.5.4",
     "typescript": "^5.8.3"
   },
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
-  "packageManager": "pnpm@10.0.0",
+  "packageManager": "pnpm@10.17.0",
   "pnpm": {
     "peerDependencyRules": {
-      "allowAny": ["astro"]
+      "allowAny": [
+        "astro"
+      ]
     },
     "overrides": {
       "nanoid@<3.3.8": ">=3.3.8",
@@ -62,7 +70,44 @@
       "@babel/runtime@<7.26.10": ">=7.26.10",
       "vite@>=6.3.0 <=6.3.3": ">=6.3.4",
       "axios@>=0.8.1 <0.28.0": ">=0.28.0",
-      "axios@<0.30.0": ">=0.30.0"
+      "axios@<0.30.0": ">=0.30.0",
+      "brace-expansion@>=2.0.0 <=2.0.1": ">=2.0.2",
+      "brace-expansion": "2.0.2",
+      "@astrojs/node@<=9.4.0": ">=9.4.1",
+      "devalue@<5.3.2": ">=5.3.2",
+      "vite@>=6.0.0 <=6.3.5": ">=6.3.6",
+      "astro@<5.14.3": ">=5.14.3",
+      "happy-dom@<20.0.0": ">=20.0.0",
+      "vite@>=7.1.0 <=7.1.10": ">=7.1.11",
+      "playwright@<1.55.1": ">=1.55.1",
+      "astro@>=5.13.4 <5.13.10": ">=5.13.10",
+      "tar-fs@>=3.0.0 <3.1.1": ">=3.1.1",
+      "form-data@>=4.0.0 <4.0.4": ">=4.0.4",
+      "astro@>=2.16.0 <5.15.5": ">=5.15.5",
+      "js-yaml@>=4.0.0 <4.1.1": ">=4.1.1",
+      "glob@>=10.2.0 <10.5.0": ">=10.5.0",
+      "glob@>=11.0.0 <11.1.0": ">=11.1.0",
+      "astro@<=5.15.6": ">=5.15.8",
+      "body-parser@>=2.2.0 <2.2.1": ">=2.2.1",
+      "node-forge@<1.3.2": ">=1.3.2",
+      "astro@>=5.0.0-alpha.0 <5.13.2": ">=5.13.2",
+      "@astrojs/node@<=9.1.0": ">=9.1.1",
+      "astro@>=5.2.0 <5.12.8": ">=5.12.8",
+      "astro@<5.15.9": ">=5.15.9",
+      "astro@<5.15.8": ">=5.15.8",
+      "astro@>=5.2.0 <5.15.6": ">=5.15.6",
+      "mdast-util-to-hast@>=13.0.0 <13.2.1": ">=13.2.1",
+      "jws@=4.0.0": ">=4.0.1",
+      "jws@<3.2.3": ">=3.2.3",
+      "qs@<6.14.1": ">=6.14.1",
+      "diff@<8.0.3": ">=8.0.3",
+      "devalue@>=5.1.0 <5.6.2": ">=5.6.2",
+      "h3@<=1.15.4": ">=1.15.5",
+      "devalue@>=5.3.0 <=5.6.1": ">=5.6.2",
+      "axios@>=1.0.0 <1.12.0": ">=1.12.0",
+      "tar": "6.2.1",
+      "html-encoding-sniffer": "4.0.0",
+      "jsdom": "24.1.3"
     }
   }
 }

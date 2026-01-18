@@ -6,6 +6,28 @@ import serveStatic from "serve-static";
 import { readConfig } from "./config.js";
 import { build } from "./build.js";
 import { join } from "node:path";
+import * as WebSocket from "ws";
+import { filePathToRoute } from "./path.js";
+
+/**
+ * Check if a port is available for use by attempting to connect to it
+ * @param port The port number to check
+ * @returns Promise that resolves to true if port is available, false if something is listening
+ */
+const isPortAvailable = async (port: number): Promise<boolean> => {
+  try {
+    // Try to fetch from the port - if successful, something is listening
+    await fetch(`http://localhost:${port}`, {
+      method: "GET",
+      signal: AbortSignal.timeout(1000), // 1 second timeout
+    });
+    // If we get any response, the port is in use
+    return false;
+  } catch (error) {
+    // If fetch fails (connection refused, timeout, etc.), port is available
+    return true;
+  }
+};
 
 /**
  * A simple static file server to serve the generated static site from the output folder.
@@ -33,16 +55,39 @@ export const serve = async ({
   const app = express();
   const port = 3000;
 
+  // Check if port is available
+  const portAvailable = await isPortAvailable(port);
+  if (!portAvailable) {
+    console.error(`Port ${port} is already in use. Exiting.`);
+    return {
+      code: "PORT_IN_USE",
+      message: `Port ${port} is already in use. Please stop the process using this port or choose a different port.`,
+    };
+  }
+
   app.use(serveStatic(outputDir));
-  app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+
+  const server = app.listen(port, (error) => {
+    if (error) {
+      console.error(`Error starting server: ${error.message}`);
+      return;
+    }
+    console.log(
+      `Server running at http://localhost:${port} for directory: ${outputDir}`,
+    );
+  });
+
+  // create the /livereload endpoint via ws://
+  const liveReloadServer = new WebSocket.WebSocketServer({
+    server,
+    path: "/livereload",
   });
 
   // Lock to prevent concurrent builds, but schedule the last one
   let isBuilding = false;
   let pendingBuild = false;
 
-  const triggerBuild = async () => {
+  const triggerBuild = async (filePath: string) => {
     if (isBuilding) {
       pendingBuild = true;
       if (debug) {
@@ -53,6 +98,18 @@ export const serve = async ({
     isBuilding = true;
     try {
       await build({ projectDir, debug, mode: "serve" });
+
+      // Notify all connected clients to reload
+      liveReloadServer.clients.forEach((client) => {
+        if (client.readyState === WebSocket.WebSocket.OPEN) {
+          client.send(
+            JSON.stringify({
+              command: "reload",
+              path: filePathToRoute(filePath, config, projectDir),
+            }),
+          );
+        }
+      });
     } catch (error) {
       console.error("Build failed. Waiting for code change to fix that...");
     } finally {
@@ -62,7 +119,7 @@ export const serve = async ({
         if (debug) {
           console.log("Running pending build");
         }
-        await triggerBuild(); // Recurse to handle the pending build
+        await triggerBuild(filePath); // Recurse to handle the pending build
       }
     }
   };
@@ -78,21 +135,21 @@ export const serve = async ({
     if (debug) {
       console.log(`File changed: ${path}`);
     }
-    await triggerBuild();
+    await triggerBuild(path);
   });
 
   watcher.on("add", async (path) => {
     if (debug) {
       console.log(`File added: ${path}`);
     }
-    await triggerBuild();
+    await triggerBuild(path);
   });
 
   watcher.on("unlink", async (path) => {
     if (debug) {
       console.log(`File removed: ${path}`);
     }
-    await triggerBuild();
+    await triggerBuild(path);
   });
 
   return { code: "OK", message: "Server is running" };

@@ -21,7 +21,7 @@ type LoginForm = {
 };
 
 // Custom validators for this login form
-export interface LoginScreenProps extends Props {}
+export interface LoginScreenProps extends Props { }
 
 export function LoginScreen(_props: LoginScreenProps) {
 	const formRef = createRef<HTMLFormElement>();
@@ -47,9 +47,7 @@ export function LoginScreen(_props: LoginScreenProps) {
 
 		// Validate the form data
 		if (await isValid(formData)) {
-			// Toast notification for successful login
-			console.log("Login successful!");
-			alert("Login successful!");
+			Router.navigate("/dashboard");
 		} else {
 			handleValidationErrors(getMessages, errorContainerRef);
 			// Toast notification for general errors
@@ -114,6 +112,14 @@ export function LoginScreen(_props: LoginScreenProps) {
 							<T key="login.sign_up_link" />
 						</button>
 					</p>
+				</div>
+
+				<div class="card">
+					<strong>DEMO LOGIN:</strong>
+					<br />
+					<strong>Email:</strong> user@example.com
+					<br />
+					<strong>Password:</strong> <span class="font-mono">S3cureP@ssw0rd!</span>
 				</div>
 
 				<ErrorContainer ref={errorContainerRef} messages={[]} hidden={true} />

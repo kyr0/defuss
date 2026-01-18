@@ -55,14 +55,14 @@ export interface SchemaField {
   name: string;
   kind: "text" | "keyword" | "tag";
   semantic?:
-    | "title"
-    | "heading"
-    | "description"
-    | "body"
-    | "tags"
-    | "author"
-    | "date"
-    | "reference";
+  | "title"
+  | "heading"
+  | "description"
+  | "body"
+  | "tags"
+  | "author"
+  | "date"
+  | "reference";
   weight?: number;
   b?: number;
 }
@@ -70,21 +70,21 @@ export interface SchemaField {
 export interface SearchEngineSchema {
   fields: SchemaField[];
   language?:
-    | "english"
-    | "spanish"
-    | "french"
-    | "german"
-    | "italian"
-    | "portuguese"
-    | "russian"
-    | "arabic"
-    | "chinese"
-    | "japanese"
-    | "korean"
-    | "dutch"
-    | "swedish"
-    | "norwegian"
-    | "turkish";
+  | "english"
+  | "spanish"
+  | "french"
+  | "german"
+  | "italian"
+  | "portuguese"
+  | "russian"
+  | "arabic"
+  | "chinese"
+  | "japanese"
+  | "korean"
+  | "dutch"
+  | "swedish"
+  | "norwegian"
+  | "turkish";
   tokenizerConfig?: {
     minLength?: number;
     maxLength?: number;
@@ -95,19 +95,35 @@ export interface SearchEngineSchema {
 // Search engine will be implemented in future iterations
 // For now, we export the existing high-performance vector operations
 
+export interface InitWasmOptions {
+  /** Skip thread pool initialization (useful for tests or single-threaded use) */
+  skipThreadPool?: boolean;
+  /** Number of threads to use (defaults to navigator.hardwareConcurrency or 8) */
+  numThreads?: number;
+}
+
 /**
  * Initialize WASM module for ultimate performance operations
  * Must be called before using any ultimate performance functions
  */
-export async function initWasm(): Promise<any> {
+export async function initWasm(options?: InitWasmOptions): Promise<any> {
   if (!wasmInitialized) {
     try {
       console.log("🔧 Loading WASM module...");
       wasmInstance = await init();
       console.log("✅ WASM module loaded");
 
-      await initThreadPool(navigator.hardwareConcurrency || 8); // Use available cores or default to 4
-      console.log("✅ Thread pool initialized successfully");
+      // Skip thread pool in test environments or when explicitly requested
+      const skipThreadPool = options?.skipThreadPool ??
+        (typeof process !== 'undefined' && process.env?.VITEST === 'true');
+
+      if (!skipThreadPool) {
+        const numThreads = options?.numThreads ?? (navigator.hardwareConcurrency || 8);
+        await initThreadPool(numThreads);
+        console.log("✅ Thread pool initialized successfully");
+      } else {
+        console.log("ℹ️ Thread pool initialization skipped");
+      }
 
       wasmInitialized = true;
       console.log("✅ WASM initialization complete");

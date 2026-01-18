@@ -1,0 +1,32 @@
+---
+import "./reset.css";
+import "./palette.css";
+import "./squeezy.css";
+
+interface Props {
+	title: string;
+}
+---
+
+<!doctype html>
+<html class="dark" lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="icon" type="image/webp" href="/favicon.webp" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="keywords"
+			content="Astro, TypeScript, defuss, web development, modern web, frontend"
+		/>
+		<meta
+			name="description"
+			content="Explore the integration of Astro, TypeScript, and defuss for modern web development."
+		/>
+		<title>{Astro.props.title}</title>
+		<script src="https://cdn.plot.ly/plotly-3.0.0.min.js"></script>
+	</head>
+</html>
+
+<body class="hbox bg">
+	<slot />
+</body>
