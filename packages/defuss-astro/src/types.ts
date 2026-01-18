@@ -1,5 +1,5 @@
 import type { SSRResult } from "astro";
-import type { DefussVitePluginOptions } from "defuss-vite";
+import type { DefussVitePluginOptions } from "./defuss-vite-plugin.js";
 
 export type RendererContext = {
   result: SSRResult;

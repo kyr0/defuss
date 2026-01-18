@@ -5,7 +5,7 @@ import type {
   ViteUserConfig,
 } from "astro";
 import type { Options } from "./types.js";
-import defussPlugin from "defuss-vite";
+import defussPlugin from "./defuss-vite-plugin.js";
 import { fileURLToPath } from "node:url";
 import glob from "fast-glob";
 import { performance } from "node:perf_hooks";
@@ -86,18 +86,7 @@ export default function ({
         addRenderer,
         updateConfig,
         command,
-        injectScript,
-        injectRoute,
       }) => {
-        // add /_defuss/image route
-        injectRoute({
-          pattern: "/_defuss/image",
-          prerender: false,
-          entrypoint: "defuss-astro/image-endpoint.js",
-        });
-
-        const publicDirPath = fileURLToPath(config.publicDir);
-
         // enable Astro's HTML compression
         config.compressHTML = true;
         // TODO: check: https://swc.rs/docs/usage/html
@@ -118,9 +107,6 @@ export default function ({
           vite: {
             optimizeDeps: {
               include: ["defuss-astro/client.js", "defuss-astro/server.js"],
-            },
-            ssr: {
-              noExternal: ["lightningimg-node"],
             },
             plugins: [defussPlugin() as any],
           },

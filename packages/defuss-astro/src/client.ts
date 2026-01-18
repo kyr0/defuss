@@ -136,6 +136,3 @@ export default (element: HTMLElement) =>
       { once: true },
     );
   };
-
-// components
-export * from "./component/index.js";

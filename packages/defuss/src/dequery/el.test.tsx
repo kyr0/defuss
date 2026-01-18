@@ -251,3 +251,228 @@ describe("Element creation test", async () => {
     expect(formData.description).toBe("This is a test description.");
   });
 });
+
+// Add this test to your el.test.tsx file:
+
+describe("Event preservation test", () => {
+  it("preserves onClick handlers on deeply nested elements during VDOM updates", async () => {
+    const container = await $<HTMLDivElement>("<div>");
+
+    let clickCount = 0;
+    const handleClick = (e: Event) => {
+      e.preventDefault();
+      clickCount++;
+    };
+
+    // Create initial nested structure with onClick handler
+    const initialContent = (
+      <div className="wrapper">
+        <h2 className="title">
+          <a href="#" onClick={handleClick} id="test-link">
+            Initial Link Text
+          </a>
+        </h2>
+        <p>Some content</p>
+      </div>
+    );
+
+    // Update container with initial VDOM
+    await container.update(initialContent);
+
+    // Verify initial structure
+    const initialLink = container[0].querySelector(
+      "#test-link",
+    ) as HTMLAnchorElement;
+    expect(initialLink).not.toBeNull();
+    expect(initialLink.textContent?.trim()).toBe("Initial Link Text");
+    expect(initialLink.tagName).toBe("A");
+    expect(initialLink.closest("h2")).not.toBeNull();
+
+    // Test initial onClick handler works
+    initialLink.click();
+    expect(clickCount).toBe(1);
+
+    // Update with modified VDOM - change classes, text, and attributes
+    const updatedContent = (
+      <div className="wrapper updated">
+        <h2 className="title new-title" data-version="2">
+          <a
+            href="#updated"
+            onClick={handleClick}
+            id="test-link"
+            className="updated-link"
+          >
+            Updated Link Text
+          </a>
+        </h2>
+        <p>Updated content</p>
+        <span>New element</span>
+      </div>
+    );
+
+    // Update the container with new VDOM
+    await container.update(updatedContent);
+
+    // Verify structure was updated correctly
+    const updatedLink = container[0].querySelector(
+      "#test-link",
+    ) as HTMLAnchorElement;
+    expect(updatedLink).not.toBeNull();
+    expect(updatedLink.textContent?.trim()).toBe("Updated Link Text");
+    expect(updatedLink.className).toBe("updated-link");
+    expect(updatedLink.href).toContain("#updated");
+
+    // Verify parent elements were updated
+    const updatedH2 = container[0].querySelector("h2") as HTMLHeadingElement;
+    expect(updatedH2.className).toBe("title new-title");
+    expect(updatedH2.getAttribute("data-version")).toBe("2");
+
+    const updatedDiv = container[0].querySelector(".wrapper") as HTMLDivElement;
+    expect(updatedDiv.className).toBe("wrapper updated");
+
+    // Verify new content was added
+    expect(container[0].querySelector("span")?.textContent).toBe("New element");
+    expect(container[0].querySelector("p")?.textContent).toBe(
+      "Updated content",
+    );
+
+    // CRITICAL TEST: Verify onClick handler still works after update
+    updatedLink.click();
+    expect(clickCount).toBe(2); // Should increment from 1 to 2
+
+    // Test multiple clicks to ensure handler is fully functional
+    updatedLink.click();
+    updatedLink.click();
+    expect(clickCount).toBe(4);
+
+    console.log(
+      `✅ Test passed: onClick handler preserved through ${clickCount} total clicks`,
+    );
+  });
+
+  it("preserves multiple event handlers on nested elements during updates", async () => {
+    const container = await $<HTMLDivElement>("<div>");
+
+    let clickCount = 0;
+    let mouseoverCount = 0;
+
+    const handleClick = (e: Event) => {
+      e.preventDefault();
+      clickCount++;
+    };
+
+    const handleMouseover = () => {
+      mouseoverCount++;
+    };
+
+    // Initial nested structure with multiple events
+    const initialContent = (
+      <div className="container">
+        <h2>
+          <a
+            href="#"
+            onClick={handleClick}
+            onFocus={() => {}}
+            onMouseOver={handleMouseover}
+            id="multi-event-link"
+          >
+            Multi-event Link
+          </a>
+        </h2>
+      </div>
+    );
+
+    await container.update(initialContent);
+
+    // Test initial handlers
+    const initialLink = container[0].querySelector(
+      "#multi-event-link",
+    ) as HTMLAnchorElement;
+    initialLink.click();
+    initialLink.dispatchEvent(new Event("mouseover"));
+    expect(clickCount).toBe(1);
+    expect(mouseoverCount).toBe(1);
+
+    // Update with changes
+    const updatedContent = (
+      <div className="container modified">
+        <h2 className="updated">
+          <a
+            href="#modified"
+            onClick={handleClick}
+            onFocus={() => {}}
+            onMouseOver={handleMouseover}
+            id="multi-event-link"
+            className="modified-link"
+          >
+            Modified Multi-event Link
+          </a>
+        </h2>
+        <div>Additional content</div>
+      </div>
+    );
+
+    await container.update(updatedContent);
+
+    // Verify both handlers still work
+    const updatedLink = container[0].querySelector(
+      "#multi-event-link",
+    ) as HTMLAnchorElement;
+    expect(updatedLink.textContent?.trim()).toBe("Modified Multi-event Link");
+    expect(updatedLink.className).toBe("modified-link");
+
+    updatedLink.click();
+    updatedLink.dispatchEvent(new Event("mouseover"));
+    expect(clickCount).toBe(2);
+    expect(mouseoverCount).toBe(2);
+  });
+
+  it("handles onClick when parent structure changes significantly", async () => {
+    const container = await $<HTMLDivElement>("<div>");
+
+    let clickCount = 0;
+    const handleClick = () => clickCount++;
+
+    // Simple initial structure
+    const initialContent = (
+      <h2>
+        <a href="#" onClick={handleClick} id="changing-link">
+          Link
+        </a>
+      </h2>
+    );
+
+    await container.update(initialContent);
+
+    // Test initial handler
+    (container[0].querySelector("#changing-link") as HTMLAnchorElement).click();
+    expect(clickCount).toBe(1);
+
+    // Completely change parent structure but keep the link
+    const updatedContent = (
+      <div className="new-wrapper">
+        <section>
+          <header>
+            <h2 className="new-header">
+              <a href="#new" onClick={handleClick} id="changing-link">
+                New Link
+              </a>
+            </h2>
+          </header>
+        </section>
+        <footer>Footer content</footer>
+      </div>
+    );
+
+    await container.update(updatedContent);
+
+    // Verify handler still works despite major structure changes
+    const updatedLink = container[0].querySelector(
+      "#changing-link",
+    ) as HTMLAnchorElement;
+    expect(updatedLink.textContent?.trim()).toBe("New Link");
+
+    updatedLink.click();
+    expect(clickCount).toBe(2);
+  });
+});

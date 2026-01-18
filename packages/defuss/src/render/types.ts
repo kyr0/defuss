@@ -171,6 +171,7 @@ export type RefUpdateRenderFn = (
 ) => Promise<CallChainImpl<NodeType>>;
 
 export interface Ref<ST = any, NT = null | Node | Element | Text> {
+  orphan?: boolean;
   current: NT;
   store?: Store<ST>;
   state?: ST;

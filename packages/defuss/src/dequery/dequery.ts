@@ -210,25 +210,19 @@ export class CallChainImpl<
 
   ref(ref: Ref<any, NodeType>) {
     return createCall(this, "ref", async () => {
-      console.log("🔍 ref() called - ref.current:", ref?.current?.nodeType);
-      console.log(
-        `🔍 ref() waiting for ref with timeout: ${this.options.timeout}ms`,
-      );
+      // Check if ref is already marked as orphaned
+      //if ((ref as any).orphan) {
+      //  throw new Error("Ref has been orphaned from component unmount");
+      //}
 
-      // Check if ref is already available to avoid unnecessary waiting
+      // Check if ref is already available
       if (ref.current) {
-        console.log("✅ ref() - ref already available:", ref.current.nodeType);
         return [ref.current] as NT;
       }
 
-      console.log("⏳ ref() - ref not available, calling waitForRef...");
       await waitForRef(ref, this.options.timeout!);
 
       if (ref.current) {
-        console.log(
-          "✅ ref() - ref became available after waiting:",
-          ref.current,
-        );
         return [ref.current] as NT;
       } else {
         console.log("❌ ref() - ref is still null after timeout");
@@ -238,15 +232,20 @@ export class CallChainImpl<
   }
 
   query(selector: string) {
-    return createCall(this, "query", async () => {
-      return Array.from(
-        await waitForDOM(
-          () => Array.from(this.document.querySelectorAll(selector)),
-          this.options.timeout!,
-          this.document,
-        ),
-      ) as NT;
-    });
+    return createCall(
+      this,
+      "query",
+      async () => {
+        return Array.from(
+          await waitForDOM(
+            () => Array.from(this.document.querySelectorAll(selector)),
+            this.options.timeout!,
+            this.document,
+          ),
+        ) as NT;
+      },
+      selector,
+    );
   }
 
   next() {
@@ -260,19 +259,23 @@ export class CallChainImpl<
   find(
     selector: string,
   ): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
-    return createCall(this, "find", async () => {
-      // Use Promise.all to wait for all elements to be found
-      const results = await Promise.all(
-        this.nodes.map(async (el) => {
-          return await waitForDOM(
-            () => Array.from((el as HTMLElement).querySelectorAll(selector)),
-            this.options.timeout!,
-            this.document,
-          );
-        }),
-      );
-      return results.flat() as NT;
-    }) as CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET>;
+    return createCall(
+      this,
+      "find",
+      async () => {
+        const results = await Promise.all(
+          this.nodes.map(async (el) => {
+            return await waitForDOM(
+              () => Array.from((el as HTMLElement).querySelectorAll(selector)),
+              this.options.timeout!,
+              this.document,
+            );
+          }),
+        );
+        return results.flat() as NT;
+      },
+      selector,
+    ) as CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET>;
   }
 
   parent() {
@@ -644,7 +647,6 @@ export class CallChainImpl<
       );
 
       if (nodes.length === 0) {
-        console.warn("appendTo: no target elements found");
         return this.nodes as NT;
       }
 
@@ -683,12 +685,18 @@ export class CallChainImpl<
   // --- Event Methods ---
 
   on(event: string, handler: EventListener): ET {
-    return createCall(this, "on", async () => {
-      this.nodes.forEach((el) => {
-        addElementEvent(el as HTMLElement, event, handler);
-      });
-      return this.nodes as NT;
-    }) as unknown as ET;
+    return createCall(
+      this,
+      "on",
+      async () => {
+        this.nodes.forEach((el) => {
+          addElementEvent(el as HTMLElement, event, handler);
+        });
+        return this.nodes as NT;
+      },
+      event,
+      handler,
+    ) as unknown as ET;
   }
 
   off(event: string, handler?: EventListener): ET {
@@ -1237,7 +1245,6 @@ export function getAllFormValues(
         } else if (input.type === "radio") {
           // Only include checked radio buttons
           if (input.checked) {
-            console.log("input radio value", input.value);
             formFields[key] =
               (input as HTMLInputElement).value === "on"
                 ? true
@@ -1295,7 +1302,7 @@ export function delayedAutoStart<
 
 export interface Dequery<NT>
   extends CallChainImplThenable<NT>,
-    CallChainImpl<NT> {}
+  CallChainImpl<NT> { }
 
 export function dequery<
   NT = DequerySyncMethodReturnType,
@@ -1516,13 +1523,9 @@ export function createCall<NT, ET extends Dequery<NT>>(
   chain: CallChainImpl<NT, ET>,
   methodName: string,
   handler: () => Promise<NT>,
+  ...callArgs: any[] // ← Add this to capture call arguments
 ): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
-  // Log when the call is queued (synchronous, doesn't affect execution timing)
-  console.log(
-    `📋 Queuing call: ${methodName} (stack position: ${chain.callStack.length})`,
-  );
-
-  chain.callStack.push(new Call<NT>(methodName, handler));
+  chain.callStack.push(new Call<NT>(methodName, handler, ...callArgs));
   return subChainForNextAwait(chain);
 }
 
@@ -1628,7 +1631,7 @@ export function runWithTimeGuard<NT>(
   return createTimeoutPromise(
     timeout,
     async () => {
-      console.log(`🟢 Executing operation [${operationId}]`);
+      //console.log(`🟢 Executing operation [${operationId}]`);
 
       // Log the call stack to see which calls are being processed
       const chainContext = args[0] as CallChainImpl<NT, any>;
@@ -1637,13 +1640,13 @@ export function runWithTimeGuard<NT>(
           .slice(chainContext.stackPointer)
           .map((call) => call.name)
           .join(" -> ");
-        console.log(`📋 Call stack [${operationId}]: ${remainingCalls}`);
+        //console.log(`📋 Call stack [${operationId}]: ${remainingCalls}`);
       } else {
-        console.log(`📋 Call stack [${operationId}]: unknown`);
+        //console.log(`📋 Call stack [${operationId}]: unknown`);
       }
 
       const result = await fn(...args);
-      console.log(`✅ Operation [${operationId}] completed successfully`);
+      //console.log(`✅ Operation [${operationId}] completed successfully`);
       return result;
     },
     (ms) => {
@@ -1655,7 +1658,7 @@ export function runWithTimeGuard<NT>(
         const currentCall = chainContext.callStack[chainContext.stackPointer];
         const remainingCalls = chainContext.callStack
           .slice(chainContext.stackPointer)
-          .map((call) => call.name)
+          .map((call) => `${call.name}(${call.args.join(", ")})`)
           .join(" -> ");
         console.log(
           `🔴 TIMEOUT occurred during call: ${currentCall?.name || "unknown"}`,

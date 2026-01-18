@@ -173,7 +173,8 @@ function patchDomInPlace(domNode: Node, child: ValidChild, globals: Globals) {
       const { name } = attr;
       if (
         !Object.prototype.hasOwnProperty.call(child.attributes, name) &&
-        name !== "style"
+        name !== "style" &&
+        !name.startsWith("on") // do not remove event listeners
       ) {
         el.removeAttribute(name);
       }

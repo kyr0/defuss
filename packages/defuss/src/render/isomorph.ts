@@ -338,6 +338,22 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       if (name === REF_ATTRIBUTE_NAME && typeof value !== "function") {
         value.current = domElement; // update ref
         (domElement as any)._defussRef = value; // store ref on element for later access
+        // register an unmount handler to mark ref as orphaned when the element is removed from the DOM
+        (domElement as any).$onUnmount = queueCallback(() => {
+          // DISABLED: mark the ref as orphaned
+          // value.orphan = true;
+        });
+
+        if (domElement.parentNode) {
+          observeUnmount(domElement, (domElement as any).$onUnmount);
+        } else {
+          // If element doesn't have a parent yet, set it up after a microtask
+          queueMicrotask(() => {
+            if (domElement.parentNode) {
+              observeUnmount(domElement, (domElement as any).$onUnmount);
+            }
+          });
+        }
         return; // but do not render the ref as a string [object Object] into the DOM
       }
 
@@ -351,7 +367,16 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         }
 
         if (eventName === "unmount") {
-          (domElement as any).$onUnmount = queueCallback(value); // DOM event lifecycle hook
+          if ((domElement as any).$onUnmount) {
+            // chain multiple unmount handlers (when ref is used - see above)
+            const existingUnmount = (domElement as any).$onUnmount;
+            (domElement as any).$onUnmount = () => {
+              existingUnmount();
+              value();
+            };
+          } else {
+            (domElement as any).$onUnmount = queueCallback(value); // DOM event lifecycle hook
+          }
         }
 
         // onClickCapture={...} support
