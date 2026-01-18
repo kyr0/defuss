@@ -1,6 +1,6 @@
 <h1 align="center">
 
-<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/defuss_mascott.png" width="100px" />
+<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-admin-ui/public/defuss_mascott.png" width="100px" />
 
 <p align="center">
   <code>defuss</code>
@@ -14,15 +14,15 @@
 
 </h1>
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/kyr0/defuss/tree/main/examples/admin-ui)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kyr0/defuss?devcontainer_path=.devcontainer/admin-ui/devcontainer.json)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/kyr0/defuss/tree/main/examples/with-admin-ui)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kyr0/defuss?devcontainer_path=.devcontainer/with-admin-ui/devcontainer.json)
 
 > 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
 
-![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/admin-ui/public/preview.png)
+![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-admin-ui/public/preview.png)
 
 ### ✨ It's amazing!
-![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/admin-ui/public/build_result.png)
+![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-admin-ui/public/build_result.png)
 
 ## 🚀 Project Structure
 
