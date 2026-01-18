@@ -204,3 +204,6 @@ agents.md
 .agentsignore
 
 *.html
+
+*.d.ts
+types.ts
