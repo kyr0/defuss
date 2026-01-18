@@ -8,7 +8,7 @@
   "scripts": {
     "prebuild": "rm -rf ./pkg",
     "build": "wasm-pack build --target web --out-dir pkg",
-    "postbuild": "pnpm decompile && pkgroll",
+    "postbuild": "pkgroll",
     "clean": "rm -rf pkg",
     "decompile": "wasm2wat --generate-names --verbose --enable-threads pkg/defuss_search_bg.wasm -o pkg/defuss_search_bg.wast > pkg/defuss_search_bg.log 2>&1",
     "pretest": "pnpm build",
