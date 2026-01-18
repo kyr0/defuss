@@ -1005,6 +1005,9 @@ importers:
       wasm-pack:
         specifier: ^0.12.1
         version: 0.12.1
+      wasm2wat:
+        specifier: ^1.1.1
+        version: 1.1.1
 
   packages/ssg:
     dependencies:
@@ -4116,6 +4119,10 @@ packages:
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
     engines: {node: '>=18'}
+
+  chalk@3.0.0:
+    resolution: {integrity: sha512-4D3B6Wf41KOYRFdszmDqMCGq5VV/uMAB273JILmO+3jAlh8X4qDtdtgCR3fxtbLEMzSx22QdhnDcJvu2u1fVwg==}
+    engines: {node: '>=8'}
 
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
@@ -7526,11 +7533,19 @@ packages:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
     engines: {node: '>=18'}
 
+  wabt@1.0.39:
+    resolution: {integrity: sha512-ba+dRL/75VQQY7RkU/CgriGbkoWAfS8TDyUlJfJhJ8KhtXgMl5dhNvoPNUcQ9IWRhW8u41glMSuZeTvsYq2rRg==}
+    hasBin: true
+
   warning@4.0.3:
     resolution: {integrity: sha512-rpJyN222KWIvHJ/F53XSZv0Zl/accqHR8et1kpaMTD/fLCRxtV8iX8czMzY7sVZupTI3zcUTg8eycS2kNF9l6w==}
 
   wasm-pack@0.12.1:
     resolution: {integrity: sha512-dIyKWUumPFsGohdndZjDXRFaokUT/kQS+SavbbiXVAvA/eN4riX5QNdB6AhXQx37zNxluxQkuixZUgJ8adKjOg==}
+    hasBin: true
+
+  wasm2wat@1.1.1:
+    resolution: {integrity: sha512-dTAm2e/lNEGNBuNmX7oAnDUILITnYYYSyMC+BNSNFNTucRo+Kc1QcAfs53FR2KLukhQd945jU0/ZrrCjm0yayw==}
     hasBin: true
 
   web-namespaces@2.0.1:
@@ -10794,6 +10809,11 @@ snapshots:
       pathval: 2.0.0
 
   chai@6.2.2: {}
+
+  chalk@3.0.0:
+    dependencies:
+      ansi-styles: 4.3.0
+      supports-color: 7.2.0
 
   chalk@4.1.2:
     dependencies:
@@ -15301,6 +15321,8 @@ snapshots:
     dependencies:
       xml-name-validator: 5.0.0
 
+  wabt@1.0.39: {}
+
   warning@4.0.3:
     dependencies:
       loose-envify: 1.4.0
@@ -15310,6 +15332,11 @@ snapshots:
       binary-install: 1.1.0
     transitivePeerDependencies:
       - debug
+
+  wasm2wat@1.1.1:
+    dependencies:
+      chalk: 3.0.0
+      wabt: 1.0.39
 
   web-namespaces@2.0.1: {}
 
