@@ -166,10 +166,10 @@ importers:
         version: link:../../packages/defuss
       defuss-astro:
         specifier: workspace:*
-        version: link:../../packages/defuss-astro
+        version: link:../../packages/astro
       defuss-db:
         specifier: workspace:*
-        version: link:../../packages/defuss-db
+        version: link:../../packages/db
       defuss-rpc:
         specifier: workspace:*
         version: link:../../packages/rpc
@@ -665,14 +665,88 @@ importers:
         specifier: ^0.34.5
         version: 0.34.5
 
-  packages/create-defuss:
+  packages/astro:
+    dependencies:
+      '@swc/core':
+        specifier: ^1.10.2
+        version: 1.15.8(@swc/helpers@0.5.17)
+      astro:
+        specifier: ^5.16.11
+        version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+      defuss:
+        specifier: ^2.1.11
+        version: 2.1.11
+      fast-glob:
+        specifier: ^3.3.3
+        version: 3.3.3
+      file-type:
+        specifier: ^21.3.0
+        version: 21.3.0
+      purgecss:
+        specifier: ^7.0.2
+        version: 7.0.2
+      svgo:
+        specifier: ^4.0.0
+        version: 4.0.0
+      vite:
+        specifier: ^6.4.1
+        version: 6.4.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
     devDependencies:
       pkgroll:
         specifier: ^2.5.1
-        version: 2.12.2(typescript@5.8.3)
+        version: 2.21.5(typescript@5.9.3)
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
       typescript:
         specifier: ^5.6.3
-        version: 5.8.3
+        version: 5.9.3
+
+  packages/create:
+    devDependencies:
+      pkgroll:
+        specifier: ^2.5.1
+        version: 2.21.5(typescript@5.9.3)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
+  packages/db:
+    dependencies:
+      '@libsql/client':
+        specifier: ^0.15.7
+        version: 0.15.15
+      defuss-env:
+        specifier: ^1.0.2
+        version: 1.0.2
+      dexie:
+        specifier: ^4.0.11
+        version: 4.2.1
+      fake-indexeddb:
+        specifier: ^6.0.1
+        version: 6.2.5
+      mongodb:
+        specifier: ^6.16.0
+        version: 6.21.0(socks@2.8.4)
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.0.17
+        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+      happy-dom:
+        specifier: ^20.3.1
+        version: 20.3.1
+      pkgroll:
+        specifier: ^2.21.5
+        version: 2.21.5(typescript@5.9.3)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.17
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   packages/defuss:
     dependencies:
@@ -713,124 +787,6 @@ importers:
       vitest:
         specifier: ^4.0.17
         version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
-
-  packages/defuss-astro:
-    dependencies:
-      '@swc/core':
-        specifier: ^1.10.2
-        version: 1.11.29(@swc/helpers@0.5.17)
-      astro:
-        specifier: ^5.16.11
-        version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
-      defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
-      fast-glob:
-        specifier: ^3.3.3
-        version: 3.3.3
-      file-type:
-        specifier: ^21.3.0
-        version: 21.3.0
-      purgecss:
-        specifier: ^7.0.2
-        version: 7.0.2
-      svgo:
-        specifier: ^4.0.0
-        version: 4.0.0
-      vite:
-        specifier: ^6.4.1
-        version: 6.4.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
-    devDependencies:
-      pkgroll:
-        specifier: ^2.5.1
-        version: 2.12.2(typescript@5.8.3)
-      tsx:
-        specifier: ^4.19.2
-        version: 4.19.4
-      typescript:
-        specifier: ^5.6.3
-        version: 5.8.3
-
-  packages/defuss-db:
-    dependencies:
-      '@libsql/client':
-        specifier: ^0.15.7
-        version: 0.15.7
-      defuss-env:
-        specifier: ^1.0.2
-        version: 1.0.2
-      dexie:
-        specifier: ^4.0.11
-        version: 4.0.11
-      fake-indexeddb:
-        specifier: ^6.0.1
-        version: 6.0.1
-      mongodb:
-        specifier: ^6.16.0
-        version: 6.16.0(socks@2.8.4)
-    devDependencies:
-      '@vitest/coverage-v8':
-        specifier: ^4.0.17
-        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
-      happy-dom:
-        specifier: ^20.3.1
-        version: 20.3.1
-      pkgroll:
-        specifier: ^2.21.5
-        version: 2.21.5(typescript@5.9.3)
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
-
-  packages/defuss-ui:
-    dependencies:
-      '@types/uikit':
-        specifier: ^3.23.0
-        version: 3.23.0
-      defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
-      uikit:
-        specifier: ^3.23.13
-        version: 3.23.13
-    devDependencies:
-      '@types/node':
-        specifier: ^25.0.9
-        version: 25.0.9
-      pkgroll:
-        specifier: ^2.21.5
-        version: 2.21.5(typescript@5.9.3)
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
-
-  packages/defuss-vite:
-    dependencies:
-      '@swc/core':
-        specifier: ^1.10.2
-        version: 1.11.29(@swc/helpers@0.5.17)
-      vite:
-        specifier: '>=6.3.6'
-        version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
-    devDependencies:
-      pkgroll:
-        specifier: ^2.12.2
-        version: 2.12.2(typescript@5.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.8.3
 
   packages/desktop:
     dependencies:
@@ -931,7 +887,7 @@ importers:
     dependencies:
       astro:
         specifier: '>=5.15.6'
-        version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
+        version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.41.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
       defuss-dson:
         specifier: ^1.1.1
         version: 1.1.1
@@ -1140,6 +1096,50 @@ importers:
       vitest:
         specifier: ^4.0.17
         version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+
+  packages/ui:
+    dependencies:
+      '@types/uikit':
+        specifier: ^3.23.0
+        version: 3.23.0
+      defuss:
+        specifier: ^2.1.11
+        version: 2.1.11
+      uikit:
+        specifier: ^3.23.13
+        version: 3.25.5
+    devDependencies:
+      '@types/node':
+        specifier: ^25.0.9
+        version: 25.0.9
+      pkgroll:
+        specifier: ^2.21.5
+        version: 2.21.5(typescript@5.9.3)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.17
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+
+  packages/vite:
+    dependencies:
+      '@swc/core':
+        specifier: ^1.10.2
+        version: 1.15.8(@swc/helpers@0.5.17)
+      vite:
+        specifier: '>=6.3.6'
+        version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+    devDependencies:
+      pkgroll:
+        specifier: ^2.12.2
+        version: 2.21.5(typescript@5.9.3)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
 
 packages:
 
@@ -2554,28 +2554,12 @@ packages:
   '@libsql/client@0.15.15':
     resolution: {integrity: sha512-twC0hQxPNHPKfeOv3sNT6u2pturQjLcI+CnpTM0SjRpocEGgfiZ7DWKXLNnsothjyJmDqEsBQJ5ztq9Wlu470w==}
 
-  '@libsql/client@0.15.7':
-    resolution: {integrity: sha512-2rKekOBINDKXGwB0I5qeTDuom2944hEkWkjN8O41j95/HRKP+3sk/fq6/PoPJSuwY3pgWAS8vyby+FgOyPnIVQ==}
-
   '@libsql/core@0.15.15':
     resolution: {integrity: sha512-C88Z6UKl+OyuKKPwz224riz02ih/zHYI3Ho/LAcVOgjsunIRZoBw7fjRfaH9oPMmSNeQfhGklSG2il1URoOIsA==}
-
-  '@libsql/core@0.15.7':
-    resolution: {integrity: sha512-hW1++8iKAEnb7Y3EZ2zXRR+1K0MKdRT7SLaNgFkfwz6CmiIBY3sYN7VSftNS7IR6xKRvFBpoz10CC63NoFGkaQ==}
-
-  '@libsql/darwin-arm64@0.5.11':
-    resolution: {integrity: sha512-Av4+H8VypNZdbRbDKu5ogoCBHOdYh2Vx6iO7+0SACjcgnpqjnGL59lJUuX3fmV48VI6al1xORYJVApo//B5iqA==}
-    cpu: [arm64]
-    os: [darwin]
 
   '@libsql/darwin-arm64@0.5.22':
     resolution: {integrity: sha512-4B8ZlX3nIDPndfct7GNe0nI3Yw6ibocEicWdC4fvQbSs/jdq/RC2oCsoJxJ4NzXkvktX70C1J4FcmmoBy069UA==}
     cpu: [arm64]
-    os: [darwin]
-
-  '@libsql/darwin-x64@0.5.11':
-    resolution: {integrity: sha512-+BXozvOKhwbye16itymY2YXeHOcIeZGORdJK2prfXA7Q2HR4/dRdUirR1o/koxxxG616uiWlAVj5WJ0j2IWkQA==}
-    cpu: [x64]
     os: [darwin]
 
   '@libsql/darwin-x64@0.5.22':
@@ -2593,18 +2577,8 @@ packages:
   '@libsql/isomorphic-ws@0.1.5':
     resolution: {integrity: sha512-DtLWIH29onUYR00i0GlQ3UdcTRC6EP4u9w/h9LxpUZJWRMARk6dQwZ6Jkd+QdwVpuAOrdxt18v0K2uIYR3fwFg==}
 
-  '@libsql/linux-arm-gnueabihf@0.5.11':
-    resolution: {integrity: sha512-znsVKbKgOerCNkIY0HjtvkioVGLskmGXZodZn3TMDRTmn1PIUt7/dnxU5moKMdKa1hKDSOC52dqF77nAdkn4UA==}
-    cpu: [arm]
-    os: [linux]
-
   '@libsql/linux-arm-gnueabihf@0.5.22':
     resolution: {integrity: sha512-3Uo3SoDPJe/zBnyZKosziRGtszXaEtv57raWrZIahtQDsjxBVjuzYQinCm9LRCJCUT5t2r5Z5nLDPJi2CwZVoA==}
-    cpu: [arm]
-    os: [linux]
-
-  '@libsql/linux-arm-musleabihf@0.5.11':
-    resolution: {integrity: sha512-l4gJY6AvhQ4fUJRpjph3AW6pbiAUcVxJUH0oM5Pf/GnA9acpaDgLtle2hWMz16BSncg/Jl2jVpaJuyJsJ9E7YA==}
     cpu: [arm]
     os: [linux]
 
@@ -2613,18 +2587,8 @@ packages:
     cpu: [arm]
     os: [linux]
 
-  '@libsql/linux-arm64-gnu@0.5.11':
-    resolution: {integrity: sha512-axXEenVUnSKR25g0iqL/OH4z4qrPBNwdBhjTWZr613L9tnboDPAioP1kVEy77nN8C8CL/dyXh5X4vKuIwHrQpQ==}
-    cpu: [arm64]
-    os: [linux]
-
   '@libsql/linux-arm64-gnu@0.5.22':
     resolution: {integrity: sha512-KSdnOMy88c9mpOFKUEzPskSaF3VLflfSUCBwas/pn1/sV3pEhtMF6H8VUCd2rsedwoukeeCSEONqX7LLnQwRMA==}
-    cpu: [arm64]
-    os: [linux]
-
-  '@libsql/linux-arm64-musl@0.5.11':
-    resolution: {integrity: sha512-Pzz9dm2D78PQpy3pYKbvzBBOwdjg9c3yoQSu5QQQCGL4J5e1bZpa/p6Z3BoYBlvmdo1V36ljS6N4hRir/rnCxg==}
     cpu: [arm64]
     os: [linux]
 
@@ -2633,18 +2597,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@libsql/linux-x64-gnu@0.5.11':
-    resolution: {integrity: sha512-DxOU0MqG7soKZFVzOo7Zot5qDajZjjOgjf/sOjeJf/aeRBr3KkKiwgWKnmjDhuhitahqc8Nu2D92/dsAuDHJsA==}
-    cpu: [x64]
-    os: [linux]
-
   '@libsql/linux-x64-gnu@0.5.22':
     resolution: {integrity: sha512-kNBHaIkSg78Y4BqAdgjcR2mBilZXs4HYkAmi58J+4GRwDQZh5fIUWbnQvB9f95DkWUIGVeenqLRFY2pcTmlsew==}
-    cpu: [x64]
-    os: [linux]
-
-  '@libsql/linux-x64-musl@0.5.11':
-    resolution: {integrity: sha512-uRou4r+PiDA616t2USnsjbot88ennTrwKqhVUY7S6LTPI3RiKizZg6YESCwhzofPtk8Ualp/hMQGTGSoW9DUKw==}
     cpu: [x64]
     os: [linux]
 
@@ -2652,11 +2606,6 @@ packages:
     resolution: {integrity: sha512-UZ4Xdxm4pu3pQXjvfJiyCzZop/9j/eA2JjmhMaAhe3EVLH2g11Fy4fwyUp9sT1QJYR1kpc2JLuybPM0kuXv/Tg==}
     cpu: [x64]
     os: [linux]
-
-  '@libsql/win32-x64-msvc@0.5.11':
-    resolution: {integrity: sha512-NES0P2pyx5XjveTYotTG03eoJwx0haJBYWXfqmcPLmbQ5u03Qmd7rxhLfWDdIRj4PrdhVProwdB0FA82ryLcKQ==}
-    cpu: [x64]
-    os: [win32]
 
   '@libsql/win32-x64-msvc@0.5.22':
     resolution: {integrity: sha512-Fj0j8RnBpo43tVZUVoNK6BV/9AtDUM5S7DF3LB4qTYg1LMSZqi3yeCneUTLJD6XomQJlZzbI4mst89yspVSAnA==}
@@ -2673,9 +2622,6 @@ packages:
 
   '@monaco-editor/loader@1.7.0':
     resolution: {integrity: sha512-gIwR1HrJrrx+vfyOhYmCZ0/JcWqG5kbfG7+d3f/C1LXk2EvzAbHSg3MQ5lO2sMlo9izoAZ04shohfKLVT6crVA==}
-
-  '@mongodb-js/saslprep@1.2.2':
-    resolution: {integrity: sha512-EB0O3SCSNRUFk66iRCpI+cXzIjdswfCs7F6nOC3RAGJ7xr5YhaicvsRwJ9eyzYvYRlCSDUO/c7g4yNulxKC1WA==}
 
   '@mongodb-js/saslprep@1.4.4':
     resolution: {integrity: sha512-p7X/ytJDIdwUfFL/CLOhKgdfJe1Fa8uw9seJYvdOmnP9JBWGWHW69HkOixXS6Wy9yvGf1MbhcS6lVmrhy4jm2g==}
@@ -3327,22 +3273,10 @@ packages:
     engines: {node: '>=16.0.0', npm: '>=7.10.0'}
     hasBin: true
 
-  '@swc/core-darwin-arm64@1.11.29':
-    resolution: {integrity: sha512-whsCX7URzbuS5aET58c75Dloby3Gtj/ITk2vc4WW6pSDQKSPDuONsIcZ7B2ng8oz0K6ttbi4p3H/PNPQLJ4maQ==}
-    engines: {node: '>=10'}
-    cpu: [arm64]
-    os: [darwin]
-
   '@swc/core-darwin-arm64@1.15.8':
     resolution: {integrity: sha512-M9cK5GwyWWRkRGwwCbREuj6r8jKdES/haCZ3Xckgkl8MUQJZA3XB7IXXK1IXRNeLjg6m7cnoMICpXv1v1hlJOg==}
     engines: {node: '>=10'}
     cpu: [arm64]
-    os: [darwin]
-
-  '@swc/core-darwin-x64@1.11.29':
-    resolution: {integrity: sha512-S3eTo/KYFk+76cWJRgX30hylN5XkSmjYtCBnM4jPLYn7L6zWYEPajsFLmruQEiTEDUg0gBEWLMNyUeghtswouw==}
-    engines: {node: '>=10'}
-    cpu: [x64]
     os: [darwin]
 
   '@swc/core-darwin-x64@1.15.8':
@@ -3351,32 +3285,14 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@swc/core-linux-arm-gnueabihf@1.11.29':
-    resolution: {integrity: sha512-o9gdshbzkUMG6azldHdmKklcfrcMx+a23d/2qHQHPDLUPAN+Trd+sDQUYArK5Fcm7TlpG4sczz95ghN0DMkM7g==}
-    engines: {node: '>=10'}
-    cpu: [arm]
-    os: [linux]
-
   '@swc/core-linux-arm-gnueabihf@1.15.8':
     resolution: {integrity: sha512-siAzDENu2rUbwr9+fayWa26r5A9fol1iORG53HWxQL1J8ym4k7xt9eME0dMPXlYZDytK5r9sW8zEA10F2U3Xwg==}
     engines: {node: '>=10'}
     cpu: [arm]
     os: [linux]
 
-  '@swc/core-linux-arm64-gnu@1.11.29':
-    resolution: {integrity: sha512-sLoaciOgUKQF1KX9T6hPGzvhOQaJn+3DHy4LOHeXhQqvBgr+7QcZ+hl4uixPKTzxk6hy6Hb0QOvQEdBAAR1gXw==}
-    engines: {node: '>=10'}
-    cpu: [arm64]
-    os: [linux]
-
   '@swc/core-linux-arm64-gnu@1.15.8':
     resolution: {integrity: sha512-o+1y5u6k2FfPYbTRUPvurwzNt5qd0NTumCTFscCNuBksycloXY16J8L+SMW5QRX59n4Hp9EmFa3vpvNHRVv1+Q==}
-    engines: {node: '>=10'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@swc/core-linux-arm64-musl@1.11.29':
-    resolution: {integrity: sha512-PwjB10BC0N+Ce7RU/L23eYch6lXFHz7r3NFavIcwDNa/AAqywfxyxh13OeRy+P0cg7NDpWEETWspXeI4Ek8otw==}
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [linux]
@@ -3387,20 +3303,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@swc/core-linux-x64-gnu@1.11.29':
-    resolution: {integrity: sha512-i62vBVoPaVe9A3mc6gJG07n0/e7FVeAvdD9uzZTtGLiuIfVfIBta8EMquzvf+POLycSk79Z6lRhGPZPJPYiQaA==}
-    engines: {node: '>=10'}
-    cpu: [x64]
-    os: [linux]
-
   '@swc/core-linux-x64-gnu@1.15.8':
     resolution: {integrity: sha512-4p6lOMU3bC+Vd5ARtKJ/FxpIC5G8v3XLoPEZ5s7mLR8h7411HWC/LmTXDHcrSXRC55zvAVia1eldy6zDLz8iFQ==}
-    engines: {node: '>=10'}
-    cpu: [x64]
-    os: [linux]
-
-  '@swc/core-linux-x64-musl@1.11.29':
-    resolution: {integrity: sha512-YER0XU1xqFdK0hKkfSVX1YIyCvMDI7K07GIpefPvcfyNGs38AXKhb2byySDjbVxkdl4dycaxxhRyhQ2gKSlsFQ==}
     engines: {node: '>=10'}
     cpu: [x64]
     os: [linux]
@@ -3411,22 +3315,10 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@swc/core-win32-arm64-msvc@1.11.29':
-    resolution: {integrity: sha512-po+WHw+k9g6FAg5IJ+sMwtA/fIUL3zPQ4m/uJgONBATCVnDDkyW6dBA49uHNVtSEvjvhuD8DVWdFP847YTcITw==}
-    engines: {node: '>=10'}
-    cpu: [arm64]
-    os: [win32]
-
   '@swc/core-win32-arm64-msvc@1.15.8':
     resolution: {integrity: sha512-djQPJ9Rh9vP8GTS/Df3hcc6XP6xnG5c8qsngWId/BLA9oX6C7UzCPAn74BG/wGb9a6j4w3RINuoaieJB3t+7iQ==}
     engines: {node: '>=10'}
     cpu: [arm64]
-    os: [win32]
-
-  '@swc/core-win32-ia32-msvc@1.11.29':
-    resolution: {integrity: sha512-h+NjOrbqdRBYr5ItmStmQt6x3tnhqgwbj9YxdGPepbTDamFv7vFnhZR0YfB3jz3UKJ8H3uGJ65Zw1VsC+xpFkg==}
-    engines: {node: '>=10'}
-    cpu: [ia32]
     os: [win32]
 
   '@swc/core-win32-ia32-msvc@1.15.8':
@@ -3435,26 +3327,11 @@ packages:
     cpu: [ia32]
     os: [win32]
 
-  '@swc/core-win32-x64-msvc@1.11.29':
-    resolution: {integrity: sha512-Q8cs2BDV9wqDvqobkXOYdC+pLUSEpX/KvI0Dgfun1F+LzuLotRFuDhrvkU9ETJA6OnD2+Fn/ieHgloiKA/Mn/g==}
-    engines: {node: '>=10'}
-    cpu: [x64]
-    os: [win32]
-
   '@swc/core-win32-x64-msvc@1.15.8':
     resolution: {integrity: sha512-GpMePrh9Sl4d61o4KAHOOv5is5+zt6BEXCOCgs/H0FLGeii7j9bWDE8ExvKFy2GRRZVNR1ugsnzaGWHKM6kuzA==}
     engines: {node: '>=10'}
     cpu: [x64]
     os: [win32]
-
-  '@swc/core@1.11.29':
-    resolution: {integrity: sha512-g4mThMIpWbNhV8G2rWp5a5/Igv8/2UFRJx2yImrLGMgrDDYZIopqZ/z0jZxDgqNA1QDx93rpwNF7jGsxVWcMlA==}
-    engines: {node: '>=10'}
-    peerDependencies:
-      '@swc/helpers': '>=0.5.17'
-    peerDependenciesMeta:
-      '@swc/helpers':
-        optional: true
 
   '@swc/core@1.15.8':
     resolution: {integrity: sha512-T8keoJjXaSUoVBCIjgL6wAnhADIb09GOELzKg10CjNg+vLX48P93SME6jTfte9MZIm5m+Il57H3rTSk/0kzDUw==}
@@ -3470,9 +3347,6 @@ packages:
 
   '@swc/helpers@0.5.17':
     resolution: {integrity: sha512-5IKx/Y13RsYd+sauPb2x+U/xZikHjolzfuDgTAl/Tdf3Q8rslRvC19NKDLgAJQ6wsqADk10ntlv08nPFw/gO/A==}
-
-  '@swc/types@0.1.21':
-    resolution: {integrity: sha512-2YEtj5HJVbKivud9N4bpPBAyZhj4S2Ipe5LkUG94alTpr7in/GU/EARgPAd3BwU+YOmFVJC2+kjqhGRi3r0ZpQ==}
 
   '@swc/types@0.1.25':
     resolution: {integrity: sha512-iAoY/qRhNH8a/hBvm3zKj9qQ4oc2+3w1unPJa2XvTK3XjeLXtzcCingVPw/9e5mn1+0yPqxcBGp9Jf0pkfMb1g==}
@@ -4173,10 +4047,6 @@ packages:
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
 
-  bson@6.10.3:
-    resolution: {integrity: sha512-MTxGsqgYTwfshYWTRdmZRC+M7FnG1b4y7RO7p2k3X24Wq0yv1m77Wsj0BzlPzd/IowgESfsruQCUToa7vbOpPQ==}
-    engines: {node: '>=16.20.1'}
-
   bson@6.10.4:
     resolution: {integrity: sha512-WIsKqkSC0ABoBJuT1LEX+2HEvNmNKKgnTAyd0fL8qzK4SH2i9NXg+t08YtdZp/V9IZ33cxe3iV4yM0qg8lMQng==}
     engines: {node: '>=16.20.1'}
@@ -4569,9 +4439,6 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  dexie@4.0.11:
-    resolution: {integrity: sha512-SOKO002EqlvBYYKQSew3iymBoN2EQ4BDw/3yprjh7kAfFzjBYkaMNa/pZvcA7HSWlcKSQb9XhPe3wKyQ0x4A8A==}
-
   dexie@4.2.1:
     resolution: {integrity: sha512-Ckej0NS6jxQ4Po3OrSQBFddayRhTCic2DoCAG5zacOfOVB9P2Q5Xc5uL/nVa7ZVs+HdMnvUPzLFCB/JwpB6Csg==}
 
@@ -4807,10 +4674,6 @@ packages:
 
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
-
-  fake-indexeddb@6.0.1:
-    resolution: {integrity: sha512-He2AjQGHe46svIFq5+L2Nx/eHDTI1oKgoevBP+TthnjymXiKkeJQ3+ITeWey99Y5+2OaPFbI1qEsx/5RsGtWnQ==}
-    engines: {node: '>=18'}
 
   fake-indexeddb@6.2.5:
     resolution: {integrity: sha512-CGnyrvbhPlWYMngksqrSSUT1BAVP49dZocrHuK0SvtR0D5TMs5wP0o3j7jexDJW01KSadjBp1M/71o/KR3nD1w==}
@@ -5365,9 +5228,6 @@ packages:
   jose@6.1.3:
     resolution: {integrity: sha512-0TpaTfihd4QMNwrz/ob2Bp7X04yuxJkjRGi4aKmOqwhov54i6u79oCv7T+C7lo70MKH6BesI3vscD1yb/yzKXQ==}
 
-  js-base64@3.7.7:
-    resolution: {integrity: sha512-7rCnleh0z2CkXhH67J8K1Ytz0b2Y+yxTPL+/KOJoa20hfnVQ/3/T6W/KflYI4bRHRagNeXeU2bkNGI3v1oS/lw==}
-
   js-base64@3.7.8:
     resolution: {integrity: sha512-hNngCeKxIUQiEUN3GPJOkz4wF/YvdUdbNL9hsBcMQTkKzboD7T/q3OYOuuPZLUE6dBxSGpwhk5mwuDud7JVAow==}
 
@@ -5428,11 +5288,6 @@ packages:
   konsta@4.0.1:
     resolution: {integrity: sha512-GMk/3yJ4ov9mLRwkr+ffbTtlyGMd+HMMPks8+/kZWJyIfD3Esy+cSVLN8wX+iJRQXNZfPfOBxaqQpxXA0AHLEA==}
     engines: {node: '>= 4.7.0'}
-
-  libsql@0.5.11:
-    resolution: {integrity: sha512-P2xY1nL2Jl7oM75LcguAEYqouVcevWhLWT8RU/p9ldaqQx5s/chF9t5ZFXPWP0x9myQQ4SguRqPO+FqdnCzKQg==}
-    cpu: [x64, arm64, wasm32, arm]
-    os: [darwin, linux, win32]
 
   libsql@0.5.22:
     resolution: {integrity: sha512-NscWthMQt7fpU8lqd7LXMvT9pi+KhhmTHAJWUB/Lj6MWa0MKFv0F2V4C6WKKpjCVZl0VwcDz4nOI3CyaT1DDiA==}
@@ -5937,33 +5792,6 @@ packages:
   mongodb-connection-string-url@7.0.0:
     resolution: {integrity: sha512-irhhjRVLE20hbkRl4zpAYLnDMM+zIZnp0IDB9akAFFUZp/3XdOfwwddc7y6cNvF2WCEtfTYRwYbIfYa2kVY0og==}
     engines: {node: '>=20.19.0'}
-
-  mongodb@6.16.0:
-    resolution: {integrity: sha512-D1PNcdT0y4Grhou5Zi/qgipZOYeWrhLEpk33n3nm6LGtz61jvO88WlrWCK/bigMjpnOdAUKKQwsGIl0NtWMyYw==}
-    engines: {node: '>=16.20.1'}
-    peerDependencies:
-      '@aws-sdk/credential-providers': ^3.188.0
-      '@mongodb-js/zstd': ^1.1.0 || ^2.0.0
-      gcp-metadata: ^5.2.0
-      kerberos: ^2.0.1
-      mongodb-client-encryption: '>=6.0.0 <7'
-      snappy: ^7.2.2
-      socks: ^2.7.1
-    peerDependenciesMeta:
-      '@aws-sdk/credential-providers':
-        optional: true
-      '@mongodb-js/zstd':
-        optional: true
-      gcp-metadata:
-        optional: true
-      kerberos:
-        optional: true
-      mongodb-client-encryption:
-        optional: true
-      snappy:
-        optional: true
-      socks:
-        optional: true
 
   mongodb@6.21.0:
     resolution: {integrity: sha512-URyb/VXMjJ4da46OeSXg+puO39XH9DeQpWCslifrRn9JWugy0D+DvvBvkm2WxmHe61O/H19JM66p1z7RHVkZ6A==}
@@ -7196,9 +7024,6 @@ packages:
 
   ufo@1.6.3:
     resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==}
-
-  uikit@3.23.13:
-    resolution: {integrity: sha512-TegJHfHnd8w+ofcjlUX6O8vCiTNKVJJkhjBNlaC+nBJmwvkt1dQ/t1NG7I1FZ3EkkrxriMYwC0i7RGWIFsfyQg==}
 
   uikit@3.23.7:
     resolution: {integrity: sha512-DaTJDQxRwZMuVUIqkWDamAX9+DuVwdJpbhAqRz8zinLy8dzsh39EXoq6GJnLszu7IYSUe2BjoZLXEQjwQtMIhg==}
@@ -9053,32 +8878,11 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@libsql/client@0.15.7':
-    dependencies:
-      '@libsql/core': 0.15.7
-      '@libsql/hrana-client': 0.7.0
-      js-base64: 3.7.7
-      libsql: 0.5.11
-      promise-limit: 2.7.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
   '@libsql/core@0.15.15':
     dependencies:
       js-base64: 3.7.8
 
-  '@libsql/core@0.15.7':
-    dependencies:
-      js-base64: 3.7.7
-
-  '@libsql/darwin-arm64@0.5.11':
-    optional: true
-
   '@libsql/darwin-arm64@0.5.22':
-    optional: true
-
-  '@libsql/darwin-x64@0.5.11':
     optional: true
 
   '@libsql/darwin-x64@0.5.22':
@@ -9088,7 +8892,7 @@ snapshots:
     dependencies:
       '@libsql/isomorphic-fetch': 0.3.1
       '@libsql/isomorphic-ws': 0.1.5
-      js-base64: 3.7.7
+      js-base64: 3.7.8
       node-fetch: 3.3.2
     transitivePeerDependencies:
       - bufferutil
@@ -9099,48 +8903,27 @@ snapshots:
   '@libsql/isomorphic-ws@0.1.5':
     dependencies:
       '@types/ws': 8.18.1
-      ws: 8.18.2
+      ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@libsql/linux-arm-gnueabihf@0.5.11':
-    optional: true
-
   '@libsql/linux-arm-gnueabihf@0.5.22':
-    optional: true
-
-  '@libsql/linux-arm-musleabihf@0.5.11':
     optional: true
 
   '@libsql/linux-arm-musleabihf@0.5.22':
     optional: true
 
-  '@libsql/linux-arm64-gnu@0.5.11':
-    optional: true
-
   '@libsql/linux-arm64-gnu@0.5.22':
-    optional: true
-
-  '@libsql/linux-arm64-musl@0.5.11':
     optional: true
 
   '@libsql/linux-arm64-musl@0.5.22':
     optional: true
 
-  '@libsql/linux-x64-gnu@0.5.11':
-    optional: true
-
   '@libsql/linux-x64-gnu@0.5.22':
     optional: true
 
-  '@libsql/linux-x64-musl@0.5.11':
-    optional: true
-
   '@libsql/linux-x64-musl@0.5.22':
-    optional: true
-
-  '@libsql/win32-x64-msvc@0.5.11':
     optional: true
 
   '@libsql/win32-x64-msvc@0.5.22':
@@ -9190,10 +8973,6 @@ snapshots:
   '@monaco-editor/loader@1.7.0':
     dependencies:
       state-local: 1.0.7
-
-  '@mongodb-js/saslprep@1.2.2':
-    dependencies:
-      sparse-bitfield: 3.0.3
 
   '@mongodb-js/saslprep@1.4.4':
     dependencies:
@@ -9478,6 +9257,14 @@ snapshots:
     optionalDependencies:
       rollup: 4.55.1
 
+  '@rollup/pluginutils@5.3.0(rollup@4.41.1)':
+    dependencies:
+      '@types/estree': 1.0.8
+      estree-walker: 2.0.2
+      picomatch: 4.0.3
+    optionalDependencies:
+      rollup: 4.41.1
+
   '@rollup/pluginutils@5.3.0(rollup@4.55.1)':
     dependencies:
       '@types/estree': 1.0.8
@@ -9757,82 +9544,35 @@ snapshots:
       '@rollup/rollup-win32-arm64-msvc': 4.34.9
       '@rollup/rollup-win32-x64-msvc': 4.34.9
 
-  '@swc/core-darwin-arm64@1.11.29':
-    optional: true
-
   '@swc/core-darwin-arm64@1.15.8':
-    optional: true
-
-  '@swc/core-darwin-x64@1.11.29':
     optional: true
 
   '@swc/core-darwin-x64@1.15.8':
     optional: true
 
-  '@swc/core-linux-arm-gnueabihf@1.11.29':
-    optional: true
-
   '@swc/core-linux-arm-gnueabihf@1.15.8':
-    optional: true
-
-  '@swc/core-linux-arm64-gnu@1.11.29':
     optional: true
 
   '@swc/core-linux-arm64-gnu@1.15.8':
     optional: true
 
-  '@swc/core-linux-arm64-musl@1.11.29':
-    optional: true
-
   '@swc/core-linux-arm64-musl@1.15.8':
-    optional: true
-
-  '@swc/core-linux-x64-gnu@1.11.29':
     optional: true
 
   '@swc/core-linux-x64-gnu@1.15.8':
     optional: true
 
-  '@swc/core-linux-x64-musl@1.11.29':
-    optional: true
-
   '@swc/core-linux-x64-musl@1.15.8':
-    optional: true
-
-  '@swc/core-win32-arm64-msvc@1.11.29':
     optional: true
 
   '@swc/core-win32-arm64-msvc@1.15.8':
     optional: true
 
-  '@swc/core-win32-ia32-msvc@1.11.29':
-    optional: true
-
   '@swc/core-win32-ia32-msvc@1.15.8':
-    optional: true
-
-  '@swc/core-win32-x64-msvc@1.11.29':
     optional: true
 
   '@swc/core-win32-x64-msvc@1.15.8':
     optional: true
-
-  '@swc/core@1.11.29(@swc/helpers@0.5.17)':
-    dependencies:
-      '@swc/counter': 0.1.3
-      '@swc/types': 0.1.21
-    optionalDependencies:
-      '@swc/core-darwin-arm64': 1.11.29
-      '@swc/core-darwin-x64': 1.11.29
-      '@swc/core-linux-arm-gnueabihf': 1.11.29
-      '@swc/core-linux-arm64-gnu': 1.11.29
-      '@swc/core-linux-arm64-musl': 1.11.29
-      '@swc/core-linux-x64-gnu': 1.11.29
-      '@swc/core-linux-x64-musl': 1.11.29
-      '@swc/core-win32-arm64-msvc': 1.11.29
-      '@swc/core-win32-ia32-msvc': 1.11.29
-      '@swc/core-win32-x64-msvc': 1.11.29
-      '@swc/helpers': 0.5.17
 
   '@swc/core@1.15.8(@swc/helpers@0.5.17)':
     dependencies:
@@ -9857,10 +9597,6 @@ snapshots:
     dependencies:
       tslib: 2.8.1
     optional: true
-
-  '@swc/types@0.1.21':
-    dependencies:
-      '@swc/counter': 0.1.3
 
   '@swc/types@0.1.25':
     dependencies:
@@ -10583,7 +10319,7 @@ snapshots:
       - uploadthing
       - yaml
 
-  astro@5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1):
+  astro@5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.41.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1):
     dependencies:
       '@astrojs/compiler': 2.13.0
       '@astrojs/internal-helpers': 0.7.5
@@ -10591,7 +10327,7 @@ snapshots:
       '@astrojs/telemetry': 3.3.0
       '@capsizecss/unpack': 4.0.0
       '@oslojs/encoding': 1.1.0
-      '@rollup/pluginutils': 5.3.0(rollup@4.55.1)
+      '@rollup/pluginutils': 5.3.0(rollup@4.41.1)
       acorn: 8.15.0
       aria-query: 5.3.2
       axobject-query: 4.1.0
@@ -10912,8 +10648,6 @@ snapshots:
       node-releases: 2.0.27
       update-browserslist-db: 1.2.3(browserslist@4.28.1)
 
-  bson@6.10.3: {}
-
   bson@6.10.4: {}
 
   bson@7.1.0: {}
@@ -11188,7 +10922,7 @@ snapshots:
       defuss-env: 1.0.2
       dexie: 4.2.1
       fake-indexeddb: 6.2.5
-      mongodb: 6.21.0
+      mongodb: 6.21.0(socks@2.8.4)
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
       - '@mongodb-js/zstd'
@@ -11362,8 +11096,6 @@ snapshots:
   devlop@1.1.0:
     dependencies:
       dequal: 2.0.3
-
-  dexie@4.0.11: {}
 
   dexie@4.2.1: {}
 
@@ -11723,8 +11455,6 @@ snapshots:
       - supports-color
 
   extend@3.0.2: {}
-
-  fake-indexeddb@6.0.1: {}
 
   fake-indexeddb@6.2.5: {}
 
@@ -12481,8 +12211,6 @@ snapshots:
 
   jose@6.1.3: {}
 
-  js-base64@3.7.7: {}
-
   js-base64@3.7.8: {}
 
   js-tokens@4.0.0: {}
@@ -12578,21 +12306,6 @@ snapshots:
   kleur@4.1.5: {}
 
   konsta@4.0.1: {}
-
-  libsql@0.5.11:
-    dependencies:
-      '@neon-rs/load': 0.0.4
-      detect-libc: 2.0.2
-    optionalDependencies:
-      '@libsql/darwin-arm64': 0.5.11
-      '@libsql/darwin-x64': 0.5.11
-      '@libsql/linux-arm-gnueabihf': 0.5.11
-      '@libsql/linux-arm-musleabihf': 0.5.11
-      '@libsql/linux-arm64-gnu': 0.5.11
-      '@libsql/linux-arm64-musl': 0.5.11
-      '@libsql/linux-x64-gnu': 0.5.11
-      '@libsql/linux-x64-musl': 0.5.11
-      '@libsql/win32-x64-msvc': 0.5.11
 
   libsql@0.5.22:
     dependencies:
@@ -13338,19 +13051,13 @@ snapshots:
       '@types/whatwg-url': 13.0.0
       whatwg-url: 14.2.0
 
-  mongodb@6.16.0(socks@2.8.4):
-    dependencies:
-      '@mongodb-js/saslprep': 1.2.2
-      bson: 6.10.3
-      mongodb-connection-string-url: 3.0.2
-    optionalDependencies:
-      socks: 2.8.4
-
-  mongodb@6.21.0:
+  mongodb@6.21.0(socks@2.8.4):
     dependencies:
       '@mongodb-js/saslprep': 1.4.4
       bson: 6.10.4
       mongodb-connection-string-url: 3.0.2
+    optionalDependencies:
+      socks: 2.8.4
 
   mongodb@7.0.0:
     dependencies:
@@ -14845,8 +14552,6 @@ snapshots:
   ufo@1.6.1: {}
 
   ufo@1.6.3: {}
-
-  uikit@3.23.13: {}
 
   uikit@3.23.7: {}
 
