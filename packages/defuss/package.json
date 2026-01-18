@@ -44,7 +44,7 @@
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll --env.PKG_VERSION=$(node -p \"require('./package.json').version\")"
+    "build": "node scripts/build.mjs"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
