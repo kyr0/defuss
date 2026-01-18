@@ -60,7 +60,7 @@ export const render = <T extends RenderInput>(
 
 export const createRoot = (document: Document): Element => {
   const htmlElement = document.createElement("html");
-  document.appendChild(htmlElement);
+  document.documentElement.appendChild(htmlElement);
   return document.documentElement;
 };
 

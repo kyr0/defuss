@@ -6,13 +6,13 @@ export default defineConfig({
     environment: "happy-dom",
     testTimeout: 290000, // 290 seconds per test
     include: ["**/*.test.{ts,tsx}"],
-    exclude: ["**/node_modules/**", "**/dist/**"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/*.md"],
     clearMocks: true,
     globals: true,
     coverage: {
       provider: "v8",
       include: ["src/**/*"],
-      ignoreEmptyLines: true,
+      exclude: ["**/*.{md,html}"]
     },
   },
 });

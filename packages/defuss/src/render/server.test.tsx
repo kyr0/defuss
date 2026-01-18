@@ -244,8 +244,8 @@ describe("VirtualDOM", () => {
       (
         renderSync(
           <svg
-            className="star__svg"
             xmlns="http://www.w3.org/2000/svg"
+            className="star__svg"
             xmlnsXlink="http://www.w3.org/1999/xlink"
             viewBox="0 0 32 32"
           >
@@ -289,7 +289,7 @@ describe("VirtualDOM", () => {
         ) as Node,
       ),
     ).toEqual(
-      '<svg xmlns="http://www.w3.org/2000/svg" class="star__svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32 32"><path class="star__svg__path"/><rect fill="none" width="32" height="32"/><use xlink:href="//wiki.selfhtml.org/wiki/SVG/Elemente/Verweise" xlink:title="zurück zum Wiki-Artikel"><text x="140" y="60">zurück zum Wiki-Artikel (mit XLink:href)</text></use></svg>',
+      '<svg class="star__svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32 32"><path class="star__svg__path"/><rect fill="none" width="32" height="32"/><use xlink:href="//wiki.selfhtml.org/wiki/SVG/Elemente/Verweise" xlink:title="zurück zum Wiki-Artikel"><text x="140" y="60">zurück zum Wiki-Artikel (mit XLink:href)</text></use></svg>',
     );
   });
 
@@ -335,7 +335,7 @@ describe("VirtualDOM", () => {
 
   it("can attach to events implicitly and handlers get called", () => {
     const buttonRef = createRef<HTMLButtonElement>();
-    const onClick = vi.fn(() => {});
+    const onClick = vi.fn(() => { });
 
     expect(
       (
@@ -358,7 +358,7 @@ describe("VirtualDOM", () => {
 
   it("can attach to events implicitly with capture and handlers get called", () => {
     const buttonRef = createRef<HTMLButtonElement>();
-    const onClick = vi.fn(() => {});
+    const onClick = vi.fn(() => { });
 
     expect(
       (

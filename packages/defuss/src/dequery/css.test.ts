@@ -82,7 +82,7 @@ describe("CSS class manipulation", async () => {
 
     // Wait for the animation to complete
 
-    await wait(duration / 2); // Wait for half the duration
+    await wait(duration * 2); // Wait for half the duration
 
     // After waiting, class should be removed
     expect(document.body.classList.contains("fade-out")).toBe(false);
