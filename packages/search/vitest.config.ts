@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import { playwright } from "@vitest/browser-playwright";
 
 export default defineConfig({
   publicDir: "public",
@@ -12,9 +13,11 @@ export default defineConfig({
     exclude: ["**/*.bench.ts"],
     browser: {
       enabled: true,
+      provider: playwright(),
+      instances: [
+        { browser: "chromium" }
+      ],
       headless: true,
-      provider: "playwright",
-      instances: [{ browser: "chromium" }],
     },
   },
 });

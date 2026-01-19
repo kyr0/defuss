@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import { playwright } from "@vitest/browser-playwright";
 
 export default defineConfig({
   publicDir: "public",
@@ -12,11 +13,11 @@ export default defineConfig({
     include: ["**/*.bench.ts"],
     browser: {
       enabled: true,
+      provider: playwright(),
+      instances: [
+        { browser: "chromium" }
+      ],
       headless: true,
-      provider: "playwright",
-      screenshotFailures: false,
-      // https://vitest.dev/guide/browser/playwright
-      instances: [{ browser: "chromium" }],
     },
     testTimeout: 60_000 * 10, // 10 minutes timeout for longer benchmarks
   },
