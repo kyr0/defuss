@@ -1,5 +1,5 @@
 // defuss - explicit simplicity for the web
-
+console.log("defuss 3.0.0 alpha")
 export * from "@/common/index.js";
 export * from "@/render/index.js";
 export * from "@/dequery/index.js";

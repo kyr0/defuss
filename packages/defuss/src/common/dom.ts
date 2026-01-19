@@ -14,7 +14,8 @@ import {
   removeDelegatedEvent,
   clearDelegatedEvents,
   clearDelegatedEventsDeep,
-  getRegisteredEventTypes,
+  getRegisteredEventKeys,
+  removeDelegatedEventByKey,
   parseEventPropName,
 } from "../render/delegated-events.js";
 import type { NodeType } from "../render/index.js";
@@ -225,11 +226,21 @@ function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
   if (child && typeof child === "object") {
     if (domNode.nodeType !== Node.ELEMENT_NODE) return false;
 
-    const oldTag = (domNode as Element).tagName.toLowerCase();
-    const newType = typeof child.type === "string" ? child.type.toLowerCase() : "";
-    if (!newType) return false;
+    const el = domNode as HTMLElement;
+    const oldTag = el.tagName.toLowerCase();
+    const newTag = typeof child.type === "string" ? child.type.toLowerCase() : "";
+    if (!newTag || oldTag !== newTag) return false;
 
-    return oldTag === newType;
+    // If vnode has class/className, require exact class match to prevent element reuse accidents
+    const vnodeClass =
+      (child.attributes as any)?.className ??
+      (child.attributes as any)?.class;
+
+    if (typeof vnodeClass === "string") {
+      if ((el.getAttribute("class") ?? "") !== vnodeClass) return false;
+    }
+
+    return true;
   }
 
   return false;
@@ -304,21 +315,31 @@ function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals
     }
   }
 
-  // Remove stale event handlers: compute registered - nextVNodeEvents
-  const registeredEvents = getRegisteredEventTypes(el as HTMLElement);
-  const nextEventTypes = new Set<string>();
+  // Remove stale event handlers: compute registered phase keys - next vnode phase keys
+  // This is phase-aware: onClick + onClickCapture → onClickCapture only will correctly
+  // remove the bubble handler while keeping the capture handler
+  const registeredKeys = getRegisteredEventKeys(el as HTMLElement);
+  const nextEventKeys = new Set<string>();
   for (const propName of Object.keys(nextAttrs)) {
     const parsed = parseEventPropName(propName);
-    if (parsed) nextEventTypes.add(parsed.eventType);
+    if (parsed) {
+      const phase = parsed.capture ? "capture" : "bubble";
+      nextEventKeys.add(`${parsed.eventType}:${phase}`);
+    }
   }
-  for (const eventType of registeredEvents) {
-    if (!nextEventTypes.has(eventType)) {
-      removeDelegatedEvent(el as HTMLElement, eventType);
+  for (const key of registeredKeys) {
+    if (!nextEventKeys.has(key)) {
+      const [eventType, phase] = key.split(":");
+      removeDelegatedEventByKey(el as HTMLElement, eventType, phase as "bubble" | "capture");
     }
   }
 
   // set new attributes (includes ref + delegated events via renderer.setAttribute)
   renderer.setAttributes(vnode, el);
+
+  // Trigger onMount lifecycle for morphed elements that have a new onMount callback
+  // This ensures onMount fires on route changes even when elements are morphed in place
+  handleLifecycleEventsForOnMount(el as HTMLElement);
 
   // dangerouslySetInnerHTML => skip child reconciliation
   const d = vnode.attributes?.dangerouslySetInnerHTML;
@@ -445,8 +466,8 @@ export function updateDomWithVdom(
       }
     }
 
-    // fallback: take the next available unkeyed node
-    return unkeyedPool.shift();
+    // SAFE: no match => don't reuse something random, create new node instead
+    return undefined;
   };
 
   let domIndex = 0;

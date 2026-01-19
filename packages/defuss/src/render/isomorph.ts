@@ -95,10 +95,11 @@ export const jsx = (
   }
 
   // extract children from attributes and ensure it's always an array
-  // Note: only filter null/undefined, keep 0, "", false as valid children
+  // Filter null/undefined/booleans to match update/hydrate behavior
+  // (booleans render as nothing, not as "true"/"false" text)
   let children: Array<VNodeChild> = (
     attributes?.children ? [].concat(attributes.children) : []
-  ).filter((c) => c !== null && c !== undefined);
+  ).filter((c) => c !== null && c !== undefined && typeof c !== "boolean");
   delete attributes?.children;
 
   children = filterComments(
@@ -119,10 +120,34 @@ export const jsx = (
   // in case of async functions, we just pass them through
   if (typeof type === "function" && type.constructor.name !== "AsyncFunction") {
     try {
-      return type({
+      // Pass all attributes including key (defuss components like Trans use key as a prop)
+      const rendered = type({
         children,
         ...attributes,
       });
+
+      // Diff semantics: also apply key to the returned vnode root so morphing can find keyed nodes
+      if (typeof key !== "undefined" && rendered && typeof rendered === "object") {
+        // Single root vnode
+        if ("attributes" in (rendered as any)) {
+          (rendered as any).attributes = {
+            ...(rendered as any).attributes,
+            key,
+          };
+        }
+        // Fragment array: only safe auto-key if it's a single root
+        else if (Array.isArray(rendered) && rendered.length === 1) {
+          const only = rendered[0];
+          if (only && typeof only === "object" && "attributes" in (only as any)) {
+            (only as any).attributes = {
+              ...(only as any).attributes,
+              key,
+            };
+          }
+        }
+      }
+
+      return rendered;
     } catch (error) {
       if (typeof error === "string") {
         error = `[JsxError] in ${type.name}: ${error}`;
@@ -273,7 +298,8 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
           }
         }
 
-        if (virtualNode.children) {
+        // Skip child creation when dangerouslySetInnerHTML is used (matches React semantics)
+        if (virtualNode.children && !virtualNode.attributes?.dangerouslySetInnerHTML) {
           renderer.createChildElements(virtualNode.children, newEl as Element);
         }
 
@@ -309,6 +335,12 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
       for (let i = 0; i < virtualChildren.length; i++) {
         const virtualChild = virtualChildren[i];
+
+        // Skip booleans entirely - {true} and {false} render nothing (React/JSX semantics)
+        if (typeof virtualChild === "boolean") {
+          continue;
+        }
+
         if (
           virtualChild === null ||
           (typeof virtualChild !== "object" &&
@@ -542,9 +574,49 @@ export const globalScopeDomApis = (window: Window, document: Document) => {
   globalThis.__defuss_window = window;
 };
 
+/**
+ * React-compatible render function.
+ * Renders JSX content into a container element using defuss' DOM morphing engine.
+ * 
+ * @example
+ * ```tsx
+ * import { render, $ } from "defuss";
+ * 
+ * const App = () => <div>Hello World</div>;
+ * 
+ * // Using with $ selector
+ * render(<App />, $("#app").current);
+ * 
+ * // Using with direct element
+ * render(<App />, document.getElementById("app"));
+ * ```
+ */
+export const render = (
+  jsx: SyncRenderInput,
+  container: Element | null | undefined,
+): void => {
+  if (!container) {
+    console.warn("render: container is null or undefined");
+    return;
+  }
+
+  const globals: Globals = {
+    window: container.ownerDocument?.defaultView ?? (globalThis as unknown as Window),
+  } as Globals;
+
+  // Use updateDomWithVdom for intelligent DOM morphing (preserves state, event listeners, etc.)
+  updateDomWithVdom(container as HTMLElement, jsx as RenderInput, globals);
+};
+
 export const isJSX = (o: any): boolean => {
   if (o === null || typeof o !== "object") return false;
-  if (Array.isArray(o)) return o.every(isJSX);
+  // Arrays are valid JSX - fragments and child arrays
+  // Each element can be a VNode, string, or number (text nodes)
+  if (Array.isArray(o)) {
+    return o.every((item) =>
+      isJSX(item) || typeof item === "string" || typeof item === "number"
+    );
+  }
   if (typeof o.type === "string") return true;
   if (typeof o.type === "function") return true;
   if (typeof o.attributes === "object" && typeof o.children === "object")
@@ -618,13 +690,19 @@ async function performCoreDomUpdate<NT>(
     processedInput = (processedInput as Ref<NodeType>).current;
   }
 
+  // Helper to derive globals from an element (SSR/multi-window compatible)
+  const getGlobalsFromElement = (el: NodeType): Globals => {
+    const win = (el as Element).ownerDocument?.defaultView;
+    return (win as unknown as Globals) ?? (globalThis as unknown as Globals);
+  };
+
   if (processedInput instanceof Node) {
     // Convert DOM node to VNode and use the intelligent updateDomWithVdom
     // This preserves existing DOM structure and event listeners
     const vnode = domNodeToVNode(processedInput);
     nodes.forEach((el) => {
       if (el) {
-        updateDomWithVdom(el as HTMLElement, vnode, globalThis as Globals);
+        updateDomWithVdom(el as HTMLElement, vnode, getGlobalsFromElement(el));
       }
     });
     return;
@@ -637,7 +715,7 @@ async function performCoreDomUpdate<NT>(
       const vNodes = htmlStringToVNodes(processedInput, Parser);
       nodes.forEach((el) => {
         if (el) {
-          updateDomWithVdom(el as HTMLElement, vNodes, globalThis as Globals);
+          updateDomWithVdom(el as HTMLElement, vNodes, getGlobalsFromElement(el));
         }
       });
     } else {
@@ -648,7 +726,7 @@ async function performCoreDomUpdate<NT>(
           updateDomWithVdom(
             el as HTMLElement,
             processedInput as string,
-            globalThis as Globals,
+            getGlobalsFromElement(el),
           );
         }
       });
@@ -662,7 +740,7 @@ async function performCoreDomUpdate<NT>(
         updateDomWithVdom(
           el as HTMLElement,
           processedInput as RenderInput,
-          globalThis as Globals,
+          getGlobalsFromElement(el),
         );
       }
     });
@@ -670,6 +748,7 @@ async function performCoreDomUpdate<NT>(
     console.warn("update: unsupported content type", processedInput);
   }
 }
+
 
 export async function updateDom<NT>(
   input:

@@ -21,6 +21,7 @@ export default defineConfig({
         testTimeout: 60000,
         include: ["**/*.test.{ts,tsx}"],
         exclude: [
+            "**/kitchensink/**",
             "**/node_modules/**",
             "**/dist/**",
             // SSR-specific tests that don't work in real browser

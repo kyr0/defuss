@@ -44,6 +44,7 @@
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
     "test:browser": "vitest run --config vitest.browser.config.ts",
+    "kitchensink": "vitest run --config kitchensink/vitest.config.ts",
     "bench": "vitest bench --config vitest.bench.config.ts",
     "bench:browser": "vitest run --config vitest.browser.config.ts src/__benchmarks__/dom-benchmark.browser.test.tsx",
     "prebuild": "pnpm run clean",

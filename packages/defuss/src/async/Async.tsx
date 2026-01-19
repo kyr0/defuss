@@ -70,58 +70,63 @@ export const Async = ({
     function onSuspenseUpdate(state: AsyncState) {
       const currentToken = ++updateToken;
 
-      try {
-        if (!containerRef.current) {
-          if (inDevMode) {
-            console.warn(
-              "Suspense container is not mounted yet, but a state update demands a render. State is:",
-              state,
-            );
-          }
-          return;
+      if (!containerRef.current) {
+        if (inDevMode) {
+          console.warn(
+            "Suspense container is not mounted yet, but a state update demands a render. State is:",
+            state,
+          );
         }
-        (async () => {
-          // Chain class removals to reduce await overhead
-          await $(containerRef.current)
-            .removeClass(loadingClassName || "suspense-loading")
-            .removeClass(loadedClassName || "suspense-loaded")
-            .removeClass(errorClassName || "suspense-error");
+        return;
+      }
 
-          // Check for stale update after first await
+      // Use .catch() on the async IIFE to properly catch async errors
+      // (try/catch around an async IIFE does NOT catch async errors)
+      void (async () => {
+        // Chain class removals to reduce await overhead
+        await $(containerRef.current)
+          .removeClass(loadingClassName || "suspense-loading")
+          .removeClass(loadedClassName || "suspense-loaded")
+          .removeClass(errorClassName || "suspense-error");
+
+        // Check for stale update after first await
+        if (currentToken !== updateToken) return;
+
+        if (!children || state === "error") {
+          await $(containerRef.current).addClass(
+            errorClassName || "suspense-error",
+          );
           if (currentToken !== updateToken) return;
-
-          if (!children || state === "error") {
-            await $(containerRef.current).addClass(
-              errorClassName || "suspense-error",
-            );
-            if (currentToken !== updateToken) return;
-            await $(containerRef).jsx({
-              type: "div",
-              children: ["Loading error!"],
-            });
-          } else if (state === "loading") {
-            await $(containerRef.current).addClass(
-              loadingClassName || "suspense-loading",
-            );
-            if (currentToken !== updateToken) return;
+          await $(containerRef).jsx({
+            type: "div",
+            children: ["Loading error!"],
+          });
+        } else if (state === "loading") {
+          await $(containerRef.current).addClass(
+            loadingClassName || "suspense-loading",
+          );
+          if (currentToken !== updateToken) return;
+          // Guard: fallback might be undefined, only call .jsx() if it exists
+          if (fallback) {
             await $(containerRef).jsx(fallback);
-          } else if (state === "loaded") {
-            await $(containerRef.current).addClass(
-              loadedClassName || "suspense-loaded",
-            );
-            if (currentToken !== updateToken) return;
-            await $(containerRef).jsx(childrenToRender as RenderInput);
+          } else {
+            await $(containerRef.current).empty();
           }
-        })();
-      } catch (error) {
+        } else if (state === "loaded") {
+          await $(containerRef.current).addClass(
+            loadedClassName || "suspense-loaded",
+          );
+          if (currentToken !== updateToken) return;
+          await $(containerRef).jsx(childrenToRender as RenderInput);
+        }
+      })().catch((error) => {
         containerRef.updateState("error");
         containerRef.error = error;
 
         if (typeof onError === "function") {
-          // pass the error up to the parent component
           onError(error);
         }
-      }
+      });
     },
     "loading",
   );
@@ -132,15 +137,19 @@ export const Async = ({
     // as the DOM element is not yet mounted (rendered in DOM)
     let isInitial = true;
 
+    // Preserve the outer ref's original updateState to avoid breaking outer store state
+    const outerUpdateState = ref.updateState.bind(ref);
+
     // when the suspense state is updated in outer scope
     // we bridge the update to the internal containerRef
     ref.updateState = (state: AsyncState) => {
+      outerUpdateState(state); // call original first to keep outer .state in sync
       if (!isInitial) {
         containerRef.updateState(state);
       }
     };
     // let's tell the outer scope the initial state
-    ref.updateState("loading");
+    outerUpdateState("loading");
 
     isInitial = false; // render any outer scope updates from now on
   }

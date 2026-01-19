@@ -633,11 +633,13 @@ export class CallChainImpl<
         isMarkup(content, this.Parser)
       ) {
         // Special handling for HTML strings which might produce multiple elements
+        // Clone for multi-target to match jQuery behavior (each target gets its own copy)
         const elements = renderMarkup(content, this.Parser);
-        this.nodes.forEach((el) => {
-          elements.forEach((childEl) =>
-            (el as HTMLElement).appendChild(childEl),
-          );
+        this.nodes.forEach((el, parentIndex) => {
+          elements.forEach((childEl) => {
+            const node = parentIndex === 0 ? childEl : childEl.cloneNode(true);
+            (el as HTMLElement).appendChild(node as Node);
+          });
         });
       } else {
         // Single element handling - clone for multi-target
@@ -696,7 +698,15 @@ export class CallChainImpl<
     return createCall(this, "update", async () => {
       // Check if this is an implicit props update (object with no VNode structure)
       // Only treat it as props-update if the target is in the component registry
-      if (input && typeof input === "object" && !(input instanceof Node)) {
+      // Guard against VNode, Ref, and Dequery objects which pass the "object" check
+      if (
+        input &&
+        typeof input === "object" &&
+        !(input instanceof Node) &&
+        !isJSX(input) &&
+        !isRef(input) &&
+        !isDequery(input)
+      ) {
         let didImplicitUpdate = false;
 
         for (const node of this.nodes) {

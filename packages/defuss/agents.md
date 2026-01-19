@@ -1,6 +1,118 @@
 
 
 <full-context-dump>
+./kitchensink/tsconfig.json:
+```
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "jsx": "react-jsx",
+        "jsxImportSource": "..",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "paths": {
+            "@/*": [
+                "../src/*"
+            ]
+        }
+    },
+    "include": [
+        "./**/*.ts",
+        "./**/*.tsx"
+    ]
+}
+```
+
+./kitchensink/utils.ts:
+```
+/**
+ * Kitchen Sink Test Suite - Shared test utilities
+ */
+
+export const createContainer = (): HTMLDivElement => {
+    const container = document.createElement("div");
+    container.id = `test-container-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    document.body.appendChild(container);
+    return container;
+};
+
+export const cleanup = (container: HTMLElement) => {
+    container.remove();
+};
+
+export const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export const nextTick = () => new Promise((r) => queueMicrotask(() => r(undefined)));
+
+export const waitForCondition = async (
+    check: () => boolean,
+    timeout = 5000,
+    interval = 10
+): Promise<void> => {
+    const start = Date.now();
+    while (!check()) {
+        if (Date.now() - start > timeout) {
+            throw new Error(`Condition not met within ${timeout}ms`);
+        }
+        await wait(interval);
+    }
+};
+
+export const getTextContent = (el: Element | null): string => {
+    return el?.textContent?.trim() ?? "";
+};
+
+export const countElements = (container: Element, selector: string): number => {
+    return container.querySelectorAll(selector).length;
+};
+
+```
+
+./kitchensink/vitest.config.ts:
+```
+import { defineConfig } from "vitest/config";
+import path from "node:path";
+import { playwright } from "@vitest/browser-playwright";
+
+const defussRoot = path.resolve(__dirname, "..");
+
+export default defineConfig({
+    resolve: {
+        alias: {
+            "@": path.resolve(defussRoot, "src"),
+            "defuss": path.resolve(defussRoot, "src/index.ts"),
+            "defuss/jsx-runtime": path.resolve(defussRoot, "src/render/index.ts"),
+            // Add the absolute path pattern that esbuild generates
+            [defussRoot + "/jsx-dev-runtime"]: path.resolve(defussRoot, "src/render/dev/index.ts"),
+            [defussRoot + "/jsx-runtime"]: path.resolve(defussRoot, "src/render/index.ts"),
+        },
+    },
+    esbuild: {
+        jsx: "automatic",
+        jsxImportSource: defussRoot,
+    },
+    test: {
+        name: "kitchensink",
+        root: __dirname,
+        include: ["./*.test.{ts,tsx}"],
+        browser: {
+            enabled: true,
+            provider: playwright(),
+            instances: [
+                { browser: "chromium" }
+            ],
+            headless: true,
+        },
+        testTimeout: 30000,
+        hookTimeout: 10000,
+    },
+});
+
+```
+
 ./package.json:
 ```
 {
@@ -49,7 +161,9 @@
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
     "test:browser": "vitest run --config vitest.browser.config.ts",
+    "kitchensink": "vitest run --config kitchensink/vitest.config.ts",
     "bench": "vitest bench --config vitest.bench.config.ts",
+    "bench:browser": "vitest run --config vitest.browser.config.ts src/__benchmarks__/dom-benchmark.browser.test.tsx",
     "prebuild": "pnpm run clean",
     "build": "node scripts/build.mjs"
   },
@@ -168,6 +282,332 @@ execSync(`npx pkgroll --env.PKG_VERSION=${pkg.version}`, {
 
 ```
 
+./src/__benchmarks__/benchmark-utils.ts:
+```
+// Benchmark utilities for browser DOM benchmarks
+// Following js-framework-benchmark methodology
+
+// --- Data Generation ---
+
+let idCounter = 1;
+
+export interface Row {
+    id: number;
+    label: string;
+    selected?: boolean;
+}
+
+const adjectives = ["pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant", "easy", "angry", "crazy", "helpful", "mushy", "odd", "unsightly", "adorable", "important", "inexpensive", "cheap", "expensive", "fancy"];
+const colours = ["red", "yellow", "blue", "green", "pink", "brown", "purple", "brown", "white", "black", "orange"];
+const nouns = ["table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard"];
+
+function _random(max: number) {
+    return Math.round(Math.random() * 1000) % max;
+}
+
+export function buildData(count: number): Row[] {
+    const data: Row[] = [];
+    for (let i = 0; i < count; i++) {
+        data.push({
+            id: idCounter++,
+            label: `${adjectives[_random(adjectives.length)]} ${colours[_random(colours.length)]} ${nouns[_random(nouns.length)]}`,
+        });
+    }
+    return data;
+}
+
+export function resetIdCounter() {
+    idCounter = 1;
+}
+
+// --- Assertions ---
+
+export function assertElementCount(container: Element, selector: string, count: number) {
+    const elements = container.querySelectorAll(selector);
+    if (elements.length !== count) {
+        throw new Error(`Expected ${count} elements matching "${selector}", found ${elements.length}`);
+    }
+}
+
+export function assertTextContent(container: Element, selector: string, text: string) {
+    const element = container.querySelector(selector);
+    if (!element) {
+        throw new Error(`Element matching "${selector}" not found`);
+    }
+    if (!element.textContent?.includes(text)) {
+        throw new Error(`Expected element "${selector}" to contain "${text}", found "${element.textContent}"`);
+    }
+}
+
+// --- Timing: Mode A (Portable, Double-RAF) ---
+
+/**
+ * Portable Mode A: Double requestAnimationFrame
+ * Measures time from work start to after next paint (approximates commit)
+ */
+export function measureRAF(trigger: () => Promise<void> | void): Promise<number> {
+    return new Promise<number>((resolve) => {
+        requestAnimationFrame(() => {
+            const start = performance.now();
+
+            // Trigger the work
+            const result = trigger();
+
+            // Handle both async and sync triggers
+            Promise.resolve(result).finally(() => {
+                // Double RAF: ensures we're past the paint for the update
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        const end = performance.now();
+                        resolve(end - start);
+                    });
+                });
+            });
+        });
+    });
+}
+
+```
+
+./src/__benchmarks__/components/Table.tsx:
+```
+import type { Row } from "../benchmark-utils.js";
+
+// Simple functional components for the benchmark table
+// Uses defuss JSX factory
+
+interface TableRowProps {
+    row: Row;
+    selected: boolean;
+    onSelect: (id: number) => void;
+    onRemove: (id: number) => void;
+}
+
+export const TableRow = ({ row, selected, onSelect, onRemove }: TableRowProps) => (
+    <tr className={selected ? "danger" : ""}>
+        <td className="col-md-1">{row.id}</td>
+        <td className="col-md-4">
+            <a onClick={() => onSelect(row.id)}>{row.label}</a>
+        </td>
+        <td className="col-md-1">
+            <a onClick={() => onRemove(row.id)}>
+                <span className="remove" aria-hidden="true">x</span>
+            </a>
+        </td>
+        <td className="col-md-6" />
+    </tr>
+);
+
+interface TableProps {
+    rows: Row[];
+    selectedId: number | null;
+    onSelect: (id: number) => void;
+    onRemove: (id: number) => void;
+}
+
+export const Table = ({ rows, selectedId, onSelect, onRemove }: TableProps) => (
+    <div className="container">
+        <div className="jumbotron">
+            <div className="row">
+                <div className="col-md-6">
+                    <h1>Defuss Benchmark</h1>
+                </div>
+            </div>
+        </div>
+        <table className="table table-hover table-striped test-data">
+            <tbody>
+                {rows.map((row) => (
+                    <TableRow
+                        row={row}
+                        selected={row.id === selectedId}
+                        onSelect={onSelect}
+                        onRemove={onRemove}
+                    />
+                ))}
+            </tbody>
+        </table>
+        <span className="preloadicon glyphicon glyphicon-remove" aria-hidden="true" />
+    </div>
+);
+
+```
+
+./src/__benchmarks__/dom-benchmark.browser-bench.tsx:
+```
+import { bench, describe, expect, beforeEach } from "vitest";
+import { renderSync } from "../render/client.js";
+import { buildData, measureRAF, type Row, assertElementCount, assertTextContent, resetIdCounter } from "./benchmark-utils.js";
+import { Table } from "./components/Table.js";
+
+// Re-render based benchmark following js-framework-benchmark methodology
+// Using Mode A (double-RAF) timing for portable results
+
+describe("DOM Benchmark", () => {
+    let container: HTMLElement;
+    let state: { rows: Row[], selectedId: number | null };
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        container = document.createElement("div");
+        container.id = "main";
+        document.body.appendChild(container);
+
+        state = { rows: [], selectedId: null };
+        resetIdCounter();
+
+        // Initial render (empty)
+        renderApp();
+    });
+
+    function renderApp() {
+        const handleSelect = (id: number) => {
+            state.selectedId = id;
+            renderApp();
+        };
+
+        const handleRemove = (id: number) => {
+            const idx = state.rows.findIndex(row => row.id === id);
+            state.rows.splice(idx, 1);
+            renderApp();
+        };
+
+        // Top-level re-render
+        renderSync(
+            <Table
+                rows={state.rows}
+                selectedId={state.selectedId}
+                onSelect={handleSelect}
+                onRemove={handleRemove}
+            />,
+            container
+        );
+    }
+
+    // --- Benchmarks ---
+
+    bench("01_run1k (Create 1,000 rows)", async () => {
+        resetIdCounter();
+        await measureRAF(() => {
+            state.rows = buildData(1000);
+            renderApp();
+        });
+
+        assertElementCount(container, "tbody tr", 1000);
+    }, { iterations: 10 });
+
+    bench("02_replace1k (Replace all rows)", async () => {
+        state.rows = buildData(1000);
+        renderApp();
+
+        await measureRAF(() => {
+            state.rows = buildData(1000);
+            renderApp();
+        });
+
+        assertElementCount(container, "tbody tr", 1000);
+    }, { iterations: 10 });
+
+    bench("03_update10th1k (Update every 10th row)", async () => {
+        state.rows = buildData(1000);
+        renderApp();
+
+        await measureRAF(() => {
+            for (let i = 0; i < state.rows.length; i += 10) {
+                state.rows[i].label += " !!!";
+            }
+            renderApp();
+        });
+
+        assertTextContent(container, "tbody tr:nth-child(1)", "!!!");
+        assertTextContent(container, "tbody tr:nth-child(11)", "!!!");
+    }, { iterations: 10 });
+
+    bench("04_select1k (Select row)", async () => {
+        state.rows = buildData(1000);
+        renderApp();
+
+        await measureRAF(() => {
+            state.selectedId = state.rows[1].id;
+            renderApp();
+        });
+
+        assertElementCount(container, "tr.danger", 1);
+    }, { iterations: 10 });
+
+    bench("05_swap1k (Swap rows)", async () => {
+        state.rows = buildData(1000);
+        renderApp();
+
+        const id1 = state.rows[1].id;
+        const id998 = state.rows[998].id;
+
+        await measureRAF(() => {
+            const temp = state.rows[1];
+            state.rows[1] = state.rows[998];
+            state.rows[998] = temp;
+            renderApp();
+        });
+
+        const rows = container.querySelectorAll("tbody tr");
+        const row1Text = rows[1].textContent;
+        const row998Text = rows[998].textContent;
+
+        expect(row1Text).toContain(String(id998));
+        expect(row998Text).toContain(String(id1));
+    }, { iterations: 10 });
+
+    bench("06_remove_one_1k (Remove one row)", async () => {
+        state.rows = buildData(1000);
+        renderApp();
+        const idToRemove = state.rows[1].id;
+
+        await measureRAF(() => {
+            const idx = state.rows.findIndex(r => r.id === idToRemove);
+            state.rows.splice(idx, 1);
+            renderApp();
+        });
+
+        assertElementCount(container, "tbody tr", 999);
+    }, { iterations: 10 });
+
+    bench("07_create10k (Create 10,000 rows)", async () => {
+        resetIdCounter();
+        await measureRAF(() => {
+            state.rows = buildData(10000);
+            renderApp();
+        });
+
+        assertElementCount(container, "tbody tr", 10000);
+    }, { iterations: 5 });
+
+    bench("08_append1k (Append 1,000 rows)", async () => {
+        state.rows = buildData(1000);
+        renderApp();
+
+        await measureRAF(() => {
+            state.rows.push(...buildData(1000));
+            renderApp();
+        });
+
+        assertElementCount(container, "tbody tr", 2000);
+    }, { iterations: 10 });
+
+    bench("09_clear1k (Clear rows)", async () => {
+        state.rows = buildData(1000);
+        renderApp();
+
+        await measureRAF(() => {
+            state.rows = [];
+            renderApp();
+        });
+
+        assertElementCount(container, "tbody tr", 0);
+    }, { iterations: 10 });
+
+});
+
+```
+
 ./src/async/Async.tsx:
 ```
 import type {
@@ -242,58 +682,63 @@ export const Async = ({
     function onSuspenseUpdate(state: AsyncState) {
       const currentToken = ++updateToken;
 
-      try {
-        if (!containerRef.current) {
-          if (inDevMode) {
-            console.warn(
-              "Suspense container is not mounted yet, but a state update demands a render. State is:",
-              state,
-            );
-          }
-          return;
+      if (!containerRef.current) {
+        if (inDevMode) {
+          console.warn(
+            "Suspense container is not mounted yet, but a state update demands a render. State is:",
+            state,
+          );
         }
-        (async () => {
-          // Chain class removals to reduce await overhead
-          await $(containerRef.current)
-            .removeClass(loadingClassName || "suspense-loading")
-            .removeClass(loadedClassName || "suspense-loaded")
-            .removeClass(errorClassName || "suspense-error");
+        return;
+      }
 
-          // Check for stale update after first await
+      // Use .catch() on the async IIFE to properly catch async errors
+      // (try/catch around an async IIFE does NOT catch async errors)
+      void (async () => {
+        // Chain class removals to reduce await overhead
+        await $(containerRef.current)
+          .removeClass(loadingClassName || "suspense-loading")
+          .removeClass(loadedClassName || "suspense-loaded")
+          .removeClass(errorClassName || "suspense-error");
+
+        // Check for stale update after first await
+        if (currentToken !== updateToken) return;
+
+        if (!children || state === "error") {
+          await $(containerRef.current).addClass(
+            errorClassName || "suspense-error",
+          );
           if (currentToken !== updateToken) return;
-
-          if (!children || state === "error") {
-            await $(containerRef.current).addClass(
-              errorClassName || "suspense-error",
-            );
-            if (currentToken !== updateToken) return;
-            await $(containerRef).jsx({
-              type: "div",
-              children: ["Loading error!"],
-            });
-          } else if (state === "loading") {
-            await $(containerRef.current).addClass(
-              loadingClassName || "suspense-loading",
-            );
-            if (currentToken !== updateToken) return;
+          await $(containerRef).jsx({
+            type: "div",
+            children: ["Loading error!"],
+          });
+        } else if (state === "loading") {
+          await $(containerRef.current).addClass(
+            loadingClassName || "suspense-loading",
+          );
+          if (currentToken !== updateToken) return;
+          // Guard: fallback might be undefined, only call .jsx() if it exists
+          if (fallback) {
             await $(containerRef).jsx(fallback);
-          } else if (state === "loaded") {
-            await $(containerRef.current).addClass(
-              loadedClassName || "suspense-loaded",
-            );
-            if (currentToken !== updateToken) return;
-            await $(containerRef).jsx(childrenToRender as RenderInput);
+          } else {
+            await $(containerRef.current).empty();
           }
-        })();
-      } catch (error) {
+        } else if (state === "loaded") {
+          await $(containerRef.current).addClass(
+            loadedClassName || "suspense-loaded",
+          );
+          if (currentToken !== updateToken) return;
+          await $(containerRef).jsx(childrenToRender as RenderInput);
+        }
+      })().catch((error) => {
         containerRef.updateState("error");
         containerRef.error = error;
 
         if (typeof onError === "function") {
-          // pass the error up to the parent component
           onError(error);
         }
-      }
+      });
     },
     "loading",
   );
@@ -304,15 +749,19 @@ export const Async = ({
     // as the DOM element is not yet mounted (rendered in DOM)
     let isInitial = true;
 
+    // Preserve the outer ref's original updateState to avoid breaking outer store state
+    const outerUpdateState = ref.updateState.bind(ref);
+
     // when the suspense state is updated in outer scope
     // we bridge the update to the internal containerRef
     ref.updateState = (state: AsyncState) => {
+      outerUpdateState(state); // call original first to keep outer .state in sync
       if (!isInitial) {
         containerRef.updateState(state);
       }
     };
     // let's tell the outer scope the initial state
-    ref.updateState("loading");
+    outerUpdateState("loading");
 
     isInitial = false; // render any outer scope updates from now on
   }
@@ -429,7 +878,8 @@ import {
   removeDelegatedEvent,
   clearDelegatedEvents,
   clearDelegatedEventsDeep,
-  getRegisteredEventTypes,
+  getRegisteredEventKeys,
+  removeDelegatedEventByKey,
   parseEventPropName,
 } from "../render/delegated-events.js";
 import type { NodeType } from "../render/index.js";
@@ -719,21 +1169,31 @@ function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals
     }
   }
 
-  // Remove stale event handlers: compute registered - nextVNodeEvents
-  const registeredEvents = getRegisteredEventTypes(el as HTMLElement);
-  const nextEventTypes = new Set<string>();
+  // Remove stale event handlers: compute registered phase keys - next vnode phase keys
+  // This is phase-aware: onClick + onClickCapture → onClickCapture only will correctly
+  // remove the bubble handler while keeping the capture handler
+  const registeredKeys = getRegisteredEventKeys(el as HTMLElement);
+  const nextEventKeys = new Set<string>();
   for (const propName of Object.keys(nextAttrs)) {
     const parsed = parseEventPropName(propName);
-    if (parsed) nextEventTypes.add(parsed.eventType);
+    if (parsed) {
+      const phase = parsed.capture ? "capture" : "bubble";
+      nextEventKeys.add(`${parsed.eventType}:${phase}`);
+    }
   }
-  for (const eventType of registeredEvents) {
-    if (!nextEventTypes.has(eventType)) {
-      removeDelegatedEvent(el as HTMLElement, eventType);
+  for (const key of registeredKeys) {
+    if (!nextEventKeys.has(key)) {
+      const [eventType, phase] = key.split(":");
+      removeDelegatedEventByKey(el as HTMLElement, eventType, phase as "bubble" | "capture");
     }
   }
 
   // set new attributes (includes ref + delegated events via renderer.setAttribute)
   renderer.setAttributes(vnode, el);
+
+  // Trigger onMount lifecycle for morphed elements that have a new onMount callback
+  // This ensures onMount fires on route changes even when elements are morphed in place
+  handleLifecycleEventsForOnMount(el as HTMLElement);
 
   // dangerouslySetInnerHTML => skip child reconciliation
   const d = vnode.attributes?.dangerouslySetInnerHTML;
@@ -1877,11 +2337,13 @@ export class CallChainImpl<
         isMarkup(content, this.Parser)
       ) {
         // Special handling for HTML strings which might produce multiple elements
+        // Clone for multi-target to match jQuery behavior (each target gets its own copy)
         const elements = renderMarkup(content, this.Parser);
-        this.nodes.forEach((el) => {
-          elements.forEach((childEl) =>
-            (el as HTMLElement).appendChild(childEl),
-          );
+        this.nodes.forEach((el, parentIndex) => {
+          elements.forEach((childEl) => {
+            const node = parentIndex === 0 ? childEl : childEl.cloneNode(true);
+            (el as HTMLElement).appendChild(node as Node);
+          });
         });
       } else {
         // Single element handling - clone for multi-target
@@ -1940,7 +2402,15 @@ export class CallChainImpl<
     return createCall(this, "update", async () => {
       // Check if this is an implicit props update (object with no VNode structure)
       // Only treat it as props-update if the target is in the component registry
-      if (input && typeof input === "object" && !(input instanceof Node)) {
+      // Guard against VNode, Ref, and Dequery objects which pass the "object" check
+      if (
+        input &&
+        typeof input === "object" &&
+        !(input instanceof Node) &&
+        !isJSX(input) &&
+        !isRef(input) &&
+        !isDequery(input)
+      ) {
         let didImplicitUpdate = false;
 
         for (const node of this.nodes) {
@@ -3707,7 +4177,7 @@ export const T = Trans;
 ./src/index.ts:
 ```
 // defuss - explicit simplicity for the web
-
+console.log("defuss 3.0.0 alpha")
 export * from "@/common/index.js";
 export * from "@/render/index.js";
 export * from "@/dequery/index.js";
@@ -4660,6 +5130,53 @@ export const getRegisteredEventTypes = (element: HTMLElement): Set<string> => {
     return new Set(byEvent.keys());
 };
 
+/**
+ * Get all event keys with phases currently registered on an element.
+ * Returns keys like "click:bubble", "click:capture" for precise phase-aware removal.
+ */
+export const getRegisteredEventKeys = (element: HTMLElement): Set<string> => {
+    const byEvent = elementHandlerMap.get(element);
+    if (!byEvent) return new Set();
+
+    const keys = new Set<string>();
+    for (const [eventType, entry] of byEvent) {
+        if (entry.bubble || entry.bubbleSet?.size) keys.add(`${eventType}:bubble`);
+        if (entry.capture || entry.captureSet?.size) keys.add(`${eventType}:capture`);
+    }
+    return keys;
+};
+
+/**
+ * Remove delegated event handler for a specific phase only.
+ * Used by patchElementInPlace to precisely remove stale handlers when vnode changes from
+ * onClick + onClickCapture → onClickCapture only.
+ */
+export const removeDelegatedEventByKey = (
+    element: HTMLElement,
+    eventType: string,
+    phase: "bubble" | "capture",
+): void => {
+    const byEvent = elementHandlerMap.get(element);
+    if (!byEvent) return;
+
+    const entry = byEvent.get(eventType);
+    if (!entry) return;
+
+    if (phase === "capture") {
+        entry.capture = undefined;
+        entry.captureSet = undefined;
+    } else {
+        entry.bubble = undefined;
+        entry.bubbleSet = undefined;
+    }
+
+    // Clean up entry if empty
+    const isEmpty = !entry.capture && !entry.bubble &&
+        (!entry.captureSet || entry.captureSet.size === 0) &&
+        (!entry.bubbleSet || entry.bubbleSet.size === 0);
+    if (isEmpty) byEvent.delete(eventType);
+};
+
 ```
 
 ./src/render/dev/index.ts:
@@ -4782,10 +5299,11 @@ export const jsx = (
   }
 
   // extract children from attributes and ensure it's always an array
-  // Note: only filter null/undefined, keep 0, "", false as valid children
+  // Filter null/undefined/booleans to match update/hydrate behavior
+  // (booleans render as nothing, not as "true"/"false" text)
   let children: Array<VNodeChild> = (
     attributes?.children ? [].concat(attributes.children) : []
-  ).filter((c) => c !== null && c !== undefined);
+  ).filter((c) => c !== null && c !== undefined && typeof c !== "boolean");
   delete attributes?.children;
 
   children = filterComments(
@@ -4960,7 +5478,8 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
           }
         }
 
-        if (virtualNode.children) {
+        // Skip child creation when dangerouslySetInnerHTML is used (matches React semantics)
+        if (virtualNode.children && !virtualNode.attributes?.dangerouslySetInnerHTML) {
           renderer.createChildElements(virtualNode.children, newEl as Element);
         }
 
@@ -4996,6 +5515,12 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
       for (let i = 0; i < virtualChildren.length; i++) {
         const virtualChild = virtualChildren[i];
+
+        // Skip booleans entirely - {true} and {false} render nothing (React/JSX semantics)
+        if (typeof virtualChild === "boolean") {
+          continue;
+        }
+
         if (
           virtualChild === null ||
           (typeof virtualChild !== "object" &&
@@ -5229,9 +5754,49 @@ export const globalScopeDomApis = (window: Window, document: Document) => {
   globalThis.__defuss_window = window;
 };
 
+/**
+ * React-compatible render function.
+ * Renders JSX content into a container element using defuss' DOM morphing engine.
+ * 
+ * @example
+ * ```tsx
+ * import { render, $ } from "defuss";
+ * 
+ * const App = () => <div>Hello World</div>;
+ * 
+ * // Using with $ selector
+ * render(<App />, $("#app").current);
+ * 
+ * // Using with direct element
+ * render(<App />, document.getElementById("app"));
+ * ```
+ */
+export const render = (
+  jsx: SyncRenderInput,
+  container: Element | null | undefined,
+): void => {
+  if (!container) {
+    console.warn("render: container is null or undefined");
+    return;
+  }
+
+  const globals: Globals = {
+    window: container.ownerDocument?.defaultView ?? (globalThis as unknown as Window),
+  } as Globals;
+
+  // Use updateDomWithVdom for intelligent DOM morphing (preserves state, event listeners, etc.)
+  updateDomWithVdom(container as HTMLElement, jsx as RenderInput, globals);
+};
+
 export const isJSX = (o: any): boolean => {
   if (o === null || typeof o !== "object") return false;
-  if (Array.isArray(o)) return o.every(isJSX);
+  // Arrays are valid JSX - fragments and child arrays
+  // Each element can be a VNode, string, or number (text nodes)
+  if (Array.isArray(o)) {
+    return o.every((item) =>
+      isJSX(item) || typeof item === "string" || typeof item === "number"
+    );
+  }
   if (typeof o.type === "string") return true;
   if (typeof o.type === "function") return true;
   if (typeof o.attributes === "object" && typeof o.children === "object")
@@ -5305,13 +5870,19 @@ async function performCoreDomUpdate<NT>(
     processedInput = (processedInput as Ref<NodeType>).current;
   }
 
+  // Helper to derive globals from an element (SSR/multi-window compatible)
+  const getGlobalsFromElement = (el: NodeType): Globals => {
+    const win = (el as Element).ownerDocument?.defaultView;
+    return (win as unknown as Globals) ?? (globalThis as unknown as Globals);
+  };
+
   if (processedInput instanceof Node) {
     // Convert DOM node to VNode and use the intelligent updateDomWithVdom
     // This preserves existing DOM structure and event listeners
     const vnode = domNodeToVNode(processedInput);
     nodes.forEach((el) => {
       if (el) {
-        updateDomWithVdom(el as HTMLElement, vnode, globalThis as Globals);
+        updateDomWithVdom(el as HTMLElement, vnode, getGlobalsFromElement(el));
       }
     });
     return;
@@ -5324,7 +5895,7 @@ async function performCoreDomUpdate<NT>(
       const vNodes = htmlStringToVNodes(processedInput, Parser);
       nodes.forEach((el) => {
         if (el) {
-          updateDomWithVdom(el as HTMLElement, vNodes, globalThis as Globals);
+          updateDomWithVdom(el as HTMLElement, vNodes, getGlobalsFromElement(el));
         }
       });
     } else {
@@ -5335,7 +5906,7 @@ async function performCoreDomUpdate<NT>(
           updateDomWithVdom(
             el as HTMLElement,
             processedInput as string,
-            globalThis as Globals,
+            getGlobalsFromElement(el),
           );
         }
       });
@@ -5349,7 +5920,7 @@ async function performCoreDomUpdate<NT>(
         updateDomWithVdom(
           el as HTMLElement,
           processedInput as RenderInput,
-          globalThis as Globals,
+          getGlobalsFromElement(el),
         );
       }
     });
@@ -5357,6 +5928,7 @@ async function performCoreDomUpdate<NT>(
     console.warn("update: unsupported content type", processedInput);
   }
 }
+
 
 export async function updateDom<NT>(
   input:
@@ -6344,6 +6916,53 @@ export default defineConfig({
 
 ```
 
+./vitest.browser-bench.config.ts:
+```
+import { defineConfig } from "vitest/config";
+import { playwright } from "@vitest/browser-playwright";
+
+/**
+ * Browser-based benchmark configuration using Playwright with Chrome headless.
+ * Run with: pnpm bench:browser
+ *
+ * NOTE: This separates benchmarks from standard tests to avoid pollution.
+ */
+export default defineConfig({
+    esbuild: {
+        target: "es2022",
+    },
+    resolve: {
+        conditions: ["benchmark", "browser", "development", "default", "module"],
+    },
+    test: {
+        browser: {
+            enabled: true,
+            provider: playwright(),
+            instances: [
+                { browser: "chromium" }
+            ],
+            headless: true,
+            // Enable CDP support for performance metrics
+            // We'll access the CDP session manually in the tests
+        },
+        benchmark: {
+            include: ["**/*.browser-bench.{ts,tsx}"],
+            exclude: ["**/node_modules/**", "**/dist/**"],
+            // A bit more time for large DOM operations if needed
+
+        },
+        // We might need longer timeouts for big benchmark suites
+        testTimeout: 20000,
+        hookTimeout: 20000,
+        teardownTimeout: 20000,
+        include: ["**/*.browser-bench.{ts,tsx}"],
+        exclude: ["**/kitchensink/**", "**/node_modules/**", "**/dist/**"],
+        globals: true,
+    },
+});
+
+```
+
 ./vitest.browser.config.ts:
 ```
 import { defineConfig } from "vitest/config";
@@ -6369,6 +6988,7 @@ export default defineConfig({
         testTimeout: 60000,
         include: ["**/*.test.{ts,tsx}"],
         exclude: [
+            "**/kitchensink/**",
             "**/node_modules/**",
             "**/dist/**",
             // SSR-specific tests that don't work in real browser
@@ -6396,7 +7016,7 @@ export default defineConfig({
     environment: "happy-dom",
     testTimeout: 290000, // 290 seconds per test
     include: ["**/*.test.{ts,tsx}"],
-    exclude: ["**/node_modules/**", "**/dist/**", "**/*.md"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/*.md", "**/kitchensink/*"],
     clearMocks: true,
     globals: true,
     coverage: {

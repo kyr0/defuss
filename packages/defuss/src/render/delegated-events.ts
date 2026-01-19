@@ -328,3 +328,50 @@ export const getRegisteredEventTypes = (element: HTMLElement): Set<string> => {
     if (!byEvent) return new Set();
     return new Set(byEvent.keys());
 };
+
+/**
+ * Get all event keys with phases currently registered on an element.
+ * Returns keys like "click:bubble", "click:capture" for precise phase-aware removal.
+ */
+export const getRegisteredEventKeys = (element: HTMLElement): Set<string> => {
+    const byEvent = elementHandlerMap.get(element);
+    if (!byEvent) return new Set();
+
+    const keys = new Set<string>();
+    for (const [eventType, entry] of byEvent) {
+        if (entry.bubble || entry.bubbleSet?.size) keys.add(`${eventType}:bubble`);
+        if (entry.capture || entry.captureSet?.size) keys.add(`${eventType}:capture`);
+    }
+    return keys;
+};
+
+/**
+ * Remove delegated event handler for a specific phase only.
+ * Used by patchElementInPlace to precisely remove stale handlers when vnode changes from
+ * onClick + onClickCapture → onClickCapture only.
+ */
+export const removeDelegatedEventByKey = (
+    element: HTMLElement,
+    eventType: string,
+    phase: "bubble" | "capture",
+): void => {
+    const byEvent = elementHandlerMap.get(element);
+    if (!byEvent) return;
+
+    const entry = byEvent.get(eventType);
+    if (!entry) return;
+
+    if (phase === "capture") {
+        entry.capture = undefined;
+        entry.captureSet = undefined;
+    } else {
+        entry.bubble = undefined;
+        entry.bubbleSet = undefined;
+    }
+
+    // Clean up entry if empty
+    const isEmpty = !entry.capture && !entry.bubble &&
+        (!entry.captureSet || entry.captureSet.size === 0) &&
+        (!entry.bubbleSet || entry.bubbleSet.size === 0);
+    if (isEmpty) byEvent.delete(eventType);
+};

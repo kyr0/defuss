@@ -36,6 +36,7 @@ export default defineConfig({
         hookTimeout: 20000,
         teardownTimeout: 20000,
         include: ["**/*.browser-bench.{ts,tsx}"],
+        exclude: ["**/kitchensink/**", "**/node_modules/**", "**/dist/**"],
         globals: true,
     },
 });
