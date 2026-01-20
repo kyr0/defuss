@@ -17,6 +17,8 @@ import {
   lstatSync,
   readlinkSync,
   symlinkSync,
+  readFileSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 
@@ -123,6 +125,9 @@ export const performSparseCheckout = (
     console.log("Copying files to the destination directory...");
     copyDirectoryContents(subdirPath, targetPath);
 
+    console.log("Replacing workspace:* versions with latest npm versions...");
+    replaceWorkspaceVersions(targetPath);
+
     console.log("Cleaning up temporary directory...");
     rmSync(tempDir, { recursive: true, force: true });
 
@@ -143,6 +148,67 @@ export const performSparseCheckout = (
     process.exit(1);
   }
 };
+
+/**
+ * Gets the latest version of a package from npm.
+ */
+function getNpmLatestVersion(packageName: string): string | null {
+  const result = spawnSync("npm", ["view", packageName, "version"], {
+    encoding: "utf-8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
+  if (result.status === 0 && result.stdout) {
+    return result.stdout.trim();
+  }
+  return null;
+}
+
+/**
+ * Replaces all "workspace:*" versions in the root package.json with the latest npm versions.
+ */
+function replaceWorkspaceVersions(targetPath: string): void {
+  const packageJsonPath = join(targetPath, "package.json");
+
+  if (!existsSync(packageJsonPath)) {
+    console.log("No package.json found in the root, skipping workspace version replacement.");
+    return;
+  }
+
+  const packageJsonContent = readFileSync(packageJsonPath, "utf-8");
+  const packageJson = JSON.parse(packageJsonContent);
+
+  let hasChanges = false;
+
+  const depTypes = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
+
+  for (const depType of depTypes) {
+    const deps = packageJson[depType];
+    if (!deps || typeof deps !== "object") continue;
+
+    for (const [pkgName, version] of Object.entries(deps)) {
+      if (typeof version === "string" && version.startsWith("workspace:")) {
+        console.log(`Resolving latest npm version for ${pkgName}...`);
+        const latestVersion = getNpmLatestVersion(pkgName);
+
+        if (latestVersion) {
+          console.log(`  ${pkgName}: workspace:* -> ^${latestVersion}`);
+          deps[pkgName] = `^${latestVersion}`;
+          hasChanges = true;
+        } else {
+          console.warn(`  Warning: Could not fetch latest version for ${pkgName}, keeping workspace:* reference.`);
+        }
+      }
+    }
+  }
+
+  if (hasChanges) {
+    writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n", "utf-8");
+    console.log("Updated package.json with resolved npm versions.");
+  } else {
+    console.log("No workspace:* versions found in package.json.");
+  }
+}
 
 /**
  * Recursively copies all files and directories from `source` to `destination`.

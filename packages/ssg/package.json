@@ -28,7 +28,10 @@
     "build": "pkgroll",
     "cli-build": "node ./dist/cli.mjs build",
     "cli-serve": "node ./dist/cli.mjs serve",
-    "test": "echo 'No tests available'"
+    "test": "echo 'No tests available'",
+    "bench": "npx autocannon -p 32 -w 8 -c 200 -d 20 -m POST -H \"content-type: application/json\" -b '{\"hello\":\"world\"}' http://127.0.0.1:3000/body",
+    "start": "tsx src/dynamic.ts",
+    "start:lb": "tsx scripts/lb.ts"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -89,8 +92,21 @@
     "@types/serve-static": "^1.15.8",
     "@types/ws": "^8.18.1",
     "chokidar": "^4.0.3",
-    "defuss": "^2.1.11",
-    "defuss-runtime": "^1.2.1",
+    "create-defuss": "workspace:*",
+    "defuss": "workspace:^",
+    "defuss-astro": "workspace:*",
+    "defuss-db": "workspace:*",
+    "defuss-desktop": "workspace:*",
+    "defuss-dson": "workspace:*",
+    "defuss-env": "workspace:*",
+    "defuss-jwt": "workspace:*",
+    "defuss-rpc": "workspace:*",
+    "defuss-runtime": "workspace:^",
+    "defuss-search": "workspace:*",
+    "defuss-ssg": "workspace:*",
+    "defuss-transval": "workspace:*",
+    "defuss-ui": "workspace:*",
+    "defuss-vite": "workspace:*",
     "esbuild": "^0.25.9",
     "express": "^5.1.0",
     "fast-glob": "^3.3.3",
@@ -104,12 +120,16 @@
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
     "serve-static": "^2.2.0",
+    "ultimate-express": "^2.0.15",
     "unist-util-visit": "^5.0.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@types/autocannon": "^7.12.7",
+    "autocannon": "^8.0.0",
     "happy-dom": "^15.11.7",
     "pkgroll": "^2.5.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.6.3"
   }
 }

@@ -108,19 +108,16 @@ export const Menu = () => {
   Router.onRouteChange(async () => {
     console.log("Router.onRouteChange called");
     // the following is a web component and defuss can't handle that?
-    const list = document.querySelector("#inbox-list");
-    if (list) {
-      // TODO: fixme, fix defuss-dequery's empty() impl?!
-      list.innerHTML = "";
-      await $(list).update(MenuList());
+    if (listRef.current) {
+      await $(listRef).update(MenuList());
     }
   });
 
   return (
     <ion-menu content-id="main" type="overlay">
       <ion-content>
-        <ion-list id="inbox-list" ref={listRef}>
-          <MenuList />
+        <ion-list id="inbox-list" >
+          <MenuList ref={listRef} />
         </ion-list>
 
         <ion-list id="labels-list">

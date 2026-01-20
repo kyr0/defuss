@@ -14,6 +14,9 @@ export interface RouterSlotProps extends Props {
   /** to override the tag name used for the router slot */
   tag?: string;
 
+  /** to override the default id 'router-slot' */
+  id?: string;
+
   /** to identify/select the root DOM element or style it, W3C naming */
   class?: string;
 
@@ -39,6 +42,7 @@ export const RouterSlot = ({
   router = Router,
   children,
   RouterOutlet,
+  id,
   transitionConfig = {
     type: "fade",
     duration: 25,
@@ -49,6 +53,9 @@ export const RouterSlot = ({
   const { tag, ...attributesWithoutTag } = attributes;
   const ref: Ref<NodeType> = createRef();
 
+  // Use provided id or fall back to default
+  const slotId = id ?? RouterSlotId;
+
   // by using this component, we automatically switch to slot-refresh strategy
   router.strategy = "slot-refresh";
   router.attachPopStateHandler();
@@ -58,9 +65,9 @@ export const RouterSlot = ({
     await $(ref).update(RouterOutlet(), transitionConfig);
   });
 
-  if (document.getElementById(RouterSlotId)) {
+  if (document.getElementById(slotId)) {
     console.warn(
-      `It seems there's more than one <RouterSlot /> components defined as an element with id #${RouterSlotId} already exists in the DOM.`,
+      `It seems there's more than one <RouterSlot /> components defined as an element with id #${slotId} already exists in the DOM.`,
     );
   }
 
@@ -69,7 +76,7 @@ export const RouterSlot = ({
     type: attributes.tag || "div",
     attributes: {
       ...attributesWithoutTag,
-      id: RouterSlotId,
+      id: slotId,
       ref,
     },
   };

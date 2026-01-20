@@ -36,9 +36,6 @@ export interface AsyncProps extends Props {
   /** Store this with createRef() to update() the Suspense state */
   ref?: AsyncStateRef;
 
-  /** The async content to display when loaded */
-  render?: () => Promise<RenderInput>;
-
   /** to override the name of the .suspense-loading transition CSS class name */
   loadingClassName?: string;
 

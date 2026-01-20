@@ -118,6 +118,7 @@ export const setupRouter = (
 ): Router => {
   const routeRegistrations: Array<RouteRegistration> = [];
   let currentPath = ""; // Track current path for popstate events
+  let popAttached = false; // Guard to prevent stacking popstate listeners
 
   // safe SSR rendering, and fine default for client side
   if (typeof window !== "undefined" && !windowImpl) {
@@ -190,11 +191,13 @@ export const setupRouter = (
       // Remove popstate event listener when router is destroyed
       if (windowImpl && api.strategy === "slot-refresh") {
         windowImpl.removeEventListener("popstate", handlePopState);
+        popAttached = false;
       }
     },
     attachPopStateHandler() {
-      if (windowImpl && api.strategy === "slot-refresh") {
+      if (windowImpl && api.strategy === "slot-refresh" && !popAttached) {
         windowImpl.addEventListener("popstate", handlePopState);
+        popAttached = true;
       }
     },
   };

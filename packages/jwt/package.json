@@ -33,15 +33,29 @@
     "test": "vitest --run  --coverage"
   },
   "dependencies": {
-    "jose": "^6.1.0",
-    "defuss-env": "^1.0.2"
+    "create-defuss": "workspace:*",
+    "defuss": "workspace:*",
+    "defuss-astro": "workspace:*",
+    "defuss-db": "workspace:*",
+    "defuss-desktop": "workspace:*",
+    "defuss-dson": "workspace:*",
+    "defuss-env": "workspace:^",
+    "defuss-jwt": "workspace:*",
+    "defuss-rpc": "workspace:*",
+    "defuss-runtime": "workspace:*",
+    "defuss-search": "workspace:*",
+    "defuss-ssg": "workspace:*",
+    "defuss-transval": "workspace:*",
+    "defuss-ui": "workspace:*",
+    "defuss-vite": "workspace:*",
+    "jose": "^6.1.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.9",
+    "@vitest/coverage-v8": "^4.0.17",
     "pkgroll": "^2.21.5",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.17",
-    "@vitest/coverage-v8": "^4.0.17"
+    "vitest": "^4.0.17"
   },
   "exports": {
     ".": {

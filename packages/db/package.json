@@ -73,17 +73,31 @@
   },
   "dependencies": {
     "@libsql/client": "^0.15.7",
+    "create-defuss": "workspace:*",
+    "defuss": "workspace:*",
+    "defuss-astro": "workspace:*",
+    "defuss-db": "workspace:*",
+    "defuss-desktop": "workspace:*",
+    "defuss-dson": "workspace:*",
+    "defuss-env": "workspace:^",
+    "defuss-jwt": "workspace:*",
+    "defuss-rpc": "workspace:*",
+    "defuss-runtime": "workspace:*",
+    "defuss-search": "workspace:*",
+    "defuss-ssg": "workspace:*",
+    "defuss-transval": "workspace:*",
+    "defuss-ui": "workspace:*",
+    "defuss-vite": "workspace:*",
     "dexie": "^4.0.11",
-    "defuss-env": "^1.0.2",
     "fake-indexeddb": "^6.0.1",
     "mongodb": "^6.16.0"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.17",
     "happy-dom": "^20.3.1",
     "pkgroll": "^2.21.5",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.17",
-    "@vitest/coverage-v8": "^4.0.17"
+    "vitest": "^4.0.17"
   }
 }

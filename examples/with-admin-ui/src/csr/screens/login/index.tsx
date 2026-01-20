@@ -161,13 +161,7 @@ export function LoginScreen() {
         }
     };
 
-    // Bind keydown to form
-    $(formRef).query("input").on("keydown", (e) => {
-        if ((e as KeyboardEvent).key === "Enter") {
-            e.preventDefault();
-            handleSignIn();
-        }
-    });
+    // Event binding moved to onMount lifecycle - see form element below
 
     return (
         <div className="w-full max-w-sm">
@@ -178,7 +172,21 @@ export function LoginScreen() {
                 </p>
             </div>
 
-            <form className="mt-6 space-y-6" action="#" ref={formRef} method="POST">
+            <form
+                className="mt-6 space-y-6"
+                action="#"
+                ref={formRef}
+                method="POST"
+                onMount={() => {
+                    // Bind keydown to form inputs AFTER form is mounted to DOM
+                    $(formRef).query("input").on("keydown", (e) => {
+                        if ((e as KeyboardEvent).key === "Enter") {
+                            e.preventDefault();
+                            handleSignIn();
+                        }
+                    });
+                }}
+            >
                 {/* General Errors */}
                 <div ref={errorContainerRef} className="hidden"></div>
 

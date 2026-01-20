@@ -1,0 +1,27 @@
+services:
+  app:
+    container_name: defuss-ssg
+    build: .
+    environment:
+      WORKERS: 8
+      BASE_PORT: 3001
+      HOST: 0.0.0.0
+    expose:
+      - "3001"
+      - "3002"
+      - "3003"
+      - "3004"
+      - "3005"
+      - "3006"
+      - "3007"
+      - "3008"
+
+  caddy:
+    container_name: defuss-ssg-caddy
+    image: docker.io/library/caddy:latest
+    depends_on:
+      - app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro

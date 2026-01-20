@@ -231,13 +231,20 @@ function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
     const newTag = typeof child.type === "string" ? child.type.toLowerCase() : "";
     if (!newTag || oldTag !== newTag) return false;
 
-    // If vnode has class/className, require exact class match to prevent element reuse accidents
+    // If vnode has class/className, check that all VNode classes are present in the DOM element
+    // This is lenient matching - DOM element may have extra classes (e.g. 'hydrated' from Ionic)
+    // but VNode's classes must all be present
     const vnodeClass =
       (child.attributes as any)?.className ??
       (child.attributes as any)?.class;
 
-    if (typeof vnodeClass === "string") {
-      if ((el.getAttribute("class") ?? "") !== vnodeClass) return false;
+    if (typeof vnodeClass === "string" && vnodeClass.length > 0) {
+      const domClasses = new Set((el.getAttribute("class") ?? "").split(/\s+/).filter(Boolean));
+      const vnodeClasses = vnodeClass.split(/\s+/).filter(Boolean);
+      // All VNode classes must be present in DOM (but DOM can have extras like 'hydrated')
+      for (const cls of vnodeClasses) {
+        if (!domClasses.has(cls)) return false;
+      }
     }
 
     return true;
@@ -252,20 +259,21 @@ function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
 function createDomFromChild(
   child: ValidChild,
   globals: Globals,
-): Node | Array<Node> | undefined {
+): Array<Node> | undefined {
   const renderer = getRenderer(globals.window.document);
 
   if (child == null) return undefined;
 
   if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
-    return globals.window.document.createTextNode(String(child));
+    return [globals.window.document.createTextNode(String(child))];
   }
 
   // create without parent (we'll insert manually and run lifecycle hooks afterwards)
   const created = renderer.createElementOrElements(child) as Node | Array<Node> | undefined;
 
   if (!created) return undefined;
-  return Array.isArray(created) ? (created as Array<Node>) : [created];
+  const nodes = Array.isArray(created) ? created : [created];
+  return nodes.filter(Boolean) as Array<Node>;
 }
 
 /********************************************************
@@ -425,10 +433,12 @@ export function updateDomWithVdom(
   newVDOM: RenderInput,
   globals: Globals,
 ): void {
-  // If element has shadow DOM, update shadow root instead of light DOM
-  // This fixes the shadow DOM update bug where updates created duplicates
+  // Custom elements (hyphenated tags) use light DOM for slotted content.
+  // Other elements with shadowRoot should target the shadow root.
+  const el = parentElement as HTMLElement;
+  const isCustomElement = el.tagName.includes("-");
   const targetRoot: ParentNode & Node =
-    (parentElement as HTMLElement).shadowRoot ?? parentElement;
+    el.shadowRoot && !isCustomElement ? el.shadowRoot : parentElement;
 
   const nextChildren = normalizeChildren(newVDOM);
 

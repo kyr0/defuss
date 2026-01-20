@@ -21,15 +21,18 @@
     "clean": "rm -rf ./dist",
     "pretest": "pnpm run build",
     "prebuild": "pnpm run clean",
-    "build": "pkgroll --minify --sourcemap"
+    "build": "pkgroll --minify --sourcemap",
+    "e2e": "pnpm run build && node ./dist/e2e.mjs"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
-  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/cli.d.ts",
       "import": "./dist/cli.mjs",
       "require": "./dist/cli.cjs"
+    },
+    "./e2e": {
+      "import": "./dist/e2e.mjs"
     }
   },
   "bin": {
@@ -43,10 +46,24 @@
     "assets"
   ],
   "devDependencies": {
-    "pkgroll": "^2.5.1",
-    "typescript": "^5.6.3"
+    "pkgroll": "^2.21.5",
+    "typescript": "^5.9.3"
   },
-  "engines": {
-    "node": ">=18.17.1"
+  "dependencies": {
+    "create-defuss": "workspace:*",
+    "defuss": "workspace:*",
+    "defuss-astro": "workspace:*",
+    "defuss-db": "workspace:*",
+    "defuss-desktop": "workspace:*",
+    "defuss-dson": "workspace:*",
+    "defuss-env": "workspace:*",
+    "defuss-jwt": "workspace:*",
+    "defuss-rpc": "workspace:*",
+    "defuss-runtime": "workspace:*",
+    "defuss-search": "workspace:*",
+    "defuss-ssg": "workspace:*",
+    "defuss-transval": "workspace:*",
+    "defuss-ui": "workspace:*",
+    "defuss-vite": "workspace:*"
   }
 }

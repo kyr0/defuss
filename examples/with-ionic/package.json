@@ -10,15 +10,28 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "defuss": "workspace:*",
     "@astrojs/node": "^9.5.2",
-    "vite": "^6.4.1",
-    "defuss-vite": "^1.1.3",
     "@ionic/core": "^8.5.3",
     "@ionic/react": "^8.5.3",
-    "lightningcss": "^1.30.2",
     "browserslist": "^4.28.1",
-    "ionicons": "^7.4.0"
+    "create-defuss": "workspace:*",
+    "defuss": "workspace:*",
+    "defuss-astro": "workspace:*",
+    "defuss-db": "workspace:*",
+    "defuss-desktop": "workspace:*",
+    "defuss-dson": "workspace:*",
+    "defuss-env": "workspace:*",
+    "defuss-jwt": "workspace:*",
+    "defuss-rpc": "workspace:*",
+    "defuss-runtime": "workspace:*",
+    "defuss-search": "workspace:*",
+    "defuss-ssg": "workspace:*",
+    "defuss-transval": "workspace:*",
+    "defuss-ui": "workspace:*",
+    "defuss-vite": "workspace:^",
+    "ionicons": "^7.4.0",
+    "lightningcss": "^1.30.2",
+    "vite": "^6.4.1"
   },
   "packageManager": "pnpm@9.13.2"
 }

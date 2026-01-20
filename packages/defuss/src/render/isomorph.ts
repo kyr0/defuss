@@ -116,9 +116,60 @@ export const jsx = (
     return filterComments(children) as Array<VNode>;
   }
 
+  // Handle async function components with fallback prop
+  // This enables: <AsyncComponent fallback={<div>Loading...</div>} />
+  if (typeof type === "function" && type.constructor.name === "AsyncFunction") {
+    const fallback = attributes?.fallback;
+
+    // Extract fallback from attributes so it's not passed to the async component
+    const propsForAsyncFn = { ...attributes };
+    delete propsForAsyncFn.fallback;
+
+    // Create onMount handler that will:
+    // 1. Execute the async function component
+    // 2. Update the container with the resolved content
+    const onMount = async (containerEl: HTMLElement) => {
+      try {
+        // Execute the async component function with props
+        const resolvedVNode = await type({
+          ...propsForAsyncFn,
+          children,
+        });
+
+        // Import updateDomWithVdom dynamically to update the container
+        // The container element will have its content replaced with the resolved VNode
+        if (containerEl && resolvedVNode) {
+          const globals: Globals = {
+            window: containerEl.ownerDocument?.defaultView ?? (globalThis as unknown as Window),
+          } as Globals;
+          updateDomWithVdom(containerEl, resolvedVNode, globals);
+        }
+      } catch (error) {
+        console.error("[defuss] Async component error:", error);
+        if (containerEl) {
+          containerEl.textContent = `Error: ${(error as Error)?.message || error}`;
+        }
+      }
+    };
+
+    // Return a wrapper div that shows fallback initially, then updates via onMount
+    return {
+      type: "div",
+      attributes: {
+        key,
+        onMount,
+        class: "defuss-async-container",
+      },
+      children: fallback ? [fallback] : [],
+      sourceInfo,
+    } as VNode;
+  }
+
+
   // it's a component, divide and conquer children
-  // in case of async functions, we just pass them through
+  // in case of sync functions (not AsyncFunction)
   if (typeof type === "function" && type.constructor.name !== "AsyncFunction") {
+
     try {
       // Pass all attributes including key (defuss components like Trans use key as a prop)
       const rendered = type({
@@ -591,12 +642,12 @@ export const globalScopeDomApis = (window: Window, document: Document) => {
  * render(<App />, document.getElementById("app"));
  * ```
  */
-export const render = (
+export const renderInto = (
   jsx: SyncRenderInput,
   container: Element | null | undefined,
 ): void => {
   if (!container) {
-    console.warn("render: container is null or undefined");
+    console.warn("renderInto: container is null or undefined");
     return;
   }
 
@@ -607,6 +658,11 @@ export const render = (
   // Use updateDomWithVdom for intelligent DOM morphing (preserves state, event listeners, etc.)
   updateDomWithVdom(container as HTMLElement, jsx as RenderInput, globals);
 };
+
+/**
+ * @deprecated Use renderInto instead. Will be removed in v4.
+ */
+export const render = renderInto;
 
 export const isJSX = (o: any): boolean => {
   if (o === null || typeof o !== "object") return false;

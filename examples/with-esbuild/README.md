@@ -1,0 +1,78 @@
+<h1 align="center">
+
+<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/defuss_mascott.png" width="100px" />
+
+<p align="center">
+  <code>defuss</code>
+</p>
+
+<sup align="center">
+
+`esbuild` + `defuss` - simple pure JS example
+
+</sup>
+
+</h1>
+
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/kyr0/defuss/tree/main/examples/with-esbuild)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kyr0/defuss?devcontainer_path=.devcontainer/with-esbuild/devcontainer.json)
+
+> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+
+![just-the-basics](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/preview.png)
+
+### ✨ It's amazing!
+![tiny](https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/examples/with-astro-ts/public/build_result.png)
+
+## 🚀 Project Structure
+
+Inside of your `esbuild` + `defuss` project, you'll see the following folders and files:
+
+```text
+/
+├── src/
+│   ├── src/
+│   │   └── app.jsx
+│   │   └── app.test.jsx
+│   │   └── index.html
+├── package.json
+└── build.js
+└── vitest.config.js
+```
+
+Any static assets, like images, can be placed in the `dist/` directory alongside the built files.
+
+## 🛠️ Setup
+
+### 1. Get a decent package manager
+
+We recommend using `pnpm` as a package manager. It's fast, mature and handles monorepos well. If you haven't installed `pnpm` yet:
+
+```bash
+npm i -g pnpm@^9.13.2
+```
+
+### 2. Install the projects dependencies
+
+```bash
+pnpm i --frozen
+```
+
+## 🧞 Commands
+
+All commands are run from the root of the project, from a terminal:
+
+| Command                   | Action                                           |
+| :------------------------ | :----------------------------------------------- |
+| `pnpm install`             | Installs dependencies                            |
+| `pnpm run dev`             | Starts local dev server that runs `esbuild` in watch mode      |
+| `pnpm run build`           | Build your production site to `./dist/`          |
+| `pnpm run preview`         | Builds, then preview your build locally  |
+| `pnpm run test`            | Run tests                                          |
+| `pnpm run test:watch`      | Run tests in watch mode                            |
+
+---
+
+<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/assets/defuss_comic.png" />
+
+<caption><i><b>Come visit us on <code>defuss</code> Island!</b></i></caption>

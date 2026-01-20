@@ -22,7 +22,8 @@
     "test": "turbo run test --concurrency=1",
     "preclean": "rm -rf ./node_modules && pnpm i",
     "clean": "turbo run clean --concurrency=50",
-    "update-deps": "pnpm update -r --latest defuss defuss-astro defuss-desktop defuss-runtime defuss-transval defuss-db defuss-ui defuss-vite defuss-dson defuss-env defuss-rpc defuss-jwt"
+    "update-deps-latest": "./scripts/update-deps.sh latest",
+    "update-deps-workspace": "./scripts/update-deps.sh workspace"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

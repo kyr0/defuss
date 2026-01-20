@@ -1,0 +1,37 @@
+{
+  "ts": "2026-01-19T02:08:17.344Z",
+  "url": "http://127.0.0.1:3000/ping/Users/admin/Code/defuss/packages/ssg/node_modules/.bin:/Users/admin/Library/pnpm/.tools/pnpm/10.17.0/node_modules/pnpm/dist/node-gyp-bin:/Users/admin/Code/defuss/node_modules/.bin:/Users/admin/Library/pnpm/.tools/pnpm/10.17.0/bin:/Users/admin/.antigravity/antigravity/bin:/Users/admin/.cargo/bin:/usr/local/bin:/opt/homebrew/opt/mariadb@10.6/bin:/Users/admin/Library/Java/JavaVirtualMachines/openjdk-23.0.1/Contents/Home/bin:/Users/admin/development/flutter_sdk/bin:/opt/homebrew/opt/ruby/bin:/Users/admin/Code/emsdk:/Users/admin/Code/emsdk/upstream/emscripten:/Users/admin/.npm-global/bin:/opt/homebrew/Cellar/openjdk/23.0.1/libexec/openjdk.jdk/Contents/Home/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/X11/bin:/Library/Apple/usr/bin:/usr/local/MacGPG2/bin:/usr/local/share/dotnet:~/.dotnet/tools:/Users/admin/.antigravity/antigravity/bin:/Users/admin/.cargo/bin:/opt/homebrew/opt/mariadb@10.6/bin:/Users/admin/Library/Java/JavaVirtualMachines/openjdk-23.0.1/Contents/Home/bin:/Users/admin/development/flutter_sdk/bin:/opt/homebrew/opt/ruby/bin:/Users/admin/Library/pnpm:/opt/homebrew/Caskroom/miniconda/base/bin:/opt/homebrew/Caskroom/miniconda/base/condabin:/Users/admin/.dotnet/tools:/Users/admin/.local/bin:/Users/admin/.lmstudio/bin:/usr/local/Caskroom/flutter/flutter/bin:/Users/admin/Library/Android/sdk/tools:/Users/admin/Library/Android/sdk/platform-tools:/Users/admin/Library/Android/sdk/cmdline-tools/latest/bin:/Users/admin/.antigravity/extensions/vscjava.vscode-java-debug-0.58.5-universal/bundled/scripts/noConfigScripts:/Users/admin/.local/bin:/Users/admin/.lmstudio/bin:/usr/local/Caskroom/flutter/flutter/bin:/Users/admin/Library/Android/sdk/tools:/Users/admin/Library/Android/sdk/platform-tools:/Users/admin/Library/Android/sdk/cmdline-tools/latest/bin",
+  "config": {
+    "DURATION": 10,
+    "WARMUP": 2,
+    "PIPELINING": 32,
+    "BENCH_WORKERS": 8,
+    "METHOD": "GET",
+    "CONNECTIONS": [
+      10,
+      25
+    ]
+  },
+  "rows": [
+    {
+      "connections": 10,
+      "rps_avg": 0,
+      "rps_max": 0,
+      "p50_ms": 0,
+      "p99_ms": 0,
+      "throughput_mb_s": 0,
+      "non2xx": 0,
+      "errors": 604121
+    },
+    {
+      "connections": 25,
+      "rps_avg": 0,
+      "rps_max": 0,
+      "p50_ms": 0,
+      "p99_ms": 0,
+      "throughput_mb_s": 0,
+      "non2xx": 0,
+      "errors": 624273
+    }
+  ]
+}

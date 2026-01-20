@@ -648,9 +648,6 @@ export interface AsyncProps extends Props {
   /** Store this with createRef() to update() the Suspense state */
   ref?: AsyncStateRef;
 
-  /** The async content to display when loaded */
-  render?: () => Promise<RenderInput>;
-
   /** to override the name of the .suspense-loading transition CSS class name */
   loadingClassName?: string;
 
@@ -1090,11 +1087,21 @@ function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
   if (child && typeof child === "object") {
     if (domNode.nodeType !== Node.ELEMENT_NODE) return false;
 
-    const oldTag = (domNode as Element).tagName.toLowerCase();
-    const newType = typeof child.type === "string" ? child.type.toLowerCase() : "";
-    if (!newType) return false;
+    const el = domNode as HTMLElement;
+    const oldTag = el.tagName.toLowerCase();
+    const newTag = typeof child.type === "string" ? child.type.toLowerCase() : "";
+    if (!newTag || oldTag !== newTag) return false;
 
-    return oldTag === newType;
+    // If vnode has class/className, require exact class match to prevent element reuse accidents
+    const vnodeClass =
+      (child.attributes as any)?.className ??
+      (child.attributes as any)?.class;
+
+    if (typeof vnodeClass === "string") {
+      if ((el.getAttribute("class") ?? "") !== vnodeClass) return false;
+    }
+
+    return true;
   }
 
   return false;
@@ -1106,20 +1113,21 @@ function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
 function createDomFromChild(
   child: ValidChild,
   globals: Globals,
-): Node | Array<Node> | undefined {
+): Array<Node> | undefined {
   const renderer = getRenderer(globals.window.document);
 
   if (child == null) return undefined;
 
   if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
-    return globals.window.document.createTextNode(String(child));
+    return [globals.window.document.createTextNode(String(child))];
   }
 
   // create without parent (we'll insert manually and run lifecycle hooks afterwards)
   const created = renderer.createElementOrElements(child) as Node | Array<Node> | undefined;
 
   if (!created) return undefined;
-  return Array.isArray(created) ? (created as Array<Node>) : [created];
+  const nodes = Array.isArray(created) ? created : [created];
+  return nodes.filter(Boolean) as Array<Node>;
 }
 
 /********************************************************
@@ -1279,10 +1287,12 @@ export function updateDomWithVdom(
   newVDOM: RenderInput,
   globals: Globals,
 ): void {
-  // If element has shadow DOM, update shadow root instead of light DOM
-  // This fixes the shadow DOM update bug where updates created duplicates
+  // Custom elements (hyphenated tags) use light DOM for slotted content.
+  // Other elements with shadowRoot should target the shadow root.
+  const el = parentElement as HTMLElement;
+  const isCustomElement = el.tagName.includes("-");
   const targetRoot: ParentNode & Node =
-    (parentElement as HTMLElement).shadowRoot ?? parentElement;
+    el.shadowRoot && !isCustomElement ? el.shadowRoot : parentElement;
 
   const nextChildren = normalizeChildren(newVDOM);
 
@@ -1320,8 +1330,8 @@ export function updateDomWithVdom(
       }
     }
 
-    // fallback: take the next available unkeyed node
-    return unkeyedPool.shift();
+    // SAFE: no match => don't reuse something random, create new node instead
+    return undefined;
   };
 
   let domIndex = 0;
@@ -3747,6 +3757,7 @@ export const setupRouter = (
 ): Router => {
   const routeRegistrations: Array<RouteRegistration> = [];
   let currentPath = ""; // Track current path for popstate events
+  let popAttached = false; // Guard to prevent stacking popstate listeners
 
   // safe SSR rendering, and fine default for client side
   if (typeof window !== "undefined" && !windowImpl) {
@@ -3819,11 +3830,13 @@ export const setupRouter = (
       // Remove popstate event listener when router is destroyed
       if (windowImpl && api.strategy === "slot-refresh") {
         windowImpl.removeEventListener("popstate", handlePopState);
+        popAttached = false;
       }
     },
     attachPopStateHandler() {
-      if (windowImpl && api.strategy === "slot-refresh") {
+      if (windowImpl && api.strategy === "slot-refresh" && !popAttached) {
         windowImpl.addEventListener("popstate", handlePopState);
+        popAttached = true;
       }
     },
   };
@@ -4177,7 +4190,6 @@ export const T = Trans;
 ./src/index.ts:
 ```
 // defuss - explicit simplicity for the web
-console.log("defuss 3.0.0 alpha")
 export * from "@/common/index.js";
 export * from "@/render/index.js";
 export * from "@/dequery/index.js";
@@ -5324,10 +5336,34 @@ export const jsx = (
   // in case of async functions, we just pass them through
   if (typeof type === "function" && type.constructor.name !== "AsyncFunction") {
     try {
-      return type({
+      // Pass all attributes including key (defuss components like Trans use key as a prop)
+      const rendered = type({
         children,
         ...attributes,
       });
+
+      // Diff semantics: also apply key to the returned vnode root so morphing can find keyed nodes
+      if (typeof key !== "undefined" && rendered && typeof rendered === "object") {
+        // Single root vnode
+        if ("attributes" in (rendered as any)) {
+          (rendered as any).attributes = {
+            ...(rendered as any).attributes,
+            key,
+          };
+        }
+        // Fragment array: only safe auto-key if it's a single root
+        else if (Array.isArray(rendered) && rendered.length === 1) {
+          const only = rendered[0];
+          if (only && typeof only === "object" && "attributes" in (only as any)) {
+            (only as any).attributes = {
+              ...(only as any).attributes,
+              key,
+            };
+          }
+        }
+      }
+
+      return rendered;
     } catch (error) {
       if (typeof error === "string") {
         error = `[JsxError] in ${type.name}: ${error}`;
@@ -5771,12 +5807,12 @@ export const globalScopeDomApis = (window: Window, document: Document) => {
  * render(<App />, document.getElementById("app"));
  * ```
  */
-export const render = (
+export const renderInto = (
   jsx: SyncRenderInput,
   container: Element | null | undefined,
 ): void => {
   if (!container) {
-    console.warn("render: container is null or undefined");
+    console.warn("renderInto: container is null or undefined");
     return;
   }
 
@@ -5787,6 +5823,11 @@ export const render = (
   // Use updateDomWithVdom for intelligent DOM morphing (preserves state, event listeners, etc.)
   updateDomWithVdom(container as HTMLElement, jsx as RenderInput, globals);
 };
+
+/**
+ * @deprecated Use renderInto instead. Will be removed in v4.
+ */
+export const render = renderInto;
 
 export const isJSX = (o: any): boolean => {
   if (o === null || typeof o !== "object") return false;

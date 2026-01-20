@@ -28,6 +28,7 @@ export const Icon = ({
 }: IconProps) => {
   return (
     <uk-icon
+      key={Math.random() * 1000 + Date.now()}
       ref={ref}
       icon={icon}
       cls-custom={className}

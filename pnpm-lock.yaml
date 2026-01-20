@@ -101,30 +101,51 @@ importers:
       browserslist:
         specifier: ^4.28.1
         version: 4.28.1
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:*
+        version: link:../../packages/defuss
       defuss-astro:
-        specifier: ^1.5.0
-        version: 1.5.0(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+        specifier: workspace:*
+        version: link:../../packages/astro
       defuss-db:
-        specifier: ^1.1.2
-        version: 1.1.2
+        specifier: workspace:^
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
       defuss-env:
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: workspace:^
+        version: link:../../packages/env
       defuss-jwt:
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: workspace:^
+        version: link:../../packages/jwt
       defuss-rpc:
-        specifier: ^1.1.3
-        version: 1.1.3(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
       defuss-transval:
-        specifier: ^1.3.0
-        version: 1.3.0
+        specifier: workspace:^
+        version: link:../../packages/transval
       defuss-ui:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: workspace:^
+        version: link:../../packages/ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../../packages/vite
       franken-ui:
         specifier: ^2.1.1
         version: 2.1.1(lodash@4.17.21)(postcss-combine-duplicated-selectors@10.0.3(postcss@8.5.6))(postcss-js@4.0.1(postcss@8.5.6))(postcss-sort-media-queries@5.2.0(postcss@8.5.6))(postcss@8.5.6)(tailwindcss@4.1.18)
@@ -161,6 +182,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.23
         version: 10.4.23(postcss@8.5.6)
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
         specifier: workspace:*
         version: link:../../packages/defuss
@@ -168,14 +192,41 @@ importers:
         specifier: workspace:*
         version: link:../../packages/astro
       defuss-db:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
       defuss-rpc:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/rpc
-      defuss-transval:
+      defuss-runtime:
         specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:^
         version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../../packages/vite
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -213,12 +264,51 @@ importers:
       astro:
         specifier: ^5.16.11
         version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
       defuss-astro:
-        specifier: ^1.5.0
-        version: 1.5.0(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../../packages/vite
       lightningcss:
         specifier: ^1.30.2
         version: 1.30.2
@@ -243,15 +333,51 @@ importers:
       browserslist:
         specifier: ^4.28.1
         version: 4.28.1
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
       defuss-astro:
-        specifier: ^1.5.0
-        version: 1.5.0(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
       defuss-ui:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: workspace:^
+        version: link:../../packages/ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../../packages/vite
       franken-ui:
         specifier: ^2.1.1
         version: 2.1.1(lodash@4.17.21)(postcss-combine-duplicated-selectors@10.0.3(postcss@8.5.6))(postcss-js@4.0.1(postcss@8.5.6))(postcss-sort-media-queries@5.2.0(postcss@8.5.6))(postcss@8.5.6)(tailwindcss@4.1.18)
@@ -304,12 +430,51 @@ importers:
       browserslist:
         specifier: ^4.25.0
         version: 4.28.1
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
       defuss-vite:
-        specifier: ^1.1.3
-        version: 1.1.3(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/vite
       framework7:
         specifier: ^8.3.4
         version: 8.3.4
@@ -321,7 +486,7 @@ importers:
         version: 1.30.2
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@25.0.9)(typescript@5.9.3)
+        version: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.17.57)(typescript@5.9.3)
     devDependencies:
       '@capacitor/cli':
         specifier: ^7.4.5
@@ -334,7 +499,7 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^6.4.1
-        version: 6.4.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 6.4.1(@types/node@20.17.57)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   examples/with-desktop-wm:
     dependencies:
@@ -344,18 +509,51 @@ importers:
       astro:
         specifier: ^5.16.11
         version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:*
+        version: link:../../packages/defuss
       defuss-astro:
-        specifier: ^1.5.0
-        version: 1.5.0(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+        specifier: workspace:*
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
       defuss-desktop:
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
       defuss-runtime:
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../../packages/vite
       lightningcss:
         specifier: ^1.30.2
         version: 1.30.2
@@ -375,15 +573,51 @@ importers:
       browserslist:
         specifier: ^4.28.1
         version: 4.28.1
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
       defuss-dson:
-        specifier: ^1.1.1
-        version: 1.1.1
+        specifier: workspace:^
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
       defuss-vite:
-        specifier: ^1.1.3
-        version: 1.1.3(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/vite
       lightningcss:
         specifier: ^1.30.2
         version: 1.30.2
@@ -438,18 +672,51 @@ importers:
       boxicons:
         specifier: ^2.1.4
         version: 2.1.4
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
       defuss-astro:
-        specifier: ^1.5.0
-        version: 1.5.0(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
       defuss-dson:
-        specifier: ^1.1.1
-        version: 1.1.1
+        specifier: workspace:^
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
       defuss-rpc:
-        specifier: ^1.1.3
-        version: 1.1.3(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../../packages/vite
       editorjs-alert:
         specifier: ^1.1.4
         version: 1.1.4
@@ -481,6 +748,64 @@ importers:
         specifier: ^0.34.5
         version: 0.34.5
 
+  examples/with-esbuild:
+    dependencies:
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
+      defuss:
+        specifier: workspace:*
+        version: link:../../packages/defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../../packages/vite
+    devDependencies:
+      esbuild:
+        specifier: '>=0.25.0'
+        version: 0.25.9
+      jsdom:
+        specifier: 24.1.3
+        version: 24.1.3
+      vitest:
+        specifier: ^3.1.3
+        version: 3.2.2(@types/debug@4.1.12)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+
   examples/with-franken-ui:
     dependencies:
       '@astrojs/node':
@@ -495,15 +820,51 @@ importers:
       browserslist:
         specifier: ^4.24.3
         version: 4.24.5
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
       defuss-transval:
-        specifier: ^1.3.0
-        version: 1.3.0
+        specifier: workspace:^
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
       defuss-vite:
-        specifier: ^1.1.3
-        version: 1.1.3(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/vite
       franken-ui:
         specifier: 2.1.0-next.4
         version: 2.1.0-next.4(lodash@4.17.21)(postcss-combine-duplicated-selectors@10.0.3(postcss@8.5.6))(postcss-js@4.0.1(postcss@8.5.6))(postcss-sort-media-queries@5.2.0(postcss@8.5.6))(postcss@8.5.6)(tailwindcss@4.1.8)
@@ -537,12 +898,51 @@ importers:
       browserslist:
         specifier: ^4.28.1
         version: 4.28.1
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
         specifier: workspace:*
         version: link:../../packages/defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
       defuss-vite:
-        specifier: ^1.1.3
-        version: 1.1.3(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/vite
       ionicons:
         specifier: ^7.4.0
         version: 7.4.0
@@ -561,12 +961,51 @@ importers:
       astro:
         specifier: ^5.16.11
         version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
       defuss-astro:
-        specifier: ^1.5.0
-        version: 1.5.0(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../../packages/vite
       fslightbox:
         specifier: ^3.7.4
         version: 3.7.4
@@ -582,12 +1021,51 @@ importers:
       browserslist:
         specifier: ^4.28.1
         version: 4.28.1
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
       defuss-vite:
-        specifier: ^1.1.3
-        version: 1.1.3(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/vite
       lightningcss:
         specifier: ^1.30.2
         version: 1.30.2
@@ -600,12 +1078,51 @@ importers:
       browserslist:
         specifier: ^4.28.1
         version: 4.28.1
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
       defuss-vite:
-        specifier: ^1.1.3
-        version: 1.1.3(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/vite
       lightningcss:
         specifier: ^1.30.2
         version: 1.30.2
@@ -618,12 +1135,51 @@ importers:
       '@biomejs/biome':
         specifier: ^2.0.6
         version: 2.0.6
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
       defuss-vite:
-        specifier: ^1.1.3
-        version: 1.1.3(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/vite
       pkgroll:
         specifier: ^2.21.5
         version: 2.21.5(typescript@5.9.3)
@@ -632,7 +1188,7 @@ importers:
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   examples/with-wasm-c-rust-matmul/dist/wasm_rust: {}
 
@@ -646,12 +1202,51 @@ importers:
       astro:
         specifier: ^5.16.6
         version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+      create-defuss:
+        specifier: workspace:*
+        version: link:../../packages/create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../../packages/defuss
       defuss-astro:
-        specifier: ^1.5.0
-        version: 1.5.0(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+        specifier: workspace:^
+        version: link:../../packages/astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../../packages/db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../../packages/desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../../packages/dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../../packages/env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../../packages/jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../../packages/search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../../packages/ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../../packages/transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../../packages/ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../../packages/vite
       firebase:
         specifier: ^12.8.0
         version: 12.8.0
@@ -673,9 +1268,51 @@ importers:
       astro:
         specifier: ^5.16.11
         version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:*
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
       fast-glob:
         specifier: ^3.3.3
         version: 3.3.3
@@ -703,12 +1340,58 @@ importers:
         version: 5.9.3
 
   packages/create:
+    dependencies:
+      create-defuss:
+        specifier: workspace:*
+        version: 'link:'
+      defuss:
+        specifier: workspace:*
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
     devDependencies:
       pkgroll:
-        specifier: ^2.5.1
+        specifier: ^2.21.5
         version: 2.21.5(typescript@5.9.3)
       typescript:
-        specifier: ^5.6.3
+        specifier: ^5.9.3
         version: 5.9.3
 
   packages/db:
@@ -716,9 +1399,51 @@ importers:
       '@libsql/client':
         specifier: ^0.15.7
         version: 0.15.15
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
+      defuss:
+        specifier: workspace:*
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
       defuss-env:
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: workspace:^
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
       dexie:
         specifier: ^4.0.11
         version: 4.2.1
@@ -731,7 +1456,7 @@ importers:
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.0.17
-        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+        version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17))(vitest@4.0.17)
       happy-dom:
         specifier: ^20.3.1
         version: 20.3.1
@@ -746,19 +1471,61 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   packages/defuss:
     dependencies:
       '@types/w3c-xmlserializer':
         specifier: ^2.0.4
         version: 2.0.4
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
       csstype:
         specifier: ^3.2.3
         version: 3.2.3
+      defuss:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
       defuss-runtime:
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: workspace:^
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
       happy-dom:
         specifier: ^20.3.1
         version: 20.3.1
@@ -769,15 +1536,24 @@ importers:
       '@types/node':
         specifier: ^25.0.9
         version: 25.0.9
+      '@vitest/browser':
+        specifier: ^4.0.17
+        version: 4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17)
+      '@vitest/browser-playwright':
+        specifier: ^4.0.17
+        version: 4.0.17(playwright@1.57.0)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17)
       '@vitest/coverage-v8':
         specifier: ^4.0.17
-        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+        version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17))(vitest@4.0.17)
       jsdom:
         specifier: 24.1.3
         version: 24.1.3
       pkgroll:
         specifier: ^2.21.5
         version: 2.21.5(typescript@5.9.3)
+      playwright:
+        specifier: ^1.57.0
+        version: 1.57.0
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -786,23 +1562,59 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   packages/desktop:
     dependencies:
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
       defuss-runtime:
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: workspace:^
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
       defuss-transval:
-        specifier: ^1.3.0
-        version: 1.3.0
+        specifier: workspace:^
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.0.17
-        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+        version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17))(vitest@4.0.17)
       lightningcss:
         specifier: ^1.30.2
         version: 1.30.2
@@ -817,16 +1629,62 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   packages/dson:
+    dependencies:
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
+      defuss:
+        specifier: workspace:*
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
     devDependencies:
       '@ungap/structured-clone':
         specifier: ^1.3.0
         version: 1.3.0
       '@vitest/coverage-v8':
         specifier: ^4.0.17
-        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+        version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17))(vitest@4.0.17)
       pkgroll:
         specifier: ^2.21.5
         version: 2.21.5(typescript@5.9.3)
@@ -838,16 +1696,62 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   packages/env:
+    dependencies:
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
+      defuss:
+        specifier: workspace:*
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
     devDependencies:
       '@types/node':
         specifier: ^25.0.9
         version: 25.0.9
       '@vitest/coverage-v8':
         specifier: ^4.0.17
-        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+        version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17))(vitest@4.0.17)
       pkgroll:
         specifier: ^2.5.1
         version: 2.13.1(typescript@5.9.3)
@@ -856,13 +1760,55 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   packages/jwt:
     dependencies:
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
+      defuss:
+        specifier: workspace:*
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
       defuss-env:
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: workspace:^
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
       jose:
         specifier: ^6.1.0
         version: 6.1.0
@@ -872,7 +1818,7 @@ importers:
         version: 25.0.9
       '@vitest/coverage-v8':
         specifier: ^4.0.17
-        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+        version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17))(vitest@4.0.17)
       pkgroll:
         specifier: ^2.21.5
         version: 2.21.5(typescript@5.9.3)
@@ -881,16 +1827,58 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   packages/rpc:
     dependencies:
       astro:
         specifier: '>=5.15.6'
         version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.41.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.8.1)
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
+      defuss:
+        specifier: workspace:*
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
       defuss-dson:
-        specifier: ^1.1.1
-        version: 1.1.1
+        specifier: workspace:^
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
     devDependencies:
       '@types/express':
         specifier: ^5.0.3
@@ -918,10 +1906,56 @@ importers:
         version: 3.2.2(@types/debug@4.1.12)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
 
   packages/runtime:
+    dependencies:
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
+      defuss:
+        specifier: workspace:*
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.0.17
-        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+        version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17))(vitest@4.0.17)
       pkgroll:
         specifier: ^2.21.5
         version: 2.21.5(typescript@5.9.3)
@@ -933,19 +1967,71 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   packages/search:
+    dependencies:
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
+      defuss:
+        specifier: workspace:*
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
     devDependencies:
       '@testing-library/dom':
         specifier: ^10.4.0
         version: 10.4.0
+      '@types/node':
+        specifier: ^25.0.9
+        version: 25.0.9
       '@types/web':
         specifier: ^0.0.241
         version: 0.0.241
       '@vitest/browser':
-        specifier: ^3.2.3
-        version: 3.2.4(playwright@1.57.0)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@3.2.4)
+        specifier: ^4.0.17
+        version: 4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17)
+      '@vitest/browser-playwright':
+        specifier: ^4.0.17
+        version: 4.0.17(playwright@1.57.0)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17)
       pkgroll:
         specifier: ^2.12.2
         version: 2.12.2(typescript@5.9.3)
@@ -956,8 +2042,8 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1
       vitest:
-        specifier: ^3.2.3
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@25.0.9)(@vitest/browser@3.2.4)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        specifier: ^4.0.17
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
       wasm-pack:
         specifier: ^0.12.1
         version: 0.12.1
@@ -982,12 +2068,51 @@ importers:
       chokidar:
         specifier: ^4.0.3
         version: 4.0.3
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
       defuss-runtime:
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: workspace:^
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
       esbuild:
         specifier: ^0.25.9
         version: 0.25.9
@@ -1027,6 +2152,9 @@ importers:
       serve-static:
         specifier: ^2.2.0
         version: 2.2.0
+      ultimate-express:
+        specifier: ^2.0.15
+        version: 2.0.15
       unist-util-visit:
         specifier: ^5.0.0
         version: 5.0.0
@@ -1034,12 +2162,21 @@ importers:
         specifier: ^8.18.3
         version: 8.18.3
     devDependencies:
+      '@types/autocannon':
+        specifier: ^7.12.7
+        version: 7.12.7
+      autocannon:
+        specifier: ^8.0.0
+        version: 8.0.0
       happy-dom:
         specifier: '>=20.0.0'
         version: 20.3.1
       pkgroll:
         specifier: ^2.5.1
         version: 2.13.1(typescript@5.8.3)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
       typescript:
         specifier: ^5.6.3
         version: 5.8.3
@@ -1050,8 +2187,8 @@ importers:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
       defuss:
-        specifier: workspace:*
-        version: link:../../defuss
+        specifier: ^2.1.11
+        version: 2.1.11
       defuss-ssg:
         specifier: workspace:*
         version: link:..
@@ -1063,7 +2200,7 @@ importers:
         version: 8.5.6
       tailwindcss:
         specifier: ^3.4.17
-        version: 3.4.17(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@25.0.9)(typescript@5.9.3))
+        version: 3.4.17(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.17.57)(typescript@5.9.3))
     devDependencies:
       sass-embedded:
         specifier: ^1.89.1
@@ -1071,16 +2208,55 @@ importers:
 
   packages/transval:
     dependencies:
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
       defuss-runtime:
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: workspace:^
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.0.17
-        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+        version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17))(vitest@4.0.17)
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../defuss
       happy-dom:
         specifier: ^20.3.1
         version: 20.3.1
@@ -1095,16 +2271,58 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   packages/ui:
     dependencies:
       '@types/uikit':
         specifier: ^3.23.0
         version: 3.23.0
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
       defuss:
-        specifier: ^2.1.11
-        version: 2.1.11
+        specifier: workspace:^
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: 'link:'
+      defuss-vite:
+        specifier: workspace:*
+        version: link:../vite
       uikit:
         specifier: ^3.23.13
         version: 3.25.5
@@ -1123,15 +2341,60 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
   packages/vite:
     dependencies:
       '@swc/core':
         specifier: ^1.10.2
         version: 1.15.8(@swc/helpers@0.5.17)
+      create-defuss:
+        specifier: workspace:*
+        version: link:../create
+      defuss:
+        specifier: workspace:*
+        version: link:../defuss
+      defuss-astro:
+        specifier: workspace:*
+        version: link:../astro
+      defuss-db:
+        specifier: workspace:*
+        version: link:../db
+      defuss-desktop:
+        specifier: workspace:*
+        version: link:../desktop
+      defuss-dson:
+        specifier: workspace:*
+        version: link:../dson
+      defuss-env:
+        specifier: workspace:*
+        version: link:../env
+      defuss-jwt:
+        specifier: workspace:*
+        version: link:../jwt
+      defuss-rpc:
+        specifier: workspace:*
+        version: link:../rpc
+      defuss-runtime:
+        specifier: workspace:*
+        version: link:../runtime
+      defuss-search:
+        specifier: workspace:*
+        version: link:../search
+      defuss-ssg:
+        specifier: workspace:*
+        version: link:../ssg
+      defuss-transval:
+        specifier: workspace:*
+        version: link:../transval
+      defuss-ui:
+        specifier: workspace:*
+        version: link:../ui
+      defuss-vite:
+        specifier: workspace:*
+        version: 'link:'
       vite:
-        specifier: '>=6.3.6'
+        specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
     devDependencies:
       pkgroll:
@@ -1153,6 +2416,9 @@ packages:
 
   '@asamuzakjp/css-color@3.2.0':
     resolution: {integrity: sha512-K1A6z8tS3XsmCMM86xoWdn7Fkdn9m6RSVtocUrJYIwZnFVkng/PvkEoWtOWmP+Scc6saYWHWZYbndEEXxl24jw==}
+
+  '@assemblyscript/loader@0.19.23':
+    resolution: {integrity: sha512-ulkCYfFbYj01ie1MDOyxv2F6SpRN1TOj7fQxbP07D6HmeR+gr2JLSmINKjga2emB+b1L2KGrFKBTc+e00p54nw==}
 
   '@astrojs/compiler@2.13.0':
     resolution: {integrity: sha512-mqVORhUJViA28fwHYaWmsXSzLO9osbdZ5ImUfxBarqsYdMlPbqAqGJCxsNzvppp1BEzc1mJNjOVvQqeDN8Vspw==}
@@ -1392,6 +2658,10 @@ packages:
   '@codexteam/icons@0.3.3':
     resolution: {integrity: sha512-cp7mkZPgmBuSxigTm3Vb+DtVHYeX7qXfQd7o05vcLD8Ag5WvRlol2QSn5P10k0CDAJwmkH9nQGQLBycErS9lsQ==}
 
+  '@colors/colors@1.5.0':
+    resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
+    engines: {node: '>=0.1.90'}
+
   '@coolbytes/editorjs-quote@1.0.2':
     resolution: {integrity: sha512-OVMMhDLtWYt+77iiV+VnWEI+4t8fEGxkt1DJkdDTg+uWI2w3pLAorvCb1Hb9XSw+VWfjMWHA0GTeS9tdbQog/A==}
 
@@ -1464,12 +2734,6 @@ packages:
   '@emnapi/runtime@1.8.1':
     resolution: {integrity: sha512-mehfKSMWjjNol8659Z8KxEMrdSJDDot5SXMq00dM8BN4o+CLNXQ0xH2V7EchNHV4RmbZLmmPdEaXZc5H2FXmDg==}
 
-  '@esbuild/aix-ppc64@0.25.5':
-    resolution: {integrity: sha512-9o3TMmpmftaCMepOdA5k/yDw8SfInyzWWTjYTFCX3kPSDJMROQTb8jg+h9Cnwnmm1vOzvxN7gIfB5V2ewpjtGA==}
-    engines: {node: '>=18'}
-    cpu: [ppc64]
-    os: [aix]
-
   '@esbuild/aix-ppc64@0.25.9':
     resolution: {integrity: sha512-OaGtL73Jck6pBKjNIe24BnFE6agGl+6KxDtTfHhy1HmhthfKouEcOhqpSL64K4/0WCtbKFLOdzD/44cJ4k9opA==}
     engines: {node: '>=18'}
@@ -1488,12 +2752,6 @@ packages:
     cpu: [ppc64]
     os: [aix]
 
-  '@esbuild/android-arm64@0.25.5':
-    resolution: {integrity: sha512-VGzGhj4lJO+TVGV1v8ntCZWJktV7SGCs3Pn1GRWI1SBFtRALoomm8k5E9Pmwg3HOAal2VDc2F9+PM/rEY6oIDg==}
-    engines: {node: '>=18'}
-    cpu: [arm64]
-    os: [android]
-
   '@esbuild/android-arm64@0.25.9':
     resolution: {integrity: sha512-IDrddSmpSv51ftWslJMvl3Q2ZT98fUSL2/rlUXuVqRXHCs5EUF1/f+jbjF5+NG9UffUDMCiTyh8iec7u8RlTLg==}
     engines: {node: '>=18'}
@@ -1510,12 +2768,6 @@ packages:
     resolution: {integrity: sha512-pvz8ZZ7ot/RBphf8fv60ljmaoydPU12VuXHImtAs0XhLLw+EXBi2BLe3OYSBslR4rryHvweW5gmkKFwTiFy6KA==}
     engines: {node: '>=18'}
     cpu: [arm64]
-    os: [android]
-
-  '@esbuild/android-arm@0.25.5':
-    resolution: {integrity: sha512-AdJKSPeEHgi7/ZhuIPtcQKr5RQdo6OO2IL87JkianiMYMPbCtot9fxPbrMiBADOWWm3T2si9stAiVsGbTQFkbA==}
-    engines: {node: '>=18'}
-    cpu: [arm]
     os: [android]
 
   '@esbuild/android-arm@0.25.9':
@@ -1536,12 +2788,6 @@ packages:
     cpu: [arm]
     os: [android]
 
-  '@esbuild/android-x64@0.25.5':
-    resolution: {integrity: sha512-D2GyJT1kjvO//drbRT3Hib9XPwQeWd9vZoBJn+bu/lVsOZ13cqNdDeqIF/xQ5/VmWvMduP6AmXvylO/PIc2isw==}
-    engines: {node: '>=18'}
-    cpu: [x64]
-    os: [android]
-
   '@esbuild/android-x64@0.25.9':
     resolution: {integrity: sha512-I853iMZ1hWZdNllhVZKm34f4wErd4lMyeV7BLzEExGEIZYsOzqDWDf+y082izYUE8gtJnYHdeDpN/6tUdwvfiw==}
     engines: {node: '>=18'}
@@ -1560,12 +2806,6 @@ packages:
     cpu: [x64]
     os: [android]
 
-  '@esbuild/darwin-arm64@0.25.5':
-    resolution: {integrity: sha512-GtaBgammVvdF7aPIgH2jxMDdivezgFu6iKpmT+48+F8Hhg5J/sfnDieg0aeG/jfSvkYQU2/pceFPDKlqZzwnfQ==}
-    engines: {node: '>=18'}
-    cpu: [arm64]
-    os: [darwin]
-
   '@esbuild/darwin-arm64@0.25.9':
     resolution: {integrity: sha512-XIpIDMAjOELi/9PB30vEbVMs3GV1v2zkkPnuyRRURbhqjyzIINwj+nbQATh4H9GxUgH1kFsEyQMxwiLFKUS6Rg==}
     engines: {node: '>=18'}
@@ -1582,12 +2822,6 @@ packages:
     resolution: {integrity: sha512-davCD2Zc80nzDVRwXTcQP/28fiJbcOwvdolL0sOiOsbwBa72kegmVU0Wrh1MYrbuCL98Omp5dVhQFWRKR2ZAlg==}
     engines: {node: '>=18'}
     cpu: [arm64]
-    os: [darwin]
-
-  '@esbuild/darwin-x64@0.25.5':
-    resolution: {integrity: sha512-1iT4FVL0dJ76/q1wd7XDsXrSW+oLoquptvh4CLR4kITDtqi2e/xwXwdCVH8hVHU43wgJdsq7Gxuzcs6Iq/7bxQ==}
-    engines: {node: '>=18'}
-    cpu: [x64]
     os: [darwin]
 
   '@esbuild/darwin-x64@0.25.9':
@@ -1608,12 +2842,6 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@esbuild/freebsd-arm64@0.25.5':
-    resolution: {integrity: sha512-nk4tGP3JThz4La38Uy/gzyXtpkPW8zSAmoUhK9xKKXdBCzKODMc2adkB2+8om9BDYugz+uGV7sLmpTYzvmz6Sw==}
-    engines: {node: '>=18'}
-    cpu: [arm64]
-    os: [freebsd]
-
   '@esbuild/freebsd-arm64@0.25.9':
     resolution: {integrity: sha512-z93DmbnY6fX9+KdD4Ue/H6sYs+bhFQJNCPZsi4XWJoYblUqT06MQUdBCpcSfuiN72AbqeBFu5LVQTjfXDE2A6Q==}
     engines: {node: '>=18'}
@@ -1630,12 +2858,6 @@ packages:
     resolution: {integrity: sha512-lS/9CN+rgqQ9czogxlMcBMGd+l8Q3Nj1MFQwBZJyoEKI50XGxwuzznYdwcav6lpOGv5BqaZXqvBSiB/kJ5op+g==}
     engines: {node: '>=18'}
     cpu: [arm64]
-    os: [freebsd]
-
-  '@esbuild/freebsd-x64@0.25.5':
-    resolution: {integrity: sha512-PrikaNjiXdR2laW6OIjlbeuCPrPaAl0IwPIaRv+SMV8CiM8i2LqVUHFC1+8eORgWyY7yhQY+2U2fA55mBzReaw==}
-    engines: {node: '>=18'}
-    cpu: [x64]
     os: [freebsd]
 
   '@esbuild/freebsd-x64@0.25.9':
@@ -1656,12 +2878,6 @@ packages:
     cpu: [x64]
     os: [freebsd]
 
-  '@esbuild/linux-arm64@0.25.5':
-    resolution: {integrity: sha512-Z9kfb1v6ZlGbWj8EJk9T6czVEjjq2ntSYLY2cw6pAZl4oKtfgQuS4HOq41M/BcoLPzrUbNd+R4BXFyH//nHxVg==}
-    engines: {node: '>=18'}
-    cpu: [arm64]
-    os: [linux]
-
   '@esbuild/linux-arm64@0.25.9':
     resolution: {integrity: sha512-BlB7bIcLT3G26urh5Dmse7fiLmLXnRlopw4s8DalgZ8ef79Jj4aUcYbk90g8iCa2467HX8SAIidbL7gsqXHdRw==}
     engines: {node: '>=18'}
@@ -1678,12 +2894,6 @@ packages:
     resolution: {integrity: sha512-hYxN8pr66NsCCiRFkHUAsxylNOcAQaxSSkHMMjcpx0si13t1LHFphxJZUiGwojB1a/Hd5OiPIqDdXONia6bhTw==}
     engines: {node: '>=18'}
     cpu: [arm64]
-    os: [linux]
-
-  '@esbuild/linux-arm@0.25.5':
-    resolution: {integrity: sha512-cPzojwW2okgh7ZlRpcBEtsX7WBuqbLrNXqLU89GxWbNt6uIg78ET82qifUy3W6OVww6ZWobWub5oqZOVtwolfw==}
-    engines: {node: '>=18'}
-    cpu: [arm]
     os: [linux]
 
   '@esbuild/linux-arm@0.25.9':
@@ -1704,12 +2914,6 @@ packages:
     cpu: [arm]
     os: [linux]
 
-  '@esbuild/linux-ia32@0.25.5':
-    resolution: {integrity: sha512-sQ7l00M8bSv36GLV95BVAdhJ2QsIbCuCjh/uYrWiMQSUuV+LpXwIqhgJDcvMTj+VsQmqAHL2yYaasENvJ7CDKA==}
-    engines: {node: '>=18'}
-    cpu: [ia32]
-    os: [linux]
-
   '@esbuild/linux-ia32@0.25.9':
     resolution: {integrity: sha512-e7S3MOJPZGp2QW6AK6+Ly81rC7oOSerQ+P8L0ta4FhVi+/j/v2yZzx5CqqDaWjtPFfYz21Vi1S0auHrap3Ma3A==}
     engines: {node: '>=18'}
@@ -1726,12 +2930,6 @@ packages:
     resolution: {integrity: sha512-MJt5BRRSScPDwG2hLelYhAAKh9imjHK5+NE/tvnRLbIqUWa+0E9N4WNMjmp/kXXPHZGqPLxggwVhz7QP8CTR8w==}
     engines: {node: '>=18'}
     cpu: [ia32]
-    os: [linux]
-
-  '@esbuild/linux-loong64@0.25.5':
-    resolution: {integrity: sha512-0ur7ae16hDUC4OL5iEnDb0tZHDxYmuQyhKhsPBV8f99f6Z9KQM02g33f93rNH5A30agMS46u2HP6qTdEt6Q1kg==}
-    engines: {node: '>=18'}
-    cpu: [loong64]
     os: [linux]
 
   '@esbuild/linux-loong64@0.25.9':
@@ -1752,12 +2950,6 @@ packages:
     cpu: [loong64]
     os: [linux]
 
-  '@esbuild/linux-mips64el@0.25.5':
-    resolution: {integrity: sha512-kB/66P1OsHO5zLz0i6X0RxlQ+3cu0mkxS3TKFvkb5lin6uwZ/ttOkP3Z8lfR9mJOBk14ZwZ9182SIIWFGNmqmg==}
-    engines: {node: '>=18'}
-    cpu: [mips64el]
-    os: [linux]
-
   '@esbuild/linux-mips64el@0.25.9':
     resolution: {integrity: sha512-YcM5br0mVyZw2jcQeLIkhWtKPeVfAerES5PvOzaDxVtIyZ2NUBZKNLjC5z3/fUlDgT6w89VsxP2qzNipOaaDyA==}
     engines: {node: '>=18'}
@@ -1774,12 +2966,6 @@ packages:
     resolution: {integrity: sha512-nlP2I6ArEBewvJ2gjrrkESEZkB5mIoaTswuqNFRv/WYd+ATtUpe9Y09RnJvgvdag7he0OWgEZWhviS1OTOKixw==}
     engines: {node: '>=18'}
     cpu: [mips64el]
-    os: [linux]
-
-  '@esbuild/linux-ppc64@0.25.5':
-    resolution: {integrity: sha512-UZCmJ7r9X2fe2D6jBmkLBMQetXPXIsZjQJCjgwpVDz+YMcS6oFR27alkgGv3Oqkv07bxdvw7fyB71/olceJhkQ==}
-    engines: {node: '>=18'}
-    cpu: [ppc64]
     os: [linux]
 
   '@esbuild/linux-ppc64@0.25.9':
@@ -1800,12 +2986,6 @@ packages:
     cpu: [ppc64]
     os: [linux]
 
-  '@esbuild/linux-riscv64@0.25.5':
-    resolution: {integrity: sha512-kTxwu4mLyeOlsVIFPfQo+fQJAV9mh24xL+y+Bm6ej067sYANjyEw1dNHmvoqxJUCMnkBdKpvOn0Ahql6+4VyeA==}
-    engines: {node: '>=18'}
-    cpu: [riscv64]
-    os: [linux]
-
   '@esbuild/linux-riscv64@0.25.9':
     resolution: {integrity: sha512-uNIBa279Y3fkjV+2cUjx36xkx7eSjb8IvnL01eXUKXez/CBHNRw5ekCGMPM0BcmqBxBcdgUWuUXmVWwm4CH9kg==}
     engines: {node: '>=18'}
@@ -1822,12 +3002,6 @@ packages:
     resolution: {integrity: sha512-B5BOmojNtUyN8AXlK0QJyvjEZkWwy/FKvakkTDCziX95AowLZKR6aCDhG7LeF7uMCXEJqwa8Bejz5LTPYm8AvA==}
     engines: {node: '>=18'}
     cpu: [riscv64]
-    os: [linux]
-
-  '@esbuild/linux-s390x@0.25.5':
-    resolution: {integrity: sha512-K2dSKTKfmdh78uJ3NcWFiqyRrimfdinS5ErLSn3vluHNeHVnBAFWC8a4X5N+7FgVE1EjXS1QDZbpqZBjfrqMTQ==}
-    engines: {node: '>=18'}
-    cpu: [s390x]
     os: [linux]
 
   '@esbuild/linux-s390x@0.25.9':
@@ -1848,12 +3022,6 @@ packages:
     cpu: [s390x]
     os: [linux]
 
-  '@esbuild/linux-x64@0.25.5':
-    resolution: {integrity: sha512-uhj8N2obKTE6pSZ+aMUbqq+1nXxNjZIIjCjGLfsWvVpy7gKCOL6rsY1MhRh9zLtUtAI7vpgLMK6DxjO8Qm9lJw==}
-    engines: {node: '>=18'}
-    cpu: [x64]
-    os: [linux]
-
   '@esbuild/linux-x64@0.25.9':
     resolution: {integrity: sha512-iSwByxzRe48YVkmpbgoxVzn76BXjlYFXC7NvLYq+b+kDjyyk30J0JY47DIn8z1MO3K0oSl9fZoRmZPQI4Hklzg==}
     engines: {node: '>=18'}
@@ -1872,12 +3040,6 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@esbuild/netbsd-arm64@0.25.5':
-    resolution: {integrity: sha512-pwHtMP9viAy1oHPvgxtOv+OkduK5ugofNTVDilIzBLpoWAM16r7b/mxBvfpuQDpRQFMfuVr5aLcn4yveGvBZvw==}
-    engines: {node: '>=18'}
-    cpu: [arm64]
-    os: [netbsd]
-
   '@esbuild/netbsd-arm64@0.25.9':
     resolution: {integrity: sha512-9jNJl6FqaUG+COdQMjSCGW4QiMHH88xWbvZ+kRVblZsWrkXlABuGdFJ1E9L7HK+T0Yqd4akKNa/lO0+jDxQD4Q==}
     engines: {node: '>=18'}
@@ -1894,12 +3056,6 @@ packages:
     resolution: {integrity: sha512-Kj6DiBlwXrPsCRDeRvGAUb/LNrBASrfqAIok+xB0LxK8CHqxZ037viF13ugfsIpePH93mX7xfJp97cyDuTZ3cw==}
     engines: {node: '>=18'}
     cpu: [arm64]
-    os: [netbsd]
-
-  '@esbuild/netbsd-x64@0.25.5':
-    resolution: {integrity: sha512-WOb5fKrvVTRMfWFNCroYWWklbnXH0Q5rZppjq0vQIdlsQKuw6mdSihwSo4RV/YdQ5UCKKvBy7/0ZZYLBZKIbwQ==}
-    engines: {node: '>=18'}
-    cpu: [x64]
     os: [netbsd]
 
   '@esbuild/netbsd-x64@0.25.9':
@@ -1920,12 +3076,6 @@ packages:
     cpu: [x64]
     os: [netbsd]
 
-  '@esbuild/openbsd-arm64@0.25.5':
-    resolution: {integrity: sha512-7A208+uQKgTxHd0G0uqZO8UjK2R0DDb4fDmERtARjSHWxqMTye4Erz4zZafx7Di9Cv+lNHYuncAkiGFySoD+Mw==}
-    engines: {node: '>=18'}
-    cpu: [arm64]
-    os: [openbsd]
-
   '@esbuild/openbsd-arm64@0.25.9':
     resolution: {integrity: sha512-YaFBlPGeDasft5IIM+CQAhJAqS3St3nJzDEgsgFixcfZeyGPCd6eJBWzke5piZuZ7CtL656eOSYKk4Ls2C0FRQ==}
     engines: {node: '>=18'}
@@ -1942,12 +3092,6 @@ packages:
     resolution: {integrity: sha512-DNIHH2BPQ5551A7oSHD0CKbwIA/Ox7+78/AWkbS5QoRzaqlev2uFayfSxq68EkonB+IKjiuxBFoV8ESJy8bOHA==}
     engines: {node: '>=18'}
     cpu: [arm64]
-    os: [openbsd]
-
-  '@esbuild/openbsd-x64@0.25.5':
-    resolution: {integrity: sha512-G4hE405ErTWraiZ8UiSoesH8DaCsMm0Cay4fsFWOOUcz8b8rC6uCvnagr+gnioEjWn0wC+o1/TAHt+It+MpIMg==}
-    engines: {node: '>=18'}
-    cpu: [x64]
     os: [openbsd]
 
   '@esbuild/openbsd-x64@0.25.9':
@@ -1986,12 +3130,6 @@ packages:
     cpu: [arm64]
     os: [openharmony]
 
-  '@esbuild/sunos-x64@0.25.5':
-    resolution: {integrity: sha512-l+azKShMy7FxzY0Rj4RCt5VD/q8mG/e+mDivgspo+yL8zW7qEwctQ6YqKX34DTEleFAvCIUviCFX1SDZRSyMQA==}
-    engines: {node: '>=18'}
-    cpu: [x64]
-    os: [sunos]
-
   '@esbuild/sunos-x64@0.25.9':
     resolution: {integrity: sha512-WjH4s6hzo00nNezhp3wFIAfmGZ8U7KtrJNlFMRKxiI9mxEK1scOMAaa9i4crUtu+tBr+0IN6JCuAcSBJZfnphw==}
     engines: {node: '>=18'}
@@ -2009,12 +3147,6 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [sunos]
-
-  '@esbuild/win32-arm64@0.25.5':
-    resolution: {integrity: sha512-O2S7SNZzdcFG7eFKgvwUEZ2VG9D/sn/eIiz8XRZ1Q/DO5a3s76Xv0mdBzVM5j5R639lXQmPmSo0iRpHqUUrsxw==}
-    engines: {node: '>=18'}
-    cpu: [arm64]
-    os: [win32]
 
   '@esbuild/win32-arm64@0.25.9':
     resolution: {integrity: sha512-mGFrVJHmZiRqmP8xFOc6b84/7xa5y5YvR1x8djzXpJBSv/UsNK6aqec+6JDjConTgvvQefdGhFDAs2DLAds6gQ==}
@@ -2034,12 +3166,6 @@ packages:
     cpu: [arm64]
     os: [win32]
 
-  '@esbuild/win32-ia32@0.25.5':
-    resolution: {integrity: sha512-onOJ02pqs9h1iMJ1PQphR+VZv8qBMQ77Klcsqv9CNW2w6yLqoURLcgERAIurY6QE63bbLuqgP9ATqajFLK5AMQ==}
-    engines: {node: '>=18'}
-    cpu: [ia32]
-    os: [win32]
-
   '@esbuild/win32-ia32@0.25.9':
     resolution: {integrity: sha512-b33gLVU2k11nVx1OhX3C8QQP6UHQK4ZtN56oFWvVXvz2VkDoe6fbG8TOgHFxEvqeqohmRnIHe5A1+HADk4OQww==}
     engines: {node: '>=18'}
@@ -2056,12 +3182,6 @@ packages:
     resolution: {integrity: sha512-Iuws0kxo4yusk7sw70Xa2E2imZU5HoixzxfGCdxwBdhiDgt9vX9VUCBhqcwY7/uh//78A1hMkkROMJq9l27oLQ==}
     engines: {node: '>=18'}
     cpu: [ia32]
-    os: [win32]
-
-  '@esbuild/win32-x64@0.25.5':
-    resolution: {integrity: sha512-TXv6YnJ8ZMVdX+SXWVBo/0p8LTcrUYngpWjvm91TMjjBQii7Oz11Lw5lbDV5Y0TzuhSJHwiH4hEtC1I42mMS0g==}
-    engines: {node: '>=18'}
-    cpu: [x64]
     os: [win32]
 
   '@esbuild/win32-x64@0.25.9':
@@ -2619,6 +3739,9 @@ packages:
 
   '@mdx-js/mdx@3.1.1':
     resolution: {integrity: sha512-f6ZO2ifpwAQIpzGWaBQT2TXxPv6z3RBzQKpVftEWN78Vl/YweF1uwussDx8ECAXVtr3Rs89fKyG9YlzUs9DyGQ==}
+
+  '@minimistjs/subarg@1.0.0':
+    resolution: {integrity: sha512-Q/ONBiM2zNeYUy0mVSO44mWWKYM3UHuEK43PKIOzJCbvUnPoMH1K+gk3cf1kgnCVJFlWmddahQQCmrmBGlk9jQ==}
 
   '@monaco-editor/loader@1.7.0':
     resolution: {integrity: sha512-gIwR1HrJrrx+vfyOhYmCZ0/JcWqG5kbfG7+d3f/C1LXk2EvzAbHSg3MQ5lO2sMlo9izoAZ04shohfKLVT6crVA==}
@@ -3524,7 +4647,7 @@ packages:
   '@tailwindcss/vite@4.1.18':
     resolution: {integrity: sha512-jVA+/UpKL1vRLg6Hkao5jldawNmRo7mQYrZtNHMIVpLfLhDml5nMRUo/8MwoX2vNXvnaXNNMedrMfMugAVX1nA==}
     peerDependencies:
-      vite: '>=6.3.6'
+      vite: '>=5.4.12'
 
   '@tailwindcss/vite@4.1.8':
     resolution: {integrity: sha512-CQ+I8yxNV5/6uGaJjiuymgw0kEQiNKRinYbZXPdx1fk5WgiyReG0VaUx/Xq6aVNSUNJFzxm6o8FNKS5aMaim5A==}
@@ -3534,12 +4657,6 @@ packages:
   '@testing-library/dom@10.4.0':
     resolution: {integrity: sha512-pemlzrSESWbdAloYml3bAJMEfNh1Z7EduzqPKprCH5S341frlpYnUEW0H72dLxa6IsYr+mPno20GiSm+h9dEdQ==}
     engines: {node: '>=18'}
-
-  '@testing-library/user-event@14.6.1':
-    resolution: {integrity: sha512-vq7fv0rnt+QTXgPxr5Hjc210p6YKq2kmdziLgnsZGgLJ9e6VAShx1pACLuRjd/AS/sr7phAR58OIIpf0LlmQNw==}
-    engines: {node: '>=12', npm: '>=6'}
-    peerDependencies:
-      '@testing-library/dom': '>=7.21.4'
 
   '@tokenizer/inflate@0.4.1':
     resolution: {integrity: sha512-2mAv+8pkG6GIZiF1kNg1jAjh27IDxEPKwdGul3snfztFerfPGI1LjDezZp3i7BElXompqEtPmoPx6c2wgtWsOA==}
@@ -3569,6 +4686,9 @@ packages:
 
   '@types/audioworklet@0.0.92':
     resolution: {integrity: sha512-ykniYTjl1eqgkLeHLH2AAgj4rqdFZyxeVDtCopTTlcvgH7nOHNSn0KYXZPgc0Mx0TiUAwHNEzBWoJw/i8OETBg==}
+
+  '@types/autocannon@7.12.7':
+    resolution: {integrity: sha512-Pd4nPf7wRpacULa6D/EC9x3CwzFQXwA0z5WFuik/fvJjW44V3WzBTM3jtt8nSBoflUNgswPiMCtgrr1bwnAcMg==}
 
   '@types/body-parser@1.19.6':
     resolution: {integrity: sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g==}
@@ -3711,20 +4831,16 @@ packages:
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
 
-  '@vitest/browser@3.2.4':
-    resolution: {integrity: sha512-tJxiPrWmzH8a+w9nLKlQMzAKX/7VjFs50MWgcAj7p9XQ7AQ9/35fByFYptgPELyLw+0aixTnC4pUWV+APcZ/kw==}
+  '@vitest/browser-playwright@4.0.17':
+    resolution: {integrity: sha512-CE9nlzslHX6Qz//MVrjpulTC9IgtXTbJ+q7Rx1HD+IeSOWv4NHIRNHPA6dB4x01d9paEqt+TvoqZfmgq40DxEQ==}
     peerDependencies:
       playwright: '>=1.55.1'
-      safaridriver: '*'
-      vitest: 3.2.4
-      webdriverio: ^7.0.0 || ^8.0.0 || ^9.0.0
-    peerDependenciesMeta:
-      playwright:
-        optional: true
-      safaridriver:
-        optional: true
-      webdriverio:
-        optional: true
+      vitest: 4.0.17
+
+  '@vitest/browser@4.0.17':
+    resolution: {integrity: sha512-cgf2JZk2fv5or3efmOrRJe1V9Md89BPgz4ntzbf84yAb+z2hW6niaGFinl9aFzPZ1q3TGfWZQWZ9gXTFThs2Qw==}
+    peerDependencies:
+      vitest: 4.0.17
 
   '@vitest/coverage-v8@3.2.2':
     resolution: {integrity: sha512-RVAi5xnqedSKvaoQyCTWvncMk8eYZcTTOsLK7XmnfOEvdGP/O/upA0/MA8Ss+Qs++mj0GcSRi/whR0S5iBPpTQ==}
@@ -3747,9 +4863,6 @@ packages:
   '@vitest/expect@3.2.2':
     resolution: {integrity: sha512-ipHw0z669vEMjzz3xQE8nJX1s0rQIb7oEl4jjl35qWTwm/KIHERIg/p/zORrjAaZKXfsv7IybcNGHwhOOAPMwQ==}
 
-  '@vitest/expect@3.2.4':
-    resolution: {integrity: sha512-Io0yyORnB6sikFlt8QW5K7slY4OjqNX9jmJQ02QDda8lyM6B5oNgVWoSoKPac8/kgnCUzuHQKrSLtu/uOqqrig==}
-
   '@vitest/expect@4.0.17':
     resolution: {integrity: sha512-mEoqP3RqhKlbmUmntNDDCJeTDavDR+fVYkSOw8qRwJFaW/0/5zA9zFeTrHqNtcmwh6j26yMmwx2PqUDPzt5ZAQ==}
 
@@ -3758,17 +4871,6 @@ packages:
     peerDependencies:
       msw: ^2.4.9
       vite: '>=5.4.12'
-    peerDependenciesMeta:
-      msw:
-        optional: true
-      vite:
-        optional: true
-
-  '@vitest/mocker@3.2.4':
-    resolution: {integrity: sha512-46ryTE9RZO/rfDd7pEqFl7etuyzekzEhUbTW3BvmeO/BcCMEgq59BKhek3dXDWgAj4oMK6OZi+vRr1wPW6qjEQ==}
-    peerDependencies:
-      msw: ^2.4.9
-      vite: '>=6.0.9'
     peerDependenciesMeta:
       msw:
         optional: true
@@ -3789,17 +4891,11 @@ packages:
   '@vitest/pretty-format@3.2.2':
     resolution: {integrity: sha512-FY4o4U1UDhO9KMd2Wee5vumwcaHw7Vg4V7yR4Oq6uK34nhEJOmdRYrk3ClburPRUA09lXD/oXWZ8y/Sdma0aUQ==}
 
-  '@vitest/pretty-format@3.2.4':
-    resolution: {integrity: sha512-IVNZik8IVRJRTr9fxlitMKeJeXFFFN0JaB9PHPGQ8NKQbGpfjlTx9zO4RefN8gp7eqjNy8nyK3NZmBzOPeIxtA==}
-
   '@vitest/pretty-format@4.0.17':
     resolution: {integrity: sha512-Ah3VAYmjcEdHg6+MwFE17qyLqBHZ+ni2ScKCiW2XrlSBV4H3Z7vYfPfz7CWQ33gyu76oc0Ai36+kgLU3rfF4nw==}
 
   '@vitest/runner@3.2.2':
     resolution: {integrity: sha512-GYcHcaS3ejGRZYed2GAkvsjBeXIEerDKdX3orQrBJqLRiea4NSS9qvn9Nxmuy1IwIB+EjFOaxXnX79l8HFaBwg==}
-
-  '@vitest/runner@3.2.4':
-    resolution: {integrity: sha512-oukfKT9Mk41LreEW09vt45f8wx7DordoWUZMYdY/cyAk7w5TWkTRCNZYF7sX7n2wB7jyGAl74OxgwhPgKaqDMQ==}
 
   '@vitest/runner@4.0.17':
     resolution: {integrity: sha512-JmuQyf8aMWoo/LmNFppdpkfRVHJcsgzkbCA+/Bk7VfNH7RE6Ut2qxegeyx2j3ojtJtKIbIGy3h+KxGfYfk28YQ==}
@@ -3807,26 +4903,17 @@ packages:
   '@vitest/snapshot@3.2.2':
     resolution: {integrity: sha512-aMEI2XFlR1aNECbBs5C5IZopfi5Lb8QJZGGpzS8ZUHML5La5wCbrbhLOVSME68qwpT05ROEEOAZPRXFpxZV2wA==}
 
-  '@vitest/snapshot@3.2.4':
-    resolution: {integrity: sha512-dEYtS7qQP2CjU27QBC5oUOxLE/v5eLkGqPE0ZKEIDGMs4vKWe7IjgLOeauHsR0D5YuuycGRO5oSRXnwnmA78fQ==}
-
   '@vitest/snapshot@4.0.17':
     resolution: {integrity: sha512-npPelD7oyL+YQM2gbIYvlavlMVWUfNNGZPcu0aEUQXt7FXTuqhmgiYupPnAanhKvyP6Srs2pIbWo30K0RbDtRQ==}
 
   '@vitest/spy@3.2.2':
     resolution: {integrity: sha512-6Utxlx3o7pcTxvp0u8kUiXtRFScMrUg28KjB3R2hon7w4YqOFAEA9QwzPVVS1QNL3smo4xRNOpNZClRVfpMcYg==}
 
-  '@vitest/spy@3.2.4':
-    resolution: {integrity: sha512-vAfasCOe6AIK70iP5UD11Ac4siNUNJ9i/9PZ3NKx07sG6sUxeag1LWdNrMWeKKYBLlzuK+Gn65Yd5nyL6ds+nw==}
-
   '@vitest/spy@4.0.17':
     resolution: {integrity: sha512-I1bQo8QaP6tZlTomQNWKJE6ym4SHf3oLS7ceNjozxxgzavRAgZDc06T7kD8gb9bXKEgcLNt00Z+kZO6KaJ62Ew==}
 
   '@vitest/utils@3.2.2':
     resolution: {integrity: sha512-qJYMllrWpF/OYfWHP32T31QCaLa3BAzT/n/8mNGhPdVcjY+JYazQFO1nsJvXU12Kp1xMpNY4AGuljPTNjQve6A==}
-
-  '@vitest/utils@3.2.4':
-    resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==}
 
   '@vitest/utils@4.0.17':
     resolution: {integrity: sha512-RG6iy+IzQpa9SB8HAFHJ9Y+pTzI+h8553MrciN9eC6TFBErqrQaTas4vG+MVj8S4uKk8uTT2p0vgZPnTdxd96w==}
@@ -3841,6 +4928,10 @@ packages:
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
     engines: {node: '>=6.5'}
+
+  accepts@1.3.8:
+    resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
+    engines: {node: '>= 0.6'}
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -3959,6 +5050,10 @@ packages:
     resolution: {integrity: sha512-+q/t7Ekv1EDY2l6Gda6LLiX14rU9TV20Wa3ofeQmwPFZbOMo9DXrLbOjFaaclkXKWidIaopwAObQDqwWtGUjqg==}
     engines: {node: '>= 4.0.0'}
 
+  autocannon@8.0.0:
+    resolution: {integrity: sha512-fMMcWc2JPFcUaqHeR6+PbmEpTxCrPZyBUM95oG4w3ngJ8NfBNas/ZXA+pTHXLqJ0UlFVTcy05GC25WxKx/M20A==}
+    hasBin: true
+
   autoprefixer@10.4.21:
     resolution: {integrity: sha512-O+A6LWV5LDHSJD3LjHYoNi4VLsj/Whi7k6zG12xTYaU4cQ8oxQGckXNX8cRHK5yOZ/ppVHe0ZBXGzSV9jXdVbQ==}
     engines: {node: ^10 || ^12 || >=14}
@@ -4065,6 +5160,9 @@ packages:
   buffer-equal-constant-time@1.0.1:
     resolution: {integrity: sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA==}
 
+  buffer@5.7.1:
+    resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
+
   bytes@3.1.2:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
     engines: {node: '>= 0.8'}
@@ -4118,6 +5216,9 @@ packages:
     resolution: {integrity: sha512-zgVZuo2WcZgfUEmsn6eO3kINexW8RAE4maiQ8QNs8CtpPCSyMiYsULR3HQYkm3w8FIA3SberyMJMSldGsW+U3w==}
     engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
 
+  char-spinner@1.0.1:
+    resolution: {integrity: sha512-acv43vqJ0+N0rD+Uw3pDHSxP30FHrywu2NO6/wBaHChJIizpDeBUd6NjqhNhy9LGaEAhZAXn46QzmlAvIWd16g==}
+
   character-entities-html4@2.1.0:
     resolution: {integrity: sha512-1v7fgQRj6hnSwFpq1Eu0ynr/CDEw0rXo2B61qXrLNdHZmPKgb7fqS1a2JwF0rISo9q77jDI8VMEHoApn8qDoZA==}
 
@@ -4161,6 +5262,10 @@ packages:
     resolution: {integrity: sha512-/lzGpEWL/8PfI0BmBOPRwp0c/wFNX1RdUML3jK/RcSBA9T8mZDdQpqYBKtCFTOfQbwPqWEOpjqW+Fnayc0969g==}
     engines: {node: '>=10'}
 
+  cli-table3@0.6.5:
+    resolution: {integrity: sha512-+W/5efTR7y5HRD7gACw9yQjqMVvEMLBHmboM/kPWam+H+Hmyrgjh6YncVKK122YZkXrLudzTuAukUw9FnMf7IQ==}
+    engines: {node: 10.* || >= 12.*}
+
   cliui@8.0.1:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
     engines: {node: '>=12'}
@@ -4178,6 +5283,10 @@ packages:
 
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
+
+  color-support@1.1.3:
+    resolution: {integrity: sha512-qiBjkpbMLO/HL68y+lh4q0/O1MZFj2RX6X/KmMa3+gJD3z+WwI1ZzDHysvqHGS3mP6mznPckpXmw1nI9cJjyRg==}
+    hasBin: true
 
   colorjs.io@0.5.2:
     resolution: {integrity: sha512-twmVoizEW7ylZSN32OgKdXRmo1qg+wT5/6C3xu5b9QsWzSFAhHLn2xd8ro0diCsKfCj1RdaTP/nrcW+vAoQPIw==}
@@ -4240,6 +5349,9 @@ packages:
 
   create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
+
+  cross-argv@2.0.0:
+    resolution: {integrity: sha512-YIaY9TR5Nxeb8SMdtrU8asWVM4jqJDNDYlKV21LxtYcfNJhp1kEsgSa6qXwXgzN0WQWGODps0+TlGp2xQSHwOg==}
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -4329,54 +5441,8 @@ packages:
   defu@6.1.4:
     resolution: {integrity: sha512-mEQCMmwJu317oSz8CwdIOdwf3xMif1ttiM8LTufzc3g6kR+9Pe236twL8j3IYT1F7GfRgGcW6MWxzZjLIkuHIg==}
 
-  defuss-astro@1.5.0:
-    resolution: {integrity: sha512-KTY6Wn3BOkVFNeFC4lU4FbwOXWNFs8ksqqIsoP/9zLR1kZg+qd194GBi4Q1dma3YYUVWucRxnnBm0RNlhp9Plg==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-
-  defuss-db@1.1.2:
-    resolution: {integrity: sha512-gTmC8uT93ReBarA6WQ4ue2arSHz/LC/fAPT6n++zJbhMvbT6no5OrHkeqLNAb6R2y4seYnImlKGlnwtiflCvfA==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-
-  defuss-desktop@0.0.2:
-    resolution: {integrity: sha512-MPoldcNfG0vkY/KvJ2Xz7PqAVLnBiE+uvICriiZwpEVJALLGgDyBFjuyQhyzApjvXbdQ1eB0esDEqc64aJx9RA==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-
-  defuss-dson@1.1.1:
-    resolution: {integrity: sha512-CvNIjeVM6dqg/aNIzB7wIgFZ0ic7B8EJMsUPRHVIYxFFFKB/lE1+cK+Tq3LZxaZISUYjXf+Siq+bMpXnE7+rVA==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-
-  defuss-env@1.0.2:
-    resolution: {integrity: sha512-C+26IlNmQaQu/xqsmSvdwGYFWix1xURWKWbc/0ipm1UhI2ULQdI73eRf2eiH5vxbkLngPY/XLjgAKzQCMgFnJQ==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-    hasBin: true
-
-  defuss-jwt@1.0.0:
-    resolution: {integrity: sha512-pZ1PAQ1epiPQVNBjwOWOmrI+X9gP7RrZF5qTuWuZotkKsNJnxbjWY02QBjWNxNu6AtwkNTkSdT1p6QqA3TyIOg==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-    hasBin: true
-
-  defuss-rpc@1.1.3:
-    resolution: {integrity: sha512-e6PG+hf6q+g35Y6fGcanzQiTB2EDVtvu+lA+Yrik/8NclfPhxfCDe2vLnSBcKjtUFvKj+voDkVbgWuSsjzGVfA==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-
-  defuss-runtime@1.2.0:
-    resolution: {integrity: sha512-ZHMXXz0vCBEWHADB9FEaAYlBgM7I8Ri8wuPtG+oC7EudB8KRie9sPld0q63zoHNsoLHV41zTWs/6fBicieSgVQ==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-
   defuss-runtime@1.2.1:
     resolution: {integrity: sha512-eLEUM1cCLzrHdo6oey12NH9Oy6HZs5pNYo6kABzcOwg4BK1/sjfhUrYUsSHOagG0PYIrEMigJx+wVzXU3tvYAQ==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-
-  defuss-transval@1.3.0:
-    resolution: {integrity: sha512-v5Q3GNXG3KArnUU8+qKJ3Je8Kv04HLeXSN5FbTEm+h4jTYwvjsuAHpxjUziS5xxfQM7+ig6FTLUSuxI7fD0Pog==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-
-  defuss-ui@0.1.0:
-    resolution: {integrity: sha512-87fegdNWvWduzr/zScgMp0oafGGbLp1AzY4/dXW2SkY1n+hj0+fWqP0218nWg04H+H1f0U99oqjeICBo+0fK7g==}
-    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
-
-  defuss-vite@1.1.3:
-    resolution: {integrity: sha512-3LIDdJSnVimOUbE7CQW6ojWWGfFzb/4favhgYDs4Cri9g/IOD88LsVhcrt3ySBYta4s+u/xFdcmHuKwEB9E1oQ==}
     engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
 
   defuss@2.1.11:
@@ -4588,11 +5654,6 @@ packages:
   esast-util-from-js@2.0.1:
     resolution: {integrity: sha512-8Ja+rNJ0Lt56Pcf3TAmpBZjmx8ZcK5Ts4cAzIOjsjevg9oSXJnl6SUQ2EevU8tv3h6ZLWmoKL5H4fgWvdvfETw==}
 
-  esbuild@0.25.5:
-    resolution: {integrity: sha512-P8OtKZRv/5J5hhz0cUAdu/cLuPIKXpQl1R9pZtvmHWQvrAUVd0UNIPT4IB4W3rNOqVO0rlqHmCIbSwxh/c9yUQ==}
-    engines: {node: '>=18'}
-    hasBin: true
-
   esbuild@0.25.9:
     resolution: {integrity: sha512-CRbODhYyQx3qp7ZEwzxOk4JBqmD/seJrzPa/cGjY1VtIn5E09Oi9/dB4JwctnfZ8Q8iT7rioVv5k/FNT/uf54g==}
     engines: {node: '>=18'}
@@ -4683,6 +5744,9 @@ packages:
     resolution: {integrity: sha512-6ypT4XfgqJk/F3Yuv4SX26I3doUjt0GTG4a+JgWxXQpxXzTBq8fPUeGHfcYMMDPHJHm3yPOSjaeBwBGAHWXCdA==}
     engines: {node: '>=18.0.0'}
 
+  fast-decode-uri-component@1.0.1:
+    resolution: {integrity: sha512-WKgKWg5eUxvRZGwW8FvfbaH7AXSh2cL+3j5fMGzUMCxWBJ3dV3a7Wz8y2f/uQ0e3B6WmodD3oS54jTQ9HVTIIg==}
+
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
@@ -4690,9 +5754,15 @@ packages:
     resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
     engines: {node: '>=8.6.0'}
 
+  fast-querystring@1.1.2:
+    resolution: {integrity: sha512-g6KuKWmFXc0fID8WWH0jit4g0AGBoJhCkJMb1RmbsSEUNvQ+ZC8D6CUZ+GtF8nMzSPXnhiePyyqqipzNNEnHjg==}
+
   fast-xml-parser@4.5.3:
     resolution: {integrity: sha512-RKihhV+SHsIUGXObeVy9AXiBbFwkVk7Syp8XgwN5U3JV416+Gwp/GO9i0JYKmikykgz/UHRrrV4ROuZEo/T0ig==}
     hasBin: true
+
+  fast-zlib@2.0.1:
+    resolution: {integrity: sha512-DCoYgNagM2Bt1VIpXpdGnRx4LzqJeYG0oh6Nf/7cWo6elTXkFGMw9CrRCYYUIapYNrozYMoyDRflx9mgT3Awyw==}
 
   fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
@@ -4818,6 +5888,10 @@ packages:
       postcss-sort-media-queries: ^5.2.0
       tailwindcss: ^3.4.9 || ^4.0.0
 
+  fresh@0.5.2:
+    resolution: {integrity: sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==}
+    engines: {node: '>= 0.6'}
+
   fresh@2.0.0:
     resolution: {integrity: sha512-Rx/WycZ60HOaqLKAi6cHRKKI7zxWbJ31MhntmtwMoaTeF7XFH9hhBp8vITaMidfljRQ6eYWCKkaTK+ykVJHP2A==}
     engines: {node: '>= 0.8'}
@@ -4932,6 +6006,9 @@ packages:
     resolution: {integrity: sha512-tLvsizNno05Hij0PoB0QN/S8xf0YU2AGvO11/JlJDw5McA/gzyn0Ni1RwbTI1/zteUbOekJH0t6q8HFvjbxsGg==}
     engines: {node: '>=20.0.0'}
 
+  has-async-hooks@1.0.0:
+    resolution: {integrity: sha512-YF0VPGjkxr7AyyQQNykX8zK4PvtEDsUJAPqwu06UFz1lb6EvI53sPh5H1kWxg8NXI5LsfRCZ8uX9NkYDZBb/mw==}
+
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
     engines: {node: '>=8'}
@@ -4996,6 +6073,13 @@ packages:
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
 
+  hdr-histogram-js@3.0.1:
+    resolution: {integrity: sha512-l3GSdZL1Jr1C0kyb461tUjEdrRPZr8Qry7jByltf5JGrA0xvqOSrxRBfcrJqqV/AMEtqqhHhC6w8HW0gn76tRQ==}
+    engines: {node: '>=14'}
+
+  hdr-histogram-percentiles-obj@3.0.0:
+    resolution: {integrity: sha512-7kIufnBqdsBGcSZLPJwqHT3yhk1QTsSlFsVD3kx5ixH/AlgBs9yM1q6DPhXZ8f8gtdqgh7N7/5btRLpQsS2gHw==}
+
   history@4.10.1:
     resolution: {integrity: sha512-36nwAD620w12kuzPAsyINPWJqlNbij+hpK1k9XRloDtym8mxzGYl2c17LnV6IAGB2Dmg4tEa7G7DlawS0+qjew==}
 
@@ -5050,6 +6134,9 @@ packages:
   https-proxy-agent@7.0.6:
     resolution: {integrity: sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==}
     engines: {node: '>= 14'}
+
+  hyperid@3.3.0:
+    resolution: {integrity: sha512-7qhCVT4MJIoEsNcbhglhdmBKb09QtcmJNiIQGq7js/Khf5FtQQ9bzcAuloeqBeee7XD7JqDeve9KNlQya5tSGQ==}
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
@@ -5224,9 +6311,6 @@ packages:
 
   jose@6.1.0:
     resolution: {integrity: sha512-TTQJyoEoKcC1lscpVDCSsVgYzUDg/0Bt3WE//WiTPK6uOCQC2KZS4MpugbMWt/zyjkopgZoXhZuCi00gLudfUA==}
-
-  jose@6.1.3:
-    resolution: {integrity: sha512-0TpaTfihd4QMNwrz/ob2Bp7X04yuxJkjRGi4aKmOqwhov54i6u79oCv7T+C7lo70MKH6BesI3vscD1yb/yzKXQ==}
 
   js-base64@3.7.8:
     resolution: {integrity: sha512-hNngCeKxIUQiEUN3GPJOkz4wF/YvdUdbNL9hsBcMQTkKzboD7T/q3OYOuuPZLUE6dBxSGpwhk5mwuDud7JVAow==}
@@ -5441,8 +6525,14 @@ packages:
   lodash.camelcase@4.3.0:
     resolution: {integrity: sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA==}
 
+  lodash.chunk@4.2.0:
+    resolution: {integrity: sha512-ZzydJKfUHJwHa+hF5X66zLFCBrWn5GeF28OHEr4WVWtNDXlQ/IjWKPBiikqKo2ne0+v6JgCgJ0GzJp8k8bHC7w==}
+
   lodash.clonedeep@4.5.0:
     resolution: {integrity: sha512-H5ZhCF25riFd9uB5UCkVKo61m3S/xZk1x4wA6yp/L3RFP6Z/eHH1ymQcGLo7J3GMPfm0V/7m1tryHuGVxpqEBQ==}
+
+  lodash.flatten@4.4.0:
+    resolution: {integrity: sha512-C5N2Z3DgnnKr0LOpv/hKCgKdb7ZZwafIrsesve6lmzvZIRZRGaZ/l6Q8+2W7NaT+ZwO3fFlSCzCzrDCFdJfZ4g==}
 
   lodash.includes@4.3.0:
     resolution: {integrity: sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w==}
@@ -5481,9 +6571,6 @@ packages:
   loupe@3.1.3:
     resolution: {integrity: sha512-kkIp7XSkP78ZxJEsSxW3712C6teJVoeHHwgo9zJ380de7IYyJ2ISlxojcH2pC5OFLewESmnRi/+XCDIEEVyoug==}
 
-  loupe@3.1.4:
-    resolution: {integrity: sha512-wJzkKwJrheKtknCOKNEtDK4iqg/MxmZheEMtSTYvnzRdEYaZzmgH976nenp8WdJRdx5Vc1X/9MO0Oszl6ezeXg==}
-
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
 
@@ -5520,6 +6607,9 @@ packages:
 
   make-error@1.3.6:
     resolution: {integrity: sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==}
+
+  manage-path@2.0.0:
+    resolution: {integrity: sha512-NJhyB+PJYTpxhxZJ3lecIGgh4kwIY2RAh44XvAz9UlqthlQwtPBf62uBVR8XaD8CRuSjQ6TnZH2lNJkbLPZM2A==}
 
   markdown-extensions@2.0.0:
     resolution: {integrity: sha512-o5vL7aDWatOTX8LzaS1WMoaoxIiLRQJuIKKe2wAw6IeULDHaqbiqiggmx+pKvZDb1Sj+pE46Sn1T7lCqfFtg1Q==}
@@ -5765,6 +6855,9 @@ packages:
     resolution: {integrity: sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow==}
     engines: {node: '>=16 || 14 >=14.17'}
 
+  minimist@1.2.8:
+    resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
+
   minipass@3.3.6:
     resolution: {integrity: sha512-DxiNidxSEK+tHG6zOIklvNOwm3hvCrbUrdtzY74U6HKTJxvIDfOUL5W5P2Ghd3DTkhhKPYGqeNUIh5qcM4YBfw==}
     engines: {node: '>=8'}
@@ -5871,6 +6964,10 @@ packages:
     engines: {node: '>=16.0.0'}
     hasBin: true
 
+  negotiator@0.6.3:
+    resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
+    engines: {node: '>= 0.6'}
+
   negotiator@1.0.0:
     resolution: {integrity: sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg==}
     engines: {node: '>= 0.6'}
@@ -5958,6 +7055,10 @@ packages:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
     engines: {node: '>= 0.8'}
 
+  on-net-listen@1.1.2:
+    resolution: {integrity: sha512-y1HRYy8s/RlcBvDUwKXSmkODMdx4KSuIvloCnQYJ2LdBBC1asY4HtfhXwe3UWknLakATZDnbzht2Ijw3M1EqFg==}
+    engines: {node: '>=9.4.0 || ^8.9.4'}
+
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
 
@@ -5992,6 +7093,9 @@ packages:
 
   package-manager-detector@1.6.0:
     resolution: {integrity: sha512-61A5ThoTiDG/C8s8UMZwSorAGwMJ0ERVGj2OjoW5pAalsNOg15+iQiPzrLJ4jhZ1HJzmC2PIHT2oEiH3R5fzNA==}
+
+  pako@1.0.11:
+    resolution: {integrity: sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==}
 
   parse-entities@4.0.2:
     resolution: {integrity: sha512-GG2AQYWoLgL877gQIKeRPGO1xF9+eG1ujIb5soS5gPvLQ1y2o8FL90w2QWNdf9I361Mpp7726c+lj3U0qK1uGw==}
@@ -6067,6 +7171,10 @@ packages:
     resolution: {integrity: sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA==}
     engines: {node: '>= 6'}
 
+  pixelmatch@7.1.0:
+    resolution: {integrity: sha512-1wrVzJ2STrpmONHKBy228LM1b84msXDUoAzVEl0R8Mz4Ce6EPr+IVtxm8+yvrqLYMHswREkjYFaMxnyGnaY3Ng==}
+    hasBin: true
+
   pkgroll@2.12.2:
     resolution: {integrity: sha512-Vl1hJ6jQj6YY9xvhuH8qNVf4qEZng9qC5jfqUKIR4+k5HaGdt6TCXj3lI5uNs+Z3ljtdlwMigi5re1YyDDhVxA==}
     engines: {node: '>=18'}
@@ -6110,6 +7218,10 @@ packages:
   plist@3.1.0:
     resolution: {integrity: sha512-uysumyrvkUX0rX/dEVqt8gC3sTBzd4zoWfLeS29nb53imdaXVvLINYXTI2GNqzaMuvacNx4uJQ8+b3zXR0pkgQ==}
     engines: {node: '>=10.4.0'}
+
+  pngjs@7.0.0:
+    resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+    engines: {node: '>=14.19.0'}
 
   postcss-combine-duplicated-selectors@10.0.3:
     resolution: {integrity: sha512-IP0BmwFloCskv7DV7xqvzDXqMHpwdczJa6ZvIW8abgHdcIHs9mCJX2ltFhu3EwA51ozp13DByng30+Ke+eIExA==}
@@ -6164,6 +7276,10 @@ packages:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
 
+  pretty-bytes@5.6.0:
+    resolution: {integrity: sha512-FFw039TmrBqFK8ma/7OL3sDz/VytdtJr044/QUJtH0wK9lb9jLq9tJyIxUwtQJHwar2BqtiA4iCWSwo9JLkzFg==}
+    engines: {node: '>=6'}
+
   pretty-format@27.5.1:
     resolution: {integrity: sha512-Qb1gy5OrP5+zDf2Bvnzdl3jsTf1qXVMazbvCoKhtKqVs4/YK4ozX4gKQJJVyNe+cajNPn0KoC0MC3FUmaHWEmQ==}
     engines: {node: ^10.13.0 || ^12.13.0 || ^14.15.0 || >=15.0.0}
@@ -6171,6 +7287,10 @@ packages:
   prismjs@1.30.0:
     resolution: {integrity: sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==}
     engines: {node: '>=6'}
+
+  progress@2.0.3:
+    resolution: {integrity: sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==}
+    engines: {node: '>=0.4.0'}
 
   promise-limit@2.7.0:
     resolution: {integrity: sha512-7nJ6v5lnJsXwGprnGXga4wx6d1POjvi5Qmf1ivTRxTjH4Z/9Czja/UCMLVmB9N93GeWOU93XaFaEt6jbuoagNw==}
@@ -6324,6 +7444,9 @@ packages:
   rehype@13.0.2:
     resolution: {integrity: sha512-j31mdaRFrwFRUIlxGeuPXXKWQxet52RBQRvCmzl5eCefn/KGbomK5GMHNMsOJf55fgo3qw5tST5neDuarDYR2A==}
 
+  reinterval@1.1.0:
+    resolution: {integrity: sha512-QIRet3SYrGp0HUHO88jVskiG6seqUGC5iAG7AwI/BV4ypGcuqk9Du6YQBUOUqm9c8pw1eyLoIaONifRua1lsEQ==}
+
   remark-frontmatter@5.0.0:
     resolution: {integrity: sha512-XTFYvNASMe5iPN0719nPrdItC9aU0ssC4v14mH1BCi1u0n1gAocqcujWUrByftZTbLhRtiKRyjYTSIOcr69UVQ==}
 
@@ -6381,6 +7504,9 @@ packages:
 
   retext@9.0.0:
     resolution: {integrity: sha512-sbMDcpHCNjvlheSgMfEcVrZko3cDzdbe1x/e7G66dFp0Ff7Mldvi2uv6JkJQzdRcvLYE8CA8Oe8siQx8ZOgTcA==}
+
+  retimer@3.0.0:
+    resolution: {integrity: sha512-WKE0j11Pa0ZJI5YIk0nflGI7SQsfl2ljihVy7ogh7DeQSeYAUi0ubZ/yEueGtDfUPk6GH5LRw1hBdLq4IwUBWA==}
 
   retry-request@7.0.2:
     resolution: {integrity: sha512-dUOvLMJ0/JJYEn8NrpOaGNE7X3vpI5XlZS/u0ANjqtcZVKnIxP7IgCFwrKTxENw29emmwug53awKtaMm4i9g5w==}
@@ -6631,8 +7757,8 @@ packages:
   signal-exit@3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
 
-  sirv@3.0.1:
-    resolution: {integrity: sha512-FoqMu0NCGBLCcAkS1qA+XJIQTR6/JHfQXl+uGteNCQ76T91DMUjPa9xfmeqMY3z80nLSg9yQmNjK0Px6RWsH/A==}
+  sirv@3.0.2:
+    resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
     engines: {node: '>=18'}
 
   sisteransi@1.0.5:
@@ -6732,9 +7858,6 @@ packages:
   strip-ansi@7.1.0:
     resolution: {integrity: sha512-iq6eVVI64nQQTRYq2KtEg2d2uU7LElhTJwsH4YzIHZshxlgZms/wIc4VoDQTlG/IvVIrBKG06CrZnp0qv7hkcQ==}
     engines: {node: '>=12'}
-
-  strip-literal@3.0.0:
-    resolution: {integrity: sha512-TcccoMhJOM3OebGhSBEmp3UZ2SfDMZUEBdRA/9ynfLi8yYajyWX3JiXArcJt4Umh4vISpspkQIY8ZZoCqjbviA==}
 
   strnum@1.1.2:
     resolution: {integrity: sha512-vrN+B7DBIoTTZjnPNewwhx6cBA/H+IS7rfW68n7XxC1y7uoiGQBxaKzqucGUgavX15dJgiGztLJ8vxuEzwqBdA==}
@@ -6836,6 +7959,10 @@ packages:
   through2@4.0.2:
     resolution: {integrity: sha512-iOqSav00cVxEEICeD7TjLB1sueEL+81Wpzp2bY17uZjZN0pWZPuo4suZ/61VujxmqSGFfgOcNuTZ85QJwNZQpw==}
 
+  timestring@6.0.0:
+    resolution: {integrity: sha512-wMctrWD2HZZLuIlchlkE2dfXJh7J2KDI9Dwl+2abPYg0mswQHfOAyQW3jJg1pY5VfttSINZuKcXoB3FGypVklA==}
+    engines: {node: '>=8'}
+
   tiny-inflate@1.0.3:
     resolution: {integrity: sha512-pkY1fj1cKHb2seWDy0B16HeWyczlJA9/WW3u3c4z/NiWDsO3DOU5D7nhTLE9CF0yXv/QZFY7sEJmj24dK+Rrqw==}
 
@@ -6869,10 +7996,6 @@ packages:
 
   tinypool@1.1.0:
     resolution: {integrity: sha512-7CotroY9a8DKsKprEy/a14aCCm8jYVmR7aFy4fpkZM8sdpNJbKkixuNjgM50yCmip2ezc8z4N7k3oe2+rfRJCQ==}
-    engines: {node: ^18.0.0 || >=20.0.0}
-
-  tinypool@1.1.1:
-    resolution: {integrity: sha512-Zba82s87IFq9A9XmjiX5uZA/ARWDrB03OHlq+Vw1fSdt0I+4/Kutwy8BP4Y/y/aORMo61FQ0vIb5j44vSo5Pkg==}
     engines: {node: ^18.0.0 || >=20.0.0}
 
   tinyrainbow@2.0.0:
@@ -6954,6 +8077,9 @@ packages:
       typescript:
         optional: true
 
+  tseep@1.3.1:
+    resolution: {integrity: sha512-ZPtfk1tQnZVyr7BPtbJ93qaAh2lZuIOpTMjhrYa4XctT8xe7t4SAW9LIxrySDuYMsfNNayE51E/WNGrNVgVicQ==}
+
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
@@ -7019,6 +8145,10 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  uWebSockets.js@https://codeload.github.com/uNetworking/uWebSockets.js/tar.gz/d04e707a1292928d50163ff7545e45c3e84c5ec3:
+    resolution: {tarball: https://codeload.github.com/uNetworking/uWebSockets.js/tar.gz/d04e707a1292928d50163ff7545e45c3e84c5ec3}
+    version: 20.56.0
+
   ufo@1.6.1:
     resolution: {integrity: sha512-9a4/uxlTWJ4+a5i0ooc1rU7C7YOw3wT+UGqdeNNHWnOF9qcMBgLRS+4IYUqbczewFx4mLEig6gawh7X6mFlEkA==}
 
@@ -7034,6 +8164,10 @@ packages:
   uint8array-extras@1.4.0:
     resolution: {integrity: sha512-ZPtzy0hu4cZjv3z5NW9gfKnNLjoz4y6uv4HlelAjDK7sY/xOkKZv9xK/WQpcsBB3jEybChz9DPC2U/+cusjJVQ==}
     engines: {node: '>=18'}
+
+  ultimate-express@2.0.15:
+    resolution: {integrity: sha512-f8xaMzBewdMbOL+7S2pCRaKBqmbkm8M7bb68heWN+lQe3ux8dKaHhandYiw9SFatO2mM/tgh5AZX1OmR7Gw2RA==}
+    engines: {node: '>=20'}
 
   ultrahtml@1.6.0:
     resolution: {integrity: sha512-R9fBn90VTJrqqLDwyMph+HGne8eqY1iPfYhPzZrvKpIfwkWZbcYlfpsb8B9dTvBfpy1/hqAD7Wi8EKfP9e8zdw==}
@@ -7188,6 +8322,9 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
+  uuid-parse@1.1.0:
+    resolution: {integrity: sha512-OdmXxA8rDsQ7YpNVbKSJkNzTw2I+S5WsbMDnCtIWSQaosNAcWtFuI/YK1TjzUI6nbkgiqEyh8gWngfcv8Asd9A==}
+
   uuid@11.1.0:
     resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
     hasBin: true
@@ -7227,11 +8364,6 @@ packages:
 
   vite-node@3.2.2:
     resolution: {integrity: sha512-Xj/jovjZvDXOq2FgLXu8NsY4uHUMWtzVmMC2LkCu9HWdr9Qu1Is5sanX3Z4jOFKdohfaWDnEJWp9pRP0vVpAcA==}
-    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
-    hasBin: true
-
-  vite-node@3.2.4:
-    resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
 
@@ -7333,34 +8465,6 @@ packages:
       '@types/node': ^18.0.0 || ^20.0.0 || >=22.0.0
       '@vitest/browser': 3.2.2
       '@vitest/ui': 3.2.2
-      happy-dom: '>=20.0.0'
-      jsdom: 24.1.3
-    peerDependenciesMeta:
-      '@edge-runtime/vm':
-        optional: true
-      '@types/debug':
-        optional: true
-      '@types/node':
-        optional: true
-      '@vitest/browser':
-        optional: true
-      '@vitest/ui':
-        optional: true
-      happy-dom:
-        optional: true
-      jsdom:
-        optional: true
-
-  vitest@3.2.4:
-    resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
-    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
-    hasBin: true
-    peerDependencies:
-      '@edge-runtime/vm': '*'
-      '@types/debug': ^4.1.12
-      '@types/node': ^18.0.0 || ^20.0.0 || >=22.0.0
-      '@vitest/browser': 3.2.4
-      '@vitest/ui': 3.2.4
       happy-dom: '>=20.0.0'
       jsdom: 24.1.3
     peerDependenciesMeta:
@@ -7506,18 +8610,6 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  ws@8.18.2:
-    resolution: {integrity: sha512-DMricUmwGZUVr++AEAe2uiVM7UoO9MAVZMDu05UQOaUII0lp+zOzLLU4Xqh/JvTqklB1T4uELaaPBKyjE1r4fQ==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   ws@8.18.3:
     resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
     engines: {node: '>=10.0.0'}
@@ -7628,6 +8720,8 @@ snapshots:
       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-tokenizer': 3.0.4
       lru-cache: 10.4.3
+
+  '@assemblyscript/loader@0.19.23': {}
 
   '@astrojs/compiler@2.13.0': {}
 
@@ -7869,6 +8963,9 @@ snapshots:
 
   '@codexteam/icons@0.3.3': {}
 
+  '@colors/colors@1.5.0':
+    optional: true
+
   '@coolbytes/editorjs-quote@1.0.2': {}
 
   '@cortex-js/compute-engine@0.28.0':
@@ -7943,9 +9040,6 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@esbuild/aix-ppc64@0.25.5':
-    optional: true
-
   '@esbuild/aix-ppc64@0.25.9':
     optional: true
 
@@ -7953,9 +9047,6 @@ snapshots:
     optional: true
 
   '@esbuild/aix-ppc64@0.27.2':
-    optional: true
-
-  '@esbuild/android-arm64@0.25.5':
     optional: true
 
   '@esbuild/android-arm64@0.25.9':
@@ -7967,9 +9058,6 @@ snapshots:
   '@esbuild/android-arm64@0.27.2':
     optional: true
 
-  '@esbuild/android-arm@0.25.5':
-    optional: true
-
   '@esbuild/android-arm@0.25.9':
     optional: true
 
@@ -7977,9 +9065,6 @@ snapshots:
     optional: true
 
   '@esbuild/android-arm@0.27.2':
-    optional: true
-
-  '@esbuild/android-x64@0.25.5':
     optional: true
 
   '@esbuild/android-x64@0.25.9':
@@ -7991,9 +9076,6 @@ snapshots:
   '@esbuild/android-x64@0.27.2':
     optional: true
 
-  '@esbuild/darwin-arm64@0.25.5':
-    optional: true
-
   '@esbuild/darwin-arm64@0.25.9':
     optional: true
 
@@ -8001,9 +9083,6 @@ snapshots:
     optional: true
 
   '@esbuild/darwin-arm64@0.27.2':
-    optional: true
-
-  '@esbuild/darwin-x64@0.25.5':
     optional: true
 
   '@esbuild/darwin-x64@0.25.9':
@@ -8015,9 +9094,6 @@ snapshots:
   '@esbuild/darwin-x64@0.27.2':
     optional: true
 
-  '@esbuild/freebsd-arm64@0.25.5':
-    optional: true
-
   '@esbuild/freebsd-arm64@0.25.9':
     optional: true
 
@@ -8025,9 +9101,6 @@ snapshots:
     optional: true
 
   '@esbuild/freebsd-arm64@0.27.2':
-    optional: true
-
-  '@esbuild/freebsd-x64@0.25.5':
     optional: true
 
   '@esbuild/freebsd-x64@0.25.9':
@@ -8039,9 +9112,6 @@ snapshots:
   '@esbuild/freebsd-x64@0.27.2':
     optional: true
 
-  '@esbuild/linux-arm64@0.25.5':
-    optional: true
-
   '@esbuild/linux-arm64@0.25.9':
     optional: true
 
@@ -8049,9 +9119,6 @@ snapshots:
     optional: true
 
   '@esbuild/linux-arm64@0.27.2':
-    optional: true
-
-  '@esbuild/linux-arm@0.25.5':
     optional: true
 
   '@esbuild/linux-arm@0.25.9':
@@ -8063,9 +9130,6 @@ snapshots:
   '@esbuild/linux-arm@0.27.2':
     optional: true
 
-  '@esbuild/linux-ia32@0.25.5':
-    optional: true
-
   '@esbuild/linux-ia32@0.25.9':
     optional: true
 
@@ -8073,9 +9137,6 @@ snapshots:
     optional: true
 
   '@esbuild/linux-ia32@0.27.2':
-    optional: true
-
-  '@esbuild/linux-loong64@0.25.5':
     optional: true
 
   '@esbuild/linux-loong64@0.25.9':
@@ -8087,9 +9148,6 @@ snapshots:
   '@esbuild/linux-loong64@0.27.2':
     optional: true
 
-  '@esbuild/linux-mips64el@0.25.5':
-    optional: true
-
   '@esbuild/linux-mips64el@0.25.9':
     optional: true
 
@@ -8097,9 +9155,6 @@ snapshots:
     optional: true
 
   '@esbuild/linux-mips64el@0.27.2':
-    optional: true
-
-  '@esbuild/linux-ppc64@0.25.5':
     optional: true
 
   '@esbuild/linux-ppc64@0.25.9':
@@ -8111,9 +9166,6 @@ snapshots:
   '@esbuild/linux-ppc64@0.27.2':
     optional: true
 
-  '@esbuild/linux-riscv64@0.25.5':
-    optional: true
-
   '@esbuild/linux-riscv64@0.25.9':
     optional: true
 
@@ -8121,9 +9173,6 @@ snapshots:
     optional: true
 
   '@esbuild/linux-riscv64@0.27.2':
-    optional: true
-
-  '@esbuild/linux-s390x@0.25.5':
     optional: true
 
   '@esbuild/linux-s390x@0.25.9':
@@ -8135,9 +9184,6 @@ snapshots:
   '@esbuild/linux-s390x@0.27.2':
     optional: true
 
-  '@esbuild/linux-x64@0.25.5':
-    optional: true
-
   '@esbuild/linux-x64@0.25.9':
     optional: true
 
@@ -8145,9 +9191,6 @@ snapshots:
     optional: true
 
   '@esbuild/linux-x64@0.27.2':
-    optional: true
-
-  '@esbuild/netbsd-arm64@0.25.5':
     optional: true
 
   '@esbuild/netbsd-arm64@0.25.9':
@@ -8159,9 +9202,6 @@ snapshots:
   '@esbuild/netbsd-arm64@0.27.2':
     optional: true
 
-  '@esbuild/netbsd-x64@0.25.5':
-    optional: true
-
   '@esbuild/netbsd-x64@0.25.9':
     optional: true
 
@@ -8171,9 +9211,6 @@ snapshots:
   '@esbuild/netbsd-x64@0.27.2':
     optional: true
 
-  '@esbuild/openbsd-arm64@0.25.5':
-    optional: true
-
   '@esbuild/openbsd-arm64@0.25.9':
     optional: true
 
@@ -8181,9 +9218,6 @@ snapshots:
     optional: true
 
   '@esbuild/openbsd-arm64@0.27.2':
-    optional: true
-
-  '@esbuild/openbsd-x64@0.25.5':
     optional: true
 
   '@esbuild/openbsd-x64@0.25.9':
@@ -8204,9 +9238,6 @@ snapshots:
   '@esbuild/openharmony-arm64@0.27.2':
     optional: true
 
-  '@esbuild/sunos-x64@0.25.5':
-    optional: true
-
   '@esbuild/sunos-x64@0.25.9':
     optional: true
 
@@ -8214,9 +9245,6 @@ snapshots:
     optional: true
 
   '@esbuild/sunos-x64@0.27.2':
-    optional: true
-
-  '@esbuild/win32-arm64@0.25.5':
     optional: true
 
   '@esbuild/win32-arm64@0.25.9':
@@ -8228,9 +9256,6 @@ snapshots:
   '@esbuild/win32-arm64@0.27.2':
     optional: true
 
-  '@esbuild/win32-ia32@0.25.5':
-    optional: true
-
   '@esbuild/win32-ia32@0.25.9':
     optional: true
 
@@ -8238,9 +9263,6 @@ snapshots:
     optional: true
 
   '@esbuild/win32-ia32@0.27.2':
-    optional: true
-
-  '@esbuild/win32-x64@0.25.5':
     optional: true
 
   '@esbuild/win32-x64@0.25.9':
@@ -8969,6 +9991,10 @@ snapshots:
       vfile: 6.0.3
     transitivePeerDependencies:
       - supports-color
+
+  '@minimistjs/subarg@1.0.0':
+    dependencies:
+      minimist: 1.2.8
 
   '@monaco-editor/loader@1.7.0':
     dependencies:
@@ -9759,10 +10785,6 @@ snapshots:
       lz-string: 1.5.0
       pretty-format: 27.5.1
 
-  '@testing-library/user-event@14.6.1(@testing-library/dom@10.4.0)':
-    dependencies:
-      '@testing-library/dom': 10.4.0
-
   '@tokenizer/inflate@0.4.1':
     dependencies:
       debug: 4.4.3
@@ -9786,6 +10808,10 @@ snapshots:
   '@types/aria-query@5.0.4': {}
 
   '@types/audioworklet@0.0.92': {}
+
+  '@types/autocannon@7.12.7':
+    dependencies:
+      '@types/node': 25.0.9
 
   '@types/body-parser@1.19.6':
     dependencies:
@@ -9950,19 +10976,30 @@ snapshots:
 
   '@ungap/structured-clone@1.3.0': {}
 
-  '@vitest/browser@3.2.4(playwright@1.57.0)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@3.2.4)':
+  '@vitest/browser-playwright@4.0.17(playwright@1.57.0)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17)':
     dependencies:
-      '@testing-library/dom': 10.4.0
-      '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.0)
-      '@vitest/mocker': 3.2.4(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
-      '@vitest/utils': 3.2.4
-      magic-string: 0.30.17
-      sirv: 3.0.1
-      tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@25.0.9)(@vitest/browser@3.2.4)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
-      ws: 8.18.2
-    optionalDependencies:
+      '@vitest/browser': 4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17)
+      '@vitest/mocker': 4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
       playwright: 1.57.0
+      tinyrainbow: 3.0.3
+      vitest: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+
+  '@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17)':
+    dependencies:
+      '@vitest/mocker': 4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+      '@vitest/utils': 4.0.17
+      magic-string: 0.30.21
+      pixelmatch: 7.1.0
+      pngjs: 7.0.0
+      sirv: 3.0.2
+      tinyrainbow: 3.0.3
+      vitest: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+      ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - msw
@@ -9988,7 +11025,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/coverage-v8@4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))':
+  '@vitest/coverage-v8@4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17))(vitest@4.0.17)':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.0.17
@@ -10000,21 +11037,15 @@ snapshots:
       obug: 2.1.1
       std-env: 3.10.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+      vitest: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+    optionalDependencies:
+      '@vitest/browser': 4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17)
 
   '@vitest/expect@3.2.2':
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/spy': 3.2.2
       '@vitest/utils': 3.2.2
-      chai: 5.2.0
-      tinyrainbow: 2.0.0
-
-  '@vitest/expect@3.2.4':
-    dependencies:
-      '@types/chai': 5.2.2
-      '@vitest/spy': 3.2.4
-      '@vitest/utils': 3.2.4
       chai: 5.2.0
       tinyrainbow: 2.0.0
 
@@ -10031,15 +11062,15 @@ snapshots:
     dependencies:
       '@vitest/spy': 3.2.2
       estree-walker: 3.0.3
-      magic-string: 0.30.17
+      magic-string: 0.30.21
     optionalDependencies:
       vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.19.4)(yaml@2.8.1)
 
-  '@vitest/mocker@3.2.4(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))':
+  '@vitest/mocker@3.2.2(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))':
     dependencies:
-      '@vitest/spy': 3.2.4
+      '@vitest/spy': 3.2.2
       estree-walker: 3.0.3
-      magic-string: 0.30.17
+      magic-string: 0.30.21
     optionalDependencies:
       vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
 
@@ -10055,10 +11086,6 @@ snapshots:
     dependencies:
       tinyrainbow: 2.0.0
 
-  '@vitest/pretty-format@3.2.4':
-    dependencies:
-      tinyrainbow: 2.0.0
-
   '@vitest/pretty-format@4.0.17':
     dependencies:
       tinyrainbow: 3.0.3
@@ -10068,12 +11095,6 @@ snapshots:
       '@vitest/utils': 3.2.2
       pathe: 2.0.3
 
-  '@vitest/runner@3.2.4':
-    dependencies:
-      '@vitest/utils': 3.2.4
-      pathe: 2.0.3
-      strip-literal: 3.0.0
-
   '@vitest/runner@4.0.17':
     dependencies:
       '@vitest/utils': 4.0.17
@@ -10082,13 +11103,7 @@ snapshots:
   '@vitest/snapshot@3.2.2':
     dependencies:
       '@vitest/pretty-format': 3.2.2
-      magic-string: 0.30.17
-      pathe: 2.0.3
-
-  '@vitest/snapshot@3.2.4':
-    dependencies:
-      '@vitest/pretty-format': 3.2.4
-      magic-string: 0.30.17
+      magic-string: 0.30.21
       pathe: 2.0.3
 
   '@vitest/snapshot@4.0.17':
@@ -10101,22 +11116,12 @@ snapshots:
     dependencies:
       tinyspy: 4.0.3
 
-  '@vitest/spy@3.2.4':
-    dependencies:
-      tinyspy: 4.0.3
-
   '@vitest/spy@4.0.17': {}
 
   '@vitest/utils@3.2.2':
     dependencies:
       '@vitest/pretty-format': 3.2.2
       loupe: 3.1.3
-      tinyrainbow: 2.0.0
-
-  '@vitest/utils@3.2.4':
-    dependencies:
-      '@vitest/pretty-format': 3.2.4
-      loupe: 3.1.4
       tinyrainbow: 2.0.0
 
   '@vitest/utils@4.0.17':
@@ -10132,6 +11137,11 @@ snapshots:
     dependencies:
       event-target-shim: 5.0.1
     optional: true
+
+  accepts@1.3.8:
+    dependencies:
+      mime-types: 2.1.35
+      negotiator: 0.6.3
 
   accepts@2.0.0:
     dependencies:
@@ -10532,6 +11542,32 @@ snapshots:
 
   at-least-node@1.0.0: {}
 
+  autocannon@8.0.0:
+    dependencies:
+      '@minimistjs/subarg': 1.0.0
+      chalk: 4.1.2
+      char-spinner: 1.0.1
+      cli-table3: 0.6.5
+      color-support: 1.1.3
+      cross-argv: 2.0.0
+      form-data: 4.0.5
+      has-async-hooks: 1.0.0
+      hdr-histogram-js: 3.0.1
+      hdr-histogram-percentiles-obj: 3.0.0
+      http-parser-js: 0.5.10
+      hyperid: 3.3.0
+      lodash.chunk: 4.2.0
+      lodash.clonedeep: 4.5.0
+      lodash.flatten: 4.4.0
+      manage-path: 2.0.0
+      on-net-listen: 1.1.2
+      pretty-bytes: 5.6.0
+      progress: 2.0.3
+      reinterval: 1.1.0
+      retimer: 3.0.0
+      semver: 7.7.3
+      timestring: 6.0.0
+
   autoprefixer@10.4.21(postcss@8.5.6):
     dependencies:
       browserslist: 4.28.1
@@ -10658,6 +11694,11 @@ snapshots:
 
   buffer-equal-constant-time@1.0.1: {}
 
+  buffer@5.7.1:
+    dependencies:
+      base64-js: 1.5.1
+      ieee754: 1.2.1
+
   bytes@3.1.2: {}
 
   cac@6.7.14: {}
@@ -10704,6 +11745,8 @@ snapshots:
 
   chalk@5.4.1: {}
 
+  char-spinner@1.0.1: {}
+
   character-entities-html4@2.1.0: {}
 
   character-entities-legacy@3.0.0: {}
@@ -10740,6 +11783,12 @@ snapshots:
 
   cli-boxes@3.0.0: {}
 
+  cli-table3@0.6.5:
+    dependencies:
+      string-width: 4.2.3
+    optionalDependencies:
+      '@colors/colors': 1.5.0
+
   cliui@8.0.1:
     dependencies:
       string-width: 4.2.3
@@ -10755,6 +11804,8 @@ snapshots:
       color-name: 1.1.4
 
   color-name@1.1.4: {}
+
+  color-support@1.1.3: {}
 
   colorjs.io@0.5.2: {}
 
@@ -10793,6 +11844,8 @@ snapshots:
   cookie@1.1.1: {}
 
   create-require@1.1.1: {}
+
+  cross-argv@2.0.0: {}
 
   cross-spawn@7.0.6:
     dependencies:
@@ -10868,181 +11921,7 @@ snapshots:
 
   defu@6.1.4: {}
 
-  defuss-astro@1.5.0(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1):
-    dependencies:
-      '@swc/core': 1.15.8(@swc/helpers@0.5.17)
-      astro: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
-      defuss: 2.1.11
-      fast-glob: 3.3.3
-      file-type: 21.3.0
-      purgecss: 7.0.2
-      svgo: 4.0.0
-      vite: 6.4.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
-    transitivePeerDependencies:
-      - '@azure/app-configuration'
-      - '@azure/cosmos'
-      - '@azure/data-tables'
-      - '@azure/identity'
-      - '@azure/keyvault-secrets'
-      - '@azure/storage-blob'
-      - '@capacitor/preferences'
-      - '@deno/kv'
-      - '@netlify/blobs'
-      - '@planetscale/database'
-      - '@swc/helpers'
-      - '@types/node'
-      - '@upstash/redis'
-      - '@vercel/blob'
-      - '@vercel/functions'
-      - '@vercel/kv'
-      - aws4fetch
-      - bufferutil
-      - db0
-      - idb-keyval
-      - ioredis
-      - jiti
-      - less
-      - lightningcss
-      - rollup
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - typescript
-      - uploadthing
-      - utf-8-validate
-      - yaml
-
-  defuss-db@1.1.2:
-    dependencies:
-      '@libsql/client': 0.15.15
-      defuss-env: 1.0.2
-      dexie: 4.2.1
-      fake-indexeddb: 6.2.5
-      mongodb: 6.21.0(socks@2.8.4)
-    transitivePeerDependencies:
-      - '@aws-sdk/credential-providers'
-      - '@mongodb-js/zstd'
-      - bufferutil
-      - gcp-metadata
-      - kerberos
-      - mongodb-client-encryption
-      - snappy
-      - socks
-      - utf-8-validate
-
-  defuss-desktop@0.0.2:
-    dependencies:
-      defuss: 2.1.11
-      defuss-runtime: 1.2.1
-      defuss-transval: 1.3.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
-  defuss-dson@1.1.1: {}
-
-  defuss-env@1.0.2: {}
-
-  defuss-jwt@1.0.0:
-    dependencies:
-      defuss-env: 1.0.2
-      jose: 6.1.3
-
-  defuss-rpc@1.1.3(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1):
-    dependencies:
-      astro: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.55.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
-      defuss-dson: 1.1.1
-    transitivePeerDependencies:
-      - '@azure/app-configuration'
-      - '@azure/cosmos'
-      - '@azure/data-tables'
-      - '@azure/identity'
-      - '@azure/keyvault-secrets'
-      - '@azure/storage-blob'
-      - '@capacitor/preferences'
-      - '@deno/kv'
-      - '@netlify/blobs'
-      - '@planetscale/database'
-      - '@types/node'
-      - '@upstash/redis'
-      - '@vercel/blob'
-      - '@vercel/functions'
-      - '@vercel/kv'
-      - aws4fetch
-      - db0
-      - idb-keyval
-      - ioredis
-      - jiti
-      - less
-      - lightningcss
-      - rollup
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - typescript
-      - uploadthing
-      - yaml
-
-  defuss-runtime@1.2.0: {}
-
   defuss-runtime@1.2.1: {}
-
-  defuss-transval@1.3.0:
-    dependencies:
-      defuss-runtime: 1.2.0
-
-  defuss-ui@0.1.0:
-    dependencies:
-      '@types/uikit': 3.23.0
-      defuss: 2.1.11
-      uikit: 3.25.5
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
-  defuss-vite@1.1.3(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1):
-    dependencies:
-      '@swc/core': 1.15.8(@swc/helpers@0.5.17)
-      vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
-    transitivePeerDependencies:
-      - '@swc/helpers'
-      - '@types/node'
-      - jiti
-      - less
-      - lightningcss
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
-
-  defuss-vite@1.1.3(@swc/helpers@0.5.17)(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1):
-    dependencies:
-      '@swc/core': 1.15.8(@swc/helpers@0.5.17)
-      vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
-    transitivePeerDependencies:
-      - '@swc/helpers'
-      - '@types/node'
-      - jiti
-      - less
-      - lightningcss
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
 
   defuss@2.1.11:
     dependencies:
@@ -11249,34 +12128,6 @@ snapshots:
       esast-util-from-estree: 2.0.0
       vfile-message: 4.0.2
 
-  esbuild@0.25.5:
-    optionalDependencies:
-      '@esbuild/aix-ppc64': 0.25.5
-      '@esbuild/android-arm': 0.25.5
-      '@esbuild/android-arm64': 0.25.5
-      '@esbuild/android-x64': 0.25.5
-      '@esbuild/darwin-arm64': 0.25.5
-      '@esbuild/darwin-x64': 0.25.5
-      '@esbuild/freebsd-arm64': 0.25.5
-      '@esbuild/freebsd-x64': 0.25.5
-      '@esbuild/linux-arm': 0.25.5
-      '@esbuild/linux-arm64': 0.25.5
-      '@esbuild/linux-ia32': 0.25.5
-      '@esbuild/linux-loong64': 0.25.5
-      '@esbuild/linux-mips64el': 0.25.5
-      '@esbuild/linux-ppc64': 0.25.5
-      '@esbuild/linux-riscv64': 0.25.5
-      '@esbuild/linux-s390x': 0.25.5
-      '@esbuild/linux-x64': 0.25.5
-      '@esbuild/netbsd-arm64': 0.25.5
-      '@esbuild/netbsd-x64': 0.25.5
-      '@esbuild/openbsd-arm64': 0.25.5
-      '@esbuild/openbsd-x64': 0.25.5
-      '@esbuild/sunos-x64': 0.25.5
-      '@esbuild/win32-arm64': 0.25.5
-      '@esbuild/win32-ia32': 0.25.5
-      '@esbuild/win32-x64': 0.25.5
-
   esbuild@0.25.9:
     optionalDependencies:
       '@esbuild/aix-ppc64': 0.25.9
@@ -11460,6 +12311,8 @@ snapshots:
 
   farmhash-modern@1.1.0: {}
 
+  fast-decode-uri-component@1.0.1: {}
+
   fast-deep-equal@3.1.3: {}
 
   fast-glob@3.3.3:
@@ -11470,10 +12323,16 @@ snapshots:
       merge2: 1.4.1
       micromatch: 4.0.8
 
+  fast-querystring@1.1.2:
+    dependencies:
+      fast-decode-uri-component: 1.0.1
+
   fast-xml-parser@4.5.3:
     dependencies:
       strnum: 1.1.2
     optional: true
+
+  fast-zlib@2.0.1: {}
 
   fastq@1.19.1:
     dependencies:
@@ -11654,6 +12513,8 @@ snapshots:
       postcss-sort-media-queries: 5.2.0(postcss@8.5.6)
       tailwindcss: 4.1.18
 
+  fresh@0.5.2: {}
+
   fresh@2.0.0: {}
 
   fs-extra@11.3.0:
@@ -11827,6 +12688,8 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
+  has-async-hooks@1.0.0: {}
+
   has-flag@4.0.0: {}
 
   has-symbols@1.1.0: {}
@@ -11988,6 +12851,14 @@ snapshots:
       property-information: 7.1.0
       space-separated-tokens: 2.0.2
 
+  hdr-histogram-js@3.0.1:
+    dependencies:
+      '@assemblyscript/loader': 0.19.23
+      base64-js: 1.5.1
+      pako: 1.0.11
+
+  hdr-histogram-percentiles-obj@3.0.0: {}
+
   history@4.10.1:
     dependencies:
       '@babel/runtime': 7.27.3
@@ -12064,6 +12935,12 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
+
+  hyperid@3.3.0:
+    dependencies:
+      buffer: 5.7.1
+      uuid: 8.3.2
+      uuid-parse: 1.1.0
 
   iconv-lite@0.6.3:
     dependencies:
@@ -12208,8 +13085,6 @@ snapshots:
   jose@4.15.9: {}
 
   jose@6.1.0: {}
-
-  jose@6.1.3: {}
 
   js-base64@3.7.8: {}
 
@@ -12424,7 +13299,11 @@ snapshots:
 
   lodash.camelcase@4.3.0: {}
 
+  lodash.chunk@4.2.0: {}
+
   lodash.clonedeep@4.5.0: {}
+
+  lodash.flatten@4.4.0: {}
 
   lodash.includes@4.3.0: {}
 
@@ -12451,8 +13330,6 @@ snapshots:
       js-tokens: 4.0.0
 
   loupe@3.1.3: {}
-
-  loupe@3.1.4: {}
 
   lru-cache@10.4.3: {}
 
@@ -12494,6 +13371,8 @@ snapshots:
       semver: 7.7.3
 
   make-error@1.3.6: {}
+
+  manage-path@2.0.0: {}
 
   markdown-extensions@2.0.0: {}
 
@@ -13026,6 +13905,8 @@ snapshots:
     dependencies:
       brace-expansion: 2.0.2
 
+  minimist@1.2.8: {}
+
   minipass@3.3.6:
     dependencies:
       yallist: 4.0.0
@@ -13095,6 +13976,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  negotiator@0.6.3: {}
+
   negotiator@1.0.0: {}
 
   neotraverse@0.6.18: {}
@@ -13160,6 +14043,8 @@ snapshots:
     dependencies:
       ee-first: 1.1.1
 
+  on-net-listen@1.1.2: {}
+
   once@1.4.0:
     dependencies:
       wrappy: 1.0.2
@@ -13197,6 +14082,8 @@ snapshots:
   package-json-from-dist@1.0.1: {}
 
   package-manager-detector@1.6.0: {}
+
+  pako@1.0.11: {}
 
   parse-entities@4.0.2:
     dependencies:
@@ -13262,6 +14149,10 @@ snapshots:
 
   pirates@4.0.7: {}
 
+  pixelmatch@7.1.0:
+    dependencies:
+      pngjs: 7.0.0
+
   pkgroll@2.12.2(typescript@5.8.3):
     dependencies:
       '@rollup/plugin-alias': 5.1.1(rollup@4.41.1)
@@ -13271,7 +14162,7 @@ snapshots:
       '@rollup/plugin-json': 6.1.0(rollup@4.41.1)
       '@rollup/plugin-node-resolve': 16.0.1(rollup@4.41.1)
       '@rollup/pluginutils': 5.1.4(rollup@4.41.1)
-      esbuild: 0.25.5
+      esbuild: 0.25.9
       magic-string: 0.30.17
       rollup: 4.41.1
       rollup-pluginutils: 2.8.2
@@ -13287,7 +14178,7 @@ snapshots:
       '@rollup/plugin-json': 6.1.0(rollup@4.41.1)
       '@rollup/plugin-node-resolve': 16.0.1(rollup@4.41.1)
       '@rollup/pluginutils': 5.1.4(rollup@4.41.1)
-      esbuild: 0.25.5
+      esbuild: 0.25.9
       magic-string: 0.30.17
       rollup: 4.41.1
       rollup-pluginutils: 2.8.2
@@ -13303,7 +14194,7 @@ snapshots:
       '@rollup/plugin-json': 6.1.0(rollup@4.44.1)
       '@rollup/plugin-node-resolve': 16.0.1(rollup@4.44.1)
       '@rollup/pluginutils': 5.1.4(rollup@4.44.1)
-      esbuild: 0.25.5
+      esbuild: 0.25.9
       magic-string: 0.30.17
       rollup: 4.44.1
       rollup-pluginutils: 2.8.2
@@ -13319,7 +14210,7 @@ snapshots:
       '@rollup/plugin-json': 6.1.0(rollup@4.44.1)
       '@rollup/plugin-node-resolve': 16.0.1(rollup@4.44.1)
       '@rollup/pluginutils': 5.1.4(rollup@4.44.1)
-      esbuild: 0.25.5
+      esbuild: 0.25.9
       magic-string: 0.30.17
       rollup: 4.44.1
       rollup-pluginutils: 2.8.2
@@ -13358,6 +14249,8 @@ snapshots:
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
 
+  pngjs@7.0.0: {}
+
   postcss-combine-duplicated-selectors@10.0.3(postcss@8.5.6):
     dependencies:
       postcss: 8.5.6
@@ -13374,6 +14267,14 @@ snapshots:
     dependencies:
       camelcase-css: 2.0.1
       postcss: 8.5.6
+
+  postcss-load-config@4.0.2(postcss@8.5.6)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.17.57)(typescript@5.9.3)):
+    dependencies:
+      lilconfig: 3.1.3
+      yaml: 2.8.1
+    optionalDependencies:
+      postcss: 8.5.6
+      ts-node: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.17.57)(typescript@5.9.3)
 
   postcss-load-config@4.0.2(postcss@8.5.6)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@25.0.9)(typescript@5.9.3)):
     dependencies:
@@ -13406,6 +14307,8 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
+  pretty-bytes@5.6.0: {}
+
   pretty-format@27.5.1:
     dependencies:
       ansi-regex: 5.0.1
@@ -13413,6 +14316,8 @@ snapshots:
       react-is: 17.0.2
 
   prismjs@1.30.0: {}
+
+  progress@2.0.3: {}
 
   promise-limit@2.7.0: {}
 
@@ -13643,6 +14548,8 @@ snapshots:
       rehype-stringify: 10.0.1
       unified: 11.0.5
 
+  reinterval@1.1.0: {}
+
   remark-frontmatter@5.0.0:
     dependencies:
       '@types/mdast': 4.0.4
@@ -13756,6 +14663,8 @@ snapshots:
       retext-latin: 4.0.0
       retext-stringify: 4.0.0
       unified: 11.0.5
+
+  retimer@3.0.0: {}
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -14131,7 +15040,7 @@ snapshots:
 
   signal-exit@3.0.7: {}
 
-  sirv@3.0.1:
+  sirv@3.0.2:
     dependencies:
       '@polka/url': 1.0.0-next.29
       mrmime: 2.0.1
@@ -14226,10 +15135,6 @@ snapshots:
     dependencies:
       ansi-regex: 6.1.0
 
-  strip-literal@3.0.0:
-    dependencies:
-      js-tokens: 9.0.1
-
   strnum@1.1.2:
     optional: true
 
@@ -14296,7 +15201,7 @@ snapshots:
     dependencies:
       tailwindcss: 4.1.8
 
-  tailwindcss@3.4.17(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@25.0.9)(typescript@5.9.3)):
+  tailwindcss@3.4.17(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.17.57)(typescript@5.9.3)):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -14315,7 +15220,7 @@ snapshots:
       postcss: 8.5.6
       postcss-import: 15.1.0(postcss@8.5.6)
       postcss-js: 4.0.1(postcss@8.5.6)
-      postcss-load-config: 4.0.2(postcss@8.5.6)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@25.0.9)(typescript@5.9.3))
+      postcss-load-config: 4.0.2(postcss@8.5.6)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.17.57)(typescript@5.9.3))
       postcss-nested: 6.2.0(postcss@8.5.6)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.10
@@ -14395,6 +15300,8 @@ snapshots:
     dependencies:
       readable-stream: 3.6.2
 
+  timestring@6.0.0: {}
+
   tiny-inflate@1.0.3: {}
 
   tiny-invariant@1.3.3: {}
@@ -14420,8 +15327,6 @@ snapshots:
       picomatch: 4.0.3
 
   tinypool@1.1.0: {}
-
-  tinypool@1.1.1: {}
 
   tinyrainbow@2.0.0: {}
 
@@ -14466,6 +15371,26 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
+  ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.17.57)(typescript@5.9.3):
+    dependencies:
+      '@cspotcode/source-map-support': 0.8.1
+      '@tsconfig/node10': 1.0.11
+      '@tsconfig/node12': 1.0.11
+      '@tsconfig/node14': 1.0.3
+      '@tsconfig/node16': 1.0.4
+      '@types/node': 20.17.57
+      acorn: 8.15.0
+      acorn-walk: 8.3.4
+      arg: 4.1.3
+      create-require: 1.1.1
+      diff: 8.0.3
+      make-error: 1.3.6
+      typescript: 5.9.3
+      v8-compile-cache-lib: 3.0.1
+      yn: 3.1.1
+    optionalDependencies:
+      '@swc/core': 1.15.8(@swc/helpers@0.5.17)
+
   ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@25.0.9)(typescript@5.9.3):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
@@ -14485,6 +15410,7 @@ snapshots:
       yn: 3.1.1
     optionalDependencies:
       '@swc/core': 1.15.8(@swc/helpers@0.5.17)
+    optional: true
 
   tsconfck@3.1.6(typescript@5.8.3):
     optionalDependencies:
@@ -14494,11 +15420,13 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
+  tseep@1.3.1: {}
+
   tslib@2.8.1: {}
 
   tsx@4.19.4:
     dependencies:
-      esbuild: 0.25.5
+      esbuild: 0.25.9
       get-tsconfig: 4.10.1
     optionalDependencies:
       fsevents: 2.3.3
@@ -14549,6 +15477,8 @@ snapshots:
 
   typescript@5.9.3: {}
 
+  uWebSockets.js@https://codeload.github.com/uNetworking/uWebSockets.js/tar.gz/d04e707a1292928d50163ff7545e45c3e84c5ec3: {}
+
   ufo@1.6.1: {}
 
   ufo@1.6.3: {}
@@ -14558,6 +15488,30 @@ snapshots:
   uikit@3.25.5: {}
 
   uint8array-extras@1.4.0: {}
+
+  ultimate-express@2.0.15:
+    dependencies:
+      '@types/express': 4.17.23
+      accepts: 1.3.8
+      acorn: 8.15.0
+      bytes: 3.1.2
+      cookie: 1.1.1
+      cookie-signature: 1.2.2
+      encodeurl: 2.0.0
+      etag: 1.8.1
+      fast-querystring: 1.1.2
+      fast-zlib: 2.0.1
+      fresh: 0.5.2
+      mime-types: 2.1.35
+      ms: 2.1.3
+      proxy-addr: 2.0.7
+      qs: 6.14.1
+      range-parser: 1.2.1
+      statuses: 2.0.2
+      tseep: 1.3.1
+      type-is: 2.0.1
+      uWebSockets.js: https://codeload.github.com/uNetworking/uWebSockets.js/tar.gz/d04e707a1292928d50163ff7545e45c3e84c5ec3
+      vary: 1.1.2
 
   ultrahtml@1.6.0: {}
 
@@ -14684,10 +15638,11 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
+  uuid-parse@1.1.0: {}
+
   uuid@11.1.0: {}
 
-  uuid@8.3.2:
-    optional: true
+  uuid@8.3.2: {}
 
   uuid@9.0.1: {}
 
@@ -14737,7 +15692,7 @@ snapshots:
       - tsx
       - yaml
 
-  vite-node@3.2.4(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1):
+  vite-node@3.2.2(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1):
     dependencies:
       cac: 6.7.14
       debug: 4.4.3
@@ -14757,6 +15712,24 @@ snapshots:
       - terser
       - tsx
       - yaml
+
+  vite@6.4.1(@types/node@20.17.57)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1):
+    dependencies:
+      esbuild: 0.25.9
+      fdir: 6.5.0(picomatch@4.0.3)
+      picomatch: 4.0.3
+      postcss: 8.5.6
+      rollup: 4.44.1
+      tinyglobby: 0.2.15
+    optionalDependencies:
+      '@types/node': 20.17.57
+      fsevents: 2.3.3
+      jiti: 2.6.1
+      lightningcss: 1.30.2
+      sass: 1.92.0
+      sass-embedded: 1.92.0
+      tsx: 4.21.0
+      yaml: 2.8.1
 
   vite@6.4.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.1)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1):
     dependencies:
@@ -14922,16 +15895,16 @@ snapshots:
       - tsx
       - yaml
 
-  vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.0.9)(@vitest/browser@3.2.4)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1):
+  vitest@3.2.2(@types/debug@4.1.12)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1):
     dependencies:
       '@types/chai': 5.2.2
-      '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
-      '@vitest/pretty-format': 3.2.4
-      '@vitest/runner': 3.2.4
-      '@vitest/snapshot': 3.2.4
-      '@vitest/spy': 3.2.4
-      '@vitest/utils': 3.2.4
+      '@vitest/expect': 3.2.2
+      '@vitest/mocker': 3.2.2(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
+      '@vitest/pretty-format': 3.2.2
+      '@vitest/runner': 3.2.2
+      '@vitest/snapshot': 3.2.2
+      '@vitest/spy': 3.2.2
+      '@vitest/utils': 3.2.2
       chai: 5.2.0
       debug: 4.4.1
       expect-type: 1.2.1
@@ -14942,15 +15915,14 @@ snapshots:
       tinybench: 2.9.0
       tinyexec: 0.3.2
       tinyglobby: 0.2.14
-      tinypool: 1.1.1
+      tinypool: 1.1.0
       tinyrainbow: 2.0.0
       vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
-      vite-node: 3.2.4(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
+      vite-node: 3.2.2(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/debug': 4.1.12
       '@types/node': 25.0.9
-      '@vitest/browser': 3.2.4(playwright@1.57.0)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@3.2.4)
       happy-dom: 20.3.1
       jsdom: 24.1.3
     transitivePeerDependencies:
@@ -14967,7 +15939,7 @@ snapshots:
       - tsx
       - yaml
 
-  vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1):
+  vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1):
     dependencies:
       '@vitest/expect': 4.0.17
       '@vitest/mocker': 4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))
@@ -14992,6 +15964,7 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/node': 25.0.9
+      '@vitest/browser-playwright': 4.0.17(playwright@1.57.0)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.92.0)(sass@1.92.0)(tsx@4.21.0)(yaml@2.8.1))(vitest@4.0.17)
       happy-dom: 20.3.1
       jsdom: 24.1.3
     transitivePeerDependencies:
@@ -15092,8 +16065,6 @@ snapshots:
       strip-ansi: 7.1.0
 
   wrappy@1.0.2: {}
-
-  ws@8.18.2: {}
 
   ws@8.18.3: {}
 

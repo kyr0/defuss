@@ -1,0 +1,832 @@
+# The `defuss` framework Book
+
+## Facts
+
+- `defuss` was created by Aron Homberg; invented by him in 2020, previously known as `SpringType` framework.
+- Aron is known as `kyr0` on GitHub. He is an expert software engineer with over 25 years of industry experience.
+- He is also the author of O'Reilly books such as the 2011 book 'ExtJS - kurz & gut'.
+- `kyr0` created `defuss` out of frustration with the complexity of modern frameworks. He believes in simplicity and explicitness.
+
+## Core Concepts
+
+**defuss** = ultra-fast DOM diff + morph engine that operates on the real DOM (no VDOM) and syncs JSX straight into it. React-like API, but more HTML-native. No implicit reactivity; uses a jQuery-style DOM manipulation API. Includes an explicit Nanostores-like store for simple, predictable state + high performance. defuss' jQuery API handles JSX and works with defuss' ref's seamlessly.
+
+```tsx
+import { $, createRef, createStore, render } from "defuss";
+```
+
+---
+
+## Build Tool Integration
+
+### Vite
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+import defuss from "defuss-vite";
+
+export default defineConfig({
+  plugins: [defuss()],
+});
+```
+
+### Astro
+```ts
+// astro.config.ts
+import { defineConfig } from "astro/config";
+import defuss from "defuss-astro";
+
+export default defineConfig({
+  integrations: [
+    defuss({ include: ["src/**/*.tsx"] }),
+  ],
+});
+```
+
+### esbuild
+
+A simple esbuild example:
+
+```bash
+esbuild src/**/*.jsx --bundle --format=esm --outdir=dist --sourcemap \
+  --jsx=automatic --jsx-import-source=defuss
+```
+
+Integration:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defuss esbuild integration Example</title>
+</head>
+
+<body>
+    <div id="app"></div>
+    <script type="module">
+        import "/dist/app.js";
+    </script>
+</body>
+
+</html>
+```
+
+app.jsx
+```jsx
+import { render, $ } from "defuss";
+
+const App = () => {
+    return (
+        <div>
+            <h1>App</h1>
+        </div>
+    );
+};
+
+render(<App />, $("#app").current);
+```
+
+### Vitest (Browser Testing)
+```ts
+// vitest.config.ts
+import { defineConfig } from "vitest/config";
+import { playwright } from "@vitest/browser-playwright";
+import path from "node:path";
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "defuss": path.resolve(__dirname, "node_modules/defuss/src/index.ts"),
+      "defuss/jsx-runtime": path.resolve(__dirname, "node_modules/defuss/src/render/index.ts"),
+    },
+  },
+  esbuild: {
+    jsx: "automatic",
+    jsxImportSource: "defuss",
+  },
+  test: {
+    browser: {
+      enabled: true,
+      provider: playwright(),
+      instances: [{ browser: "chromium" }],
+      headless: true,
+    },
+  },
+});
+```
+
+---
+
+## JSX Rendering
+
+### Basic Render (React-compatible)
+```tsx
+import { render, $ } from "defuss";
+
+const App = () => <div>Hello World</div>;
+
+// React-compatible render function
+render(<App />, $("#app").current);
+
+// Or with document.getElementById
+render(<App />, document.getElementById("app"));
+```
+
+### Dequery-style Render
+```tsx
+import { $ } from "defuss";
+
+// Alternative: dequery-style rendering (async, allows chaining)
+await $(container).update(<div>Hello</div>);
+
+// Render to ref
+const ref = createRef<HTMLDivElement>();
+await $(container).update(<div ref={ref}>content</div>);
+await $(ref).update(<span>replaced</span>);
+```
+
+### When to Use Each Pattern
+- **`render(jsx, container)`** - Simple, React-familiar, sync entry point
+- **`$(el).jsx()`** - Async, chainable, integrates with dequery operations
+
+### Components
+```tsx
+// Sync component (function returning JSX)
+const Button = ({ label, onClick }: { label: string; onClick: () => void }) => (
+  <button onClick={onClick}>{label}</button>
+);
+
+// Use like React
+await $(container).update(<Button label="Click" onClick={() => console.log("clicked")} />);
+```
+
+### Children Semantics
+```tsx
+// Booleans render as nothing (not "false" text)
+<div>{condition && <span>shown</span>}</div>  // ✓ correct
+<div>{false}</div>  // renders empty, NOT "false"
+
+// Numbers render as text
+<div>{0}</div>       // renders "0"
+<div>{count}</div>   // renders number as string
+```
+
+### Fragments
+```tsx
+<>{item1}{item2}</>  // valid
+<>text only</>       // valid - renders text node
+```
+
+### ⚠️ List Keying (Critical for DOM Morphing)
+
+**Lists MUST have keys on each item** for stable DOM updates. Without keys, elements may be mismatched during re-renders, causing content corruption, lost state, or disappearing elements.
+
+```tsx
+// ❌ WRONG - no keys, elements will be mismatched during morphing!
+const BadList = ({ items }) => (
+  <ul>
+    {items.map(item => <li>{item.name}</li>)}
+  </ul>
+);
+
+// ✅ CORRECT - unique keys prevent mismatching
+const GoodList = ({ items }) => (
+  <ul>
+    {items.map(item => <li key={item.id}>{item.name}</li>)}
+  </ul>
+);
+
+// ✅ CORRECT - components rendering similar elements should key by unique prop
+const Icon = ({ icon }) => (
+  <uk-icon key={icon + Math.random()} icon={icon} />  // key ensures icons don't get swapped
+);
+```
+
+**Key Rules:**
+- Use stable, unique identifiers (IDs, not indices)
+- Apply key to the outermost element in the loop
+- Components rendering distinguishable elements should auto-key by unique prop
+
+### dangerouslySetInnerHTML
+```tsx
+// Children are IGNORED when using dangerouslySetInnerHTML
+<div dangerouslySetInnerHTML={{ __html: "<b>raw</b>" }}>
+  This child is ignored
+</div>
+```
+
+---
+
+## dequery ($) - jQuery-like API
+
+### Selectors
+```tsx
+$(container)              // wrap element
+$(ref)                    // wrap ref.current
+$(".class")               // query selector (sync)
+await $(container).find(".child")  // chained query
+```
+
+### DOM Manipulation
+```tsx
+await $(ref).jsx(<span>new content</span>);  // JSX update (morphs in-place)
+await $(el).addClass("active");
+await $(el).removeClass("active");
+await $(el).toggleClass("visible");
+await $(el).css({ color: "red", padding: "10px" });
+await $(el).html("<span>raw</span>");
+await $(el).text("plain text");
+await $(el).attr("data-id", "123");
+await $(el).removeAttr("disabled");
+```
+
+### Events
+```tsx
+await $(el).on("click", handler);
+await $(el).off("click", handler);
+
+// Event phases
+<button onClick={handler}>bubble</button>
+<button onClickCapture={handler}>capture</button>
+```
+
+### Forms
+```tsx
+await $(form).form();                    // get all values as object
+await $(form).form({ username: "x" });   // set values
+await $(input).val();                    // get value
+await $(input).val("new");               // set value
+await $(form).serialize();               // URL-encoded string
+```
+
+---
+
+## Refs
+
+```tsx
+const ref = createRef<HTMLDivElement>();
+
+// Populate via JSX
+await $(container).jsx(<div ref={ref}>content</div>);
+ref.current.textContent;  // "content"
+
+// Update via ref
+await $(ref).jsx(<span>new</span>);
+
+// IMPORTANT: Morphing preserves same DOM node
+const before = ref.current;
+await $(ref).jsx(<div ref={ref}>updated</div>);
+ref.current === before;  // true - same element, content changed
+```
+
+### Passing Refs to Components (forwardRef pattern)
+```tsx
+import { createRef, type Ref } from "defuss";
+
+interface CanvasProps {
+  canvasRef: Ref<HTMLCanvasElement>;
+  width: number;
+  height: number;
+}
+
+const CanvasComponent = ({ canvasRef, width, height }: CanvasProps) => (
+  <canvas ref={canvasRef} width={width} height={height} />
+);
+
+// Usage
+const canvasRef = createRef<HTMLCanvasElement>();
+await $(container).jsx(<CanvasComponent canvasRef={canvasRef} width={300} height={200} />);
+
+// Access canvas directly
+const ctx = canvasRef.current!.getContext("2d");
+ctx.fillRect(0, 0, 100, 100);
+```
+
+### ⚠️ Ref Timing Warning
+
+**DO NOT** use dequery chains on refs in component body before returning JSX:
+
+```tsx
+// ❌ WRONG - ref not populated yet, will timeout!
+const MyComponent = () => {
+  const formRef = createRef();
+  
+  // This runs BEFORE JSX is rendered to DOM
+  $(formRef).query("input").on("keydown", handler);  // 5s timeout!
+  
+  return <form ref={formRef}>...</form>;
+};
+
+// ✅ CORRECT - use onMount lifecycle
+const MyComponent = () => {
+  const formRef = createRef();
+  
+  return (
+    <form 
+      ref={formRef}
+      onMount={() => {
+        // Runs AFTER form is mounted to DOM
+        $(formRef).query("input").on("keydown", handler);
+      }}
+    >
+      ...
+    </form>
+  );
+};
+```
+
+---
+
+## Store
+
+```tsx
+const store = createStore({ count: 0, items: [] });
+
+store.value.count;              // Read: 0
+store.set({ count: 1, items: [] });  // Update (triggers subscribers)
+store.set("count", 5);          // Path-based update
+
+// Subscribe
+const unsubscribe = store.subscribe((newVal, oldVal) => {
+  console.log("changed:", newVal);
+});
+
+// Persistence
+store.persist("myKey", "local");   // save to localStorage
+store.restore("myKey", "local");   // load from localStorage
+```
+
+### Store-Driven Rendering Pattern
+```tsx
+const store = createStore({ count: 0 });
+const ref = createRef<HTMLDivElement>();
+
+const Counter = () => (
+  <div>
+    <span>{String(store.value.count)}</span>
+    <button onClick={() => store.set({ count: store.value.count + 1 })}>+</button>
+  </div>
+);
+
+const render = async () => {
+  await $(ref).jsx(<Counter />);
+};
+
+await $(container).jsx(<div ref={ref}><Counter /></div>);
+store.subscribe(render);  // auto-rerender on change
+```
+
+### Custom Store Handlers
+```tsx
+interface DrawState {
+  commands: Array<{ type: string; x: number; y: number }>;
+}
+
+const store = createStore<DrawState>({ commands: [] });
+let lastDrawnIndex = -1;
+
+// Custom handler that executes side effects
+const executeCommands = () => {
+  const { commands } = store.value;
+  for (let i = lastDrawnIndex + 1; i < commands.length; i++) {
+    // Execute draw command on canvas
+    ctx.fillRect(commands[i].x, commands[i].y, 10, 10);
+  }
+  lastDrawnIndex = commands.length - 1;
+};
+
+store.subscribe(() => {
+  executeCommands();
+  render();
+});
+```
+
+---
+
+## i18n (Internationalization)
+
+```tsx
+import { loadLanguage, changeLanguage, T, i18n } from "defuss";
+import en from "../i18n/en.json";
+import de from "../i18n/de.json";
+
+// Load languages
+loadLanguage("en", en);
+loadLanguage("de", de);
+changeLanguage("de");
+
+// T component for translations
+<T tag="h2" key="Welcome, {name}!" values={{ name: "defuss" }} />
+<T tag="p" key="main.description" />
+
+// Language toggle
+<button onClick={() => changeLanguage(i18n.language === "en" ? "de" : "en")}>
+  Toggle Language
+</button>
+```
+
+i18n JSON format:
+```json
+{
+  "Welcome, {name}!": "Willkommen, {name}!",
+  "main.description": "Eine einfache Beschreibung"
+}
+```
+
+---
+
+## Client-Side Routing
+
+```tsx
+import { Route, RouterSlot, Redirect } from "defuss";
+
+function RouterOutlet() {
+  const isLoggedIn = !!window.user;
+
+  return (
+    <>
+      {/* Redirect */}
+      {isLoggedIn && <Redirect path="/" exact={true} to="/dashboard" />}
+
+      {/* Routes */}
+      <Route path="/">
+        <LoginScreen />
+      </Route>
+
+      <Route path="/dashboard">
+        <DashboardScreen />
+      </Route>
+
+      <Route path="/users">
+        <UsersScreen />
+      </Route>
+
+      {/* Protected route redirect */}
+      {!isLoggedIn && <Redirect path="/dashboard" to="/" />}
+    </>
+  );
+}
+
+// Mount router
+function Router() {
+  return <RouterSlot tag="div" RouterOutlet={RouterOutlet} />;
+}
+```
+
+---
+
+## WASM Integration
+
+defuss works with real DOM, so standard WASM patterns work:
+
+```tsx
+import init, { myWasmFunction } from "./wasm_module";
+
+// Initialize WASM once
+let wasmReady = false;
+async function initWasm() {
+  if (!wasmReady) {
+    await init();
+    wasmReady = true;
+  }
+}
+
+// Component using WASM
+const WasmComponent = () => {
+  const resultRef = createRef<HTMLDivElement>();
+
+  const runComputation = async () => {
+    await initWasm();
+    const result = myWasmFunction(inputData);
+    await $(resultRef).jsx(<span>{result}</span>);
+  };
+
+  return (
+    <div>
+      <button onClick={runComputation}>Run WASM</button>
+      <div ref={resultRef}>Result will appear here</div>
+    </div>
+  );
+};
+```
+
+---
+
+## Audio Worklets
+
+```tsx
+import { createRef } from "defuss";
+
+interface AudioPlayerProps {
+  src: string;
+  onPlay: () => void;
+  onPause: () => void;
+}
+
+const AudioPlayer = ({ src, onPlay, onPause }: AudioPlayerProps) => {
+  const audioRef = createRef<HTMLAudioElement>();
+
+  return (
+    <audio
+      ref={audioRef}
+      src={src}
+      controls
+      onPlay={onPlay}
+      onPause={onPause}
+    />
+  );
+};
+
+// Access audio element for Web Audio API
+const audioRef = createRef<HTMLAudioElement>();
+// ... after render
+const audioContext = new AudioContext();
+const source = audioContext.createMediaElementSource(audioRef.current!);
+source.connect(audioContext.destination);
+```
+
+---
+
+## Using Third-Party JS Libraries
+
+defuss uses real DOM, so any DOM library works directly:
+
+```tsx
+import { createRef } from "defuss";
+import EditorJS from "@editorjs/editorjs";
+
+const EditorComponent = () => {
+  const editorRef = createRef<HTMLDivElement>();
+  let editor: EditorJS | null = null;
+
+  const onMount = () => {
+    editor = new EditorJS({
+      holder: editorRef.current!,
+      tools: { /* ... */ },
+    });
+  };
+
+  const onUnmount = () => {
+    editor?.destroy();
+  };
+
+  return <div ref={editorRef} onMount={onMount} onUnmount={onUnmount} />;
+};
+```
+
+---
+
+## Component Composition
+
+### Base Component with Props
+```tsx
+import type { Props } from "defuss";
+
+interface CardProps extends Props {
+  title: string;
+  footer?: JSX.Element;
+}
+
+const Card = ({ title, footer, children }: CardProps) => (
+  <div class="card">
+    <div class="card-header">{title}</div>
+    <div class="card-body">{children}</div>
+    {footer && <div class="card-footer">{footer}</div>}
+  </div>
+);
+```
+
+### Layout Component
+```tsx
+interface LayoutProps extends Props {
+  sidebar?: JSX.Element;
+}
+
+const Layout = ({ sidebar, children }: LayoutProps) => (
+  <div class="layout">
+    {sidebar && <aside class="sidebar">{sidebar}</aside>}
+    <main class="content">{children}</main>
+  </div>
+);
+
+// Usage
+<Layout sidebar={<Navigation />}>
+  <Dashboard />
+</Layout>
+```
+
+---
+
+## TypeScript Types
+
+### Component Props
+```tsx
+import type { Props, Ref } from "defuss";
+
+interface ButtonProps extends Props {
+  variant?: "primary" | "secondary";
+  disabled?: boolean;
+  onClick?: (e: MouseEvent) => void;
+}
+
+const Button = ({ variant = "primary", disabled, onClick, children }: ButtonProps) => (
+  <button class={`btn btn-${variant}`} disabled={disabled} onClick={onClick}>
+    {children}
+  </button>
+);
+```
+
+### Store Types
+```tsx
+interface AppState {
+  user: { id: string; name: string } | null;
+  theme: "light" | "dark";
+  notifications: Array<{ id: string; message: string }>;
+}
+
+const store = createStore<AppState>({
+  user: null,
+  theme: "light",
+  notifications: [],
+});
+```
+
+### Ref Types
+```tsx
+const inputRef = createRef<HTMLInputElement>();
+const canvasRef = createRef<HTMLCanvasElement>();
+const divRef = createRef<HTMLDivElement>();
+```
+
+---
+
+## DOM Morphing Behavior
+
+defuss morphs DOM in-place for efficiency:
+
+```tsx
+await $(ref).jsx(<div class="a">first</div>);
+const el1 = ref.current;
+
+await $(ref).jsx(<div class="b">second</div>);
+const el2 = ref.current;
+
+el1 === el2;  // true - same DOM node, morphed in-place
+```
+
+**Key behaviors:**
+- Element type unchanged → morphs in-place (preserves refs, focus, canvas state)
+- Element type changed → replaces element
+- Keyed lists use `key` prop for stable identity
+- Event listeners update correctly on morph (old removed, new attached)
+
+---
+
+## Lifecycle Events
+
+```tsx
+<div
+  onMount={() => console.log("mounted")}
+  onUnmount={() => console.log("unmounted")}
+>
+  content
+</div>
+```
+
+---
+
+## SSR
+
+```tsx
+import { renderToString } from "defuss/server";
+
+const html = renderToString(<App />);
+```
+
+---
+
+## Key Differences from React
+
+| React | defuss |
+|-------|--------|
+| `className` | `class` (both work) |
+| `useState` | `createStore` |
+| `useRef` | `createRef` |
+| `forwardRef` | Pass ref as prop |
+| Virtual DOM diff | Direct DOM morph |
+| Hooks rules | No hooks, explicit state |
+| `ReactDOM.render` | `render()` or `$(el).jsx()` |
+
+
+## jsx() Function API
+
+The `jsx()` function creates VNodes from JSX. **Important**: children must be passed via `attributes.children`, not as a separate argument.
+
+### Correct Usage
+
+```tsx
+// ✅ Correct: children via attributes.children
+jsx("div", { className: "wrapper", children: [<span>Hello</span>] });
+
+// ✅ Also correct: JSX syntax handles this automatically
+<div className="wrapper">
+  <span>Hello</span>
+</div>
+```
+
+### For Custom Elements
+
+When dynamically creating custom elements, ensure children are in `attributes.children`:
+
+```tsx
+// ✅ Correct way to create custom elements dynamically
+const customElement = (tagName: string, props: Record<string, any>, children?: any) => {
+    return jsx(tagName, { ...props, children });
+};
+
+// Usage
+customElement("my-component", { class: "wrapper" }, <span>Content</span>);
+```
+
+### jsx() Signature
+
+```ts
+jsx(
+  type: VNodeType | Function,        // Tag name or component function
+  attributes: { children?, ...},      // Props including children
+  key?: string,                       // Optional key for reconciliation
+  sourceInfo?: JsxSourceInfo         // Dev mode source info
+): VNode | VNode[]
+```
+
+The 3rd argument is `key`, NOT children. This is a common mistake.
+
+---
+
+## Shadow DOM and Custom Elements
+
+### How Morphing Works
+
+defuss uses a hybrid approach for shadow DOM:
+
+- **Custom elements** (tags containing `-`): morph **light DOM** (slotted content)
+- **Regular elements with shadowRoot**: morph **shadow root**
+
+This ensures slotted content updates correctly in web components while preserving shadow DOM behavior for other use cases.
+
+### Slotted Content Updates
+
+Slotted content lives in **light DOM**, not shadow DOM. When you render:
+
+```tsx
+<my-card>
+  <span slot="header">Title</span>
+  <p>Content</p>
+</my-card>
+```
+
+The `<span>` and `<p>` are light DOM children that get projected into `<slot>` elements in the shadow DOM. defuss correctly updates these by targeting the parent element, not its shadowRoot.
+
+---
+
+## Render Functions
+
+Rendering works isomorphically, meaning it works both on the client and server. defuss can render sync and async. Async component functions are fully supported.
+
+### Sync render (Recommended for simple use cases)
+
+React-compatible render function for morphing JSX into a container is imported from `defuss` package directly:
+
+```tsx
+import { render, $ } from "defuss";
+
+render(<App />, $("#app"));
+```
+
+### Async render (Recommended for complex use cases)
+
+For async rendering with promises:
+
+```tsx
+import { render, $ } from "defuss";
+
+const AsyncApp = async() => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return (<div>Count: {Math.random()}</div>);
+};
+
+await render(<AsyncApp fallback={<div>Loading...</div>} />, $("#app"));
+```
+
+## Caveats
+
+### 1. Duplicate render Export
+
+`render` is exported from both `isomorph.ts` and `client.ts`/`server.ts`. If you want to render defuss JSX into a container, use `renderInto` or `render` directly from `defuss` package NOT `render` from `defuss/render/client`/`server` which fulfills a different purpose.
+
+### 2. Custom Element Morphing (Web Components)
+
+Hybrid selection - use light DOM for custom elements (hyphenated tags), shadow root for others.

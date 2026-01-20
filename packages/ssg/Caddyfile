@@ -1,0 +1,16 @@
+:3000 {
+	# keep it minimal for benchmarking
+	reverse_proxy {
+		to 127.0.0.1:3001 127.0.0.1:3002 127.0.0.1:3003 127.0.0.1:3004
+		to 127.0.0.1:3005 127.0.0.1:3006 127.0.0.1:3007 127.0.0.1:3008
+
+		lb_policy round_robin
+		health_uri /health
+		health_interval 2s
+
+		# optional, helps under load
+		transport http {
+			keepalive 30s
+		}
+	}
+}

@@ -7,7 +7,11 @@
   },
   "license": "MIT",
   "description": "Remote Procedure Call (RPC) for defuss.",
-  "keywords": ["rpc", "defuss", "astro"],
+  "keywords": [
+    "rpc",
+    "defuss",
+    "astro"
+  ],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"
@@ -44,7 +48,9 @@
     }
   },
   "types": "./dist/types.d.cts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@vitest/coverage-v8": "^3.2.2",
@@ -60,6 +66,20 @@
   },
   "dependencies": {
     "astro": "^5.8.1",
-    "defuss-dson": "^1.1.1"
+    "create-defuss": "workspace:*",
+    "defuss": "workspace:*",
+    "defuss-astro": "workspace:*",
+    "defuss-db": "workspace:*",
+    "defuss-desktop": "workspace:*",
+    "defuss-dson": "workspace:^",
+    "defuss-env": "workspace:*",
+    "defuss-jwt": "workspace:*",
+    "defuss-rpc": "workspace:*",
+    "defuss-runtime": "workspace:*",
+    "defuss-search": "workspace:*",
+    "defuss-ssg": "workspace:*",
+    "defuss-transval": "workspace:*",
+    "defuss-ui": "workspace:*",
+    "defuss-vite": "workspace:*"
   }
 }
