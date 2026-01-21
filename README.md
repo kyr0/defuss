@@ -87,7 +87,7 @@ No time for long introductions? Here is the best way to learn `defuss`:
 
 0. Get familiar with `defuss` [](https://stackblitz.com/github/kyr0/defuss/tree/main/examples/with-astro-ts?file=src%2Fcomponents%2FApp.tsx) *(~3min)*
 1. **Play** with `defuss`' [./examples](examples/) *(~10min)*
-2. [`create-defuss`](https://github.com/kyr0/defuss/tree/main/packages/create-defuss#-getting-started) **your own** `defuss` + `Astro` or `Vite` project  *(~20min)*
+2. [`create-defuss`](https://github.com/kyr0/defuss/tree/main/packages/create#-getting-started) **your own** `defuss` + `Astro` or `Vite` project  *(~20min)*
 3. Checkout all of other the examples and become a `defuss` intermediate *(~8h)*
 4. Work through the **complete codebase** in [./packages](packages/) and become a **`defuss` expert** *(~24h - 3d depending on experience)*
 5. Build your **dream product** and **have a lot of fun**!
