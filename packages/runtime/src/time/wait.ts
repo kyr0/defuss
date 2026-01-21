@@ -23,7 +23,9 @@ export function createTimeoutPromise<T>(
       }
     }, timeoutMs);
 
-    Promise.resolve().then(async () => {
+    // Execute operation immediately (not deferred to microtask queue)
+    // This is critical for event handlers to be attached synchronously
+    (async () => {
       try {
         const result = await operation();
         if (!completed) {
@@ -38,7 +40,7 @@ export function createTimeoutPromise<T>(
           reject(error);
         }
       }
-    });
+    })();
   });
 }
 
@@ -48,7 +50,7 @@ export async function waitForWithPolling<T>(
   interval = 1,
 ): Promise<T> {
   const start = Date.now();
-  let timer: NodeJS.Timeout;
+  let timer: NodeJS.Timeout | null = null;
 
   const cleanup = () => {
     if (timer) {

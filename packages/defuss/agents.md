@@ -243,11 +243,12 @@ export default defineConfig({
   "dependencies": {
     "@types/w3c-xmlserializer": "^2.0.4",
     "csstype": "^3.2.3",
-    "defuss-runtime": "^1.2.1",
+    "defuss-runtime": "workspace:*",
     "happy-dom": "^20.3.1",
     "w3c-xmlserializer": "^5.0.0"
   }
 }
+
 ```
 
 ./pkgroll.config.mjs:
@@ -1092,13 +1093,20 @@ function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
     const newTag = typeof child.type === "string" ? child.type.toLowerCase() : "";
     if (!newTag || oldTag !== newTag) return false;
 
-    // If vnode has class/className, require exact class match to prevent element reuse accidents
+    // If vnode has class/className, check that all VNode classes are present in the DOM element
+    // This is lenient matching - DOM element may have extra classes (e.g. 'hydrated' from Ionic)
+    // but VNode's classes must all be present
     const vnodeClass =
       (child.attributes as any)?.className ??
       (child.attributes as any)?.class;
 
-    if (typeof vnodeClass === "string") {
-      if ((el.getAttribute("class") ?? "") !== vnodeClass) return false;
+    if (typeof vnodeClass === "string" && vnodeClass.length > 0) {
+      const domClasses = new Set((el.getAttribute("class") ?? "").split(/\s+/).filter(Boolean));
+      const vnodeClasses = vnodeClass.split(/\s+/).filter(Boolean);
+      // All VNode classes must be present in DOM (but DOM can have extras like 'hydrated')
+      for (const cls of vnodeClasses) {
+        if (!domClasses.has(cls)) return false;
+      }
     }
 
     return true;
@@ -2137,19 +2145,19 @@ export class CallChainImpl<
   }
 
   addClass(name: string | Array<string>): ET {
-    return createCall(this, "addClass", async () => {
+    return createSyncCall(this, "addClass", () => {
       const list = Array.isArray(name) ? name : [name];
       this.nodes.forEach((el) => (el as HTMLElement).classList.add(...list));
       return this.nodes as NT;
-    }) as unknown as ET;
+    }, name) as unknown as ET;
   }
 
   removeClass(name: string | Array<string>): ET {
-    return createCall(this, "removeClass", async () => {
+    return createSyncCall(this, "removeClass", () => {
       const list = Array.isArray(name) ? name : [name];
       this.nodes.forEach((el) => (el as HTMLElement).classList.remove(...list));
       return this.nodes as NT;
-    }) as unknown as ET;
+    }, name) as unknown as ET;
   }
 
   hasClass(name: string) {
@@ -2164,21 +2172,21 @@ export class CallChainImpl<
   }
 
   toggleClass(name: string): ET {
-    return createCall(this, "toggleClass", async () => {
+    return createSyncCall(this, "toggleClass", () => {
       this.nodes.forEach((el) => (el as HTMLElement).classList.toggle(name));
       return this.nodes as NT;
-    }) as unknown as ET;
+    }, name) as unknown as ET;
   }
 
   animateClass(name: string, duration: number): ET {
-    return createCall(this, "animateClass", async () => {
+    return createSyncCall(this, "animateClass", () => {
       this.nodes.forEach((el) => {
         const e = el as HTMLElement;
         e.classList.add(name);
         setTimeout(() => e.classList.remove(name), duration);
       });
       return this.nodes as NT;
-    }) as unknown as ET;
+    }, name, duration) as unknown as ET;
   }
 
   // --- Content Manipulation Methods ---
@@ -2223,6 +2231,14 @@ export class CallChainImpl<
       );
       return this.nodes as NT;
     }) as unknown as ET;
+  }
+
+  /**
+   * Alias for .jsx() - renders new JSX into the selected element(s).
+   * Explicitly named to make clear that JSX is being rendered.
+   */
+  render(vdom: RenderInput): ET {
+    return this.jsx(vdom);
   }
 
   text(text?: string) {
@@ -2398,6 +2414,10 @@ export class CallChainImpl<
     }) as unknown as ET;
   }
 
+  /**
+   * @deprecated Use .jsx() or .render() for rendering JSX content. This method will be removed in v4.
+   * Note: .update() with props object for component re-rendering is still supported.
+   */
   update(
     input?:
       | string
@@ -2460,10 +2480,10 @@ export class CallChainImpl<
   // --- Event Methods ---
 
   on(event: string, handler: EventListener): ET {
-    return createCall(
+    return createSyncCall(
       this,
       "on",
-      async () => {
+      () => {
         this.nodes.forEach((el) => {
           addElementEvent(el as HTMLElement, event, handler);
         });
@@ -2475,16 +2495,22 @@ export class CallChainImpl<
   }
 
   off(event: string, handler?: EventListener): ET {
-    return createCall(this, "off", async () => {
-      this.nodes.forEach((el) => {
-        removeElementEvent(el as HTMLElement, event, handler);
-      });
-      return this.nodes as NT;
-    }) as unknown as ET;
+    return createSyncCall(
+      this,
+      "off",
+      () => {
+        this.nodes.forEach((el) => {
+          removeElementEvent(el as HTMLElement, event, handler);
+        });
+        return this.nodes as NT;
+      },
+      event,
+      handler,
+    ) as unknown as ET;
   }
 
   clearEvents(): ET {
-    return createCall(this, "clearEvents", async () => {
+    return createSyncCall(this, "clearEvents", () => {
       this.nodes.forEach((el) => {
         clearElementEvents(el as HTMLElement);
       });
@@ -2493,14 +2519,19 @@ export class CallChainImpl<
   }
 
   trigger(eventType: string): ET {
-    return createCall(this, "trigger", async () => {
-      this.nodes.forEach((el) =>
-        (el as HTMLElement).dispatchEvent(
-          new Event(eventType, { bubbles: true, cancelable: true }),
-        ),
-      );
-      return this.nodes as NT;
-    }) as unknown as ET;
+    return createSyncCall(
+      this,
+      "trigger",
+      () => {
+        this.nodes.forEach((el) =>
+          (el as HTMLElement).dispatchEvent(
+            new Event(eventType, { bubbles: true, cancelable: true }),
+          ),
+        );
+        return this.nodes as NT;
+      },
+      eventType,
+    ) as unknown as ET;
   }
 
   // --- Position Methods ---
@@ -3304,6 +3335,52 @@ export function createCall<NT, ET extends Dequery<NT>>(
   return subChainForNextAwait(chain);
 }
 
+/**
+ * Creates a sync-safe call that executes immediately if no operations are pending.
+ * Use this for methods that don't need async waiting (e.g., .on(), .addClass()).
+ * 
+ * Safety rule: Only executes immediately when callStack.length === 0,
+ * ensuring correct ordering when async ops like .find() are queued.
+ */
+export function createSyncCall<NT, ET extends Dequery<NT>>(
+  chain: CallChainImpl<NT, ET>,
+  methodName: string,
+  handler: () => NT,
+  ...callArgs: any[]
+): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
+  // Only safe to run immediately if nothing is queued before us
+  const canRunNow = chain.callStack.length === 0;
+
+  console.log(`[createSyncCall] method=${methodName}, callStack.length=${chain.callStack.length}, nodes.length=${chain.nodes.length}, canRunNow=${canRunNow}`);
+
+  if (canRunNow) {
+    // Execute immediately (synchronously)
+    console.log(`[createSyncCall] Executing ${methodName} immediately`);
+    const result = handler();
+
+    // Maintain same bookkeeping shape as async execution
+    if (Array.isArray(result)) {
+      chain.resultStack.push(result as NT[]);
+      chain.lastResult = result as NT[];
+    } else {
+      chain.lastResult = [result] as NT[];
+    }
+
+    return subChainForNextAwait(chain);
+  }
+
+  // Otherwise: must be queued to preserve ordering with pending ops
+  chain.callStack.push(
+    new Call<NT>(
+      methodName,
+      async () => handler(),
+      ...callArgs,
+    ),
+  );
+
+  return subChainForNextAwait(chain);
+}
+
 export function createGetterSetterCall<NT, ET extends Dequery<NT>, T, V>(
   chain: CallChainImpl<NT, ET>,
   methodName: string,
@@ -3889,6 +3966,9 @@ export interface RouterSlotProps extends Props {
   /** to override the tag name used for the router slot */
   tag?: string;
 
+  /** to override the default id 'router-slot' */
+  id?: string;
+
   /** to identify/select the root DOM element or style it, W3C naming */
   class?: string;
 
@@ -3914,6 +3994,7 @@ export const RouterSlot = ({
   router = Router,
   children,
   RouterOutlet,
+  id,
   transitionConfig = {
     type: "fade",
     duration: 25,
@@ -3924,6 +4005,9 @@ export const RouterSlot = ({
   const { tag, ...attributesWithoutTag } = attributes;
   const ref: Ref<NodeType> = createRef();
 
+  // Use provided id or fall back to default
+  const slotId = id ?? RouterSlotId;
+
   // by using this component, we automatically switch to slot-refresh strategy
   router.strategy = "slot-refresh";
   router.attachPopStateHandler();
@@ -3933,9 +4017,9 @@ export const RouterSlot = ({
     await $(ref).update(RouterOutlet(), transitionConfig);
   });
 
-  if (document.getElementById(RouterSlotId)) {
+  if (document.getElementById(slotId)) {
     console.warn(
-      `It seems there's more than one <RouterSlot /> components defined as an element with id #${RouterSlotId} already exists in the DOM.`,
+      `It seems there's more than one <RouterSlot /> components defined as an element with id #${slotId} already exists in the DOM.`,
     );
   }
 
@@ -3944,7 +4028,7 @@ export const RouterSlot = ({
     type: attributes.tag || "div",
     attributes: {
       ...attributesWithoutTag,
-      id: RouterSlotId,
+      id: slotId,
       ref,
     },
   };
@@ -4516,7 +4600,6 @@ export * from "@/net/fetch.js"
 
 ./src/render/client.ts:
 ```
-import type { Dequery, DequerySyncMethodReturnType } from "@/dequery/index.js";
 import {
   observeUnmount,
   renderIsomorphicSync,
@@ -5332,9 +5415,60 @@ export const jsx = (
     return filterComments(children) as Array<VNode>;
   }
 
+  // Handle async function components with fallback prop
+  // This enables: <AsyncComponent fallback={<div>Loading...</div>} />
+  if (typeof type === "function" && type.constructor.name === "AsyncFunction") {
+    const fallback = attributes?.fallback;
+
+    // Extract fallback from attributes so it's not passed to the async component
+    const propsForAsyncFn = { ...attributes };
+    delete propsForAsyncFn.fallback;
+
+    // Create onMount handler that will:
+    // 1. Execute the async function component
+    // 2. Update the container with the resolved content
+    const onMount = async (containerEl: HTMLElement) => {
+      try {
+        // Execute the async component function with props
+        const resolvedVNode = await type({
+          ...propsForAsyncFn,
+          children,
+        });
+
+        // Import updateDomWithVdom dynamically to update the container
+        // The container element will have its content replaced with the resolved VNode
+        if (containerEl && resolvedVNode) {
+          const globals: Globals = {
+            window: containerEl.ownerDocument?.defaultView ?? (globalThis as unknown as Window),
+          } as Globals;
+          updateDomWithVdom(containerEl, resolvedVNode, globals);
+        }
+      } catch (error) {
+        console.error("[defuss] Async component error:", error);
+        if (containerEl) {
+          containerEl.textContent = `Error: ${(error as Error)?.message || error}`;
+        }
+      }
+    };
+
+    // Return a wrapper div that shows fallback initially, then updates via onMount
+    return {
+      type: "div",
+      attributes: {
+        key,
+        onMount,
+        class: "defuss-async-container",
+      },
+      children: fallback ? [fallback] : [],
+      sourceInfo,
+    } as VNode;
+  }
+
+
   // it's a component, divide and conquer children
-  // in case of async functions, we just pass them through
+  // in case of sync functions (not AsyncFunction)
   if (typeof type === "function" && type.constructor.name !== "AsyncFunction") {
+
     try {
       // Pass all attributes including key (defuss components like Trans use key as a prop)
       const rendered = type({
@@ -5807,12 +5941,12 @@ export const globalScopeDomApis = (window: Window, document: Document) => {
  * render(<App />, document.getElementById("app"));
  * ```
  */
-export const renderInto = (
+export const render = (
   jsx: SyncRenderInput,
   container: Element | null | undefined,
 ): void => {
   if (!container) {
-    console.warn("renderInto: container is null or undefined");
+    console.warn("render: container is null or undefined");
     return;
   }
 
@@ -5825,9 +5959,9 @@ export const renderInto = (
 };
 
 /**
- * @deprecated Use renderInto instead. Will be removed in v4.
+ * @deprecated Use render instead. Will be removed in v4.
  */
-export const render = renderInto;
+export const renderInto = render;
 
 export const isJSX = (o: any): boolean => {
   if (o === null || typeof o !== "object") return false;

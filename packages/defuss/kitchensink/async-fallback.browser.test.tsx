@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { $, render } from "@/index.js";
+import { $, render, RenderInput } from "@/index.js";
 import { jsx } from "@/render/isomorph.js";
 import { createContainer, cleanup, wait, waitForCondition } from "./utils.js";
 
@@ -31,7 +31,7 @@ describe("Async Component with Fallback", () => {
     describe("Basic Async Function Component", () => {
         it("should show fallback while async component is loading, then show resolved content", async () => {
             // Define an async component exactly as the user requested
-            const AsyncApp = async () => {
+            const AsyncApp = async (): Promise<RenderInput> => {
                 await new Promise((resolve) => setTimeout(resolve, 100));
                 return (<div class="resolved">Loaded Content</div>);
             };
@@ -55,7 +55,7 @@ describe("Async Component with Fallback", () => {
 
         it("should work with the exact user example pattern", async () => {
             // Exact pattern from user request
-            const AsyncApp = async () => {
+            const AsyncApp = async (): Promise<RenderInput> => {
                 await new Promise((resolve) => setTimeout(resolve, 50));
                 return (<div>Count: {Math.random()}</div>);
             };
@@ -78,7 +78,7 @@ describe("Async Component with Fallback", () => {
         });
 
         it("should pass props to async component", async () => {
-            const AsyncGreeting = async ({ name }: { name: string }) => {
+            const AsyncGreeting = async ({ name, fallback }: { name: string, fallback?: RenderInput }): Promise<RenderInput> => {
                 await new Promise((resolve) => setTimeout(resolve, 50));
                 return (<div class="greeting">Hello, {name}!</div>);
             };

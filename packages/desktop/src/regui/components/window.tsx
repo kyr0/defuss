@@ -130,9 +130,9 @@ export function Window({
       y: event.clientY,
     };
 
-    // Use native addEventListener for synchronous attachment (dequery's .on() is async)
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    // Use dequery for global event attachment (now sync with createSyncCall!)
+    $(document).on("mousemove", onMouseMove);
+    $(document).on("mouseup", onMouseUp);
 
     // Prevent text selection during drag
     event.preventDefault();
@@ -140,9 +140,9 @@ export function Window({
 
   const onMouseUp = () => {
     isDragging = false;
-    // Remove global event listeners using native DOM API (matching addEventListener above)
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", onMouseUp);
+    // Remove global event listeners
+    $(document).off("mousemove", onMouseMove);
+    $(document).off("mouseup", onMouseUp);
   };
 
   const onWindowMounted = () => {

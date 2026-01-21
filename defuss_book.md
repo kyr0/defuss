@@ -1007,25 +1007,37 @@ This pattern enables:
 - **External control** when ref is provided
 - **Testing** by injecting refs and calling state methods directly
 
-### 5. Native vs Dequery Events for Global Handlers
+### 5. Fire-and-Forget Event Handlers with Dequery
 
-Use native `addEventListener` for synchronous global event attachment (dequery's `.on()` is async):
+Dequery's `.on()`, `.off()`, and class manipulation methods execute **immediately** when the chain has no pending async operations. This enables fire-and-forget patterns:
 
 ```tsx
 const onMouseDown = (event: MouseEvent) => {
-  // ✅ Synchronous - events attached immediately
-  document.addEventListener("mousemove", onMouseMove);
-  document.addEventListener("mouseup", onMouseUp);
-  
-  // ❌ Async - may not be attached when fast mouse movement occurs
-  // $(document).on("mousemove", onMouseMove);  // DON'T USE
+  // These execute immediately - no await needed!
+  $(document).on("mousemove", onMouseMove);
+  $(document).on("mouseup", onMouseUp);
 };
 
 const onMouseUp = () => {
-  // Match with removeEventListener
-  document.removeEventListener("mousemove", onMouseMove);
-  document.removeEventListener("mouseup", onMouseUp);
+  // Cleanup also executes immediately
+  $(document).off("mousemove", onMouseMove);
+  $(document).off("mouseup", onMouseUp);
 };
 ```
 
-**Why this matters:** When dragging elements, the mouse can move faster than the element updates, leaving the element's bounds. Global document-level handlers ensure events are still captured. The async nature of dequery's `.on()` can cause race conditions where handlers aren't attached in time.
+**Sync-safe methods** (execute immediately when chain has no pending ops):
+- Event: `.on()`, `.off()`, `.clearEvents()`, `.trigger()`
+- Class: `.addClass()`, `.removeClass()`, `.toggleClass()`, `.animateClass()`
+
+**When it works:** Use `$(element)` or `$(document)` directly (not selector strings). These resolve synchronously, so subsequent methods execute immediately.
+
+**How it works:** Dequery uses `createSyncCall` which checks `callStack.length === 0`. When there are no pending operations (like `.find()` or `.query()`), methods execute synchronously. When ops are queued, execution is deferred to maintain correct ordering.
+
+**Safe: Ordering is preserved with queued ops:**
+```tsx
+// find() is async, so addClass() waits for it
+const chain = $(parent).find(".child").addClass("x");
+// Before await: parent does NOT have class (correct!)
+// After await:  child HAS class (correct!)
+await chain;
+```

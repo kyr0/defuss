@@ -1,15 +1,22 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": ["vitest/globals"],
+    "types": [
+      "vitest/globals",
+      "node"
+    ],
     "jsx": "react-jsx",
     "jsxImportSource": "defuss",
     "sourceMap": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   }
 }

@@ -423,19 +423,19 @@ export class CallChainImpl<
   }
 
   addClass(name: string | Array<string>): ET {
-    return createCall(this, "addClass", async () => {
+    return createSyncCall(this, "addClass", () => {
       const list = Array.isArray(name) ? name : [name];
       this.nodes.forEach((el) => (el as HTMLElement).classList.add(...list));
       return this.nodes as NT;
-    }) as unknown as ET;
+    }, name) as unknown as ET;
   }
 
   removeClass(name: string | Array<string>): ET {
-    return createCall(this, "removeClass", async () => {
+    return createSyncCall(this, "removeClass", () => {
       const list = Array.isArray(name) ? name : [name];
       this.nodes.forEach((el) => (el as HTMLElement).classList.remove(...list));
       return this.nodes as NT;
-    }) as unknown as ET;
+    }, name) as unknown as ET;
   }
 
   hasClass(name: string) {
@@ -450,21 +450,21 @@ export class CallChainImpl<
   }
 
   toggleClass(name: string): ET {
-    return createCall(this, "toggleClass", async () => {
+    return createSyncCall(this, "toggleClass", () => {
       this.nodes.forEach((el) => (el as HTMLElement).classList.toggle(name));
       return this.nodes as NT;
-    }) as unknown as ET;
+    }, name) as unknown as ET;
   }
 
   animateClass(name: string, duration: number): ET {
-    return createCall(this, "animateClass", async () => {
+    return createSyncCall(this, "animateClass", () => {
       this.nodes.forEach((el) => {
         const e = el as HTMLElement;
         e.classList.add(name);
         setTimeout(() => e.classList.remove(name), duration);
       });
       return this.nodes as NT;
-    }) as unknown as ET;
+    }, name, duration) as unknown as ET;
   }
 
   // --- Content Manipulation Methods ---
@@ -758,10 +758,10 @@ export class CallChainImpl<
   // --- Event Methods ---
 
   on(event: string, handler: EventListener): ET {
-    return createCall(
+    return createSyncCall(
       this,
       "on",
-      async () => {
+      () => {
         this.nodes.forEach((el) => {
           addElementEvent(el as HTMLElement, event, handler);
         });
@@ -773,16 +773,22 @@ export class CallChainImpl<
   }
 
   off(event: string, handler?: EventListener): ET {
-    return createCall(this, "off", async () => {
-      this.nodes.forEach((el) => {
-        removeElementEvent(el as HTMLElement, event, handler);
-      });
-      return this.nodes as NT;
-    }) as unknown as ET;
+    return createSyncCall(
+      this,
+      "off",
+      () => {
+        this.nodes.forEach((el) => {
+          removeElementEvent(el as HTMLElement, event, handler);
+        });
+        return this.nodes as NT;
+      },
+      event,
+      handler,
+    ) as unknown as ET;
   }
 
   clearEvents(): ET {
-    return createCall(this, "clearEvents", async () => {
+    return createSyncCall(this, "clearEvents", () => {
       this.nodes.forEach((el) => {
         clearElementEvents(el as HTMLElement);
       });
@@ -791,14 +797,19 @@ export class CallChainImpl<
   }
 
   trigger(eventType: string): ET {
-    return createCall(this, "trigger", async () => {
-      this.nodes.forEach((el) =>
-        (el as HTMLElement).dispatchEvent(
-          new Event(eventType, { bubbles: true, cancelable: true }),
-        ),
-      );
-      return this.nodes as NT;
-    }) as unknown as ET;
+    return createSyncCall(
+      this,
+      "trigger",
+      () => {
+        this.nodes.forEach((el) =>
+          (el as HTMLElement).dispatchEvent(
+            new Event(eventType, { bubbles: true, cancelable: true }),
+          ),
+        );
+        return this.nodes as NT;
+      },
+      eventType,
+    ) as unknown as ET;
   }
 
   // --- Position Methods ---
@@ -1599,6 +1610,49 @@ export function createCall<NT, ET extends Dequery<NT>>(
   ...callArgs: any[] // ← Add this to capture call arguments
 ): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
   chain.callStack.push(new Call<NT>(methodName, handler, ...callArgs));
+  return subChainForNextAwait(chain);
+}
+
+/**
+ * Creates a sync-safe call that executes immediately if no operations are pending.
+ * Use this for methods that don't need async waiting (e.g., .on(), .addClass()).
+ * 
+ * Safety rule: Only executes immediately when callStack.length === 0,
+ * ensuring correct ordering when async ops like .find() are queued.
+ */
+export function createSyncCall<NT, ET extends Dequery<NT>>(
+  chain: CallChainImpl<NT, ET>,
+  methodName: string,
+  handler: () => NT,
+  ...callArgs: any[]
+): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
+  // Only safe to run immediately if nothing is queued before us
+  const canRunNow = chain.callStack.length === 0;
+
+  if (canRunNow) {
+    // Execute immediately (synchronously)
+    const result = handler();
+
+    // Maintain same bookkeeping shape as async execution
+    if (Array.isArray(result)) {
+      chain.resultStack.push(result as NT[]);
+      chain.lastResult = result as NT[];
+    } else {
+      chain.lastResult = [result] as NT[];
+    }
+
+    return subChainForNextAwait(chain);
+  }
+
+  // Otherwise: must be queued to preserve ordering with pending ops
+  chain.callStack.push(
+    new Call<NT>(
+      methodName,
+      async () => handler(),
+      ...callArgs,
+    ),
+  );
+
   return subChainForNextAwait(chain);
 }
 
