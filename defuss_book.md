@@ -830,3 +830,202 @@ await render(<AsyncApp fallback={<div>Loading...</div>} />, $("#app"));
 ### 2. Custom Element Morphing (Web Components)
 
 Hybrid selection - use light DOM for custom elements (hyphenated tags), shadow root for others.
+
+---
+
+## Advanced Patterns (from defuss-desktop)
+
+The `defuss-desktop` package demonstrates sophisticated patterns for building complex, stateful UI components.
+
+### 1. Refs with Custom API State
+
+Refs can carry a `.state` property containing a custom API object. This enables external control of component behavior:
+
+```tsx
+import { createRef, type Ref } from "defuss";
+
+// Define the API interface
+export interface WindowRefState {
+  onClose: () => void;
+  onMinimize: () => void;
+  onMaximize: () => void;
+  minimize: () => void;
+  maximize: () => void;
+  restore: () => void;
+  close: () => void;
+}
+
+// Component populates ref.state with control methods
+export function Window({ ref = createRef<WindowRefState>(), title }: WindowProps) {
+  // Attach API to ref.state
+  ref.state = {
+    close: () => windowManager.closeWindow(id),
+    minimize: () => windowManager.minimizeWindow(id),
+    maximize: () => windowManager.maximizeWindow(id),
+    restore: () => windowManager.restoreWindow(id),
+    // Callback hooks
+    onClose: () => onClose(),
+    onMinimize: () => onMinimize(),
+    onMaximize: () => onMaximize(),
+  } as WindowRefState;
+
+  return <div class="window" ref={ref}>...</div>;
+}
+```
+
+**External control:**
+```tsx
+const winRef = createRef<WindowRefState>();
+
+await $(container).append(
+  <Window ref={winRef} title="My Window" />
+);
+
+// Control window from outside
+winRef.state?.close();
+winRef.state?.maximize();
+```
+
+### 2. Closure State Pattern
+
+Use closure variables instead of stores for component-local mutable state. This is lighter than creating a store and works naturally with event handlers:
+
+```tsx
+function Window({ width, height, x, y }: WindowProps) {
+  // Closure state - mutable, no reactivity needed
+  let isDragging = false;
+  let dragStart = { x, y };
+
+  const onMouseDown = (event: MouseEvent) => {
+    isDragging = true;  // Mutate closure state
+    dragStart = { x: event.clientX, y: event.clientY };
+    
+    // Attach global listeners for drag
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+
+  const onMouseMove = (event: Event) => {
+    if (!isDragging) return;  // Read closure state
+    // ... handle drag
+  };
+
+  const onMouseUp = () => {
+    isDragging = false;  // Mutate closure state
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+  };
+
+  return <div class="window" onMouseDown={onMouseDown}>...</div>;
+}
+```
+
+**When to use closure state vs store:**
+- **Closure state**: Component-local, no subscribers needed, simple flags/coordinates
+- **Store**: Shared across components, needs reactivity/subscribers, persistence
+
+### 3. Passing Handlers Down (Callback Props)
+
+Pass callback functions as props for child-to-parent communication:
+
+```tsx
+interface WindowProps {
+  onClose?: () => void;
+  onMinimize?: () => void;
+  onMaximize?: () => void;
+}
+
+function Window({
+  onClose = () => {},
+  onMinimize = () => {},
+  onMaximize = () => {},
+}: WindowProps) {
+  
+  const onCloseClick = () => {
+    windowManager.closeWindow(id);  // Internal cleanup
+    onClose();                       // Notify parent
+  };
+
+  return (
+    <div class="window">
+      <div class="title-bar">
+        <button onClick={onCloseClick}>Close</button>
+      </div>
+    </div>
+  );
+}
+
+// Parent receives notifications
+<Window
+  onClose={() => console.log("Window was closed!")}
+  onMaximize={() => console.log("Window was maximized!")}
+/>
+```
+
+### 4. Inversion of Control with forwardRef Pattern
+
+Allow external control by accepting an optional ref prop with a default:
+
+```tsx
+import { createRef, type Ref } from "defuss";
+
+interface WindowProps {
+  ref?: Ref<WindowRefState>;  // Optional - caller can pass their own
+  title?: string;
+}
+
+function Window({
+  ref = createRef<WindowRefState>(),  // Default if not provided
+  title = "Untitled",
+}: WindowProps) {
+  // Component works whether ref is passed in or created internally
+  ref.state = {
+    close: () => { /* ... */ },
+    minimize: () => { /* ... */ },
+  };
+
+  return <div ref={ref}>...</div>;
+}
+```
+
+**Usage patterns:**
+
+```tsx
+// Pattern A: No ref - component manages itself
+<Window title="Self-managed" />
+
+// Pattern B: With ref - external control enabled
+const winRef = createRef<WindowRefState>();
+<Window ref={winRef} title="Externally controlled" />
+
+// Later: control from outside
+winRef.state?.close();
+```
+
+This pattern enables:
+- **Self-contained usage** when no ref is passed
+- **External control** when ref is provided
+- **Testing** by injecting refs and calling state methods directly
+
+### 5. Native vs Dequery Events for Global Handlers
+
+Use native `addEventListener` for synchronous global event attachment (dequery's `.on()` is async):
+
+```tsx
+const onMouseDown = (event: MouseEvent) => {
+  // ✅ Synchronous - events attached immediately
+  document.addEventListener("mousemove", onMouseMove);
+  document.addEventListener("mouseup", onMouseUp);
+  
+  // ❌ Async - may not be attached when fast mouse movement occurs
+  // $(document).on("mousemove", onMouseMove);  // DON'T USE
+};
+
+const onMouseUp = () => {
+  // Match with removeEventListener
+  document.removeEventListener("mousemove", onMouseMove);
+  document.removeEventListener("mouseup", onMouseUp);
+};
+```
+
+**Why this matters:** When dragging elements, the mouse can move faster than the element updates, leaving the element's bounds. Global document-level handlers ensure events are still captured. The async nature of dequery's `.on()` can cause race conditions where handlers aren't attached in time.

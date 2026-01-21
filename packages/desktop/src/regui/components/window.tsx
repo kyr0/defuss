@@ -2,7 +2,7 @@ import { windowManager, type CreateWindowOptions } from "../../window.js";
 import { createRef, type Props, $, type Ref } from "defuss";
 import { throttle } from "defuss-runtime";
 
-export interface WindowProps extends Props, CreateWindowOptions {}
+export interface WindowProps extends Props, CreateWindowOptions { }
 
 export interface WindowRefState {
   onClose: () => void;
@@ -26,9 +26,9 @@ export function Window({
   minimizable = true,
   maximizable = true,
   id = undefined,
-  onClose = () => {},
-  onMinimize = () => {},
-  onMaximize = () => {},
+  onClose = () => { },
+  onMinimize = () => { },
+  onMaximize = () => { },
 }: WindowProps) {
   let isDragging = false;
 
@@ -130,8 +130,9 @@ export function Window({
       y: event.clientY,
     };
 
-    $(document).on("mousemove", onMouseMove);
-    $(document).on("mouseup", onMouseUp);
+    // Use native addEventListener for synchronous attachment (dequery's .on() is async)
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
 
     // Prevent text selection during drag
     event.preventDefault();
@@ -139,9 +140,9 @@ export function Window({
 
   const onMouseUp = () => {
     isDragging = false;
-    // Remove global event listeners using jQuery
-    $(document).off("mousemove", onMouseMove);
-    $(document).off("mouseup", onMouseUp);
+    // Remove global event listeners using native DOM API (matching addEventListener above)
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
   };
 
   const onWindowMounted = () => {
