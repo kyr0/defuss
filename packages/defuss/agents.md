@@ -419,6 +419,7 @@ export const Table = ({ rows, selectedId, onSelect, onRemove }: TableProps) => (
             <tbody>
                 {rows.map((row) => (
                     <TableRow
+                        key={row.id}
                         row={row}
                         selected={row.id === selectedId}
                         onSelect={onSelect}
@@ -926,42 +927,6 @@ export const areDomNodesEqual = (oldNode: Node, newNode: Node): boolean => {
   return true;
 };
 
-/**
- * Recursively updates oldNode with the structure of newNode:
- * - If they differ (tag/attrs/text), oldNode is replaced
- * - If same, we recurse on children
- */
-const updateNode = (oldNode: Node, newNode: Node) => {
-  // 1) If different, replace old with new
-  if (!areDomNodesEqual(oldNode, newNode)) {
-    oldNode.parentNode?.replaceChild(newNode.cloneNode(true), oldNode);
-    return;
-  }
-
-  // 2) If they match and are elements, recurse on their children
-  if (oldNode.nodeType === Node.ELEMENT_NODE) {
-    const oldChildren = oldNode.childNodes;
-    const newChildren = newNode.childNodes;
-    const maxLength = Math.max(oldChildren.length, newChildren.length);
-
-    for (let i = 0; i < maxLength; i++) {
-      const oldChild = oldChildren[i];
-      const newChild = newChildren[i];
-
-      if (oldChild && newChild) {
-        // both exist; recurse
-        updateNode(oldChild, newChild);
-      } else if (newChild && !oldChild) {
-        // new child doesn't exist in old => append
-        oldNode.appendChild(newChild.cloneNode(true));
-      } else if (oldChild && !newChild) {
-        // old child doesn't exist in new => remove
-        oldNode.removeChild(oldChild);
-      }
-    }
-  }
-};
-
 /********************************************************
  * 1) Define a "valid" child type & utilities
  ********************************************************/
@@ -1093,22 +1058,8 @@ function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
     const newTag = typeof child.type === "string" ? child.type.toLowerCase() : "";
     if (!newTag || oldTag !== newTag) return false;
 
-    // If vnode has class/className, check that all VNode classes are present in the DOM element
-    // This is lenient matching - DOM element may have extra classes (e.g. 'hydrated' from Ionic)
-    // but VNode's classes must all be present
-    const vnodeClass =
-      (child.attributes as any)?.className ??
-      (child.attributes as any)?.class;
-
-    if (typeof vnodeClass === "string" && vnodeClass.length > 0) {
-      const domClasses = new Set((el.getAttribute("class") ?? "").split(/\s+/).filter(Boolean));
-      const vnodeClasses = vnodeClass.split(/\s+/).filter(Boolean);
-      // All VNode classes must be present in DOM (but DOM can have extras like 'hydrated')
-      for (const cls of vnodeClasses) {
-        if (!domClasses.has(cls)) return false;
-      }
-    }
-
+    // Match only by tag name - class changes should be handled by patchElementInPlace
+    // This prevents node churn when classes are toggled (e.g., "danger" on selection)
     return true;
   }
 
@@ -3351,11 +3302,8 @@ export function createSyncCall<NT, ET extends Dequery<NT>>(
   // Only safe to run immediately if nothing is queued before us
   const canRunNow = chain.callStack.length === 0;
 
-  console.log(`[createSyncCall] method=${methodName}, callStack.length=${chain.callStack.length}, nodes.length=${chain.nodes.length}, canRunNow=${canRunNow}`);
-
   if (canRunNow) {
     // Execute immediately (synchronously)
-    console.log(`[createSyncCall] Executing ${methodName} immediately`);
     const result = handler();
 
     // Maintain same bookkeeping shape as async execution
@@ -3882,7 +3830,7 @@ export const setupRouter = (
       const oldPath = currentPath; // Use tracked currentPath instead of window location
 
       if (strategy === "page-refresh") {
-        document.location.href = newPath;
+        windowImpl!.location.href = newPath;
       } else if (strategy === "slot-refresh") {
         // show new path in the address bar
         if (typeof windowImpl !== "undefined") {

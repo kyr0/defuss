@@ -1,9 +1,10 @@
 import type { Row } from "../benchmark-utils.js";
+import type { Props } from "defuss";
 
 // Simple functional components for the benchmark table
 // Uses defuss JSX factory
 
-interface TableRowProps {
+interface TableRowProps extends Props {
     row: Row;
     selected: boolean;
     onSelect: (id: number) => void;
@@ -45,6 +46,7 @@ export const Table = ({ rows, selectedId, onSelect, onRemove }: TableProps) => (
             <tbody>
                 {rows.map((row) => (
                     <TableRow
+                        key={row.id}
                         row={row}
                         selected={row.id === selectedId}
                         onSelect={onSelect}

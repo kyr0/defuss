@@ -58,4 +58,36 @@ describe("updateDomWithVdom (state-preserving morph)", () => {
 
         expect(calls).toBe(1);
     });
+
+    it("preserves element identity when class changes (no node churn)", () => {
+        const container = document.createElement("div");
+        document.body.appendChild(container);
+
+        // Component that can toggle a class (like "danger" on selection)
+        const Row = ({ selected }: { selected: boolean }) => (
+            <tr className={selected ? "danger" : ""}>
+                <td>
+                    <input id="row-input" />
+                </td>
+            </tr>
+        );
+
+        renderSync(<Row selected={false} />, container);
+
+        const inputBefore = document.querySelector("#row-input") as HTMLInputElement;
+        inputBefore.value = "user typed this";
+        inputBefore.focus();
+
+        // Morph with class change (adding "danger")
+        updateDomWithVdom(container, <Row selected={true} />, globalThis as any);
+
+        const inputAfter = document.querySelector("#row-input") as HTMLInputElement;
+        const tr = container.querySelector("tr") as HTMLElement;
+
+        // Key assertions: identity + state preserved
+        expect(inputAfter).toBe(inputBefore); // same DOM node
+        expect(inputBefore.value).toBe("user typed this"); // value preserved
+        expect(document.activeElement).toBe(inputAfter); // focus preserved
+        expect(tr.className).toBe("danger"); // class was updated
+    });
 });

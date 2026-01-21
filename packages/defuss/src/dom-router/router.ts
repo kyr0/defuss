@@ -166,7 +166,7 @@ export const setupRouter = (
       const oldPath = currentPath; // Use tracked currentPath instead of window location
 
       if (strategy === "page-refresh") {
-        document.location.href = newPath;
+        windowImpl!.location.href = newPath;
       } else if (strategy === "slot-refresh") {
         // show new path in the address bar
         if (typeof windowImpl !== "undefined") {

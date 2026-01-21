@@ -37,12 +37,12 @@ export interface CSSProperties extends CSS.Properties<string | number> {
 export interface FontFaceProperties {
   MozFontFeatureSettings?: CSS.Property.FontFeatureSettings;
   fontDisplay?:
-    | "auto"
-    | "block"
-    | "fallback"
-    | "optional"
-    | "swap"
-    | (string & {});
+  | "auto"
+  | "block"
+  | "fallback"
+  | "optional"
+  | "swap"
+  | (string & {});
   fontFamily?: CSS.Property.FontFamily;
   fontFeatureSettings?: CSS.Property.FontFeatureSettings;
   fontStretch?: CSS.Property.FontStretch;
@@ -281,19 +281,19 @@ declare global {
       accumulate?: "none" | "sum";
       additive?: "replace" | "sum";
       alignmentBaseline?:
-        | "auto"
-        | "baseline"
-        | "before-edge"
-        | "text-before-edge"
-        | "middle"
-        | "central"
-        | "after-edge"
-        | "text-after-edge"
-        | "ideographic"
-        | "alphabetic"
-        | "hanging"
-        | "mathematical"
-        | "inherit";
+      | "auto"
+      | "baseline"
+      | "before-edge"
+      | "text-before-edge"
+      | "middle"
+      | "central"
+      | "after-edge"
+      | "text-after-edge"
+      | "ideographic"
+      | "alphabetic"
+      | "hanging"
+      | "mathematical"
+      | "inherit";
       allowReorder?: "no" | "yes";
       alphabetic?: number | string;
       amplitude?: number | string;
@@ -748,7 +748,7 @@ declare global {
 
     export interface DOMAttributes
       extends VAttributes,
-        DOMAttributeEventHandlersLowerCase {
+      DOMAttributeEventHandlersLowerCase {
       // defuss custom attributes
       ref?: Ref /*| VRef*/;
 
@@ -1099,7 +1099,7 @@ declare global {
 
     export interface HTMLAttributes
       extends HTMLAttributesLowerCase,
-        DOMAttributes {
+      DOMAttributes {
       ref?: Ref; // | VRef
 
       dangerouslySetInnerHTML?: {
@@ -1370,9 +1370,9 @@ declare global {
       ul: HTMLAttributes;
       var: HTMLAttributes;
       video: HTMLAttributes &
-        Partial<{
-          autoplay: boolean;
-        }>;
+      Partial<{
+        autoplay: boolean;
+      }>;
       wbr: HTMLAttributes;
 
       // SVG
@@ -1439,7 +1439,7 @@ export interface Props {
   ref?: Ref;
 
   // array-local unique key to identify element items in a NodeList
-  key?: string;
+  key?: string | number;
 
   // optional callback handler for errors (can be called inside of the component, to pass errors up to the parent)
   onError?: (error: unknown) => void;
