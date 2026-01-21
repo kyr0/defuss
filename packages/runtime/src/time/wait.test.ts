@@ -102,12 +102,14 @@ describe("waitForWithPolling", () => {
   });
 
   it("should reject when check throws error", async () => {
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => { });
     const check = () => {
       throw new Error("check failed");
     };
     await expect(waitForWithPolling(check, 100, 10)).rejects.toThrow(
       "check failed",
     );
+    consoleSpy.mockRestore();
   });
 
   it("should handle undefined return values", async () => {

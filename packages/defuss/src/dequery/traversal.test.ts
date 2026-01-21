@@ -117,12 +117,14 @@ describe("Traversal methods", () => {
 
   it("fails with error when no elements can be found in time, custome timeout", async () => {
     const container = document.getElementById("parent") as HTMLElement;
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => { });
     try {
       await $<HTMLElement>(container, { timeout: 50 }).find(".non-existent");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toContain("Timeout after 50ms");
     }
+    consoleSpy.mockRestore();
   });
 
   it("can handle multiple elements in the chain", async () => {

@@ -54,30 +54,43 @@ describe("ready method", () => {
     const callback = vi.fn();
     let callbackExecuted = false;
 
+    // Spy on addEventListener to know when the listener is attached
+    const addEventListenerSpy = vi.spyOn(document, "addEventListener");
+
     // Start the ready method
-    const readyPromise = $(document.body).ready(() => {
+    const chain = $(document.body).ready(() => {
       callbackExecuted = true;
       callback();
+    });
+
+    // Manually trigger the chain execution ONCE
+    const executionPromise = chain.then((c) => c);
+
+    // Wait until the event listener is attached
+    await vi.waitFor(() => {
+      expect(addEventListenerSpy).toHaveBeenCalledWith(
+        "DOMContentLoaded",
+        expect.any(Function),
+      );
     });
 
     // Verify callback hasn't been called yet
     expect(callback).not.toHaveBeenCalled();
     expect(callbackExecuted).toBe(false);
 
-    // Use setTimeout to ensure the event listener is attached before dispatching
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Simulate DOMContentLoaded event
-    const event = new Event("DOMContentLoaded");
-    document.dispatchEvent(event);
+    // Manually invoke the handler
+    const handler = addEventListenerSpy.mock.lastCall![1] as EventListener;
+    handler(new Event("DOMContentLoaded"));
 
     // Wait for the promise to resolve
-    const result = await readyPromise;
+    const result = await executionPromise;
 
     expect(callback).toHaveBeenCalledTimes(1);
     expect(callbackExecuted).toBe(true);
     expect(result.length).toBe(1);
     expect(result[0]).toBe(document.body);
+
+    addEventListenerSpy.mockRestore();
   });
 
   it("works without a callback when DOM is ready", async () => {
@@ -100,21 +113,31 @@ describe("ready method", () => {
       value: "loading",
     });
 
+    // Spy on addEventListener
+    const addEventListenerSpy = vi.spyOn(document, "addEventListener");
+
     // Start the ready method without callback
-    const readyPromise = $(document.body).ready();
+    const chain = $(document.body).ready();
 
-    // Use setTimeout to ensure the event listener is attached before dispatching
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Manually trigger execution ONCE
+    const executionPromise = chain.then((c) => c);
 
-    // Simulate DOMContentLoaded event
-    const event = new Event("DOMContentLoaded");
-    document.dispatchEvent(event);
+    // Wait until listener is attached
+    await vi.waitFor(() => {
+      expect(addEventListenerSpy).toHaveBeenCalledWith("DOMContentLoaded", expect.any(Function));
+    });
+
+    // Manually invoke the handler
+    const handler = addEventListenerSpy.mock.lastCall![1] as EventListener;
+    handler(new Event("DOMContentLoaded"));
 
     // Wait for the promise to resolve
-    const result = await readyPromise;
+    const result = await executionPromise;
 
     expect(result.length).toBe(1);
     expect(result[0]).toBe(document.body);
+
+    addEventListenerSpy.mockRestore();
   });
 
   it("is chainable and maintains element collection", async () => {
@@ -185,18 +208,26 @@ describe("ready method", () => {
 
     const callback = vi.fn();
 
+    // Spy on addEventListener
+    const addEventListenerSpy = vi.spyOn(document, "addEventListener");
+
     // Start the ready method
-    const readyPromise = $(document.body).ready(callback);
+    const chain = $(document.body).ready(callback);
 
-    // Use setTimeout to ensure the event listener is attached before dispatching
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Manually trigger execution ONCE
+    const executionPromise = chain.then((c) => c);
 
-    // Simulate DOMContentLoaded event
-    const event = new Event("DOMContentLoaded");
-    document.dispatchEvent(event);
+    // Wait until listener is attached
+    await vi.waitFor(() => {
+      expect(addEventListenerSpy).toHaveBeenCalledWith("DOMContentLoaded", expect.any(Function));
+    });
+
+    // Manually invoke the handler
+    const handler = addEventListenerSpy.mock.lastCall![1] as EventListener;
+    handler(new Event("DOMContentLoaded"));
 
     // Wait for the promise to resolve
-    await readyPromise;
+    await executionPromise;
 
     expect(callback).toHaveBeenCalledTimes(1);
 
@@ -206,6 +237,8 @@ describe("ready method", () => {
 
     // Callback should not be called again
     expect(callback).toHaveBeenCalledTimes(1);
+
+    addEventListenerSpy.mockRestore();
   });
 
   it("works with empty element collections", async () => {
