@@ -23,27 +23,27 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor-community/background-geolocation": "^1.2.22",
-    "@capacitor/android": "^7.4.0",
-    "@capacitor/app": "^7.0.1",
-    "@capacitor/background-runner": "^2.1.0",
-    "@capacitor/camera": "^7.0.3",
-    "@capacitor/core": "^7.4.4",
-    "@capacitor/ios": "^7.4.0",
-    "@capacitor/splash-screen": "^7.0.4",
-    "browserslist": "^4.25.0",
+    "@capacitor-community/background-geolocation": "^1.2.26",
+    "@capacitor/android": "^8.0.1",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/background-runner": "^3.0.0",
+    "@capacitor/camera": "^8.0.0",
+    "@capacitor/core": "^8.0.1",
+    "@capacitor/ios": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.0",
+    "browserslist": "^4.28.1",
     "defuss": "workspace:*",
     "defuss-vite": "workspace:*",
-    "framework7": "^8.3.4",
-    "konsta": "^4.0.1",
-    "lightningcss": "^1.30.2",
+    "framework7": "^9.0.2",
+    "konsta": "^5.0.6",
+    "lightningcss": "^1.31.0",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "^7.4.5",
+    "@capacitor/cli": "^8.0.1",
     "dotenv": "^17.2.3",
     "typescript": "^5.9.3",
-    "vite": "^6.4.1"
+    "vite": "^7.3.1"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "license": "MIT"

@@ -1,52 +1,52 @@
 PODS:
-  - Capacitor (7.4.5):
+  - Capacitor (8.0.1):
     - CapacitorCordova
-  - CapacitorApp (7.1.1):
+  - CapacitorApp (8.0.0):
     - Capacitor
-  - CapacitorBackgroundRunner (2.3.1):
+  - CapacitorBackgroundRunner (3.0.0):
     - Capacitor
-  - CapacitorCamera (7.0.3):
+  - CapacitorCamera (8.0.0):
     - Capacitor
   - CapacitorCommunityBackgroundGeolocation (1.2.26):
     - Capacitor
-  - CapacitorCordova (7.4.5)
-  - CapacitorSplashScreen (7.0.4):
+  - CapacitorCordova (8.0.1)
+  - CapacitorSplashScreen (8.0.0):
     - Capacitor
 
 DEPENDENCIES:
-  - "Capacitor (from `../../../../node_modules/.pnpm/@capacitor+ios@7.4.5_@capacitor+core@7.4.5/node_modules/@capacitor/ios`)"
-  - "CapacitorApp (from `../../../../node_modules/.pnpm/@capacitor+app@7.1.1_@capacitor+core@7.4.5/node_modules/@capacitor/app`)"
-  - "CapacitorBackgroundRunner (from `../../../../node_modules/.pnpm/@capacitor+background-runner@2.3.1_@capacitor+core@7.4.5/node_modules/@capacitor/background-runner`)"
-  - "CapacitorCamera (from `../../../../node_modules/.pnpm/@capacitor+camera@7.0.3_@capacitor+core@7.4.5/node_modules/@capacitor/camera`)"
-  - "CapacitorCommunityBackgroundGeolocation (from `../../../../node_modules/.pnpm/@capacitor-community+background-geolocation@1.2.26_@capacitor+core@7.4.5/node_modules/@capacitor-community/background-geolocation`)"
-  - "CapacitorCordova (from `../../../../node_modules/.pnpm/@capacitor+ios@7.4.5_@capacitor+core@7.4.5/node_modules/@capacitor/ios`)"
-  - "CapacitorSplashScreen (from `../../../../node_modules/.pnpm/@capacitor+splash-screen@7.0.4_@capacitor+core@7.4.5/node_modules/@capacitor/splash-screen`)"
+  - "Capacitor (from `../../../../node_modules/.pnpm/@capacitor+ios@8.0.1_@capacitor+core@8.0.1/node_modules/@capacitor/ios`)"
+  - "CapacitorApp (from `../../../../node_modules/.pnpm/@capacitor+app@8.0.0_@capacitor+core@8.0.1/node_modules/@capacitor/app`)"
+  - "CapacitorBackgroundRunner (from `../../../../node_modules/.pnpm/@capacitor+background-runner@3.0.0_@capacitor+core@8.0.1/node_modules/@capacitor/background-runner`)"
+  - "CapacitorCamera (from `../../../../node_modules/.pnpm/@capacitor+camera@8.0.0_@capacitor+core@8.0.1/node_modules/@capacitor/camera`)"
+  - "CapacitorCommunityBackgroundGeolocation (from `../../../../node_modules/.pnpm/@capacitor-community+background-geolocation@1.2.26_@capacitor+core@8.0.1/node_modules/@capacitor-community/background-geolocation`)"
+  - "CapacitorCordova (from `../../../../node_modules/.pnpm/@capacitor+ios@8.0.1_@capacitor+core@8.0.1/node_modules/@capacitor/ios`)"
+  - "CapacitorSplashScreen (from `../../../../node_modules/.pnpm/@capacitor+splash-screen@8.0.0_@capacitor+core@8.0.1/node_modules/@capacitor/splash-screen`)"
 
 EXTERNAL SOURCES:
   Capacitor:
-    :path: "../../../../node_modules/.pnpm/@capacitor+ios@7.4.5_@capacitor+core@7.4.5/node_modules/@capacitor/ios"
+    :path: "../../../../node_modules/.pnpm/@capacitor+ios@8.0.1_@capacitor+core@8.0.1/node_modules/@capacitor/ios"
   CapacitorApp:
-    :path: "../../../../node_modules/.pnpm/@capacitor+app@7.1.1_@capacitor+core@7.4.5/node_modules/@capacitor/app"
+    :path: "../../../../node_modules/.pnpm/@capacitor+app@8.0.0_@capacitor+core@8.0.1/node_modules/@capacitor/app"
   CapacitorBackgroundRunner:
-    :path: "../../../../node_modules/.pnpm/@capacitor+background-runner@2.3.1_@capacitor+core@7.4.5/node_modules/@capacitor/background-runner"
+    :path: "../../../../node_modules/.pnpm/@capacitor+background-runner@3.0.0_@capacitor+core@8.0.1/node_modules/@capacitor/background-runner"
   CapacitorCamera:
-    :path: "../../../../node_modules/.pnpm/@capacitor+camera@7.0.3_@capacitor+core@7.4.5/node_modules/@capacitor/camera"
+    :path: "../../../../node_modules/.pnpm/@capacitor+camera@8.0.0_@capacitor+core@8.0.1/node_modules/@capacitor/camera"
   CapacitorCommunityBackgroundGeolocation:
-    :path: "../../../../node_modules/.pnpm/@capacitor-community+background-geolocation@1.2.26_@capacitor+core@7.4.5/node_modules/@capacitor-community/background-geolocation"
+    :path: "../../../../node_modules/.pnpm/@capacitor-community+background-geolocation@1.2.26_@capacitor+core@8.0.1/node_modules/@capacitor-community/background-geolocation"
   CapacitorCordova:
-    :path: "../../../../node_modules/.pnpm/@capacitor+ios@7.4.5_@capacitor+core@7.4.5/node_modules/@capacitor/ios"
+    :path: "../../../../node_modules/.pnpm/@capacitor+ios@8.0.1_@capacitor+core@8.0.1/node_modules/@capacitor/ios"
   CapacitorSplashScreen:
-    :path: "../../../../node_modules/.pnpm/@capacitor+splash-screen@7.0.4_@capacitor+core@7.4.5/node_modules/@capacitor/splash-screen"
+    :path: "../../../../node_modules/.pnpm/@capacitor+splash-screen@8.0.0_@capacitor+core@8.0.1/node_modules/@capacitor/splash-screen"
 
 SPEC CHECKSUMS:
-  Capacitor: 12914e6f1b7835e161a74ebd19cb361efa37a7dd
-  CapacitorApp: 63b237168fc869e758481dba283315a85743ee78
-  CapacitorBackgroundRunner: 8f8530508b5f9e987cc7af792538f8f30c532869
-  CapacitorCamera: 6746827d82376f31cea9224945c0458c9fd0b0b2
+  Capacitor: ff35b0f66370b84aa238251b35b91886a3207c16
+  CapacitorApp: 3963a84197280757b84f126afd1520a85ae3b092
+  CapacitorBackgroundRunner: 42d96bda7db8add43a59330179c2931987ffbfd5
+  CapacitorCamera: 592acb7ab9fb748e2d8571eb03af30ec4e1ace12
   CapacitorCommunityBackgroundGeolocation: 750523ec6dd1cc94cf4e2bf7787605106753f73c
-  CapacitorCordova: 31bbe4466000c6b86d9b7f1181ee286cff0205aa
-  CapacitorSplashScreen: 000f7591d546907dda5cbb514bd6b6d9e6048cf8
+  CapacitorCordova: 0d65b9bb74e995dcecb9463f34f1af2aba6f955c
+  CapacitorSplashScreen: 422880d7117605c30699eb4b21644b62db42e86c
 
-PODFILE CHECKSUM: 33e6da7df0d60547c0455dcf8ec98046affdd53e
+PODFILE CHECKSUM: 14fd308e2dd198ad28dc737abec19e16f1cebe8e
 
 COCOAPODS: 1.16.2

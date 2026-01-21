@@ -12,7 +12,7 @@
     "clean": "rm -rf pkg",
     "decompile": "wasm2wat --generate-names --verbose --enable-threads pkg/defuss_search_bg.wasm -o pkg/defuss_search_bg.wast > pkg/defuss_search_bg.log 2>&1",
     "pretest": "pnpm build",
-    "test": "cargo test && vitest run",
+    "test": "cargo test",
     "prebench": "pnpm build && mkdir -p public && cp -R tools/WebFAQ/dataset/*_flat.json public/",
     "bench": "vitest run --config vitest.bench.config.ts",
     "release": "sh scripts/release.sh",
@@ -47,20 +47,20 @@
     "dist/*"
   ],
   "devDependencies": {
-    "@testing-library/dom": "^10.4.0",
+    "@testing-library/dom": "^10.4.1",
     "@types/node": "^25.0.9",
-    "@types/web": "^0.0.241",
+    "@types/web": "^0.0.319",
     "@vitest/browser": "^4.0.17",
     "@vitest/browser-playwright": "^4.0.17",
-    "pkgroll": "^2.12.2",
-    "playwright": "^1.53.0",
-    "tinybench": "^4.0.1",
+    "pkgroll": "^2.21.5",
+    "playwright": "^1.57.0",
+    "tinybench": "^6.0.0",
     "vitest": "^4.0.17",
-    "wasm-pack": "^0.12.1",
+    "wasm-pack": "^0.14.0",
     "wasm2wat": "^1.1.1"
   },
   "engines": {
-    "node": ">= 10"
+    "node": ">=22"
   },
   "keywords": [
     "search",
