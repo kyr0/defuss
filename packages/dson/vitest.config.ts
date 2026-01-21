@@ -10,8 +10,7 @@ export default defineConfig({
     globals: true,
     coverage: {
       provider: "v8",
-      include: ["src/**/*"],
-      ignoreEmptyLines: true,
+      include: ["src/**/*"]
     },
   },
 });

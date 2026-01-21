@@ -642,12 +642,12 @@ export const globalScopeDomApis = (window: Window, document: Document) => {
  * render(<App />, document.getElementById("app"));
  * ```
  */
-export const renderInto = (
+export const render = (
   jsx: SyncRenderInput,
   container: Element | null | undefined,
 ): void => {
   if (!container) {
-    console.warn("renderInto: container is null or undefined");
+    console.warn("render: container is null or undefined");
     return;
   }
 
@@ -660,9 +660,9 @@ export const renderInto = (
 };
 
 /**
- * @deprecated Use renderInto instead. Will be removed in v4.
+ * @deprecated Use render instead. Will be removed in v4.
  */
-export const render = renderInto;
+export const renderInto = render;
 
 export const isJSX = (o: any): boolean => {
   if (o === null || typeof o !== "object") return false;

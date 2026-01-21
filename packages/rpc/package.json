@@ -65,21 +65,9 @@
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "dependencies": {
-    "astro": "^5.8.1",
-    "create-defuss": "workspace:*",
-    "defuss": "workspace:*",
-    "defuss-astro": "workspace:*",
-    "defuss-db": "workspace:*",
-    "defuss-desktop": "workspace:*",
-    "defuss-dson": "workspace:^",
-    "defuss-env": "workspace:*",
-    "defuss-jwt": "workspace:*",
-    "defuss-rpc": "workspace:*",
-    "defuss-runtime": "workspace:*",
-    "defuss-search": "workspace:*",
-    "defuss-ssg": "workspace:*",
-    "defuss-transval": "workspace:*",
-    "defuss-ui": "workspace:*",
-    "defuss-vite": "workspace:*"
+    "defuss-dson": "workspace:^"
+  },
+  "peerDependencies": {
+    "astro": "*"
   }
 }

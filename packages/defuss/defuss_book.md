@@ -75,19 +75,19 @@ The `<span>` and `<p>` are light DOM children that get projected into `<slot>` e
 
 ## Render Functions
 
-### renderInto (Recommended)
+### render (Recommended)
 
 React-compatible render function for morphing JSX into a container:
 
 ```tsx
-import { renderInto } from "defuss";
+import { render } from "defuss";
 
-renderInto(<App />, document.getElementById("app"));
+render(<App />, document.getElementById("app"));
 ```
 
-### render (Deprecated)
+### renderInto (Deprecated)
 
-Alias for `renderInto`. Use `renderInto` instead - `render` will be removed in v4.
+Alias for `render`. Use `render` instead - `renderInto` will be removed in v4.
 
 ### Async render (client/server)
 
@@ -103,13 +103,33 @@ await render(<AsyncApp />, container);
 
 ---
 
+## Dequery API
+
+### .jsx() / .render()
+
+Renders JSX into the selected element(s):
+
+```tsx
+import { $ } from "defuss";
+
+// Both are equivalent - .render() is an alias for .jsx()
+$("#app").jsx(<MyComponent />);
+$("#app").render(<MyComponent />);
+```
+
+### .update() (Deprecated)
+
+Use `.jsx()` or `.render()` instead. Note: `.update()` with props object for component re-rendering is still supported.
+
+---
+
 ## Fixed Issues (v3.0.0)
 
 ### 1. Duplicate render Export
 
 **Problem**: `render` was exported from both `isomorph.ts` and `client.ts`/`server.ts`.
 
-**Fix**: Renamed isomorph's render to `renderInto`, kept `render` as deprecated alias.
+**Fix**: `render` is now the canonical export from isomorph, `renderInto` is deprecated alias.
 
 ### 2. Side-Effect Logging
 

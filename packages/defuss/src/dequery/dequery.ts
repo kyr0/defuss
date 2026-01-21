@@ -511,6 +511,14 @@ export class CallChainImpl<
     }) as unknown as ET;
   }
 
+  /**
+   * Alias for .jsx() - renders new JSX into the selected element(s).
+   * Explicitly named to make clear that JSX is being rendered.
+   */
+  render(vdom: RenderInput): ET {
+    return this.jsx(vdom);
+  }
+
   text(text?: string) {
     return createGetterSetterCall(
       this,
@@ -684,6 +692,10 @@ export class CallChainImpl<
     }) as unknown as ET;
   }
 
+  /**
+   * @deprecated Use .jsx() or .render() for rendering JSX content. This method will be removed in v4.
+   * Note: .update() with props object for component re-rendering is still supported.
+   */
   update(
     input?:
       | string

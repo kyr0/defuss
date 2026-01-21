@@ -1,4 +1,3 @@
-import type { Dequery, DequerySyncMethodReturnType } from "@/dequery/index.js";
 import {
   observeUnmount,
   renderIsomorphicSync,

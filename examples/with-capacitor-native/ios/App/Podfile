@@ -1,4 +1,4 @@
-require_relative '../../../../node_modules/.pnpm/@capacitor+ios@7.4.0_@capacitor+core@7.4.5/node_modules/@capacitor/ios/scripts/pods_helpers'
+require_relative '../../../../node_modules/.pnpm/@capacitor+ios@7.4.5_@capacitor+core@7.4.5/node_modules/@capacitor/ios/scripts/pods_helpers'
 
 platform :ios, '14.0'
 use_frameworks!
@@ -9,11 +9,11 @@ use_frameworks!
 install! 'cocoapods', :disable_input_output_paths => true
 
 def capacitor_pods
-  pod 'Capacitor', :path => '../../../../node_modules/.pnpm/@capacitor+ios@7.4.0_@capacitor+core@7.4.5/node_modules/@capacitor/ios'
-  pod 'CapacitorCordova', :path => '../../../../node_modules/.pnpm/@capacitor+ios@7.4.0_@capacitor+core@7.4.5/node_modules/@capacitor/ios'
-  pod 'CapacitorCommunityBackgroundGeolocation', :path => '../../../../node_modules/.pnpm/@capacitor-community+background-geolocation@1.2.22_@capacitor+core@7.4.5/node_modules/@capacitor-community/background-geolocation'
-  pod 'CapacitorApp', :path => '../../../../node_modules/.pnpm/@capacitor+app@7.0.1_@capacitor+core@7.4.5/node_modules/@capacitor/app'
-  pod 'CapacitorBackgroundRunner', :path => '../../../../node_modules/.pnpm/@capacitor+background-runner@2.1.0_@capacitor+core@7.4.5/node_modules/@capacitor/background-runner'
+  pod 'Capacitor', :path => '../../../../node_modules/.pnpm/@capacitor+ios@7.4.5_@capacitor+core@7.4.5/node_modules/@capacitor/ios'
+  pod 'CapacitorCordova', :path => '../../../../node_modules/.pnpm/@capacitor+ios@7.4.5_@capacitor+core@7.4.5/node_modules/@capacitor/ios'
+  pod 'CapacitorCommunityBackgroundGeolocation', :path => '../../../../node_modules/.pnpm/@capacitor-community+background-geolocation@1.2.26_@capacitor+core@7.4.5/node_modules/@capacitor-community/background-geolocation'
+  pod 'CapacitorApp', :path => '../../../../node_modules/.pnpm/@capacitor+app@7.1.1_@capacitor+core@7.4.5/node_modules/@capacitor/app'
+  pod 'CapacitorBackgroundRunner', :path => '../../../../node_modules/.pnpm/@capacitor+background-runner@2.3.1_@capacitor+core@7.4.5/node_modules/@capacitor/background-runner'
   pod 'CapacitorCamera', :path => '../../../../node_modules/.pnpm/@capacitor+camera@7.0.3_@capacitor+core@7.4.5/node_modules/@capacitor/camera'
   pod 'CapacitorSplashScreen', :path => '../../../../node_modules/.pnpm/@capacitor+splash-screen@7.0.4_@capacitor+core@7.4.5/node_modules/@capacitor/splash-screen'
 end

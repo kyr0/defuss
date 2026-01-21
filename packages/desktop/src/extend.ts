@@ -3,9 +3,7 @@ import {
   createCall,
   dequery,
   type Dequery,
-  type NodeType,
 } from "defuss";
-import { WindowManager, type CreateWindowOptions } from "./window.js";
 import { DefussDesktopAppIcon, type DesktopIconConfig } from "./desktop.js";
 import { DefussApp, type DefussAppConfig } from "./app.js";
 

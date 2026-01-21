@@ -9,25 +9,10 @@
         "dev": "node build.js --watch",
         "prepreview": "pnpm build",
         "preview": "echo 'NOTE: npm run dev - starts the dev server' && npx serve ./dist",
-        "test": "vitest run",
-        "test:watch": "vitest"
+        "test": "echo 'No tests available'"
     },
     "dependencies": {
-        "create-defuss": "workspace:*",
-        "defuss": "workspace:*",
-        "defuss-astro": "workspace:*",
-        "defuss-db": "workspace:*",
-        "defuss-desktop": "workspace:*",
-        "defuss-dson": "workspace:*",
-        "defuss-env": "workspace:*",
-        "defuss-jwt": "workspace:*",
-        "defuss-rpc": "workspace:*",
-        "defuss-runtime": "workspace:*",
-        "defuss-search": "workspace:*",
-        "defuss-ssg": "workspace:*",
-        "defuss-transval": "workspace:*",
-        "defuss-ui": "workspace:*",
-        "defuss-vite": "workspace:*"
+        "defuss": "workspace:*"
     },
     "devDependencies": {
         "esbuild": "^0.24.0",

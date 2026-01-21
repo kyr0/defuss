@@ -33,21 +33,6 @@
     "test": "vitest --run  --coverage"
   },
   "dependencies": {
-    "create-defuss": "workspace:*",
-    "defuss": "workspace:*",
-    "defuss-astro": "workspace:*",
-    "defuss-db": "workspace:*",
-    "defuss-desktop": "workspace:*",
-    "defuss-dson": "workspace:*",
-    "defuss-env": "workspace:^",
-    "defuss-jwt": "workspace:*",
-    "defuss-rpc": "workspace:*",
-    "defuss-runtime": "workspace:*",
-    "defuss-search": "workspace:*",
-    "defuss-ssg": "workspace:*",
-    "defuss-transval": "workspace:*",
-    "defuss-ui": "workspace:*",
-    "defuss-vite": "workspace:*",
     "jose": "^6.1.0"
   },
   "devDependencies": {
