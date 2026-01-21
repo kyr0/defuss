@@ -73,7 +73,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.15.7",
-    "defuss-env": "workspace:^",
+    "defuss-env": "workspace:*",
     "dexie": "^4.0.11",
     "fake-indexeddb": "^6.0.1",
     "mongodb": "^6.16.0"

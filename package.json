@@ -26,8 +26,8 @@
     "test:all": "time pnpm --filter \"./{packages,examples}/*\" test",
     "preclean:all": "rm -rf ./node_modules && pnpm i",
     "clean:all": "time pnpm --filter \"./{packages,examples}/*\" clean",
-    "update-deps-latest": "./scripts/update-deps.sh latest",
-    "update-deps-workspace": "./scripts/update-deps.sh workspace"
+    "update-deps-latest": "node ./scripts/update-deps.js latest",
+    "update-deps-workspace": "node ./scripts/update-deps.js workspace"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

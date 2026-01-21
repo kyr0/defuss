@@ -44,7 +44,7 @@
   "license": "MIT",
   "dependencies": {
     "@types/uikit": "^3.23.0",
-    "defuss": "workspace:^",
+    "defuss": "workspace:*",
     "uikit": "^3.23.13"
   },
   "devDependencies": {

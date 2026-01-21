@@ -190,10 +190,10 @@ importers:
         specifier: ^5.16.11
         version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-astro:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/astro
       lightningcss:
         specifier: ^1.30.2
@@ -220,13 +220,13 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-astro:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/astro
       defuss-ui:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/ui
       franken-ui:
         specifier: ^2.1.1
@@ -281,10 +281,10 @@ importers:
         specifier: ^4.25.0
         version: 4.28.1
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-vite:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/vite
       framework7:
         specifier: ^8.3.4
@@ -352,13 +352,13 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-dson:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/dson
       defuss-vite:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/vite
       lightningcss:
         specifier: ^1.30.2
@@ -415,13 +415,13 @@ importers:
         specifier: ^2.1.4
         version: 2.1.4
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-astro:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/astro
       defuss-rpc:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/rpc
       editorjs-alert:
         specifier: ^1.1.4
@@ -485,13 +485,13 @@ importers:
         specifier: ^4.24.3
         version: 4.28.1
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-transval:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/transval
       defuss-vite:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/vite
       franken-ui:
         specifier: 2.1.0-next.4
@@ -530,7 +530,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/defuss
       defuss-vite:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/vite
       ionicons:
         specifier: ^7.4.0
@@ -551,10 +551,10 @@ importers:
         specifier: ^5.16.11
         version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-astro:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/astro
       fslightbox:
         specifier: ^3.7.4
@@ -572,10 +572,10 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-vite:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/vite
       lightningcss:
         specifier: ^1.30.2
@@ -590,10 +590,10 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-vite:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/vite
       lightningcss:
         specifier: ^1.30.2
@@ -608,10 +608,10 @@ importers:
         specifier: ^2.0.6
         version: 2.3.11
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-vite:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/vite
       pkgroll:
         specifier: ^2.21.5
@@ -636,10 +636,10 @@ importers:
         specifier: ^5.16.6
         version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/defuss
       defuss-astro:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/astro
       firebase:
         specifier: ^12.8.0
@@ -706,7 +706,7 @@ importers:
         specifier: ^0.15.7
         version: 0.15.15
       defuss-env:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../env
       dexie:
         specifier: ^4.0.11
@@ -884,7 +884,7 @@ importers:
         specifier: '>=5.15.6'
         version: 5.16.11(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss-dson:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../dson
     devDependencies:
       '@types/express':
@@ -984,7 +984,7 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../defuss
       esbuild:
         specifier: ^0.25.9
@@ -1082,14 +1082,14 @@ importers:
   packages/transval:
     dependencies:
       defuss-runtime:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../runtime
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.0.17
         version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.17))(vitest@4.0.17)
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../defuss
       happy-dom:
         specifier: ^20.3.1
@@ -1113,7 +1113,7 @@ importers:
         specifier: ^3.23.0
         version: 3.23.0
       defuss:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../defuss
       uikit:
         specifier: ^3.23.13

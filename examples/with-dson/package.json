@@ -12,9 +12,9 @@
   "dependencies": {
     "@monaco-editor/loader": "^1.7.0",
     "browserslist": "^4.28.1",
-    "defuss": "workspace:^",
-    "defuss-dson": "workspace:^",
-    "defuss-vite": "workspace:^",
+    "defuss": "workspace:*",
+    "defuss-dson": "workspace:*",
+    "defuss-vite": "workspace:*",
     "lightningcss": "^1.30.2",
     "vite": "^6.4.1"
   },

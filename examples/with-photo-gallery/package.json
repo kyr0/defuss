@@ -17,8 +17,8 @@
   "dependencies": {
     "@astrojs/node": "^9.5.2",
     "astro": "^5.16.11",
-    "defuss": "workspace:^",
-    "defuss-astro": "workspace:^",
+    "defuss": "workspace:*",
+    "defuss-astro": "workspace:*",
     "fslightbox": "^3.7.4",
     "lightningcss": "^1.30.2",
     "sharp": "^0.34.5"
