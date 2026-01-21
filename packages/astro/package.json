@@ -75,7 +75,7 @@
   "dependencies": {
     "@swc/core": "^1.10.2",
     "defuss": "workspace:*",
-    "astro": "^5.16.11",
+    "astro": "^5.15.9",
     "fast-glob": "^3.3.3",
     "file-type": "^21.3.0",
     "purgecss": "^7.0.2",
