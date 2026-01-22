@@ -971,8 +971,8 @@ declare global {
       charset?: string;
       challenge?: string;
       checked?: boolean | string;
-      class?: string | Array<string>;
-      classname?: string | Array<string>;
+      class?: string | Array<string | false>;
+      classname?: string | Array<string | false>;
       cols?: number;
       children?: any;
       colspan?: number;
@@ -1126,8 +1126,8 @@ declare global {
       charSet?: string;
       challenge?: string;
       checked?: boolean | string;
-      class?: string | Array<string>;
-      className?: string | Array<string>;
+      class?: string | Array<string | false>;
+      className?: string | Array<string | false>;
       cols?: number;
       children?: any;
       colSpan?: number;

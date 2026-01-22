@@ -488,7 +488,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
       // transforms class={['a', 'b']} into class="a b"
       if (name === CLASS_ATTRIBUTE_NAME && Array.isArray(value)) {
-        value = value.join(" ");
+        value = value.filter(val => !!val).join(" ");
       }
 
       // SVG support
