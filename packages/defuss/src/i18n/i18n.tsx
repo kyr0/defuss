@@ -1,9 +1,19 @@
 import type { VNode } from "../render/types.js";
 import { createStore, type Store } from "../store/index.js";
 
+export type Resolve<T> = T extends infer U ? U : never;
+
+export type TranslationKeys<T, Prefix extends string = ""> = Resolve<{ 
+	[K in keyof T]:
+	T[K] extends Record<string, unknown>
+		? TranslationKeys<T[K], `${Prefix}${K & string}.`>
+		: `${Prefix}${K & string}`;
+}[keyof T]>;
+
 export type TranslationObject = {
   [key: string]: string | VNode | TranslationObject;
 };
+
 export type Translations = { [language: string]: TranslationObject };
 export type OnLanguageChangeListener = (newLanguage: string) => void;
 export type Replacements = Record<string, string>;
