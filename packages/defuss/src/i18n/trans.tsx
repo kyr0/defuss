@@ -1,12 +1,12 @@
 import type { Props, Ref, VNodeChild } from "../render/types.js";
-import { type Replacements, i18n } from "./i18n.js";
+import {type Replacements, i18n as defaultI18n, type I18nStore} from "./i18n.js";
 
 export interface TransRef extends Ref<string, HTMLElement> {
   updateValues: (values: Replacements) => void;
 }
 
-export interface TransProps extends Props {
-  key: string;
+export interface TransProps<K extends string> extends Props {
+  key: K;
   ref?: TransRef;
   tag?: string;
   values?: Replacements;
@@ -17,13 +17,13 @@ export interface TransProps extends Props {
   [propName: string]: any;
 }
 
-export const Trans = ({
+export const createTrans = <K extends string>(i18n: I18nStore<K>) => ({
   key,
   values,
   tag,
   ref,
   ...attrs
-}: TransProps): VNodeChild => {
+}: TransProps<K>): VNodeChild => {
   const _ref: TransRef = ref || ({} as TransRef);
 
   const updateContent = () => {
@@ -73,4 +73,5 @@ export const Trans = ({
   };
 };
 
+export const Trans = createTrans(defaultI18n)
 export const T = Trans;
