@@ -8,10 +8,10 @@ export type Translations = { [language: string]: TranslationObject };
 export type OnLanguageChangeListener = (newLanguage: string) => void;
 export type Replacements = Record<string, string>;
 
-export interface I18nStore {
+export interface I18nStore<K extends string = string> {
   language: string;
   changeLanguage: (language: string) => void;
-  t: (path: string, options?: Record<string, string>) => string;
+  t: (path: K, options?: Record<string, string>) => string;
   loadLanguage: (language: string, translations: TranslationObject) => void;
   subscribe: (onLanguageChange: OnLanguageChangeListener) => () => void;
   unsubscribe: (onLanguageChange: OnLanguageChangeListener) => void;
@@ -43,7 +43,7 @@ const interpolate = (template: string, replacements: Replacements): string => {
   return result;
 };
 
-export const createI18n = (): I18nStore => {
+export const createI18n = <K extends string>(): I18nStore<K> => {
   const translationsStore: Store<Translations> = createStore({});
   let language = "en";
 
@@ -67,7 +67,7 @@ export const createI18n = (): I18nStore => {
     // example usage of the t function with placeholders:
     // const translatedString = t('greeting', { name: 'John', age: '30' }, 'common');
     // this would replace placeholders {name} and {age} in the translation string with 'John' and '30' respectively.
-    t: (path: string, replacements: Record<string, string> = {}): string => {
+    t: (path: K, replacements: Record<string, string> = {}): string => {
       const languageData = translationsStore.get<TranslationObject>(language);
       if (!languageData) {
         return path;
