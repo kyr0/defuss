@@ -54,7 +54,7 @@ export const createI18n = (): I18nStore => {
       return language;
     },
 
-    changeLanguage(newLanguage: string) {
+    changeLanguage: (newLanguage: string): void => {
       // Only trigger callbacks if the language actually changes
       if (newLanguage !== language) {
         language = newLanguage;
@@ -67,7 +67,7 @@ export const createI18n = (): I18nStore => {
     // example usage of the t function with placeholders:
     // const translatedString = t('greeting', { name: 'John', age: '30' }, 'common');
     // this would replace placeholders {name} and {age} in the translation string with 'John' and '30' respectively.
-    t(path: string, replacements: Record<string, string> = {}): string {
+    t: (path: string, replacements: Record<string, string> = {}): string => {
       const languageData = translationsStore.get<TranslationObject>(language);
       if (!languageData) {
         return path;
@@ -102,10 +102,10 @@ export const createI18n = (): I18nStore => {
       return interpolate(template, replacements);
     },
 
-    loadLanguage(
+    loadLanguage: (
       newLanguage: string,
       namespaceTranslations: TranslationObject,
-    ) {
+    ): void => {
       translationsStore.set(newLanguage, {
         ...translationsStore.get<TranslationObject>(newLanguage),
         ...namespaceTranslations,
@@ -134,9 +134,9 @@ export const createI18n = (): I18nStore => {
 if (!globalThis.__defuss_i18n) {
   globalThis.__defuss_i18n = createI18n();
 }
-export const i18n = globalThis.__defuss_i18n as I18nStore;
+export const i18n = globalThis.__defuss_i18n;
 
-export const t = i18n.t.bind(i18n);
-export const changeLanguage = i18n.changeLanguage.bind(i18n);
-export const loadLanguage = i18n.loadLanguage.bind(i18n);
+export const t = i18n.t;
+export const changeLanguage = i18n.changeLanguage
+export const loadLanguage = i18n.loadLanguage;
 export const getLanguage = () => i18n.language;
