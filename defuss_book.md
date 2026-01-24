@@ -409,9 +409,13 @@ store.subscribe(() => {
 ## i18n (Internationalization)
 
 ```tsx
-import { loadLanguage, changeLanguage, T, i18n } from "defuss";
+import { createI18n, createTrans, TranslationKeys } from "defuss";
 import en from "../i18n/en.json";
 import de from "../i18n/de.json";
+
+type Keys = TranslationKeys<typeof en>
+const { loadLanguage, changeLanguage } = i18n
+const T = createTrans(i18n)
 
 // Load languages
 loadLanguage("en", en);
@@ -419,8 +423,8 @@ loadLanguage("de", de);
 changeLanguage("de");
 
 // T component for translations
-<T tag="h2" key="Welcome, {name}!" values={{ name: "defuss" }} />
-<T tag="p" key="main.description" />
+<T tag="h2" key="Welcome, {name}!" values={{name: "defuss"}}/>
+<T tag="p" key="main.description"/>
 
 // Language toggle
 <button onClick={() => changeLanguage(i18n.language === "en" ? "de" : "en")}>
@@ -432,7 +436,9 @@ i18n JSON format:
 ```json
 {
   "Welcome, {name}!": "Willkommen, {name}!",
-  "main.description": "Eine einfache Beschreibung"
+  "main": {
+    "description": "Eine einfache Beschreibung"
+  }
 }
 ```
 

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
-import { createI18n, i18n } from "./i18n.js";
+import { createI18n, i18n, type TranslationKeys } from "./i18n.js";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+
 
 describe("i18n core functionality", () => {
   let testI18n: ReturnType<typeof createI18n>;
@@ -24,6 +25,23 @@ describe("i18n core functionality", () => {
     });
   });
 
+	it("test instance if typing is correct", ()=>{
+		const translations = {
+			"home": {
+				"hello_world": "hello world",
+				"iam_here": "iam here"
+			}
+		} as const;
+		
+		type Keys = TranslationKeys<typeof translations>
+		const {t, loadLanguage} = createI18n<Keys>()
+		loadLanguage('en', translations)
+
+		expect(t('home.hello_world')).toEqual('hello world')
+		//@ts-expect-error key does not exist, but fn should return input key
+		expect(t('failing.key')).toEqual('failing.key')
+	})
+	
   describe("load", () => {
     it("should load translations for a language", () => {
       testI18n.loadLanguage("en", {
