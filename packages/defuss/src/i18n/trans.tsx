@@ -72,6 +72,12 @@ export const createTrans = <K extends string>(i18n: I18nStore<K>) => ({
     children: [i18n.t(key, values)],
   };
 };
-
+/**
+ * @deprecated Use `createTrans` instances with typed i18n keys instead of the default singleton.
+ */
 export const Trans = createTrans(defaultI18n)
+
+/**
+ * @deprecated Use `createTrans` instances with typed i18n keys instead of the default singleton.
+ * */
 export const T = Trans;
