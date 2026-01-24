@@ -144,9 +144,28 @@ export const createI18n = <K extends string>(): I18nStore<K> => {
 if (!globalThis.__defuss_i18n) {
   globalThis.__defuss_i18n = createI18n();
 }
+
+/**
+ * @deprecated Use `createI18n` instances with typed keys instead of the default singleton.
+ */
 export const i18n = globalThis.__defuss_i18n;
 
+/**
+ * @deprecated Use `createI18n` instances with typed keys instead of the default singleton.
+ */
 export const t = i18n.t;
+
+/**
+ * @deprecated Use `createI18n` instances with typed keys instead of the default singleton.
+ */
 export const changeLanguage = i18n.changeLanguage
+
+/**
+ * @deprecated Use `createI18n` instances with typed keys instead of the default singleton.
+ */
 export const loadLanguage = i18n.loadLanguage;
+
+/**
+ * @deprecated Use `createI18n` instances with typed keys instead of the default singleton.
+ */
 export const getLanguage = () => i18n.language;
