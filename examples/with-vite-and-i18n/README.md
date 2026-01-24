@@ -50,6 +50,7 @@ Inside of your Vite project, you'll see the following relevant folders and files
 /
 ├── src/counter.tsx
 ├── src/main.tsx
+├── src/i18n.ts
 ├── index.html
 ├── tsconfig.json
 ├── package.json
