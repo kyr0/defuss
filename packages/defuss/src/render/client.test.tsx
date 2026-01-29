@@ -34,18 +34,18 @@ describe("client render", () => {
     expect(renderSync).toBeDefined();
     expect(el.nodeName).toEqual("HTML");
   });
-  
+
   it("can render className falsy array", () => {
-		const el: Element = renderSync(
-			<div className={[false && "a", "", "c", true && "b"]} />,
-		) as Element;
+    const el: Element = renderSync(
+      <div className={[false && "a", "", "c", true && "b"]} />,
+    ) as Element;
 
     //@ts-expect-error true is not allowed
-    const neverEl: Element = <div className={[true]} />
+    const neverEl: Element = renderSync(<div className={[true]} />) as Element;
 
-		expect(el.getAttribute("class")).toEqual("c b");
-		expect(neverEl.getAttribute("class")).toEqual("true");
-	});
+    expect(el.getAttribute("class")).toEqual("c b");
+    expect(neverEl.getAttribute("class")).toEqual("true");
+  });
 
   it("can renderToString", () => {
     const html: string = renderToString(

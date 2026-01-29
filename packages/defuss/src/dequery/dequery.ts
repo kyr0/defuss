@@ -704,7 +704,7 @@ export class CallChainImpl<
       | NodeType
       | CallChainImpl<NT>
       | CallChainImplThenable<NT>
-      | Record<string, unknown>,  // NEW: props object for implicit update
+      | Record<string, unknown>,  // pass a props object for implicit update
     transitionConfig?: import("../render/transitions.js").TransitionConfig,
   ): ET {
     return createCall(this, "update", async () => {

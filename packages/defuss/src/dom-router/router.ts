@@ -12,6 +12,8 @@ export interface Router {
   strategy: RouterStrategy;
   add(registration: RouteRegistration): Router;
   match(path?: string): RouteRequest | false;
+  resolve(pathname?: string): RouteRequest | false;
+  getRequest(): RouteRequest | false;
   getRoutes(): Array<RouteRegistration>;
   tokenizePath(path: string): TokenizedPath;
   navigate(path: string): void;
@@ -59,7 +61,7 @@ export const tokenizePath = (path: string): TokenizedPath => {
   // Replace parameters with capturing groups and store the parameter names.
   const pattern = path.replace(paramNameRegexp, (_, paramName) => {
     groups[paramName] = groupIndex++;
-    return "([^/.\\]+)";
+    return "([^/.\\\\]+)";
   });
 
   return {
@@ -68,11 +70,19 @@ export const tokenizePath = (path: string): TokenizedPath => {
   };
 };
 
+export interface MatchRouteRegistrationsOpts {
+  invokeHandler?: boolean;
+}
+
 export const matchRouteRegistrations = (
   routeRegistrations: Array<RouteRegistration>,
   actualPathName: string,
   haystackPathName?: string,
+  opts: MatchRouteRegistrationsOpts = {},
 ): RouteRequest | false => {
+
+  const invokeHandler = opts.invokeHandler ?? true;
+
   for (const route of routeRegistrations) {
     // Check if path is set and route.path matches it
     if (haystackPathName && route.path !== haystackPathName) {
@@ -102,7 +112,7 @@ export const matchRouteRegistrations = (
 
     const request: RouteRequest = { url: actualPathName, params };
 
-    if (typeof route.handler === "function") {
+    if (invokeHandler && typeof route.handler === "function") {
       route.handler(request);
     }
     return request;
@@ -120,6 +130,8 @@ export const setupRouter = (
   let currentPath = ""; // Track current path for popstate events
   let popAttached = false; // Guard to prevent stacking popstate listeners
 
+  let currentRequest: RouteRequest | false = false;
+
   // safe SSR rendering, and fine default for client side
   if (typeof window !== "undefined" && !windowImpl) {
     windowImpl = globalThis.__defuss_window /** for SSR support */ || window;
@@ -133,6 +145,17 @@ export const setupRouter = (
   if (windowImpl) {
     currentPath = windowImpl.document.location.pathname;
   }
+
+  const resolveFromLocation = (invokeHandler: boolean) => {
+    if (!windowImpl) return false;
+    currentRequest = matchRouteRegistrations(
+      routeRegistrations,
+      windowImpl.document.location.pathname,
+      undefined,
+      { invokeHandler },
+    );
+    return currentRequest;
+  };
 
   const api = {
     ...config,
@@ -155,12 +178,34 @@ export const setupRouter = (
       return api as Router;
     },
     match(path?: string) {
-      return matchRouteRegistrations(
+      if (!windowImpl) return false;
+
+      const req = matchRouteRegistrations(
         routeRegistrations,
-        windowImpl!.document.location.pathname,
+        windowImpl.document.location.pathname,
         path,
+        { invokeHandler: false },
       );
+
+      if (req) currentRequest = req;
+      return req;
     },
+    resolve(pathname?: string) {
+      if (!windowImpl) return false;
+      currentRequest = matchRouteRegistrations(
+        routeRegistrations,
+        pathname ?? windowImpl.document.location.pathname,
+        undefined,
+        { invokeHandler: false },
+      );
+      return currentRequest;
+    },
+
+    getRequest() {
+      if (currentRequest) return currentRequest;
+      return resolveFromLocation(false);
+    },
+
     navigate(newPath: string) {
       const strategy = api.strategy || "page-refresh";
       const oldPath = currentPath; // Use tracked currentPath instead of window location
@@ -172,9 +217,15 @@ export const setupRouter = (
         if (typeof windowImpl !== "undefined") {
           windowImpl!.history.pushState({}, "", newPath);
         }
-
-        // Update current path tracker
+        const oldPath = currentPath;
         currentPath = newPath;
+
+        currentRequest = matchRouteRegistrations(
+          routeRegistrations,
+          newPath,
+          undefined,
+          { invokeHandler: false },
+        );
 
         // Queue listeners to be called asynchronously
         queueMicrotask(() => {
@@ -210,6 +261,10 @@ export const setupRouter = (
 
       // Update current path tracker
       currentPath = newPath;
+
+      // resolve new request, keep cache in sync on back/forward
+      resolveFromLocation(false);
+
 
       // Queue listeners to be called asynchronously to ensure proper timing
       queueMicrotask(() => {
