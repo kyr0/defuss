@@ -3,12 +3,14 @@ import {
   createRef,
   type Ref,
   type NodeType,
-  type TransitionType,
 } from "../render/client.js";
 import { Router } from "./router.js";
 import { $, type TransitionConfig } from "../dequery/index.js";
 
 export const RouterSlotId = "router-slot";
+
+// Unique, non-colliding flag on the router instance
+const ROUTER_SLOT_GUARD = Symbol.for("defuss.RouterSlot.guard");
 
 export interface RouterSlotProps extends Props {
   /** to override the tag name used for the router slot */
@@ -60,10 +62,18 @@ export const RouterSlot = ({
   router.strategy = "slot-refresh";
   router.attachPopStateHandler();
 
-  router.onRouteChange(async () => {
-    //console.log("<RouterSlot> RouterSlot.onRouteChange", newPath, oldPath, ref.current);
-    await $(ref).update(RouterOutlet(), transitionConfig);
-  });
+  // guard: register onRouteChange listener only once per router instance
+  const r: any = router;
+  if (!r[ROUTER_SLOT_GUARD]) {
+    r[ROUTER_SLOT_GUARD] = true;
+
+    router.onRouteChange(async () => {
+      await $(ref).update(
+        typeof RouterOutlet === "function" ? RouterOutlet() : [],
+        transitionConfig,
+      );
+    });
+  }
 
   if (document.getElementById(slotId)) {
     console.warn(
@@ -72,7 +82,7 @@ export const RouterSlot = ({
   }
 
   return {
-    children: RouterOutlet() || [],
+    children: [RouterOutlet() || []].flat(),
     type: attributes.tag || "div",
     attributes: {
       ...attributesWithoutTag,
