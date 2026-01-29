@@ -34,7 +34,7 @@ export const startMongo = async () => {
   // Container doesn't exist, create and start it
   console.log(`Creating new MongoDB container '${containerName}'...`);
   execSync(
-    `docker run -d --name ${containerName} -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=${getEnv("MONGO_INITDB_ROOT_USERNAME")} -e MONGO_INITDB_ROOT_PASSWORD=${getEnv("MONGO_INITDB_ROOT_PASSWORD")} mongo`,
+    `docker run -d --name ${containerName} -p 27018:27017 -e MONGO_INITDB_ROOT_USERNAME=${getEnv("MONGO_INITDB_ROOT_USERNAME")} -e MONGO_INITDB_ROOT_PASSWORD=${getEnv("MONGO_INITDB_ROOT_PASSWORD")} mongo`,
     { stdio: "inherit" },
   );
   console.log("MongoDB started.");

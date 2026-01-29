@@ -1,9 +1,11 @@
 # MongoDB local docker params
 MONGO_CONTAINER_NAME=defuss-db
-MONGO_INITDB_ROOT_USERNAME=
-MONGO_INITDB_ROOT_PASSWORD=
+MONGO_INITDB_ROOT_USERNAME=mongoadmin
+MONGO_INITDB_ROOT_PASSWORD=defuss-db-password
 MONGO_HOST=localhost
-MONGO_PORT=27017
+MONGO_PORT=27018
+MONGO_AUTH_SOURCE=admin
 
 # MongoDB connection string
-MONGO_CONNECTION_STRING=mongodb:/$userName:$password@localhost:27017/$dbName?authSource=admin
+# If not set, it will be inferred from the variables above.
+# MONGO_CONNECTION_STRING=mongodb://mongoadmin:defuss-db-password@localhost:27018/defuss-db?authSource=admin
