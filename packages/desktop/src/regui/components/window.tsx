@@ -229,6 +229,7 @@ export function Window({
         onPointerMove={onTitlePointerMove}
         onPointerUp={onTitlePointerUp}
         onPointerCancel={onTitlePointerCancel}
+        onDblClick={onMaximizeClick}
         style={{ touchAction: "none" }}
       >
         <div class="title-bar-text">{title}</div>
