@@ -5,15 +5,11 @@ import "./styles/style.css";
 
 import typescriptLogo from "./typescript.svg";
 import viteLogo from "/vite.svg";
-import { $, loadLanguage, i18n, T, changeLanguage } from "defuss";
+import { $ } from "defuss";
+import { i18n, T, changeLanguage } from "./i18n.ts";
 import { render } from "defuss/client";
-import en from "../i18n/en.json";
-import de from "../i18n/de.json";
 
 function App() {
-  loadLanguage("en", en);
-  loadLanguage("de", de);
-  changeLanguage("de");
 
   const onLinkClick = (e: MouseEvent) => {
     try {
