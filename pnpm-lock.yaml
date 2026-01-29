@@ -592,6 +592,8 @@ importers:
         specifier: ^4.0.17
         version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.4)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
 
+  examples/with-wasm-c-rust-matmul/dist/wasm_rust: {}
+
   examples/with-wasm-c-rust-matmul/public/wasm_rust: {}
 
   examples/with-webrtc-chat:
