@@ -159,7 +159,17 @@ export function load(
 ): EnvMap {
   if (!isNode) throw new Error("Env loader must run on Node.js (server-only).");
 
-  const buf = readFileSync(filePath);
+  let buf: Buffer;
+  try {
+    buf = readFileSync(filePath);
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      console.warn(`[defuss-env] Warning: ${filePath} not found, skipping.`);
+      return {};
+    }
+    throw err;
+  }
+
   if (buf.byteLength > MAX_FILE_BYTES) {
     throw new Error(
       `Refusing to read ${filePath}: size ${buf.byteLength} > ${MAX_FILE_BYTES} bytes`,

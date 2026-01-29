@@ -26,7 +26,7 @@
     "build": "pkgroll",
     "mongodb:start": "tsx scripts/mongo-start.ts",
     "mongodb:stop": "tsx scripts/mongo-stop.ts",
-    "test": "vitest --run  --coverage"
+    "test": "tsx ./scripts/readiness.ts && vitest --run --coverage"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -79,6 +79,7 @@
     "mongodb": "^6.16.0"
   },
   "devDependencies": {
+    "@types/node": "^25.1.0",
     "@vitest/coverage-v8": "^4.0.17",
     "happy-dom": "^20.3.1",
     "pkgroll": "^2.21.5",

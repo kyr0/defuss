@@ -20,7 +20,7 @@ try {
 } catch (error) {
   console.error("Failed to connect to MongoDB. It may still be starting up.");
   console.error("Connection string:", getEnv("MONGO_CONNECTION_STRING"));
-  console.error("Error:", error.message);
+  console.error("Error:", (error as Error).message);
   process.exit(1);
 }
 

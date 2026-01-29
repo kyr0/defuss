@@ -18,6 +18,8 @@
     "type": "git"
   },
   "scripts": {
+    "test": "pnpm test:all",
+    "build": "pnpm build:all",
     "build:examples": "time pnpm --filter \"./examples/*\" build",
     "test:examples": "time pnpm --filter \"./examples/*\" test",
     "build:packages": "time pnpm --filter \"./packages/*\" build",
@@ -42,7 +44,7 @@
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
-  "packageManager": "pnpm@10.28.1",
+  "packageManager": "pnpm@10.28.2",
   "pnpm": {
     "peerDependencyRules": {
       "allowAny": [
