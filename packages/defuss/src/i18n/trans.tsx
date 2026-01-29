@@ -69,7 +69,7 @@ export const Trans = ({
       onUnmount,
     },
     // initially render
-    children: i18n.t(key, values),
+    children: [i18n.t(key, values)],
   };
 };
 
