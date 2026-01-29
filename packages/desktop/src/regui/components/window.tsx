@@ -1,5 +1,5 @@
 import { windowManager, type CreateWindowOptions } from "../../window.js";
-import { createRef, type Props, $, type Ref } from "defuss";
+import { $, createRef, type Props, type Ref } from "defuss";
 import { throttle } from "defuss-runtime";
 
 export interface WindowProps extends Props, CreateWindowOptions { }
@@ -30,7 +30,19 @@ export function Window({
   onMinimize = () => { },
   onMaximize = () => { },
 }: WindowProps) {
+  // ---- drag state ----
   let isDragging = false;
+  let dragPointerId: number | null = null;
+
+  // Baselines at pointerdown (prevents jump)
+  let dragStartMouse = { x: 0, y: 0 };
+  let dragStartWin = { x: 0, y: 0 };
+
+  // Last known position (flush on stop)
+  let lastWin = { x, y };
+
+  // Element used for pointer capture (because currentTarget is #document in delegated systems)
+  let capturedTitleBar: HTMLElement | null = null;
 
   const initialWindowState = windowManager.addWindow({
     id,
@@ -44,7 +56,7 @@ export function Window({
     maximizable,
   });
 
-  let dragStart = { x: initialWindowState.x, y: initialWindowState.y };
+  lastWin = { x: initialWindowState.x, y: initialWindowState.y };
 
   ref.state = {
     onClose: () => {
@@ -60,18 +72,9 @@ export function Window({
       onMaximize();
     },
 
-    minimize: () => {
-      windowManager.minimizeWindow(initialWindowState.id);
-    },
-
-    maximize: () => {
-      windowManager.maximizeWindow(initialWindowState.id);
-    },
-
-    restore: () => {
-      windowManager.restoreWindow(initialWindowState.id);
-    },
-
+    minimize: () => windowManager.minimizeWindow(initialWindowState.id),
+    maximize: () => windowManager.maximizeWindow(initialWindowState.id),
+    restore: () => windowManager.restoreWindow(initialWindowState.id),
     close: () => {
       console.log("Closing window");
       windowManager.closeWindow(initialWindowState.id);
@@ -82,67 +85,102 @@ export function Window({
     (newState: Partial<CreateWindowOptions>) => {
       windowManager.updateWindow(initialWindowState.id, newState);
     },
-    250, // 1/4 second throttle
+    250
   );
 
-  const onMouseMove = async (event: Event) => {
-    if (!isDragging) return;
-
-    const mouseEvent = event as MouseEvent;
-    const win = await $(ref);
-    const deltaX = mouseEvent.clientX - dragStart.x;
-    const deltaY = mouseEvent.clientY - dragStart.y;
-
-    // Get current offset and calculate new position
-    const currentOffset = await win.offset();
-    if (currentOffset) {
-      const newX = (currentOffset as any).left + deltaX;
-      const newY = (currentOffset as any).top + deltaY;
-
-      // Update the window state in the WindowManager
-      updateWindowState({ x: newX, y: newY });
-
-      // Update position using jQuery css method
-      await win.css({
-        left: `${newX}px`,
-        top: `${newY}px`,
-      });
-    }
-
-    // Update drag start position for next movement
-    dragStart = { x: mouseEvent.clientX, y: mouseEvent.clientY };
-  };
-
-  const onWindowMouseDown = (event: MouseEvent) =>
+  const onWindowMouseDown = (_event: MouseEvent) =>
     windowManager.setActiveWindow(initialWindowState.id);
 
-  const onMouseDown = (event: MouseEvent) => {
-    if ((event.target! as HTMLElement).tagName === "BUTTON") {
-      // If the target is a button, prevent dragging
-      isDragging = false;
-      return;
+  const getCurrentWinPos = () => {
+    const el = ref.current as HTMLElement | null;
+    if (!el) return { x: lastWin.x, y: lastWin.y };
+
+    // Prefer inline style (we set it), fallback to offsetLeft/Top
+    const left = Number.parseFloat(el.style.left);
+    const top = Number.parseFloat(el.style.top);
+
+    return {
+      x: Number.isFinite(left) ? left : el.offsetLeft,
+      y: Number.isFinite(top) ? top : el.offsetTop,
+    };
+  };
+
+  const stopDragging = (event?: PointerEvent) => {
+    if (!isDragging) return;
+
+    // release capture (if any)
+    if (
+      event &&
+      capturedTitleBar &&
+      typeof capturedTitleBar.releasePointerCapture === "function" &&
+      dragPointerId === event.pointerId
+    ) {
+      try {
+        capturedTitleBar.releasePointerCapture(event.pointerId);
+      } catch { }
     }
 
+    isDragging = false;
+    dragPointerId = null;
+    capturedTitleBar = null;
+
+    // Flush final state (don’t rely on throttle for the last position)
+    windowManager.updateWindow(initialWindowState.id, { x: lastWin.x, y: lastWin.y });
+  };
+
+  const onTitlePointerDown = (event: PointerEvent) => {
+    // left button only for mouse; allow touch/pen
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    const target = event.target as Element | null;
+
+    // Don’t drag from buttons
+    if ((target as HTMLElement | null)?.tagName === "BUTTON") return;
+
+    const titleBarEl = target?.closest?.(".title-bar") as HTMLElement | null;
+    if (!titleBarEl) return;
+
+    windowManager.setActiveWindow(initialWindowState.id);
+
     isDragging = true;
+    dragPointerId = event.pointerId;
+    capturedTitleBar = titleBarEl;
 
-    dragStart = {
-      x: event.clientX,
-      y: event.clientY,
-    };
+    dragStartMouse = { x: event.clientX, y: event.clientY };
+    dragStartWin = getCurrentWinPos();
 
-    // Use dequery for global event attachment (now sync with createSyncCall!)
-    $(document).on("mousemove", onMouseMove);
-    $(document).on("mouseup", onMouseUp);
+    if (typeof titleBarEl.setPointerCapture === "function") {
+      titleBarEl.setPointerCapture(event.pointerId);
+    }
 
-    // Prevent text selection during drag
     event.preventDefault();
   };
 
-  const onMouseUp = () => {
-    isDragging = false;
-    // Remove global event listeners
-    $(document).off("mousemove", onMouseMove);
-    $(document).off("mouseup", onMouseUp);
+  const onTitlePointerMove = (event: PointerEvent) => {
+    if (!isDragging) return;
+    if (dragPointerId !== null && event.pointerId !== dragPointerId) return;
+
+    const newX = dragStartWin.x + (event.clientX - dragStartMouse.x);
+    const newY = dragStartWin.y + (event.clientY - dragStartMouse.y);
+
+    lastWin = { x: newX, y: newY };
+
+    const el = ref.current as HTMLElement | null;
+    if (el) {
+      el.style.left = `${newX}px`;
+      el.style.top = `${newY}px`;
+    }
+    updateWindowState({ x: newX, y: newY });
+
+    event.preventDefault();
+  };
+
+  const onTitlePointerUp = (event: PointerEvent) => {
+    stopDragging(event);
+  };
+
+  const onTitlePointerCancel = (event: PointerEvent) => {
+    stopDragging(event);
   };
 
   const onWindowMounted = () => {
@@ -151,22 +189,23 @@ export function Window({
       ref: ref as Ref<WindowRefState>,
     });
     windowManager.setActiveWindow(initialWindowState.id);
+
+    // Safety nets: leaving tab/window can drop the "up" event
+    $(document).on("blur", () => stopDragging());
+    $(document).on("visibilitychange", () => {
+      if (document.hidden) stopDragging();
+    });
   };
 
   const onCloseClick = () => windowManager.closeWindow(initialWindowState.id);
 
-  const onMaximizeClick = async () => {
+  const onMaximizeClick = () => {
     const currentState = windowManager.getWindow(initialWindowState.id);
-
-    if (currentState?.maximized) {
-      windowManager.restoreWindow(initialWindowState.id);
-    } else {
-      // If the window is not maximized, maximize it
-      windowManager.maximizeWindow(initialWindowState.id);
-    }
+    if (currentState?.maximized) windowManager.restoreWindow(initialWindowState.id);
+    else windowManager.maximizeWindow(initialWindowState.id);
   };
 
-  const onMinimizeClick = async () => {
+  const onMinimizeClick = () => {
     windowManager.minimizeWindow(initialWindowState.id);
   };
 
@@ -186,27 +225,17 @@ export function Window({
       <div
         class="title-bar"
         onMount={onWindowMounted}
-        onMouseDown={onMouseDown}
-        onMouseUp={onMouseUp}
-        onMouseMove={onMouseMove}
+        onPointerDown={onTitlePointerDown}
+        onPointerMove={onTitlePointerMove}
+        onPointerUp={onTitlePointerUp}
+        onPointerCancel={onTitlePointerCancel}
+        style={{ touchAction: "none" }}
       >
         <div class="title-bar-text">{title}</div>
         <div class="title-bar-controls">
-          <button
-            type="button"
-            aria-label="Minimize"
-            onClick={onMinimizeClick}
-          ></button>
-          <button
-            type="button"
-            aria-label="Maximize"
-            onClick={onMaximizeClick}
-          ></button>
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={onCloseClick}
-          ></button>
+          <button type="button" aria-label="Minimize" onClick={onMinimizeClick}></button>
+          <button type="button" aria-label="Maximize" onClick={onMaximizeClick}></button>
+          <button type="button" aria-label="Close" onClick={onCloseClick}></button>
         </div>
       </div>
       <div class="window-body">{children}</div>
