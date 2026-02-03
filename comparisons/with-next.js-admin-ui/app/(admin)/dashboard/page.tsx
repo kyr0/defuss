@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/admin/stat-card";
-import { recentActivity, stats } from "@/lib/mock-data";
+import { mockStore } from "@/lib/mock-store";
 import {
   Activity,
   Building2,
@@ -39,7 +39,11 @@ function formatTimeAgo(timestamp: string) {
   return `${diffDays}d ago`;
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const [stats, activity] = await Promise.all([
+    mockStore.getStats(),
+    mockStore.getRecentActivity(),
+  ]);
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
       <header>
@@ -82,18 +86,18 @@ export default function DashboardPage() {
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {recentActivity.map((activity) => (
+            {activity.map((item) => (
               <div
-                key={activity.id}
+                key={item.id}
                 className="flex items-start gap-3 border-b border-border pb-3 last:border-0 last:pb-0"
               >
                 <div className="rounded-lg bg-muted p-2 text-muted-foreground">
-                  {getActivityIcon(activity.type)}
+                  {getActivityIcon(item.type)}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm">{activity.description}</p>
+                  <p className="text-sm">{item.description}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {formatTimeAgo(activity.timestamp)}
+                    {formatTimeAgo(item.timestamp)}
                   </p>
                 </div>
               </div>

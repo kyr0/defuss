@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { users } from "@/lib/mock-data";
+import { mockStore } from "@/lib/mock-store";
 import { Pencil, Trash2, UserCheck, UserX } from "lucide-react";
 
 function roleVariant(role: string) {
@@ -25,7 +25,8 @@ function statusVariant(status: string) {
   return "secondary";
 }
 
-export default function UsersPage() {
+export default async function UsersPage() {
+  const users = await mockStore.listUsers();
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { apiKeys } from "@/lib/mock-data";
+import { mockStore } from "@/lib/mock-store";
 import { KeyRound, Plus, Trash2 } from "lucide-react";
 
 function statusVariant(status: string) {
@@ -17,7 +17,8 @@ function statusVariant(status: string) {
   return "secondary";
 }
 
-export default function ApiKeysPage() {
+export default async function ApiKeysPage() {
+  const apiKeys = await mockStore.listApiKeys();
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
