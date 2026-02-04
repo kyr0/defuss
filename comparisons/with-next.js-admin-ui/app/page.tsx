@@ -8,7 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/admin/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export default function LoginPage() {
+interface LoginPageProps {
+  searchParams?: Promise<{
+    error?: string;
+  }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = (await searchParams) ?? {};
+  const showInvalidCredentials = params.error === "invalid_credentials";
+
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="flex flex-col gap-8 p-6 sm:p-10">
@@ -26,16 +35,34 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form className="mt-8 space-y-5">
+            <form action="/api/auth/login" method="post" className="mt-8 space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="john@example.com" />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="john@example.com"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" placeholder="••••••••" />
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                />
               </div>
+
+              {showInvalidCredentials ? (
+                <p className="text-sm text-destructive">
+                  Invalid email or password.
+                </p>
+              ) : null}
 
               <div className="flex items-center justify-between text-sm">
                 <label className="flex items-center gap-2">
@@ -47,8 +74,8 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              <Button className="w-full" asChild>
-                <Link href="/dashboard">Sign in</Link>
+              <Button className="w-full" type="submit">
+                Sign in
               </Button>
 
               <div className="relative text-center text-xs text-muted-foreground">

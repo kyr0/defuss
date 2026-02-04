@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { mockStore } from "@/lib/mock-store";
+import { getTenants } from "@/lib/api-client";
 import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 
 function statusVariant(status: string) {
@@ -19,7 +19,7 @@ function statusVariant(status: string) {
 }
 
 export default async function TenantsPage() {
-  const tenants = await mockStore.listTenants();
+  const tenants = await getTenants();
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

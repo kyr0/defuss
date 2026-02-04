@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +30,11 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="flex items-center gap-2 px-2">
+        <Button
+          variant="ghost"
+          className="flex items-center gap-2 px-2"
+          aria-label="Open user menu"
+        >
           <Avatar className="h-8 w-8">
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
@@ -51,9 +57,11 @@ export function UserMenu() {
           Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive">
-          <LogOut className="mr-2 h-4 w-4" />
-          Log out
+        <DropdownMenuItem asChild className="text-destructive">
+          <Link href="/logout">
+            <LogOut className="mr-2 h-4 w-4" />
+            Log out
+          </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

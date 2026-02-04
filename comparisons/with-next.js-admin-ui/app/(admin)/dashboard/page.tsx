@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/admin/stat-card";
-import { mockStore } from "@/lib/mock-store";
+import { getDashboardData } from "@/lib/api-client";
 import {
   Activity,
   Building2,
@@ -40,10 +40,7 @@ function formatTimeAgo(timestamp: string) {
 }
 
 export default async function DashboardPage() {
-  const [stats, activity] = await Promise.all([
-    mockStore.getStats(),
-    mockStore.getRecentActivity(),
-  ]);
+  const { stats, activity } = await getDashboardData();
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
       <header>
