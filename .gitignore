@@ -18,3 +18,4 @@ dataset*
 .venv
 __screenshots__
 .idea
+.pnpm-store
