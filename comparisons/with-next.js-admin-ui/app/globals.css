@@ -64,6 +64,11 @@
 
     --ring: 224.3 76.3% 48%;
   }
+  
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 @theme inline {
