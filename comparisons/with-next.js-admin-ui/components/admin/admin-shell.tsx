@@ -53,9 +53,6 @@ export function AdminShell({ children }: AdminShellProps) {
             );
           })}
         </nav>
-        <div className="rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">
-          Manage everything from one place. Use the quick actions on the dashboard.
-        </div>
       </aside>
 
       <div className="flex flex-1 flex-col">
