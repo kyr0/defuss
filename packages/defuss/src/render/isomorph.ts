@@ -16,6 +16,10 @@ import type {
   RenderInput,
   Ref,
   JsxSourceInfo,
+  SyncRenderInput,
+  ParentElementInput,
+  SyncRenderResult,
+  ParentElementInputAsync,
 } from "./types.js";
 import {
   domNodeToVNode,
@@ -38,16 +42,11 @@ export const XMLNS_ATTRIBUTE_NAME = "xmlns";
 export const REF_ATTRIBUTE_NAME = "ref";
 export const DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE = "dangerouslySetInnerHTML";
 
-const nsMap = {
+export const nsMap = {
   [XMLNS_ATTRIBUTE_NAME]: "http://www.w3.org/2000/xmlns/",
   [XLINK_ATTRIBUTE_NAME]: "http://www.w3.org/1999/xlink",
   svg: "http://www.w3.org/2000/svg",
 };
-
-declare global {
-  var __defuss_document: Document;
-  var __defuss_window: Window;
-}
 
 // If a JSX comment is written, it looks like: { /* this */ }
 // Therefore, it turns into: {}, which is detected here
@@ -69,15 +68,6 @@ export const createInPlaceErrorMessageVNode = (error: unknown) => ({
   children: [`FATAL ERROR: ${(error as Error)?.message || error}`],
 });
 
-export type JsxRuntimeHookFn = (
-  type: VNodeType | Function | any,
-  attributes:
-    | (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>)
-    | null,
-  key?: string,
-  sourceInfo?: JsxSourceInfo,
-) => void;
-
 export const jsx = (
   type: VNodeType | Function | any,
   attributes:
@@ -98,7 +88,7 @@ export const jsx = (
   // Filter null/undefined/booleans to match update/hydrate behavior
   // (booleans render as nothing, not as "true"/"false" text)
   let children: Array<VNodeChild> = (
-    attributes?.children ? [].concat(attributes.children) : []
+    attributes?.children ? ([] as VNodeChild[]).concat(attributes.children as VNodeChild | VNodeChild[]) : []
   ).filter((c) => c !== null && c !== undefined && typeof c !== "boolean");
   delete attributes?.children;
 
@@ -119,6 +109,7 @@ export const jsx = (
   // Handle async function components with fallback prop
   // This enables: <AsyncComponent fallback={<div>Loading...</div>} />
   if (typeof type === "function" && type.constructor.name === "AsyncFunction") {
+    // console.log("[defuss] Detected AsyncFunction component:", type.name);
     const fallback = attributes?.fallback;
 
     // Extract fallback from attributes so it's not passed to the async component
@@ -135,6 +126,8 @@ export const jsx = (
           ...propsForAsyncFn,
           children,
         });
+
+        // console.log("[defuss] Async component resolved:", type.name, resolvedVNode);
 
         // Import updateDomWithVdom dynamically to update the container
         // The container element will have its content replaced with the resolved VNode
@@ -157,12 +150,11 @@ export const jsx = (
       type: "div",
       attributes: {
         key,
-        onMount,
-        class: "defuss-async-container",
+        onMount
       },
       children: fallback ? [fallback] : [],
       sourceInfo,
-    } as VNode;
+    } as unknown as VNode;
   }
 
 
@@ -268,7 +260,7 @@ export const observeUnmount = (domNode: Node, onUnmount: () => void): void => {
 export const handleLifecycleEventsForOnMount = (newEl: HTMLElement) => {
   // check for a lifecycle "onMount" hook and call it
   if (typeof (newEl as any)?.$onMount === "function") {
-    (newEl as any).$onMount!(); // remove the hook after it's been called
+    (newEl as any).$onMount!(newEl); // remove the hook after it's been called
     (newEl as any).$onMount = null;
   }
 
@@ -294,7 +286,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       type !== "SCRIPT",
 
     createElementOrElements: (
-      virtualNode: VNode | undefined | Array<VNode | undefined | string>,
+      virtualNode: RenderInput,
       parentDomElement?: Element | Document,
     ): Array<Element | Text | undefined> | Element | Text | undefined => {
       if (Array.isArray(virtualNode)) {
@@ -308,7 +300,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
     },
 
     createElement: (
-      virtualNode: VNode,
+      virtualNode: RenderInput,
       parentDomElement?: Element | Document,
     ): Element | undefined => {
       let newEl: Element | undefined = undefined;
@@ -316,45 +308,67 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       try {
         // if a synchronous function is still a function, VDOM has obviously not resolved, probably an
         // Error occurred while generating the VDOM (in JSX runtime)
-        if (virtualNode.constructor.name === "AsyncFunction") {
+        if (typeof virtualNode === "function" && virtualNode.constructor.name === "AsyncFunction") {
           newEl = document.createElement("div");
-        } else if (typeof virtualNode.type === "function") {
-          newEl = document.createElement("div");
-          (newEl as HTMLElement).innerText =
-            `FATAL ERROR: ${virtualNode.type._error}`;
         } else if (
-          // SVG support
-          virtualNode.type.toUpperCase() === "SVG" ||
-          (parentDomElement &&
-            renderer.hasSvgNamespace(
-              parentDomElement,
-              virtualNode.type.toUpperCase(),
-            ))
+          typeof virtualNode === "object" &&
+          virtualNode !== null &&
+          "type" in virtualNode
         ) {
-          // SVG support
-          newEl = document.createElementNS(
-            nsMap.svg,
-            virtualNode.type as string,
-          );
+          const vNode = virtualNode as VNode;
+
+          if (typeof vNode.type === "function") {
+            newEl = document.createElement("div");
+            (newEl as HTMLElement).innerText =
+              `FATAL ERROR: ${(vNode.type as { _error?: string })._error}`;
+          } else if (
+            // SVG support
+            (typeof vNode.type === "string" && vNode.type.toUpperCase() === "SVG") ||
+            (parentDomElement &&
+              renderer.hasSvgNamespace(
+                parentDomElement,
+                typeof vNode.type === "string" ? vNode.type.toUpperCase() : "",
+              ))
+          ) {
+            // SVG support
+            newEl = document.createElementNS(
+              nsMap.svg,
+              vNode.type as string,
+            );
+          } else {
+            newEl = document.createElement(vNode.type as string);
+          }
+
+          if (vNode.attributes) {
+            renderer.setAttributes(vNode, newEl as Element);
+
+            // apply dangerouslySetInnerHTML if provided
+            if (vNode.attributes.dangerouslySetInnerHTML) {
+              (newEl as HTMLElement).innerHTML = vNode.attributes.dangerouslySetInnerHTML.__html;
+            }
+          }
+
+          // Skip child creation when dangerouslySetInnerHTML is used (matches React semantics)
+          if (vNode.children && !vNode.attributes?.dangerouslySetInnerHTML) {
+            renderer.createChildElements(vNode.children, newEl as Element);
+          }
         } else {
-          newEl = document.createElement(virtualNode.type as string);
-        }
-
-        if (virtualNode.attributes) {
-          renderer.setAttributes(virtualNode, newEl as Element);
-
-          // apply dangerouslySetInnerHTML if provided
-          if (virtualNode.attributes.dangerouslySetInnerHTML) {
-            (newEl as HTMLElement).innerHTML = virtualNode.attributes.dangerouslySetInnerHTML.__html;
+          // Fallback for unexpected types (primitives should be handled by createTextNode, but just in case)
+          // If virtualNode is a primitive at this point, original logic would try to use it as tag name or crash.
+          // We'll create a text node wrapped in span or similar? 
+          // Attempting to match original implementation which forced Cast.
+          // If 'type' is missing, it's not a valid VNode. 
+          // Original was: newEl = document.createElement(virtualNode.type as string);
+          // If it's a string, type is undefined. document.createElement("undefined") -> <undefined> element.
+          if (typeof virtualNode === "string" || typeof virtualNode === "number") {
+            // Creating an element with the value as tag name seems wrong but that's what the old code did if it got here.
+            // However, createElementOrElements dispatches strings to createTextNode.
+            // So we might be safe here.
+            newEl = document.createElement(String(virtualNode));
           }
         }
 
-        // Skip child creation when dangerouslySetInnerHTML is used (matches React semantics)
-        if (virtualNode.children && !virtualNode.attributes?.dangerouslySetInnerHTML) {
-          renderer.createChildElements(virtualNode.children, newEl as Element);
-        }
-
-        if (parentDomElement) {
+        if (newEl && parentDomElement) {
           parentDomElement.appendChild(newEl);
           handleLifecycleEventsForOnMount(newEl as HTMLElement);
         }
@@ -543,22 +557,6 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
   return renderer;
 };
 
-export type SyncRenderInput =
-  | VNode
-  | undefined
-  | string
-  | Array<VNode | undefined | string>;
-export type ParentElementInput =
-  | Element
-  | Document
-  | Dequery<NodeType>
-  | undefined;
-export type SyncRenderResult =
-  | Array<Element | Text | undefined>
-  | Element
-  | Text
-  | undefined;
-
 export const renderIsomorphicSync = (
   virtualNode: SyncRenderInput,
   parentDomElement: ParentElementInput,
@@ -586,11 +584,6 @@ export const renderIsomorphicSync = (
   }
   return renderResult;
 };
-
-export type ParentElementInputAsync =
-  | ParentElementInput
-  | Dequery<NodeType>
-  | Promise<ParentElementInput | Dequery<NodeType>>;
 
 export const renderIsomorphicAsync = async (
   virtualNode: SyncRenderInput | Promise<SyncRenderInput>,

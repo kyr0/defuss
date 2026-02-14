@@ -1,18 +1,18 @@
-import type { VNodeChild } from "@/render/types.js";
 import type { RouteProps } from "./Route.js";
 import { Route } from "./Route.js";
 import { Router } from "./router.js";
+import type { FC } from "@/render/types.js";
 
 export interface RedirectProps extends RouteProps {
   to: string;
 }
 
-export const Redirect = ({
+export const Redirect: FC<RedirectProps> = ({
   path,
   to,
   router = Router,
   exact,
-}: RedirectProps): VNodeChild => {
+}) => {
   queueMicrotask(() => {
     if (Route({ path, router, exact, children: [true] })) {
       //console.log("Redirect", to);

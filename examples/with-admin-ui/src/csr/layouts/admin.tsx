@@ -37,8 +37,8 @@ const restoreAuth = () => {
 };
 
 export function AdminLayout({ children }: AdminLayoutProps) {
-    const sidebarRef = createRef();
-    const mobileMenuRef = createRef();
+    const sidebarRef = createRef<HTMLDivElement>();
+    const mobileMenuRef = createRef<HTMLDivElement>();
     let sidebarCollapsed = false;
 
     // Restore auth on mount
@@ -83,7 +83,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     const userEmail = window.$APP_PROPS?.user?.email || "admin@example.com";
 
     return (
-        <div className="flex h-screen bg-background overflow-hidden">
+        <div className="flex w-full bg-background overflow-hidden">
             {/* Desktop Sidebar */}
             <div className="hidden lg:flex" ref={sidebarRef}>
                 <SidebarNav
@@ -106,7 +106,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <div className="w-full h-full flex flex-col min-w-0 overflow-hidden">
                 {/* Top Header */}
                 <header className="h-16 flex items-center justify-between px-4 border-b border-border bg-card shrink-0">
                     {/* Mobile Menu Button */}

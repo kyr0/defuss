@@ -3,17 +3,23 @@ import type { CallChainImpl, Dequery } from "../dequery/dequery.js";
 import type { Store } from "../store/store.js";
 import type * as CSS from "csstype";
 
-export type * as CSS from "csstype";
-
-export type Globals = Performance & Window & typeof globalThis;
-
+// global DOM metadata support (after all, we can monkey-patch DOM nodes, but need to be careful with spec'ed fields)
 declare global {
+  var __defuss_document: Document;
+  var __defuss_window: Window;
+
   interface HTMLElement {
-    _defussRef?: Ref;
+    _defussRef?: Ref<Element>;
   }
 }
 
+export type Globals = Performance & Window & typeof globalThis;
+
 // --- Types & Helpers ---
+
+export type Maybe<T> = T | null | undefined;
+export type OneOrMany<T> = T | readonly T[];
+
 export type NodeType =
   | Node
   | Text
@@ -23,6 +29,38 @@ export type NodeType =
   | HTMLElement
   | SVGElement
   | null;
+
+export type DOMElement = Element | SVGElement;
+
+export type SyncRenderInput = RenderInput;
+
+export type ParentElementInput =
+  | Element
+  | Document
+  | Dequery<NodeType>
+  | undefined;
+
+export type SyncRenderResult =
+  | Array<Element | Text | undefined>
+  | Element
+  | Text
+  | undefined;
+
+export type ParentElementInputAsync =
+  | ParentElementInput
+  | Dequery<NodeType>
+  | Promise<ParentElementInput | Dequery<NodeType>>;
+
+
+// TODO: unused right now - remove?
+export type JsxRuntimeHookFn = (
+  type: VNodeType | Function | any,
+  attributes:
+    | (JSX.HTMLAttributes & JSX.SVGAttributes & Record<string, any>)
+    | null,
+  key?: string,
+  sourceInfo?: JsxSourceInfo,
+) => void;
 
 export interface CSSProperties extends CSS.Properties<string | number> {
   /**
@@ -54,128 +92,38 @@ export interface FontFaceProperties {
   unicodeRange?: string;
 }
 
+// TODO: unused right now - remove?
+type Percent = `${number}%`; // allows "0%", "12.5%", "100%", etc.
 export interface KeyFrameProperties {
   from?: Partial<CSSProperties>;
   to?: Partial<CSSProperties>;
-  "0%"?: Partial<CSSProperties>;
-  "1%"?: Partial<CSSProperties>;
-  "2%"?: Partial<CSSProperties>;
-  "3%"?: Partial<CSSProperties>;
-  "4%"?: Partial<CSSProperties>;
-  "5%"?: Partial<CSSProperties>;
-  "6%"?: Partial<CSSProperties>;
-  "7%"?: Partial<CSSProperties>;
-  "8%"?: Partial<CSSProperties>;
-  "9%"?: Partial<CSSProperties>;
-  "10%"?: Partial<CSSProperties>;
-  "11%"?: Partial<CSSProperties>;
-  "12%"?: Partial<CSSProperties>;
-  "13%"?: Partial<CSSProperties>;
-  "14%"?: Partial<CSSProperties>;
-  "15%"?: Partial<CSSProperties>;
-  "16%"?: Partial<CSSProperties>;
-  "17%"?: Partial<CSSProperties>;
-  "18%"?: Partial<CSSProperties>;
-  "19%"?: Partial<CSSProperties>;
-  "20%"?: Partial<CSSProperties>;
-  "21%"?: Partial<CSSProperties>;
-  "22%"?: Partial<CSSProperties>;
-  "23%"?: Partial<CSSProperties>;
-  "24%"?: Partial<CSSProperties>;
-  "25%"?: Partial<CSSProperties>;
-  "26%"?: Partial<CSSProperties>;
-  "27%"?: Partial<CSSProperties>;
-  "28%"?: Partial<CSSProperties>;
-  "29%"?: Partial<CSSProperties>;
-  "30%"?: Partial<CSSProperties>;
-  "31%"?: Partial<CSSProperties>;
-  "32%"?: Partial<CSSProperties>;
-  "33%"?: Partial<CSSProperties>;
-  "34%"?: Partial<CSSProperties>;
-  "35%"?: Partial<CSSProperties>;
-  "36%"?: Partial<CSSProperties>;
-  "37%"?: Partial<CSSProperties>;
-  "38%"?: Partial<CSSProperties>;
-  "39%"?: Partial<CSSProperties>;
-  "40%"?: Partial<CSSProperties>;
-  "41%"?: Partial<CSSProperties>;
-  "42%"?: Partial<CSSProperties>;
-  "43%"?: Partial<CSSProperties>;
-  "44%"?: Partial<CSSProperties>;
-  "45%"?: Partial<CSSProperties>;
-  "46%"?: Partial<CSSProperties>;
-  "47%"?: Partial<CSSProperties>;
-  "48%"?: Partial<CSSProperties>;
-  "49%"?: Partial<CSSProperties>;
-  "50%"?: Partial<CSSProperties>;
-  "51%"?: Partial<CSSProperties>;
-  "52%"?: Partial<CSSProperties>;
-  "53%"?: Partial<CSSProperties>;
-  "54%"?: Partial<CSSProperties>;
-  "55%"?: Partial<CSSProperties>;
-  "56%"?: Partial<CSSProperties>;
-  "57%"?: Partial<CSSProperties>;
-  "58%"?: Partial<CSSProperties>;
-  "59%"?: Partial<CSSProperties>;
-  "60%"?: Partial<CSSProperties>;
-  "61%"?: Partial<CSSProperties>;
-  "62%"?: Partial<CSSProperties>;
-  "63%"?: Partial<CSSProperties>;
-  "64%"?: Partial<CSSProperties>;
-  "65%"?: Partial<CSSProperties>;
-  "66%"?: Partial<CSSProperties>;
-  "67%"?: Partial<CSSProperties>;
-  "68%"?: Partial<CSSProperties>;
-  "69%"?: Partial<CSSProperties>;
-  "70%"?: Partial<CSSProperties>;
-  "71%"?: Partial<CSSProperties>;
-  "72%"?: Partial<CSSProperties>;
-  "73%"?: Partial<CSSProperties>;
-  "74%"?: Partial<CSSProperties>;
-  "75%"?: Partial<CSSProperties>;
-  "76%"?: Partial<CSSProperties>;
-  "77%"?: Partial<CSSProperties>;
-  "78%"?: Partial<CSSProperties>;
-  "79%"?: Partial<CSSProperties>;
-  "80%"?: Partial<CSSProperties>;
-  "81%"?: Partial<CSSProperties>;
-  "82%"?: Partial<CSSProperties>;
-  "83%"?: Partial<CSSProperties>;
-  "84%"?: Partial<CSSProperties>;
-  "85%"?: Partial<CSSProperties>;
-  "86%"?: Partial<CSSProperties>;
-  "87%"?: Partial<CSSProperties>;
-  "88%"?: Partial<CSSProperties>;
-  "89%"?: Partial<CSSProperties>;
-  "90%"?: Partial<CSSProperties>;
-  "91%"?: Partial<CSSProperties>;
-  "92%"?: Partial<CSSProperties>;
-  "93%"?: Partial<CSSProperties>;
-  "94%"?: Partial<CSSProperties>;
-  "95%"?: Partial<CSSProperties>;
-  "96%"?: Partial<CSSProperties>;
-  "97%"?: Partial<CSSProperties>;
-  "98%"?: Partial<CSSProperties>;
-  "99%"?: Partial<CSSProperties>;
-  "100%"?: Partial<CSSProperties>;
+  [k: Percent]: Partial<CSSProperties> | undefined;
 }
 
+export type MountHandler<T extends DOMElement = DOMElement> = (element: T) => void;
+export type UnmountHandler<T extends DOMElement = DOMElement> = (element: T) => void;
+
+// local helper for RefUpdateRenderFn
 export type RefUpdateRenderFnInput =
   | string
   | RenderInput
   | NodeType
   | Dequery<NodeType>;
 export type RefUpdateFn<ST> = (state: ST) => void;
+
+// only locally used in ref.ts
 export type RefUpdateRenderFn = (
   input: RefUpdateRenderFnInput,
 ) => Promise<CallChainImpl<NodeType>>;
 
-export interface Ref<ST = any, NT = null | Node | Element | Text> {
+export interface Ref<NT = null | Node | Element | Text, ST = any> {
   orphan?: boolean;
   current: NT;
   store?: Store<ST>;
   state?: ST;
+  /** @deprecated use render() instead */
   update: RefUpdateRenderFn;
+  render: RefUpdateRenderFn;
   updateState: RefUpdateFn<ST>;
   subscribe: (
     refUpdateFn: RefUpdateFn<ST>,
@@ -186,17 +134,23 @@ export interface Ref<ST = any, NT = null | Node | Element | Text> {
 
 //export type VRef = (el: Element) => void
 
-export interface VAttributes {
+export type DefussKey = string | number;
+
+export interface VAttributes<T extends DOMElement = DOMElement, ST = any> {
   // typing; detect ref
-  ref?: Ref;
+  ref?: Ref<T, ST>;
 
   // array-local unique key to identify element items in a NodeList
-  key?: string;
+  key?: DefussKey;
+
+  // defuss custom element lifecycle events
+  onMount?: MountHandler<T>;
+  onUnmount?: UnmountHandler<T>;
 }
 
 export interface VNodeAttributes extends VAttributes {
   [attributeName: string]: any;
-  key?: string;
+  key?: DefussKey;
 }
 
 export interface JsxSourceInfo {
@@ -207,7 +161,6 @@ export interface JsxSourceInfo {
   allChildrenAreStatic?: boolean;
   selfReference?: boolean;
 }
-
 export interface VNode<A = VNodeAttributes> {
   type?: VNodeType;
   attributes?: A;
@@ -241,12 +194,12 @@ export interface DomAbstractionImpl {
   hasSvgNamespace(parentElement: Element, type: string): boolean;
 
   createElementOrElements(
-    virtualNode: VNode | undefined | Array<VNode | undefined | string>,
+    virtualNode: RenderInput,
     parentDomElement?: Element | Document,
   ): Array<Element | Text | undefined> | Element | Text | undefined;
 
   createElement(
-    virtualNode: VNode | undefined,
+    virtualNode: RenderInput,
     parentDomElement?: Element | Document,
   ): Element | undefined;
 
@@ -270,13 +223,14 @@ export interface DomAbstractionImpl {
   ): void;
 }
 
+// global JSX type support
 declare global {
   namespace JSX {
     interface ElementAttributesProperty {
       attrs: {};
     }
 
-    export interface SVGAttributes extends HTMLAttributes {
+    export interface SVGAttributes<T extends DOMElement = DOMElement> extends HTMLAttributes<T> {
       accentHeight?: number | string;
       accumulate?: "none" | "sum";
       additive?: "replace" | "sum";
@@ -552,10 +506,10 @@ declare global {
     export type GenericEventHandler = EventHandler<Event>;
     export type PointerEventHandler = EventHandler<PointerEvent>;
 
-    export interface DOMAttributeEventHandlersLowerCase {
+    export interface DOMAttributeEventHandlersLowerCase<T extends DOMElement = DOMElement> {
       // defuss custom elment lifecycle events
-      onmount?: Function;
-      onunmount?: Function;
+      //onmount?: MountHandler<T>;
+      //onunmount?: UnmountHandler<T>;
 
       // Image Events
       onload?: GenericEventHandler;
@@ -746,15 +700,15 @@ declare global {
       ontransitionendcapture?: TransitionEventHandler;
     }
 
-    export interface DOMAttributes
-      extends VAttributes,
-      DOMAttributeEventHandlersLowerCase {
+    export interface DOMAttributes<T extends DOMElement = DOMElement>
+      extends VAttributes<T>,
+      DOMAttributeEventHandlersLowerCase<T> {
       // defuss custom attributes
-      ref?: Ref /*| VRef*/;
+      //ref?: Ref<T, any> /*| VRef*/;
 
       // defuss custom element lifecycle events
-      onMount?: Function;
-      onUnmount?: Function;
+      onMount?: MountHandler<T>;
+      onUnmount?: UnmountHandler<T>;
 
       // Image Events
       onLoad?: GenericEventHandler;
@@ -945,8 +899,7 @@ declare global {
       onTransitionEndCapture?: TransitionEventHandler;
     }
 
-    export interface HTMLAttributesLowerCase {
-      ref?: Ref; // | VRef
+    export interface HTMLAttributesLowerCase<T extends DOMElement = DOMElement> extends VAttributes<T> {
 
       dangerouslysetinnerhtml?: {
         __html: string;
@@ -971,10 +924,10 @@ declare global {
       charset?: string;
       challenge?: string;
       checked?: boolean | string;
-      class?: string | Array<string | false>;
-      classname?: string | Array<string | false>;
+      class?: DefussClassValue;
+      classname?: DefussClassValue;
       cols?: number;
-      children?: any;
+      children?: DefussChildren;
       colspan?: number;
       content?: string;
       contenteditable?: boolean;
@@ -1097,14 +1050,14 @@ declare global {
       itemref?: string;
     }
 
-    export interface HTMLAttributes
-      extends HTMLAttributesLowerCase,
-      DOMAttributes {
-      ref?: Ref; // | VRef
+    export interface HTMLAttributes<T extends DOMElement = DOMElement> extends HTMLAttributesLowerCase<T>, DOMAttributes<T> {
 
       dangerouslySetInnerHTML?: {
         __html: string;
       };
+
+      onMount?: MountHandler<T>;
+      onUnmount?: UnmountHandler<T>;
 
       // Standard HTML Attributes
       accept?: string;
@@ -1126,10 +1079,10 @@ declare global {
       charSet?: string;
       challenge?: string;
       checked?: boolean | string;
-      class?: string | Array<string | false>;
-      className?: string | Array<string | false>;
+      class?: DefussClassValue;
+      className?: DefussClassValue;
       cols?: number;
-      children?: any;
+      children?: DefussChildren;
       colSpan?: number;
       content?: string;
       contentEditable?: boolean;
@@ -1255,267 +1208,122 @@ declare global {
       // some-custom-element-name: HTMLAttributes;
     }
 
-    export interface IntrinsicElements extends IVirtualIntrinsicElements {
-      // HTML
-      a: HTMLAttributes;
-      abbr: HTMLAttributes;
-      address: HTMLAttributes;
-      area: HTMLAttributes;
-      article: HTMLAttributes;
-      aside: HTMLAttributes;
-      audio: HTMLAttributes;
-      b: HTMLAttributes;
-      base: HTMLAttributes;
-      bdi: HTMLAttributes;
-      bdo: HTMLAttributes;
-      big: HTMLAttributes;
-      blockquote: HTMLAttributes;
-      body: HTMLAttributes;
-      br: HTMLAttributes;
-      button: HTMLAttributes;
-      canvas: HTMLAttributes;
-      caption: HTMLAttributes;
-      cite: HTMLAttributes;
-      code: HTMLAttributes;
-      col: HTMLAttributes;
-      colgroup: HTMLAttributes;
-      data: HTMLAttributes;
-      datalist: HTMLAttributes;
-      dd: HTMLAttributes;
-      del: HTMLAttributes;
-      details: HTMLAttributes;
-      dfn: HTMLAttributes;
-      dialog: HTMLAttributes;
-      div: HTMLAttributes;
-      dl: HTMLAttributes;
-      dt: HTMLAttributes;
-      em: HTMLAttributes;
-      embed: HTMLAttributes;
-      fieldset: HTMLAttributes;
-      figcaption: HTMLAttributes;
-      figure: HTMLAttributes;
-      footer: HTMLAttributes;
-      form: HTMLAttributes;
-      h1: HTMLAttributes;
-      h2: HTMLAttributes;
-      h3: HTMLAttributes;
-      h4: HTMLAttributes;
-      h5: HTMLAttributes;
-      h6: HTMLAttributes;
-      head: HTMLAttributes;
-      header: HTMLAttributes;
-      hgroup: HTMLAttributes;
-      hr: HTMLAttributes;
-      html: HTMLAttributes;
-      i: HTMLAttributes;
-      iframe: HTMLAttributes;
-      img: HTMLAttributes;
-      input: HTMLAttributes;
-      ins: HTMLAttributes;
-      kbd: HTMLAttributes;
-      keygen: HTMLAttributes;
-      label: HTMLAttributes;
-      legend: HTMLAttributes;
-      li: HTMLAttributes;
-      link: HTMLAttributes;
-      main: HTMLAttributes;
-      map: HTMLAttributes;
-      mark: HTMLAttributes;
-      menu: HTMLAttributes;
-      menuitem: HTMLAttributes;
-      meta: HTMLAttributes;
-      meter: HTMLAttributes;
-      nav: HTMLAttributes;
-      noscript: HTMLAttributes;
-      object: HTMLAttributes;
-      ol: HTMLAttributes;
-      optgroup: HTMLAttributes;
-      option: HTMLAttributes;
-      output: HTMLAttributes;
-      p: HTMLAttributes;
-      param: HTMLAttributes;
-      picture: HTMLAttributes;
-      pre: HTMLAttributes;
-      progress: HTMLAttributes;
-      q: HTMLAttributes;
-      rp: HTMLAttributes;
-      rt: HTMLAttributes;
-      ruby: HTMLAttributes;
-      s: HTMLAttributes;
-      samp: HTMLAttributes;
-      script: HTMLAttributes;
-      section: HTMLAttributes;
-      select: HTMLAttributes;
-      slot: HTMLAttributes;
-      small: HTMLAttributes;
-      source: HTMLAttributes;
-      span: HTMLAttributes;
-      strong: HTMLAttributes;
-      style: HTMLAttributes;
-      sub: HTMLAttributes;
-      summary: HTMLAttributes;
-      sup: HTMLAttributes;
-      table: HTMLAttributes;
-      tbody: HTMLAttributes;
-      td: HTMLAttributes;
-      textarea: HTMLAttributes;
-      tfoot: HTMLAttributes;
-      th: HTMLAttributes;
-      thead: HTMLAttributes;
-      time: HTMLAttributes;
-      title: HTMLAttributes;
-      tr: HTMLAttributes;
-      track: HTMLAttributes;
-      u: HTMLAttributes;
-      ul: HTMLAttributes;
-      var: HTMLAttributes;
-      video: HTMLAttributes &
-      Partial<{
-        autoplay: boolean;
-      }>;
-      wbr: HTMLAttributes;
+    export type HtmlIntrinsic = {
+      [K in keyof HTMLElementTagNameMap]:
+      HTMLAttributes<HTMLElementTagNameMap[K]>;
+    };
 
-      // SVG
-      svg: SVGAttributes;
-      animate: SVGAttributes;
-      circle: SVGAttributes;
-      clipPath: SVGAttributes;
-      defs: SVGAttributes;
-      desc: SVGAttributes;
-      ellipse: SVGAttributes;
-      feBlend: SVGAttributes;
-      feColorMatrix: SVGAttributes;
-      feComponentTransfer: SVGAttributes;
-      feComposite: SVGAttributes;
-      feConvolveMatrix: SVGAttributes;
-      feDiffuseLighting: SVGAttributes;
-      feDisplacementMap: SVGAttributes;
-      feFlood: SVGAttributes;
-      feGaussianBlur: SVGAttributes;
-      feImage: SVGAttributes;
-      feMerge: SVGAttributes;
-      feMergeNode: SVGAttributes;
-      feMorphology: SVGAttributes;
-      feOffset: SVGAttributes;
-      feSpecularLighting: SVGAttributes;
-      feTile: SVGAttributes;
-      feTurbulence: SVGAttributes;
-      filter: SVGAttributes;
-      foreignObject: SVGAttributes;
-      g: SVGAttributes;
-      image: SVGAttributes;
-      line: SVGAttributes;
-      linearGradient: SVGAttributes;
-      marker: SVGAttributes;
-      mask: SVGAttributes;
-      path: SVGAttributes;
-      pattern: SVGAttributes;
-      polygon: SVGAttributes;
-      polyline: SVGAttributes;
-      radialGradient: SVGAttributes;
-      rect: SVGAttributes;
-      stop: SVGAttributes;
-      symbol: SVGAttributes;
-      text: SVGAttributes;
-      tspan: SVGAttributes;
-      use: SVGAttributes;
-    }
+    export type SvgIntrinsic = {
+      [K in keyof SVGElementTagNameMap]:
+      SVGAttributes<SVGElementTagNameMap[K]>;
+    };
 
-    interface IntrinsicElements {
-      // will be deleted by tsx factory
+    // Drop SVG keys that collide with HTML keys (e.g. "a")
+    export type SvgOnly = Omit<SvgIntrinsic, keyof HtmlIntrinsic>;
+
+    export interface IntrinsicElements
+      extends HtmlIntrinsic,
+      SvgOnly,
+      IVirtualIntrinsicElements {
       fragment: {};
     }
+
+    // JSX.Element -> AST VNode
+    export type Element = VNode | Promise<VNode | null> | null;
   }
 }
 
 export type RenderNodeInput = VNode | string | undefined;
-export type RenderInput = RenderNodeInput | Array<RenderNodeInput>;
 export type RenderResultNode = Element | Text | undefined;
 
-export interface Props {
-  children?: VNodeChild | VNodeChildren;
+/**
+ * DefussChild represents any valid child element in defuss.
+ */
+export type DefussChild =
+  | VNode
+  | VNodeChild
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | JSX.Element
+  | DefussChild[];
 
-  // allow for forwardRef
-  ref?: Ref;
+/**
+ * AsyncChild extends DefussChild to also accept async components (Promise-returning).
+ * Use this for children of the <Async> wrapper component.
+ */
+export type AsyncDefussChild = Promise<DefussChild> | DefussChild;
 
-  // array-local unique key to identify element items in a NodeList
-  key?: string | number;
+export type DefussChildren = DefussChild; // recursive already covers arrays
 
-  // optional callback handler for errors (can be called inside of the component, to pass errors up to the parent)
-  onError?: (error: unknown) => void;
+export type RenderInput = DefussChild; // unify: renderer accepts the same thing
+
+export type DefussClassValue = string | false | DefussClassValue[];
+
+/**
+ * The Props interface is the natural first argument of a functional component.
+ * Usually, you will want to pass down `children`.
+ */
+export interface Props<NT extends DOMElement = DOMElement, ST = any> {
+  children?: DefussChildren;
+
+  /** if implemented, maps 1:1 to the id attribute of the root element returned by the functional component */
+  id?: string;
+
+  /** forward a ref from a parent component down to this component; if implemented, will become the ref of the root element, the functional component returns */
+  forwardRef?: Ref<NT, ST>;
+
+  // if implemented, maps 1:1 to key attribute of the root element returned by the functional component -- dropped before DOM rendering
+  key?: DefussKey;
+
+  /** if implemented, maps 1:1 to class attribute of the root element returned by the functional component */
+  className?: DefussClassValue;
+
+  /** if implemented, maps 1:1 to the style attribute of the root element returned by the functional component */
+  style?: CSSProperties | string;
+
+  // optional callback handler for errors (can be called inside returned by the component, to pass errors up to the parent)
+  onError?: JSX.GenericEventHandler;
 }
+
+// IMPORTANT: Used extensively for all functional components that return DOMElement with {...props} props mixin (higher-order wrapped DOM elements)
+export type ElementProps<T extends DOMElement> =
+  Props<T> & JSX.HTMLAttributes<T>;
 
 export type RenderResult<T = RenderInput> = T extends Array<RenderNodeInput>
   ? Array<RenderResultNode>
   : RenderResultNode;
 
-export type AllHTMLElements = HTMLElement &
-  HTMLAnchorElement &
-  HTMLAreaElement &
-  HTMLAudioElement &
-  HTMLBaseElement &
-  HTMLBodyElement &
-  HTMLBRElement &
-  HTMLButtonElement &
-  HTMLCanvasElement &
-  HTMLDataElement &
-  HTMLDataListElement &
-  HTMLDetailsElement &
-  HTMLDialogElement &
-  HTMLDivElement &
-  HTMLDListElement &
-  HTMLEmbedElement &
-  HTMLFieldSetElement &
-  HTMLFormElement &
-  HTMLHeadingElement &
-  HTMLHeadElement &
-  HTMLHtmlElement &
-  HTMLHRElement &
-  HTMLIFrameElement &
-  HTMLImageElement &
-  HTMLInputElement &
-  HTMLLabelElement &
-  HTMLLegendElement &
-  HTMLLIElement &
-  HTMLLinkElement &
-  HTMLMapElement &
-  HTMLMenuElement &
-  HTMLMetaElement &
-  HTMLMeterElement &
-  HTMLModElement &
-  HTMLOListElement &
-  HTMLObjectElement &
-  HTMLOptGroupElement &
-  HTMLOptionElement &
-  HTMLOutputElement &
-  HTMLParagraphElement &
-  HTMLPictureElement &
-  HTMLPreElement &
-  HTMLProgressElement &
-  HTMLQuoteElement &
-  HTMLScriptElement &
-  HTMLSelectElement &
-  HTMLSlotElement &
-  HTMLSourceElement &
-  HTMLSpanElement &
-  HTMLStyleElement &
-  HTMLTableCaptionElement &
-  HTMLTableCellElement &
-  HTMLTableColElement &
-  HTMLTableElement &
-  HTMLTableRowElement &
-  HTMLTableSectionElement &
-  HTMLTemplateElement &
-  HTMLTextAreaElement &
-  HTMLTimeElement &
-  HTMLTitleElement &
-  HTMLTrackElement &
-  HTMLUListElement &
-  HTMLUnknownElement &
-  HTMLVideoElement &
-  // deprecated / legacy:
-  HTMLParamElement &
-  HTMLFontElement &
-  HTMLMarqueeElement &
-  HTMLTableDataCellElement &
-  HTMLTableHeaderCellElement;
+export type AllHTMLElements = HTMLElementTagNameMap[keyof HTMLElementTagNameMap] | SVGElementTagNameMap[keyof SVGElementTagNameMap];
+
+/**
+ * Functional Component type that accepts a generic Props type.
+ * Defaults to the base Props interface if no generic is provided.
+ * Supports both synchronous and asynchronous rendering.
+ * 
+ * @example
+ * 
+ * export interface MyComponentProps extends Props {
+ *    name: string;
+ *    age: number;
+ * }
+ * 
+ * // With custom props
+ * export const MyComponent: FC<MyComponentProps> = (props) => { ... }
+ * 
+ * // With default Props
+ * export const SimpleComponent: FC = (props) => { ... }
+ * 
+ * // Async component
+ * export const AsyncComponent: FC = async (props) => { ... }
+ */
+export type FC<P = Props> = (props: P) => JSX.Element | null;
+export type AsyncFC<P = Props> = (props: P) => Promise<VNode | null>;
+
+/**
+ * Alias for FunctionComponent
+ */
+export type FunctionComponent<P = Props> = FC<P>;
+export type AsyncFunctionComponent<P = Props> = AsyncFC<P>;

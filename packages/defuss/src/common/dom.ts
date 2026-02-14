@@ -707,26 +707,26 @@ export function getEventMap(
 }
 
 export function addElementEvent(
-  element: HTMLElement,
+  target: EventTarget,
   eventType: string,
   handler: EventListener,
 ): void {
   // Use delegated events for unified event handling (NEW ALGO)
   // multi: true allows multiple handlers per element (Dequery mode)
-  registerDelegatedEvent(element, eventType, handler, { multi: true });
+  registerDelegatedEvent(target as HTMLElement, eventType, handler, { multi: true });
 }
 
 export function removeElementEvent(
-  element: HTMLElement,
+  target: EventTarget,
   eventType: string,
   handler?: EventListener,
 ): void {
   // Remove from delegation registry
-  removeDelegatedEvent(element, eventType, handler);
+  removeDelegatedEvent(target, eventType, handler);
 }
 
-export function clearElementEvents(element: HTMLElement): void {
-  clearDelegatedEvents(element);
+export function clearElementEvents(target: EventTarget): void {
+  clearDelegatedEvents(target);
 }
 
 /**

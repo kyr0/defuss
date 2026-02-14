@@ -1,7 +1,7 @@
-import type { Props, Ref, VNodeChild } from "../render/types.js";
+import type { DOMElement, Props, Ref, VNodeChild } from "../render/types.js";
 import {type Replacements, i18n as defaultI18n, type I18nStore} from "./i18n.js";
 
-export interface TransRef extends Ref<string, HTMLElement> {
+export interface TransRef extends Ref<DOMElement, string> {
   updateValues: (values: Replacements) => void;
 }
 

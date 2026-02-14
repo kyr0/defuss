@@ -4,7 +4,7 @@
 
 <p align="center">
   
-  <code>defuss-ui</code>
+  <code>DEPRECATED: defuss-ui</code>
 
 </p>
 

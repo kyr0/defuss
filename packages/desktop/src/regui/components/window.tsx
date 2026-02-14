@@ -2,7 +2,9 @@ import { windowManager, type CreateWindowOptions } from "../../window.js";
 import { $, createRef, type Props, type Ref } from "defuss";
 import { throttle } from "defuss-runtime";
 
-export interface WindowProps extends Props, CreateWindowOptions { }
+export interface WindowProps
+  extends Props<HTMLDivElement, WindowRefState>,
+  CreateWindowOptions { }
 
 export interface WindowRefState {
   onClose: () => void;
@@ -21,7 +23,7 @@ export function Window({
   x = 50,
   y = 100,
   children,
-  ref = createRef<WindowRefState>(),
+  ref = createRef<HTMLDivElement, WindowRefState>(),
   resizable = true,
   minimizable = true,
   maximizable = true,
@@ -186,7 +188,7 @@ export function Window({
   const onWindowMounted = () => {
     windowManager.updateWindow(initialWindowState.id, {
       el: ref.current as HTMLElement,
-      ref: ref as Ref<WindowRefState>,
+      ref: ref as Ref<HTMLElement, WindowRefState>,
     });
     windowManager.setActiveWindow(initialWindowState.id);
 

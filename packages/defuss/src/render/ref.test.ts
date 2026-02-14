@@ -77,13 +77,13 @@ describe("Ref tests", () => {
     });
 
     it("updates state via state setter", () => {
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
       ref.state = { count: 1 };
       expect(ref.state).toEqual({ count: 1 });
     });
 
     it("updates state via updateState method", () => {
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
       ref.updateState({ count: 2 });
       expect(ref.state).toEqual({ count: 2 });
     });
@@ -105,7 +105,7 @@ describe("Ref tests", () => {
     });
 
     it("subscribes to state changes after creation", () => {
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
       const refUpdateFn = vi.fn();
 
       ref.subscribe(refUpdateFn);
@@ -115,7 +115,7 @@ describe("Ref tests", () => {
     });
 
     it("unsubscribes from state changes correctly", () => {
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
       const refUpdateFn = vi.fn();
 
       const unsubscribe = ref.subscribe(refUpdateFn);
@@ -128,7 +128,7 @@ describe("Ref tests", () => {
 
   describe("Persistence", () => {
     it("persists state to memory storage", () => {
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
       ref.persist("test-ref", "memory");
 
       // Verify state was persisted
@@ -141,7 +141,7 @@ describe("Ref tests", () => {
     });
 
     it("persists state to local storage", () => {
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
       ref.persist("test-ref", "local");
 
       // Verify state was persisted
@@ -154,7 +154,7 @@ describe("Ref tests", () => {
     });
 
     it("persists state to session storage", () => {
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
       ref.persist("test-ref", "session");
 
       // Verify state was persisted
@@ -171,7 +171,7 @@ describe("Ref tests", () => {
     });
 
     it("uses local storage as default when not specified", () => {
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
       ref.persist("test-ref");
 
       // Verify state was persisted to local storage
@@ -187,7 +187,7 @@ describe("Ref tests", () => {
       memStorage.set("test-ref", { count: 42 });
 
       // Create a ref with different initial state
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
 
       // Restore from storage
       ref.restore("test-ref", "memory");
@@ -202,7 +202,7 @@ describe("Ref tests", () => {
       localStorage.set("test-ref", { count: 42 });
 
       // Create a ref with different initial state
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
 
       // Restore from storage
       ref.restore("test-ref", "local");
@@ -217,7 +217,7 @@ describe("Ref tests", () => {
       sessionStorage.set("test-ref", { count: 42 });
 
       // Create a ref with different initial state
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
 
       // Restore from storage
       ref.restore("test-ref", "session");
@@ -232,7 +232,7 @@ describe("Ref tests", () => {
       localStorage.set("test-ref", { count: 42 });
 
       // Create a ref with different initial state
-      const ref = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
 
       // Restore from storage (without specifying provider)
       ref.restore("test-ref");
@@ -243,7 +243,7 @@ describe("Ref tests", () => {
 
     it("preserves initial state when no data exists in storage", () => {
       const initialState = { count: 99 };
-      const ref = createRef<{ count: number }>(undefined, initialState);
+      const ref = createRef<HTMLElement, { count: number }>(undefined, initialState);
 
       // Try to restore from a key that doesn't exist
       ref.restore("non-existent-key", "memory");
@@ -256,14 +256,14 @@ describe("Ref tests", () => {
   describe("Persistence and Restore workflow", () => {
     it("completes a full persist-modify-restore cycle", () => {
       // Create and persist initial ref
-      const ref1 = createRef<{ count: number }>(undefined, { count: 10 });
+      const ref1 = createRef<HTMLElement, { count: number }>(undefined, { count: 10 });
       ref1.persist("workflow-test", "memory");
 
       // Modify the state
       ref1.updateState({ count: 20 });
 
       // Create a new ref instance
-      const ref2 = createRef<{ count: number }>(undefined, { count: 0 });
+      const ref2 = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
 
       // Restore from the same storage location
       ref2.restore("workflow-test", "memory");
@@ -276,14 +276,14 @@ describe("Ref tests", () => {
       // Test with all storage types
       ["memory", "local", "session"].forEach((storageType) => {
         // Create and persist initial ref
-        const ref1 = createRef<{ count: number }>(undefined, { count: 10 });
+        const ref1 = createRef<HTMLElement, { count: number }>(undefined, { count: 10 });
         ref1.persist("cycle-test", storageType as any);
 
         // Modify the state
         ref1.updateState({ count: 25 });
 
         // Create a new ref instance
-        const ref2 = createRef<{ count: number }>(undefined, { count: 0 });
+        const ref2 = createRef<HTMLElement, { count: number }>(undefined, { count: 0 });
 
         // Restore from the same storage location
         ref2.restore("cycle-test", storageType as any);
@@ -300,7 +300,7 @@ describe("Ref tests", () => {
 
       // Create ref with listener
       const refUpdateFn = vi.fn();
-      const ref = createRef<{ count: number }>(refUpdateFn, { count: 0 });
+      const ref = createRef<HTMLElement, { count: number }>(refUpdateFn, { count: 0 });
 
       // Restore from storage
       ref.restore("listener-test", "memory");

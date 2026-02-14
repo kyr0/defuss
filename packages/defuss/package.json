@@ -112,6 +112,7 @@
     "assets"
   ],
   "devDependencies": {
+    "@types/w3c-xmlserializer": "^2.0.4",
     "@types/node": "^25.0.9",
     "@vitest/browser": "^4.0.17",
     "@vitest/browser-playwright": "^4.0.17",
@@ -127,7 +128,7 @@
     "@types/w3c-xmlserializer": "^2.0.4",
     "csstype": "^3.2.3",
     "defuss-runtime": "workspace:*",
-    "happy-dom": "^20.3.1",
+    "happy-dom": "^20.5.0",
     "w3c-xmlserializer": "^5.0.0"
   }
 }

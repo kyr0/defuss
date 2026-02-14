@@ -2,7 +2,7 @@
   "name": "defuss-ui",
   "type": "module",
   "version": "0.1.0",
-  "description": "A modern Shadcn-like component library for defuss that build on Tailwind and Franken UI.",
+  "description": "DEPRECATED: A modern Shadcn-like component library for defuss that build on Tailwind and Franken UI.",
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
     "type": "git"

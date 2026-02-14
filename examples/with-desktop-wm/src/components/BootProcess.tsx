@@ -25,7 +25,7 @@ export function BootProcess({ bootDelayMs = 0 }: BootProcessProps) {
   // takes the forwarded ref from bootscreen
   const screenRef = createRef<HTMLDivElement>();
   const bootScreenRef = createRef<HTMLDivElement>();
-  const logonManagerRef = createRef<LogonState>();
+  const logonManagerRef = createRef<HTMLDivElement, LogonState>();
   const shellRef = createRef<HTMLDivElement>();
 
   const onStartComputerClick = async () => {

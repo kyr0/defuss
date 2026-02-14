@@ -1,2 +1,2 @@
-export const queueCallback = (cb: Function) => () =>
-  queueMicrotask(cb as VoidFunction);
+export const queueCallback = <T extends any[]>(cb: (...args: T) => void) => (...args: T) =>
+  queueMicrotask(() => cb(...args));

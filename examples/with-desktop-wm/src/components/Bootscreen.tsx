@@ -2,7 +2,7 @@ import "./Bootscreen.scss";
 
 import type { Props } from "defuss";
 
-export interface BootscreenProps extends Props {}
+export interface BootscreenProps extends Props<HTMLDivElement> { }
 
 export function Bootscreen({ ref }: BootscreenProps) {
   return (

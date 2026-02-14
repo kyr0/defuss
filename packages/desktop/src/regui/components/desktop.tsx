@@ -2,13 +2,13 @@ import { createRef, type Props, $ } from "defuss";
 import { Button } from "./button.js";
 import { Window, type WindowRefState } from "./window.js";
 
-export function Desktop({ ref }: Props) {
+export function Desktop({ ref }: Props<HTMLDivElement>) {
   $(() => {
     console.log("Desktop mounted");
   });
 
   const onOpenWindow = async () => {
-    const winRef = createRef<WindowRefState>();
+    const winRef = createRef<HTMLDivElement, WindowRefState>();
 
     await $(ref).append(
       <Window

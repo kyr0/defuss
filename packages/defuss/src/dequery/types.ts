@@ -1,9 +1,26 @@
-import type { Globals, NodeType, Ref } from "../render/index.js";
+import type { Globals, NodeType } from "../render/index.js";
 
 export type FormFieldValue = string | boolean;
 export interface FormKeyValues {
   [keyOrPath: string]: FormFieldValue | FormFieldValue[];
 }
+
+export type AnyEventHandler = (ev: Event) => any;
+
+export type TargetOf<NT> = Extract<NT, EventTarget>;
+
+export type UnionToIntersection<U> =
+  (U extends any ? (x: U) => void : never) extends (x: infer I) => void ? I : never;
+
+export type EventMapFor<T> =
+  T extends Window ? WindowEventMap :
+  T extends Document ? DocumentEventMap :
+  T extends SVGElement ? SVGElementEventMap :
+  T extends HTMLElement ? HTMLElementEventMap :
+  T extends Element ? ElementEventMap :
+  Record<string, Event>;
+
+export type EventMapForAny<T> = UnionToIntersection<EventMapFor<T>>;
 
 export interface Dimensions {
   width: number;
@@ -36,12 +53,7 @@ export interface DequeryOptions<NT = DequerySyncMethodReturnType> {
 export type ElementCreationOptions = JSX.HTMLAttributesLowerCase &
   JSX.HTMLAttributesLowerCase & { html?: string; text?: string };
 
-export type DequerySyncMethodReturnType =
-  | Array<NodeType>
-  | NodeType
-  | string
-  | boolean
-  | null;
+export type DequerySyncMethodReturnType = NodeType;
 
 // Re-export transition types for convenience
 export type { TransitionConfig } from "../render/transitions.js";

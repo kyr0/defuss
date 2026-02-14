@@ -27,8 +27,7 @@ export interface ImageSource {
   type?: string;
 }
 
-export interface ImageProps extends Props {
-  ref?: Ref;
+export interface ImageProps extends Props<HTMLDivElement> {
   className?: string;
   style?: any;
   dataSrc: string;

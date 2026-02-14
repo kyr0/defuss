@@ -2,11 +2,9 @@ import {
   observeUnmount,
   renderIsomorphicSync,
   renderIsomorphicAsync,
-  type ParentElementInput,
-  type ParentElementInputAsync,
   globalScopeDomApis,
 } from "./isomorph.js";
-import type { Globals, RenderInput, RenderResult, VNode } from "./types.js";
+import type { Globals, ParentElementInput, ParentElementInputAsync, RenderInput, RenderResult, VNode } from "./types.js";
 import { parseEventPropName, registerDelegatedEvent } from "./delegated-events.js";
 
 export const renderSync = <T extends RenderInput>(
@@ -18,7 +16,7 @@ export const renderSync = <T extends RenderInput>(
     virtualNode,
     parentDomElement,
     window as Globals,
-  ) as any;
+  ) as RenderResult<T>;
 };
 
 export const render = async <T extends RenderInput>(
@@ -30,7 +28,7 @@ export const render = async <T extends RenderInput>(
     virtualNode,
     parentDomElement,
     window as Globals,
-  ) as any;
+  ) as Promise<RenderResult<T>>;
 };
 
 export const renderToString = (el: Node) =>
@@ -216,7 +214,7 @@ export const hydrate = (
     // TODO: this should be refactored to re-use logic in lifecycle.js!
 
     if (vnode?.attributes?.onUnmount) {
-      observeUnmount(element, vnode.attributes.onUnmount);
+      observeUnmount(element, () => vnode.attributes!.onUnmount!(element));
     }
 
     // recursively hydrate children
@@ -243,4 +241,6 @@ export const hydrate = (
   }
 };
 
+// re-export for this module will be imported directly 
+// in case of import ... from "defuss/client"; (see package.json)
 export * from "./index.js";

@@ -21,12 +21,12 @@ interface DashboardData {
 }
 
 export function DashboardScreen() {
-  const dataRef = createRef<DashboardData>(undefined, {
+  const dataRef = createRef<HTMLElement, DashboardData>(undefined, {
     stats: { totalUsers: 0, activeUsers: 0, totalTenants: 0, totalApiKeys: 0 },
     recentActivity: [],
   });
-  const containerRef = createRef();
-  const loadingRef = createRef<{ loading: boolean }>(undefined, { loading: true });
+  const containerRef = createRef<HTMLDivElement>();
+  const loadingRef = createRef<HTMLElement, { loading: boolean }>(undefined, { loading: true });
 
   const formatTimeAgo = (timestamp: string) => {
     const date = new Date(timestamp);

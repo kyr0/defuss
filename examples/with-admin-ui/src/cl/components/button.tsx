@@ -1,17 +1,16 @@
 import { createRef, type Props, type Ref, type VNode } from "defuss";
 
-export interface ButtonProps extends Props {
-  className?: string;
-  ref?: Ref; // allow ref to be passed (forwarded down)
+export interface ButtonProps extends Props<HTMLButtonElement> {
+  ref?: Ref<HTMLButtonElement>; // allow ref to be passed (forwarded down)
 
   type?:
-    | "default"
-    | "primary"
-    | "ghost"
-    | "secondary"
-    | "destructive"
-    | "text"
-    | "link";
+  | "default"
+  | "primary"
+  | "ghost"
+  | "secondary"
+  | "destructive"
+  | "text"
+  | "link";
   size?: "xs" | "sm" | "md" | "lg";
   icon?: VNode;
   iconOnly?: boolean;
@@ -31,7 +30,7 @@ export const Button = ({
   type = "default",
   size,
   icon,
-  ref = createRef(),
+  ref = createRef<HTMLButtonElement>(),
   iconOnly = false,
   className = "",
   fullWidth = false,
@@ -66,7 +65,7 @@ export const Button = ({
 
   if (as === "a" && href) {
     return (
-      <a
+      <button
         ref={ref}
         href={href}
         class={classes}
@@ -74,7 +73,7 @@ export const Button = ({
         {...props}
       >
         {content}
-      </a>
+      </button>
     );
   }
 

@@ -1,8 +1,6 @@
-import type { Props, VNodeChild } from "../render/types.js";
+import type { DOMElement, FC, Props } from "../render/types.js";
 import {
   createRef,
-  type Ref,
-  type NodeType,
 } from "../render/client.js";
 import { Router } from "./router.js";
 import { $, type TransitionConfig } from "../dequery/index.js";
@@ -40,7 +38,7 @@ export interface RouterSlotProps extends Props {
  * and renders its default children (RouterOutlet). Whenever the route changes, it re-renders dynamically.
  * This decouples the slot refresh logic from route registration.
  */
-export const RouterSlot = ({
+export const RouterSlot: FC<RouterSlotProps> = ({
   router = Router,
   children,
   RouterOutlet,
@@ -51,9 +49,9 @@ export const RouterSlot = ({
     target: "self",
   } as TransitionConfig,
   ...attributes
-}: RouterSlotProps): VNodeChild => {
+}) => {
   const { tag, ...attributesWithoutTag } = attributes;
-  const ref: Ref<NodeType> = createRef();
+  const ref = createRef<DOMElement>();
 
   // Use provided id or fall back to default
   const slotId = id ?? RouterSlotId;
@@ -67,10 +65,16 @@ export const RouterSlot = ({
   if (!r[ROUTER_SLOT_GUARD]) {
     r[ROUTER_SLOT_GUARD] = true;
 
+    let lastPath = window.location.pathname;
+
     router.onRouteChange(async () => {
+      const currentPath = router.getRequest().path;
+      const isSamePath = currentPath === lastPath;
+      lastPath = currentPath;
+
       await $(ref).update(
         typeof RouterOutlet === "function" ? RouterOutlet() : [],
-        transitionConfig,
+        isSamePath ? undefined : transitionConfig,
       );
     });
   }
@@ -80,6 +84,12 @@ export const RouterSlot = ({
       `It seems there's more than one <RouterSlot /> components defined as an element with id #${slotId} already exists in the DOM.`,
     );
   }
+
+  // Signal that routes are registered and router is ready
+  // Use queueMicrotask to ensure this fires after all Route children have executed
+  queueMicrotask(() => {
+    router.setReady();
+  });
 
   return {
     children: [RouterOutlet() || []].flat(),

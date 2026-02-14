@@ -12,9 +12,9 @@ import { createRef, type Props, type Ref, type VNode } from "defuss";
 </Card>
  */
 
-export interface CardProps extends Props {
+export interface CardProps extends Props<HTMLDivElement> {
   className?: string;
-  ref?: Ref;
+  ref?: Ref<HTMLDivElement>;
   modifier?: "primary" | "secondary" | "destructive";
   title?: VNode | string;
   header?: VNode;

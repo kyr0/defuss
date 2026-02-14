@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getBrowserGlobals, getDocument } from "../render/server.js";
 import { createRef, type Globals } from "../render/index.js";
 import { renderIsomorphicSync } from "../render/isomorph.js";
@@ -46,7 +47,7 @@ describe("General DOM manipulation", async () => {
   });
 
   it("can get an input value", async () => {
-    const inputRef = createRef();
+    const inputRef = createRef<HTMLInputElement>();
     renderIsomorphicSync(
       <input ref={inputRef} value="123" />,
       document.body,
@@ -56,7 +57,7 @@ describe("General DOM manipulation", async () => {
   });
 
   it("can set an input value", async () => {
-    const inputRef = createRef();
+    const inputRef = createRef<HTMLInputElement>();
     renderIsomorphicSync(
       <input ref={inputRef} value="123" />,
       document.body,
@@ -67,7 +68,7 @@ describe("General DOM manipulation", async () => {
   });
 
   it("can get a checkbox checked value", async () => {
-    const inputRef = createRef();
+    const inputRef = createRef<HTMLInputElement>();
     renderIsomorphicSync(
       <input ref={inputRef} type="checkbox" checked />,
       document.body,
@@ -77,7 +78,7 @@ describe("General DOM manipulation", async () => {
   });
 
   it("can set a checkbox checked value", async () => {
-    const inputRef = createRef();
+    const inputRef = createRef<HTMLInputElement>();
     renderIsomorphicSync(
       <input ref={inputRef} type="checkbox" />,
       document.body,
@@ -88,14 +89,14 @@ describe("General DOM manipulation", async () => {
   });
 
   it("can replace an element with another", async () => {
-    const divRef = createRef();
+    const divRef = createRef<HTMLDivElement>();
     renderIsomorphicSync(
       <div ref={divRef}>Check</div>,
       document.body,
       globals,
     ) as Element;
 
-    divRef.current = await $<HTMLElement>(divRef)
+    divRef.current = await $<HTMLDivElement>(divRef)
       .replaceWith(<input tabIndex="-2" />)
       .getFirstElement();
 
@@ -108,7 +109,7 @@ describe("General DOM manipulation", async () => {
   });
 
   it("can register for an event programmatically", async () => {
-    const elRef = createRef();
+    const elRef = createRef<HTMLButtonElement>();
     renderIsomorphicSync(
       <button type="button" ref={elRef}>
         Click me
@@ -117,7 +118,7 @@ describe("General DOM manipulation", async () => {
       globals,
     ) as Element;
 
-    const onClick = vi.fn(() => {});
+    const onClick = vi.fn(() => { });
     await $(elRef, { globals }).on("click", onClick);
 
     elRef.current.click();
@@ -126,7 +127,7 @@ describe("General DOM manipulation", async () => {
   });
 
   it("can *un*register for an event programmatically", async () => {
-    const elRef = createRef();
+    const elRef = createRef<HTMLButtonElement>();
     renderIsomorphicSync(
       <button type="button" ref={elRef}>
         Click me
@@ -135,7 +136,7 @@ describe("General DOM manipulation", async () => {
       globals,
     ) as Element;
 
-    const onClick = vi.fn(() => {});
+    const onClick = vi.fn(() => { });
     await $(elRef, { globals }).on("click", onClick);
     await $(elRef, { globals }).off("click", onClick);
 
@@ -145,7 +146,7 @@ describe("General DOM manipulation", async () => {
   });
 
   it("can set and get a property programmatically", async () => {
-    const elRef = createRef();
+    const elRef = createRef<HTMLInputElement>();
     renderIsomorphicSync(
       <input type="text" ref={elRef} />,
       globals.document.body,
@@ -165,7 +166,7 @@ describe("General DOM manipulation", async () => {
   });
 
   it("can set a property", async () => {
-    const input = await $('<input type="text">', { globals });
+    const input = await $<HTMLInputElement>('<input type="text">', { globals });
     await input.prop("value", "test value");
     expect((input[0] as HTMLInputElement).value).toEqual("test value");
   });

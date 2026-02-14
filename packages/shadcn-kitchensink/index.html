@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Dark mode -->
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem('themeMode');
+        if (stored ? stored === 'dark'
+          : matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) { }
+
+      const apply = dark => {
+        document.documentElement.classList.toggle('dark', dark);
+        try { localStorage.setItem('themeMode', dark ? 'dark' : 'light'); } catch (_) { }
+      };
+
+      document.addEventListener('basecoat:theme', (event) => {
+        const mode = event.detail?.mode;
+        apply(mode === 'dark' ? true
+          : mode === 'light' ? false
+            : !document.documentElement.classList.contains('dark'));
+      });
+    })();
+  </script>
+  <!-- Theme variant -->
+  <script>
+    (function () {
+      try {
+        const storedTheme = localStorage.getItem('themeVariant');
+        if (storedTheme) document.documentElement.classList.add(`theme-${storedTheme}`);
+      } catch (event) {
+        console.error('Could not apply theme variant from localStorage', event);
+      }
+    })();
+  </script>
+  <!-- Meta -->
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Language" content="en">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kitchensink | Defuss 1</title>
+  <meta name="description" content="Defuss Shadcn Kitchensink" />
+
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+  <!-- Highlight.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/django.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+
+  <script>
+    const highlight = () => {
+      if (!window.hljs) return;
+      document
+        .querySelectorAll('pre code:not([data-highlighted]), code.highlight:not([data-highlighted])')
+        .forEach(el => hljs.highlightElement(el));
+    };
+
+    if (!window._hljsInit) {
+      window._hljsInit = true;
+      document.addEventListener('DOMContentLoaded', highlight);
+      document.addEventListener('htmx:afterSwap', highlight);
+    }
+  </script>
+  <script>
+    document.addEventListener('htmx:historyRestore', () => {
+      if (window.basecoat) window.basecoat.initAll();
+    });
+  </script>
+</head>
+
+<body id="app">
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

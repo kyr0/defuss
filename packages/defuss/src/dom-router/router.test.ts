@@ -8,12 +8,38 @@ describe("DOM Router", () => {
   let mockWindow: Window;
 
   beforeEach(() => {
+    // Reset globalThis router state for test isolation
+    globalThis.__defuss_router__ = undefined;
+    globalThis.__defuss_router_state__ = {
+      routeRegistrations: [],
+      currentRequest: null,
+      isReady: false,
+      pendingResolvers: [],
+      currentPath: "",
+      popAttached: false,
+    };
+
     // Create a mock window object with history API
     mockWindow = {
       document: {
         location: {
           pathname: "/initial",
+          search: "",
+          hash: "",
+          protocol: "http:",
+          hostname: "localhost",
+          port: "3000",
+          href: "http://localhost:3000/initial",
         },
+      },
+      location: {
+        pathname: "/initial",
+        search: "",
+        hash: "",
+        protocol: "http:",
+        hostname: "localhost",
+        port: "3000",
+        href: "http://localhost:3000/initial",
       },
       history: {
         pushState: vi.fn(),
@@ -33,6 +59,9 @@ describe("DOM Router", () => {
       router.destroy();
     }
     vi.clearAllMocks();
+    // Clean up globalThis state
+    globalThis.__defuss_router__ = undefined;
+    globalThis.__defuss_router_state__ = undefined;
   });
 
   describe("basic functionality", () => {
@@ -48,13 +77,37 @@ describe("DOM Router", () => {
       expect(routes[0].path).toBe("/test");
     });
 
-    it("should match current route", () => {
+    it("should match current route and return deterministic object", () => {
       router.add({ path: "/initial" });
-      const match = router.match();
-      expect(match).toBeTruthy();
-      if (match) {
-        expect(match.url).toBe("/initial");
-      }
+      const req = router.match();
+
+      // Always returns object, never false
+      expect(req).toBeDefined();
+      expect(typeof req).toBe("object");
+
+      // Check match property
+      expect(req.match).toBe(true);
+      expect(req.matchedRoute).toBe("/initial");
+      expect(req.path).toBe("/initial");
+
+      // Verify new URL fields exist
+      expect(req).toHaveProperty("protocol");
+      expect(req).toHaveProperty("domain");
+      expect(req).toHaveProperty("port");
+      expect(req).toHaveProperty("baseUrl");
+      expect(req).toHaveProperty("params");
+      expect(req).toHaveProperty("queryParams");
+      expect(req).toHaveProperty("hashParams");
+    });
+
+    it("should return match: false when no route matches", () => {
+      router.add({ path: "/other" });
+      const req = router.match();
+
+      expect(req).toBeDefined();
+      expect(req.match).toBe(false);
+      expect(req.matchedRoute).toBeNull();
+      expect(req.path).toBe("/initial"); // path is still populated
     });
   });
 

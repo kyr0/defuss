@@ -1,9 +1,8 @@
 import { createRef, type Props, type Ref, type VNode } from "defuss";
 
-export interface BreadcrumbProps extends Props {
+export interface BreadcrumbProps extends Props<HTMLUListElement> {
   className?: string;
   ariaLabel?: string;
-  ref?: Ref;
   children?: VNode;
   [key: string]: any;
 }
@@ -19,7 +18,7 @@ export interface BreadcrumbProps extends Props {
 export const Breadcrumb = ({
   className = "",
   ariaLabel = "Breadcrumb",
-  ref = createRef(),
+  ref = createRef<HTMLUListElement>(),
   children,
   ...props
 }: BreadcrumbProps) => (
@@ -34,7 +33,7 @@ export const Breadcrumb = ({
   </nav>
 );
 
-export interface BreadcrumbItemProps extends Props {
+export interface BreadcrumbItemProps extends Props<HTMLLIElement> {
   href?: string;
   current?: boolean;
   className?: string;

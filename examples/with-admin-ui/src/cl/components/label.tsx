@@ -5,9 +5,8 @@ import { createRef, type Props, type Ref, type VNode } from "defuss";
  * <Label modifier="primary">Important</Label>
  */
 
-export interface LabelProps extends Props {
+export interface LabelProps extends Props<HTMLSpanElement> {
   className?: string;
-  ref?: Ref;
   modifier?: "primary" | "secondary" | "destructive";
   children?: VNode;
   [key: string]: any; // Allow additional HTML attributes

@@ -1,6 +1,7 @@
 import type { PersistenceProviderType } from "../webstorage/index.js";
 import { $ } from "../dequery/dequery.js";
 import type {
+  DOMElement,
   NodeType,
   Ref,
   RefUpdateFn,
@@ -9,21 +10,20 @@ import type {
 import { createStore } from "../store/store.js";
 
 export const isRef = <
-  ST = any,
   NT extends Node | Element | Text | null = HTMLElement,
+  ST = any,
 >(
   obj: any,
-): obj is Ref<ST, NT> =>
+): obj is Ref<NT, ST> =>
   Boolean(obj && typeof obj === "object" && "current" in obj);
 
-export function createRef<
-  ST = any,
-  NT extends Node | Element | Text | null = HTMLElement,
->(refUpdateFn?: RefUpdateFn<ST>, defaultState?: ST): Ref<ST, NT> {
+export function createRef<NT extends DOMElement = DOMElement, ST = any>(refUpdateFn?: RefUpdateFn<ST>, defaultState?: ST): Ref<NT, ST> {
   const stateStore = createStore<ST>(defaultState as ST);
 
-  const ref: Ref<ST, NT> = {
-    current: null as NT,
+  const render = async (input: RefUpdateRenderFnInput, ref: Ref<NT, ST>) => await $<NodeType>(ref.current).update(input);
+
+  const ref: Ref<NT, ST> = {
+    current: null as unknown as NT,
     store: stateStore,
     get state() {
       return stateStore.value;
@@ -40,8 +40,8 @@ export function createRef<
     updateState: (state: ST) => {
       stateStore.set(state);
     },
-    update: async (input: RefUpdateRenderFnInput) =>
-      await $<NodeType>(ref.current).update(input),
+    render: async (input: RefUpdateRenderFnInput) => render(input, ref),
+    update: async (input: RefUpdateRenderFnInput) => render(input, ref),
     subscribe: (refUpdateFn: RefUpdateFn<ST>) =>
       stateStore.subscribe(refUpdateFn),
   };

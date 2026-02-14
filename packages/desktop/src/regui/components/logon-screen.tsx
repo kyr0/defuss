@@ -1,7 +1,7 @@
 import { $, createRef, type Props } from "defuss";
 import { transval, rule, access } from "defuss-transval";
 
-export interface LogonScreenProps extends Props {
+export interface LogonScreenProps extends Props<HTMLDivElement> {
   cDriveBasePath?: string;
   showGuestUser?: boolean;
   onTurnOffComputer?: () => void;
@@ -23,7 +23,7 @@ export const LogonScreen = ({
   onTurnOffComputer,
   onGuestLogon,
   onUserLogonSubmit,
-  ref = createRef<HTMLElement>(),
+  ref = createRef(),
 }: LogonScreenProps) => {
   const userLoginFormRef = createRef<HTMLFormElement>();
 

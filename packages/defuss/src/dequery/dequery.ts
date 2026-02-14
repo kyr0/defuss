@@ -34,19 +34,18 @@ import type {
   Position,
   ElementCreationOptions,
   FormFieldValue,
+  EventMapFor,
+  EventMapForAny,
+  TargetOf,
 } from "./types.js";
 
 // --- Core Async Call & Chain ---
 
-export class Call<NT> {
+export class Call<R = unknown> {
   name: string;
-  fn: (...args: any[]) => Promise<NT>;
+  fn: (...args: any[]) => Promise<R>;
   args: any[];
-  constructor(
-    name: string,
-    fn: (...args: any[]) => Promise<NT>,
-    ...args: any[]
-  ) {
+  constructor(name: string, fn: (...args: any[]) => Promise<R>, ...args: any[]) {
     this.name = name;
     this.fn = fn;
     this.args = args;
@@ -126,12 +125,12 @@ export class CallChainImpl<
   isResolved: boolean;
   options: DequeryOptions<NT>;
   elementCreationOptions: ElementCreationOptions;
-  callStack: Call<NT>[];
+  callStack: Call<any>[];
   resultStack: NT[][];
   stackPointer: number;
   lastResolvedStackPointer: number;
   stoppedWithError: Error | null;
-  lastResult: NT[] | CallChainImpl<NT, ET> | CallChainImplThenable<NT, ET>;
+  lastResult: unknown;
   length: number;
   chainStartTime: number;
   chainAsyncStartTime: number;
@@ -220,7 +219,9 @@ export class CallChainImpl<
     }) as unknown as ET;
   }
 
-  ref(ref: Ref<any, NodeType>) {
+  ref<T extends NodeType, ST = any>(
+    ref: Ref<T, ST>,
+  ): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
     return createCall(this, "ref", async () => {
       // Check if ref is already marked as orphaned
       //if ((ref as any).orphan) {
@@ -335,13 +336,29 @@ export class CallChainImpl<
     ) as PromiseLike<string | null | ET>;
   }
 
-  // TODO: improve type safety here and remove any
+  // Improved prop type safety: Prioritize NT keys, fallback to ALL common HTML keys, then string.
+  prop<K extends keyof NonNullable<NT>>(
+    name: K,
+    value: NonNullable<NT>[K],
+  ): PromiseLike<ET>;
+  prop<K extends keyof NonNullable<NT>>(
+    name: K,
+  ): PromiseLike<NonNullable<NT>[K]>;
+
+  // Fallback for properties common to all HTML elements
   prop<K extends keyof AllHTMLElements>(
     name: K,
-    value: DOMPropValue,
+    value: any,
   ): PromiseLike<ET>;
-  prop<K extends keyof AllHTMLElements>(name: K): PromiseLike<string>;
-  prop<K extends keyof AllHTMLElements>(name: K, value?: DOMPropValue) {
+  prop<K extends keyof AllHTMLElements>(
+    name: K,
+  ): PromiseLike<any>;
+
+  // Escape hatch for loose typing
+  prop(name: string, value: any): PromiseLike<ET>;
+  prop(name: string): PromiseLike<any>;
+
+  prop(name: string, value?: any) {
     return createGetterSetterCall(
       this,
       "prop",
@@ -357,7 +374,7 @@ export class CallChainImpl<
           (el as any)[name] = val;
         });
       },
-    ) as PromiseLike<DOMPropValue | ET>;
+    ) as PromiseLike<any | ET>;
   }
 
   // --- CSS & Class Methods ---
@@ -551,7 +568,7 @@ export class CallChainImpl<
       | string
       | RenderInput
       | NodeType
-      | Ref<any, NodeType>
+      | Ref<NodeType, any>
       | CallChainImpl<NT, ET>
       | CallChainImplThenable<NT, ET>,
   ): ET {
@@ -591,7 +608,7 @@ export class CallChainImpl<
       | string
       | RenderInput
       | NodeType
-      | Ref<any, NodeType>
+      | Ref<NodeType, any>
       | CallChainImpl<T>
       | CallChainImplThenable<T>,
   ): ET {
@@ -625,7 +642,7 @@ export class CallChainImpl<
       if (isDequery(content)) {
         // Special handling for Dequery objects which may contain multiple elements
         // Clone for multi-target to match jQuery behavior
-        const children = (content as CallChainImpl<T>).nodes as Node[];
+        const children = (content as unknown as CallChainImpl<any>).nodes as Node[];
         this.nodes.forEach((parent, parentIndex) => {
           children.forEach((child) => {
             if (!child?.nodeType || !(parent as Node)?.nodeType) return;
@@ -700,7 +717,7 @@ export class CallChainImpl<
     input?:
       | string
       | RenderInput
-      | Ref<any, NodeType>
+      | Ref<NodeType, any>
       | NodeType
       | CallChainImpl<NT>
       | CallChainImplThenable<NT>
@@ -757,13 +774,28 @@ export class CallChainImpl<
 
   // --- Event Methods ---
 
-  on(event: string, handler: EventListener): ET {
+  on<K extends keyof EventMapFor<TargetOf<NT>>>(
+    event: K,
+    handler: (ev: EventMapFor<TargetOf<NT>>[K]) => any,
+    options?: boolean | AddEventListenerOptions,
+  ): ET;
+
+  // Fallback for custom events or incomplete type inference
+  on(
+    event: string,
+    handler: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ): ET;
+
+  on(event: string, handler: any): ET {
     return createSyncCall(
       this,
       "on",
       () => {
         this.nodes.forEach((el) => {
-          addElementEvent(el as HTMLElement, event, handler);
+          if (el && typeof (el as any).addEventListener === "function") {
+            addElementEvent(el as unknown as EventTarget, event, handler);
+          }
         });
         return this.nodes as NT;
       },
@@ -772,7 +804,20 @@ export class CallChainImpl<
     ) as unknown as ET;
   }
 
-  off(event: string, handler?: EventListener): ET {
+  off<K extends keyof EventMapFor<TargetOf<NT>>>(
+    event: K,
+    handler?: (ev: EventMapFor<TargetOf<NT>>[K]) => any,
+    options?: boolean | AddEventListenerOptions,
+  ): ET;
+
+  // Fallback for custom events or incomplete type inference
+  off(
+    event: string,
+    handler?: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ): ET;
+
+  off(event: string, handler?: any): ET {
     return createSyncCall(
       this,
       "off",
@@ -1213,7 +1258,7 @@ export class CallChainImplThenable<
 
           try {
             // Execute the current call in the stack
-            const callReturnValue = (await call.fn.apply(this)) as NT[];
+            const callReturnValue = (await call.fn.apply(this));
             this.lastResult = callReturnValue;
 
             // Method returns that return a value directly, don't modify the selection result stack.
@@ -1221,7 +1266,10 @@ export class CallChainImplThenable<
             // between selection changes without breaking the chain functionally (the chain expects
             // all this.resultStack values to be of a DOM node type)
             if (!isNonChainedReturnCall(call.name)) {
-              this.resultStack.push(callReturnValue);
+              if (!Array.isArray(callReturnValue)) {
+                throw new Error(`Call "${call.name}" must return an array for chaining.`);
+              }
+              this.resultStack.push(callReturnValue as NT[]);
             }
 
             if (Array.isArray(this.lastResult)) {
@@ -1388,6 +1436,24 @@ export interface Dequery<NT>
   extends CallChainImplThenable<NT>,
   CallChainImpl<NT> { }
 
+// overloads for dynamic typing
+export function dequery<T extends EventTarget>(
+  selectorRefOrEl: T,
+  options?: DequeryOptions<T> & ElementCreationOptions,
+): Dequery<T>;
+
+// overloads for dynamic typing
+export function dequery<NT = DequerySyncMethodReturnType, ET extends Dequery<NT> = Dequery<NT>>(
+  selectorRefOrEl: string | NodeType | Ref<NodeType, any> | RenderInput | Function,
+  options?: DequeryOptions<NT> & ElementCreationOptions,
+): ET;
+
+// overload to stop NT from inferring the mega union
+export function dequery<T extends NodeType, ST = any>(
+  selectorRefOrEl: Ref<T, ST>,
+  options?: DequeryOptions<T> & ElementCreationOptions,
+): Dequery<T>;
+
 export function dequery<
   NT = DequerySyncMethodReturnType,
   ET extends Dequery<NT> = Dequery<NT>,
@@ -1395,7 +1461,7 @@ export function dequery<
   selectorRefOrEl:
     | string
     | NodeType
-    | Ref<any, NodeType>
+    | Ref<NodeType, any>
     | RenderInput
     | Function,
   options: DequeryOptions<NT> &
@@ -1456,7 +1522,7 @@ export function dequery<
     }
   } else if (isRef(selectorRefOrEl)) {
     return delayedAutoStart(
-      chain.ref(selectorRefOrEl as Ref<any, NodeType>) as CallChainImplThenable<
+      chain.ref(selectorRefOrEl) as CallChainImplThenable<
         NT,
         ET
       >,
@@ -1466,7 +1532,7 @@ export function dequery<
     return delayedAutoStart(chain) as unknown as ET;
   } else if (isJSX(selectorRefOrEl)) {
     const renderResult = renderIsomorphicSync(
-      selectorRefOrEl as RenderInput,
+      selectorRefOrEl as JSX.Element,
       chain.document.body,
       chain.globals,
     );
@@ -1520,7 +1586,7 @@ dequery.extend = <TExtendedClass extends new (...args: any[]) => any>(
     selectorRefOrEl:
       | string
       | NodeType
-      | Ref<any, NodeType>
+      | Ref<NodeType, any>
       | RenderInput
       | Function,
     options?: DequeryOptions<NT> & ElementCreationOptions,
@@ -1539,7 +1605,7 @@ export const $: typeof dequery & {
     selectorRefOrEl:
       | string
       | NodeType
-      | Ref<any, NodeType>
+      | Ref<NodeType, any>
       | RenderInput
       | Function,
     options?: DequeryOptions<NT> & ElementCreationOptions,
@@ -1607,9 +1673,9 @@ export function createCall<NT, ET extends Dequery<NT>>(
   chain: CallChainImpl<NT, ET>,
   methodName: string,
   handler: () => Promise<NT>,
-  ...callArgs: any[] // ← Add this to capture call arguments
-): CallChainImplThenable<NT, ET> | CallChainImpl<NT, ET> {
-  chain.callStack.push(new Call<NT>(methodName, handler, ...callArgs));
+  ...callArgs: any[]
+) {
+  chain.callStack.push(new Call(methodName, handler, ...callArgs));
   return subChainForNextAwait(chain);
 }
 
@@ -1807,7 +1873,7 @@ export async function renderNode<T = DequerySyncMethodReturnType>(
     | RenderInput
     | NodeType
     | Dequery<T>
-    | Ref<any, NodeType>
+    | Ref<NodeType, any>
     | CallChainImpl<T>
     | CallChainImplThenable<T>
     | null
@@ -1826,17 +1892,17 @@ export async function renderNode<T = DequerySyncMethodReturnType>(
     }
   } else if (isJSX(input)) {
     return renderIsomorphicSync(
-      input as RenderInput,
+      input as JSX.Element,
       chain.document.body,
       chain.options.globals as Globals,
     ) as NodeType;
   } else if (isRef(input)) {
-    await waitForRef(input as Ref<any, NodeType>, chain.options.timeout!);
-    return input.current!;
+    await waitForRef(input as Ref<NodeType, any>, chain.options.timeout!);
+    return input.current ?? null;
   } else if (input && typeof input === "object" && "nodeType" in input) {
     return input as NodeType;
   } else if (isDequery(input)) {
-    return (await input.getFirstElement()) as Promise<NodeType | null>;
+    return (await input.getFirstElement()) as NodeType | null;
   }
   console.warn("resolveContent: unsupported content type", input);
   return null;
@@ -1846,7 +1912,7 @@ export async function resolveNodes<T = DequerySyncMethodReturnType>(
   input:
     | string
     | NodeType
-    | Ref<any, NodeType>
+    | Ref<NodeType, any>
     | CallChainImpl<T>
     | CallChainImplThenable<T>,
   timeout: number,
@@ -1855,7 +1921,7 @@ export async function resolveNodes<T = DequerySyncMethodReturnType>(
   let nodes: NodeType[] = [];
 
   if (isRef(input)) {
-    await waitForRef(input as Ref<any, NodeType>, timeout);
+    await waitForRef(input as Ref<NodeType, any>, timeout);
     nodes = [input.current!];
   } else if (typeof input === "string" && document) {
     const result = await waitForDOM(

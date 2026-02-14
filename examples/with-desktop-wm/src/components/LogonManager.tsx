@@ -13,7 +13,7 @@ export const preloadLogonImagePaths = [
   "/icons/profile_picture_duck.webp",
 ];
 
-export interface LogonManagerProps extends Props {
+export interface LogonManagerProps extends Props<HTMLDivElement> {
   showGuestUser?: boolean;
   onLogon?: () => void;
 }

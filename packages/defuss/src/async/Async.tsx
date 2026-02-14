@@ -5,6 +5,8 @@ import type {
   Ref,
   Props,
   VNodeChild,
+  DOMElement,
+  AsyncDefussChild,
 } from "@/render/types.js";
 import { createRef, isRef } from "@/render/index.js";
 import { $ } from "@/dequery/index.js";
@@ -12,7 +14,7 @@ import { inDevMode } from "@/common/index.js";
 
 export type AsyncState = "loading" | "loaded" | "error";
 
-export interface AsyncStateRef extends Ref<AsyncState, HTMLElement> {
+export interface AsyncStateRef extends Ref<DOMElement, AsyncState> {
   /** The state of the async content */
   state?: AsyncState;
 
@@ -20,7 +22,7 @@ export interface AsyncStateRef extends Ref<AsyncState, HTMLElement> {
   error?: unknown;
 }
 
-export interface AsyncProps extends Props {
+export interface AsyncProps extends Omit<Props, 'children'> {
   /** to uniquely identify the root DOM element without using a ref */
   id?: string;
 
@@ -31,7 +33,7 @@ export interface AsyncProps extends Props {
   className?: string;
 
   /** The fallback content to display while the async content is loading */
-  fallback?: VNode;
+  fallback?: VNode | JSX.Element;
 
   /** Store this with createRef() to update() the Suspense state */
   ref?: AsyncStateRef;
@@ -44,6 +46,12 @@ export interface AsyncProps extends Props {
 
   /** to override the name of the .suspense-error transition CSS class name */
   errorClassName?: string;
+
+  /**
+   * Children of Async can include async components (Promise-returning).
+   * These are resolved automatically before rendering.
+   */
+  children?: AsyncDefussChild | AsyncDefussChild[];
 }
 
 export const Async = ({
@@ -63,7 +71,7 @@ export const Async = ({
   // Cancellation token to prevent stale async updates from racing
   let updateToken = 0;
 
-  const containerRef: AsyncStateRef = createRef<AsyncState>(
+  const containerRef: AsyncStateRef = createRef(
     function onSuspenseUpdate(state: AsyncState) {
       const currentToken = ++updateToken;
 
@@ -103,11 +111,15 @@ export const Async = ({
             loadingClassName || "suspense-loading",
           );
           if (currentToken !== updateToken) return;
-          // Guard: fallback might be undefined, only call .jsx() if it exists
-          if (fallback) {
-            await $(containerRef).jsx(fallback);
-          } else {
-            await $(containerRef.current).empty();
+
+          // Stale-while-revalidate: Only render fallback if container is empty
+          if (containerRef.current && containerRef.current.childNodes.length === 0) {
+            // Guard: fallback might be undefined, only call .jsx() if it exists
+            if (fallback) {
+              await $(containerRef).jsx(fallback);
+            } else {
+              await $(containerRef.current).empty();
+            }
           }
         } else if (state === "loaded") {
           await $(containerRef.current).addClass(
@@ -156,6 +168,10 @@ export const Async = ({
     Array.isArray(children) ? children : children ? [children] : []
   ).map((vnode) => {
     try {
+      if (vnode instanceof Promise) {
+        return vnode;
+      }
+
       if (!vnode || (vnode && !(vnode as VNode).type)) {
         return Promise.resolve(""); // becomes a Text node
       }
@@ -179,7 +195,7 @@ export const Async = ({
 
       if (typeof onError === "function") {
         // pass the error up to the parent component
-        onError(error);
+        onError(error as Event);
       }
       return null; // return null so Promise.all doesn't get undefined
     }
@@ -218,7 +234,14 @@ export const Async = ({
 
   return {
     type: "div",
-    attributes: { id, class: _class, className, ref: containerRef, onMount },
+    attributes: {
+      id,
+      class: _class,
+      className,
+      ref: containerRef,
+      onMount,
+      "data-defuss-keep": true // Prevent sync DOM overwrite during updates
+    },
     children: fallback ? [fallback] : [],
   };
 };

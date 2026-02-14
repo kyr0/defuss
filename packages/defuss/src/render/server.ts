@@ -2,11 +2,9 @@ import * as HappyDom from "happy-dom";
 import {
   renderIsomorphicSync,
   renderIsomorphicAsync,
-  globalScopeDomApis,
-  type ParentElementInput,
-  type ParentElementInputAsync,
+  globalScopeDomApis
 } from "./isomorph.js";
-import type { RenderInput, RenderResult, Globals } from "./types.js";
+import type { RenderInput, RenderResult, Globals, ParentElementInput, ParentElementInputAsync } from "./types.js";
 import serializeHtml from "w3c-xmlserializer";
 
 export interface RenderOptions {
@@ -39,7 +37,7 @@ export const renderSync = <T extends RenderInput>(
     virtualNode,
     parentDomElement,
     browserGlobals,
-  ) as any;
+  ) as RenderResult<T>;
 };
 
 export const render = <T extends RenderInput>(
@@ -55,7 +53,7 @@ export const render = <T extends RenderInput>(
     virtualNode,
     parentDomElement,
     browserGlobals,
-  ) as any;
+  ) as Promise<RenderResult<T>>;
 };
 
 export const createRoot = (document: Document): Element => {
@@ -85,4 +83,7 @@ export const getDocument = (
 export const renderToString = (el: Node) =>
   serializeHtml(el).replaceAll(' xmlns="http://www.w3.org/1999/xhtml"', "");
 
+
+// re-export for this module will be imported directly 
+// in case of import ... from "defuss/server"; (see package.json)
 export * from "./index.js";

@@ -25,7 +25,7 @@ export interface CreateWindowOptions {
 export interface WindowState {
   id: string;
   el: HTMLElement;
-  ref: Ref<WindowRefState>;
+  ref: Ref<HTMLElement, WindowRefState>;
   title: string;
   icon: string;
   width: number;

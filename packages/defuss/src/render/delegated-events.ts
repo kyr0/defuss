@@ -30,7 +30,7 @@ interface HandlerEntry {
 
 /** element -> (eventType -> handlers) */
 const elementHandlerMap = new WeakMap<
-    HTMLElement,
+    EventTarget,
     Map<string, HandlerEntry>
 >();
 
@@ -244,13 +244,13 @@ export const registerDelegatedEvent = (
 };
 
 export const removeDelegatedEvent = (
-    element: HTMLElement,
+    target: EventTarget,
     eventType: string,
     handler?: EventListener,
     options: DelegatedEventOptions = {},
 ): void => {
     const capture = options.capture || CAPTURE_ONLY_EVENTS.has(eventType);
-    const byEvent = elementHandlerMap.get(element);
+    const byEvent = elementHandlerMap.get(target);
     if (!byEvent) return;
 
     const entry = byEvent.get(eventType);
@@ -273,8 +273,8 @@ export const removeDelegatedEvent = (
         }
 
         // Always call removeEventListener for safety (handles detached element direct-binding case)
-        element.removeEventListener(eventType, handler, true);  // capture
-        element.removeEventListener(eventType, handler, false); // bubble
+        target.removeEventListener(eventType, handler, true);  // capture
+        target.removeEventListener(eventType, handler, false); // bubble
     } else {
         // Remove ALL handlers for this event type (both phases)
         // This is what users expect from .off("click") without specific handler
@@ -293,8 +293,8 @@ export const removeDelegatedEvent = (
     }
 };
 
-export const clearDelegatedEvents = (element: HTMLElement): void => {
-    const byEvent = elementHandlerMap.get(element);
+export const clearDelegatedEvents = (target: EventTarget): void => {
+    const byEvent = elementHandlerMap.get(target);
     if (!byEvent) return;
 
     byEvent.clear();

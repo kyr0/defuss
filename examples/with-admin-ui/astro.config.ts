@@ -8,7 +8,6 @@ import node from "@astrojs/node";
 
 // importing TailwindCSS and FrankenUI Vite plugins
 import tailwindcss from "@tailwindcss/vite";
-import franken from "franken-ui/plugin-vite";
 
 // https://astro.build/config
 export default defineConfig({
@@ -24,12 +23,7 @@ export default defineConfig({
       noExternal: ["astro"],
     },
     plugins: [
-      tailwindcss(),
-      franken({
-        preflight: false,
-        layer: true,
-        layerExceptions: ["chart"],
-      }),
+      tailwindcss() as any
     ],
   },
 

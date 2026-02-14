@@ -4,6 +4,7 @@ members = [
 ]
 exclude = [
     "examples/with-wasm-c-rust-matmul",
+    "examples/with-tauri/src-tauri",
 ]
 resolver = "2"
 

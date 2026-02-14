@@ -1,7 +1,6 @@
 ---
 import BaseLayout from "../layouts/base.astro";
-import { Router } from "../csr/router";
-import { T } from "defuss";
+import { App } from "../csr/app";
 
 // Disable prerendering for this page in case you don't need dynamic server-side state
 // transferred to the client
@@ -17,17 +16,19 @@ Astro.locals.APP_PROPS = null; /*{
 ---
 
 <!-- This script exposes the app props to the client-side -->
-<script id="app-props" data-props={JSON.stringify(Astro.locals.APP_PROPS)} is:inline>
-	const appData = document.getElementById("app-props")?.getAttribute("data-props");
+<script
+	id="app-props"
+	data-props={JSON.stringify(Astro.locals.APP_PROPS)}
+	is:inline
+>
+	const appData = document
+		.getElementById("app-props")
+		?.getAttribute("data-props");
 	// see env.d.ts for types; relatively save to expose globals like this
 	// as long as you don't expose any secrets or sensitive data - APP_PROPS is unlikely to be spec'ed by W3C
-	window.$APP_PROPS = appData ? JSON.parse(
-		appData
-	) : null;
+	window.$APP_PROPS = appData ? JSON.parse(appData) : null;
 </script>
 
 <BaseLayout title="Astro + defuss Admin UI Demo">
-	<Router client:only>
-		<div slot="fallback"><T key="common.loading" fallback="Loading..." /></div>
-	</Router>
+	<App client:only />
 </BaseLayout>
