@@ -12,7 +12,7 @@ import {
   type DecisionRule,
 } from "../lib/midi-out";
 import { TestAudio } from "./test-audio";
-import { Button } from "defuss-ui";
+import { Button } from "defuss-shadcn";
 
 const rec = createWhistleRecorder({
   hpHz: 600,

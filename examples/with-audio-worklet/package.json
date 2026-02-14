@@ -18,7 +18,7 @@
     "browserslist": "^4.28.1",
     "defuss": "workspace:*",
     "defuss-astro": "workspace:*",
-    "defuss-ui": "workspace:*",
+    "defuss-shadcn": "workspace:*",
     "franken-ui": "^2.1.1",
     "postcss": "^8.5.6",
     "sharp": "^0.34.5",
