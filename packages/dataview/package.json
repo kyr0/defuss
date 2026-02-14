@@ -1,0 +1,67 @@
+{
+  "name": "defuss-dataview",
+  "version": "0.1.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "description": "Isomorphic functional data view (filters, sorters, paging, meta UI state) for table and tree grids.",
+  "keywords": [
+    "dataview",
+    "filter",
+    "sort",
+    "paging",
+    "query",
+    "data-view",
+    "isomorphic",
+    "functional",
+    "typescript",
+    "datagrid",
+    "table",
+    "treegrid",
+    "tree"
+  ],
+  "repository": {
+    "url": "git+https://github.com/kyr0/defuss.git",
+    "type": "git"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
+    "pretest": "pnpm run build",
+    "prebuild": "pnpm run clean",
+    "build": "pkgroll",
+    "test": "vitest --run  --coverage",
+    "benchmark": "tsx src/dataview.benchmark.ts"
+  },
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.17",
+    "pkgroll": "^2.21.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
+  }
+}
