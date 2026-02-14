@@ -126,14 +126,19 @@ async function main() {
     console.log(`📦 Updating existing dependencies to ${modeLabel}...`);
     console.log('');
 
+    const collectDirs = (baseDir) => {
+        return readdirSync(baseDir, { withFileTypes: true })
+            .filter(d => d.isDirectory())
+            .map(d => join(baseDir, d.name));
+    }
+
     // Find all package.json files in packages/* and examples/*
     const dirs = [
-        ...readdirSync(join(rootDir, 'packages'), { withFileTypes: true })
-            .filter(d => d.isDirectory())
-            .map(d => join(rootDir, 'packages', d.name)),
-        ...readdirSync(join(rootDir, 'examples'), { withFileTypes: true })
-            .filter(d => d.isDirectory())
-            .map(d => join(rootDir, 'examples', d.name)),
+        // packages
+        ...collectDirs(join(rootDir, 'packages')),
+        ...collectDirs(join(rootDir, 'native-packages')),
+        ...collectDirs(join(rootDir, 'examples')),
+        ...collectDirs(join(rootDir, 'native-examples')),
     ];
 
     let updatedCount = 0;

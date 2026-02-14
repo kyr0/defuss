@@ -92,7 +92,7 @@
     "@types/serve-static": "^1.15.8",
     "@types/ws": "^8.18.1",
     "chokidar": "^4.0.3",
-    "defuss": "workspace:*",
+    "defuss": "^3.1.0",
     "esbuild": "^0.25.9",
     "express": "^5.1.0",
     "fast-glob": "^3.3.3",
