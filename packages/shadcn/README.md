@@ -20,7 +20,7 @@ A modern Shadcn-like component library for defuss that build on Tailwind 4 and B
 Overview
 </h3>
 
-`defuss-shadcn` is a modern UI component library for web apps that suits defuss perfectly. It builds on Tailwind CSS and Franken UI. It provides a set of reusable, customizable, and accessible UI components that can be easily integrated into your defuss projects.
+`defuss-shadcn` is a modern UI component library for web apps that suits defuss perfectly. It builds on Tailwind CSS 4 and Basecoat UI. It provides a set of reusable, customizable, and accessible UI components that can be easily integrated into your defuss projects.
 
 <h3 align="center">
 Installation
@@ -45,22 +45,11 @@ Usage
 You can import and use the components from `defuss-shadcn` in your defuss project as follows:
 
 ```tsx
-import { Button, Card, Modal } from "defuss-shadcn";
+import { Button } from "defuss-shadcn";
 
 function App() {
   return (
-    <div>
-      <Card className="w-full">
-        <h2 className="text-xl font-bold mb-4">Welcome to defuss-shadcn</h2>
-        <p className="mb-4">This is a simple card component.</p>
-        <Button onClick={() => alert("Button clicked!")}>Click Me</Button>
-      </Card>
-
-      <Modal isOpen={true} onClose={() => {}}>
-        <h2 className="text-xl font-bold mb-4">Modal Title</h2>
-        <p>This is a modal component.</p>
-      </Modal>
-    </div>
+    <Button onClick={() => alert("Button clicked!")}>Click Me</Button>
   );
 }
 ```
