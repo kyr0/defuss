@@ -37,6 +37,7 @@ export interface DataviewRequest {
   page?: number;
   pageSize?: number;
   meta?: Partial<DataviewMeta>;
+  tree?: DataviewTreeOptions;
 }
 
 export interface DataviewMeta {
@@ -50,25 +51,7 @@ export interface DataviewState {
   page: number;
   pageSize?: number;
   meta: DataviewMeta;
-}
-
-export type DataviewRow = Record<string, unknown>;
-
-export interface TreeDataviewTreeOptions {
-  idField: string;
-  parentIdField: string;
-  expandedIds?: DataviewJsonValue[];
-  maxDepth?: number;
-  includeAncestors?: boolean;
-  includeDescendantsOfMatch?: boolean;
-}
-
-export interface TreeDataviewRequest extends DataviewRequest {
-  tree: TreeDataviewTreeOptions;
-}
-
-export interface TreeDataviewState extends DataviewState {
-  tree: {
+  tree?: {
     idField: string;
     parentIdField: string;
     expandedIds: DataviewJsonValue[];
@@ -78,7 +61,18 @@ export interface TreeDataviewState extends DataviewState {
   };
 }
 
-export interface TreeRowMeta {
+export type DataviewRow = Record<string, unknown>;
+
+export interface DataviewTreeOptions {
+  idField: string;
+  parentIdField: string;
+  expandedIds?: DataviewJsonValue[];
+  maxDepth?: number;
+  includeAncestors?: boolean;
+  includeDescendantsOfMatch?: boolean;
+}
+
+export interface DataviewRowMeta {
   depth: number;
   hasChildren: boolean;
   isExpanded: boolean;
@@ -87,7 +81,7 @@ export interface TreeRowMeta {
   parentId: DataviewJsonValue | null;
 }
 
-export interface TreeDataviewEntry<T extends DataviewRow = DataviewRow> {
+export interface DataviewEntry<T extends DataviewRow = DataviewRow> {
   row: T;
-  meta: TreeRowMeta;
+  meta: DataviewRowMeta;
 }

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { applyDataview, createDataview } from "./dataview.js";
 
+const rowIds = <T extends { id: number }>(entries: Array<{ row: T }>) =>
+  entries.map((entry) => entry.row.id);
+
 describe("createDataview", () => {
   it("creates defaults", () => {
     const view = createDataview();
@@ -14,6 +17,7 @@ describe("createDataview", () => {
         selectedRowIds: [],
         lockedColumns: [],
       },
+      tree: undefined,
     });
   });
 
@@ -48,7 +52,7 @@ describe("applyDataview", () => {
 
     const result = applyDataview(rows, view);
 
-    expect(result.map((row) => row.id)).toEqual([2, 1]);
+    expect(rowIds(result)).toEqual([2, 1]);
   });
 
   it("supports paging with zero-based page index", () => {
@@ -60,7 +64,7 @@ describe("applyDataview", () => {
 
     const result = applyDataview(rows, view);
 
-    expect(result.map((row) => row.id)).toEqual([3, 4]);
+    expect(rowIds(result)).toEqual([3, 4]);
   });
 
   it("keeps sort stable for equal values", () => {
@@ -70,10 +74,9 @@ describe("applyDataview", () => {
 
     const result = applyDataview(rows, view);
 
-    expect(result.filter((row) => row.group === "alpha").map((row) => row.id)).toEqual([
-      1,
-      3,
-    ]);
+    expect(
+      result.filter((entry) => entry.row.group === "alpha").map((entry) => entry.row.id),
+    ).toEqual([1, 3]);
   });
 
   it("supports all requested operators", () => {
@@ -87,70 +90,70 @@ describe("applyDataview", () => {
       applyDataview(
         operatorRows,
         createDataview({ filters: [{ field: "n", op: "neq", value: 5 }] }),
-      ).map((row) => row.id),
+      ).map((entry) => entry.row.id),
     ).toEqual([1, 3]);
 
     expect(
       applyDataview(
         operatorRows,
         createDataview({ filters: [{ field: "n", op: "gt", value: 2 }] }),
-      ).map((row) => row.id),
+      ).map((entry) => entry.row.id),
     ).toEqual([2, 3]);
 
     expect(
       applyDataview(
         operatorRows,
         createDataview({ filters: [{ field: "n", op: "gte", value: 5 }] }),
-      ).map((row) => row.id),
+      ).map((entry) => entry.row.id),
     ).toEqual([2, 3]);
 
     expect(
       applyDataview(
         operatorRows,
         createDataview({ filters: [{ field: "n", op: "lt", value: 5 }] }),
-      ).map((row) => row.id),
+      ).map((entry) => entry.row.id),
     ).toEqual([1]);
 
     expect(
       applyDataview(
         operatorRows,
         createDataview({ filters: [{ field: "n", op: "lte", value: 5 }] }),
-      ).map((row) => row.id),
+      ).map((entry) => entry.row.id),
     ).toEqual([1, 2]);
 
     expect(
       applyDataview(
         operatorRows,
         createDataview({ filters: [{ field: "n", op: "in", value: [2, 9] }] }),
-      ).map((row) => row.id),
+      ).map((entry) => entry.row.id),
     ).toEqual([1, 3]);
 
     expect(
       applyDataview(
         operatorRows,
         createDataview({ filters: [{ field: "text", op: "contains", value: "oo" }] }),
-      ).map((row) => row.id),
+      ).map((entry) => entry.row.id),
     ).toEqual([1, 2, 3]);
 
     expect(
       applyDataview(
         operatorRows,
         createDataview({ filters: [{ field: "text", op: "startsWith", value: "Foo" }] }),
-      ).map((row) => row.id),
+      ).map((entry) => entry.row.id),
     ).toEqual([1, 3]);
 
     expect(
       applyDataview(
         operatorRows,
         createDataview({ filters: [{ field: "text", op: "endsWith", value: "foo" }] }),
-      ).map((row) => row.id),
+      ).map((entry) => entry.row.id),
     ).toEqual([2]);
 
     expect(
       applyDataview(
         operatorRows,
         createDataview({ filters: [{ field: "tags", op: "contains", value: "z" }] }),
-      ).map((row) => row.id),
+      ).map((entry) => entry.row.id),
     ).toEqual([3]);
   });
 
@@ -165,7 +168,7 @@ describe("applyDataview", () => {
     });
 
     const result = applyDataview(nestedRows, view);
-    expect(result.map((row) => row.id)).toEqual([1]);
+    expect(result.map((entry) => entry.row.id)).toEqual([1]);
   });
 
   it("uses deterministic null ordering", () => {
@@ -186,8 +189,8 @@ describe("applyDataview", () => {
       createDataview({ sorters: [{ field: "value", direction: "desc" }] }),
     );
 
-    expect(asc.map((row) => row.id)).toEqual([3, 2, 1, 4]);
-    expect(desc.map((row) => row.id)).toEqual([1, 4, 2, 3]);
+    expect(asc.map((entry) => entry.row.id)).toEqual([3, 2, 1, 4]);
+    expect(desc.map((entry) => entry.row.id)).toEqual([1, 4, 2, 3]);
   });
 
   it("can be applied repeatedly on the same backing array without mutation", () => {
@@ -217,9 +220,9 @@ describe("applyDataview", () => {
     const firstRunB = applyDataview(backing, firstView);
     const secondRun = applyDataview(backing, secondView);
 
-    expect(firstRunA.map((row) => row.id)).toEqual([1]);
-    expect(firstRunB.map((row) => row.id)).toEqual([1]);
-    expect(secondRun.map((row) => row.id)).toEqual([3, 4]);
+    expect(firstRunA.map((entry) => entry.row.id)).toEqual([1]);
+    expect(firstRunB.map((entry) => entry.row.id)).toEqual([1]);
+    expect(secondRun.map((entry) => entry.row.id)).toEqual([3, 4]);
     expect(backing.map((row) => row.id)).toEqual(backingOrderBefore);
   });
 
@@ -254,8 +257,8 @@ describe("applyDataview", () => {
 
     expect(result).toHaveLength(25);
     for (let index = 1; index < result.length; index++) {
-      const previous = result[index - 1];
-      const current = result[index];
+      const previous = result[index - 1].row;
+      const current = result[index].row;
 
       if (previous.score === current.score) {
         expect(previous.id).toBeLessThanOrEqual(current.id);
@@ -268,5 +271,35 @@ describe("applyDataview", () => {
       expect(current.meta.city).toBe("Berlin");
       expect(current.score).toBeGreaterThanOrEqual(50);
     }
+  });
+
+  it("applies tree behavior when tree config is provided", () => {
+    const treeRows = [
+      { id: 1, parentId: null, title: "Root A", score: 50 },
+      { id: 2, parentId: 1, title: "A-Child 1", score: 80 },
+      { id: 3, parentId: 1, title: "A-Child 2", score: 20 },
+      { id: 4, parentId: 2, title: "A-Grandchild", score: 10 },
+      { id: 5, parentId: null, title: "Root B", score: 70 },
+      { id: 6, parentId: 5, title: "B-Child", score: 60 },
+    ];
+
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+        expandedIds: [1],
+      },
+      sorters: [{ field: "id", direction: "asc" }],
+    });
+
+    const result = applyDataview(treeRows, view);
+    expect(result.map((entry) => entry.row.id)).toEqual([1, 2, 3, 5]);
+    expect(result.find((entry) => entry.row.id === 2)?.meta).toMatchObject({
+      depth: 1,
+      hasChildren: true,
+      isExpanded: false,
+      isMatch: true,
+      parentId: 1,
+    });
   });
 });

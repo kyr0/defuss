@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDataview } from "./dataview.js";
-import { applyTreeDataviewWithMeta, createTreeDataview } from "./tree-dataview.js";
+import { applyDataview, createDataview } from "./dataview.js";
 import {
   patchMeta,
   setExpandedIds,
@@ -38,7 +37,7 @@ describe("view meta helpers", () => {
       { id: 4, parentId: 2, label: "grandchild" },
     ];
 
-    let view = createTreeDataview({
+    let view = createDataview({
       tree: {
         idField: "id",
         parentIdField: "parentId",
@@ -47,23 +46,23 @@ describe("view meta helpers", () => {
       sorters: [{ field: "id", direction: "asc" }],
     });
 
-    let visible = applyTreeDataviewWithMeta(rows, view);
+    let visible = applyDataview(rows, view);
     expect(visible.map((entry) => entry.row.id)).toEqual([1, 2, 3]);
 
     view = toggleExpanded(view, 2);
-    visible = applyTreeDataviewWithMeta(rows, view);
+    visible = applyDataview(rows, view);
     expect(visible.map((entry) => entry.row.id)).toEqual([1, 2, 4, 3]);
 
     view = setSelectedRows(view, [4]);
-    visible = applyTreeDataviewWithMeta(rows, view);
+    visible = applyDataview(rows, view);
     expect(visible.find((entry) => entry.row.id === 4)?.meta.isSelected).toBe(true);
 
     view = toggleSelectedRow(view, 4);
-    visible = applyTreeDataviewWithMeta(rows, view);
+    visible = applyDataview(rows, view);
     expect(visible.find((entry) => entry.row.id === 4)?.meta.isSelected).toBe(false);
 
     view = setExpandedIds(view, [1]);
-    visible = applyTreeDataviewWithMeta(rows, view);
+    visible = applyDataview(rows, view);
     expect(visible.map((entry) => entry.row.id)).toEqual([1, 2, 3]);
   });
 

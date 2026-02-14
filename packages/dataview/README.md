@@ -20,12 +20,12 @@ Isomorphic functional data view (filters, sorters, paging, meta UI state) for ta
 Overview
 </h3>
 
-`defuss-dataview` provides a tiny procedural API to define and apply an ADSD (Abstract Data State Description) for filtering, sorting, paging, and UI meta state.
+`defuss-dataview` provides a tiny procedural API to define and apply an ADSD (Abstract Data State Description) for filtering, sorting, paging, and UI state.
 
-- JSON-first descriptor (`filters`, `sorters`, `page`, `pageSize`, `meta`)
+- JSON-first descriptor (`filters`, `sorters`, `page`, `pageSize`, `meta`, optional `tree`)
 - Zero-based paging (`page: 0` is the first page)
 - Dot-path field access (for example `user.profile.city`)
-- Immutable state updates for selection, locked columns, and tree expansion
+- Single apply contract: always returns `[{ row, meta }]`
 
 <h3 align="center">
 Installation
@@ -61,7 +61,11 @@ const rows = [
   { id: 3, a: "Foo", b: "Baz" },
 ];
 
-const visibleRows = applyDataview(rows, view);
+const entries = applyDataview(rows, view);
+
+// [{ row, meta }]
+// entries[0].row
+// entries[0].meta
 ```
 
 `applyDataview` never mutates the input array, so repeated apply calls on the same backing data are safe.
@@ -97,27 +101,127 @@ import {
 
 let view = createDataview({ sorters: [{ field: "id", direction: "asc" }] });
 
-view = setSelectedRows(view, [1, 2, 3] /* id */);
-view = toggleSelectedRow(view, 2) /* id */;
+view = setSelectedRows(view, [1, 2, 3]);
+view = toggleSelectedRow(view, 2);
 view = setLockedColumns(view, ["id", "name"]);
 ```
+
+Use `patchMeta` when you want to update **UI-only interaction state** without touching filters/sorters/paging:
+
+```ts
+import { patchMeta } from "defuss-dataview";
+
+view = patchMeta(view, {
+  selectedRowIds: [1, 2, 3],
+  lockedColumns: ["id", "name"],
+});
+```
+
+`patchMeta` is ideal for:
+
+- row selection (`selectedRowIds`)
+- locked/frozen columns (`lockedColumns`)
+- combining multiple UI-meta updates in one state transition
+
+For query-state changes like filtering, sorting, or pagination, use `createDataview` (not `patchMeta`).
+
+<h3 align="center">
+UI Integration Pattern
+</h3>
+
+Treat `view` as a controlled UI state object and re-apply on every interaction.
+
+```ts
+import {
+  applyDataview,
+  createDataview,
+  patchMeta,
+  toggleExpanded,
+  toggleSelectedRow,
+} from "defuss-dataview";
+
+let view = createDataview({
+  page: 0,
+  pageSize: 25,
+  sorters: [{ field: "id", direction: "asc" }],
+  tree: {
+    idField: "id",
+    parentIdField: "parentId",
+    expandedIds: [],
+  },
+});
+
+const updateView = (next: typeof view) => {
+  view = next;
+  const entries = applyDataview(rows, view);
+  render(entries); // your defuss/React/Vue/Svelte/DOM renderer
+};
+
+// select one row
+const onRowClick = (id: number) => updateView(toggleSelectedRow(view, id));
+
+// select all visible rows
+const onSelectAllVisible = () => {
+  const entries = applyDataview(rows, view);
+  const ids = entries.map((entry) => entry.row.id as number);
+  updateView(patchMeta(view, { selectedRowIds: ids }));
+};
+
+// collapse/expand one node
+const onToggleNode = (id: number) => updateView(toggleExpanded(view, id));
+
+// sort ("reorder")
+const onSortChange = (field: string, direction: "asc" | "desc") =>
+  updateView(
+    createDataview({
+      ...view,
+      sorters: [{ field, direction }],
+      page: 0,
+    }),
+  );
+
+// filtering
+const onFilterChange = (search: string) =>
+  updateView(
+    createDataview({
+      ...view,
+      filters: search
+        ? [{ field: "title", op: "contains", value: search }]
+        : [],
+      page: 0,
+    }),
+  );
+
+// pagination
+const onPageChange = (page: number) =>
+  updateView(
+    createDataview({
+      ...view,
+      page,
+    }),
+  );
+```
+
+Rule of thumb:
+
+- `patchMeta` / selection / expansion helpers: interactive UI state
+- `createDataview`: structural query state (`filters`, `sorters`, `page`, `pageSize`, `tree`)
 
 <h3 align="center">
 Tree API
 </h3>
 
-For tree grids, use the `createTreeDataview` and `applyTreeDataview` functions. The tree view supports expanded/collapsed state, multi selection, and provides additional meta info such as depth and whether a row has children.
+Tree behavior is enabled by adding `tree` options to `createDataview`. `applyDataview` still remains the only apply function.
 
 ```ts
 import {
-  createTreeDataview,
-  applyTreeDataview,
-  applyTreeDataviewWithMeta,
+  createDataview,
+  applyDataview,
   toggleExpanded,
   setSelectedRows,
 } from "defuss-dataview";
 
-let treeView = createTreeDataview({
+let view = createDataview({
   tree: {
     idField: "id",
     parentIdField: "parentId",
@@ -128,11 +232,10 @@ let treeView = createTreeDataview({
   sorters: [{ field: "id", direction: "asc" }],
 });
 
-treeView = toggleExpanded(treeView, 2 /* id */);
-treeView = setSelectedRows(treeView, [4, 7], /* ids */);
+view = toggleExpanded(view, 2);
+view = setSelectedRows(view, [4, 7]);
 
-const rows = applyTreeDataview(data, treeView);
-const entries = applyTreeDataviewWithMeta(data, treeView);
+const entries = applyDataview(data, view);
 // entries: [{ row, meta: { depth, hasChildren, isExpanded, isMatch, parentId, isSelected } }]
 ```
 
@@ -143,8 +246,6 @@ API Reference
 ### Core
 - `createDataview(request)`
 - `applyDataview(data, view)`
-- `Dataview.createDataview(request)`
-- `Dataview.applyDataview(data, view)`
 
 ### Grid Meta Helpers
 - `patchMeta(view, patch)`
@@ -152,10 +253,7 @@ API Reference
 - `toggleSelectedRow(view, id)`
 - `setLockedColumns(view, columns)`
 
-### Tree (Experimental)
-- `createTreeDataview(request)`
-- `applyTreeDataview(data, view)`
-- `applyTreeDataviewWithMeta(data, view)`
+### Tree Helpers
 - `setExpandedIds(view, ids)`
 - `toggleExpanded(view, id)`
 
