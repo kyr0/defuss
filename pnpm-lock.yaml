@@ -106,17 +106,17 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-astro:
-        specifier: workspace:*
-        version: link:../../packages/astro
+        specifier: ^1.5.0
+        version: 1.5.0(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss-rpc:
-        specifier: workspace:*
-        version: link:../../packages/rpc
+        specifier: ^1.1.3
+        version: 1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss-transval:
-        specifier: workspace:*
-        version: link:../../packages/transval
+        specifier: ^1.3.0
+        version: 1.3.0
       frankenstyle:
         specifier: ^0.1.4
         version: 0.1.4(@tiptap/extensions@3.18.0(@tiptap/core@3.18.0(@tiptap/pm@3.18.0))(@tiptap/pm@3.18.0))(@tiptap/pm@3.18.0)(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
@@ -151,11 +151,11 @@ importers:
         specifier: ^5.16.11
         version: 5.16.11(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-astro:
-        specifier: workspace:*
-        version: link:../../packages/astro
+        specifier: ^1.5.0
+        version: 1.5.0(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       lightningcss:
         specifier: ^1.30.2
         version: 1.31.0
@@ -181,14 +181,14 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-astro:
-        specifier: workspace:*
-        version: link:../../packages/astro
+        specifier: ^1.5.0
+        version: 1.5.0(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss-shadcn:
-        specifier: workspace:*
-        version: link:../../packages/shadcn
+        specifier: ^0.2.0
+        version: 0.2.0
       franken-ui:
         specifier: ^2.1.1
         version: 2.1.2(lodash@4.17.23)(postcss-combine-duplicated-selectors@10.0.3(postcss@8.5.6))(postcss-js@4.1.0(postcss@8.5.6))(postcss-sort-media-queries@5.2.0(postcss@8.5.6))(postcss@8.5.6)(tailwindcss@4.1.18)
@@ -221,17 +221,17 @@ importers:
         specifier: ^5.16.11
         version: 5.16.11(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-astro:
-        specifier: workspace:*
-        version: link:../../packages/astro
+        specifier: ^1.5.0
+        version: 1.5.0(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss-desktop:
-        specifier: workspace:*
-        version: link:../../packages/desktop
+        specifier: ^0.0.3
+        version: 0.0.3
       defuss-runtime:
-        specifier: workspace:*
-        version: link:../../packages/runtime
+        specifier: ^1.3.1
+        version: 1.3.1
       lightningcss:
         specifier: ^1.30.2
         version: 1.31.0
@@ -252,14 +252,14 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-dson:
-        specifier: workspace:*
-        version: link:../../packages/dson
+        specifier: ^1.1.1
+        version: 1.1.1
       defuss-vite:
-        specifier: workspace:*
-        version: link:../../packages/vite
+        specifier: ^1.1.3
+        version: 1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
       lightningcss:
         specifier: ^1.30.2
         version: 1.31.0
@@ -315,14 +315,14 @@ importers:
         specifier: ^2.1.4
         version: 2.1.4
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-astro:
-        specifier: workspace:*
-        version: link:../../packages/astro
+        specifier: ^1.5.0
+        version: 1.5.0(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss-rpc:
-        specifier: workspace:*
-        version: link:../../packages/rpc
+        specifier: ^1.1.3
+        version: 1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       editorjs-alert:
         specifier: ^1.1.4
         version: 1.1.4
@@ -357,8 +357,8 @@ importers:
   examples/with-esbuild:
     dependencies:
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
     devDependencies:
       esbuild:
         specifier: '>=0.25.0'
@@ -385,14 +385,14 @@ importers:
         specifier: ^4.24.3
         version: 4.28.1
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-transval:
-        specifier: workspace:*
-        version: link:../../packages/transval
+        specifier: ^1.3.0
+        version: 1.3.0
       defuss-vite:
-        specifier: workspace:*
-        version: link:../../packages/vite
+        specifier: ^1.1.3
+        version: 1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
       franken-ui:
         specifier: 2.1.0-next.4
         version: 2.1.0-next.4(lodash@4.17.23)(postcss-combine-duplicated-selectors@10.0.3(postcss@8.5.6))(postcss-js@4.1.0(postcss@8.5.6))(postcss-sort-media-queries@5.2.0(postcss@8.5.6))(postcss@8.5.6)(tailwindcss@4.1.18)
@@ -421,11 +421,11 @@ importers:
         specifier: ^5.16.11
         version: 5.16.11(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-astro:
-        specifier: workspace:*
-        version: link:../../packages/astro
+        specifier: ^1.5.0
+        version: 1.5.0(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       fslightbox:
         specifier: ^3.7.4
         version: 3.7.4
@@ -442,11 +442,11 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-vite:
-        specifier: workspace:*
-        version: link:../../packages/vite
+        specifier: ^1.1.3
+        version: 1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
       lightningcss:
         specifier: ^1.30.2
         version: 1.31.0
@@ -460,11 +460,11 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-vite:
-        specifier: workspace:*
-        version: link:../../packages/vite
+        specifier: ^1.1.3
+        version: 1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
       lightningcss:
         specifier: ^1.30.2
         version: 1.31.0
@@ -481,11 +481,11 @@ importers:
         specifier: ^5.16.6
         version: 5.16.11(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-astro:
-        specifier: workspace:*
-        version: link:../../packages/astro
+        specifier: ^1.5.0
+        version: 1.5.0(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       firebase:
         specifier: ^12.8.0
         version: 12.8.0
@@ -511,14 +511,14 @@ importers:
         specifier: ^10.4.23
         version: 10.4.23(postcss@8.5.6)
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-astro:
-        specifier: workspace:*
-        version: link:../../packages/astro
+        specifier: ^1.5.0
+        version: 1.5.0(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss-transval:
-        specifier: workspace:*
-        version: link:../../packages/transval
+        specifier: ^1.3.0
+        version: 1.3.0
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -575,11 +575,11 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-vite:
-        specifier: workspace:*
-        version: link:../../packages/vite
+        specifier: ^1.1.3
+        version: 1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
       framework7:
         specifier: ^9.0.2
         version: 9.0.2
@@ -612,11 +612,11 @@ importers:
         specifier: ^2.0.6
         version: 2.3.11
       defuss:
-        specifier: workspace:*
-        version: link:../../packages/defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-vite:
-        specifier: workspace:*
-        version: link:../../packages/vite
+        specifier: ^1.1.3
+        version: 1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
       pkgroll:
         specifier: ^2.21.5
         version: 2.21.5(typescript@5.9.3)
@@ -674,8 +674,8 @@ importers:
         specifier: ^5.16.11
         version: 5.16.11(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss:
-        specifier: workspace:*
-        version: link:../defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       fast-glob:
         specifier: ^3.3.3
         version: 3.3.3
@@ -711,14 +711,32 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  packages/dataview:
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.0.17
+        version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.17))(vitest@4.0.17)
+      pkgroll:
+        specifier: ^2.21.5
+        version: 2.21.5(typescript@5.9.3)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.17
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/browser-playwright@4.0.17)(happy-dom@20.5.0)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
+
   packages/db:
     dependencies:
       '@libsql/client':
         specifier: ^0.15.7
         version: 0.15.15
       defuss-env:
-        specifier: workspace:*
-        version: link:../env
+        specifier: ^1.0.2
+        version: 1.0.2
       dexie:
         specifier: ^4.0.11
         version: 4.2.1
@@ -760,8 +778,8 @@ importers:
         specifier: ^3.2.3
         version: 3.2.3
       defuss-runtime:
-        specifier: workspace:*
-        version: link:../runtime
+        specifier: ^1.3.1
+        version: 1.3.1
       happy-dom:
         specifier: ^20.5.0
         version: 20.5.0
@@ -803,14 +821,14 @@ importers:
   packages/desktop:
     dependencies:
       defuss:
-        specifier: workspace:*
-        version: link:../defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-runtime:
-        specifier: workspace:*
-        version: link:../runtime
+        specifier: ^1.3.1
+        version: 1.3.1
       defuss-transval:
-        specifier: workspace:*
-        version: link:../transval
+        specifier: ^1.3.0
+        version: 1.3.0
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.0.17
@@ -898,8 +916,8 @@ importers:
         specifier: '>=5.15.6'
         version: 5.16.11(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       defuss-dson:
-        specifier: workspace:*
-        version: link:../dson
+        specifier: ^1.1.1
+        version: 1.1.1
     devDependencies:
       '@types/express':
         specifier: ^5.0.3
@@ -947,8 +965,8 @@ importers:
   packages/shadcn:
     dependencies:
       defuss:
-        specifier: workspace:*
-        version: link:../defuss
+        specifier: ^3.1.0
+        version: 3.1.0
     devDependencies:
       '@types/node':
         specifier: ^25.0.9
@@ -987,14 +1005,14 @@ importers:
         specifier: ^4.28.1
         version: 4.28.1
       defuss:
-        specifier: workspace:*
-        version: link:../defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       defuss-shadcn:
-        specifier: workspace:*
-        version: link:../shadcn
+        specifier: ^0.2.0
+        version: 0.2.0
       defuss-vite:
-        specifier: workspace:*
-        version: link:../vite
+        specifier: ^1.1.3
+        version: 1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
       lightningcss:
         specifier: ^1.30.2
         version: 1.31.0
@@ -1023,8 +1041,8 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       defuss:
-        specifier: workspace:*
-        version: link:../defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       esbuild:
         specifier: ^0.25.9
         version: 0.25.12
@@ -1121,15 +1139,15 @@ importers:
   packages/transval:
     dependencies:
       defuss-runtime:
-        specifier: workspace:*
-        version: link:../runtime
+        specifier: ^1.3.1
+        version: 1.3.1
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.0.17
         version: 4.0.17(@vitest/browser@4.0.17(vite@7.3.1(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.17))(vitest@4.0.17)
       defuss:
-        specifier: workspace:*
-        version: link:../defuss
+        specifier: ^3.1.0
+        version: 3.1.0
       happy-dom:
         specifier: ^20.3.1
         version: 20.3.4
@@ -4080,12 +4098,52 @@ packages:
   defu@6.1.4:
     resolution: {integrity: sha512-mEQCMmwJu317oSz8CwdIOdwf3xMif1ttiM8LTufzc3g6kR+9Pe236twL8j3IYT1F7GfRgGcW6MWxzZjLIkuHIg==}
 
-  defuss-runtime@1.2.1:
-    resolution: {integrity: sha512-eLEUM1cCLzrHdo6oey12NH9Oy6HZs5pNYo6kABzcOwg4BK1/sjfhUrYUsSHOagG0PYIrEMigJx+wVzXU3tvYAQ==}
+  defuss-astro@1.5.0:
+    resolution: {integrity: sha512-KTY6Wn3BOkVFNeFC4lU4FbwOXWNFs8ksqqIsoP/9zLR1kZg+qd194GBi4Q1dma3YYUVWucRxnnBm0RNlhp9Plg==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-desktop@0.0.3:
+    resolution: {integrity: sha512-WBCq0jcRuDnuyn+YpxJTwQrGOwsZO8TBJRpxBbDbnWRBhfiFlumD/9fqb1VNxW8pHEIDrxGs1ktr00doASioPw==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-dson@1.1.1:
+    resolution: {integrity: sha512-CvNIjeVM6dqg/aNIzB7wIgFZ0ic7B8EJMsUPRHVIYxFFFKB/lE1+cK+Tq3LZxaZISUYjXf+Siq+bMpXnE7+rVA==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-env@1.0.2:
+    resolution: {integrity: sha512-C+26IlNmQaQu/xqsmSvdwGYFWix1xURWKWbc/0ipm1UhI2ULQdI73eRf2eiH5vxbkLngPY/XLjgAKzQCMgFnJQ==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+    hasBin: true
+
+  defuss-rpc@1.1.3:
+    resolution: {integrity: sha512-e6PG+hf6q+g35Y6fGcanzQiTB2EDVtvu+lA+Yrik/8NclfPhxfCDe2vLnSBcKjtUFvKj+voDkVbgWuSsjzGVfA==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-runtime@1.2.0:
+    resolution: {integrity: sha512-ZHMXXz0vCBEWHADB9FEaAYlBgM7I8Ri8wuPtG+oC7EudB8KRie9sPld0q63zoHNsoLHV41zTWs/6fBicieSgVQ==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-runtime@1.3.1:
+    resolution: {integrity: sha512-1FvYjLqNb3YHfVT/9HLEigo9SZNoX2g+aZOE/ippAKvlxvZwapHo66NgLIe+3l8JMaY+7LigyC1mjzx+WAXFNg==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-shadcn@0.2.0:
+    resolution: {integrity: sha512-3se3vAzs3ETa4LBBlAJCdEO/sQgDlgTS3lAmXRnQC1+rHC2eFMxuwTrly/M7w5oZhxtRrEics7yuwRUP8dCHmA==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-transval@1.3.0:
+    resolution: {integrity: sha512-v5Q3GNXG3KArnUU8+qKJ3Je8Kv04HLeXSN5FbTEm+h4jTYwvjsuAHpxjUziS5xxfQM7+ig6FTLUSuxI7fD0Pog==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-vite@1.1.3:
+    resolution: {integrity: sha512-3LIDdJSnVimOUbE7CQW6ojWWGfFzb/4favhgYDs4Cri9g/IOD88LsVhcrt3ySBYta4s+u/xFdcmHuKwEB9E1oQ==}
     engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
 
   defuss@2.1.11:
     resolution: {integrity: sha512-EDO8lyq9bEzHfKViu6hqfTd9uluju1M6KfnkPECcq3LMyDSLQEHXXH9t/3vB+8qmbPYciHZunoTFEG8VkKBupA==}
+
+  defuss@3.1.0:
+    resolution: {integrity: sha512-yNfHdERsumdNk9yJv23aW4ckQwO5vyS1vTe6e49rDI/jyFT7+yPCwKpXa8uBXt8f/cP0VKkENjUznE0HrdDrAg==}
 
   delayed-stream@1.0.0:
     resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
@@ -10449,13 +10507,197 @@ snapshots:
 
   defu@6.1.4: {}
 
-  defuss-runtime@1.2.1: {}
+  defuss-astro@1.5.0(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
+    dependencies:
+      '@swc/core': 1.15.10
+      astro: 5.16.11(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      defuss: 2.1.11
+      fast-glob: 3.3.3
+      file-type: 21.3.0
+      purgecss: 7.0.2
+      svgo: 4.0.0
+      vite: 6.4.1(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@swc/helpers'
+      - '@types/node'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - aws4fetch
+      - bufferutil
+      - db0
+      - idb-keyval
+      - ioredis
+      - jiti
+      - less
+      - lightningcss
+      - rollup
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - typescript
+      - uploadthing
+      - utf-8-validate
+      - yaml
+
+  defuss-astro@1.5.0(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
+    dependencies:
+      '@swc/core': 1.15.10
+      astro: 5.16.11(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      defuss: 2.1.11
+      fast-glob: 3.3.3
+      file-type: 21.3.0
+      purgecss: 7.0.2
+      svgo: 4.0.0
+      vite: 6.4.1(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@swc/helpers'
+      - '@types/node'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - aws4fetch
+      - bufferutil
+      - db0
+      - idb-keyval
+      - ioredis
+      - jiti
+      - less
+      - lightningcss
+      - rollup
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - typescript
+      - uploadthing
+      - utf-8-validate
+      - yaml
+
+  defuss-desktop@0.0.3:
+    dependencies:
+      defuss: link:packages/defuss
+      defuss-runtime: link:packages/runtime
+      defuss-transval: link:packages/transval
+
+  defuss-dson@1.1.1: {}
+
+  defuss-env@1.0.2: {}
+
+  defuss-rpc@1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
+    dependencies:
+      astro: 5.16.11(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(rollup@4.55.2)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      defuss-dson: 1.1.1
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@types/node'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - aws4fetch
+      - db0
+      - idb-keyval
+      - ioredis
+      - jiti
+      - less
+      - lightningcss
+      - rollup
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - typescript
+      - uploadthing
+      - yaml
+
+  defuss-runtime@1.2.0: {}
+
+  defuss-runtime@1.3.1: {}
+
+  defuss-shadcn@0.2.0:
+    dependencies:
+      defuss: link:packages/defuss
+
+  defuss-transval@1.3.0:
+    dependencies:
+      defuss-runtime: 1.2.0
+
+  defuss-vite@1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2):
+    dependencies:
+      '@swc/core': 1.15.10
+      vite: 7.3.1(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
+    transitivePeerDependencies:
+      - '@swc/helpers'
+      - '@types/node'
+      - jiti
+      - less
+      - lightningcss
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - yaml
 
   defuss@2.1.11:
     dependencies:
       '@types/w3c-xmlserializer': 2.0.4
       csstype: 3.2.3
-      defuss-runtime: 1.2.1
+      defuss-runtime: 1.3.1
+      happy-dom: 20.5.0
+      w3c-xmlserializer: 5.0.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  defuss@3.1.0:
+    dependencies:
+      '@types/w3c-xmlserializer': 2.0.4
+      csstype: 3.2.3
+      defuss-runtime: link:packages/runtime
       happy-dom: 20.5.0
       w3c-xmlserializer: 5.0.0
     transitivePeerDependencies:
