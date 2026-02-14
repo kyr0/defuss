@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  addRows,
   applyDataview,
   createDataview,
-  patchMeta,
+  setParent,
+  updateMeta,
+  updateRows,
+  removeRows,
   setLockedColumns,
   setSelectedRows,
   toggleExpanded,
@@ -60,7 +64,7 @@ describe("README examples", () => {
     expect(view.meta.lockedColumns).toEqual(["id", "name"]);
   });
 
-  it("uses patchMeta for UI-only state updates", () => {
+  it("uses updateMeta for UI-only state updates", () => {
     const base = createDataview({
       sorters: [{ field: "id", direction: "asc" }],
       filters: [{ field: "title", op: "contains", value: "task" }],
@@ -68,7 +72,7 @@ describe("README examples", () => {
       pageSize: 10,
     });
 
-    const patched = patchMeta(base, {
+    const patched = updateMeta(base, {
       selectedRowIds: [11, 12],
       lockedColumns: ["id", "title"],
     });
@@ -111,7 +115,7 @@ describe("README examples", () => {
 
     entries = applyDataview(rows, view);
     const visibleIds = entries.map((entry) => entry.row.id);
-    updateView(patchMeta(view, { selectedRowIds: visibleIds }));
+    updateView(updateMeta(view, { selectedRowIds: visibleIds }));
     expect(view.meta.selectedRowIds).toEqual(visibleIds);
 
     entries = updateView(toggleExpanded(view, 1));
@@ -198,5 +202,54 @@ describe("README examples", () => {
     const entries = applyDataview(rows, view);
     expect(entries.map((entry) => entry.row.id)).toEqual([1, 2, 3]);
     expect(entries.every((entry) => entry.meta.isMatch)).toBe(true);
+  });
+
+  it("patches and removes table rows, then reapplies view", () => {
+    let data = [
+      { id: 1, title: "A", score: 10 },
+      { id: 2, title: "B", score: 20 },
+      { id: 3, title: "C", score: 30 },
+      { id: 5, title: "E", score: 50 },
+      { id: 9, title: "I", score: 90 },
+    ];
+
+    const view = createDataview({ sorters: [{ field: "id", direction: "asc" }] });
+
+    data = updateRows(data, [1, 3], [{ score: 99 }, { title: "Updated title" }]);
+    data = addRows(data, [{ id: 8, title: "H", score: 80 }], 3, "after");
+    data = removeRows(data, [5, 9]);
+
+    const entries = applyDataview(data, view);
+
+    expect(entries.map((entry) => entry.row.id)).toEqual([1, 2, 3, 8]);
+    expect(entries.find((entry) => entry.row.id === 1)?.row.score).toBe(99);
+    expect(entries.find((entry) => entry.row.id === 3)?.row.title).toBe("Updated title");
+  });
+
+  it("removes and patches tree nodes, then reapplies view", () => {
+    let data = [
+      { id: 1, parentId: null, title: "Root" },
+      { id: 7, parentId: 1, title: "Node 7" },
+      { id: 11, parentId: 7, title: "Node 11" },
+      { id: 12, parentId: 7, title: "Node 12" },
+      { id: 3, parentId: 1, title: "Sibling" },
+    ];
+
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+        expandedIds: [1, 7],
+      },
+      sorters: [{ field: "id", direction: "asc" }],
+    });
+
+    data = updateRows(data, [7], [{ title: "Renamed node" }]);
+    data = removeRows(data, [7, 11, 12]);
+    data = setParent(data, 3, null);
+
+    const entries = applyDataview(data, view);
+    expect(entries.map((entry) => entry.row.id)).toEqual([1, 3]);
+    expect(entries.some((entry) => entry.row.id === 7)).toBe(false);
   });
 });

@@ -29,6 +29,7 @@ export type DataviewSortDirection = "asc" | "desc";
 export interface DataviewSorter {
   field: string;
   direction?: DataviewSortDirection;
+  dir?: DataviewSortDirection;
 }
 
 export interface DataviewRequest {

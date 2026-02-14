@@ -21,12 +21,88 @@ describe("createDataview", () => {
     });
   });
 
+  it("normalizes meta values (dedupe + type filtering)", () => {
+    const view = createDataview({
+      meta: {
+        selectedRowIds: [1, 1, { a: 1 }, { a: 1 }],
+        lockedColumns: ["id", "id", "", 42 as never],
+      },
+    });
+
+    expect(view.meta.selectedRowIds).toEqual([1, { a: 1 }]);
+    expect(view.meta.lockedColumns).toEqual(["id"]);
+  });
+
   it("throws for invalid page", () => {
     expect(() => createDataview({ page: -1 })).toThrow();
   });
 
   it("throws for invalid pageSize", () => {
     expect(() => createDataview({ pageSize: 0 })).toThrow();
+  });
+
+  it("throws for invalid filter definition", () => {
+    expect(() =>
+      createDataview({
+        filters: [{ field: "", op: "eq", value: 1 }],
+      }),
+    ).toThrow();
+
+    expect(() =>
+      createDataview({
+        filters: [{ field: "id", op: "bad" as never, value: 1 }],
+      }),
+    ).toThrow();
+  });
+
+  it("throws for invalid sorter definition", () => {
+    expect(() =>
+      createDataview({
+        sorters: [{ field: "", direction: "asc" }],
+      }),
+    ).toThrow();
+
+    expect(() =>
+      createDataview({
+        sorters: [{ field: "id", direction: "up" as never }],
+      }),
+    ).toThrow();
+
+    expect(() =>
+      createDataview({
+        sorters: [{ field: "id", dir: "up" as never }],
+      }),
+    ).toThrow("up");
+  });
+
+  it("throws for invalid tree definition", () => {
+    expect(() =>
+      createDataview({
+        tree: {
+          idField: "",
+          parentIdField: "parentId",
+        },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      createDataview({
+        tree: {
+          idField: "id",
+          parentIdField: "",
+        },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      createDataview({
+        tree: {
+          idField: "id",
+          parentIdField: "parentId",
+          maxDepth: -1,
+        },
+      }),
+    ).toThrow();
   });
 });
 
@@ -65,6 +141,24 @@ describe("applyDataview", () => {
     const result = applyDataview(rows, view);
 
     expect(rowIds(result)).toEqual([3, 4]);
+  });
+
+  it("supports sorter direction alias dir", () => {
+    const view = createDataview({
+      sorters: [{ field: "id", dir: "desc" }],
+    });
+
+    const result = applyDataview(rows, view);
+    expect(rowIds(result)).toEqual([4, 3, 2, 1]);
+  });
+
+  it("defaults sorter direction to asc when omitted", () => {
+    const view = createDataview({
+      sorters: [{ field: "id" }],
+    });
+
+    const result = applyDataview(rows, view);
+    expect(rowIds(result)).toEqual([1, 2, 3, 4]);
   });
 
   it("keeps sort stable for equal values", () => {
@@ -131,6 +225,21 @@ describe("applyDataview", () => {
     expect(
       applyDataview(
         operatorRows,
+        createDataview({
+          filters: [
+            {
+              field: "n",
+              op: "in",
+              value: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+            },
+          ],
+        }),
+      ).map((entry) => entry.row.id),
+    ).toEqual([1, 2, 3]);
+
+    expect(
+      applyDataview(
+        operatorRows,
         createDataview({ filters: [{ field: "text", op: "contains", value: "oo" }] }),
       ).map((entry) => entry.row.id),
     ).toEqual([1, 2, 3]);
@@ -155,6 +264,120 @@ describe("applyDataview", () => {
         createDataview({ filters: [{ field: "tags", op: "contains", value: "z" }] }),
       ).map((entry) => entry.row.id),
     ).toEqual([3]);
+
+    expect(
+      applyDataview(
+        operatorRows,
+        createDataview({ filters: [{ field: "n", op: "in", value: 2 as never }] }),
+      ),
+    ).toEqual([]);
+
+    expect(
+      applyDataview(
+        operatorRows,
+        createDataview({ filters: [{ field: "n", op: "in", value: [2, 9] }] }),
+      ).map((entry) => entry.row.id),
+    ).toEqual([1, 3]);
+
+    expect(
+      applyDataview(
+        operatorRows,
+        createDataview({ filters: [{ field: "n", op: "startsWith", value: "1" }] }),
+      ),
+    ).toEqual([]);
+
+    expect(
+      applyDataview(
+        operatorRows,
+        createDataview({ filters: [{ field: "n", op: "endsWith", value: "1" }] }),
+      ),
+    ).toEqual([]);
+
+    expect(
+      applyDataview(
+        [{ id: 4, obj: { x: 1 } }],
+        createDataview({ filters: [{ field: "obj", op: "contains", value: "x" as never }] }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("supports boolean, date and fallback comparator paths", () => {
+    const booleanRows = [
+      { id: 1, flag: true },
+      { id: 2, flag: false },
+    ];
+
+    const boolSorted = applyDataview(
+      booleanRows,
+      createDataview({ sorters: [{ field: "flag", direction: "asc" }] }),
+    );
+    expect(boolSorted.map((entry) => entry.row.id)).toEqual([2, 1]);
+
+    const boolSortedDesc = applyDataview(
+      booleanRows,
+      createDataview({ sorters: [{ field: "flag", direction: "desc" }] }),
+    );
+    expect(boolSortedDesc.map((entry) => entry.row.id)).toEqual([1, 2]);
+
+    const boolFiltered = applyDataview(
+      booleanRows,
+      createDataview({ filters: [{ field: "flag", op: "gt", value: false }] }),
+    );
+    expect(boolFiltered.map((entry) => entry.row.id)).toEqual([1]);
+
+    const dateRows = [
+      { id: 1, at: new Date("2020-01-02") },
+      { id: 2, at: new Date("2020-01-01") },
+    ];
+
+    const dateSorted = applyDataview(
+      dateRows,
+      createDataview({ sorters: [{ field: "at", direction: "asc" }] }),
+    );
+    expect(dateSorted.map((entry) => entry.row.id)).toEqual([2, 1]);
+
+    const bigintRows = [
+      { id: 1, value: 10n },
+      { id: 2, value: 2n },
+    ];
+
+    const fallbackSorted = applyDataview(
+      bigintRows,
+      createDataview({ sorters: [{ field: "value", direction: "asc" }] }),
+    );
+    expect(fallbackSorted.map((entry) => entry.row.id)).toEqual([1, 2]);
+  });
+
+  it("returns undefined for dot-path when parent segment is not object", () => {
+    const rowsWithPrimitiveParent = [{ id: 1, a: 123 }];
+    const view = createDataview({
+      filters: [{ field: "a.b", op: "eq", value: "x" }],
+    });
+
+    const result = applyDataview(rowsWithPrimitiveParent, view);
+    expect(result).toEqual([]);
+  });
+
+  it("returns false for unknown filter op in unsafe state", () => {
+    const unsafeView = {
+      ...createDataview(),
+      filters: [{ field: "id", op: "unknown", value: 1 }],
+    } as unknown as ReturnType<typeof createDataview>;
+
+    const result = applyDataview([{ id: 1 }], unsafeView);
+    expect(result).toEqual([]);
+  });
+
+  it("handles non-object flat rows in unsafe state", () => {
+    const unsafeRows = [1, 2, 3] as unknown as Array<{ id: number }>;
+    const view = createDataview({
+      meta: { selectedRowIds: [1, 2, 3] },
+      sorters: [{ field: "id", direction: "asc" }],
+    });
+
+    const result = applyDataview(unsafeRows, view);
+    expect(result).toHaveLength(3);
+    expect(result.every((entry) => entry.meta.isSelected === false)).toBe(true);
   });
 
   it("supports nested dot-path fields", () => {
@@ -301,5 +524,191 @@ describe("applyDataview", () => {
       isMatch: true,
       parentId: 1,
     });
+  });
+
+  it("includes descendants of matched tree nodes when configured", () => {
+    const treeRows = [
+      { id: 1, parentId: null, title: "Root" },
+      { id: 2, parentId: 1, title: "Target" },
+      { id: 3, parentId: 2, title: "Child" },
+      { id: 4, parentId: 3, title: "Grandchild" },
+    ];
+
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+        includeDescendantsOfMatch: true,
+      },
+      filters: [{ field: "id", op: "eq", value: 2 }],
+      sorters: [{ field: "id", direction: "asc" }],
+    });
+
+    const result = applyDataview(treeRows, view);
+    expect(result.map((entry) => entry.row.id)).toEqual([1, 2, 3, 4]);
+    expect(result.find((entry) => entry.row.id === 4)?.meta.isMatch).toBe(false);
+  });
+
+  it("handles descendants traversal with repeated visits safely", () => {
+    const treeRows = [
+      { id: 1, parentId: null, title: "N1" },
+      { id: 2, parentId: 1, title: "N2" },
+      { id: 3, parentId: 2, title: "N3" },
+    ];
+
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+        includeDescendantsOfMatch: true,
+      },
+      filters: [{ field: "title", op: "contains", value: "N" }],
+    });
+
+    const result = applyDataview(treeRows, view);
+    expect(result.map((entry) => entry.row.id)).toEqual([1, 2, 3]);
+  });
+
+  it("expands all nodes when tree.expandedIds is not provided", () => {
+    const treeRows = [
+      { id: 1, parentId: null, title: "Root" },
+      { id: 2, parentId: 1, title: "Child" },
+      { id: 3, parentId: 2, title: "Grandchild" },
+    ];
+
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+      },
+      sorters: [{ field: "id", direction: "asc" }],
+    });
+
+    const result = applyDataview(treeRows, view);
+    expect(result.map((entry) => entry.row.id)).toEqual([1, 2, 3]);
+    expect(result.every((entry) => entry.meta.isExpanded || !entry.meta.hasChildren)).toBe(true);
+  });
+
+  it("respects tree maxDepth", () => {
+    const treeRows = [
+      { id: 1, parentId: null, title: "Root" },
+      { id: 2, parentId: 1, title: "Child" },
+      { id: 3, parentId: 2, title: "Grandchild" },
+    ];
+
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+        maxDepth: 0,
+      },
+      sorters: [{ field: "id", direction: "asc" }],
+    });
+
+    const result = applyDataview(treeRows, view);
+    expect(result.map((entry) => entry.row.id)).toEqual([1]);
+  });
+
+  it("handles cyclic trees with no roots by using index fallback traversal", () => {
+    const cyclicRows = [
+      { id: 1, parentId: 2, title: "A" },
+      { id: 2, parentId: 1, title: "B" },
+    ];
+
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+        includeAncestors: false,
+      },
+      sorters: [{ field: "id", direction: "asc" }],
+    });
+
+    const result = applyDataview(cyclicRows, view);
+    expect(result.map((entry) => entry.row.id).sort((a, b) => a - b)).toEqual([1, 2]);
+  });
+
+  it("handles duplicate and null tree ids without re-indexing duplicates", () => {
+    const rowsWithDuplicateIds = [
+      { id: null, parentId: null, title: "Null" },
+      { id: 1, parentId: null, title: "Root A" },
+      { id: 1, parentId: null, title: "Root B" },
+      { id: 2, parentId: 1, title: "Child" },
+    ];
+
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+      },
+      sorters: [{ field: "title", direction: "asc" }],
+    });
+
+    const result = applyDataview(rowsWithDuplicateIds, view);
+    expect(result.map((entry) => entry.row.title).sort()).toEqual([
+      "Child",
+      "Null",
+      "Root A",
+      "Root B",
+    ]);
+  });
+
+  it("returns empty result for empty rows in tree mode", () => {
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+      },
+    });
+
+    expect(applyDataview([], view)).toEqual([]);
+  });
+
+  it("supports tree traversal without sorters", () => {
+    const rowsNoSort = [
+      { id: 1, parentId: null, title: "Root" },
+      { id: 3, parentId: 1, title: "Child B" },
+      { id: 2, parentId: 1, title: "Child A" },
+    ];
+
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+      },
+    });
+
+    const result = applyDataview(rowsNoSort, view);
+    expect(result.map((entry) => entry.row.id)).toEqual([1, 3, 2]);
+  });
+
+  it("keeps stable index order in tree comparator ties", () => {
+    const rowsTie = [
+      { id: 1, parentId: null, score: 0 },
+      { id: 10, parentId: 1, score: 0 },
+      { id: 11, parentId: 1, score: 0 },
+      { id: 2, parentId: null, score: 0 },
+    ];
+
+    const view = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+      },
+      sorters: [{ field: "score", direction: "asc" }],
+    });
+
+    const result = applyDataview(rowsTie, view);
+    expect(result.map((entry) => entry.row.id)).toEqual([1, 10, 11, 2]);
+  });
+
+  it("keeps flat-row selection false when row has no id", () => {
+    const flatRows = [{ title: "A" }, { title: "B" }];
+    const view = createDataview({
+      meta: { selectedRowIds: [1] },
+    });
+
+    const result = applyDataview(flatRows, view);
+    expect(result.every((entry) => entry.meta.isSelected === false)).toBe(true);
   });
 });

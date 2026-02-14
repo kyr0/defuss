@@ -64,7 +64,7 @@ const compareUnknown = (left: unknown, right: unknown): number => {
   }
 
   if (typeof left === "boolean" && typeof right === "boolean") {
-    return left === right ? 0 : left ? 1 : -1;
+    return left ? 1 : -1;
   }
 
   if (left instanceof Date && right instanceof Date) {
@@ -162,7 +162,7 @@ interface CompiledSorter {
 const compileFilter = (filter: DataviewFilter): CompiledFilter => {
   const getValue = compileAccessor(filter.field);
 
-  if (filter.op === "in" && Array.isArray(filter.value)) {
+  if (filter.op === "in" && Array.isArray(filter.value) && filter.value.length > 16) {
     const allowedValues = new Set(filter.value);
     return {
       getValue,
@@ -213,10 +213,12 @@ const normalizeSorters = (sorters: DataviewRequest["sorters"]): DataviewState["s
       throw new Error("Dataview sorter field must be a non-empty string.");
     }
 
-    const direction = (sorter.direction ?? "asc").toLowerCase() as DataviewSortDirection;
+    const direction = (sorter.direction ?? sorter.dir ?? "asc").toLowerCase() as DataviewSortDirection;
 
     if (!SORT_DIRECTIONS.includes(direction)) {
-      throw new Error(`Dataview sorter direction '${String(sorter.direction)}' is not supported.`);
+      throw new Error(
+        `Dataview sorter direction '${String(sorter.direction ?? sorter.dir)}' is not supported.`,
+      );
     }
 
     return {
@@ -600,14 +602,7 @@ const applyTreeDataview = <T extends DataviewRow>(
 
   const flattenedWithMeta = visitOrder.map((index) => ({
     row: rows[index],
-    meta: metaByIndex.get(index) ?? {
-      depth: 0,
-      hasChildren: false,
-      isExpanded: false,
-      isMatch: matched[index] === 1,
-      isSelected: selectedIdSet?.has(idValues[index]) ?? false,
-      parentId: (parentValues[index] ?? null) as DataviewJsonValue | null,
-    },
+    meta: metaByIndex.get(index)!,
   }));
 
   return paginate(flattenedWithMeta, dataview);

@@ -23,6 +23,7 @@ Overview
 `defuss-dataview` provides a tiny procedural API to define and apply an ADSD (Abstract Data State Description) for filtering, sorting, paging, and UI state.
 
 - JSON-first descriptor (`filters`, `sorters`, `page`, `pageSize`, `meta`, optional `tree`)
+- Sorters accept `direction` and alias `dir`
 - Zero-based paging (`page: 0` is the first page)
 - Dot-path field access (for example `user.profile.city`)
 - Single apply contract: always returns `[{ row, meta }]`
@@ -91,6 +92,8 @@ UI Meta State Helpers
 
 Persist UI interactions (single/multi selection, locked columns, expand/collapse) in `view.meta`:
 
+These helpers work for both flat tables and tree views.
+
 ```ts
 import {
   createDataview,
@@ -106,24 +109,24 @@ view = toggleSelectedRow(view, 2);
 view = setLockedColumns(view, ["id", "name"]);
 ```
 
-Use `patchMeta` when you want to update **UI-only interaction state** without touching filters/sorters/paging:
+Use `updateMeta` when you want to update **UI-only interaction state** without touching filters/sorters/paging:
 
 ```ts
-import { patchMeta } from "defuss-dataview";
+import { updateMeta } from "defuss-dataview";
 
-view = patchMeta(view, {
+view = updateMeta(view, {
   selectedRowIds: [1, 2, 3],
   lockedColumns: ["id", "name"],
 });
 ```
 
-`patchMeta` is ideal for:
+`updateMeta` is ideal for:
 
 - row selection (`selectedRowIds`)
 - locked/frozen columns (`lockedColumns`)
 - combining multiple UI-meta updates in one state transition
 
-For query-state changes like filtering, sorting, or pagination, use `createDataview` (not `patchMeta`).
+For query-state changes like filtering, sorting, or pagination, use `createDataview` (not `updateMeta`).
 
 <h3 align="center">
 UI Integration Pattern
@@ -135,7 +138,7 @@ Treat `view` as a controlled UI state object and re-apply on every interaction.
 import {
   applyDataview,
   createDataview,
-  patchMeta,
+  updateMeta,
   toggleExpanded,
   toggleSelectedRow,
 } from "defuss-dataview";
@@ -143,7 +146,7 @@ import {
 let view = createDataview({
   page: 0,
   pageSize: 25,
-  sorters: [{ field: "id", direction: "asc" }],
+  sorters: [{ field: "id", dir: "asc" }],
   tree: {
     idField: "id",
     parentIdField: "parentId",
@@ -164,7 +167,7 @@ const onRowClick = (id: number) => updateView(toggleSelectedRow(view, id));
 const onSelectAllVisible = () => {
   const entries = applyDataview(rows, view);
   const ids = entries.map((entry) => entry.row.id as number);
-  updateView(patchMeta(view, { selectedRowIds: ids }));
+  updateView(updateMeta(view, { selectedRowIds: ids }));
 };
 
 // collapse/expand one node
@@ -204,8 +207,73 @@ const onPageChange = (page: number) =>
 
 Rule of thumb:
 
-- `patchMeta` / selection / expansion helpers: interactive UI state
+- `updateMeta` / selection / expansion helpers: interactive UI state
 - `createDataview`: structural query state (`filters`, `sorters`, `page`, `pageSize`, `tree`)
+
+<h3 align="center">
+Patching Data (Batch Update/Insert/Remove/Move)
+</h3>
+
+`defuss-dataview` now includes immutable data update helpers for UI-driven row changes:
+
+- `updateRows(rows, ids, updates, idField?)`
+- `addRows(rows, newRows, anchorId?, position?, idField?)`
+- `removeRows(rows, ids, idField?)`
+- `setParent(rows, nodeId, parentId, idField?, parentIdField?)`
+
+After patching data, call `applyDataview(data, view)` again to re-compute visible entries and row meta.
+
+```ts
+import {
+  applyDataview,
+  addRows,
+  setParent,
+  updateRows,
+  removeRows,
+} from "defuss-dataview";
+
+// table update (batch)
+data = updateRows(
+  data,
+  [1, 3],
+  [{ score: 99 }, { title: "Updated title" }],
+);
+
+// table insert: add row after id=3 (default position is "after")
+data = addRows(data, [{ id: 8, title: "Inserted" }], 3);
+
+// table remove
+data = removeRows(data, [5, 9]);
+
+// tree move: move node 8 under parent 2
+data = setParent(data, 8, 2);
+
+const entries = applyDataview(data, view);
+render(entries);
+```
+
+Tree example (remove one node and its known subtree ids):
+
+```ts
+import { applyDataview, removeRows } from "defuss-dataview";
+
+// remove node 7 and descendants 11 + 12
+data = removeRows(data, [7, 11, 12]);
+
+const entries = applyDataview(data, view);
+render(entries);
+```
+
+Tree example (update one node in place):
+
+```ts
+import { applyDataview, updateRows } from "defuss-dataview";
+
+data = updateRows(data, [7], [{ title: "Renamed node" }]);
+
+const entries = applyDataview(data, view);
+render(entries);
+```
 
 <h3 align="center">
 Tree API
@@ -246,14 +314,18 @@ API Reference
 ### Core
 - `createDataview(request)`
 - `applyDataview(data, view)`
+- `updateRows(rows, ids, updates, idField?)`
+- `addRows(rows, newRows, anchorId?, position?, idField?)`
+- `removeRows(rows, ids, idField?)`
+- `setParent(rows, nodeId, parentId, idField?, parentIdField?)`
 
-### Grid Meta Helpers
-- `patchMeta(view, patch)`
+### Grid & Tree Meta Helpers
+- `updateMeta(view, updates)`
 - `setSelectedRows(view, ids)`
 - `toggleSelectedRow(view, id)`
 - `setLockedColumns(view, columns)`
 
-### Tree Helpers
+### Tree-only Helpers
 - `setExpandedIds(view, ids)`
 - `toggleExpanded(view, id)`
 
@@ -261,7 +333,7 @@ API Reference
 Benchmark (non-gating)
 </h3>
 
-Run a lightweight benchmark for 10k/50k regression tracking:
+Run a lightweight benchmark for 10k / 50k / 1M rows and advanced usage patterns (interaction loops, data update/add/remove flows, and tree apply scenarios):
 
 ```bash
 pnpm --filter defuss-dataview benchmark

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyDataview, createDataview } from "./dataview.js";
 import {
-  patchMeta,
+  updateMeta,
   setExpandedIds,
   setLockedColumns,
   setSelectedRows,
@@ -24,7 +24,7 @@ describe("view meta helpers", () => {
     const withLockedColumns = setLockedColumns(toggledSelection, ["name", "id", "name"]);
     expect(withLockedColumns.meta.lockedColumns).toEqual(["name", "id"]);
 
-    const patched = patchMeta(withLockedColumns, { selectedRowIds: [99] });
+    const patched = updateMeta(withLockedColumns, { selectedRowIds: [99] });
     expect(patched.meta.selectedRowIds).toEqual([99]);
     expect(patched.meta.lockedColumns).toEqual(["name", "id"]);
   });
@@ -61,9 +61,41 @@ describe("view meta helpers", () => {
     visible = applyDataview(rows, view);
     expect(visible.find((entry) => entry.row.id === 4)?.meta.isSelected).toBe(false);
 
+    view = toggleExpanded(view, 2);
+    visible = applyDataview(rows, view);
+    expect(visible.map((entry) => entry.row.id)).toEqual([1, 2, 3]);
+
     view = setExpandedIds(view, [1]);
     visible = applyDataview(rows, view);
     expect(visible.map((entry) => entry.row.id)).toEqual([1, 2, 3]);
+  });
+
+  it("keeps tree configuration intact when updating meta helpers", () => {
+    const base = createDataview({
+      tree: {
+        idField: "id",
+        parentIdField: "parentId",
+        expandedIds: [1],
+      },
+      sorters: [{ field: "id", direction: "asc" }],
+    });
+
+    const withUpdatedMeta = updateMeta(base, { selectedRowIds: [2], lockedColumns: ["title"] });
+    expect(withUpdatedMeta.tree).toEqual(base.tree);
+    expect(withUpdatedMeta.meta.selectedRowIds).toEqual([2]);
+    expect(withUpdatedMeta.meta.lockedColumns).toEqual(["title"]);
+
+    const withSelectedRows = setSelectedRows(withUpdatedMeta, [1, 3]);
+    expect(withSelectedRows.tree).toEqual(base.tree);
+    expect(withSelectedRows.meta.selectedRowIds).toEqual([1, 3]);
+
+    const withToggledRow = toggleSelectedRow(withSelectedRows, 3);
+    expect(withToggledRow.tree).toEqual(base.tree);
+    expect(withToggledRow.meta.selectedRowIds).toEqual([1]);
+
+    const withLockedColumns = setLockedColumns(withToggledRow, ["id", "label"]);
+    expect(withLockedColumns.tree).toEqual(base.tree);
+    expect(withLockedColumns.meta.lockedColumns).toEqual(["id", "label"]);
   });
 
   it("treats expand helpers as no-op for flat dataviews", () => {

@@ -1,6 +1,7 @@
 import { applyDataview, createDataview } from "./dataview.js";
+import { addRows, removeRows, setParent, updateRows } from "./data-patch.js";
 import {
-  patchMeta,
+  updateMeta,
   setLockedColumns,
   setSelectedRows,
   setExpandedIds,
@@ -12,7 +13,11 @@ export * from "./types.js";
 export {
   applyDataview,
   createDataview,
-  patchMeta,
+  updateRows,
+  addRows,
+  removeRows,
+  setParent,
+  updateMeta,
   setLockedColumns,
   setSelectedRows,
   setExpandedIds,

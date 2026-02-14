@@ -10,7 +10,12 @@ export default defineConfig({
     globals: true,
     coverage: {
       provider: "v8",
-      include: ["src/**/*"]
+      include: ["src/**/*"],
+      exclude: [
+        "src/dataview.benchmark.ts",
+        "src/types.ts",
+        "src/index.ts",
+      ],
     },
   },
 });

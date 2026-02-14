@@ -19,15 +19,15 @@ const recreateDataview = <T extends DataviewState>(
   }) as T;
 };
 
-export const patchMeta = <T extends DataviewState>(
+export const updateMeta = <T extends DataviewState>(
   view: T,
-  patch: Partial<DataviewMeta>,
-): T => recreateDataview(view, { ...view.meta, ...patch });
+  updates: Partial<DataviewMeta>,
+): T => recreateDataview(view, { ...view.meta, ...updates });
 
 export const setSelectedRows = <T extends DataviewState>(
   view: T,
   selectedRowIds: DataviewJsonValue[],
-): T => patchMeta(view, { selectedRowIds });
+): T => updateMeta(view, { selectedRowIds });
 
 export const toggleSelectedRow = <T extends DataviewState>(
   view: T,
@@ -47,7 +47,7 @@ export const toggleSelectedRow = <T extends DataviewState>(
 export const setLockedColumns = <T extends DataviewState>(
   view: T,
   lockedColumns: string[],
-): T => patchMeta(view, { lockedColumns });
+): T => updateMeta(view, { lockedColumns });
 
 export const setExpandedIds = <T extends DataviewState>(
   view: T,
