@@ -119,6 +119,109 @@ export default defineConfig({
 
 ---
 
+## Building UIs with `defuss-shadcn`
+
+`defuss-shadcn` is the primary component library for `defuss` apps in this monorepo. It is built on Tailwind 4 + Basecoat UI conventions and exports composable UI primitives.
+
+### Install
+
+```bash
+pnpm add defuss-shadcn
+```
+
+### CSS Prerequisites
+
+Use Tailwind and Basecoat styles in your app stylesheet:
+
+```css
+@import "tailwindcss";
+@import "basecoat-css";
+```
+
+You can then layer project/theme overrides after those imports.
+
+### Basic Usage
+
+```tsx
+import { render, $ } from "defuss";
+import { Button, Card, CardHeader, CardTitle, CardContent } from "defuss-shadcn";
+
+const App = () => (
+  <Card className="max-w-md">
+    <CardHeader>
+      <CardTitle>Hello defuss-shadcn</CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-3">
+      <p className="text-muted-foreground">Composable UI with real DOM morphing.</p>
+      <Button>Continue</Button>
+    </CardContent>
+  </Card>
+);
+
+render(<App />, $("#app").current);
+```
+
+### Common Components
+
+`defuss-shadcn` exports many primitives, including:
+- Form/UI: `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`, `RadioGroup`, `Label`, `Form`
+- Layout/content: `Card`, `Table`, `Tabs`, `Accordion`, `Sidebar`, `Separator`
+- Feedback/overlays: `Alert`, `Dialog`, `Popover`, `Tooltip`, `Toast`, `DropdownMenu`, `Command`
+- Visual primitives: `Button`, `Badge`, `Avatar`, `Progress`, `Skeleton`, `Spinner`, `Kbd`
+
+### Authoring Guidelines for Agents
+
+- Prefer library components first; only fall back to raw HTML when no component exists.
+- Keep structure compatible with Basecoat semantics (e.g., dialog uses header/content/footer composition).
+- Use stable keys in mapped component lists (`key={item.id}`) to avoid morphing mismatches.
+- Use `class` or `className` consistently with local file style (both are accepted in this repo).
+- For label association, preserve accessibility links (`for`/`htmlFor`, `aria-*`, `id`, `aria-describedby`).
+- For interactive examples, use real component APIs instead of simulated static markup when possible.
+
+### Example: Form + Dialog Composition
+
+```tsx
+import {
+  Button,
+  Dialog,
+  DialogTrigger,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogContent,
+  DialogFooter,
+  DialogClose,
+  Input,
+  Label,
+} from "defuss-shadcn";
+
+const ProfileDialog = () => (
+  <>
+    <DialogTrigger dialogId="edit-profile" className="btn-outline">Edit profile</DialogTrigger>
+    <Dialog id="edit-profile" aria-labelledby="edit-profile-title" aria-describedby="edit-profile-description">
+      <DialogHeader>
+        <DialogTitle id="edit-profile-title">Edit profile</DialogTitle>
+        <DialogDescription id="edit-profile-description">Make changes and save when done.</DialogDescription>
+      </DialogHeader>
+      <DialogContent>
+        <form className="form grid gap-3">
+          <div className="grid gap-2">
+            <Label for="name">Name</Label>
+            <Input id="name" value="Aron Homberg" />
+          </div>
+        </form>
+      </DialogContent>
+      <DialogFooter>
+        <DialogClose className="btn-outline">Cancel</DialogClose>
+        <Button>Save changes</Button>
+      </DialogFooter>
+    </Dialog>
+  </>
+);
+```
+
+---
+
 ## JSX Rendering
 
 ### Basic Render (React-compatible)

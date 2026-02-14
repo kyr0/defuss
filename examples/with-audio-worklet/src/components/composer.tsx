@@ -97,18 +97,18 @@ const ALL_KEYS: MusicalKeyName[] = [
 ];
 
 export function DashboardScreen() {
-  const logRef = createRef<null, HTMLPreElement>();
-  const micSelRef = createRef<null, HTMLSelectElement>();
-  const midiSelRef = createRef<null, HTMLSelectElement>();
-  const keySelRef = createRef<null, HTMLSelectElement>();
-  const smoothSelRef = createRef<null, HTMLSelectElement>();
-  const ruleSelRef = createRef<null, HTMLSelectElement>();
-  const bpmRef = createRef<null, HTMLInputElement>();
-  const bpmValRef = createRef<null, HTMLSpanElement>();
-  const tsNumRef = createRef<null, HTMLSelectElement>();
-  const tsDenRef = createRef<null, HTMLSelectElement>();
-  const noteLenRef = createRef<null, HTMLSelectElement>();
-  const metroRef = createRef<null, HTMLInputElement>();
+  const logRef = createRef<HTMLPreElement>();
+  const micSelRef = createRef<HTMLSelectElement>();
+  const midiSelRef = createRef<HTMLSelectElement>();
+  const keySelRef = createRef<HTMLSelectElement>();
+  const smoothSelRef = createRef<HTMLSelectElement>();
+  const ruleSelRef = createRef<HTMLSelectElement>();
+  const bpmRef = createRef<HTMLInputElement>();
+  const bpmValRef = createRef<HTMLSpanElement>();
+  const tsNumRef = createRef<HTMLSelectElement>();
+  const tsDenRef = createRef<HTMLSelectElement>();
+  const noteLenRef = createRef<HTMLSelectElement>();
+  const metroRef = createRef<HTMLInputElement>();
 
   const updatePre = () => {
     if (!logRef.current) return;

@@ -78,16 +78,19 @@ const COMPONENT_SCREENS: Record<string, FC> = {
 
 /**
  * ComponentDemo - renders when /components/:name is matched.
- * Uses async pattern to wait for Router.ready() before accessing params.
  */
 export const ComponentDemo: AsyncFC = async () => {
+    // wait for Router to be ready before accessing params
     await Router.ready();
 
     const req = Router.getRequest();
     const name = req.match && req.params.name ? req.params.name : "unknown";
+
+    // functional compomnents are Function references, so we can directly check if we have a matching screen for the given name
     const Screen = COMPONENT_SCREENS[name];
 
     if (Screen) {
+        // early return if we have a matching screen to avoid rendering the fallback UI
         return <Screen />;
     }
 
@@ -98,6 +101,7 @@ export const ComponentDemo: AsyncFC = async () => {
             .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
             .join(" ");
 
+    // rendering the fallback UI for unknown components or if no name param is provided
     return (
         <div class="space-y-6">
             <h1 class="text-3xl font-bold tracking-tight">{title}</h1>

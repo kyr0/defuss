@@ -186,9 +186,9 @@ importers:
       defuss-astro:
         specifier: workspace:*
         version: link:../../packages/astro
-      defuss-ui:
+      defuss-shadcn:
         specifier: workspace:*
-        version: link:../../packages/ui
+        version: link:../../packages/shadcn
       franken-ui:
         specifier: ^2.1.1
         version: 2.1.2(lodash@4.17.23)(postcss-combine-duplicated-selectors@10.0.3(postcss@8.5.6))(postcss-js@4.1.0(postcss@8.5.6))(postcss-sort-media-queries@5.2.0(postcss@8.5.6))(postcss@8.5.6)(tailwindcss@4.1.18)
@@ -1145,34 +1145,6 @@ importers:
       vitest:
         specifier: ^4.0.17
         version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.4)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
-
-  packages/ui:
-    dependencies:
-      '@types/uikit':
-        specifier: ^3.23.0
-        version: 3.23.0
-      defuss:
-        specifier: workspace:*
-        version: link:../defuss
-      uikit:
-        specifier: ^3.23.13
-        version: 3.25.5
-    devDependencies:
-      '@types/node':
-        specifier: ^25.0.9
-        version: 25.0.9
-      pkgroll:
-        specifier: ^2.21.5
-        version: 2.21.5(typescript@5.9.3)
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(@vitest/browser-playwright@4.0.17)(happy-dom@20.5.0)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/vite:
     dependencies:
@@ -9704,7 +9676,7 @@ snapshots:
       obug: 2.1.1
       std-env: 3.10.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/browser-playwright@4.0.17)(happy-dom@20.3.4)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
+      vitest: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/browser-playwright@4.0.17)(happy-dom@20.5.0)(jiti@2.6.1)(jsdom@24.1.3)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
     optionalDependencies:
       '@vitest/browser': 4.0.17(vite@7.3.1(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.17)
 

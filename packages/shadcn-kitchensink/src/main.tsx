@@ -31,16 +31,7 @@ export function RouterOutlet() {
                 <KitchenSink />
             </Route>
 
-            {/* Specific component routes */}
-            <Route path="/components/button">
-                <ButtonScreen />
-            </Route>
-
-            <Route path="/components/badge">
-                <BadgeScreen />
-            </Route>
-
-            {/* Fallback for other components - wrapped in Async since ComponentDemo awaits Router.ready() */}
+            {/* Dynamic async since ComponentDemo awaits Router.ready() */}
             <Route path="/components/:name">
                 <ComponentDemo />
             </Route>

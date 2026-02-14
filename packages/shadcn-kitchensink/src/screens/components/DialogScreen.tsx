@@ -27,11 +27,11 @@ export const DialogScreen: FC = () => {
         <form className="form grid gap-4">
             <div className="grid gap-3">
                 <label htmlFor="demo-dialog-edit-profile-name">Name</label>
-                <input type="text" value="Pedro Duarte" id="demo-dialog-edit-profile-name" />
+                <input type="text" value="Aron Homberg" id="demo-dialog-edit-profile-name" />
             </div>
             <div className="grid gap-3">
                 <label htmlFor="demo-dialog-edit-profile-username">Username</label>
-                <input type="text" value="@peduarte" id="demo-dialog-edit-profile-username" />
+                <input type="text" value="@kyr0" id="demo-dialog-edit-profile-username" />
             </div>
         </form>
     </DialogContent>
@@ -57,11 +57,11 @@ export const DialogScreen: FC = () => {
                                                         <form class="form grid gap-4">
                                                                 <div class="grid gap-3">
                                                                         <label for="demo-dialog-edit-profile-name">Name</label>
-                                                                        <input type="text" value="Pedro Duarte" id="demo-dialog-edit-profile-name" />
+                                                                        <input type="text" value="Aron Homberg" id="demo-dialog-edit-profile-name" />
                                                                 </div>
                                                                 <div class="grid gap-3">
                                                                         <label for="demo-dialog-edit-profile-username">Username</label>
-                                                                        <input type="text" value="@peduarte" id="demo-dialog-edit-profile-username" />
+                                                                        <input type="text" value="@kyr0" id="demo-dialog-edit-profile-username" />
                                                                 </div>
                                                         </form>
                                                 </DialogContent>
