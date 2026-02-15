@@ -12,7 +12,7 @@
   "dependencies": {
     "@monaco-editor/loader": "^1.7.0",
     "browserslist": "^4.28.1",
-    "defuss": "^3.1.0",
+    "defuss": "^3.2.0",
     "defuss-dson": "^1.1.1",
     "defuss-vite": "^1.1.3",
     "lightningcss": "^1.30.2",

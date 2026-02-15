@@ -13,7 +13,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "basecoat-css": "^0.3.10",
     "browserslist": "^4.28.1",
-    "defuss": "^3.1.0",
+    "defuss": "^3.2.0",
     "defuss-shadcn": "^0.3.0",
     "defuss-vite": "^1.1.3",
     "lightningcss": "^1.30.2",
