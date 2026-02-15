@@ -9,8 +9,6 @@ import { Introduction } from "./screens/Introduction.js";
 import { Installation } from "./screens/Installation.js";
 import { KitchenSink } from "./screens/KitchenSink.js";
 import { ComponentDemo } from "./screens/ComponentDemo.js";
-import { ButtonScreen } from "./screens/buttons/ButtonScreen.js";
-import { BadgeScreen } from "./screens/badge/BadgeScreen.js";
 
 export function RouterOutlet() {
     return (

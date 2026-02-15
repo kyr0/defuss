@@ -32,4 +32,4 @@ jobs:
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
       - run: pnpm install --no-frozen-lockfile
-      - run: pnpm test:core
+      - run: pnpm run test:core

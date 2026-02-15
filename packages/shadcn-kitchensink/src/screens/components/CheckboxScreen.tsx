@@ -7,16 +7,7 @@ export const CheckboxScreen: FC = () => {
             <h1 class="text-3xl font-bold tracking-tight">Checkbox</h1>
             <p class="text-lg text-muted-foreground">A control that allows selecting multiple options.</p>
 
-            <CodePreview code={`<label className="label gap-3">
-  <input type="checkbox" className="input" disabled />
-  Accept terms and conditions
-</label>`} language="tsx">
-                <label class="label gap-3">
-                    <input type="checkbox" class="input" disabled />
-                    Accept terms and conditions
-                </label>
-            </CodePreview>
-
+            <h2 class="text-2xl font-semibold tracking-tight scroll-m-20 pb-2 mt-8">Standard Checkbox</h2>
             <CodePreview code={`<div className="flex items-start gap-3">
   <input type="checkbox" id="checkbox-with-text" className="input" />
   <div className="grid gap-2">
@@ -31,6 +22,17 @@ export const CheckboxScreen: FC = () => {
                         <p class="text-muted-foreground text-sm">By clicking this checkbox, you agree to the terms and conditions.</p>
                     </div>
                 </div>
+            </CodePreview>
+
+            <h2 class="text-2xl font-semibold tracking-tight scroll-m-20 pb-2 mt-8">Disabled Checkbox</h2>
+            <CodePreview code={`<label className="label gap-3">
+  <input type="checkbox" className="input" disabled />
+  Accept terms and conditions
+</label>`} language="tsx">
+                <label class="label gap-3">
+                    <input type="checkbox" class="input" disabled />
+                    Accept terms and conditions
+                </label>
             </CodePreview>
 
             <CodePreview code={`<form className="form flex flex-row items-start gap-3 rounded-md border p-4 shadow-xs">

@@ -1,8 +1,33 @@
 import type { FC } from "defuss";
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "defuss-shadcn";
+import {
+    Button,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+    ToggleButton,
+} from "defuss-shadcn";
 import { CodePreview } from "../../components/CodePreview.js";
 
 export const ButtonGroupScreen: FC = () => {
+    const setActiveToggle = (event: Event) => {
+
+        console.log("Clicked toggle button:", event.currentTarget);
+        const clicked = event.currentTarget as HTMLButtonElement;
+        const group = clicked.parentElement;
+        if (!group) return;
+
+        const buttons = group.querySelectorAll("button");
+        buttons.forEach((button) => {
+            button.classList.remove("btn-primary");
+            button.classList.add("btn-outline");
+        });
+
+        clicked.classList.remove("btn-outline");
+        clicked.classList.add("btn-primary");
+    };
+
     return (
         <div class="space-y-6">
             <h1 class="text-3xl font-bold tracking-tight">Button Group</h1>
@@ -67,6 +92,26 @@ export const ButtonGroupScreen: FC = () => {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
+                </div>
+            </CodePreview>
+
+            <h2 class="text-2xl font-semibold tracking-tight scroll-m-20 border-b pb-2 mt-8">Toggle Button Group</h2>
+            <p class="text-sm text-muted-foreground">Use clear active/inactive styles and spacing so selected state is easy to scan.</p>
+
+            <CodePreview
+                previewClassName="items-start justify-start"
+                className="w-full"
+                code={`<div className="inline-flex gap-2">
+  <ToggleButton className="btn-primary" onClick={setActiveToggle}>Filter 1</ToggleButton>
+  <ToggleButton className="btn-outline" onClick={setActiveToggle}>Filter 2</ToggleButton>
+  <ToggleButton className="btn-outline" onClick={setActiveToggle}>Filter 3</ToggleButton>
+</div>`}
+                language="tsx"
+            >
+                <div class="inline-flex gap-2">
+                    <ToggleButton class="btn-primary" onClick={setActiveToggle}>Filter 1</ToggleButton>
+                    <ToggleButton class="btn-outline" onClick={setActiveToggle}>Filter 2</ToggleButton>
+                    <ToggleButton class="btn-outline" onClick={setActiveToggle}>Filter 3</ToggleButton>
                 </div>
             </CodePreview>
         </div>

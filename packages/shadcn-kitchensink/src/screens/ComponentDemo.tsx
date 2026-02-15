@@ -36,6 +36,10 @@ import { TabsScreen } from "./components/TabsScreen.js";
 import { TextareaScreen } from "./components/TextareaScreen.js";
 import { ToastScreen } from "./components/ToastScreen.js";
 import { TooltipScreen } from "./components/TooltipScreen.js";
+import { ThemeSwitcherScreen } from "./components/ThemeSwitcherScreen.js";
+import { SeparatorScreen } from "./components/SeparatorScreen.js";
+import { FieldScreen } from "./components/FieldScreen.js";
+import { ScrollableScreen } from "./components/ScrollableScreen.js";
 
 const COMPONENT_SCREENS: Record<string, FC> = {
     button: ButtonScreen,
@@ -56,6 +60,7 @@ const COMPONENT_SCREENS: Record<string, FC> = {
     input: InputScreen,
     "input-group": InputGroupScreen,
     item: ItemScreen,
+    field: FieldScreen,
     "button-group": ButtonGroupScreen,
     kbd: KbdScreen,
     label: LabelScreen,
@@ -74,6 +79,9 @@ const COMPONENT_SCREENS: Record<string, FC> = {
     textarea: TextareaScreen,
     toast: ToastScreen,
     tooltip: TooltipScreen,
+    "theme-switcher": ThemeSwitcherScreen,
+    separator: SeparatorScreen,
+    "scrollable": ScrollableScreen,
 };
 
 /**

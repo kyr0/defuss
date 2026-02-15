@@ -54,6 +54,7 @@ const MenuGroups: Array<{ type: string; label: string; items: MenuItem[] }> = [
             { label: "Dialog", url: "/components/dialog" },
             { label: "Dropdown Menu", url: "/components/dropdown-menu" },
             { label: "Empty", url: "/components/empty", isNew: true },
+            { label: "Field", url: "/components/field", isNew: true },
             { label: "Form", url: "/components/form" },
             { label: "Input", url: "/components/input" },
             { label: "Input Group", url: "/components/input-group", isNew: true },
@@ -65,6 +66,8 @@ const MenuGroups: Array<{ type: string; label: string; items: MenuItem[] }> = [
             { label: "Progress", url: "/components/progress", isNew: true },
             { label: "Radio Group", url: "/components/radio-group" },
             { label: "Select", url: "/components/select" },
+            { label: "Separator", url: "/components/separator" },
+            { label: "Scrollable", url: "/components/scrollable", isNew: true },
             { label: "Sidebar", url: "/components/sidebar" },
             { label: "Skeleton", url: "/components/skeleton" },
             { label: "Slider", url: "/components/slider" },
@@ -74,7 +77,8 @@ const MenuGroups: Array<{ type: string; label: string; items: MenuItem[] }> = [
             { label: "Tabs", url: "/components/tabs" },
             { label: "Textarea", url: "/components/textarea" },
             { label: "Toast", url: "/components/toast" },
-            { label: "Tooltip", url: "/components/tooltip" }
+            { label: "Tooltip", url: "/components/tooltip" },
+            { label: "Theme Switcher", url: "/components/theme-switcher", isNew: true },
         ]
     }
 ];

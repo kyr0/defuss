@@ -1008,8 +1008,8 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0
       defuss-shadcn:
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.3.0
+        version: 0.3.0
       defuss-vite:
         specifier: ^1.1.3
         version: 1.1.3(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.31.0)(sass-embedded@1.97.2)(sass@1.97.2)(tsx@4.21.0)(yaml@2.8.2)
@@ -4129,6 +4129,10 @@ packages:
 
   defuss-shadcn@0.2.0:
     resolution: {integrity: sha512-3se3vAzs3ETa4LBBlAJCdEO/sQgDlgTS3lAmXRnQC1+rHC2eFMxuwTrly/M7w5oZhxtRrEics7yuwRUP8dCHmA==}
+    engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
+
+  defuss-shadcn@0.3.0:
+    resolution: {integrity: sha512-6kULJOicZt3v0MD6dN44x1X5JYNgFuNp/zQd+A4oXvag6xa6JmYU6Eu5G1gkb9rmIhmXsK4zrATDxxjW6sUjng==}
     engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
 
   defuss-transval@1.3.0:
@@ -10659,6 +10663,13 @@ snapshots:
   defuss-shadcn@0.2.0:
     dependencies:
       defuss: link:packages/defuss
+
+  defuss-shadcn@0.3.0:
+    dependencies:
+      defuss: 3.1.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   defuss-transval@1.3.0:
     dependencies:
