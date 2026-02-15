@@ -19,9 +19,9 @@
     "type": "git"
   },
   "scripts": {
-    "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
-    "pretest": "pnpm run build",
-    "prebuild": "pnpm run clean",
+    "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun",
+    "pretest": "bun run build",
+    "prebuild": "bun run clean",
     "build": "pkgroll",
     "postbuild": "npm run copy-scss",
     "copy-scss": "mkdir -p dist/scss dist/themes && cp index.scss dist/ && cp xp.scss dist/ && cp -r scss/* dist/scss/ && cp -r themes/* dist/themes/",

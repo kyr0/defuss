@@ -15,9 +15,11 @@ export const someData = await import('../data.json');
 
 <Header active={"tos"} />
 
-# { meta.title } 1
+# { meta.title } 2
 
-The terms of service are cool! { someData.firstName } { someData.lastName }
+The terms of service are cool!
+
+Welcome, <b>{ someData.firstName } { someData.lastName }</b>!
 
 <Footer year={year} />
 

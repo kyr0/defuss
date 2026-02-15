@@ -1,6 +1,6 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { execSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import type { Status } from "./types.js";
 import { validateProjectDir } from "./validation.js";
 
@@ -47,7 +47,62 @@ export const setup = async (projectDir: string): Promise<Status> => {
   console.log(`Setting up project in ${projectDir} using ${pm}...`);
 
   try {
-    execSync(`${pm} install`, { cwd: projectDir, stdio: "inherit" });
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn(pm, ["install"], {
+        cwd: projectDir,
+        shell: true,
+        stdio: ["inherit", "pipe", "pipe"],
+      });
+
+      // rolling window of the last 3 output lines
+      const lastLines: string[] = [];
+      let printedLines = 0;
+
+      const pushLine = (line: string) => {
+        lastLines.push(line);
+        if (lastLines.length > 3) lastLines.shift();
+
+        if (process.stdout.isTTY) {
+          // erase previously printed rolling lines, then re-print
+          for (let i = 0; i < printedLines; i++) {
+            process.stdout.write("\x1b[1A\x1b[2K"); // cursor up + clear line
+          }
+          for (const l of lastLines) {
+            process.stdout.write(`${l}\n`);
+          }
+          printedLines = lastLines.length;
+        } else {
+          // non-TTY: just stream normally
+          process.stdout.write(`${line}\n`);
+        }
+      };
+
+      const handleData = (chunk: Buffer) => {
+        const lines = chunk
+          .toString()
+          .split(/\r\n|\n|\r/)
+          .filter((l) => l.trim().length > 0);
+        for (const line of lines) {
+          pushLine(line);
+        }
+      };
+
+      child.stdout?.on("data", handleData);
+      child.stderr?.on("data", handleData);
+
+      child.on("error", reject);
+      child.on("close", (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(
+            new Error(
+              `${pm} install exited with code ${code ?? "unknown"}`,
+            ),
+          );
+        }
+      });
+    });
     console.log("Dependencies installed successfully.");
   } catch (error) {
     return {

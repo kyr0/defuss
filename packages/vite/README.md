@@ -35,7 +35,7 @@ You're just two steps away from success:
 
 ```bash
 # install a decent package manager
-npm i -g pnpm@^9.13.2
+npm i -g bun@^1.3.9
 
 # from your project root folder, add defuss-vite to the devDependencies
 npm install --save-dev defuss-vite

@@ -65,13 +65,13 @@ git clone
 
 cd defuss/packages/ssg
 
-pnpm i && pnpm build
+bun i && bun build
 
 # for building and serving the example site with auto-rebuild:
-pnpm run cli-serve ./example
+bun run cli-serve ./example
 
 # for one-time build of the example site:
-pnpm run cli-build ./example
+bun run cli-build ./example
 ```
 
 Please create a PR or issue if you find any bugs or have feature requests.

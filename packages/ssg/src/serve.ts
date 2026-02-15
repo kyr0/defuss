@@ -1,13 +1,15 @@
 import type { BuildOptions, SsgConfig, Status } from "./types.js";
 
 import chokidar from "chokidar";
-import express from "express";
-import serveStatic from "serve-static";
+import express from "ultimate-express";
 import { readConfig } from "./config.js";
 import { build } from "./build.js";
 import { join } from "node:path";
-import * as WebSocket from "ws";
+import { createRequire } from "node:module";
 import { filePathToRoute } from "./path.js";
+
+const require = createRequire(import.meta.url);
+const { WebSocketServer } = require("ultimate-ws");
 
 /**
  * Check if a port is available for use by attempting to connect to it
@@ -52,7 +54,7 @@ export const serve = async ({
   await build({ projectDir, debug, mode: "serve" });
 
   // Set up Express server
-  const app = express();
+  const app = express({ threads: 0 });
   const port = 3000;
 
   // Check if port is available
@@ -65,20 +67,16 @@ export const serve = async ({
     };
   }
 
-  app.use(serveStatic(outputDir));
+  app.use(express.static(outputDir));
 
-  const server = app.listen(port, (error) => {
-    if (error) {
-      console.error(`Error starting server: ${error.message}`);
-      return;
-    }
+  const server = app.listen(port, (listenedPort: number) => {
     console.log(
-      `Server running at http://localhost:${port} for directory: ${outputDir}`,
+      `Server running at http://localhost:${listenedPort} for directory: ${outputDir}`,
     );
   });
 
   // create the /livereload endpoint via ws://
-  const liveReloadServer = new WebSocket.WebSocketServer({
+  const liveReloadServer = new WebSocketServer({
     server,
     path: "/livereload",
   });
@@ -101,7 +99,7 @@ export const serve = async ({
 
       // Notify all connected clients to reload
       liveReloadServer.clients.forEach((client) => {
-        if (client.readyState === WebSocket.WebSocket.OPEN) {
+        if (client.readyState === 1 /* OPEN */) {
           client.send(
             JSON.stringify({
               command: "reload",

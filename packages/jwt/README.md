@@ -69,7 +69,7 @@ Install the package (Node.js 18+):
 ```bash
 npm install defuss-jwt
 # or
-pnpm add defuss-jwt
+bun add defuss-jwt
 # or
 yarn add defuss-jwt
 ```

@@ -50,10 +50,10 @@ SOFTWARE.
   },
   "scripts": {
     "clean": "rm -rf ./dist",
-    "pretest": "pnpm run build",
-    "prebuild": "pnpm run clean",
+    "pretest": "bun run build",
+    "prebuild": "bun run clean",
     "build": "pkgroll --minify --sourcemap",
-    "e2e": "pnpm run build && node ./dist/e2e.mjs"
+    "e2e": "bun run build && node ./dist/e2e.mjs"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "exports": {

@@ -32,12 +32,12 @@ Built with **Astro** for the static shell and **[defuss](https://github.com/kyr0
 ## 🛠️ Setup
 
 ### 1. Prerequisites
-*   Node.js & `pnpm`
+*   Node.js & `bun`
 *   A Google Firebase account
 
 ### 2. Installation
 ```bash
-pnpm install
+bun install
 ```
 
 ### 3. Firebase Configuration
@@ -56,7 +56,7 @@ firebase deploy --only database
 
 ### 5. Run Locally
 ```bash
-pnpm dev
+bun dev
 # Open http://localhost:4321/?room=test in two different tabs/browsers
 ```
 

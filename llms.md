@@ -18,7 +18,10 @@ import { $, createRef, createStore, render } from "defuss";
 
 ## Build Tool Integration
 
+All `defuss` projects should use `bun` package manager.
+
 ### Vite
+
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
@@ -126,7 +129,7 @@ export default defineConfig({
 ### Install
 
 ```bash
-pnpm add defuss-shadcn
+bun add defuss-shadcn
 ```
 
 ### CSS Prerequisites

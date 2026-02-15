@@ -336,7 +336,7 @@ Benchmark (non-gating)
 Run a lightweight benchmark for 10k / 50k / 1M rows and advanced usage patterns (interaction loops, data update/add/remove flows, and tree apply scenarios):
 
 ```bash
-pnpm --filter defuss-dataview benchmark
+bun --filter defuss-dataview benchmark
 ```
 
 <p align="center">

@@ -92,10 +92,10 @@ Integrating `defuss-wm` in your project
 
 ```bash
 # install a decent package manager
-npm i -g pnpm@^9.13.2
+npm i -g bun@^1.3.9
 
 # from your project root folder, add defuss-wm to your dependencies
-pnpm install defuss-wm
+bun install defuss-wm
 ```
 
 #### 2. Set up your desktop environment:
@@ -198,8 +198,8 @@ All commands are run from the root of the project, from a terminal:
 
 | Command       | Action                                                                                                                                                                                                                           |
 | :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm build`    | Build a new version of the window manager. |
-| `pnpm test`    | Run the test suite for `defuss-wm`. |
+| `bun build`    | Build a new version of the window manager. |
+| `bun test`    | Run the test suite for `defuss-wm`. |
 
 ---
 

@@ -103,7 +103,7 @@ const getEventPath = (event: Event): Array<EventTarget> => {
 const createPhaseHandler = (eventType: string, phase: DelegatedPhase): EventListener => {
     return (event: Event) => {
         const path = getEventPath(event).filter(
-            (t): t is HTMLElement => typeof t === "object" && t !== null && (t as HTMLElement).nodeType === Node.ELEMENT_NODE,
+            (t): t is HTMLElement => typeof t === "object" && t !== null && (t as HTMLElement).nodeType === 1 /* Node.ELEMENT_NODE */,
         );
 
         // Capture phase: root -> target (reversed path)
@@ -181,13 +181,18 @@ const ensureRootListener = (root: EventRoot, eventType: string) => {
 /**
  * Get the root node where delegation listeners should be installed.
  * Handles Document, ShadowRoot, and detached elements.
+ * Uses nodeType checks instead of instanceof to work in SSR environments
+ * (e.g. HappyDOM in Node.js) where global Document/ShadowRoot may not exist.
  */
 const getEventRoot = (element: HTMLElement): EventRoot | null => {
     const root = element.getRootNode();
 
-    // Document or ShadowRoot - use as delegation target
-    if (root instanceof Document || root instanceof ShadowRoot) {
-        return root;
+    // nodeType 9 = Document, nodeType 11 = DocumentFragment (ShadowRoot)
+    if (root && (root as Node).nodeType === 9) {
+        return root as Document;
+    }
+    if (root && (root as Node).nodeType === 11 && "host" in (root as ShadowRoot)) {
+        return root as ShadowRoot;
     }
 
     // Detached element - root is the element itself, no delegation possible
@@ -310,8 +315,9 @@ export const clearDelegatedEventsDeep = (root: HTMLElement): void => {
 
     // Walk all descendant elements and clear their handlers
     // Use ownerDocument for SSR/multi-doc compatibility
-    const doc = root.ownerDocument ?? document;
-    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+    const doc = root.ownerDocument;
+    if (!doc) return;
+    const walker = doc.createTreeWalker(root, 1 /* NodeFilter.SHOW_ELEMENT */);
     let node = walker.nextNode();
     while (node) {
         clearDelegatedEvents(node as HTMLElement);

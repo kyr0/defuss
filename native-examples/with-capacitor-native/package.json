@@ -18,7 +18,7 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "vite build",
-    "build": "pnpm exec cap sync",
+    "build": "bun exec cap sync",
     "postbuild": "node ./scripts/runner_env_replace.mjs",
     "preview": "vite preview"
   },

@@ -39,15 +39,15 @@
     "type": "git"
   },
   "scripts": {
-    "clean": "rm -rf ./coverage && rm -rf ./node_modules/.pnpm && rm -rf ./node_modules/.vite",
-    "pretest": "pnpm run build",
+    "clean": "rm -rf ./coverage && rm -rf ./node_modules/.bun && rm -rf ./node_modules/.vite",
+    "pretest": "bun run build",
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "kitchensink": "vitest run --config kitchensink/vitest.config.ts",
     "bench": "vitest bench --config vitest.bench.config.ts",
     "bench:browser": "vitest run --config vitest.browser.config.ts src/__benchmarks__/dom-benchmark.browser.test.tsx",
-    "prebuild": "pnpm run clean",
+    "prebuild": "bun run clean",
     "build": "node scripts/build.mjs"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",

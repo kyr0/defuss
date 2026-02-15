@@ -20,8 +20,8 @@
   },
   "scripts": {
     "clean": "rm -rf ./dist",
-    "pretest": "pnpm run build",
-    "prebuild": "pnpm run clean",
+    "pretest": "bun run build",
+    "prebuild": "bun run clean",
     "build": "pkgroll --minify --sourcemap"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",

@@ -13,23 +13,26 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node-version: [22.16.0]
+        node-version: [24.13.1]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
       - uses: actions/checkout@v4
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: volta-cli/action@v4
+        with:
+          node-version: 24
+      - name: Setup Bun
+        uses: oven-sh/bun-action@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          cache: 'bun'
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
-      - run: pnpm install --no-frozen-lockfile
-      - run: pnpm run test:core
+      - run: bun install --no-frozen-lockfile
+      - run: bun run test:core

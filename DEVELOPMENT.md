@@ -3,14 +3,14 @@
 In case you'd like to contribute to defuss, you should know about the following:
 
 - You should be familiar with TypeScript
-- You should be familiar with pnpm
+- You should be familiar with bun
 
 Please install the following tools:
 
 - Node.js (LTS)
-- pnpm
+- bun
 
-It's important to `build` the project before running any tests or examples. You can do this by running `pnpm build` in the root directory.
+It's important to `build` the project before running any tests or examples. You can do this by running `bun build` in the root directory.
 
 ## Building the core libary
 
@@ -31,7 +31,7 @@ packages/
 By building the core, all of the examples in `./examples` should work.
 
 ```bash
-pnpm build:core
+bun build:core
 ```
 
 ## Building everything

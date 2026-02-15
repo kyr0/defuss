@@ -22,12 +22,12 @@
     "type": "git"
   },
   "scripts": {
-    "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
-    "pretest": "pnpm run build",
-    "prebuild": "pnpm run clean",
+    "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun",
+    "pretest": "bun run build",
+    "prebuild": "bun run clean",
     "build": "pkgroll",
-    "cli-build": "node ./dist/cli.mjs build",
-    "cli-serve": "node ./dist/cli.mjs serve",
+    "cli-build": "node ./dist/cli.mjs build ./example",
+    "cli-serve": "node ./dist/cli.mjs serve ./example",
     "test": "echo 'No tests available'",
     "bench": "npx autocannon -p 32 -w 8 -c 200 -d 20 -m POST -H \"content-type: application/json\" -b '{\"hello\":\"world\"}' http://127.0.0.1:3000/body",
     "start": "tsx src/dynamic.ts",
@@ -88,13 +88,12 @@
   },
   "dependencies": {
     "@mdx-js/esbuild": "^3.1.1",
-    "@types/express": "^5.0.3",
-    "@types/serve-static": "^1.15.8",
     "@types/ws": "^8.18.1",
-    "chokidar": "^4.0.3",
+    "chokidar": "^5.0.0",
     "defuss": "^3.1.0",
-    "esbuild": "^0.25.9",
-    "express": "^5.1.0",
+    "esbuild": "^0.27.3",
+    "ultimate-express": "^2.0.17",
+    "ultimate-ws": "^2.0.7",
     "fast-glob": "^3.3.3",
     "rehype-katex": "^7.0.1",
     "rehype-mdx-title": "^3.2.0",
@@ -105,17 +104,14 @@
     "remark-mdx-frontmatter": "^5.2.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "serve-static": "^2.2.0",
-    "ultimate-express": "^2.0.15",
-    "unist-util-visit": "^5.0.0",
-    "ws": "^8.18.3"
+    "unist-util-visit": "^5.1.0"
   },
   "devDependencies": {
     "@types/autocannon": "^7.12.7",
     "autocannon": "^8.0.0",
-    "happy-dom": "^15.11.7",
-    "pkgroll": "^2.5.1",
+    "happy-dom": "^20.6.1",
+    "pkgroll": "^2.25.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.9.3"
   }
 }

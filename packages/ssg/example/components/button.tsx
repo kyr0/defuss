@@ -1,11 +1,11 @@
-import type { Props } from "defuss";
+import type { Props, FC } from "defuss";
 import { $, createRef } from "defuss";
 
-interface ButtonProps extends Props {
+export interface ButtonProps extends Props {
   className?: string;
 }
 
-export default function ClickButton({ className }: ButtonProps) {
+const ClickButton: FC<ButtonProps> = ({ className }) => {
   const ref = createRef<HTMLButtonElement>();
   const onClick = () => {
     console.log("Button clicked!");
@@ -24,3 +24,5 @@ export default function ClickButton({ className }: ButtonProps) {
     </button>
   );
 }
+
+export default ClickButton;

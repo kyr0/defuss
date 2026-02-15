@@ -218,6 +218,11 @@ export const observeUnmount = (domNode: Node, onUnmount: () => void): void => {
     );
   }
 
+  // Skip MutationObserver in SSR environments where it doesn't exist
+  if (typeof MutationObserver === "undefined") {
+    return;
+  }
+
   let parentNode: Node | null = domNode.parentNode;
   if (!parentNode) {
     throw new Error("The provided domNode does not have a parentNode.");
@@ -529,9 +534,9 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         // Controlled input props: use property assignment, not setAttribute
         // setAttribute updates the default value, property updates the live value
         (name === "value" || name === "checked" || name === "selectedIndex") &&
-        (domElement instanceof HTMLInputElement ||
-          domElement instanceof HTMLTextAreaElement ||
-          domElement instanceof HTMLSelectElement)
+        (domElement.nodeName === "INPUT" ||
+          domElement.nodeName === "TEXTAREA" ||
+          domElement.nodeName === "SELECT")
       ) {
         (domElement as any)[name] = value;
       } else {
@@ -745,7 +750,7 @@ async function performCoreDomUpdate<NT>(
     return (win as unknown as Globals) ?? (globalThis as unknown as Globals);
   };
 
-  if (processedInput instanceof Node) {
+  if (typeof processedInput === "object" && processedInput !== null && "nodeType" in processedInput && typeof (processedInput as any).nodeType === "number") {
     // Convert DOM node to VNode and use the intelligent updateDomWithVdom
     // This preserves existing DOM structure and event listeners
     const vnode = domNodeToVNode(processedInput);

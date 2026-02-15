@@ -13,10 +13,10 @@ Or, in case you are a developer of `defuss-ssg`, clone the whole repo, install d
 
 git clone
 cd defuss/packages/ssg
-pnpm i && pnpm build
+bun i && bun build
 
-pnpm run cli-build ./example   # build the example site in ./example/dist
-pnpm run cli-serve ./example   # serve the example site at http://localhost:3000 with auto-rebuild on changes
+bun run cli-build ./example   # build the example site in ./example/dist
+bun run cli-serve ./example   # serve the example site at http://localhost:3000 with auto-rebuild on changes
 ```
 
 The output is generated in the `dist/` folder, except you change the configuration in `config.ts`.

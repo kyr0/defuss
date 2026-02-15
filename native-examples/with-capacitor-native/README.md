@@ -24,13 +24,13 @@
 
 ### 1. Get a decent package manager
 
-We recommend using `pnpm` as a package manager. It's fast, mature and handles monorepos well. If you haven't installed `pnpm` yet:
+We recommend using `bun` as a package manager. It's fast, mature and handles monorepos well. If you haven't installed `bun` yet:
 
 ```bash
-npm i -g pnpm@^9.13.2
+npm i -g bun@^1.3.9
 ```
 
-Then: Install dependencies: `pnpm install`
+Then: Install dependencies: `bun install`
 
 ### VS Code Extension
 
@@ -57,10 +57,10 @@ All commands are run from the root of the project, from a terminal:
 
 | Command                   | Action                                           |
 | :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm run start`           | Starts local dev server at `localhost:8100`      |
-| `pnpm run build`           | Build your production app to `./dist/`, Android to `./android` and iOS to `./ios` |
-| `pnpm run preview`         | Preview your build locally, before deploying     |
+| `bun install`             | Installs dependencies                            |
+| `bun run start`           | Starts local dev server at `localhost:8100`      |
+| `bun run build`           | Build your production app to `./dist/`, Android to `./android` and iOS to `./ios` |
+| `bun run preview`         | Preview your build locally, before deploying     |
 
 ## 👀 Want to learn more?
 

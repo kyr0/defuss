@@ -1,9 +1,0 @@
-packages:
-  - 'packages/**/*'
-  - 'examples/**/*'
-  - 'native-packages/**/*'
-  - 'native-examples/**/*'
-  - '!**/pkg'
-  - '!**/.ssg-temp'
-  - '!**/dist'
-  - '!**/public'

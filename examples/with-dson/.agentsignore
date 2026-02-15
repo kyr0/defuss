@@ -15,7 +15,7 @@ yarn.lock
 bun.lockb
 npm-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+.
 Cargo.lock
 Gemfile.lock
 composer.lock

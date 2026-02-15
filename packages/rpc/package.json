@@ -17,8 +17,8 @@
     "type": "git"
   },
   "scripts": {
-    "clean": "rm -rf ./dist && rm -rf ./node_modules/.pnpm",
-    "prebuild": "pnpm run clean",
+    "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun",
+    "prebuild": "bun run clean",
     "build": "pkgroll",
     "test": "vitest run --coverage",
     "dev:server": "tsx src/example-server.ts"
@@ -52,20 +52,23 @@
     "dist"
   ],
   "devDependencies": {
-    "@types/express": "^5.0.3",
-    "@vitest/coverage-v8": "^3.2.2",
-    "express": "^5.1.0",
-    "happy-dom": "^17.6.3",
-    "pkgroll": "^2.5.1",
-    "tsx": "^4.19.2",
-    "typescript": "^5.6.3",
-    "vitest": "^3.2.2"
+    "@types/express": "^5.0.6",
+    "@vitest/coverage-v8": "^4.0.18",
+    "express": "^5.2.1",
+    "happy-dom": "^20.6.1",
+    "pkgroll": "^2.25.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "dependencies": {
     "defuss-dson": "^1.1.1"
+  },
+  "overrides": {
+    "happy-dom": "^20.6.1"
   },
   "peerDependencies": {
     "astro": "*"

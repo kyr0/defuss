@@ -35,7 +35,7 @@ If you've arrived here to add `defuss` to your Astro project, you're just two st
 
 ```bash
 # install a decent package manager
-npm i -g pnpm@^9.13.2
+npm i -g bun@^1.3.9
 
 # from your project root folder, add defuss-astro to the devDependencies
 npm install --save-dev defuss-astro

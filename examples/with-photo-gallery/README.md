@@ -56,16 +56,16 @@ Any static assets, like images, can be placed in the `public/` directory.
 
 ### 1. Get a decent package manager
 
-We recommend using `pnpm` as a package manager. It's fast, mature and handles monorepos well. If you haven't installed `pnpm` yet:
+We recommend using `bun` as a package manager. It's fast, mature and handles monorepos well. If you haven't installed `bun` yet:
 
 ```bash
-npm i -g pnpm@^9.13.2
+npm i -g bun@^1.3.9
 ```
 
 ### 2. Install the projects dependencies
 
 ```bash
-pnpm i --frozen
+bun i --frozen
 ```
 
 ## 🧞 Commands
@@ -74,10 +74,10 @@ All commands are run from the root of the project, from a terminal:
 
 | Command                   | Action                                           |
 | :------------------------ | :----------------------------------------------- |
-| `pnpm i`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
+| `bun i`             | Installs dependencies                            |
+| `bun dev`             | Starts local dev server at `localhost:4321`      |
+| `bun build`           | Build your production site to `./dist/`          |
+| `bun preview`         | Preview your build locally, before deploying     |
 
 ## 👀 Want to learn more?
 

@@ -13,7 +13,7 @@ import {
 import { resolve, join, dirname, sep } from "node:path";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { existsSync, mkdirSync, rmdirSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import type {
   BuildOptions,
   PluginFnPageDom,
@@ -120,7 +120,7 @@ export const build = async ({
     if (debug) {
       console.log(`Removing existing temp folder: ${config.tmp}`);
     }
-    rmdirSync(config.tmp, { recursive: true });
+    rmSync(config.tmp, { recursive: true });
   }
 
   // copying all files into a .ssg-temp folder, so that we can create/patch files on-the-fly
@@ -358,7 +358,7 @@ export const build = async ({
 
   // remove the temporary folder only after a successful build
   if (!debug) {
-    rmdirSync(config.tmp, { recursive: true });
+    rmSync(config.tmp, { recursive: true });
   }
 
   const endTime = performance.now();

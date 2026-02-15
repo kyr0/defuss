@@ -5,6 +5,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "jsx": "react-jsx",
+    "allowSyntheticDefaultImports": true,
     "jsxImportSource": "defuss",
     "sourceMap": true,
     "paths": {

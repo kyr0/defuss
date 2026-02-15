@@ -21,9 +21,9 @@
     "type": "git"
   },
   "scripts": {
-    "clean": "rm -rf ./node_modules/.pnpm",
-    "pretest": "pnpm run build",
-    "prebuild": "pnpm run clean",
+    "clean": "rm -rf ./node_modules/.bun",
+    "pretest": "bun run build",
+    "prebuild": "bun run clean",
     "build": "pkgroll",
     "test": "vitest --run  --coverage"
   },

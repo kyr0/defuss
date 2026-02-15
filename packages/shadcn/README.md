@@ -31,7 +31,7 @@ As a prerequisite, you need to set-up Tailwind CSS and Franken UI in your defuss
 Install `defuss-shadcn` via npm or yarn:
 
 ```bash
-pnpm install defuss-shadcn
+bun install defuss-shadcn
 # or
 npm install defuss-shadcn
 # or

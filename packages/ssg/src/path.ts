@@ -21,6 +21,9 @@ export const filePathToRoute = (
     normalizedPath = "";
   }
 
-  // Ensure leading slash
-  return `/${normalizedPath}`;
+  // Ensure exactly one leading slash
+  if (!normalizedPath.startsWith("/")) {
+    normalizedPath = `/${normalizedPath}`;
+  }
+  return normalizedPath;
 };

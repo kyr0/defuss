@@ -70,7 +70,7 @@ SOFTWARE.
     "vite": "^6.4.1",
     "lightningcss": "^1.30.2"
   },
-  "packageManager": "pnpm@9.13.2"
+  "packageManager": "bun@1.3.9"
 }
 ```
 
@@ -108,16 +108,16 @@ With this template, you can jumpstart your next `Vite` + `defuss` + `defuss-dson
 
 ### 1. Get a decent package manager
 
-We recommend using `pnpm` as a package manager. It's fast, mature and handles monorepos well. If you haven't installed `pnpm` yet:
+We recommend using `bun` as a package manager. It's fast, mature and handles monorepos well. If you haven't installed `bun` yet:
 
 ```bash
-npm i -g pnpm@^9.13.2
+npm i -g bun@^1.3.9
 ```
 
 ### 2. Install the projects dependencies
 
 ```bash
-pnpm i --frozen
+bun i --frozen
 ```
 
 ## 🚀 Project Structure
@@ -141,9 +141,9 @@ All commands are run from the root of the project, from a terminal:
 
 | Command       | Action                                                                                                                                                                                                                           |
 | :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`    | Run in dev mode and check your custom renderer                                                    |
-| `pnpm build` | Build for production  |
-| `pnpm preview` | Build for production, then preview |
+| `bun dev`    | Run in dev mode and check your custom renderer                                                    |
+| `bun build` | Build for production  |
+| `bun preview` | Build for production, then preview |
 
 ---
 

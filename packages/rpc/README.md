@@ -38,7 +38,7 @@ Getting Started
 #### 1. Install `defuss-rpc`:
 
 ```bash
-pnpm install defuss-rpc
+bun install defuss-rpc
 ```
 
 #### 2. Define your API classes:
