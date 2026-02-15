@@ -18,7 +18,7 @@
     "type": "git"
   },
   "scripts": {
-    "preclean": "rm -rf ./node_modules && bun i",
+    "preclean": "rm -rf ./node_modules && bun install",
     "clean": "bun --filter \"./{packages,examples}/*\" clean",
     "prebuild:all": "bun  clean",
     "build:all": "bun --filter \"./{packages,examples}/*\" build",
