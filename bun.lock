@@ -139,7 +139,7 @@
       "name": "@example/with-esbuild",
       "version": "0.0.0",
       "dependencies": {
-        "defuss": "^3.2.0",
+        "defuss": "^3.1.0",
       },
       "devDependencies": {
         "esbuild": "^0.24.0",
@@ -356,7 +356,7 @@
     },
     "packages/defuss": {
       "name": "defuss",
-      "version": "3.1.0",
+      "version": "3.2.0",
       "dependencies": {
         "@types/w3c-xmlserializer": "^2.0.4",
         "csstype": "^3.2.3",
@@ -473,7 +473,7 @@
       "name": "defuss-shadcn",
       "version": "0.3.0",
       "dependencies": {
-        "defuss": "^3.2.0",
+        "defuss": "^3.1.0",
       },
       "devDependencies": {
         "@types/node": "^25.0.9",
@@ -503,7 +503,7 @@
     },
     "packages/ssg": {
       "name": "defuss-ssg",
-      "version": "0.0.3",
+      "version": "0.1.2",
       "bin": {
         "defuss-ssg": "dist/cli.mjs",
       },
@@ -569,7 +569,6 @@
     "sharp",
     "esbuild",
     "@tsparticles/engine",
-    "@capacitor/background-runner",
     "@swc/core",
     "protobufjs",
     "wasm-pack",
