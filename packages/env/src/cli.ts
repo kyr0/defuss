@@ -1,7 +1,7 @@
 // defuss-env.ts (ESM CLI)
 // Usage:
-//   npx defuss-env               -> parse and print ./.env
-//   npx defuss-env path/to/file  -> parse and print the given .env file
+//   bunx defuss-env               -> parse and print ./.env
+//   bunx defuss-env path/to/file  -> parse and print the given .env file
 
 import { load as loadEnv } from "./env.js";
 import { resolve } from "node:path";
@@ -19,8 +19,8 @@ function printEnvMap(env: Record<string, string>, filePath: string): void {
 
 function printUsage(): void {
   console.error(`Usage:
-  npx defuss-env             # parse and print ./.env
-  npx defuss-env <path>      # parse and print the given .env file
+  bunx defuss-env             # parse and print ./.env
+  bunx defuss-env <path>      # parse and print the given .env file
 `);
 }
 

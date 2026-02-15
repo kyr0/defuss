@@ -83,11 +83,11 @@ export const serve = async ({
 
   // Lock to prevent concurrent builds, but schedule the last one
   let isBuilding = false;
-  let pendingBuild = false;
+  let pendingBuild: string | null = null;
 
   const triggerBuild = async (filePath: string) => {
     if (isBuilding) {
-      pendingBuild = true;
+      pendingBuild = filePath;
       if (debug) {
         console.log("Build scheduled after current one completes");
       }
@@ -95,7 +95,7 @@ export const serve = async ({
     }
     isBuilding = true;
     try {
-      await build({ projectDir, debug, mode: "serve" });
+      await build({ projectDir, debug, mode: "serve", changedFile: filePath });
 
       // Notify all connected clients to reload
       liveReloadServer.clients.forEach((client) => {
@@ -113,11 +113,12 @@ export const serve = async ({
     } finally {
       isBuilding = false;
       if (pendingBuild) {
-        pendingBuild = false;
+        const pending = pendingBuild;
+        pendingBuild = null;
         if (debug) {
           console.log("Running pending build");
         }
-        await triggerBuild(filePath); // Recurse to handle the pending build
+        await triggerBuild(pending);
       }
     }
   };

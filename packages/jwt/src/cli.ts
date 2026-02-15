@@ -36,7 +36,7 @@ DEFUSS_AUTH_KID=${kid}
   }
 
   console.error(`Usage:
-  npx defuss-auth gen-keys
+  bunx defuss-auth gen-keys
 `);
   process.exit(1);
 }

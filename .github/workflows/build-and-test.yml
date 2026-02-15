@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: 24
       - name: Setup Bun
-        uses: oven-sh/bun-action@v2
+        uses: oven-sh/setup-bun@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:

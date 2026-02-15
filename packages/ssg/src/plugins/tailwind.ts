@@ -16,7 +16,7 @@ export const tailwindPlugin: SsgPlugin<PluginFnPrePost> = {
     // const inputCssPath = join(tmp, "styles.css");
     // const outputCssPath = join(tmp, "styles.css");
     // return new Promise((resolve, reject) => {
-    //   const command = `npx tailwindcss -i ${inputCssPath} -o ${outputCssPath} --config ${tailwindConfigPath} --content "${inputDir}/**/*.{html,js,ts,jsx,tsx,md,mdx}" --minify`;
+    //   const command = `bunx tailwindcss -i ${inputCssPath} -o ${outputCssPath} --config ${tailwindConfigPath} --content "${inputDir}/**/*.{html,js,ts,jsx,tsx,md,mdx}" --minify`;
     //   exec(command, (error, stdout, stderr) => {
     //     if (error) {
     //       console.error(`Error executing Tailwind CSS: ${error.message}`);

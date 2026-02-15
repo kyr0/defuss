@@ -23,8 +23,8 @@ Usage
 Load and parse `.env` files with strict validation and security features:
 
 ```bash
-npx defuss-env               # parse and print ./.env
-npx defuss-env path/to/file  # parse and print the given .env file
+bunx defuss-env               # parse and print ./.env
+bunx defuss-env path/to/file  # parse and print the given .env file
 ```
 
 Or install globally or locally in a project:
@@ -199,10 +199,10 @@ The included CLI tool helps debug and inspect .env files:
 
 ```bash
 # Parse and display .env
-npx defuss-env
+bunx defuss-env
 
 # Parse specific file
-npx defuss-env config/production.env
+bunx defuss-env config/production.env
 
 # Example output:
 # Read 3 entries from .env:

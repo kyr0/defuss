@@ -23,7 +23,7 @@ Usage
 Simply generate a static site from a content directory to an output directory with full defuss-MDX (GFM + Frontmatter) support:
 
 ```bash
-npx defuss-ssg build ./folder
+bunx defuss-ssg build ./folder
 ```
 
 Or install globally or locally in a project:

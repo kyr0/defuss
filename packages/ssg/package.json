@@ -1,6 +1,6 @@
 {
   "name": "defuss-ssg",
-  "version": "0.0.3",
+  "version": "0.1.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -26,8 +26,8 @@
     "pretest": "bun run build",
     "prebuild": "bun run clean",
     "build": "pkgroll",
-    "cli-build": "node ./dist/cli.mjs build ./example",
-    "cli-serve": "node ./dist/cli.mjs serve ./example",
+    "cli-build": "node ./dist/cli.mjs build ../../example-ssg/",
+    "cli-serve": "node ./dist/cli.mjs serve ../../example-ssg/",
     "test": "echo 'No tests available'",
     "bench": "npx autocannon -p 32 -w 8 -c 200 -d 20 -m POST -H \"content-type: application/json\" -b '{\"hello\":\"world\"}' http://127.0.0.1:3000/body",
     "start": "tsx src/dynamic.ts",
@@ -90,7 +90,7 @@
     "@mdx-js/esbuild": "^3.1.1",
     "@types/ws": "^8.18.1",
     "chokidar": "^5.0.0",
-    "defuss": "^3.1.0",
+    "defuss": "^3.2.0",
     "esbuild": "^0.27.3",
     "ultimate-express": "^2.0.17",
     "ultimate-ws": "^2.0.7",

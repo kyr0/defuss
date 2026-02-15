@@ -33,7 +33,7 @@ You're just one step away from checking out one of `defuss` simple example proje
 > **[‼️]** Make sure [`git`](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) is installed on your computer!
 
 ```bash
-npx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-astro-ts
+bunx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-astro-ts
 ```
 This will download **only** the code from the `with-astro-ts` subdirectory into the _(new)_ folder local folder.
 
@@ -42,14 +42,14 @@ This will download **only** the code from the `with-astro-ts` subdirectory into 
 > **[‼️]** Make sure [`git`](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) is installed on your computer!
 
 ```bash
-npx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-vite-ts
+bunx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-vite-ts
 ```
 This will download **only** the code from the `with-vite-ts` subdirectory into the _(new)_ folder local folder.
 
 #### Downloading into a custom local folder
 
 ```bash
-npx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-vite-ts ./my-custom-defuss-project
+bunx create-defuss https://github.com/kyr0/defuss/tree/main/examples/with-vite-ts ./my-custom-defuss-project
 ```
 This will download **only** the code from the `with-vite-ts` subdirectory into the _(new)_ folder local folder `my-custom-defuss-project`.
 
@@ -75,7 +75,7 @@ performSparseCheckout("git_url", "dest_folder")
 
 </h3>
 
-`create-defuss` is an NPM package with a `bin` entry in `package.json`. This, combined with a "shebang" line (`#!/someshell`) makes it executable using `npx` as a CLI (command line interface). It uses Git sparse checkout to efficiently download files from a specific subdirectory of a GitHub repository. It avoids downloading the entire repository, saving bandwidth and time. Also, monorepo maintainers can spare on creating extra "template" repositories for their example code.
+`create-defuss` is an NPM package with a `bin` entry in `package.json`. This, combined with a "shebang" line (`#!/someshell`) makes it executable using `bunx` as a CLI (command line interface). It uses Git sparse checkout to efficiently download files from a specific subdirectory of a GitHub repository. It avoids downloading the entire repository, saving bandwidth and time. Also, monorepo maintainers can spare on creating extra "template" repositories for their example code.
 
 Inside the project, you'll find the following relevant files:
 

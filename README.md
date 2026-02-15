@@ -19,6 +19,32 @@ Defuss is a modern, full-featured web framework designed to bring simplicity and
 ## 🎯 Core philosophy
 Defuss follows the principle of "explicit simplicity" - it provides powerful tools while keeping complexity low and giving developers full control. You can read `defuss`-Code top-down. There is no _hidden magic_, like a depedency array that eventually creates a 7.3 Tbps [DDoS attack on Cloudflare](https://www.youtube.com/watch?app=desktop&v=gDVxBOGL99Q). `defuss` code is ideomatic and self-explainatory. 
 
+## 🚀 Quickstart
+
+Install [Bun](https://bun.com/docs/installation) and [Node.js](https://nodejs.org/en/download/).
+
+Create a new `defuss` project with the `create-defuss` CLI tool:
+
+```bash
+bunx create-defuss@latest my-defuss-app
+cd my-defuss-app
+```
+
+Then you can run the development server with:
+
+```bash
+# run, then open http://localhost:3000 in your browser
+bunx defuss-ssg serve ./example-ssg
+```
+
+**NOTE:** With `defuss-ssg` you can build static sites with `defuss` and serve them with a built-in development server. You can also export the static files and serve them with any static file server or CDN. 
+
+To build a static site, run:
+
+```bash
+bunx defuss-ssg build ./example-ssg
+```
+
 ## Who is `defuss` for?
 
 - Junior developers who want to learn web development without getting overwhelmed (`defuss` uses web standards with _very_ thin abstrctions -> you get to learn the _real_ thing, not some framework-specific APIs)

@@ -68,6 +68,13 @@ export interface BuildOptions {
    * Defaults to "build"
    */
   mode: Omit<BuildMode, "both">;
+
+  /**
+   * When set, only the changed file is rebuilt instead of the entire project.
+   * This is used by the dev server for incremental rebuilds.
+   * The path should be absolute.
+   */
+  changedFile?: string;
 }
 
 export type PluginFn =

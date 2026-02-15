@@ -77,7 +77,7 @@ yarn add defuss-jwt
 `defuss-jwt` provides a minimal, function-only Ed25519 JWT toolkit built on `jose` that emphasizes safe defaults and easy key management. Thus, you need a JWK key-pair to sign and verify tokens.
 
 ```bash
-npx defuss-jwt gen-keys
+bunx defuss-jwt gen-keys
 ```
 
 It writes the file: `.env.defuss_auth_keys` which contains:

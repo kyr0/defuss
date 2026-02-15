@@ -117,7 +117,7 @@ describe("getKeysFromEnv", () => {
       },
       () => {
         expect(() => getKeysFromEnv()).toThrow(
-          "Missing DEFUSS_AUTH_* env vars. Run `npx defuss-auth gen-key`.",
+          "Missing DEFUSS_AUTH_* env vars. Run `bunx defuss-auth gen-key`.",
         );
       },
     );
@@ -132,7 +132,7 @@ describe("getKeysFromEnv", () => {
       },
       () => {
         expect(() => getKeysFromEnv()).toThrow(
-          "Missing DEFUSS_AUTH_* env vars. Run `npx defuss-auth gen-key`.",
+          "Missing DEFUSS_AUTH_* env vars. Run `bunx defuss-auth gen-key`.",
         );
       },
     );
@@ -147,7 +147,7 @@ describe("getKeysFromEnv", () => {
       },
       () => {
         expect(() => getKeysFromEnv()).toThrow(
-          "Missing DEFUSS_AUTH_* env vars. Run `npx defuss-auth gen-key`.",
+          "Missing DEFUSS_AUTH_* env vars. Run `bunx defuss-auth gen-key`.",
         );
       },
     );
@@ -162,7 +162,7 @@ describe("getKeysFromEnv", () => {
       },
       () => {
         expect(() => getKeysFromEnv()).toThrow(
-          "Missing DEFUSS_AUTH_* env vars. Run `npx defuss-auth gen-key`.",
+          "Missing DEFUSS_AUTH_* env vars. Run `bunx defuss-auth gen-key`.",
         );
       },
     );
@@ -177,7 +177,7 @@ describe("getKeysFromEnv", () => {
       },
       () => {
         expect(() => getKeysFromEnv()).toThrow(
-          "Missing DEFUSS_AUTH_* env vars. Run `npx defuss-auth gen-key`.",
+          "Missing DEFUSS_AUTH_* env vars. Run `bunx defuss-auth gen-key`.",
         );
       },
     );

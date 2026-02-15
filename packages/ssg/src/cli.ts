@@ -5,9 +5,11 @@ import { setup } from "./setup.js";
 
 (async () => {
   const args = process.argv.slice(2);
-  const command = args[0];
-  const folder = args[1];
-  const usage = "Usage: defuss-ssg <build|serve> <folder>";
+  const debug = args.includes("--debug") || args.includes("-d");
+  const positional = args.filter((a) => !a.startsWith("-"));
+  const command = positional[0];
+  const folder = positional[1];
+  const usage = "Usage: defuss-ssg <build|serve> <folder> [--debug]";
 
   if (!command || !folder) {
     console.error(usage);
@@ -23,14 +25,14 @@ import { setup } from "./setup.js";
     console.log(`Building ${folder}...`);
     await build({
       projectDir,
-      debug: true,
+      debug,
       mode: "build",
     });
   } else if (command === "serve") {
     console.log(`Serving ${folder}...`);
     await serve({
       projectDir,
-      debug: true,
+      debug,
       mode: "serve",
     });
   } else {

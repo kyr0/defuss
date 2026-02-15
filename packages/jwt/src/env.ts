@@ -22,7 +22,7 @@ export function getKeysFromEnv(): {
 
   if (!priv || !pub || !kid) {
     throw new Error(
-      "Missing DEFUSS_AUTH_* env vars. Run `npx defuss-auth gen-key`.",
+      "Missing DEFUSS_AUTH_* env vars. Run `bunx defuss-auth gen-key`.",
     );
   }
 

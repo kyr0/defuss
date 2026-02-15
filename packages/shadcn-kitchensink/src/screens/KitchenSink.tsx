@@ -1,6 +1,10 @@
-import { Router, type FC } from "defuss";
+import { Router, type FC, type Props } from "defuss";
 
-const KitchenSinkEntryLink: FC<{ href: string }> = ({ href, children }) => {
+export interface KitchenSinkEntryLinkProps extends Props {
+  href: string;
+}
+
+const KitchenSinkEntryLink: FC<KitchenSinkEntryLinkProps> = ({ href, children }) => {
   return (
     <a
       href={href}
