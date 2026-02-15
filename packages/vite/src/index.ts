@@ -48,6 +48,7 @@ export default function defussVitePlugin({
           jsxImportSource: "defuss",
           jsxFactory: "jsx",
           jsxFragment: "Fragment",
+          jsxDev: true, // enable sourceInfo for better hydration and debugging
         },
         optimizeDeps: {
           // we want Vite to optimize the runtime code

@@ -114,6 +114,7 @@ export const build = async ({
     if (debug) {
       console.log(`Incremental build — changeKind: ${changeKind}, file: ${changedRelative}`);
     }
+    console.log(`[build] changeKind=${changeKind}, changedRelative=${changedRelative}`);
   }
 
   const isFullBuild = changeKind === "full" || changeKind === "config";
@@ -209,6 +210,19 @@ export const build = async ({
   );
   console.timeEnd("[build] copy-hydration");
 
+  // ── Clean stale component .js outputs ──────────────────────────────
+  // esbuild-pages bundles with bundle:true and jsxDev:true. When it
+  // resolves component imports (e.g. '../components/button.js'), stale
+  // .js files from a previous esbuild-components run would be picked up
+  // instead of the fresh .tsx source. Removing them forces esbuild to
+  // resolve the .tsx files, preserving sourceInfo for auto-hydration.
+  if (changeKind === "component" || isFullBuild) {
+    const staleJsFiles = await glob.async(join(tmpComponentsDir, "**/*.js"));
+    for (const f of staleJsFiles) {
+      rmSync(f);
+    }
+  }
+
   // ── esbuild: compile pages ─────────────────────────────────────────
   let pageBuildResult: esbuild.BuildResult | null = null;
   if (changeKind !== "asset") {
@@ -241,7 +255,7 @@ export const build = async ({
     console.timeEnd("[build] esbuild-pages");
   }
 
-  // ── esbuild: compile components ────────────────────────────────────
+  // ── esbuild: compile components (client-side JS) ───────────────────
   if (isFullBuild || changeKind === "component") {
     console.time("[build] esbuild-components");
     await esbuild.build({
@@ -274,6 +288,8 @@ export const build = async ({
       const changedBaseName = changedRelative.replace(/\.[^.]+$/, ""); // e.g. "components/button"
       outputFiles = [];
 
+      console.log(`[build] component-dep: looking for pages depending on "${changedBaseName}"`);
+
       for (const [outputPath, meta] of Object.entries(pageBuildResult.metafile.outputs)) {
         // Skip sourcemap outputs
         if (outputPath.endsWith(".map")) continue;
@@ -284,6 +300,11 @@ export const build = async ({
           return inputNorm.endsWith(changedBaseName);
         });
 
+        console.log(`[build] component-dep: output="${outputPath}", inputs=${inputPaths.length}, dependsOnChanged=${dependsOnChanged}`);
+        if (dependsOnChanged) {
+          console.log(`[build] component-dep:   matching inputs: ${inputPaths.filter(i => i.replace(/\.[^.]+$/, "").endsWith(changedBaseName)).join(", ")}`);
+        }
+
         if (dependsOnChanged) {
           // esbuild metafile output paths are relative to CWD; resolve them
           const resolved = resolve(outputPath);
@@ -293,12 +314,11 @@ export const build = async ({
         }
       }
 
-      if (debug) {
-        console.log(`Component change: ${outputFiles.length} page(s) affected out of ${Object.keys(pageBuildResult.metafile.outputs).filter(p => !p.endsWith(".map")).length} total`);
-      }
+      console.log(`[build] component-dep: ${outputFiles.length} page(s) affected out of ${Object.keys(pageBuildResult.metafile.outputs).filter(p => !p.endsWith(".map")).length} total`);
 
       // Fallback: if metafile analysis found nothing, render all pages
       if (outputFiles.length === 0) {
+        console.log(`[build] component-dep: FALLBACK — rendering all pages`);
         outputFiles = await glob.async(join(tmpPagesDir, "**/*.js"));
       }
     } else {
@@ -311,10 +331,10 @@ export const build = async ({
 
     for (const outputFile of outputFiles) {
       const outputHtmlFilePath = outputFile.replace(".js", ".html");
-      const relativeOutputHtmlFilePath = outputHtmlFilePath.replace(
-        `${tmpPagesDir}${sep}`,
-        "",
-      );
+      const resolvedTmpPagesDir = resolve(tmpPagesDir);
+      const relativeOutputHtmlFilePath = outputHtmlFilePath
+        .replace(`${resolvedTmpPagesDir}${sep}`, "")
+        .replace(`${tmpPagesDir}${sep}`, "");
 
       const pageLabel = relativeOutputHtmlFilePath;
 
