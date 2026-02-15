@@ -90,10 +90,8 @@
     "@mdx-js/esbuild": "^3.1.1",
     "@types/ws": "^8.18.1",
     "chokidar": "^5.0.0",
-    "defuss": "^3.2.0",
+    "defuss": "workspace:*",
     "esbuild": "^0.27.3",
-    "ultimate-express": "^2.0.17",
-    "ultimate-ws": "^2.0.7",
     "fast-glob": "^3.3.3",
     "rehype-katex": "^7.0.1",
     "rehype-mdx-title": "^3.2.0",
@@ -104,6 +102,8 @@
     "remark-mdx-frontmatter": "^5.2.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
+    "ultimate-express": "^2.0.17",
+    "ultimate-ws": "^2.0.7",
     "unist-util-visit": "^5.1.0"
   },
   "devDependencies": {

@@ -25,7 +25,7 @@ const ClickButton: FC<ButtonProps> = ({ className, type, label }) => {
           body: JSON.stringify({ feedback: "This is great!" }),
         });
 
-        $(ref).text("Feedback sent!");
+        $(ref).text("Feedback sent!1");
         break;
       case "get-data":
          const result = await fetch("/api/data.json");
@@ -42,7 +42,8 @@ const ClickButton: FC<ButtonProps> = ({ className, type, label }) => {
     <button
       ref={ref}
       type="button"
-      id="click-button"
+      id={"click-button" + (type ? `-${type}` : "")}
+      style="margin-right: 1rem;"
       className={className}
       onClick={onClick}
     >

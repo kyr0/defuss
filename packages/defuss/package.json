@@ -1,6 +1,6 @@
 {
   "name": "defuss",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "type": "module",
   "publishConfig": {
     "access": "public"

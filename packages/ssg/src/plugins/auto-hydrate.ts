@@ -57,6 +57,24 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
 
           const id = `dh_${Math.random().toString(36).slice(2)}`;
 
+          console.log(`[auto-hydrate] Found component node. type="${node.type}", sourceInfo.fileName="${node.sourceInfo?.fileName}", hasComponentProps=${!!node.componentProps}, componentProps=`, JSON.stringify(node.componentProps)?.slice(0, 300));
+          console.log(`[auto-hydrate] Node keys:`, Object.keys(node));
+
+          // Extract serializable component props (set by jsx runtime on function components)
+          const componentProps: Record<string, any> = {};
+          if (node.componentProps) {
+            for (const [key, value] of Object.entries(node.componentProps)) {
+              // Skip functions and undefined values — they can't be serialized
+              if (typeof value === "function" || typeof value === "undefined") continue;
+              try {
+                JSON.stringify(value);
+                componentProps[key] = value;
+              } catch {
+                // skip non-serializable values (circular refs, symbols, etc.)
+              }
+            }
+          }
+
           node = {
             // Hydration wrapper
             type: "div",
@@ -74,7 +92,7 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
                   `
                   ;(async function(){
 
-                    const props = ${JSON.stringify(props || {})};
+                    const props = ${JSON.stringify(componentProps)};
                     const cacheBust = "?v=" + Date.now();
                     console.log("[hydrate:${id}] Starting hydration, cacheBust=" + cacheBust);
                     console.log("[hydrate:${id}] Importing runtime from /components/runtime.js" + cacheBust);

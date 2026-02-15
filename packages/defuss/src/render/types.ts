@@ -166,6 +166,8 @@ export interface VNode<A = VNodeAttributes> {
   attributes?: A;
   children?: VNodeChildren;
   sourceInfo?: JsxSourceInfo;
+  /** Original props passed to a function component (set by jsx runtime for SSG hydration). */
+  componentProps?: Record<string, any>;
 }
 
 // string as in "div" creates an HTMLElement in the renderer

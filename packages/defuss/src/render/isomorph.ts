@@ -169,6 +169,19 @@ export const jsx = (
         ...attributes,
       });
 
+      // Store the original component props (without children) on the returned VNode
+      // so that SSG auto-hydration can serialize and pass them to the client-side component.
+      // Only set if not already set by an inner component call (preserves innermost props).
+      console.log(`[jsx componentProps] component="${type.name}", isObj=${rendered && typeof rendered === "object"}, isArr=${Array.isArray(rendered)}, hasSrcInfo=${!!sourceInfo}, attrs=`, JSON.stringify(attributes)?.slice(0, 200));
+      if (rendered && typeof rendered === "object" && !Array.isArray(rendered) && sourceInfo) {
+        if (!(rendered as VNode).componentProps) {
+          (rendered as VNode).componentProps = { ...attributes };
+          console.log(`[jsx componentProps] SET on component="${type.name}", renderedType="${(rendered as VNode).type}", renderedSrcInfo=`, (rendered as VNode).sourceInfo?.fileName);
+        } else {
+          console.log(`[jsx componentProps] SKIP (already set) on component="${type.name}"`);
+        }
+      }
+
       // Diff semantics: also apply key to the returned vnode root so morphing can find keyed nodes
       if (typeof key !== "undefined" && rendered && typeof rendered === "object") {
         // Single root vnode
