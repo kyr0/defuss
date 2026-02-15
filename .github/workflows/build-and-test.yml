@@ -27,11 +27,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-      - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v14
+      #- name: Setup Rust
+      #  uses: dtolnay/rust-toolchain@stable
+      #  with:
+      #    targets: wasm32-unknown-unknown
+      #- name: Setup Emscripten
+      #  uses: mymindstorm/setup-emsdk@v14
       - run: bun install --no-frozen-lockfile
       - run: bun run test:core
