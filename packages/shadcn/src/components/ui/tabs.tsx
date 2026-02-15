@@ -22,20 +22,23 @@ const initTabs = (tabsComponent: HTMLDivElement) => {
     if (!tablist) return;
 
     const tabs = Array.from(tablist.querySelectorAll('[role="tab"]')) as HTMLButtonElement[];
-    const panels = tabs.map(tab =>
-        document.getElementById(tab.getAttribute('aria-controls') || '')
-    ).filter(Boolean) as HTMLElement[];
+    const getPanelForTab = (tab: HTMLButtonElement) => {
+        const value = tab.dataset.value;
+        if (!value) return null;
+        return tabsComponent.querySelector(`[role="tabpanel"][data-value="${value}"]`) as HTMLElement | null;
+    };
 
     const selectTab = (tabToSelect: HTMLButtonElement) => {
-        tabs.forEach((tab, index) => {
+        tabs.forEach((tab) => {
             tab.setAttribute('aria-selected', 'false');
             tab.setAttribute('tabindex', '-1');
-            if (panels[index]) panels[index].hidden = true;
+            const panel = getPanelForTab(tab);
+            if (panel) panel.hidden = true;
         });
 
         tabToSelect.setAttribute('aria-selected', 'true');
         tabToSelect.setAttribute('tabindex', '0');
-        const activePanel = document.getElementById(tabToSelect.getAttribute('aria-controls') || '');
+        const activePanel = getPanelForTab(tabToSelect);
         if (activePanel) activePanel.hidden = false;
     };
 
@@ -84,6 +87,34 @@ export const Tabs: FC<TabsProps> = ({ className, defaultValue, children, ...prop
 
     const onMount = () => {
         if (!tabsRef.current) return;
+
+        const tabsRoot = tabsRef.current;
+        const instanceId = tabsRoot.id || `tabs-${Math.random().toString(36).slice(2, 9)}`;
+        if (!tabsRoot.id) {
+            tabsRoot.id = instanceId;
+        }
+
+        const tablist = tabsRoot.querySelector('[role="tablist"]') as HTMLElement | null;
+        const tabs = tablist
+            ? Array.from(tablist.querySelectorAll('[role="tab"]')) as HTMLButtonElement[]
+            : [];
+
+        tabs.forEach((tab, index) => {
+            const value = tab.dataset.value;
+            if (!value) return;
+
+            const panel = tabsRoot.querySelector(`[role="tabpanel"][data-value="${value}"]`) as HTMLElement | null;
+            const tabId = `${instanceId}-tab-${index}`;
+            const panelId = `${instanceId}-panel-${index}`;
+
+            tab.id = tabId;
+            if (panel) {
+                panel.id = panelId;
+                tab.setAttribute('aria-controls', panelId);
+                panel.setAttribute('aria-labelledby', tabId);
+            }
+        });
+
         initTabs(tabsRef.current);
 
         // Select default tab after initialization
@@ -127,7 +158,6 @@ export const TabsTrigger: FC<TabsTriggerProps> = ({ className, value, children, 
             role="tab"
             tabIndex={-1}
             aria-selected="false"
-            aria-controls={`panel-${value}`}
             data-value={value}
             class={cn(className)}
             {...props}
@@ -141,7 +171,7 @@ export const TabsContent: FC<TabsContentProps> = ({ className, value, children, 
     return (
         <div
             role="tabpanel"
-            id={`panel-${value}`}
+            data-value={value}
             tabIndex={-1}
             hidden
             class={cn(className)}

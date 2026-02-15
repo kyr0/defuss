@@ -175,9 +175,17 @@ const initDropdownMenu = (dropdownMenuComponent: HTMLDivElement) => {
     });
 
     menu.addEventListener('click', (event) => {
-        if ((event.target as HTMLElement).closest('[role^="menuitem"]')) {
-            closePopover();
+        const menuItem = (event.target as HTMLElement).closest('[role^="menuitem"]') as HTMLElement | null;
+        if (!menuItem) return;
+
+        const isDisabled = menuItem.hasAttribute('disabled') || menuItem.getAttribute('aria-disabled') === 'true';
+        if (isDisabled) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
         }
+
+        closePopover();
     });
 
     document.addEventListener('click', (event) => {
@@ -239,12 +247,14 @@ export const DropdownMenuContent: FC<DropdownMenuContentProps> = ({ id, classNam
     );
 };
 
-export const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ className, disabled, children, ...props }) => {
+export const DropdownMenuItem: FC<DropdownMenuItemProps> = ({ className, disabled, children, role = "menuitem", ...props }) => {
     return (
         <div
             {...props}
-            role="menuitem"
+            role={role}
             aria-disabled={disabled}
+            data-disabled={disabled ? "true" : undefined}
+            tabIndex={disabled ? -1 : 0}
             class={cn(className)}
         >
             {children}

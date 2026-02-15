@@ -9,6 +9,8 @@ export const alertVariants = cva(
             variant: {
                 default: "",
                 destructive: "alert-destructive",
+                warning: "alert-warning",
+                info: "alert-info",
             },
         },
         defaultVariants: {

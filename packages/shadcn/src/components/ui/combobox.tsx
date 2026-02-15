@@ -7,13 +7,18 @@ export type ComboboxProps = ElementProps<HTMLDivElement> & {
     placeholder?: string;
     searchPlaceholder?: string;
     onValueChange?: (value: string) => void;
+    disabled?: boolean;
 };
 
 export type ComboboxOptionProps = ElementProps<HTMLDivElement> & {
     value: string;
 };
 
-const initCombobox = (component: HTMLDivElement, onValueChange?: (value: string) => void) => {
+const initCombobox = (
+    component: HTMLDivElement,
+    onValueChange?: (value: string) => void,
+    disabled = false,
+) => {
     const trigger = component.querySelector(':scope > button') as HTMLButtonElement;
     const triggerLabel = trigger?.querySelector(':scope > span') as HTMLSpanElement;
     const popover = component.querySelector(':scope > [data-popover]') as HTMLElement;
@@ -24,6 +29,18 @@ const initCombobox = (component: HTMLDivElement, onValueChange?: (value: string)
     const hiddenInput = component.querySelector(':scope > input[type="hidden"]') as HTMLInputElement;
 
     if (!trigger || !triggerLabel || !popover || !filter || !listbox || !hiddenInput) {
+        return;
+    }
+
+    if (disabled) {
+        trigger.disabled = true;
+        trigger.setAttribute("aria-disabled", "true");
+        trigger.setAttribute("aria-expanded", "false");
+        filter.disabled = true;
+        filter.setAttribute("aria-expanded", "false");
+        popover.setAttribute("aria-hidden", "true");
+        component.dataset.comboboxInitialized = "true";
+        component.dispatchEvent(new CustomEvent("basecoat:initialized"));
         return;
     }
 
@@ -248,6 +265,7 @@ export const Combobox: FC<ComboboxProps> = ({
     placeholder = "Select option",
     searchPlaceholder = "Search entries...",
     onValueChange,
+    disabled = false,
     children,
     ...props
 }) => {
@@ -259,7 +277,7 @@ export const Combobox: FC<ComboboxProps> = ({
             ref={rootRef}
             id={comboboxId}
             class={cn("select", className)}
-            onMount={() => initCombobox(rootRef.current!, onValueChange)}
+            onMount={() => initCombobox(rootRef.current!, onValueChange, disabled)}
             {...props}
         >
             <button
@@ -268,6 +286,8 @@ export const Combobox: FC<ComboboxProps> = ({
                 aria-haspopup="listbox"
                 aria-expanded="false"
                 aria-controls={`${comboboxId}-listbox`}
+                aria-disabled={disabled}
+                disabled={disabled}
                 class="btn-outline w-full justify-between"
             >
                 <span class="truncate">{placeholder}</span>
@@ -282,6 +302,7 @@ export const Combobox: FC<ComboboxProps> = ({
                     <input
                         type="text"
                         placeholder={searchPlaceholder}
+                        disabled={disabled}
                         autocomplete="off"
                         autocorrect="off"
                         spellcheck={false}
