@@ -5,8 +5,17 @@ export const LiveReloadUrl = `${document.location.origin
   .replace(/http/, "ws")}/livereload`;
 
 export const setupLiveReload = () => {
+  // Close any previous WebSocket (e.g. from a prior cache-busted import)
+  const prev = (window as any).__defuss_lr_ws as WebSocket | undefined;
+  if (prev) {
+    prev.onclose = null; // prevent auto-reconnect of the old socket
+    prev.close();
+  }
+
   console.log(`[live-reload] trying to (re-)connect to: ${LiveReloadUrl}...`);
   const liveReloadSocket = new WebSocket(LiveReloadUrl);
+  (window as any).__defuss_lr_ws = liveReloadSocket;
+
   liveReloadSocket.onmessage = (event) => {
     console.log("[live-reload] message received", event);
     const eventData = JSON.parse(event.data);
@@ -16,15 +25,24 @@ export const setupLiveReload = () => {
       const currentNorm = normalisePath(location.pathname);
       const eventNorm = normalisePath(path);
       const pathMatch = currentNorm === eventNorm;
+      console.log(`[live-reload] path=${path}, currentNorm=${currentNorm}, eventNorm=${eventNorm}, pathMatch=${pathMatch}`);
       if (!eventData.path || pathMatch) {
-        // Clear prefetch cache so we get fresh rebuilt content
+        // Clear prefetch cache and bust browser HTTP cache so we get
+        // fresh rebuilt content after the server-side rebuild.
+        console.log("[live-reload] Clearing pageCache and triggering navigateTo with cache bust");
         pageCache.clear();
+        bustCache = true;
         navigateTo(location.pathname, true);
+      } else {
+        console.log("[live-reload] Path mismatch, skipping reload");
       }
     }
   };
   liveReloadSocket.onclose = () => {
-    setTimeout(setupLiveReload, 5000);
+    // Only reconnect if this is still the active socket
+    if ((window as any).__defuss_lr_ws === liveReloadSocket) {
+      setTimeout(setupLiveReload, 5000);
+    }
   };
 };
 
@@ -35,6 +53,9 @@ const pageCache = new Map<string, string>();
 
 /** Set of URLs currently being fetched (dedup in-flight requests) */
 const fetching = new Set<string>();
+
+/** When true, the next prefetch bypasses the browser HTTP cache (set by live-reload) */
+let bustCache = false;
 
 /** Normalise a pathname so /foo and /foo/ and /index.html all compare equally */
 const normalisePath = (path: string): string => {
@@ -68,15 +89,28 @@ const isInternalLink = (anchor: HTMLAnchorElement): boolean => {
 /** Prefetch a URL and store in cache */
 const prefetch = async (url: string): Promise<void> => {
   const key = normalisePath(url);
-  if (pageCache.has(key) || fetching.has(key)) return;
+  if (pageCache.has(key) || fetching.has(key)) {
+    console.log(`[prefetch] SKIP url=${key} cached=${pageCache.has(key)} fetching=${fetching.has(key)}`);
+    return;
+  }
   fetching.add(key);
   try {
-    const res = await fetch(key, { credentials: "same-origin" });
-    if (res.ok && res.headers.get("content-type")?.includes("text/html")) {
-      pageCache.set(key, await res.text());
+    const fetchOpts: RequestInit = { credentials: "same-origin" };
+    if (bustCache) {
+      fetchOpts.cache = "reload";
+      bustCache = false;
     }
-  } catch {
-    // network error — silently ignore, browser will do a normal nav
+    console.log(`[prefetch] fetching url=${key} cache=${fetchOpts.cache || "default"}`);
+    const res = await fetch(key, fetchOpts);
+    if (res.ok && res.headers.get("content-type")?.includes("text/html")) {
+      const text = await res.text();
+      pageCache.set(key, text);
+      console.log(`[prefetch] cached url=${key} length=${text.length}`);
+    } else {
+      console.log(`[prefetch] not cached: status=${res.status} content-type=${res.headers.get("content-type")}`);
+    }
+  } catch (err) {
+    console.error("[prefetch] error:", err);
   } finally {
     fetching.delete(key);
   }
@@ -85,6 +119,7 @@ const prefetch = async (url: string): Promise<void> => {
 /** Execute <script> tags found in the new body (hydration scripts etc.) */
 const executeScripts = (container: Element): void => {
   const scripts = container.querySelectorAll("script");
+  console.log(`[executeScripts] Found ${scripts.length} script(s) to re-execute`);
   for (const oldScript of scripts) {
     const newScript = document.createElement("script");
     // Copy all attributes
@@ -92,6 +127,7 @@ const executeScripts = (container: Element): void => {
       newScript.setAttribute(attr.name, attr.value);
     }
     newScript.textContent = oldScript.textContent;
+    console.log(`[executeScripts] Replacing script id=${oldScript.id || '(none)'} type=${oldScript.type || '(none)'} len=${oldScript.textContent?.length}`);
     oldScript.replaceWith(newScript);
   }
 };
@@ -134,11 +170,18 @@ const updateHead = (doc: Document): void => {
  * @param url The target pathname
  * @param replace If true, uses replaceState instead of pushState (for live-reload)
  */
+let navigating = false;
 export const navigateTo = async (
   url: string,
   replace = false,
 ): Promise<void> => {
+  // Prevent concurrent navigations (e.g. multiple WebSocket messages)
+  if (navigating) return;
+  navigating = true;
+
+  try {
   const key = normalisePath(url);
+  console.log(`[navigateTo] url=${url} key=${key} replace=${replace} cached=${pageCache.has(key)}`);
 
   // Fetch if not cached
   if (!pageCache.has(key)) {
@@ -147,10 +190,13 @@ export const navigateTo = async (
 
   const html = pageCache.get(key);
   if (!html) {
+    console.log("[navigateTo] No HTML available, falling back to hard navigation");
     // Fallback to hard navigation if fetch failed
     location.href = url;
     return;
   }
+
+  console.log(`[navigateTo] HTML length=${html.length}`);
 
   // Keep cache for instant back/forward; schedule a background refresh
   // so the *next* visit gets fresh content without blocking this one.
@@ -162,6 +208,7 @@ export const navigateTo = async (
   const newBody = doc.body;
 
   if (!newBody) {
+    console.log("[navigateTo] Parsed document has no body, hard navigating");
     location.href = url;
     return;
   }
@@ -174,7 +221,17 @@ export const navigateTo = async (
   updateHead(doc);
 
   // Morph <body> content: swap innerHTML and re-execute scripts
+  console.log(`[navigateTo] Swapping body innerHTML (new length=${newBody.innerHTML.length})`);
   document.body.innerHTML = newBody.innerHTML;
+
+  // Log hydration wrappers found in new DOM
+  const hydrateWrappers = document.querySelectorAll('[data-hydrate="true"]');
+  console.log(`[navigateTo] Found ${hydrateWrappers.length} hydration wrapper(s) in new DOM`);
+  hydrateWrappers.forEach((w, i) => {
+    const scripts = w.querySelectorAll('script[type="module"]');
+    console.log(`[navigateTo]   wrapper[${i}] id=${w.getAttribute('data-hydrate-id')} scripts=${scripts.length}`);
+  });
+
   executeScripts(document.body);
 
   // Update history
@@ -193,6 +250,9 @@ export const navigateTo = async (
     }
   } else {
     window.scrollTo(0, 0);
+  }
+  } finally {
+    navigating = false;
   }
 };
 
@@ -281,11 +341,18 @@ const setupPrefetch = (): void => {
 
 // ── Bootstrap ─────────────────────────────────────────────────────────
 
-// Set up client-side navigation and prefetch
-setupClientNav();
-setupPrefetch();
+// Guard: only initialise once, even when runtime.js is re-imported with a
+// different cache-busting query string (each ?v=... is a new ES module identity).
+if (!(window as any).__defuss_runtime_init) {
+  (window as any).__defuss_runtime_init = true;
 
-// Set up live-reload in dev mode
+  // Set up client-side navigation and prefetch
+  setupClientNav();
+  setupPrefetch();
+}
+
+// Live-reload WebSocket is always (re-)initialised so the newest module
+// closure is used — but setupLiveReload itself deduplicates the connection.
 setupLiveReload();
 
 export { hydrate };

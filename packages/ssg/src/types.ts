@@ -64,10 +64,10 @@ export interface BuildOptions {
 
   /**
    * The mode in which to run the build: "serve" for development server mode,
-   * "build" for static site generation mode;
+   * "build" for static site generation mode, or "both" when building and then serving;
    * Defaults to "build"
    */
-  mode: Omit<BuildMode, "both">;
+  mode: BuildMode;
 
   /**
    * When set, only the changed file is rebuilt instead of the entire project.

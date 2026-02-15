@@ -3,3 +3,4 @@ export * from "./mdx-plugins.js";
 export * from "./config.js";
 export * from "./build.js";
 export * from "./serve.js";
+export * from "./endpoints.js";

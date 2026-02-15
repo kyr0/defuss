@@ -4,6 +4,9 @@ dist/
 # generated types
 .astro/
 
+# generated endpoints
+.endpoints/
+
 # dependencies
 node_modules/
 
@@ -22,3 +25,4 @@ yarn-error.log*
 
 # jetbrains setting folder
 .idea/
+.vscode/

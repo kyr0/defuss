@@ -4,7 +4,8 @@ import chokidar from "chokidar";
 import express from "ultimate-express";
 import { readConfig } from "./config.js";
 import { build } from "./build.js";
-import { join } from "node:path";
+import { registerEndpoints } from "./endpoints.js";
+import { join, sep } from "node:path";
 import { createRequire } from "node:module";
 import { filePathToRoute } from "./path.js";
 
@@ -67,6 +68,20 @@ export const serve = async ({
     };
   }
 
+  // Register dynamic endpoint routes (compiled .mjs in .endpoints/) before
+  // static middleware so they take priority over pre-rendered files.
+  console.time("[serve] register-endpoints");
+  await registerEndpoints(app, projectDir, config, debug);
+  console.timeEnd("[serve] register-endpoints");
+
+  // Disable browser caching in dev mode so live-reload always gets fresh files
+  app.use((_req: any, res: any, next: any) => {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    next();
+  });
+
   app.use(express.static(outputDir));
 
   const server = app.listen(port, (listenedPort: number) => {
@@ -95,15 +110,25 @@ export const serve = async ({
     }
     isBuilding = true;
     try {
+      console.time("[serve] rebuild");
       await build({ projectDir, debug, mode: "serve", changedFile: filePath });
+      console.timeEnd("[serve] rebuild");
 
-      // Notify all connected clients to reload
+      // Notify all connected clients to reload.
+      // Only send a specific path for page changes; component/asset/config
+      // changes can affect any page, so omit the path to reload all clients.
+      const pagesDir = join(projectDir, config.pages);
+      const isPageFile = filePath.startsWith(pagesDir + "/") || filePath.startsWith(pagesDir + sep);
+      const reloadPath = isPageFile
+        ? filePathToRoute(filePath, config, projectDir)
+        : undefined;
+
       liveReloadServer.clients.forEach((client) => {
         if (client.readyState === 1 /* OPEN */) {
           client.send(
             JSON.stringify({
               command: "reload",
-              path: filePathToRoute(filePath, config, projectDir),
+              ...(reloadPath ? { path: reloadPath } : {}),
             }),
           );
         }

@@ -13,7 +13,7 @@ import {
 import { resolve, join, dirname, sep } from "node:path";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
 import type {
   BuildOptions,
   PluginFnPageDom,
@@ -25,6 +25,7 @@ import type {
 } from "./types.js";
 import { readConfig } from "./config.js";
 import { validateProjectDir } from "./validation.js";
+import { buildEndpoints } from "./endpoints.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -46,7 +47,9 @@ export const build = async ({
 
   const startTime = performance.now();
 
+  console.time("[build] readConfig");
   const config = (await readConfig(projectDir, debug)) as SsgConfig;
+  console.timeEnd("[build] readConfig");
 
   if (debug) {
     console.log("Using config:", config);
@@ -118,39 +121,64 @@ export const build = async ({
 
   // ── Pre plugins (full build only) ─────────────────────────────────
   if (isFullBuild) {
+    console.time("[build] pre-plugins");
     for (const plugin of config.plugins || []) {
       if (
         plugin.phase === "pre" &&
         (plugin.mode === mode || plugin.mode === "both")
       ) {
+        console.time(`[build] pre-plugin:${plugin.name}`);
         if (debug) {
           console.log(`Running pre-plugin: ${plugin.name}`);
         }
         await (plugin.fn as PluginFnPrePost)(projectDir, config);
+        console.timeEnd(`[build] pre-plugin:${plugin.name}`);
       }
     }
+    console.timeEnd("[build] pre-plugins");
   }
 
   // ── Prepare temp folder ────────────────────────────────────────────
+  console.time("[build] prepare-temp");
   if (isFullBuild || !tempExists) {
     // Full rebuild: nuke & recreate temp
     if (tempExists) {
+      console.time("[build] prepare-temp:rmSync");
       rmSync(config.tmp, { recursive: true });
+      console.timeEnd("[build] prepare-temp:rmSync");
     }
 
+    console.time("[build] prepare-temp:cp");
     await cp(projectDir, config.tmp, {
       recursive: true,
       filter: (src: string) => {
-        const relative = src.replace(join(projectDir, ""), "");
+        // Get the path relative to projectDir (strip projectDir + separator)
+        const relative = src.startsWith(projectDir)
+          ? src.slice(projectDir.length).replace(/^\//, "")
+          : src;
+        // Skip directories/files that don't belong in the temp build folder
+        const firstSegment = relative.split("/")[0];
         if (
-          relative.startsWith(join("assets", "")) ||
-          relative.startsWith(join("node_modules", ""))
+          firstSegment === "node_modules" ||
+          firstSegment === config.output ||
+          firstSegment === ".endpoints" ||
+          firstSegment === ".ssg-temp" ||
+          firstSegment === ".git" ||
+          firstSegment === "assets"
         ) {
           return false;
         }
         return true;
       },
     });
+    console.timeEnd("[build] prepare-temp:cp");
+
+    // Symlink node_modules into temp so esbuild can resolve packages
+    const srcNodeModules = join(projectDir, "node_modules");
+    const tmpNodeModules = join(config.tmp, "node_modules");
+    if (existsSync(srcNodeModules) && !existsSync(tmpNodeModules)) {
+      symlinkSync(srcNodeModules, tmpNodeModules, "dir");
+    }
   } else {
     // Incremental: only copy the changed file into temp
     const srcFile = join(projectDir, changedRelative);
@@ -166,9 +194,11 @@ export const build = async ({
       await cp(srcFile, destFile);
     }
   }
+  console.timeEnd("[build] prepare-temp");
 
   // Copy hydration component and runtime into temp components
   // (always needed; fast because they're single files)
+  console.time("[build] copy-hydration");
   await cp(
     resolve(join(__dirname, "components", "index.mjs")),
     join(tmpComponentsDir, "hydrate.tsx"),
@@ -177,9 +207,12 @@ export const build = async ({
     resolve(join(__dirname, "runtime.mjs")),
     join(tmpComponentsDir, "runtime.ts"),
   );
+  console.timeEnd("[build] copy-hydration");
 
   // ── esbuild: compile pages ─────────────────────────────────────────
+  let pageBuildResult: esbuild.BuildResult | null = null;
   if (changeKind !== "asset") {
+    console.time("[build] esbuild-pages");
     // For a single-page change, only compile that one MDX file.
     // For component/full, compile all pages (components may be inlined).
     const pageEntryPoints =
@@ -187,7 +220,7 @@ export const build = async ({
         ? [join(config.tmp, changedRelative)]
         : [join(tmpPagesDir, "**/*.mdx")];
 
-    await esbuild.build({
+    pageBuildResult = await esbuild.build({
       entryPoints: pageEntryPoints,
       format: "esm",
       bundle: true,
@@ -195,6 +228,7 @@ export const build = async ({
       jsxDev: true,
       target: ["esnext"],
       outdir: tmpPagesDir,
+      metafile: true,
       plugins: [
         mdx({
           jsxImportSource: "defuss",
@@ -204,10 +238,12 @@ export const build = async ({
         }),
       ],
     });
+    console.timeEnd("[build] esbuild-pages");
   }
 
   // ── esbuild: compile components ────────────────────────────────────
   if (isFullBuild || changeKind === "component") {
+    console.time("[build] esbuild-components");
     await esbuild.build({
       entryPoints: [
         join(tmpComponentsDir, "**/*.tsx"),
@@ -218,11 +254,14 @@ export const build = async ({
       splitting: true,
       target: ["esnext"],
       outdir: tmpComponentsDir,
+      allowOverwrite: true,
     });
+    console.timeEnd("[build] esbuild-components");
   }
 
   // ── Render pages to HTML ───────────────────────────────────────────
   if (changeKind !== "asset") {
+    console.time("[build] render-pages");
     // Determine which JS output files to render
     let outputFiles: string[];
 
@@ -230,6 +269,38 @@ export const build = async ({
       // Only the changed page's compiled JS
       const jsFile = join(config.tmp, changedRelative.replace(/\.mdx$/, ".js"));
       outputFiles = existsSync(jsFile) ? [jsFile] : [];
+    } else if (changeKind === "component" && pageBuildResult?.metafile) {
+      // Only render pages that actually import the changed component
+      const changedBaseName = changedRelative.replace(/\.[^.]+$/, ""); // e.g. "components/button"
+      outputFiles = [];
+
+      for (const [outputPath, meta] of Object.entries(pageBuildResult.metafile.outputs)) {
+        // Skip sourcemap outputs
+        if (outputPath.endsWith(".map")) continue;
+
+        const inputPaths = Object.keys(meta.inputs);
+        const dependsOnChanged = inputPaths.some((input) => {
+          const inputNorm = input.replace(/\.[^.]+$/, ""); // strip extension
+          return inputNorm.endsWith(changedBaseName);
+        });
+
+        if (dependsOnChanged) {
+          // esbuild metafile output paths are relative to CWD; resolve them
+          const resolved = resolve(outputPath);
+          if (resolved.endsWith(".js") && existsSync(resolved)) {
+            outputFiles.push(resolved);
+          }
+        }
+      }
+
+      if (debug) {
+        console.log(`Component change: ${outputFiles.length} page(s) affected out of ${Object.keys(pageBuildResult.metafile.outputs).filter(p => !p.endsWith(".map")).length} total`);
+      }
+
+      // Fallback: if metafile analysis found nothing, render all pages
+      if (outputFiles.length === 0) {
+        outputFiles = await glob.async(join(tmpPagesDir, "**/*.js"));
+      }
     } else {
       outputFiles = await glob.async(join(tmpPagesDir, "**/*.js"));
     }
@@ -245,22 +316,28 @@ export const build = async ({
         "",
       );
 
+      const pageLabel = relativeOutputHtmlFilePath;
+
       if (debug) {
         console.log("Processing output file (JS):", outputFile);
         console.log("Relative output HTML path:", relativeOutputHtmlFilePath);
       }
 
       // dynamically import the page module (bypass import cache via data URL)
+      console.time(`[build] page:${pageLabel} import`);
       const code = await readFile(outputFile, "utf-8");
       const encoded = Buffer.from(code).toString("base64");
       const dataUrl = `data:text/javascript;base64,${encoded}`;
       const exports = await import(dataUrl);
+      console.timeEnd(`[build] page:${pageLabel} import`);
 
       if (debug) {
         console.log("exports", exports);
       }
 
+      console.time(`[build] page:${pageLabel} vdom`);
       let vdom = exports.default(exports) as VNode;
+      console.timeEnd(`[build] page:${pageLabel} vdom`);
 
       // run any "page-vdom" plugins
       for (const plugin of config.plugins || []) {
@@ -268,6 +345,7 @@ export const build = async ({
           plugin.phase === "page-vdom" &&
           (plugin.mode === mode || plugin.mode === "both")
         ) {
+          console.time(`[build] page:${pageLabel} plugin:${plugin.name}`);
           if (debug) {
             console.log(`Running page-vdom plugin: ${plugin.name}`);
           }
@@ -278,9 +356,11 @@ export const build = async ({
             config,
             exports,
           );
+          console.timeEnd(`[build] page:${pageLabel} plugin:${plugin.name}`);
         }
       }
 
+      console.time(`[build] page:${pageLabel} renderSync`);
       const browserGlobals = getBrowserGlobals();
       const document = getDocument(false, browserGlobals);
       browserGlobals.document = document;
@@ -288,6 +368,7 @@ export const build = async ({
       let el = renderSync(vdom, document.documentElement, {
         browserGlobals,
       }) as HTMLElement;
+      console.timeEnd(`[build] page:${pageLabel} renderSync`);
 
       // run any "page-dom" plugins
       for (const plugin of config.plugins || []) {
@@ -295,6 +376,7 @@ export const build = async ({
           plugin.phase === "page-dom" &&
           (plugin.mode === mode || plugin.mode === "both")
         ) {
+          console.time(`[build] page:${pageLabel} dom-plugin:${plugin.name}`);
           if (debug) {
             console.log(`Running page-dom plugin: ${plugin.name}`);
           }
@@ -304,10 +386,13 @@ export const build = async ({
             projectDir,
             config,
           );
+          console.timeEnd(`[build] page:${pageLabel} dom-plugin:${plugin.name}`);
         }
       }
 
+      console.time(`[build] page:${pageLabel} renderToString`);
       let html = renderToString(el);
+      console.timeEnd(`[build] page:${pageLabel} renderToString`);
 
       // run any "page-html" plugins
       for (const plugin of config.plugins || []) {
@@ -315,6 +400,7 @@ export const build = async ({
           plugin.phase === "page-html" &&
           (plugin.mode === mode || plugin.mode === "both")
         ) {
+          console.time(`[build] page:${pageLabel} html-plugin:${plugin.name}`);
           if (debug) {
             console.log(`Running page-html plugin: ${plugin.name}`);
           }
@@ -324,6 +410,7 @@ export const build = async ({
             projectDir,
             config,
           );
+          console.timeEnd(`[build] page:${pageLabel} html-plugin:${plugin.name}`);
         }
       }
 
@@ -338,11 +425,22 @@ export const build = async ({
         mkdirSync(finalOutputDir, { recursive: true });
       }
 
+      console.time(`[build] page:${pageLabel} writeFile`);
       await writeFile(finalOutputFile, html);
+      console.timeEnd(`[build] page:${pageLabel} writeFile`);
     }
+    console.timeEnd("[build] render-pages");
+  }
+
+  // ── Build endpoints (.ts/.js files in pages) ───────────────────────
+  if (isFullBuild || changeKind === "page") {
+    console.time("[build] build-endpoints");
+    await buildEndpoints(projectDir, config, debug);
+    console.timeEnd("[build] build-endpoints");
   }
 
   // ── Copy outputs ───────────────────────────────────────────────────
+  console.time("[build] copy-outputs");
   if (isFullBuild || changeKind === "component") {
     await cp(tmpComponentsDir, outputComponentsDir, { recursive: true });
   }
@@ -350,11 +448,13 @@ export const build = async ({
   if (isFullBuild || changeKind === "asset") {
     await cp(inputAssetsDir, outputAssetsDir, { recursive: true });
   }
+  console.timeEnd("[build] copy-outputs");
 
   // ── Post plugins ───────────────────────────────────────────────────
   // Run post plugins on full build, or when components change (may affect styles).
   // Skip for single-page edits to save time.
   if (isFullBuild || changeKind === "component") {
+    console.time("[build] post-plugins");
     for (const plugin of config.plugins || []) {
       if (
         plugin.phase === "post" &&
@@ -366,6 +466,7 @@ export const build = async ({
         await (plugin.fn as PluginFnPrePost)(projectDir, config);
       }
     }
+    console.timeEnd("[build] post-plugins");
   }
 
   // remove the temporary folder after a production build (not in serve mode)

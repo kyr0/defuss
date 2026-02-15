@@ -75,14 +75,21 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
                   ;(async function(){
 
                     const props = ${JSON.stringify(props || {})};
-                    const { hydrate } = await import("/components/runtime.js");
-                    const expports = (await import("${clientSrcFile}"));
+                    const cacheBust = "?v=" + Date.now();
+                    console.log("[hydrate:${id}] Starting hydration, cacheBust=" + cacheBust);
+                    console.log("[hydrate:${id}] Importing runtime from /components/runtime.js" + cacheBust);
+                    const { hydrate } = await import("/components/runtime.js" + cacheBust);
+                    console.log("[hydrate:${id}] Importing component from ${clientSrcFile}" + cacheBust);
+                    const expports = (await import("${clientSrcFile}" + cacheBust));
+
+                    console.log("[hydrate:${id}] Module keys:", Object.keys(expports));
 
                     if (!expports || typeof expports.default !== "function") {
                       console.error("Hydration error: No default export function found in", "${clientSrcFile}");
                       return;
                     }
                     const Component = expports.default;
+                    console.log("[hydrate:${id}] Component:", Component.name || "(anonymous)");
 
                     let roots = null;
                     try {
@@ -97,7 +104,11 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
                     } else {
                       console.error("Hydration error: Component MUST return a single root element, not an array of elements! (no fragments allowed)");
                     }
+
+                    console.log("[hydrate:${id}] Rendered VDOM roots:", roots.length, JSON.stringify(roots).slice(0, 200));
+
                     const wrapper = document.querySelector('div[data-hydrate-id="${id}"]');
+                    console.log("[hydrate:${id}] Wrapper found:", !!wrapper, wrapper?.childNodes?.length, "children");
                     
                     // remove <script> itself
                     document.getElementById("${id}")?.remove();
@@ -111,6 +122,7 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
                       }
                       // unwrap children
                       wrapper.replaceWith(...wrapper.childNodes);
+                      console.log("[hydrate:${id}] Hydration complete, wrapper unwrapped");
                     } else {
                       console.warn("No wrapper found for hydration id ${id}");
                     }
