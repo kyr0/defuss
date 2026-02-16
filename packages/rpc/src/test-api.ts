@@ -87,3 +87,26 @@ export class TestProductApi {
     };
   }
 }
+
+// ── Module-based test API (plain objects with functions) ──────────────
+
+/** Simple math utilities as a plain object module */
+export const TestMathModule = {
+  add: async (a: number, b: number): Promise<number> => a + b,
+  multiply: async (a: number, b: number): Promise<number> => a * b,
+  subtract: async (a: number, b: number): Promise<number> => a - b,
+  divide: async (a: number, b: number): Promise<number> => {
+    if (b === 0) throw new Error("Division by zero");
+    return a / b;
+  },
+  // Synchronous method for testing
+  pi: () => Math.PI,
+};
+
+/** String utilities as a plain object module */
+export const TestStringModule = {
+  echo: async (msg: string): Promise<string> => msg,
+  upper: async (msg: string): Promise<string> => msg.toUpperCase(),
+  concat: async (a: string, b: string): Promise<string> => a + b,
+  now: async (): Promise<Date> => new Date(),
+};

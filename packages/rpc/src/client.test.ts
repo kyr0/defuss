@@ -475,7 +475,7 @@ describe("RPC Client", () => {
           const client = await getRpcClient<TestApiNamespace>();
           const productApi = new client.TestProductApi();
           await expect(productApi.getProduct("1")).rejects.toThrow(
-            "RPC call to TestProductApi.getProduct was blocked by an guard",
+            "RPC call to TestProductApi.getProduct was blocked by a guard",
           );
         } finally {
           globalThis.fetch = originalFetch;

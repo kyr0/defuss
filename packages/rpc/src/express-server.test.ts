@@ -191,7 +191,7 @@ describe("Express RPC Server", () => {
       const result = await response.json();
 
       expect(response.status).toBe(404);
-      expect(result.error).toContain("Class NonExistentApi not found");
+      expect(result.error).toContain("Namespace NonExistentApi not found");
     });
 
     it("should return 404 for non-existent method", async () => {

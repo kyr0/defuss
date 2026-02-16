@@ -239,7 +239,7 @@ describe("RPC Server", () => {
       expect(response.status).toBe(404);
 
       const error = await response.json();
-      expect(error.error).toBe("Class NonExistentApi not found");
+      expect(error.error).toBe("Namespace NonExistentApi not found");
     });
 
     it("should return 404 for non-existent method", async () => {
