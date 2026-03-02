@@ -92,32 +92,6 @@ export const TooltipScreen: FC = () => {
           </Tooltip>
         </div>
       </CodePreview>
-      <CodePreview
-        code={`<div class="flex flex-wrap items-center gap-4">
-     <Tooltip tooltip="Default delay" side="top">
-         <Button variant="outline">Default</Button>
-     </Tooltip>
-     <Tooltip tooltip="Short delay" side="top" data-delay="100">
-         <Button variant="outline">Short</Button>
-     </Tooltip>
-     <Tooltip tooltip="Long delay" side="top" data-delay="1000">
-         <Button variant="outline">Long</Button>
-     </Tooltip>
- </div>`}
-        language="tsx"
-      >
-        <div class="flex flex-wrap items-center gap-4">
-          <Tooltip tooltip="Default delay" side="top">
-            <Button variant="outline">Default</Button>
-          </Tooltip>
-          <Tooltip tooltip="Short delay" side="top" data-delay="100">
-            <Button variant="outline">Short</Button>
-          </Tooltip>
-          <Tooltip tooltip="Long delay" side="top" data-delay="1000">
-            <Button variant="outline">Long</Button>
-          </Tooltip>
-        </div>
-      </CodePreview>
     </div>
   );
 };

@@ -8,7 +8,6 @@ import {
   CardTitle,
   Form,
   FormField,
-  Input,
   Label,
   RadioGroup,
   RadioGroupItem,
@@ -25,21 +24,26 @@ export const RadioGroupScreen: FC = () => {
       <CodePreview
         code={`<RadioGroup className="space-y-2" name="plan">
   <label className="flex items-center gap-2"><RadioGroupItem name="plan" value="starter" /> <span>Starter</span></label>
-  <label className="flex items-center gap-2"><RadioGroupItem name="plan" value="pro" /> <span>Pro</span></label>
+  <label className="flex items-center gap-2"><RadioGroupItem name="plan" value="pro" checked /> <span>Pro</span></label>
   <label className="flex items-center gap-2"><RadioGroupItem name="plan" value="enterprise" /> <span>Enterprise</span></label>
 </RadioGroup>`}
         language="tsx"
       >
         <RadioGroup className="space-y-2" name="plan">
-          <label class="flex items-center gap-2">
-            <RadioGroupItem name="plan" value="starter" />{" "}
+          <label htmlFor="plan-starter" class="flex items-center gap-2">
+            <RadioGroupItem id="plan-starter" name="plan" value="starter" />{" "}
             <Label>Starter</Label>
           </label>
-          <label class="flex items-center gap-2">
-            <RadioGroupItem name="plan" value="pro" /> <Label>Pro</Label>
+          <label htmlFor="plan-pro" class="flex items-center gap-2">
+            <RadioGroupItem id="plan-pro" name="plan" value="pro" checked />{" "}
+            <Label>Pro</Label>
           </label>
-          <label class="flex items-center gap-2">
-            <RadioGroupItem name="plan" value="enterprise" />{" "}
+          <label htmlFor="plan-enterprise" class="flex items-center gap-2">
+            <RadioGroupItem
+              id="plan-enterprise"
+              name="plan"
+              value="enterprise"
+            />{" "}
             <Label>Enterprise</Label>
           </label>
         </RadioGroup>
@@ -60,7 +64,7 @@ export const RadioGroupScreen: FC = () => {
     <span>Small</span>
   </label>
   <label className="flex items-center gap-2">
-    <RadioGroupItem name="size" value="medium" />
+    <RadioGroupItem name="size" value="medium" checked />
     <span>Medium</span>
   </label>
   <label className="flex items-center gap-2">
@@ -71,16 +75,21 @@ export const RadioGroupScreen: FC = () => {
         language="tsx"
       >
         <RadioGroup className="flex gap-6" name="size">
-          <label class="flex items-center gap-2">
-            <RadioGroupItem name="size" value="small" />
+          <label htmlFor="size-small" class="flex items-center gap-2">
+            <RadioGroupItem id="size-small" name="size" value="small" />
             <Label>Small</Label>
           </label>
-          <label class="flex items-center gap-2">
-            <RadioGroupItem name="size" value="medium" />
+          <label htmlFor="size-medium" class="flex items-center gap-2">
+            <RadioGroupItem
+              id="size-medium"
+              name="size"
+              value="medium"
+              checked
+            />
             <Label>Medium</Label>
           </label>
-          <label class="flex items-center gap-2">
-            <RadioGroupItem name="size" value="large" />
+          <label htmlFor="size-large" class="flex items-center gap-2">
+            <RadioGroupItem id="size-large" name="size" value="large" />
             <Label>Large</Label>
           </label>
         </RadioGroup>
@@ -96,15 +105,15 @@ export const RadioGroupScreen: FC = () => {
       </p>
       <CodePreview
         code={`<RadioGroup className="space-y-4" name="frequency">
-  <label className="flex items-start gap-3">
-    <RadioGroupItem name="frequency" value="daily" />
+  <label htmlFor="frequency-daily" className="flex items-start gap-3">
+    <RadioGroupItem id="frequency-daily" name="frequency" value="daily" />
     <div className="flex flex-col">
       <span className="font-medium">Daily</span>
       <span className="text-sm text-muted-foreground">Get updates once per day</span>
     </div>
   </label>
-  <label className="flex items-start gap-3">
-    <RadioGroupItem name="frequency" value="weekly" />
+  <label htmlFor="frequency-weekly" className="flex items-start gap-3">
+    <RadioGroupItem id="frequency-weekly" name="frequency" value="weekly" checked />
     <div className="flex flex-col">
       <span className="font-medium">Weekly</span>
       <span className="text-sm text-muted-foreground">Get updates once per week</span>
@@ -121,8 +130,12 @@ export const RadioGroupScreen: FC = () => {
         language="tsx"
       >
         <RadioGroup className="space-y-4" name="frequency">
-          <label class="flex items-start gap-3">
-            <RadioGroupItem name="frequency" value="daily" />
+          <label htmlFor="frequency-daily" class="flex items-start gap-3">
+            <RadioGroupItem
+              id="frequency-daily"
+              name="frequency"
+              value="daily"
+            />
             <div class="flex flex-col">
               <span class="font-medium">Daily</span>
               <span class="text-sm text-muted-foreground">
@@ -130,8 +143,13 @@ export const RadioGroupScreen: FC = () => {
               </span>
             </div>
           </label>
-          <label class="flex items-start gap-3">
-            <RadioGroupItem name="frequency" value="weekly" />
+          <label htmlFor="frequency-weekly" class="flex items-start gap-3">
+            <RadioGroupItem
+              id="frequency-weekly"
+              name="frequency"
+              value="weekly"
+              checked
+            />
             <div class="flex flex-col">
               <span class="font-medium">Weekly</span>
               <span class="text-sm text-muted-foreground">
@@ -139,8 +157,12 @@ export const RadioGroupScreen: FC = () => {
               </span>
             </div>
           </label>
-          <label class="flex items-start gap-3">
-            <RadioGroupItem name="frequency" value="monthly" />
+          <label htmlFor="frequency-monthly" class="flex items-start gap-3">
+            <RadioGroupItem
+              id="frequency-monthly"
+              name="frequency"
+              value="monthly"
+            />
             <div class="flex flex-col">
               <span class="font-medium">Monthly</span>
               <span class="text-sm text-muted-foreground">
@@ -161,71 +183,78 @@ export const RadioGroupScreen: FC = () => {
       </p>
       <CodePreview
         code={`<Form className="form grid gap-6 max-w-md">
-  <FormField
-    name="notification_preference"
-    render={() => (
-      <div className="flex flex-col gap-3">
-        <Label htmlFor="notification-preference">Notification preference</Label>
-        <RadioGroup id="notification-preference" name="notification_preference" className="grid gap-3" required>
-          <label className="flex items-center gap-2 rounded-md border p-3 hover:bg-accent">
-            <RadioGroupItem name="notification_preference" value="email" />
-            <span>Email</span>
-          </label>
-          <label className="flex items-center gap-2 rounded-md border p-3 hover:bg-accent">
-            <RadioGroupItem name="notification_preference" value="sms" />
-            <span>SMS</span>
-          </label>
-          <label className="flex items-center gap-2 rounded-md border p-3 hover:bg-accent">
-            <RadioGroupItem name="notification_preference" value="push" />
-            <span>Push</span>
-          </label>
-        </RadioGroup>
-      </div>
-    )}
-  />
+  <FormField>
+    <div className="flex flex-col gap-3">
+      <Label htmlFor="notification-preference">Notification preference</Label>
+      <RadioGroup id="notification-preference" name="notification_preference" className="grid gap-3" required>
+        <label htmlFor="notification-preference-email" className="flex items-center gap-2 rounded-md border p-3 hover:bg-accent">
+          <RadioGroupItem id="notification-preference-email" name="notification_preference" value="email" checked />
+          <span>Email</span>
+        </label>
+        <label htmlFor="notification-preference-sms" className="flex items-center gap-2 rounded-md border p-3 hover:bg-accent">
+          <RadioGroupItem id="notification-preference-sms" name="notification_preference" value="sms" />
+          <span>SMS</span>
+        </label>
+        <label htmlFor="notification-preference-push" className="flex items-center gap-2 rounded-md border p-3 hover:bg-accent">
+          <RadioGroupItem id="notification-preference-push" name="notification_preference" value="push" />
+          <span>Push</span>
+        </label>
+      </RadioGroup>
+    </div>
+  </FormField>
   <Button type="submit">Submit</Button>
 </Form>`}
         language="tsx"
       >
         <Form class="form grid gap-6 max-w-md">
-          <FormField
-            name="notification_preference"
-            render={() => (
-              <div class="flex flex-col gap-3">
-                <Label htmlFor="notification-preference">
-                  Notification preference
-                </Label>
-                <RadioGroup
-                  id="notification-preference"
-                  name="notification_preference"
-                  className="grid gap-3"
-                  required
+          <FormField>
+            <div class="flex flex-col gap-3">
+              <Label htmlFor="notification-preference">
+                Notification preference
+              </Label>
+              <RadioGroup
+                id="notification-preference"
+                name="notification_preference"
+                class="grid gap-3"
+                required
+              >
+                <label
+                  htmlFor="notification-preference-email"
+                  class="flex items-center gap-2 rounded-md border p-3 hover:bg-accent"
                 >
-                  <label class="flex items-center gap-2 rounded-md border p-3 hover:bg-accent">
-                    <RadioGroupItem
-                      name="notification_preference"
-                      value="email"
-                    />
-                    <span>Email</span>
-                  </label>
-                  <label class="flex items-center gap-2 rounded-md border p-3 hover:bg-accent">
-                    <RadioGroupItem
-                      name="notification_preference"
-                      value="sms"
-                    />
-                    <span>SMS</span>
-                  </label>
-                  <label class="flex items-center gap-2 rounded-md border p-3 hover:bg-accent">
-                    <RadioGroupItem
-                      name="notification_preference"
-                      value="push"
-                    />
-                    <span>Push</span>
-                  </label>
-                </RadioGroup>
-              </div>
-            )}
-          />
+                  <RadioGroupItem
+                    id="notification-preference-email"
+                    name="notification_preference"
+                    value="email"
+                    checked
+                  />
+                  <span>Email</span>
+                </label>
+                <label
+                  htmlFor="notification-preference-sms"
+                  class="flex items-center gap-2 rounded-md border p-3 hover:bg-accent"
+                >
+                  <RadioGroupItem
+                    id="notification-preference-sms"
+                    name="notification_preference"
+                    value="sms"
+                  />
+                  <span>SMS</span>
+                </label>
+                <label
+                  htmlFor="notification-preference-push"
+                  class="flex items-center gap-2 rounded-md border p-3 hover:bg-accent"
+                >
+                  <RadioGroupItem
+                    id="notification-preference-push"
+                    name="notification_preference"
+                    value="push"
+                  />
+                  <span>Push</span>
+                </label>
+              </RadioGroup>
+            </div>
+          </FormField>
           <Button type="submit">Submit</Button>
         </Form>
       </CodePreview>
@@ -241,7 +270,7 @@ export const RadioGroupScreen: FC = () => {
       <CodePreview
         code={`<RadioGroup className="space-y-3" name="icons">
   <label className="flex items-center gap-3 rounded-md border p-3 hover:bg-accent">
-    <RadioGroupItem name="icons" value="home" />
+    <RadioGroupItem name="icons" value="home" checked />
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     <span>Home</span>
   </label>
@@ -259,8 +288,11 @@ export const RadioGroupScreen: FC = () => {
         language="tsx"
       >
         <RadioGroup className="space-y-3" name="icons">
-          <label class="flex items-center gap-3 rounded-md border p-3 hover:bg-accent">
-            <RadioGroupItem name="icons" value="home" />
+          <label
+            htmlFor="icons-home"
+            class="flex items-center gap-3 rounded-md border p-3 hover:bg-accent"
+          >
+            <RadioGroupItem id="icons-home" name="icons" value="home" checked />
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="24"
@@ -277,8 +309,11 @@ export const RadioGroupScreen: FC = () => {
             </svg>
             <span>Home</span>
           </label>
-          <label class="flex items-center gap-3 rounded-md border p-3 hover:bg-accent">
-            <RadioGroupItem name="icons" value="users" />
+          <label
+            htmlFor="icons-users"
+            class="flex items-center gap-3 rounded-md border p-3 hover:bg-accent"
+          >
+            <RadioGroupItem id="icons-users" name="icons" value="users" />
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="24"
@@ -297,8 +332,11 @@ export const RadioGroupScreen: FC = () => {
             </svg>
             <span>Users</span>
           </label>
-          <label class="flex items-center gap-3 rounded-md border p-3 hover:bg-accent">
-            <RadioGroupItem name="icons" value="settings" />
+          <label
+            htmlFor="icons-settings"
+            class="flex items-center gap-3 rounded-md border p-3 hover:bg-accent"
+          >
+            <RadioGroupItem id="icons-settings" name="icons" value="settings" />
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="24"
@@ -333,19 +371,19 @@ export const RadioGroupScreen: FC = () => {
     <CardDescription>Choose your preferred display mode</CardDescription>
   </CardHeader>
   <CardContent>
-    <RadioGroup className="flex items-center justify-between gap-4" name="display-mode">
-      <label className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer">
-        <RadioGroupItem name="display-mode" value="light" />
+    <RadioGroup className="flex items-center justify-between gap-4  mt-8" name="display-mode">
+      <label htmlFor="display-mode-light" className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer">
+        <RadioGroupItem id="display-mode-light" name="display-mode" value="light" checked />
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>
         <span className="text-sm font-medium">Light</span>
       </label>
-      <label className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer">
-        <RadioGroupItem name="display-mode" value="dark" />
+      <label htmlFor="display-mode-dark" className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer">
+        <RadioGroupItem id="display-mode-dark" name="display-mode" value="dark" />
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
         <span className="text-sm font-medium">Dark</span>
       </label>
-      <label className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer">
-        <RadioGroupItem name="display-mode" value="system" />
+      <label htmlFor="display-mode-system" className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer">
+        <RadioGroupItem id="display-mode-system" name="display-mode" value="system" />
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.1 4-2 4-2"/><path d="M12 15v5s3.03-.55 4-2c1.1-1.62 2-4 2-2"/></svg>
         <span className="text-sm font-medium">System</span>
       </label>
@@ -363,11 +401,19 @@ export const RadioGroupScreen: FC = () => {
           </CardHeader>
           <CardContent>
             <RadioGroup
-              className="flex items-center justify-between gap-4"
+              className="flex items-center justify-between gap-4 mt-8"
               name="display-mode"
             >
-              <label className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer">
-                <RadioGroupItem name="display-mode" value="light" />
+              <label
+                htmlFor="display-mode-light"
+                className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer"
+              >
+                <RadioGroupItem
+                  id="display-mode-light"
+                  name="display-mode"
+                  value="light"
+                  checked
+                />
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="24"
@@ -391,8 +437,15 @@ export const RadioGroupScreen: FC = () => {
                 </svg>
                 <span className="text-sm font-medium">Light</span>
               </label>
-              <label className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer">
-                <RadioGroupItem name="display-mode" value="dark" />
+              <label
+                htmlFor="display-mode-dark"
+                className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer"
+              >
+                <RadioGroupItem
+                  id="display-mode-dark"
+                  name="display-mode"
+                  value="dark"
+                />
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="24"
@@ -408,8 +461,15 @@ export const RadioGroupScreen: FC = () => {
                 </svg>
                 <span className="text-sm font-medium">Dark</span>
               </label>
-              <label className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer">
-                <RadioGroupItem name="display-mode" value="system" />
+              <label
+                htmlFor="display-mode-system"
+                className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent hover:border-primary transition-colors cursor-pointer"
+              >
+                <RadioGroupItem
+                  id="display-mode-system"
+                  name="display-mode"
+                  value="system"
+                />
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="24"
@@ -443,8 +503,8 @@ export const RadioGroupScreen: FC = () => {
       </p>
       <CodePreview
         code={`<RadioGroup className="grid gap-4 sm:grid-cols-2" name="plan-tier">
-  <label className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer">
-    <RadioGroupItem name="plan-tier" value="basic" className="absolute right-4 top-4 h-4 w-4" />
+  <label htmlFor="plan-tier-basic" className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer">
+    <RadioGroupItem id="plan-tier-basic" name="plan-tier" value="basic" className="absolute right-4 top-4 h-4 w-4" />
     <div className="flex flex-col gap-1">
       <span className="font-semibold">Basic</span>
       <span className="text-sm text-muted-foreground">Perfect for individuals</span>
@@ -454,8 +514,8 @@ export const RadioGroupScreen: FC = () => {
       <span className="text-sm text-muted-foreground">/month</span>
     </div>
   </label>
-  <label className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer">
-    <RadioGroupItem name="plan-tier" value="pro" className="absolute right-4 top-4 h-4 w-4" />
+  <label htmlFor="plan-tier-pro" className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer">
+    <RadioGroupItem id="plan-tier-pro" name="plan-tier" value="pro" checked className="absolute right-4 top-4 h-4 w-4" />
     <div className="flex flex-col gap-1">
       <span className="font-semibold">Pro</span>
       <span className="text-sm text-muted-foreground">Best for professionals</span>
@@ -465,8 +525,8 @@ export const RadioGroupScreen: FC = () => {
       <span className="text-sm text-muted-foreground">/month</span>
     </div>
   </label>
-  <label className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer">
-    <RadioGroupItem name="plan-tier" value="enterprise" className="absolute right-4 top-4 h-4 w-4" />
+  <label htmlFor="plan-tier-enterprise" className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer">
+    <RadioGroupItem id="plan-tier-enterprise" name="plan-tier" value="enterprise" className="absolute right-4 top-4 h-4 w-4" />
     <div className="flex flex-col gap-1">
       <span className="font-semibold">Enterprise</span>
       <span className="text-sm text-muted-foreground">For large teams</span>
@@ -480,8 +540,12 @@ export const RadioGroupScreen: FC = () => {
         language="tsx"
       >
         <RadioGroup className="grid gap-4 sm:grid-cols-2" name="plan-tier">
-          <label className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer">
+          <label
+            htmlFor="plan-tier-basic"
+            className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer"
+          >
             <RadioGroupItem
+              id="plan-tier-basic"
               name="plan-tier"
               value="basic"
               className="absolute right-4 top-4 h-4 w-4"
@@ -497,10 +561,15 @@ export const RadioGroupScreen: FC = () => {
               <span className="text-sm text-muted-foreground">/month</span>
             </div>
           </label>
-          <label className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer">
+          <label
+            htmlFor="plan-tier-pro"
+            className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer"
+          >
             <RadioGroupItem
+              id="plan-tier-pro"
               name="plan-tier"
               value="pro"
+              checked
               className="absolute right-4 top-4 h-4 w-4"
             />
             <div className="flex flex-col gap-1">
@@ -514,8 +583,12 @@ export const RadioGroupScreen: FC = () => {
               <span className="text-sm text-muted-foreground">/month</span>
             </div>
           </label>
-          <label className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer">
+          <label
+            htmlFor="plan-tier-enterprise"
+            className="group relative flex flex-col gap-3 rounded-xl border-2 border-border bg-card p-5 hover:bg-accent hover:border-primary transition-all cursor-pointer"
+          >
             <RadioGroupItem
+              id="plan-tier-enterprise"
               name="plan-tier"
               value="enterprise"
               className="absolute right-4 top-4 h-4 w-4"
@@ -574,16 +647,33 @@ export const RadioGroupScreen: FC = () => {
             aria-invalid={true}
             aria-describedby="payment-error-msg"
           >
-            <label class="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
-              <RadioGroupItem name="payment" value="credit-card" />
+            <label
+              htmlFor="payment-credit-card"
+              class="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3"
+            >
+              <RadioGroupItem
+                id="payment-credit-card"
+                name="payment"
+                value="credit-card"
+              />
               <span>Credit Card</span>
             </label>
-            <label class="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
-              <RadioGroupItem name="payment" value="paypal" />
+            <label
+              htmlFor="payment-paypal"
+              class="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3"
+            >
+              <RadioGroupItem
+                id="payment-paypal"
+                name="payment"
+                value="paypal"
+              />
               <span>PayPal</span>
             </label>
-            <label class="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
-              <RadioGroupItem name="payment" value="bank" />
+            <label
+              htmlFor="payment-bank"
+              class="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3"
+            >
+              <RadioGroupItem id="payment-bank" name="payment" value="bank" />
               <span>Bank Transfer</span>
             </label>
           </RadioGroup>

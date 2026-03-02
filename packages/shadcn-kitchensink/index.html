@@ -28,7 +28,7 @@
   </script>
   <!-- Theme variant -->
   <script>
-    (function () {
+    (() => {
       try {
         const storedTheme = localStorage.getItem('themeVariant');
         if (storedTheme) document.documentElement.classList.add(`theme-${storedTheme}`);
@@ -41,11 +41,11 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Language" content="en">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kitchensink | Defuss 1</title>
-  <meta name="description" content="Defuss Shadcn Kitchensink" />
-
-  <!-- HTMX -->
-  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <title>shadcn Kitchensink | defuss</title>
+  <meta name="description" content="defuss-shadcn Kitchensink" />
+	
+	<!-- Favicon -->
+	<link rel="icon" href="/favicon.webp" />
 
   <!-- Highlight.js -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
@@ -59,19 +59,13 @@
       if (!window.hljs) return;
       document
         .querySelectorAll('pre code:not([data-highlighted]), code.highlight:not([data-highlighted])')
-        .forEach(el => hljs.highlightElement(el));
+        .forEach(el => { hljs.highlightElement(el); });
     };
 
     if (!window._hljsInit) {
       window._hljsInit = true;
       document.addEventListener('DOMContentLoaded', highlight);
-      document.addEventListener('htmx:afterSwap', highlight);
     }
-  </script>
-  <script>
-    document.addEventListener('htmx:historyRestore', () => {
-      if (window.basecoat) window.basecoat.initAll();
-    });
   </script>
 </head>
 

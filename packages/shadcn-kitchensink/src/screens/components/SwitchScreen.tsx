@@ -62,7 +62,7 @@ export const SwitchScreen: FC = () => {
     <CardDescription>Manage your notification preferences</CardDescription>
   </CardHeader>
   <CardContent>
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between w-90">
       <div className="grid gap-1.5">
         <Label htmlFor="card-push">Push Notifications</Label>
         <p className="text-sm text-muted-foreground">Receive push notifications on your device</p>
@@ -81,7 +81,7 @@ export const SwitchScreen: FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between w-90">
               <div class="grid gap-1.5">
                 <Label for="card-push">Push Notifications</Label>
                 <p class="text-sm text-muted-foreground">

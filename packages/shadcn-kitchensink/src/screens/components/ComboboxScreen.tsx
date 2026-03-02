@@ -6,8 +6,6 @@ import { CodePreview } from "../../components/CodePreview.js";
 export const ComboboxScreen: FC = () => {
   const selectedValueRef = createRef<HTMLSpanElement>();
   const multiSelectRef = createRef<HTMLDivElement>();
-  const disabledRef = createRef<HTMLSpanElement>();
-  const invalidRef = createRef<HTMLSpanElement>();
   const selectedValuesStore = createStore<string[]>([]);
 
   return (
@@ -182,10 +180,16 @@ export const ComboboxScreen: FC = () => {
                 }
               }}
             >
-              <ComboboxOption value="United States" data-keywords="usa america us" />
+              <ComboboxOption
+                value="United States"
+                data-keywords="usa america us"
+              />
               <ComboboxOption value="Canada" data-keywords="ca" />
               <ComboboxOption value="Mexico" data-keywords="mx" />
-              <ComboboxOption value="United Kingdom" data-keywords="uk britain" />
+              <ComboboxOption
+                value="United Kingdom"
+                data-keywords="uk britain"
+              />
               <ComboboxOption value="Germany" data-keywords="de deutschland" />
             </Combobox>
           </div>
@@ -438,7 +442,10 @@ export const ComboboxScreen: FC = () => {
                 }
               }}
             >
-              <div data-force class="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+              <div
+                data-force
+                class="px-2 py-1.5 text-xs font-medium text-muted-foreground"
+              >
                 Americas
               </div>
               <ComboboxOption value="America/New_York">
@@ -450,7 +457,10 @@ export const ComboboxScreen: FC = () => {
               <ComboboxOption value="America/Chicago">
                 (GMT-6) Chicago
               </ComboboxOption>
-              <div data-force class="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+              <div
+                data-force
+                class="px-2 py-1.5 text-xs font-medium text-muted-foreground"
+              >
                 Europe
               </div>
               <ComboboxOption value="Europe/London">
@@ -462,12 +472,13 @@ export const ComboboxScreen: FC = () => {
               <ComboboxOption value="Europe/Berlin">
                 (GMT+1) Berlin
               </ComboboxOption>
-              <div data-force class="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+              <div
+                data-force
+                class="px-2 py-1.5 text-xs font-medium text-muted-foreground"
+              >
                 Asia/Pacific
               </div>
-              <ComboboxOption value="Asia/Tokyo">
-                (GMT+9) Tokyo
-              </ComboboxOption>
+              <ComboboxOption value="Asia/Tokyo">(GMT+9) Tokyo</ComboboxOption>
               <ComboboxOption value="Asia/Shanghai">
                 (GMT+8) Shanghai
               </ComboboxOption>

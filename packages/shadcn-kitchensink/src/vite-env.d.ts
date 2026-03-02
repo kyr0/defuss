@@ -3,5 +3,5 @@
 // hljs
 
 declare var hljs: {
-    highlightElement: (element: HTMLElement) => void;
+  highlightElement: (element: HTMLElement) => void;
 };

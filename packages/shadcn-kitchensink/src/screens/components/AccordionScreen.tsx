@@ -5,7 +5,6 @@ import {
   AccordionItem,
   AccordionTrigger,
   Avatar,
-  AvatarFallback,
   Card,
   CardContent,
   CardHeader,
@@ -336,10 +335,7 @@ export const AccordionScreen: FC = () => {
         code={`<Accordion type="single" collapsible className="w-full">
    <AccordionItem value="item-1">
      <AccordionTrigger className="flex items-center gap-3 group">
-       <Avatar className="h-9 w-9">
-         <Avatar src="https://github.com/shadcn.png" />
-         <AvatarFallback>CN</AvatarFallback>
-       </Avatar>
+       <Avatar className="h-9 w-9" src="https://github.com/shadcn.png" alt="shadcn" />
        <div className="flex flex-col items-start text-left">
          <span className="text-sm font-medium">shadcn</span>
          <span className="text-xs text-muted-foreground">Updated 2 hours ago</span>
@@ -351,10 +347,7 @@ export const AccordionScreen: FC = () => {
    </AccordionItem>
    <AccordionItem value="item-2">
      <AccordionTrigger className="flex items-center gap-3 group">
-       <Avatar className="h-9 w-9">
-         <Avatar src="https://github.com/mitchellhamann.png" />
-         <AvatarFallback>MH</AvatarFallback>
-       </Avatar>
+       <Avatar className="h-9 w-9" src="https://github.com/mitchellhamann.png" alt="Mitchell Hamann" />
        <div className="flex flex-col items-start text-left">
          <span className="text-sm font-medium">Mitchell Hamann</span>
          <span className="text-xs text-muted-foreground">Updated 5 hours ago</span>
@@ -366,10 +359,7 @@ export const AccordionScreen: FC = () => {
    </AccordionItem>
    <AccordionItem value="item-3">
      <AccordionTrigger className="flex items-center gap-3 group">
-       <Avatar className="h-9 w-9">
-         <Avatar src="https://github.com/hunvreus.png" />
-         <AvatarFallback>RH</AvatarFallback>
-       </Avatar>
+       <Avatar className="h-9 w-9" src="https://github.com/hunvreus.png" alt="Ronan Berder" />
        <div className="flex flex-col items-start text-left">
          <span className="text-sm font-medium">Ronan Berder</span>
          <span className="text-xs text-muted-foreground">Updated 1 day ago</span>
@@ -385,10 +375,11 @@ export const AccordionScreen: FC = () => {
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="item-1">
             <AccordionTrigger className="flex items-center gap-3 group">
-              <Avatar className="h-9 w-9">
-                <Avatar className="rounded-lg" src="https://github.com/kyr0.png" alt="@kyr0" />
-                <AvatarFallback>KY</AvatarFallback>
-              </Avatar>
+              <Avatar
+                className="h-9 w-9 rounded-lg"
+                src="https://github.com/kyr0.png"
+                alt="@kyr0"
+              />
               <div class="flex flex-col items-start text-left">
                 <span class="text-sm font-medium">kyr0</span>
                 <span class="text-xs text-muted-foreground">
@@ -402,12 +393,13 @@ export const AccordionScreen: FC = () => {
           </AccordionItem>
           <AccordionItem value="item-2">
             <AccordionTrigger className="flex items-center gap-3 group">
-              <Avatar className="h-9 w-9">
-                <Avatar src="https://github.com/mitchellhamann.png" />
-                <AvatarFallback>MH</AvatarFallback>
-              </Avatar>
+              <Avatar
+                className="h-9 w-9"
+                src="https://github.com/mansi1.png"
+                alt="Mansi"
+              />
               <div class="flex flex-col items-start text-left">
-                <span class="text-sm font-medium">Mitchell Hamann</span>
+                <span class="text-sm font-medium">Mansi</span>
                 <span class="text-xs text-muted-foreground">
                   Updated 5 hours ago
                 </span>
@@ -421,10 +413,29 @@ export const AccordionScreen: FC = () => {
           </AccordionItem>
           <AccordionItem value="item-3">
             <AccordionTrigger className="flex items-center gap-3 group">
-              <Avatar className="h-9 w-9">
-                <Avatar src="https://github.com/hunvreus.png" />
-                <AvatarFallback>RH</AvatarFallback>
-              </Avatar>
+              <Avatar
+                className="h-9 w-9"
+                src="https://github.com/jsdevtom.png"
+                alt="JS Dev Tom"
+              />
+              <div class="flex flex-col items-start text-left">
+                <span class="text-sm font-medium">JS Dev Tom</span>
+                <span class="text-xs text-muted-foreground">
+                  Updated 8 hours ago
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pb-4">
+              <p class="text-sm">This is the third item's accordion content.</p>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-4">
+            <AccordionTrigger className="flex items-center gap-3 group">
+              <Avatar
+                className="h-9 w-9"
+                src="https://github.com/hunvreus.png"
+                alt="Ronan Berder"
+              />
               <div class="flex flex-col items-start text-left">
                 <span class="text-sm font-medium">Ronan Berder</span>
                 <span class="text-xs text-muted-foreground">
@@ -433,111 +444,9 @@ export const AccordionScreen: FC = () => {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <p class="text-sm">This is the third item's accordion content.</p>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </CodePreview>
-
-      <h2
-        id="example-multiple-expanded-items"
-        class="text-2xl font-semibold tracking-tight scroll-m-20 border-b pb-2 mt-8"
-      >
-        Accordion with Multiple Expanded Items
-      </h2>
-      <p class="text-lg text-muted-foreground mb-4">
-        Accordion that allows multiple items to be expanded simultaneously.
-      </p>
-      <CodePreview
-        previewClassName="items-start justify-start"
-        className="w-full max-w-md"
-        code={`<Accordion type="multiple" className="w-full">
-   <AccordionItem value="item-1">
-     <AccordionTrigger>Is it accessible?</AccordionTrigger>
-     <AccordionContent>Yes. It adheres to the WAI-ARIA design pattern.</AccordionContent>
-   </AccordionItem>
-   <AccordionItem value="item-2">
-     <AccordionTrigger>Is it styled?</AccordionTrigger>
-     <AccordionContent>Yes. It comes with default styles that matches the other components' aesthetic.</AccordionContent>
-   </AccordionItem>
-   <AccordionItem value="item-3">
-     <AccordionTrigger>Is it animated?</AccordionTrigger>
-     <AccordionContent>Yes. It's animated by default, but you can disable it if you prefer.</AccordionContent>
-   </AccordionItem>
-</Accordion>`}
-        language="tsx"
-      >
-        <Accordion type="multiple" className="w-full">
-          <AccordionItem value="item-1">
-            <AccordionTrigger>Is it accessible?</AccordionTrigger>
-            <AccordionContent>
-              Yes. It adheres to the WAI-ARIA design pattern.
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="item-2">
-            <AccordionTrigger>Is it styled?</AccordionTrigger>
-            <AccordionContent>
-              Yes. It comes with default styles that matches the other
-              components' aesthetic.
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="item-3">
-            <AccordionTrigger>Is it animated?</AccordionTrigger>
-            <AccordionContent>
-              Yes. It's animated by default, but you can disable it if you
-              prefer.
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </CodePreview>
-
-      <h2
-        id="example-disabled-accordion-items"
-        class="text-2xl font-semibold tracking-tight scroll-m-20 border-b pb-2 mt-8"
-      >
-        Accordion with Disabled Items
-      </h2>
-      <p class="text-lg text-muted-foreground mb-4">
-        Accordion with disabled items that cannot be interacted with.
-      </p>
-      <CodePreview
-        previewClassName="items-start justify-start"
-        className="w-full max-w-md"
-        code={`<Accordion type="single" collapsible className="w-full">
-   <AccordionItem value="item-1">
-     <AccordionTrigger>Is it accessible?</AccordionTrigger>
-     <AccordionContent>Yes. It adheres to the WAI-ARIA design pattern.</AccordionContent>
-   </AccordionItem>
-   <AccordionItem value="item-2" disabled>
-     <AccordionTrigger>Is it styled?</AccordionTrigger>
-     <AccordionContent>Yes. It comes with default styles that matches the other components' aesthetic.</AccordionContent>
-   </AccordionItem>
-   <AccordionItem value="item-3">
-     <AccordionTrigger>Is it animated?</AccordionTrigger>
-     <AccordionContent>Yes. It's animated by default, but you can disable it if you prefer.</AccordionContent>
-   </AccordionItem>
-</Accordion>`}
-        language="tsx"
-      >
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="item-1">
-            <AccordionTrigger>Is it accessible?</AccordionTrigger>
-            <AccordionContent>
-              Yes. It adheres to the WAI-ARIA design pattern.
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="item-2" disabled>
-            <AccordionTrigger>Is it styled?</AccordionTrigger>
-            <AccordionContent>
-              Yes. It comes with default styles that matches the other
-              components' aesthetic.
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="item-3">
-            <AccordionTrigger>Is it animated?</AccordionTrigger>
-            <AccordionContent>
-              Yes. It's animated by default, but you can disable it if you
-              prefer.
+              <p class="text-sm">
+                This is the fourth item's accordion content.
+              </p>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
@@ -600,9 +509,7 @@ export const AccordionScreen: FC = () => {
           </CodePreview>
         </div>
         <div class="space-y-4">
-          <h3 class="text-lg font-semibold">
-            Always one expanded
-          </h3>
+          <h3 class="text-lg font-semibold">Always one expanded</h3>
           <CodePreview
             previewClassName="items-start justify-start"
             className="w-full"

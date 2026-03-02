@@ -25,6 +25,8 @@ export const ThemeSwitcherScreen: FC = () => {
         <code>&lt;head&gt;</code>:
       </p>
       <CodePreview
+        activeTab="code"
+        tabsVisible={["code"]} // Hide the preview tab since this is just a script
         code={`<script>
   (() => {
     try {

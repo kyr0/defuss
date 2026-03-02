@@ -1,11 +1,14 @@
 import type { FC } from "defuss";
 import {
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuHeading,
   Kbd,
+  RadioGroupItem,
 } from "defuss-shadcn";
 import { CodePreview } from "../../components/CodePreview.js";
 
@@ -55,9 +58,9 @@ export const DropdownMenuScreen: FC = () => {
             className="min-w-56"
           >
             <div role="group" aria-labelledby="account-options">
-              <div role="heading" id="account-options">
+              <DropdownMenuHeading id="account-options">
                 My Account
-              </div>
+              </DropdownMenuHeading>
               <DropdownMenuItem>
                 Profile
                 <Kbd className="text-muted-foreground ml-auto text-xs tracking-widest bg-transparent">
@@ -90,7 +93,7 @@ export const DropdownMenuScreen: FC = () => {
   <DropdownMenuContent id="dropdown-menu-checkboxes-popover" className="min-w-56">
     <div role="menu" id="dropdown-menu-checkboxes-menu" aria-labelledby="dropdown-menu-checkboxes-trigger">
       <div role="group" aria-labelledby="account-options">
-        <div role="heading" id="account-options">Account Options</div>
+        <DropdownMenuHeading id="account-options">Account Options</DropdownMenuHeading>
         <DropdownMenuItem>
           <svg className="size-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -113,22 +116,22 @@ export const DropdownMenuScreen: FC = () => {
       </div>
       <DropdownMenuSeparator />
       <div role="group" aria-labelledby="appearance-options">
-        <div role="heading" id="appearance-options">Appearance</div>
+        <DropdownMenuHeading id="appearance-options">Appearance</DropdownMenuHeading>
         <DropdownMenuItem role="menuitemcheckbox" data-checked="true">
-          <label className="flex w-full items-center gap-2 cursor-pointer">
-            <input type="checkbox" className="checkbox checkbox-xs" checked />
+          <label htmlFor="cb-status-bar" className="flex w-full items-center gap-2 cursor-pointer">
+            <Checkbox id="cb-status-bar" checked />
             <span>Status Bar</span>
           </label>
         </DropdownMenuItem>
         <DropdownMenuItem role="menuitemcheckbox" disabled>
-          <label className="flex w-full items-center gap-2 cursor-not-allowed opacity-60">
-            <input type="checkbox" className="checkbox checkbox-xs" disabled />
+          <label htmlFor="cb-activity-bar" className="flex w-full items-center gap-2 cursor-not-allowed opacity-60">
+            <Checkbox id="cb-activity-bar" disabled />
             <span>Activity Bar</span>
           </label>
         </DropdownMenuItem>
         <DropdownMenuItem role="menuitemcheckbox">
-          <label className="flex w-full items-center gap-2 cursor-pointer">
-            <input type="checkbox" className="checkbox checkbox-xs" />
+          <label htmlFor="cb-panel" className="flex w-full items-center gap-2 cursor-pointer">
+            <Checkbox id="cb-panel" />
             <span>Panel</span>
           </label>
         </DropdownMenuItem>
@@ -162,9 +165,9 @@ export const DropdownMenuScreen: FC = () => {
               aria-labelledby="dropdown-menu-checkboxes-trigger"
             >
               <div role="group" aria-labelledby="account-options">
-                <div role="heading" id="account-options">
+                <DropdownMenuHeading id="account-options">
                   Account Options
-                </div>
+                </DropdownMenuHeading>
                 <DropdownMenuItem>
                   <svg
                     className="size-4 mr-2"
@@ -222,32 +225,33 @@ export const DropdownMenuScreen: FC = () => {
               </div>
               <DropdownMenuSeparator />
               <div role="group" aria-labelledby="appearance-options">
-                <div role="heading" id="appearance-options">
+                <DropdownMenuHeading id="appearance-options">
                   Appearance
-                </div>
+                </DropdownMenuHeading>
                 <DropdownMenuItem role="menuitemcheckbox" data-checked="true">
-                  <label class="flex w-full items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      class="checkbox checkbox-xs"
-                      checked
-                    />
+                  <label
+                    htmlFor="cb-status-bar"
+                    class="flex w-full items-center gap-2 cursor-pointer"
+                  >
+                    <Checkbox id="cb-status-bar" checked />
                     <span>Status Bar</span>
                   </label>
                 </DropdownMenuItem>
                 <DropdownMenuItem role="menuitemcheckbox" disabled>
-                  <label class="flex w-full items-center gap-2 cursor-not-allowed opacity-60">
-                    <input
-                      type="checkbox"
-                      class="checkbox checkbox-xs"
-                      disabled
-                    />
+                  <label
+                    htmlFor="cb-activity-bar"
+                    class="flex w-full items-center gap-2 cursor-not-allowed opacity-60"
+                  >
+                    <Checkbox id="cb-activity-bar" disabled />
                     <span>Activity Bar</span>
                   </label>
                 </DropdownMenuItem>
                 <DropdownMenuItem role="menuitemcheckbox">
-                  <label class="flex w-full items-center gap-2 cursor-pointer">
-                    <input type="checkbox" class="checkbox checkbox-xs" />
+                  <label
+                    htmlFor="cb-panel"
+                    class="flex w-full items-center gap-2 cursor-pointer"
+                  >
+                    <Checkbox id="cb-panel" />
                     <span>Panel</span>
                   </label>
                 </DropdownMenuItem>
@@ -280,24 +284,24 @@ export const DropdownMenuScreen: FC = () => {
   <DropdownMenuContent id="dropdown-menu-radio-popover" className="min-w-56">
     <div role="menu" id="dropdown-menu-radio-menu" aria-labelledby="dropdown-menu-radio-trigger">
       <div role="group" aria-labelledby="position-options">
-        <div role="heading" id="position-options">Panel Position</div>
+        <DropdownMenuHeading id="position-options">Panel Position</DropdownMenuHeading>
       </div>
       <DropdownMenuSeparator />
       <DropdownMenuItem role="menuitemradio" data-checked="true">
-        <label className="flex w-full items-center gap-2 cursor-pointer">
-          <input type="radio" name="panel-position" className="radio radio-xs" checked />
+        <label htmlFor="radio-status-bar" className="flex w-full items-center gap-2 cursor-pointer">
+          <RadioGroupItem id="radio-status-bar" name="panel-position" value="status-bar" checked />
           <span>Status Bar</span>
         </label>
       </DropdownMenuItem>
       <DropdownMenuItem role="menuitemradio" disabled>
-        <label className="flex w-full items-center gap-2 cursor-not-allowed opacity-60">
-          <input type="radio" name="panel-position" className="radio radio-xs" disabled />
+        <label htmlFor="radio-activity-bar" className="flex w-full items-center gap-2 cursor-not-allowed opacity-60">
+          <RadioGroupItem id="radio-activity-bar" name="panel-position" value="activity-bar" disabled />
           <span>Activity Bar</span>
         </label>
       </DropdownMenuItem>
       <DropdownMenuItem role="menuitemradio">
-        <label className="flex w-full items-center gap-2 cursor-pointer">
-          <input type="radio" name="panel-position" className="radio radio-xs" />
+        <label htmlFor="radio-panel" className="flex w-full items-center gap-2 cursor-pointer">
+          <RadioGroupItem id="radio-panel" name="panel-position" value="panel" />
           <span>Panel</span>
         </label>
       </DropdownMenuItem>
@@ -323,39 +327,48 @@ export const DropdownMenuScreen: FC = () => {
               aria-labelledby="dropdown-menu-radio-trigger"
             >
               <div role="group" aria-labelledby="position-options">
-                <div role="heading" id="position-options">
+                <DropdownMenuHeading id="position-options">
                   Panel Position
-                </div>
+                </DropdownMenuHeading>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem role="menuitemradio" data-checked="true">
-                <label class="flex w-full items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
+                <label
+                  htmlFor="radio-status-bar"
+                  class="flex w-full items-center gap-2 cursor-pointer"
+                >
+                  <RadioGroupItem
+                    id="radio-status-bar"
                     name="panel-position"
-                    class="radio radio-xs"
+                    value="status-bar"
                     checked
                   />
                   <span>Status Bar</span>
                 </label>
               </DropdownMenuItem>
               <DropdownMenuItem role="menuitemradio" disabled>
-                <label class="flex w-full items-center gap-2 cursor-not-allowed opacity-60">
-                  <input
-                    type="radio"
+                <label
+                  htmlFor="radio-activity-bar"
+                  class="flex w-full items-center gap-2 cursor-not-allowed opacity-60"
+                >
+                  <RadioGroupItem
+                    id="radio-activity-bar"
                     name="panel-position"
-                    class="radio radio-xs"
+                    value="activity-bar"
                     disabled
                   />
                   <span>Activity Bar</span>
                 </label>
               </DropdownMenuItem>
               <DropdownMenuItem role="menuitemradio">
-                <label class="flex w-full items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
+                <label
+                  htmlFor="radio-panel"
+                  class="flex w-full items-center gap-2 cursor-pointer"
+                >
+                  <RadioGroupItem
+                    id="radio-panel"
                     name="panel-position"
-                    class="radio radio-xs"
+                    value="panel"
                   />
                   <span>Panel</span>
                 </label>
@@ -690,93 +703,6 @@ export const DropdownMenuScreen: FC = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </CodePreview>
-
-      <CodePreview
-        code={`<DropdownMenu>
-  <DropdownMenuTrigger className="btn-outline">Open</DropdownMenuTrigger>
-  <DropdownMenuContent id="dropdown-menu-nested-popover" className="min-w-56">
-    <div role="menu" id="dropdown-menu-nested-menu" aria-labelledby="dropdown-menu-nested-trigger">
-      <DropdownMenuItem>File</DropdownMenuItem>
-      <DropdownMenuItem>Edit</DropdownMenuItem>
-      <div role="group" aria-labelledby="view-group-heading">
-        <div role="heading" id="view-group-heading">View</div>
-        <DropdownMenu>
-          <DropdownMenuTrigger className="w-full flex items-center justify-between px-2 py-1.5 text-sm">
-            <span>Zoom</span>
-            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-48">
-            <div role="menu">
-              <DropdownMenuItem>Zoom In</DropdownMenuItem>
-              <DropdownMenuItem>Zoom Out</DropdownMenuItem>
-              <DropdownMenuItem>Reset Zoom</DropdownMenuItem>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem>Help</DropdownMenuItem>
-    </div>
-  </DropdownMenuContent>
-</DropdownMenu>`}
-        language="tsx"
-      >
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            id="dropdown-menu-nested-trigger"
-            className="btn-outline"
-          >
-            Nested Menus
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            id="dropdown-menu-nested-popover"
-            className="min-w-56"
-          >
-            <div
-              role="menu"
-              id="dropdown-menu-nested-menu"
-              aria-labelledby="dropdown-menu-nested-trigger"
-            >
-              <DropdownMenuItem>File</DropdownMenuItem>
-              <DropdownMenuItem>Edit</DropdownMenuItem>
-              <div role="group" aria-labelledby="view-group-heading">
-                <div role="heading" id="view-group-heading">
-                  View
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="w-full flex items-center justify-between px-2 py-1.5 text-sm">
-                    <span>Zoom</span>
-                    <svg
-                      className="size-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="min-w-48">
-                    <div role="menu">
-                      <DropdownMenuItem>Zoom In</DropdownMenuItem>
-                      <DropdownMenuItem>Zoom Out</DropdownMenuItem>
-                      <DropdownMenuItem>Reset Zoom</DropdownMenuItem>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Help</DropdownMenuItem>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </CodePreview>
     </div>
   );

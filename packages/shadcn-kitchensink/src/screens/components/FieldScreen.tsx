@@ -1,5 +1,5 @@
 import type { FC } from "defuss";
-import { Form, FormField, Input, Label, Select, Textarea } from "defuss-shadcn";
+import { Input, Label, Select, Textarea } from "defuss-shadcn";
 import { CodePreview } from "../../components/CodePreview.js";
 
 export const FieldScreen: FC = () => {
@@ -141,19 +141,19 @@ export const FieldScreen: FC = () => {
         <legend>Payment Method</legend>
         <p>All transactions are secure and encrypted</p>
         
-        <div role="group" class="field">
+        <div class="field">
             <label for="card-name">Name on Card</label>
             <input id="card-name" type="text" placeholder="Evil Rabbit" required />
         </div>
         
-        <div role="group" class="field">
+        <div class="field">
             <label for="card-number">Card Number</label>
             <input id="card-number" type="text" placeholder="1234 5678 9012 3456" aria-describedby="card-number-desc" required />
             <p id="card-number-desc">Enter your 16-digit card number</p>
         </div>
         
         <div class="grid grid-cols-3 gap-4">
-            <div role="group" class="field">
+            <div class="field">
                 <label for="exp-month">Month</label>
                 <select id="exp-month" class="select w-full">
                     <option value="">MM</option>
@@ -171,7 +171,7 @@ export const FieldScreen: FC = () => {
                     <option value="12">12</option>
                 </select>
             </div>
-            <div role="group" class="field">
+            <div class="field">
                 <label for="exp-year">Year</label>
                 <select id="exp-year" class="select w-full">
                     <option value="">YYYY</option>
@@ -183,7 +183,7 @@ export const FieldScreen: FC = () => {
                     <option value="2029">2029</option>
                 </select>
             </div>
-            <div role="group" class="field">
+            <div class="field">
                 <label for="cvv">CVV</label>
                 <input id="cvv" type="text" placeholder="123" required />
             </div>
@@ -196,7 +196,7 @@ export const FieldScreen: FC = () => {
         <legend>Billing Address</legend>
         <p>The billing address associated with your payment method</p>
         
-        <div role="group" class="field">
+        <div class="field">
             <label for="same-as-shipping" class="gap-3">
                  <input type="checkbox" id="same-as-shipping" checked={true} />
                 Same as shipping address
@@ -205,7 +205,7 @@ export const FieldScreen: FC = () => {
     </fieldset>
     
     <fieldset class="fieldset">
-        <div role="group" class="field">
+        <div class="field">
             <label for="comments">Comments</label>
             <textarea id="comments" placeholder="Add any additional comments" rows={3}></textarea>
         </div>
@@ -225,7 +225,7 @@ export const FieldScreen: FC = () => {
               All transactions are secure and encrypted
             </p>
 
-            <div role="group" class="field">
+            <div class="field">
               <Label for="card-name">Name on Card</Label>
               <Input
                 id="card-name"
@@ -235,7 +235,7 @@ export const FieldScreen: FC = () => {
               />
             </div>
 
-            <div role="group" class="field">
+            <div class="field">
               <Label for="card-number">Card Number</Label>
               <Input
                 id="card-number"
@@ -250,7 +250,7 @@ export const FieldScreen: FC = () => {
             </div>
 
             <div class="grid grid-cols-3 gap-4">
-              <div role="group" class="field">
+              <div class="field">
                 <Label for="exp-month">Month</Label>
                 <Select id="exp-month" class="w-full">
                   <option value="">MM</option>
@@ -268,7 +268,7 @@ export const FieldScreen: FC = () => {
                   <option value="12">12</option>
                 </Select>
               </div>
-              <div role="group" class="field">
+              <div class="field">
                 <Label for="exp-year">Year</Label>
                 <Select id="exp-year" class="w-full">
                   <option value="">YYYY</option>
@@ -280,14 +280,14 @@ export const FieldScreen: FC = () => {
                   <option value="2029">2029</option>
                 </Select>
               </div>
-              <div role="group" class="field">
+              <div class="field">
                 <Label for="cvv">CVV</Label>
                 <Input id="cvv" type="text" placeholder="123" required />
               </div>
             </div>
           </fieldset>
 
-          <hr role="separator" class="my-6 border-border" />
+          <hr class="my-6 border-border" />
 
           <fieldset class="fieldset">
             <legend>Billing Address</legend>
@@ -295,7 +295,7 @@ export const FieldScreen: FC = () => {
               The billing address associated with your payment method
             </p>
 
-            <div role="group" class="field">
+            <div class="field">
               <Label for="same-as-shipping" class="gap-3">
                 <input type="checkbox" id="same-as-shipping" checked={true} />
                 Same as shipping address
@@ -304,7 +304,7 @@ export const FieldScreen: FC = () => {
           </fieldset>
 
           <fieldset class="fieldset">
-            <div role="group" class="field">
+            <div class="field">
               <Label for="comments">Comments</Label>
               <Textarea
                 id="comments"
@@ -329,7 +329,7 @@ export const FieldScreen: FC = () => {
         Horizontal Orientation
       </h2>
       <CodePreview
-        code={`<div role="group" class="field" data-orientation="horizontal">
+        code={`<div class="field" data-orientation="horizontal">
     <section>
         <label for="multi-factor-authentication">Multi-factor authentication</label>
         <p>Enable multi-factor authentication. If you do not have a two-factor device, you can use a one-time code sent to your email.</p>
@@ -338,7 +338,7 @@ export const FieldScreen: FC = () => {
 </div>`}
         language="tsx"
       >
-        <div role="group" class="field" data-orientation="horizontal">
+        <div class="field" data-orientation="horizontal">
           <section>
             <Label for="multi-factor-authentication">
               Multi-factor authentication
@@ -348,11 +348,7 @@ export const FieldScreen: FC = () => {
               two-factor device, you can use a one-time code sent to your email.
             </p>
           </section>
-          <input
-            id="multi-factor-authentication"
-            type="checkbox"
-            role="switch"
-          />
+          <input id="multi-factor-authentication" type="checkbox" />
         </div>
       </CodePreview>
 
@@ -441,7 +437,7 @@ export const FieldScreen: FC = () => {
     <hr role="separator" />  
 
     <div class="flex flex-col gap-7">
-        <div role="group" class="field flex-col md:flex-row md:items-center">
+        <div class="field flex-col md:flex-row md:items-center">
             <section class="md:flex-auto">
                 <label for="profile-name">Name</label>
                 <p id="profile-name-desc">Provide your full name for identification.</p>
@@ -451,7 +447,7 @@ export const FieldScreen: FC = () => {
 
         <hr role="separator" />
 
-        <div role="group" class="field flex-col md:flex-row md:items-start">
+        <div class="field flex-col md:flex-row md:items-start">
             <section class="md:flex-auto">
                 <label for="profile-bio">Message</label>
                 <p id="profile-bio-desc">You can write your message here. Keep it short, preferably under 100 characters.</p>
@@ -461,7 +457,7 @@ export const FieldScreen: FC = () => {
 
         <hr role="separator" />
 
-        <div role="group" class="field flex-col md:flex-row md:items-center">
+        <div class="field flex-col md:flex-row md:items-center">
             <button type="submit" class="btn md:w-auto">Submit</button>
             <button type="button" class="btn-outline md:w-auto">Cancel</button>
         </div>
@@ -475,13 +471,10 @@ export const FieldScreen: FC = () => {
             Keep your profile details up to date.
           </p>
 
-          <hr role="separator" class="my-6 border-border" />
+          <hr class="my-6 border-border" />
 
           <div class="flex flex-col gap-7">
-            <div
-              role="group"
-              class="field flex-col md:flex-row md:items-center"
-            >
+            <div class="field flex-col md:flex-row md:items-center">
               <section class="md:flex-auto">
                 <Label for="profile-name">Name</Label>
                 <p id="profile-name-desc" class="text-muted-foreground text-sm">
@@ -497,9 +490,9 @@ export const FieldScreen: FC = () => {
               />
             </div>
 
-            <hr role="separator" class="my-6 border-border" />
+            <hr class="my-6 border-border" />
 
-            <div role="group" class="field flex-col md:flex-row md:items-start">
+            <div class="field flex-col md:flex-row md:items-start">
               <section class="md:flex-auto">
                 <Label for="profile-bio">Message</Label>
                 <p id="profile-bio-desc" class="text-muted-foreground text-sm">
@@ -516,12 +509,9 @@ export const FieldScreen: FC = () => {
               ></Textarea>
             </div>
 
-            <hr role="separator" class="my-6 border-border" />
+            <hr class="my-6 border-border" />
 
-            <div
-              role="group"
-              class="field flex-col md:flex-row md:items-center"
-            >
+            <div class="field flex-col md:flex-row md:items-center">
               <button type="submit" class="btn md:w-auto">
                 Submit
               </button>

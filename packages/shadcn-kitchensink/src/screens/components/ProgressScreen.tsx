@@ -81,8 +81,8 @@ setTimeout(() => {
 </div>
 
 <div class="space-y-2">
-  <label className="text-sm font-medium">Uploading assets</label>
-  <Progress value={42} className="w-full" />
+  <label for="uploading-assets" className="text-sm font-medium">Uploading assets</label>
+  <Progress value={42} className="w-full" id="uploading-assets" />
 </div>`}
         language="tsx"
       >
@@ -95,8 +95,10 @@ setTimeout(() => {
         </div>
 
         <div class="space-y-2">
-          <label className="text-sm font-medium">Uploading assets</label>
-          <Progress value={42} className="w-full" />
+          <label for="uploading-assets" className="text-sm font-medium">
+            Uploading assets
+          </label>
+          <Progress value={42} className="w-full" id="uploading-assets" />
         </div>
       </CodePreview>
 
@@ -438,7 +440,7 @@ setTimeout(() => {
       <span className="text-sm font-medium">Processing</span>
       <span className="text-sm text-muted-foreground">Please wait...</span>
     </div>
-    <Progress value={null} className="w-full" />
+    <Progress value={0} className="w-full" />
   </div>
 
   <div class="space-y-2">
@@ -446,7 +448,7 @@ setTimeout(() => {
       <span className="text-sm font-medium">Loading assets</span>
       <span className="text-sm text-muted-foreground">---</span>
     </div>
-    <Progress value={undefined} className="w-full" />
+    <Progress value={0} className="w-full" />
   </div>
 </div>`}
         language="tsx"
@@ -459,7 +461,7 @@ setTimeout(() => {
                 Please wait...
               </span>
             </div>
-            <Progress value={null} className="w-full" />
+            <Progress value={0} className="w-full" />
           </div>
 
           <div class="space-y-2">
@@ -467,7 +469,7 @@ setTimeout(() => {
               <span className="text-sm font-medium">Loading assets</span>
               <span className="text-sm text-muted-foreground">---</span>
             </div>
-            <Progress value={undefined} className="w-full" />
+            <Progress value={0} className="w-full" />
           </div>
         </div>
       </CodePreview>

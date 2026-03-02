@@ -1,12 +1,5 @@
 import type { FC } from "defuss";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Skeleton,
-} from "defuss-shadcn";
+import { Card, CardContent, CardHeader, Skeleton } from "defuss-shadcn";
 import { CodePreview } from "../../components/CodePreview.js";
 
 export const SkeletonScreen: FC = () => {
@@ -218,19 +211,6 @@ export const SkeletonScreen: FC = () => {
               </div>
             </div>
           </div>
-        </CodePreview>
-      </div>
-
-      <div class="space-y-4">
-        <h2 class="text-xl font-semibold">With Background Color</h2>
-        <p class="text-sm text-muted-foreground">
-          Skeleton using bg-accent and animate-pulse on parent.
-        </p>
-        <CodePreview
-          code={`<Skeleton className="h-64 w-full rounded-xl bg-accent" />`}
-          language="tsx"
-        >
-          <Skeleton className="h-64 w-full rounded-xl bg-accent" />
         </CodePreview>
       </div>
     </div>

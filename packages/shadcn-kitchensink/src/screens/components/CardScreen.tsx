@@ -206,7 +206,7 @@ export const CardScreen: FC = () => {
           </CardHeader>
           <section className="px-0">
             <img
-              alt="Photo by Drew Beamer"
+              alt="Cinemagraph by Drew Beamer"
               width="500"
               height="500"
               className="aspect-video w-full object-cover"
@@ -562,10 +562,10 @@ export const CardScreen: FC = () => {
         <CardDescription>Concise information without additional actions</CardDescription>
     </CardHeader>
     <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-6 w-100">
             <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total Revenue</span>
-                <span className="font-semibold">$45,231.89</span>
+                <span className="font-semibold">$45,231</span>
             </div>
             <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Active Users</span>
@@ -588,12 +588,12 @@ export const CardScreen: FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6 w-100">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
                   Total Revenue
                 </span>
-                <span className="font-semibold">$45,231.89</span>
+                <span className="font-semibold">$45,231</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">

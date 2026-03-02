@@ -1,8 +1,120 @@
 import type { FC } from "defuss";
-import { Form, FormField, Input, Label, Select, Textarea } from "defuss-shadcn";
+import { $, createRef } from "defuss";
+import { Input, Label, Select, Textarea } from "defuss-shadcn";
 import { CodePreview } from "../../components/CodePreview.js";
+import { rule, transval, access, Rules, type FieldValidationMessage } from "defuss-transval";
+import { debounce } from "defuss-runtime"
+
+class ValidationDemoValidators extends Rules {
+	matchesPassword(password: string) {
+		return ((confirmPassword: string) => {
+			if (confirmPassword !== password) {
+				return "Passwords do not match";
+			}
+			return true;
+		}) as unknown as Rules & this;
+	}
+}
 
 export const FormScreen: FC = () => {
+
+	const validationFormRef = createRef<HTMLFormElement>();
+
+	// Validation demo setup with defuss-transval
+	type ValidationDemoForm = {
+		username: string;
+		email: string;
+		password: string;
+		confirmPassword: string;
+	};
+
+	const valForm = access<ValidationDemoForm>();
+	const formRule = rule.extend(ValidationDemoValidators);
+
+	const valRefs = {
+		username: { input: createRef<HTMLInputElement>(), msg: createRef<HTMLDivElement>() },
+		email: { input: createRef<HTMLInputElement>(), msg: createRef<HTMLDivElement>() },
+		password: { input: createRef<HTMLInputElement>(), msg: createRef<HTMLDivElement>() },
+		confirmPassword: { input: createRef<HTMLInputElement>(), msg: createRef<HTMLDivElement>() },
+	};
+	const valResultRef = createRef<HTMLDivElement>();
+
+	const updateFieldUI = (key: string, fieldMsgs: FieldValidationMessage[]) => {
+		const refs = valRefs[key as keyof typeof valRefs];
+		if (!refs) return;
+		if (fieldMsgs.length > 0) {
+			$(refs.input).attr("aria-invalid", "true");
+			$(refs.msg).update(
+				<p role="alert" class="text-destructive text-sm">{fieldMsgs[0].message}</p>
+			);
+		} else {
+			$(refs.input).attr("aria-invalid", "false");
+			$(refs.msg).update(
+				<p class="text-muted-foreground text-sm">Looks good!</p>
+			);
+		}
+	};
+
+	const validateField = async (fieldName: string) => {
+		const formValues = $(validationFormRef).form<ValidationDemoForm>();
+
+		// Rebuild transval each call so matchesPassword gets the current password value
+		const { isValid, getMessages, getData } = transval(
+			formRule(valForm.username).isString().isRequired().isLongerThan(3, true).asString(),
+			formRule(valForm.email).isString().isRequired().isEmail().asString(),
+			formRule(valForm.password).isString().isRequired().isLongerThan(8, true).asString(),
+			formRule(valForm.confirmPassword).isString().isRequired().matchesPassword(formValues.password).asString(),
+		);
+
+		await isValid(formValues);
+
+		// Update only the active field
+		updateFieldUI(fieldName, getMessages(fieldName));
+
+		// If password changed, also re-validate confirmPassword
+		if (fieldName === "password" && formValues.confirmPassword) {
+			updateFieldUI("confirmPassword", getMessages("confirmPassword"));
+		}
+	};
+
+	const runValidation = async () => {
+		const formValues = $(validationFormRef).form<ValidationDemoForm>();
+
+		const { isValid, getMessages, getData } = transval(
+			formRule(valForm.username).isString().isRequired().isLongerThan(3, true).asString(),
+			formRule(valForm.email).isString().isRequired().isEmail().asString(),
+			formRule(valForm.password).isString().isRequired().isLongerThan(8, true).asString(),
+			formRule(valForm.confirmPassword).isString().isRequired().matchesPassword(formValues.password).asString(),
+		);
+
+		if (await isValid(formValues)) {
+			const data = getData();
+			for (const key of Object.keys(valRefs)) {
+				updateFieldUI(key, []);
+			}
+			$(valResultRef).update(
+				<div class="rounded-lg border p-4 bg-muted/50">
+					<p class="text-sm font-medium mb-1">Transformed data (via getData()):</p>
+					<pre class="text-xs">{JSON.stringify(data, null, 2)}</pre>
+				</div>
+			);
+		} else {
+			$(valResultRef).empty();
+			for (const key of Object.keys(valRefs)) {
+				updateFieldUI(key, getMessages(key));
+			}
+		}
+	};
+
+	const debouncedValidateField = debounce((fieldName: string) => validateField(fieldName), 300);
+
+	const handleInput = (e: Event) => {
+		const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+		if (target?.name) {
+			debouncedValidateField(target.name);
+		}
+	};
+
   return (
     <div class="space-y-6">
       <h1 class="text-3xl font-bold tracking-tight">Form</h1>
@@ -99,7 +211,7 @@ export const FormScreen: FC = () => {
             <textarea
               id="demo-form-textarea"
               placeholder="I like to..."
-              rows="3"
+              rows={3}
             ></textarea>
             <p class="text-muted-foreground text-sm">
               You can @mention other users and organizations.
@@ -143,7 +255,12 @@ export const FormScreen: FC = () => {
                   Receive emails about new products, features, and more.
                 </p>
               </div>
-              <input type="checkbox" id="demo-form-switch" role="switch" />
+              <input
+                type="checkbox"
+                id="demo-form-switch"
+                role="switch"
+                aria-checked="false"
+              />
             </div>
             <div class="gap-2 flex flex-row items-start justify-between rounded-lg border p-4 shadow-xs">
               <div class="flex flex-col gap-0.5 opacity-60">
@@ -158,6 +275,7 @@ export const FormScreen: FC = () => {
                 type="checkbox"
                 id="demo-form-switch-disabled"
                 role="switch"
+                aria-checked="false"
                 disabled
               />
             </div>
@@ -174,25 +292,25 @@ export const FormScreen: FC = () => {
       </h2>
       <CodePreview
         code={`<form className="form grid gap-6">
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="form-field-username">Username</Label>
         <Input id="form-field-username" type="text" placeholder="evilrabbit" />
         <p id="form-field-username-desc" className="text-muted-foreground text-sm">Choose a unique username for your account.</p>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="form-field-email">Email</Label>
         <Input id="form-field-email" type="email" placeholder="name@example.com" />
         <p id="form-field-email-desc" className="text-muted-foreground text-sm">We'll never share your email.</p>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="form-field-bio">Bio</Label>
         <Textarea id="form-field-bio" placeholder="Tell us about yourself..." rows={3} />
         <p id="form-field-bio-desc" className="text-muted-foreground text-sm">Share your story briefly.</p>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="form-field-country">Country</Label>
         <Select id="form-field-country">
             <option value="">Select a country</option>
@@ -201,14 +319,14 @@ export const FormScreen: FC = () => {
             <option value="ca">Canada</option>
             <option value="au">Australia</option>
         </Select>
-    </div>
+    </fieldset>
 
     <button type="submit" className="btn">Submit</button>
 </form>`}
         language="tsx"
       >
         <form class="form grid gap-6">
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="form-field-username">Username</Label>
             <Input
               id="form-field-username"
@@ -221,9 +339,9 @@ export const FormScreen: FC = () => {
             >
               Choose a unique username for your account.
             </p>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="form-field-email">Email</Label>
             <Input
               id="form-field-email"
@@ -233,9 +351,9 @@ export const FormScreen: FC = () => {
             <p id="form-field-email-desc" class="text-muted-foreground text-sm">
               We'll never share your email.
             </p>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="form-field-bio">Bio</Label>
             <Textarea
               id="form-field-bio"
@@ -245,9 +363,9 @@ export const FormScreen: FC = () => {
             <p id="form-field-bio-desc" class="text-muted-foreground text-sm">
               Share your story briefly.
             </p>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="form-field-country">Country</Label>
             <Select id="form-field-country">
               <option value="">Select a country</option>
@@ -256,7 +374,7 @@ export const FormScreen: FC = () => {
               <option value="ca">Canada</option>
               <option value="au">Australia</option>
             </Select>
-          </div>
+          </fieldset>
 
           <button type="submit" class="btn">
             Submit
@@ -269,31 +387,31 @@ export const FormScreen: FC = () => {
       </h2>
       <CodePreview
         code={`<form className="form" data-orientation="horizontal">
-    <div role="group" className="field" data-orientation="horizontal">
+    <fieldset className="field" data-orientation="horizontal">
         <Label htmlFor="horizontal-username">Username</Label>
         <div>
             <Input id="horizontal-username" type="text" placeholder="evilrabbit" />
             <p className="text-muted-foreground text-sm">Choose a unique username.</p>
         </div>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field" data-orientation="horizontal">
+    <fieldset className="field mt-2" data-orientation="horizontal">
         <Label htmlFor="horizontal-email">Email</Label>
         <div>
             <Input id="horizontal-email" type="email" placeholder="name@example.com" />
             <p className="text-muted-foreground text-sm">We'll never share your email.</p>
         </div>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field" data-orientation="horizontal">
+    <fieldset className="field mt-2" data-orientation="horizontal">
         <Label htmlFor="horizontal-bio">Bio</Label>
         <div>
             <Textarea id="horizontal-bio" placeholder="Tell us about yourself..." rows={3} />
             <p className="text-muted-foreground text-sm">Share your story briefly.</p>
         </div>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field" data-orientation="horizontal">
+    <fieldset className="field mt-2" data-orientation="horizontal">
         <Label htmlFor="horizontal-country">Country</Label>
         <div>
             <Select id="horizontal-country">
@@ -302,14 +420,15 @@ export const FormScreen: FC = () => {
                 <option value="uk">United Kingdom</option>
             </Select>
         </div>
-    </div>
+    </fieldset>
 
     <button type="submit" className="btn">Submit</button>
 </form>`}
         language="tsx"
+        className="w-full"
       >
         <form class="form" data-orientation="horizontal">
-          <div role="group" class="field" data-orientation="horizontal">
+          <fieldset class="field" data-orientation="horizontal">
             <Label htmlFor="horizontal-username">Username</Label>
             <div>
               <Input
@@ -321,9 +440,9 @@ export const FormScreen: FC = () => {
                 Choose a unique username.
               </p>
             </div>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field" data-orientation="horizontal">
+          <fieldset class="field mt-2" data-orientation="horizontal">
             <Label htmlFor="horizontal-email">Email</Label>
             <div>
               <Input
@@ -335,9 +454,9 @@ export const FormScreen: FC = () => {
                 We'll never share your email.
               </p>
             </div>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field" data-orientation="horizontal">
+          <fieldset class="field mt-2" data-orientation="horizontal">
             <Label htmlFor="horizontal-bio">Bio</Label>
             <div>
               <Textarea
@@ -349,9 +468,9 @@ export const FormScreen: FC = () => {
                 Share your story briefly.
               </p>
             </div>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field" data-orientation="horizontal">
+          <fieldset class="field mt-2" data-orientation="horizontal">
             <Label htmlFor="horizontal-country">Country</Label>
             <div>
               <Select id="horizontal-country">
@@ -360,7 +479,7 @@ export const FormScreen: FC = () => {
                 <option value="uk">United Kingdom</option>
               </Select>
             </div>
-          </div>
+          </fieldset>
 
           <button type="submit" class="btn">
             Submit
@@ -372,40 +491,40 @@ export const FormScreen: FC = () => {
         Form with fieldset and legend
       </h2>
       <CodePreview
-        code={`<form className="form grid gap-6">
+        code={`<form className="form grid gap-2">
     <fieldset className="fieldset">
         <legend>Account Information</legend>
         <p>Please fill in your account details below.</p>
         
-        <div role="group" className="field">
+        <fieldset className="field">
             <Label htmlFor="fieldset-username">Username</Label>
             <Input id="fieldset-username" type="text" placeholder="evilrabbit" />
-        </div>
+        </fieldset>
         
-        <div role="group" className="field">
+        <fieldset className="field">
             <Label htmlFor="fieldset-email">Email</Label>
             <Input id="fieldset-email" type="email" placeholder="name@example.com" />
-        </div>
+        </fieldset>
         
-        <div role="group" className="field">
+        <fieldset className="field">
             <Label htmlFor="fieldset-password">Password</Label>
             <Input id="fieldset-password" type="password" placeholder="••••••••" />
-        </div>
+        </fieldset>
     </fieldset>
     
     <fieldset className="fieldset">
         <legend>Profile Details</legend>
         <p>Keep your profile up to date.</p>
         
-        <div role="group" className="field">
+        <fieldset className="field">
             <Label htmlFor="fieldset-fullname">Full Name</Label>
             <Input id="fieldset-fullname" type="text" placeholder="John Doe" />
-        </div>
+        </fieldset>
         
-        <div role="group" className="field">
+        <fieldset className="field">
             <Label htmlFor="fieldset-location">Location</Label>
             <Input id="fieldset-location" type="text" placeholder="New York, USA" />
-        </div>
+        </fieldset>
     </fieldset>
     
     <button type="submit" className="btn">Submit</button>
@@ -419,55 +538,55 @@ export const FormScreen: FC = () => {
               Please fill in your account details below.
             </p>
 
-            <div role="group" class="field">
+            <fieldset class="field">
               <Label htmlFor="fieldset-username">Username</Label>
               <Input
                 id="fieldset-username"
                 type="text"
                 placeholder="evilrabbit"
               />
-            </div>
+            </fieldset>
 
-            <div role="group" class="field">
+            <fieldset class="field">
               <Label htmlFor="fieldset-email">Email</Label>
               <Input
                 id="fieldset-email"
                 type="email"
                 placeholder="name@example.com"
               />
-            </div>
+            </fieldset>
 
-            <div role="group" class="field">
+            <fieldset class="field">
               <Label htmlFor="fieldset-password">Password</Label>
               <Input
                 id="fieldset-password"
                 type="password"
                 placeholder="••••••••"
               />
-            </div>
+            </fieldset>
           </fieldset>
 
           <fieldset class="fieldset">
             <legend>Profile Details</legend>
             <p class="text-muted-foreground">Keep your profile up to date.</p>
 
-            <div role="group" class="field">
+            <fieldset class="field">
               <Label htmlFor="fieldset-fullname">Full Name</Label>
               <Input
                 id="fieldset-fullname"
                 type="text"
                 placeholder="John Doe"
               />
-            </div>
+            </fieldset>
 
-            <div role="group" class="field">
+            <fieldset class="field">
               <Label htmlFor="fieldset-location">Location</Label>
               <Input
                 id="fieldset-location"
                 type="text"
                 placeholder="New York, USA"
               />
-            </div>
+            </fieldset>
           </fieldset>
 
           <button type="submit" class="btn">
@@ -480,101 +599,208 @@ export const FormScreen: FC = () => {
         Form with validation states
       </h2>
       <CodePreview
-        code={`<form className="form grid gap-6">
-    <div role="group" className="field">
-        <Label htmlFor="valid-username">Username</Label>
-        <Input id="valid-username" type="text" placeholder="validuser" aria-invalid={false} aria-describedby="valid-username-desc" />
-        <p id="valid-username-desc" className="text-muted-foreground text-sm">Username is available.</p>
-    </div>
+        code={`import { $, createRef } from "defuss";
+import { rule, transval, access, Rules } from "defuss-transval";
+import { debounce } from "defuss-runtime";
 
-    <div role="group" className="field">
-        <Label htmlFor="invalid-username">Email</Label>
-        <Input id="invalid-username" type="text" placeholder="invalid" aria-invalid={true} aria-describedby="invalid-username-desc" />
-        <p id="invalid-username-desc" role="alert" className="text-destructive text-sm">Email is already taken.</p>
-    </div>
+// Custom validator for password confirmation
+class FormValidators extends Rules {
+    matchesPassword(password: string) {
+        return ((confirmPassword: string) => {
+            if (confirmPassword !== password) {
+                return "Passwords do not match";
+            }
+            return true;
+        }) as unknown as Rules & this;
+    }
+}
 
-    <div role="group" className="field">
-        <Label htmlFor="valid-password">Password</Label>
-        <Input id="valid-password" type="password" placeholder="••••••••" aria-invalid={false} aria-describedby="valid-password-desc" />
-        <p id="valid-password-desc" className="text-muted-foreground text-sm">Password meets requirements.</p>
-    </div>
+type FormData = {
+    username: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+};
 
-    <div role="group" className="field">
-        <Label htmlFor="invalid-bio">Bio</Label>
-        <Textarea id="invalid-bio" placeholder="Bio..." rows={3} aria-invalid={true} aria-describedby="invalid-bio-desc" />
-        <p id="invalid-bio-desc" role="alert" className="text-destructive text-sm">Bio must be at least 10 characters.</p>
-    </div>
+const formRef = createRef<HTMLFormElement>();
+const form = access<FormData>();
+const formRule = rule.extend(FormValidators);
 
-    <button type="submit" className="btn">Submit</button>
+const fieldRefs = {
+    username: { input: createRef(), msg: createRef() },
+    email: { input: createRef(), msg: createRef() },
+    password: { input: createRef(), msg: createRef() },
+    confirmPassword: { input: createRef(), msg: createRef() },
+};
+
+// Helper to update a single field's UI
+const updateFieldUI = (key, fieldMsgs) => {
+    const refs = fieldRefs[key];
+    if (!refs) return;
+    if (fieldMsgs.length > 0) {
+        $(refs.input).attr("aria-invalid", "true");
+        $(refs.msg).update(
+            <p role="alert" className="text-destructive text-sm">{fieldMsgs[0].message}</p>
+        );
+    } else {
+        $(refs.input).attr("aria-invalid", "false");
+        $(refs.msg).update(
+            <p className="text-muted-foreground text-sm">Looks good!</p>
+        );
+    }
+};
+
+// Validate a single field (+ confirmPassword when password changes)
+const validateField = async (fieldName) => {
+    const values = $(formRef).form<FormData>();
+
+    const { isValid, getMessages } = transval(
+        formRule(form.username).isString().isRequired().isLongerThan(3, true).asString(),
+        formRule(form.email).isString().isRequired().isEmail().asString(),
+        formRule(form.password).isString().isRequired().isLongerThan(8, true).asString(),
+        formRule(form.confirmPassword).isString().isRequired()
+            .matchesPassword(values.password).asString(),
+    );
+
+    await isValid(values);
+    updateFieldUI(fieldName, getMessages(fieldName));
+
+    // If password changed, also re-validate confirmPassword
+    if (fieldName === "password" && values.confirmPassword) {
+        updateFieldUI("confirmPassword", getMessages("confirmPassword"));
+    }
+};
+
+// Debounce per-field validation at 300ms
+const debouncedValidateField = debounce((name) => validateField(name), 300);
+
+const handleInput = (e) => {
+    const target = e.target;
+    if (target?.name) debouncedValidateField(target.name);
+};
+
+// Full validation on submit
+const runValidation = async () => {
+    const values = $(formRef).form<FormData>();
+    const { isValid, getMessages, getData } = transval(
+        formRule(form.username).isString().isRequired().isLongerThan(3, true).asString(),
+        formRule(form.email).isString().isRequired().isEmail().asString(),
+        formRule(form.password).isString().isRequired().isLongerThan(8, true).asString(),
+        formRule(form.confirmPassword).isString().isRequired()
+            .matchesPassword(values.password).asString(),
+    );
+    if (await isValid(values)) {
+        for (const key of Object.keys(fieldRefs)) updateFieldUI(key, []);
+    } else {
+        for (const key of Object.keys(fieldRefs)) updateFieldUI(key, getMessages(key));
+    }
+};
+
+<form className="form grid gap-6" ref={formRef} onInput={handleInput}>
+    <fieldset className="field">
+        <Label htmlFor="val-username">Username</Label>
+        <Input name="username" id="val-username" type="text"
+            placeholder="evilrabbit" ref={fieldRefs.username.input} />
+        <div ref={fieldRefs.username.msg}>
+            <p className="text-muted-foreground text-sm">At least 3 characters.</p>
+        </div>
+    </fieldset>
+
+    <fieldset className="field">
+        <Label htmlFor="val-email">Email</Label>
+        <Input name="email" id="val-email" type="email"
+            placeholder="name@example.com" ref={fieldRefs.email.input} />
+        <div ref={fieldRefs.email.msg}>
+            <p className="text-muted-foreground text-sm">Valid email required.</p>
+        </div>
+    </fieldset>
+
+    <fieldset className="field">
+        <Label htmlFor="val-password">Password</Label>
+        <Input name="password" id="val-password" type="password"
+            placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" ref={fieldRefs.password.input} />
+        <div ref={fieldRefs.password.msg}>
+            <p className="text-muted-foreground text-sm">At least 8 characters.</p>
+        </div>
+    </fieldset>
+
+    <fieldset className="field">
+        <Label htmlFor="val-confirm-password">Confirm Password</Label>
+        <Input name="confirmPassword" id="val-confirm-password" type="password"
+            placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" ref={fieldRefs.confirmPassword.input} />
+        <div ref={fieldRefs.confirmPassword.msg}>
+            <p className="text-muted-foreground text-sm">Must match password.</p>
+        </div>
+    </fieldset>
+
+    <button type="button" className="btn" onClick={runValidation}>Submit</button>
 </form>`}
         language="tsx"
       >
-        <form class="form grid gap-6">
-          <div role="group" class="field">
-            <Label htmlFor="valid-username">Username</Label>
+        <form class="form grid gap-6" ref={validationFormRef} onInput={handleInput}>
+          <fieldset class="field">
+            <Label htmlFor="val-username">Username</Label>
             <Input
-              id="valid-username"
+              name="username"
+              id="val-username"
               type="text"
-              placeholder="validuser"
-              aria-invalid={false}
-              aria-describedby="valid-username-desc"
+              placeholder="evilrabbit"
+              ref={valRefs.username.input}
+              aria-describedby="val-username-msg"
             />
-            <p id="valid-username-desc" class="text-muted-foreground text-sm">
-              Username is available.
-            </p>
-          </div>
+            <div id="val-username-msg" ref={valRefs.username.msg}>
+              <p class="text-muted-foreground text-sm">At least 3 characters.</p>
+            </div>
+          </fieldset>
 
-          <div role="group" class="field">
-            <Label htmlFor="invalid-username">Email</Label>
+          <fieldset class="field">
+            <Label htmlFor="val-email">Email</Label>
             <Input
-              id="invalid-username"
-              type="text"
-              placeholder="invalid"
-              aria-invalid={true}
-              aria-describedby="invalid-username-desc"
+              name="email"
+              id="val-email"
+              type="email"
+              placeholder="name@example.com"
+              ref={valRefs.email.input}
+              aria-describedby="val-email-msg"
             />
-            <p
-              id="invalid-username-desc"
-              role="alert"
-              class="text-destructive text-sm"
-            >
-              Email is already taken.
-            </p>
-          </div>
+            <div id="val-email-msg" ref={valRefs.email.msg}>
+              <p class="text-muted-foreground text-sm">Valid email required.</p>
+            </div>
+          </fieldset>
 
-          <div role="group" class="field">
-            <Label htmlFor="valid-password">Password</Label>
+          <fieldset class="field">
+            <Label htmlFor="val-password">Password</Label>
             <Input
-              id="valid-password"
+              name="password"
+              id="val-password"
               type="password"
               placeholder="••••••••"
-              aria-invalid={false}
-              aria-describedby="valid-password-desc"
+              ref={valRefs.password.input}
+              aria-describedby="val-password-msg"
             />
-            <p id="valid-password-desc" class="text-muted-foreground text-sm">
-              Password meets requirements.
-            </p>
-          </div>
+            <div id="val-password-msg" ref={valRefs.password.msg}>
+              <p class="text-muted-foreground text-sm">At least 8 characters.</p>
+            </div>
+          </fieldset>
 
-          <div role="group" class="field">
-            <Label htmlFor="invalid-bio">Bio</Label>
-            <Textarea
-              id="invalid-bio"
-              placeholder="Bio..."
-              rows={3}
-              aria-invalid={true}
-              aria-describedby="invalid-bio-desc"
+          <fieldset class="field">
+            <Label htmlFor="val-confirm-password">Confirm Password</Label>
+            <Input
+              name="confirmPassword"
+              id="val-confirm-password"
+              type="password"
+              placeholder="••••••••"
+              ref={valRefs.confirmPassword.input}
+              aria-describedby="val-confirm-password-msg"
             />
-            <p
-              id="invalid-bio-desc"
-              role="alert"
-              class="text-destructive text-sm"
-            >
-              Bio must be at least 10 characters.
-            </p>
-          </div>
+            <div id="val-confirm-password-msg" ref={valRefs.confirmPassword.msg}>
+              <p class="text-muted-foreground text-sm">Must match password.</p>
+            </div>
+          </fieldset>
 
-          <button type="submit" class="btn">
+          <div ref={valResultRef}></div>
+
+          <button type="button" class="btn" onClick={runValidation}>
             Submit
           </button>
         </form>
@@ -585,39 +811,39 @@ export const FormScreen: FC = () => {
       </h2>
       <CodePreview
         code={`<form className="form grid gap-6">
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="disabled-username">Username</Label>
         <Input id="disabled-username" type="text" placeholder="evilrabbit" disabled />
         <p className="text-muted-foreground text-sm">Username cannot be changed.</p>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="disabled-email">Email</Label>
         <Input id="disabled-email" type="email" placeholder="name@example.com" disabled />
         <p className="text-muted-foreground text-sm">Email is locked.</p>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="disabled-bio">Bio</Label>
         <Textarea id="disabled-bio" placeholder="Tell us about yourself..." rows={3} disabled />
         <p className="text-muted-foreground text-sm">Bio is read-only.</p>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="disabled-country">Country</Label>
         <Select id="disabled-country" disabled>
             <option value="">Select a country</option>
             <option value="us">United States</option>
             <option value="uk">United Kingdom</option>
         </Select>
-    </div>
+    </fieldset>
 
     <button type="submit" className="btn">Submit</button>
 </form>`}
         language="tsx"
       >
         <form class="form grid gap-6">
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="disabled-username">Username</Label>
             <Input
               id="disabled-username"
@@ -628,9 +854,9 @@ export const FormScreen: FC = () => {
             <p class="text-muted-foreground text-sm">
               Username cannot be changed.
             </p>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="disabled-email">Email</Label>
             <Input
               id="disabled-email"
@@ -639,9 +865,9 @@ export const FormScreen: FC = () => {
               disabled
             />
             <p class="text-muted-foreground text-sm">Email is locked.</p>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="disabled-bio">Bio</Label>
             <Textarea
               id="disabled-bio"
@@ -650,16 +876,16 @@ export const FormScreen: FC = () => {
               disabled
             />
             <p class="text-muted-foreground text-sm">Bio is read-only.</p>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="disabled-country">Country</Label>
             <Select id="disabled-country" disabled>
               <option value="">Select a country</option>
               <option value="us">United States</option>
               <option value="uk">United Kingdom</option>
             </Select>
-          </div>
+          </fieldset>
 
           <button type="submit" class="btn">
             Submit
@@ -672,42 +898,40 @@ export const FormScreen: FC = () => {
       </h2>
       <CodePreview
         code={`<form className="form grid gap-6">
-    <div role="group" className="field flex items-center gap-4" data-orientation="horizontal">
+    <fieldset className="field flex items-center gap-4" data-orientation="horizontal">
         <Label htmlFor="inline-username">Username</Label>
         <Input id="inline-username" type="text" placeholder="evilrabbit" />
-    </div>
+    </fieldset>
 
-    <div role="group" className="field flex items-center gap-4" data-orientation="horizontal">
+    <fieldset className="field flex items-center gap-4" data-orientation="horizontal">
         <Label htmlFor="inline-email">Email</Label>
         <Input id="inline-email" type="email" placeholder="name@example.com" />
-    </div>
+    </fieldset>
 
-    <div role="group" className="field flex items-center gap-4" data-orientation="horizontal">
+    <fieldset className="field flex items-center gap-4" data-orientation="horizontal">
         <Label htmlFor="inline-password">Password</Label>
         <Input id="inline-password" type="password" placeholder="••••••••" />
-    </div>
+    </fieldset>
 
-    <div role="group" className="field flex items-center gap-4" data-orientation="horizontal">
+    <fieldset className="field flex items-center gap-4" data-orientation="horizontal">
         <Label htmlFor="inline-confirm">Confirm Password</Label>
         <Input id="inline-confirm" type="password" placeholder="••••••••" />
-    </div>
+    </fieldset>
 
     <button type="submit" className="btn">Submit</button>
 </form>`}
         language="tsx"
       >
         <form class="form grid gap-6">
-          <div
-            role="group"
+          <fieldset
             class="field flex items-center gap-4"
             data-orientation="horizontal"
           >
             <Label htmlFor="inline-username">Username</Label>
             <Input id="inline-username" type="text" placeholder="evilrabbit" />
-          </div>
+          </fieldset>
 
-          <div
-            role="group"
+          <fieldset
             class="field flex items-center gap-4"
             data-orientation="horizontal"
           >
@@ -717,10 +941,9 @@ export const FormScreen: FC = () => {
               type="email"
               placeholder="name@example.com"
             />
-          </div>
+          </fieldset>
 
-          <div
-            role="group"
+          <fieldset
             class="field flex items-center gap-4"
             data-orientation="horizontal"
           >
@@ -730,16 +953,15 @@ export const FormScreen: FC = () => {
               type="password"
               placeholder="••••••••"
             />
-          </div>
+          </fieldset>
 
-          <div
-            role="group"
+          <fieldset
             class="field flex items-center gap-4"
             data-orientation="horizontal"
           >
             <Label htmlFor="inline-confirm">Confirm Password</Label>
             <Input id="inline-confirm" type="password" placeholder="••••••••" />
-          </div>
+          </fieldset>
 
           <button type="submit" class="btn">
             Submit
@@ -752,36 +974,36 @@ export const FormScreen: FC = () => {
       </h2>
       <CodePreview
         code={`<form className="form grid gap-6">
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="error-username">Username</Label>
         <Input id="error-username" type="text" placeholder="evilrabbit" aria-invalid={true} aria-describedby="error-username-msg" />
         <p id="error-username-msg" role="alert" className="text-destructive text-sm">Username is already taken. Please choose another.</p>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="error-email">Email</Label>
         <Input id="error-email" type="email" placeholder="name@example.com" aria-invalid={true} aria-describedby="error-email-msg" />
         <p id="error-email-msg" role="alert" className="text-destructive text-sm">This email address is already registered.</p>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="error-password">Password</Label>
         <Input id="error-password" type="password" placeholder="••••••••" aria-describedby="error-password-msg" />
         <p id="error-password-msg" className="text-muted-foreground text-sm">Must be at least 8 characters with one uppercase letter.</p>
-    </div>
+    </fieldset>
 
-    <div role="group" className="field">
+    <fieldset className="field">
         <Label htmlFor="error-bio">Bio</Label>
         <Textarea id="error-bio" placeholder="Tell us about yourself..." rows={3} aria-invalid={true} aria-describedby="error-bio-msg" />
         <p id="error-bio-msg" role="alert" className="text-destructive text-sm">Bio is too short. Minimum 10 characters required.</p>
-    </div>
+    </fieldset>
 
     <button type="submit" className="btn">Submit</button>
 </form>`}
         language="tsx"
       >
         <form class="form grid gap-6">
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="error-username">Username</Label>
             <Input
               id="error-username"
@@ -797,9 +1019,9 @@ export const FormScreen: FC = () => {
             >
               Username is already taken. Please choose another.
             </p>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="error-email">Email</Label>
             <Input
               id="error-email"
@@ -815,9 +1037,9 @@ export const FormScreen: FC = () => {
             >
               This email address is already registered.
             </p>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="error-password">Password</Label>
             <Input
               id="error-password"
@@ -828,9 +1050,9 @@ export const FormScreen: FC = () => {
             <p id="error-password-msg" class="text-muted-foreground text-sm">
               Must be at least 8 characters with one uppercase letter.
             </p>
-          </div>
+          </fieldset>
 
-          <div role="group" class="field">
+          <fieldset class="field">
             <Label htmlFor="error-bio">Bio</Label>
             <Textarea
               id="error-bio"
@@ -842,7 +1064,7 @@ export const FormScreen: FC = () => {
             <p id="error-bio-msg" role="alert" class="text-destructive text-sm">
               Bio is too short. Minimum 10 characters required.
             </p>
-          </div>
+          </fieldset>
 
           <button type="submit" class="btn">
             Submit

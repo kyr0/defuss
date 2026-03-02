@@ -1,1 +1,31 @@
 /** You can add your own custom styles here. */
+
+/* Outline buttons need an explicit text color in light mode */
+.btn-outline,
+.btn-sm-outline,
+.btn-lg-outline,
+.btn-icon-outline,
+.btn-sm-icon-outline,
+.btn-lg-icon-outline {
+  color: var(--color-foreground);
+}
+
+/* Tooltip delay support via data-delay attribute */
+[data-tooltip][data-delay]::before {
+  transition-delay: var(--tooltip-delay, 0ms);
+}
+[data-tooltip][data-delay]:not(:hover)::before {
+  transition-delay: 0ms;
+}
+
+/** Generic menu heading styles for dropdowns, context menus, etc. */
+[role="menu"] [role="heading"] {
+  padding-inline: calc(var(--spacing) * 2);
+  padding-block: calc(var(--spacing) * 1.5);
+  font-size: var(--text-xs);
+  line-height: var(--tw-leading, var(--text-xs--line-height));
+  --tw-font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-muted-foreground);
+  display: flex;
+}

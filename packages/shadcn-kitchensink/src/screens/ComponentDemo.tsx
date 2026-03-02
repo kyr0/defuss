@@ -12,10 +12,10 @@ import { CheckboxScreen } from "./components/CheckboxScreen.js";
 import { ComboboxScreen } from "./components/ComboboxScreen.js";
 import { CommandScreen } from "./components/CommandScreen.js";
 import { DialogScreen } from "./components/DialogScreen.js";
+import { DropAreaScreen } from "./components/DropAreaScreen.js";
 import { DropdownMenuScreen } from "./components/DropdownMenuScreen.js";
 import { EmptyScreen } from "./components/EmptyScreen.js";
 import { FormScreen } from "./components/FormScreen.js";
-import { InputScreen } from "./components/InputScreen.js";
 import { InputGroupScreen } from "./components/InputGroupScreen.js";
 import { ItemScreen } from "./components/ItemScreen.js";
 import { ButtonGroupScreen } from "./components/ButtonGroupScreen.js";
@@ -42,85 +42,87 @@ import { FieldScreen } from "./components/FieldScreen.js";
 import { ScrollableScreen } from "./components/ScrollableScreen.js";
 
 const COMPONENT_SCREENS: Record<string, FC> = {
-    button: ButtonScreen,
-    accordion: AccordionScreen,
-    badge: BadgeScreen,
-    alert: AlertScreen,
-    "alert-dialog": AlertDialogScreen,
-    avatar: AvatarScreen,
-    breadcrumb: BreadcrumbScreen,
-    card: CardScreen,
-    checkbox: CheckboxScreen,
-    combobox: ComboboxScreen,
-    command: CommandScreen,
-    dialog: DialogScreen,
-    "dropdown-menu": DropdownMenuScreen,
-    empty: EmptyScreen,
-    form: FormScreen,
-    input: InputScreen,
-    "input-group": InputGroupScreen,
-    item: ItemScreen,
-    field: FieldScreen,
-    "button-group": ButtonGroupScreen,
-    kbd: KbdScreen,
-    label: LabelScreen,
-    pagination: PaginationScreen,
-    popover: PopoverScreen,
-    progress: ProgressScreen,
-    "radio-group": RadioGroupScreen,
-    select: SelectScreen,
-    sidebar: SidebarScreen,
-    slider: SliderScreen,
-    skeleton: SkeletonScreen,
-    spinner: SpinnerScreen,
-    switch: SwitchScreen,
-    table: TableScreen,
-    tabs: TabsScreen,
-    textarea: TextareaScreen,
-    toast: ToastScreen,
-    tooltip: TooltipScreen,
-    "theme-switcher": ThemeSwitcherScreen,
-    separator: SeparatorScreen,
-    "scrollable": ScrollableScreen,
+  button: ButtonScreen,
+  accordion: AccordionScreen,
+  badge: BadgeScreen,
+  alert: AlertScreen,
+  "alert-dialog": AlertDialogScreen,
+  avatar: AvatarScreen,
+  breadcrumb: BreadcrumbScreen,
+  card: CardScreen,
+  checkbox: CheckboxScreen,
+  combobox: ComboboxScreen,
+  command: CommandScreen,
+  dialog: DialogScreen,
+  "drop-area": DropAreaScreen,
+  "dropdown-menu": DropdownMenuScreen,
+  empty: EmptyScreen,
+  form: FormScreen,
+  "input-group": InputGroupScreen,
+  item: ItemScreen,
+  field: FieldScreen,
+  "button-group": ButtonGroupScreen,
+  kbd: KbdScreen,
+  label: LabelScreen,
+  pagination: PaginationScreen,
+  popover: PopoverScreen,
+  progress: ProgressScreen,
+  "radio-group": RadioGroupScreen,
+  select: SelectScreen,
+  sidebar: SidebarScreen,
+  slider: SliderScreen,
+  skeleton: SkeletonScreen,
+  spinner: SpinnerScreen,
+  switch: SwitchScreen,
+  table: TableScreen,
+  tabs: TabsScreen,
+  textarea: TextareaScreen,
+  toast: ToastScreen,
+  tooltip: TooltipScreen,
+  "theme-switcher": ThemeSwitcherScreen,
+  separator: SeparatorScreen,
+  scrollable: ScrollableScreen,
 };
 
 /**
  * ComponentDemo - renders when /components/:name is matched.
  */
 export const ComponentDemo: AsyncFC = async () => {
-    // wait for Router to be ready before accessing params
-    await Router.ready();
+  // wait for Router to be ready before accessing params
+  await Router.ready();
 
-    const req = Router.getRequest();
-    const name = req.match && req.params.name ? req.params.name : "unknown";
+  const req = Router.getRequest();
+  const name = req.match && req.params.name ? req.params.name : "unknown";
 
-    // functional compomnents are Function references, so we can directly check if we have a matching screen for the given name
-    const Screen = COMPONENT_SCREENS[name];
+  // functional compomnents are Function references, so we can directly check if we have a matching screen for the given name
+  const Screen = COMPONENT_SCREENS[name];
 
-    if (Screen) {
-        // early return if we have a matching screen to avoid rendering the fallback UI
-        return <Screen />;
-    }
+  if (Screen) {
+    // early return if we have a matching screen to avoid rendering the fallback UI
+    return <Screen />;
+  }
 
-    const title = name === "unknown"
-        ? "Unknown Component"
-        : name
-            .split("-")
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-            .join(" ");
+  const title =
+    name === "unknown"
+      ? "Unknown Component"
+      : name
+          .split("-")
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" ");
 
-    // rendering the fallback UI for unknown components or if no name param is provided
-    return (
-        <div class="space-y-6">
-            <h1 class="text-3xl font-bold tracking-tight">{title}</h1>
-            <p class="text-xl text-muted-foreground">
-                Demonstration for this component is not implemented yet.
-            </p>
-            <div class="border rounded-lg p-8 min-h-[200px] flex items-center justify-center">
-                <span class="text-muted-foreground italic">
-                    Add a dedicated screen for <b>{name}</b> in <code>src/screens/components</code>.
-                </span>
-            </div>
-        </div>
-    );
+  // rendering the fallback UI for unknown components or if no name param is provided
+  return (
+    <div class="space-y-6">
+      <h1 class="text-3xl font-bold tracking-tight">{title}</h1>
+      <p class="text-xl text-muted-foreground">
+        Demonstration for this component is not implemented yet.
+      </p>
+      <div class="border rounded-lg p-8 min-h-[200px] flex items-center justify-center">
+        <span class="text-muted-foreground italic">
+          Add a dedicated screen for <b>{name}</b> in{" "}
+          <code>src/screens/components</code>.
+        </span>
+      </div>
+    </div>
+  );
 };

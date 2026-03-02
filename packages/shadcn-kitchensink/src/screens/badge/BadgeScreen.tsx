@@ -139,39 +139,6 @@ export const BadgeScreen: FC = () => {
         </div>
       </CodePreview>
 
-      <CodePreview
-        code={`<div className="flex flex-wrap items-center gap-2">
-   <span className="badge relative gap-1">
-     <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
-     Active
-   </span>
-   <span className="badge-secondary relative gap-1 rounded-full">
-     <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-green-500 ring-2 ring-background" />
-     Verified
-   </span>
-   <span className="badge-destructive relative gap-1 rounded-full">
-     <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
-     Critical
-   </span>
-</div>`}
-        language="tsx"
-      >
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="badge relative gap-1">
-            <span class="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
-            Active
-          </span>
-          <span class="badge-secondary relative gap-1 rounded-full">
-            <span class="absolute right-0 top-0 h-2 w-2 rounded-full bg-green-500 ring-2 ring-background" />
-            Verified
-          </span>
-          <span class="badge-destructive relative gap-1 rounded-full">
-            <span class="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
-            Critical
-          </span>
-        </div>
-      </CodePreview>
-
       <h2
         id="usage"
         class="text-2xl font-semibold tracking-tight scroll-m-20 border-b pb-2 first:mt-0"

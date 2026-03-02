@@ -419,7 +419,6 @@ export const ToggleExample = () => {
 }`}
         language="tsx"
       />
-
     </div>
   );
 };

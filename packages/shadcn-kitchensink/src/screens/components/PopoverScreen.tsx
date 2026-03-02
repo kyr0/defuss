@@ -1,5 +1,5 @@
 import type { FC } from "defuss";
-import { Button, Popover, PopoverContent, PopoverTrigger } from "defuss-shadcn";
+import { Popover, PopoverContent, PopoverTrigger } from "defuss-shadcn";
 import { CodePreview } from "../../components/CodePreview.js";
 
 export const PopoverScreen: FC = () => {
@@ -227,7 +227,9 @@ export const PopoverScreen: FC = () => {
               </div>
             </div>
             <div class="border-t pt-4">
-              <button class="btn w-full btn-destructive">Sign out</button>
+              <button type="button" class="btn w-full btn-destructive">
+                Sign out
+              </button>
             </div>
           </PopoverContent>
         </Popover>
@@ -242,40 +244,6 @@ export const PopoverScreen: FC = () => {
       <p class="text-muted-foreground">
         Popovers can be triggered by various elements beyond buttons.
       </p>
-      <div class="flex flex-wrap gap-4">
-        <Popover>
-          <PopoverTrigger className="btn-icon-outline size-10">
-            <svg
-              className="size-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <circle cx="12" cy="12" r="1" />
-              <circle cx="12" cy="5" r="1" />
-              <circle cx="12" cy="19" r="1" />
-            </svg>
-          </PopoverTrigger>
-          <PopoverContent className="w-48">
-            <div class="grid gap-2">
-              <div class="font-semibold">Action Menu</div>
-              <div class="text-sm">Quick actions available here</div>
-            </div>
-          </PopoverContent>
-        </Popover>
-        <Popover>
-          <PopoverTrigger className="font-medium underline hover:text-primary">
-            Click me
-          </PopoverTrigger>
-          <PopoverContent className="w-64">
-            <div class="grid gap-2">
-              <div class="font-semibold">Additional Info</div>
-              <div class="text-sm">More details in this popover</div>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
       <CodePreview
         code={`<div class="flex flex-wrap gap-4">
   <Popover>
@@ -340,53 +308,6 @@ export const PopoverScreen: FC = () => {
           </Popover>
         </div>
       </CodePreview>
-
-      <h2
-        id="example-alignments"
-        class="text-2xl font-semibold tracking-tight scroll-m-20 border-b pb-2 mt-8"
-      >
-        Different Alignments
-      </h2>
-      <p class="text-muted-foreground">
-        Popovers can be aligned left, center, or right relative to the trigger.
-      </p>
-      <div class="flex flex-wrap gap-4 justify-center">
-        <div class="flex flex-col items-center gap-2">
-          <div class="relative inline-block">
-            <Popover placement="top-start">
-              <PopoverTrigger className="btn-outline">Top Start</PopoverTrigger>
-              <PopoverContent placement="top-start">
-                Top Start Alignment
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div class="text-xs text-muted-foreground">Alignment: start</div>
-        </div>
-        <div class="flex flex-col items-center gap-2">
-          <div class="relative inline-block">
-            <Popover placement="top">
-              <PopoverTrigger className="btn-outline">
-                Top Center
-              </PopoverTrigger>
-              <PopoverContent placement="top">
-                Top Center Alignment
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div class="text-xs text-muted-foreground">Alignment: center</div>
-        </div>
-        <div class="flex flex-col items-center gap-2">
-          <div class="relative inline-block">
-            <Popover placement="top-end">
-              <PopoverTrigger className="btn-outline">Top End</PopoverTrigger>
-              <PopoverContent placement="top-end">
-                Top End Alignment
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div class="text-xs text-muted-foreground">Alignment: end</div>
-        </div>
-      </div>
     </div>
   );
 };

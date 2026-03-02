@@ -1,10 +1,5 @@
 import type { FC } from "defuss";
-import {
-  Alert,
-  AlertAction,
-  AlertDescription,
-  AlertTitle,
-} from "defuss-shadcn";
+import { Alert, AlertDescription, AlertTitle } from "defuss-shadcn";
 import { CodePreview } from "../../components/CodePreview.js";
 
 export const AlertScreen: FC = () => {

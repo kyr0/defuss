@@ -1,8 +1,10 @@
-import type { FC } from "defuss";
+import { $, createRef, type FC } from "defuss";
 import { Label, Slider } from "defuss-shadcn";
 import { CodePreview } from "../../components/CodePreview.js";
 
 export const SliderScreen: FC = () => {
+  const sliderWithValueDisplay = createRef<HTMLSpanElement>();
+  const sliderWithBrightness = createRef<HTMLInputElement>();
   return (
     <div class="space-y-8">
       <h1 class="text-3xl font-bold tracking-tight">Slider</h1>
@@ -64,51 +66,13 @@ export const SliderScreen: FC = () => {
       </div>
 
       <div class="space-y-4">
-        <h2 class="text-xl font-semibold">Slider with Step Values</h2>
-        <p class="text-sm text-muted-foreground">
-          Different step intervals (step={5}).
-        </p>
-        <CodePreview
-          code={`<Slider min={0} max={100} step={5} value={25} className="w-full max-w-sm" />`}
-          language="tsx"
-        >
-          <Slider
-            min={0}
-            max={100}
-            step={5}
-            value={25}
-            className="w-full max-w-sm"
-          />
-        </CodePreview>
-      </div>
-
-      <div class="space-y-4">
-        <h2 class="text-xl font-semibold">Slider with Custom Values</h2>
-        <p class="text-sm text-muted-foreground">
-          Different min/max values (min={10}, max={50}).
-        </p>
-        <CodePreview
-          code={`<Slider min={10} max={50} step={1} value={30} className="w-full max-w-sm" />`}
-          language="tsx"
-        >
-          <Slider
-            min={10}
-            max={50}
-            step={1}
-            value={30}
-            className="w-full max-w-sm"
-          />
-        </CodePreview>
-      </div>
-
-      <div class="space-y-4">
         <h2 class="text-xl font-semibold">Slider with Value Display</h2>
         <p class="text-sm text-muted-foreground">
-          Value displayed above thumb using defaultValue.
+          Value displayed above the thumb.
         </p>
         <CodePreview
           code={`<div class="flex flex-col items-center gap-2">
-  <Slider min={0} max={100} step={1} defaultValue={[30]} className="w-full max-w-sm" />
+  <Slider min={0} max={100} step={1} value={30} className="w-full max-w-sm" />
   <span class="text-sm font-medium">30</span>
 </div>`}
           language="tsx"
@@ -118,10 +82,15 @@ export const SliderScreen: FC = () => {
               min={0}
               max={100}
               step={1}
-              defaultValue={[30]}
+              value={30}
               className="w-full max-w-sm"
+              onValueChange={(value) =>
+                sliderWithValueDisplay.render(value.toString())
+              }
             />
-            <span class="text-sm font-medium">30</span>
+            <span ref={sliderWithValueDisplay} class="text-sm font-medium">
+              30
+            </span>
           </div>
         </CodePreview>
       </div>
@@ -134,7 +103,7 @@ export const SliderScreen: FC = () => {
         <CodePreview
           code={`<div class="flex items-center gap-4">
   <Label for="inline-slider">Volume</Label>
-  <Slider min={0} max={100} step={1} defaultValue={[50]} id="inline-slider" className="w-32" />
+  <Slider min={0} max={100} step={1} value={50} id="inline-slider" className="w-32" />
 </div>`}
           language="tsx"
         >
@@ -144,7 +113,7 @@ export const SliderScreen: FC = () => {
               min={0}
               max={100}
               step={1}
-              defaultValue={[50]}
+              value={50}
               id="inline-slider"
               className="w-32"
             />
@@ -161,7 +130,7 @@ export const SliderScreen: FC = () => {
           code={`<form class="space-y-4">
   <div class="space-y-2">
     <Label>Brightness</Label>
-    <Slider min={0} max={100} step={1} defaultValue={[75]} className="w-full" />
+    <Slider min={0} max={100} step={1} value={75} className="w-full" />
   </div>
 </form>`}
           language="tsx"
@@ -170,11 +139,17 @@ export const SliderScreen: FC = () => {
             <div class="space-y-2">
               <Label>Brightness</Label>
               <Slider
+                ref={sliderWithBrightness}
                 min={0}
                 max={100}
                 step={1}
-                defaultValue={[75]}
+                value={75}
                 className="w-full"
+                onValueChange={(value) =>
+                  $(sliderWithBrightness).css({
+                    opacity: ((value as number) / 100).toString(),
+                  })
+                }
               />
             </div>
           </form>
@@ -182,19 +157,17 @@ export const SliderScreen: FC = () => {
       </div>
 
       <div class="space-y-4">
-        <h2 class="text-xl font-semibold">Slider with Markers</h2>
-        <p class="text-sm text-muted-foreground">
-          Slider with visible markers/indications.
-        </p>
+        <h2 class="text-xl font-semibold">Slider with Stepping</h2>
+        <p class="text-sm text-muted-foreground">Step size = 20.</p>
         <CodePreview
-          code={`<Slider min={0} max={100} step={20} defaultValue={[40]} className="w-full max-w-sm" />`}
+          code={`<Slider min={0} max={100} step={20} value={40} className="w-full max-w-sm" />`}
           language="tsx"
         >
           <Slider
             min={0}
             max={100}
             step={20}
-            defaultValue={[40]}
+            value={40}
             className="w-full max-w-sm"
           />
         </CodePreview>
