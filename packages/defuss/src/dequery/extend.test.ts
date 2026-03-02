@@ -1,25 +1,23 @@
 // @vitest-environment happy-dom
-import { CallChainImpl, createCall, dequery, type Dequery } from "./dequery.js";
+import { CallChainImpl, dequery, type Dequery } from "./dequery.js";
 
 describe("extend() static method test with typing", () => {
-  it("can extend the dequery API", async () => {
-    let didCall;
+  it("can extend the dequery API", () => {
+    let didCall: number | undefined;
 
     class DequeryWithFoo<NT> extends CallChainImpl<
       NT,
       DequeryWithFoo<NT> & Dequery<NT>
     > {
       foo(bar: number): this & Dequery<NT> {
-        return createCall(this, "foo", async () => {
-          didCall = bar;
-          return this.nodes as NT;
-        }) as unknown as this & Dequery<NT>;
+        didCall = bar;
+        return this as unknown as this & Dequery<NT>;
       }
     }
 
     const $ = dequery.extend(DequeryWithFoo);
 
-    const instance = await $(document.body)
+    const instance = $(document.body)
       .foo(42)
       .addClass("foo")
       .foo(42)

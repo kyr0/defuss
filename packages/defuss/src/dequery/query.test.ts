@@ -41,37 +41,24 @@ describe("$", () => {
     document.body.removeChild(container);
   });
 
-  it("waits for delayed DOM elements to appear", async () => {
-    // Set up a unique ID for our test element
-    const testClass = "delayed-element-test";
+  it("returns empty set for non-existent elements (sync)", () => {
+    // With sync API, querying non-existent elements returns empty immediately
+    const result = $<HTMLElement>(".does-not-exist");
+    expect(result.length).toBe(0);
+  });
 
-    // Start a query for an element that doesn't exist yet
-    const delayedElementPromise = $<HTMLElement>(`.${testClass}`);
+  it("finds elements that already exist in the DOM", () => {
+    const element = document.createElement("div");
+    element.className = "sync-test-element";
+    element.textContent = "I exist already";
+    document.body.appendChild(element);
 
-    console.log("Creating selection element somewhere soon...");
-
-    // Create the element after a short delay
-    setTimeout(() => {
-      console.log("Trigger create DOM element");
-      const element = document.createElement("div");
-      element.className = testClass;
-      element.textContent = "I was created asynchronously";
-      console.log("Created DOM element");
-      document.body.appendChild(element);
-    }, 5);
-
-    console.log("Actually running the seleection (shall wait)...");
-
-    // Wait for the element to be found
-    const result = await delayedElementPromise;
-
-    // Verify that the element was found
+    const result = $<HTMLElement>(".sync-test-element");
     expect(result.length).toBe(1);
-    expect(result[0].textContent).toBe("I was created asynchronously");
+    expect(result[0].textContent).toBe("I exist already");
 
-    // Clean up
-    document.body.removeChild(document.querySelector(`.${testClass}`)!);
-  }, 1000); // Set timeout for the test to 1 second
+    document.body.removeChild(element);
+  });
 });
 
 describe("Traversal", () => {

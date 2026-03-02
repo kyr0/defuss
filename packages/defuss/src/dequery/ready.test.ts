@@ -44,7 +44,7 @@ describe("ready method", () => {
     expect(result[0]).toBe(document.body);
   });
 
-  it("waits for DOMContentLoaded when DOM is still loading", async () => {
+  it("registers DOMContentLoaded listener when DOM is still loading", () => {
     // Set document ready state to loading
     Object.defineProperty(document, "readyState", {
       writable: true,
@@ -52,41 +52,27 @@ describe("ready method", () => {
     });
 
     const callback = vi.fn();
-    let callbackExecuted = false;
 
     // Spy on addEventListener to know when the listener is attached
     const addEventListenerSpy = vi.spyOn(document, "addEventListener");
 
-    // Start the ready method
-    const chain = $(document.body).ready(() => {
-      callbackExecuted = true;
-      callback();
-    });
+    // Start the ready method — returns synchronously
+    const result = $(document.body).ready(callback);
 
-    // Manually trigger the chain execution ONCE
-    const executionPromise = chain.then((c) => c);
-
-    // Wait until the event listener is attached
-    await vi.waitFor(() => {
-      expect(addEventListenerSpy).toHaveBeenCalledWith(
-        "DOMContentLoaded",
-        expect.any(Function),
-      );
-    });
+    // Listener should be attached immediately
+    expect(addEventListenerSpy).toHaveBeenCalledWith(
+      "DOMContentLoaded",
+      expect.any(Function),
+    );
 
     // Verify callback hasn't been called yet
     expect(callback).not.toHaveBeenCalled();
-    expect(callbackExecuted).toBe(false);
 
     // Manually invoke the handler
     const handler = addEventListenerSpy.mock.lastCall![1] as EventListener;
     handler(new Event("DOMContentLoaded"));
 
-    // Wait for the promise to resolve
-    const result = await executionPromise;
-
     expect(callback).toHaveBeenCalledTimes(1);
-    expect(callbackExecuted).toBe(true);
     expect(result.length).toBe(1);
     expect(result[0]).toBe(document.body);
 
@@ -106,7 +92,7 @@ describe("ready method", () => {
     expect(result[0]).toBe(document.body);
   });
 
-  it("works without a callback when waiting for DOMContentLoaded", async () => {
+  it("works without a callback when waiting for DOMContentLoaded", () => {
     // Set document ready state to loading
     Object.defineProperty(document, "readyState", {
       writable: true,
@@ -116,23 +102,11 @@ describe("ready method", () => {
     // Spy on addEventListener
     const addEventListenerSpy = vi.spyOn(document, "addEventListener");
 
-    // Start the ready method without callback
-    const chain = $(document.body).ready();
+    // Start the ready method without callback — returns synchronously
+    const result = $(document.body).ready();
 
-    // Manually trigger execution ONCE
-    const executionPromise = chain.then((c) => c);
-
-    // Wait until listener is attached
-    await vi.waitFor(() => {
-      expect(addEventListenerSpy).toHaveBeenCalledWith("DOMContentLoaded", expect.any(Function));
-    });
-
-    // Manually invoke the handler
-    const handler = addEventListenerSpy.mock.lastCall![1] as EventListener;
-    handler(new Event("DOMContentLoaded"));
-
-    // Wait for the promise to resolve
-    const result = await executionPromise;
+    // Listener should be attached
+    expect(addEventListenerSpy).toHaveBeenCalledWith("DOMContentLoaded", expect.any(Function));
 
     expect(result.length).toBe(1);
     expect(result[0]).toBe(document.body);
@@ -199,7 +173,7 @@ describe("ready method", () => {
     expect(result2[0]).toBe(document.body);
   });
 
-  it("properly removes event listener after DOMContentLoaded", async () => {
+  it("properly removes event listener after DOMContentLoaded", () => {
     // Set document ready state to loading
     Object.defineProperty(document, "readyState", {
       writable: true,
@@ -211,23 +185,15 @@ describe("ready method", () => {
     // Spy on addEventListener
     const addEventListenerSpy = vi.spyOn(document, "addEventListener");
 
-    // Start the ready method
-    const chain = $(document.body).ready(callback);
+    // Start the ready method — returns synchronously
+    $(document.body).ready(callback);
 
-    // Manually trigger execution ONCE
-    const executionPromise = chain.then((c) => c);
-
-    // Wait until listener is attached
-    await vi.waitFor(() => {
-      expect(addEventListenerSpy).toHaveBeenCalledWith("DOMContentLoaded", expect.any(Function));
-    });
+    // Listener should be attached immediately
+    expect(addEventListenerSpy).toHaveBeenCalledWith("DOMContentLoaded", expect.any(Function));
 
     // Manually invoke the handler
     const handler = addEventListenerSpy.mock.lastCall![1] as EventListener;
     handler(new Event("DOMContentLoaded"));
-
-    // Wait for the promise to resolve
-    await executionPromise;
 
     expect(callback).toHaveBeenCalledTimes(1);
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { $, createSyncCall } from "./dequery.js";
+import { $ } from "./dequery.js";
 
 describe("Dequery eager sync execution", () => {
     let container: HTMLDivElement;
@@ -93,28 +93,24 @@ describe("Dequery eager sync execution", () => {
         expect(triggered).toBe(true);
     });
 
-    // Critical bug-catcher test: ensures correct ordering when ops are queued
-    it("does NOT execute eagerly if there are queued ops before it", async () => {
+    // With sync API, find() executes immediately, so chained ops apply to the result right away
+    it("executes find().addClass() synchronously on the found children", () => {
         const parent = document.createElement("div");
         const child = document.createElement("span");
         child.className = "c";
         parent.appendChild(child);
         container.appendChild(parent);
 
-        // find() is queued, so addClass must NOT run early on parent
-        const chain = $(parent).find(".c").addClass("x");
+        // Everything executes synchronously now
+        $(parent).find(".c").addClass("x");
 
-        // Before await: neither should have the class
-        expect(parent.classList.contains("x")).toBe(false);
-        expect(child.classList.contains("x")).toBe(false);
-
-        // After awaiting, it should apply to the child (result of .find())
-        await chain;
+        // Child should have the class (it was found and modified)
         expect(child.classList.contains("x")).toBe(true);
+        // Parent should NOT have the class
         expect(parent.classList.contains("x")).toBe(false);
     });
 
-    it("does NOT execute .on() eagerly if there are queued ops", async () => {
+    it("executes find().on() synchronously on the found children", () => {
         const parent = document.createElement("div");
         const child = document.createElement("button");
         child.className = "btn";
@@ -122,22 +118,15 @@ describe("Dequery eager sync execution", () => {
         container.appendChild(parent);
 
         let clickedElement: HTMLElement | null = null;
-        const chain = $(parent).find(".btn").on("click", (e) => {
+        $(parent).find(".btn").on("click", (e) => {
             clickedElement = e.target as HTMLElement;
         });
 
-        // Click parent before await - should not trigger (handler not attached yet)
-        parent.dispatchEvent(new Event("click", { bubbles: true }));
-        expect(clickedElement).toBe(null);
-
-        // Await to resolve the chain
-        await chain;
-
-        // Now click the child button - should trigger
+        // Click the child button - handler should be attached synchronously
         child.dispatchEvent(new Event("click", { bubbles: true }));
         expect(clickedElement).toBe(child);
 
-        // Parent still shouldn't have the handler
+        // Parent should NOT have the handler
         clickedElement = null;
         parent.dispatchEvent(new Event("click", { bubbles: true }));
         expect(clickedElement).toBe(null);

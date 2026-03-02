@@ -1,9 +1,5 @@
 import { isRef, type NodeType } from "../render/index.js";
-import type {
-  CallChainImpl,
-  CallChainImplThenable,
-  Dequery,
-} from "../dequery/index.js";
+import type { CallChainImpl, Dequery } from "../dequery/index.js";
 import { isDequery } from "../dequery/index.js";
 import type {
   VNodeChild,
@@ -17,9 +13,7 @@ import type {
   Ref,
   JsxSourceInfo,
   SyncRenderInput,
-  ParentElementInput,
   SyncRenderResult,
-  ParentElementInputAsync,
 } from "./types.js";
 import {
   domNodeToVNode,
@@ -34,7 +28,10 @@ import {
   DEFAULT_TRANSITION_CONFIG,
   type TransitionConfig,
 } from "./transitions.js";
-import { parseEventPropName, registerDelegatedEvent } from "./delegated-events.js";
+import {
+  parseEventPropName,
+  registerDelegatedEvent,
+} from "./delegated-events.js";
 
 export const CLASS_ATTRIBUTE_NAME = "class";
 export const XLINK_ATTRIBUTE_NAME = "xlink";
@@ -88,7 +85,11 @@ export const jsx = (
   // Filter null/undefined/booleans to match update/hydrate behavior
   // (booleans render as nothing, not as "true"/"false" text)
   let children: Array<VNodeChild> = (
-    attributes?.children ? ([] as VNodeChild[]).concat(attributes.children as VNodeChild | VNodeChild[]) : []
+    attributes?.children
+      ? ([] as VNodeChild[]).concat(
+          attributes.children as VNodeChild | VNodeChild[],
+        )
+      : []
   ).filter((c) => c !== null && c !== undefined && typeof c !== "boolean");
   delete attributes?.children;
 
@@ -133,7 +134,9 @@ export const jsx = (
         // The container element will have its content replaced with the resolved VNode
         if (containerEl && resolvedVNode) {
           const globals: Globals = {
-            window: containerEl.ownerDocument?.defaultView ?? (globalThis as unknown as Window),
+            window:
+              containerEl.ownerDocument?.defaultView ??
+              (globalThis as unknown as Window),
           } as Globals;
           updateDomWithVdom(containerEl, resolvedVNode, globals);
         }
@@ -150,18 +153,16 @@ export const jsx = (
       type: "div",
       attributes: {
         key,
-        onMount
+        onMount,
       },
       children: fallback ? [fallback] : [],
       sourceInfo,
     } as unknown as VNode;
   }
 
-
   // it's a component, divide and conquer children
   // in case of sync functions (not AsyncFunction)
   if (typeof type === "function" && type.constructor.name !== "AsyncFunction") {
-
     try {
       // Pass all attributes including key (defuss components like Trans use key as a prop)
       const rendered = type({
@@ -172,9 +173,14 @@ export const jsx = (
       // Store the original component props (without children) on the returned VNode
       // so that SSG auto-hydration can serialize and pass them to the client-side component.
       // Only set if not already set by an inner component call (preserves innermost props).
-      
+
       //console.log(`[jsx componentProps] component="${type.name}", isObj=${rendered && typeof rendered === "object"}, isArr=${Array.isArray(rendered)}, hasSrcInfo=${!!sourceInfo}, attrs=`, JSON.stringify(attributes)?.slice(0, 200));
-      if (rendered && typeof rendered === "object" && !Array.isArray(rendered) && sourceInfo) {
+      if (
+        rendered &&
+        typeof rendered === "object" &&
+        !Array.isArray(rendered) &&
+        sourceInfo
+      ) {
         if (!(rendered as VNode).componentProps) {
           (rendered as VNode).componentProps = { ...attributes };
           //console.log(`[jsx componentProps] SET on component="${type.name}", renderedType="${(rendered as VNode).type}", renderedSrcInfo=`, (rendered as VNode).sourceInfo?.fileName);
@@ -184,7 +190,11 @@ export const jsx = (
       }
 
       // Diff semantics: also apply key to the returned vnode root so morphing can find keyed nodes
-      if (typeof key !== "undefined" && rendered && typeof rendered === "object") {
+      if (
+        typeof key !== "undefined" &&
+        rendered &&
+        typeof rendered === "object"
+      ) {
         // Single root vnode
         if ("attributes" in (rendered as any)) {
           (rendered as any).attributes = {
@@ -195,7 +205,11 @@ export const jsx = (
         // Fragment array: only safe auto-key if it's a single root
         else if (Array.isArray(rendered) && rendered.length === 1) {
           const only = rendered[0];
-          if (only && typeof only === "object" && "attributes" in (only as any)) {
+          if (
+            only &&
+            typeof only === "object" &&
+            "attributes" in (only as any)
+          ) {
             (only as any).attributes = {
               ...(only as any).attributes,
               key,
@@ -327,7 +341,10 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       try {
         // if a synchronous function is still a function, VDOM has obviously not resolved, probably an
         // Error occurred while generating the VDOM (in JSX runtime)
-        if (typeof virtualNode === "function" && virtualNode.constructor.name === "AsyncFunction") {
+        if (
+          typeof virtualNode === "function" &&
+          virtualNode.constructor.name === "AsyncFunction"
+        ) {
           newEl = document.createElement("div");
         } else if (
           typeof virtualNode === "object" &&
@@ -342,7 +359,8 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
               `FATAL ERROR: ${(vNode.type as { _error?: string })._error}`;
           } else if (
             // SVG support
-            (typeof vNode.type === "string" && vNode.type.toUpperCase() === "SVG") ||
+            (typeof vNode.type === "string" &&
+              vNode.type.toUpperCase() === "SVG") ||
             (parentDomElement &&
               renderer.hasSvgNamespace(
                 parentDomElement,
@@ -350,10 +368,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
               ))
           ) {
             // SVG support
-            newEl = document.createElementNS(
-              nsMap.svg,
-              vNode.type as string,
-            );
+            newEl = document.createElementNS(nsMap.svg, vNode.type as string);
           } else {
             newEl = document.createElement(vNode.type as string);
           }
@@ -363,7 +378,8 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
             // apply dangerouslySetInnerHTML if provided
             if (vNode.attributes.dangerouslySetInnerHTML) {
-              (newEl as HTMLElement).innerHTML = vNode.attributes.dangerouslySetInnerHTML.__html;
+              (newEl as HTMLElement).innerHTML =
+                vNode.attributes.dangerouslySetInnerHTML.__html;
             }
           }
 
@@ -374,12 +390,15 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         } else {
           // Fallback for unexpected types (primitives should be handled by createTextNode, but just in case)
           // If virtualNode is a primitive at this point, original logic would try to use it as tag name or crash.
-          // We'll create a text node wrapped in span or similar? 
+          // We'll create a text node wrapped in span or similar?
           // Attempting to match original implementation which forced Cast.
-          // If 'type' is missing, it's not a valid VNode. 
+          // If 'type' is missing, it's not a valid VNode.
           // Original was: newEl = document.createElement(virtualNode.type as string);
           // If it's a string, type is undefined. document.createElement("undefined") -> <undefined> element.
-          if (typeof virtualNode === "string" || typeof virtualNode === "number") {
+          if (
+            typeof virtualNode === "string" ||
+            typeof virtualNode === "number"
+          ) {
             // Creating an element with the value as tag name seems wrong but that's what the old code did if it got here.
             // However, createElementOrElements dispatches strings to createTextNode.
             // So we might be safe here.
@@ -448,12 +467,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       return children;
     },
 
-    setAttribute: (
-      name: string,
-      value: any,
-      domElement: Element,
-      virtualNode: VNode<VNodeAttributes>,
-    ) => {
+    setAttribute: (name: string, value: any, domElement: Element) => {
       // attributes not set (undefined) are ignored; use null value to reset an attributes state
       if (typeof value === "undefined") return;
 
@@ -461,7 +475,8 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
       // internal list key: store on element, do not serialize into DOM
       if (name === "key") {
-        (domElement as HTMLElement & { _defussKey?: string })._defussKey = String(value);
+        (domElement as HTMLElement & { _defussKey?: string })._defussKey =
+          String(value);
         return;
       }
 
@@ -499,7 +514,8 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
         if (eventType === "unmount") {
           if ((domElement as any).$onUnmount) {
-            const existingUnmount = (domElement as any).$onUnmount as () => void;
+            const existingUnmount = (domElement as any)
+              .$onUnmount as () => void;
             (domElement as any).$onUnmount = () => {
               existingUnmount();
               (value as () => void)();
@@ -510,7 +526,12 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
           return;
         }
 
-        registerDelegatedEvent(domElement as HTMLElement, eventType, value as EventListener, { capture });
+        registerDelegatedEvent(
+          domElement as HTMLElement,
+          eventType,
+          value as EventListener,
+          { capture },
+        );
         return;
       }
 
@@ -521,7 +542,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
       // transforms class={['a', 'b']} into class="a b"
       if (name === CLASS_ATTRIBUTE_NAME && Array.isArray(value)) {
-        value = value.filter(val => !!val).join(" ");
+        value = value.filter((val) => !!val).join(" ");
       }
 
       // SVG support
@@ -540,19 +561,37 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       } else if (name === "style" && typeof value !== "string") {
         const styleObj = value as Record<string, string | number>;
         for (const prop of Object.keys(styleObj)) {
-          (domElement as HTMLElement).style[prop as any] = String(styleObj[prop]);
+          (domElement as HTMLElement).style[prop as any] = String(
+            styleObj[prop],
+          );
         }
       } else if (typeof value === "boolean") {
         (domElement as any)[name] = value;
+        // Also set/remove the attribute so SSG serialization includes it
+        if (value) {
+          domElement.setAttribute(name, "");
+        } else {
+          domElement.removeAttribute(name);
+        }
       } else if (
-        // Controlled input props: use property assignment, not setAttribute
-        // setAttribute updates the default value, property updates the live value
+        // Controlled input props: use property assignment for live value,
+        // AND setAttribute so SSG serialization (w3c-xmlserializer) includes it
         (name === "value" || name === "checked" || name === "selectedIndex") &&
         (domElement.nodeName === "INPUT" ||
           domElement.nodeName === "TEXTAREA" ||
           domElement.nodeName === "SELECT")
       ) {
         (domElement as any)[name] = value;
+        if (name === "checked") {
+          if (value) {
+            domElement.setAttribute("checked", "");
+          } else {
+            domElement.removeAttribute("checked");
+          }
+        } else if (name === "value") {
+          domElement.setAttribute("value", String(value));
+        }
+        // selectedIndex has no HTML attribute equivalent — skip setAttribute
       } else {
         domElement.setAttribute(name, String(value));
       }
@@ -568,7 +607,6 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
           attrNames[i],
           virtualNode.attributes![attrNames[i]],
           domElement,
-          virtualNode,
         );
       }
     },
@@ -578,14 +616,15 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
 
 export const renderIsomorphicSync = (
   virtualNode: SyncRenderInput,
-  parentDomElement: ParentElementInput,
+  parentDomElement: Element | Document | undefined,
   globals: Globals,
 ): SyncRenderResult => {
   if (isDequery(parentDomElement)) {
     parentDomElement =
-      ((
-        parentDomElement as Dequery<NodeType>
-      ).getFirstElement() as unknown as Element) || parentDomElement;
+      ((parentDomElement as Dequery<NodeType>).getFirstElement() as
+        | Element
+        | Document
+        | undefined) || parentDomElement;
   }
 
   let renderResult: SyncRenderResult;
@@ -606,20 +645,26 @@ export const renderIsomorphicSync = (
 
 export const renderIsomorphicAsync = async (
   virtualNode: SyncRenderInput | Promise<SyncRenderInput>,
-  parentDomElement: ParentElementInputAsync,
+  parentDomElement:
+    | Element
+    | Document
+    | undefined
+    | Promise<Element | Document | undefined>,
   globals: Globals,
 ): Promise<SyncRenderResult> => {
   if (parentDomElement instanceof Promise) {
     parentDomElement = (await parentDomElement) as
-      | ParentElementInput
-      | Dequery<NodeType>;
+      | Element
+      | Document
+      | undefined;
   }
 
   if (isDequery(parentDomElement)) {
     // awaits the dequery chain to resolve or fail, then renders the VDOM
-    parentDomElement = (
-      await (parentDomElement as Dequery<NodeType>).toArray()
-    )[0] as Element;
+    parentDomElement = (parentDomElement as Dequery<NodeType>).toArray()[0] as
+      | Element
+      | Document
+      | undefined;
   }
 
   if (virtualNode instanceof Promise) {
@@ -627,7 +672,7 @@ export const renderIsomorphicAsync = async (
   }
   return renderIsomorphicSync(
     virtualNode,
-    parentDomElement as ParentElementInput,
+    parentDomElement as Element | Document | undefined,
     globals,
   );
 };
@@ -640,16 +685,16 @@ export const globalScopeDomApis = (window: Window, document: Document) => {
 /**
  * React-compatible render function.
  * Renders JSX content into a container element using defuss' DOM morphing engine.
- * 
+ *
  * @example
  * ```tsx
  * import { render, $ } from "defuss";
- * 
+ *
  * const App = () => <div>Hello World</div>;
- * 
+ *
  * // Using with $ selector
  * render(<App />, $("#app").current);
- * 
+ *
  * // Using with direct element
  * render(<App />, document.getElementById("app"));
  * ```
@@ -664,7 +709,8 @@ export const render = (
   }
 
   const globals: Globals = {
-    window: container.ownerDocument?.defaultView ?? (globalThis as unknown as Window),
+    window:
+      container.ownerDocument?.defaultView ?? (globalThis as unknown as Window),
   } as Globals;
 
   // Use updateDomWithVdom for intelligent DOM morphing (preserves state, event listeners, etc.)
@@ -681,8 +727,9 @@ export const isJSX = (o: any): boolean => {
   // Arrays are valid JSX - fragments and child arrays
   // Each element can be a VNode, string, or number (text nodes)
   if (Array.isArray(o)) {
-    return o.every((item) =>
-      isJSX(item) || typeof item === "string" || typeof item === "number"
+    return o.every(
+      (item) =>
+        isJSX(item) || typeof item === "string" || typeof item === "number",
     );
   }
   if (typeof o.type === "string") return true;
@@ -736,13 +783,7 @@ export const jsxDEV = (
  * Helper function to perform the actual DOM update without transitions
  */
 async function performCoreDomUpdate<NT>(
-  input:
-    | string
-    | RenderInput
-    | Ref<NodeType>
-    | NodeType
-    | CallChainImpl<NT>
-    | CallChainImplThenable<NT>,
+  input: string | RenderInput | Ref<NodeType> | NodeType | CallChainImpl<NT>,
   nodes: readonly NodeType[],
   timeout: number,
   Parser: typeof globalThis.DOMParser,
@@ -764,7 +805,12 @@ async function performCoreDomUpdate<NT>(
     return (win as unknown as Globals) ?? (globalThis as unknown as Globals);
   };
 
-  if (typeof processedInput === "object" && processedInput !== null && "nodeType" in processedInput && typeof (processedInput as any).nodeType === "number") {
+  if (
+    typeof processedInput === "object" &&
+    processedInput !== null &&
+    "nodeType" in processedInput &&
+    typeof (processedInput as any).nodeType === "number"
+  ) {
     // Convert DOM node to VNode and use the intelligent updateDomWithVdom
     // This preserves existing DOM structure and event listeners
     const vnode = domNodeToVNode(processedInput);
@@ -783,7 +829,11 @@ async function performCoreDomUpdate<NT>(
       const vNodes = htmlStringToVNodes(processedInput, Parser);
       nodes.forEach((el) => {
         if (el) {
-          updateDomWithVdom(el as HTMLElement, vNodes, getGlobalsFromElement(el));
+          updateDomWithVdom(
+            el as HTMLElement,
+            vNodes,
+            getGlobalsFromElement(el),
+          );
         }
       });
     } else {
@@ -817,15 +867,8 @@ async function performCoreDomUpdate<NT>(
   }
 }
 
-
 export async function updateDom<NT>(
-  input:
-    | string
-    | RenderInput
-    | Ref<NodeType>
-    | NodeType
-    | CallChainImpl<NT>
-    | CallChainImplThenable<NT>,
+  input: string | RenderInput | Ref<NodeType> | NodeType | CallChainImpl<NT>,
   nodes: readonly NodeType[],
   timeout: number,
   Parser: typeof globalThis.DOMParser,

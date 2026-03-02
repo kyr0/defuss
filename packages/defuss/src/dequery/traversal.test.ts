@@ -115,16 +115,11 @@ describe("Traversal methods", () => {
     expect(result[0].className).toBe("middle-child");
   });
 
-  it("fails with error when no elements can be found in time, custome timeout", async () => {
+  it("returns empty set when no elements match (sync, no timeout)", () => {
     const container = document.getElementById("parent") as HTMLElement;
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => { });
-    try {
-      await $<HTMLElement>(container, { timeout: 50 }).find(".non-existent");
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toContain("Timeout after 50ms");
-    }
-    consoleSpy.mockRestore();
+    // With sync API, non-matching selectors simply return empty set
+    const result = $<HTMLElement>(container).find(".non-existent");
+    expect(result.length).toBe(0);
   });
 
   it("can handle multiple elements in the chain", async () => {

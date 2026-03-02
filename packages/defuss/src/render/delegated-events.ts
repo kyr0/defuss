@@ -1,98 +1,109 @@
 export type DelegatedPhase = "bubble" | "capture";
 
 export interface DelegatedEventOptions {
-    capture?: boolean;
-    /** If true, allows multiple handlers per element+type (Dequery mode) */
-    multi?: boolean;
+  capture?: boolean;
+  /** If true, allows multiple handlers per element+type (Dequery mode) */
+  multi?: boolean;
 }
 
 export interface ParsedEventProp {
-    eventType: string;
-    capture: boolean;
+  eventType: string;
+  capture: boolean;
 }
 
 /** non-bubbling events best handled via capture */
 export const CAPTURE_ONLY_EVENTS = new Set<string>([
-    "focus",
-    "blur",
-    "scroll",
-    "mouseenter",
-    "mouseleave",
-    // Note: focusin/focusout DO bubble, so they're not included here
+  "focus",
+  "blur",
+  "scroll",
+  "mouseenter",
+  "mouseleave",
+  // Note: focusin/focusout DO bubble, so they're not included here
 ]);
 
 interface HandlerEntry {
-    bubble?: EventListener;
-    capture?: EventListener;
-    bubbleSet?: Set<EventListener>;
-    captureSet?: Set<EventListener>;
+  bubble?: EventListener;
+  capture?: EventListener;
+  bubbleSet?: Set<EventListener>;
+  captureSet?: Set<EventListener>;
 }
 
 /** element -> (eventType -> handlers) */
-const elementHandlerMap = new WeakMap<
-    EventTarget,
-    Map<string, HandlerEntry>
->();
+const elementHandlerMap = new WeakMap<EventTarget, Map<string, HandlerEntry>>();
 
-/** document -> installed listener keys ("click:bubble", "focus:capture", ...) */
-const installedDocListeners = new WeakMap<Document, Set<string>>();
+/**
+ * Per-event dispatch de-duplication: prevents the same event object from
+ * dispatching to the same element more than once per phase.
+ * This guards against re-dispatch within a single event propagation cycle
+ * (e.g. from duplicate root listeners or DOM reshuffling).
+ * WeakMap keys (Event objects) are automatically GC'd after dispatch.
+ */
+const bubbleDispatched = new WeakMap<Event, WeakSet<EventTarget>>();
+const captureDispatched = new WeakMap<Event, WeakSet<EventTarget>>();
 
-export const parseEventPropName = (propName: string): ParsedEventProp | null => {
-    if (!propName.startsWith("on")) return null;
+export const parseEventPropName = (
+  propName: string,
+): ParsedEventProp | null => {
+  if (!propName.startsWith("on")) return null;
 
-    // support onClick / onClickCapture / onclick / onclickcapture
-    const raw = propName.slice(2);
-    if (!raw) return null;
+  // support onClick / onClickCapture / onclick / onclickcapture
+  const raw = propName.slice(2);
+  if (!raw) return null;
 
-    const lower = raw.toLowerCase();
-    const isCapture = lower.endsWith("capture");
+  const lower = raw.toLowerCase();
+  const isCapture = lower.endsWith("capture");
 
-    const eventType = isCapture ? lower.slice(0, -"capture".length) : lower;
+  const eventType = isCapture ? lower.slice(0, -"capture".length) : lower;
 
-    if (!eventType) return null;
+  if (!eventType) return null;
 
-    return { eventType, capture: isCapture };
+  return { eventType, capture: isCapture };
 };
 
 const getOrCreateElementHandlers = (el: HTMLElement) => {
-    const existing = elementHandlerMap.get(el);
-    if (existing) return existing;
+  const existing = elementHandlerMap.get(el);
+  if (existing) return existing;
 
-    const created = new Map<string, HandlerEntry>();
-    elementHandlerMap.set(el, created);
-    return created;
+  const created = new Map<string, HandlerEntry>();
+  elementHandlerMap.set(el, created);
+  return created;
 };
 
 const getEventPath = (event: Event): Array<EventTarget> => {
-    // composedPath is best (works with shadow DOM)
-    const composedPath = (event as Event & { composedPath?: () => Array<EventTarget> })
-        .composedPath?.();
-    if (composedPath && composedPath.length > 0) return composedPath;
+  // composedPath is best (works with shadow DOM)
+  const composedPath = (
+    event as Event & { composedPath?: () => Array<EventTarget> }
+  ).composedPath?.();
+  if (composedPath && composedPath.length > 0) return composedPath;
 
-    // fallback: walk up from target
-    const path: Array<EventTarget> = [];
-    let node: unknown = event.target;
+  // fallback: walk up from target
+  const path: Array<EventTarget> = [];
+  let node: unknown = event.target;
 
-    while (node) {
-        path.push(node as EventTarget);
+  while (node) {
+    path.push(node as EventTarget);
 
-        // walk DOM parents
-        const maybeNode = node as Node;
-        if (typeof maybeNode === "object" && maybeNode && "parentNode" in maybeNode) {
-            node = (maybeNode as Node).parentNode;
-            continue;
-        }
-
-        break;
+    // walk DOM parents
+    const maybeNode = node as Node;
+    if (
+      typeof maybeNode === "object" &&
+      maybeNode &&
+      "parentNode" in maybeNode
+    ) {
+      node = (maybeNode as Node).parentNode;
+      continue;
     }
 
-    // ensure document/window are at the end if available
-    const doc = (event.target as Node | null)?.ownerDocument;
-    if (doc && path[path.length - 1] !== doc) path.push(doc);
-    const win = doc?.defaultView;
-    if (win && path[path.length - 1] !== win) path.push(win);
+    break;
+  }
 
-    return path;
+  // ensure document/window are at the end if available
+  const doc = (event.target as Node | null)?.ownerDocument;
+  if (doc && path[path.length - 1] !== doc) path.push(doc);
+  const win = doc?.defaultView;
+  if (win && path[path.length - 1] !== win) path.push(win);
+
+  return path;
 };
 
 /**
@@ -100,55 +111,76 @@ const getEventPath = (event: Event): Array<EventTarget> => {
  * Each phase runs its own handlers - capture phase runs capture handlers,
  * bubble phase runs bubble handlers. This supports onClickCapture semantics.
  */
-const createPhaseHandler = (eventType: string, phase: DelegatedPhase): EventListener => {
-    return (event: Event) => {
-        const path = getEventPath(event).filter(
-            (t): t is HTMLElement => typeof t === "object" && t !== null && (t as HTMLElement).nodeType === 1 /* Node.ELEMENT_NODE */,
-        );
+const createPhaseHandler = (
+  eventType: string,
+  phase: DelegatedPhase,
+): EventListener => {
+  const dispatched = phase === "capture" ? captureDispatched : bubbleDispatched;
 
-        // Capture phase: root -> target (reversed path)
-        // Bubble phase: target -> root (normal path)
-        const ordered = phase === "capture" ? [...path].reverse() : path;
+  return (event: Event) => {
+    const path = getEventPath(event).filter(
+      (t): t is HTMLElement =>
+        typeof t === "object" &&
+        t !== null &&
+        (t as HTMLElement).nodeType === 1 /* Node.ELEMENT_NODE */,
+    );
 
-        for (const target of ordered) {
-            const handlersByEvent = elementHandlerMap.get(target);
-            if (!handlersByEvent) continue;
+    // Capture phase: root -> target (reversed path)
+    // Bubble phase: target -> root (normal path)
+    const ordered = phase === "capture" ? [...path].reverse() : path;
 
-            const entry = handlersByEvent.get(eventType);
-            if (!entry) continue;
+    for (const target of ordered) {
+      const handlersByEvent = elementHandlerMap.get(target);
+      if (!handlersByEvent) continue;
 
-            // Execute only the handlers for this phase
-            if (phase === "capture") {
-                // Single handler (JSX mode)
-                if (entry.capture) {
-                    entry.capture.call(target, event);
-                    if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
-                }
-                // Handler set (Dequery multi mode)
-                if (entry.captureSet) {
-                    for (const handler of entry.captureSet) {
-                        handler.call(target, event);
-                        if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
-                    }
-                }
-            } else {
-                // Bubble phase
-                if (entry.bubble) {
-                    entry.bubble.call(target, event);
-                    if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
-                }
-                if (entry.bubbleSet) {
-                    for (const handler of entry.bubbleSet) {
-                        handler.call(target, event);
-                        if ((event as Event & { cancelBubble?: boolean }).cancelBubble) return;
-                    }
-                }
-            }
+      const entry = handlersByEvent.get(eventType);
+      if (!entry) continue;
+
+      // De-duplicate: skip if this event was already dispatched to this target in this phase
+      let targets = dispatched.get(event);
+      if (targets?.has(target)) continue;
+      if (!targets) {
+        targets = new WeakSet();
+        dispatched.set(event, targets);
+      }
+      targets.add(target);
+
+      // Execute only the handlers for this phase
+      if (phase === "capture") {
+        // Single handler (JSX mode)
+        if (entry.capture) {
+          entry.capture.call(target, event);
+          if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
+            return;
         }
-    };
+        // Handler set (Dequery multi mode)
+        if (entry.captureSet) {
+          for (const handler of entry.captureSet) {
+            handler.call(target, event);
+            if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
+              return;
+          }
+        }
+      } else {
+        // Bubble phase
+        if (entry.bubble) {
+          entry.bubble.call(target, event);
+          if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
+            return;
+        }
+        if (entry.bubbleSet) {
+          for (const handler of entry.bubbleSet) {
+            handler.call(target, event);
+            if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
+              return;
+          }
+        }
+      }
+    }
+  };
 };
 
-/** 
+/**
  * Track installed listeners per root (Document or ShadowRoot).
  * Using WeakMap allows GC when shadow roots are removed.
  */
@@ -160,22 +192,30 @@ const installedRootListeners = new WeakMap<EventRoot, Set<string>>();
  * Installs BOTH capture and bubble listeners, but each only dispatches for appropriate events.
  */
 const ensureRootListener = (root: EventRoot, eventType: string) => {
-    const installed = installedRootListeners.get(root) ?? new Set<string>();
-    installedRootListeners.set(root, installed);
+  const installed = installedRootListeners.get(root) ?? new Set<string>();
+  installedRootListeners.set(root, installed);
 
-    // Install capture phase listener
-    const captureKey = `${eventType}:capture`;
-    if (!installed.has(captureKey)) {
-        root.addEventListener(eventType, createPhaseHandler(eventType, "capture"), true);
-        installed.add(captureKey);
-    }
+  // Install capture phase listener
+  const captureKey = `${eventType}:capture`;
+  if (!installed.has(captureKey)) {
+    root.addEventListener(
+      eventType,
+      createPhaseHandler(eventType, "capture"),
+      true,
+    );
+    installed.add(captureKey);
+  }
 
-    // Install bubble phase listener
-    const bubbleKey = `${eventType}:bubble`;
-    if (!installed.has(bubbleKey)) {
-        root.addEventListener(eventType, createPhaseHandler(eventType, "bubble"), false);
-        installed.add(bubbleKey);
-    }
+  // Install bubble phase listener
+  const bubbleKey = `${eventType}:bubble`;
+  if (!installed.has(bubbleKey)) {
+    root.addEventListener(
+      eventType,
+      createPhaseHandler(eventType, "bubble"),
+      false,
+    );
+    installed.add(bubbleKey);
+  }
 };
 
 /**
@@ -185,124 +225,128 @@ const ensureRootListener = (root: EventRoot, eventType: string) => {
  * (e.g. HappyDOM in Node.js) where global Document/ShadowRoot may not exist.
  */
 const getEventRoot = (element: HTMLElement): EventRoot | null => {
-    const root = element.getRootNode();
+  const root = element.getRootNode();
 
-    // nodeType 9 = Document, nodeType 11 = DocumentFragment (ShadowRoot)
-    if (root && (root as Node).nodeType === 9) {
-        return root as Document;
-    }
-    if (root && (root as Node).nodeType === 11 && "host" in (root as ShadowRoot)) {
-        return root as ShadowRoot;
-    }
+  // nodeType 9 = Document, nodeType 11 = DocumentFragment (ShadowRoot)
+  if (root && (root as Node).nodeType === 9) {
+    return root as Document;
+  }
+  if (
+    root &&
+    (root as Node).nodeType === 11 &&
+    "host" in (root as ShadowRoot)
+  ) {
+    return root as ShadowRoot;
+  }
 
-    // Detached element - root is the element itself, no delegation possible
-    return null;
+  // Detached element - root is the element itself, no delegation possible
+  return null;
 };
 
-
 export const registerDelegatedEvent = (
-    element: HTMLElement,
-    eventType: string,
-    handler: EventListener,
-    options: DelegatedEventOptions = {},
+  element: HTMLElement,
+  eventType: string,
+  handler: EventListener,
+  options: DelegatedEventOptions = {},
 ): void => {
-    // Get the correct root for delegation (Document or ShadowRoot)
-    const root = getEventRoot(element);
+  // Get the correct root for delegation (Document or ShadowRoot)
+  const root = getEventRoot(element);
 
-    // capture-only events should be forced to capture
-    const capture = options.capture || CAPTURE_ONLY_EVENTS.has(eventType);
+  // capture-only events should be forced to capture
+  const capture = options.capture || CAPTURE_ONLY_EVENTS.has(eventType);
 
-    if (root) {
-        // Element is in DOM - use delegation
-        ensureRootListener(root, eventType);
-    } else if (element.ownerDocument) {
-        // Element has a document but isn't connected yet - install listener on document
-        // Events will work once the element is attached
-        ensureRootListener(element.ownerDocument, eventType);
+  if (root) {
+    // Element is in DOM - use delegation
+    ensureRootListener(root, eventType);
+  } else if (element.ownerDocument) {
+    // Element has a document but isn't connected yet - install listener on document
+    // Events will work once the element is attached
+    ensureRootListener(element.ownerDocument, eventType);
+  } else {
+    // Truly detached element (no document) - use direct binding
+    // This ensures events work even for elements never attached to DOM
+    element.addEventListener(eventType, handler, capture);
+  }
+
+  const byEvent = getOrCreateElementHandlers(element);
+  const entry = byEvent.get(eventType) ?? {};
+  byEvent.set(eventType, entry);
+
+  if (options.multi) {
+    // Dequery mode: add to set (allows multiple handlers)
+    if (capture) {
+      if (!entry.captureSet) entry.captureSet = new Set();
+      entry.captureSet.add(handler);
     } else {
-        // Truly detached element (no document) - use direct binding
-        // This ensures events work even for elements never attached to DOM
-        element.addEventListener(eventType, handler, capture);
+      if (!entry.bubbleSet) entry.bubbleSet = new Set();
+      entry.bubbleSet.add(handler);
     }
-
-    const byEvent = getOrCreateElementHandlers(element);
-    const entry = byEvent.get(eventType) ?? {};
-    byEvent.set(eventType, entry);
-
-    if (options.multi) {
-        // Dequery mode: add to set (allows multiple handlers)
-        if (capture) {
-            if (!entry.captureSet) entry.captureSet = new Set();
-            entry.captureSet.add(handler);
-        } else {
-            if (!entry.bubbleSet) entry.bubbleSet = new Set();
-            entry.bubbleSet.add(handler);
-        }
+  } else {
+    // JSX mode: one handler per prop, overwrite to prevent duplicates
+    if (capture) {
+      entry.capture = handler;
     } else {
-        // JSX mode: one handler per prop, overwrite to prevent duplicates
-        if (capture) {
-            entry.capture = handler;
-        } else {
-            entry.bubble = handler;
-        }
+      entry.bubble = handler;
     }
+  }
 };
 
 export const removeDelegatedEvent = (
-    target: EventTarget,
-    eventType: string,
-    handler?: EventListener,
-    options: DelegatedEventOptions = {},
+  target: EventTarget,
+  eventType: string,
+  handler?: EventListener,
+  options: DelegatedEventOptions = {},
 ): void => {
-    const capture = options.capture || CAPTURE_ONLY_EVENTS.has(eventType);
-    const byEvent = elementHandlerMap.get(target);
-    if (!byEvent) return;
+  const byEvent = elementHandlerMap.get(target);
+  if (!byEvent) return;
 
-    const entry = byEvent.get(eventType);
-    if (!entry) return;
+  const entry = byEvent.get(eventType);
+  if (!entry) return;
 
-    if (handler) {
-        // Remove specific handler from both phases (since we don't know which phase it was added to)
-        if (entry.captureSet) {
-            entry.captureSet.delete(handler);
-        }
-        if (entry.bubbleSet) {
-            entry.bubbleSet.delete(handler);
-        }
-        // Also check if it matches single handler
-        if (entry.capture === handler) {
-            entry.capture = undefined;
-        }
-        if (entry.bubble === handler) {
-            entry.bubble = undefined;
-        }
-
-        // Always call removeEventListener for safety (handles detached element direct-binding case)
-        target.removeEventListener(eventType, handler, true);  // capture
-        target.removeEventListener(eventType, handler, false); // bubble
-    } else {
-        // Remove ALL handlers for this event type (both phases)
-        // This is what users expect from .off("click") without specific handler
-        entry.capture = undefined;
-        entry.bubble = undefined;
-        entry.captureSet = undefined;
-        entry.bubbleSet = undefined;
+  if (handler) {
+    // Remove specific handler from both phases (since we don't know which phase it was added to)
+    if (entry.captureSet) {
+      entry.captureSet.delete(handler);
+    }
+    if (entry.bubbleSet) {
+      entry.bubbleSet.delete(handler);
+    }
+    // Also check if it matches single handler
+    if (entry.capture === handler) {
+      entry.capture = undefined;
+    }
+    if (entry.bubble === handler) {
+      entry.bubble = undefined;
     }
 
-    // Clean up entry if empty
-    const isEmpty = !entry.capture && !entry.bubble &&
-        (!entry.captureSet || entry.captureSet.size === 0) &&
-        (!entry.bubbleSet || entry.bubbleSet.size === 0);
-    if (isEmpty) {
-        byEvent.delete(eventType);
-    }
+    // Always call removeEventListener for safety (handles detached element direct-binding case)
+    target.removeEventListener(eventType, handler, true); // capture
+    target.removeEventListener(eventType, handler, false); // bubble
+  } else {
+    // Remove ALL handlers for this event type (both phases)
+    // This is what users expect from .off("click") without specific handler
+    entry.capture = undefined;
+    entry.bubble = undefined;
+    entry.captureSet = undefined;
+    entry.bubbleSet = undefined;
+  }
+
+  // Clean up entry if empty
+  const isEmpty =
+    !entry.capture &&
+    !entry.bubble &&
+    (!entry.captureSet || entry.captureSet.size === 0) &&
+    (!entry.bubbleSet || entry.bubbleSet.size === 0);
+  if (isEmpty) {
+    byEvent.delete(eventType);
+  }
 };
 
 export const clearDelegatedEvents = (target: EventTarget): void => {
-    const byEvent = elementHandlerMap.get(target);
-    if (!byEvent) return;
+  const byEvent = elementHandlerMap.get(target);
+  if (!byEvent) return;
 
-    byEvent.clear();
+  byEvent.clear();
 };
 
 /**
@@ -310,19 +354,19 @@ export const clearDelegatedEvents = (target: EventTarget): void => {
  * Used by empty() to prevent event handler leaks when removing subtrees.
  */
 export const clearDelegatedEventsDeep = (root: HTMLElement): void => {
-    // Clear the root element
-    clearDelegatedEvents(root);
+  // Clear the root element
+  clearDelegatedEvents(root);
 
-    // Walk all descendant elements and clear their handlers
-    // Use ownerDocument for SSR/multi-doc compatibility
-    const doc = root.ownerDocument;
-    if (!doc) return;
-    const walker = doc.createTreeWalker(root, 1 /* NodeFilter.SHOW_ELEMENT */);
-    let node = walker.nextNode();
-    while (node) {
-        clearDelegatedEvents(node as HTMLElement);
-        node = walker.nextNode();
-    }
+  // Walk all descendant elements and clear their handlers
+  // Use ownerDocument for SSR/multi-doc compatibility
+  const doc = root.ownerDocument;
+  if (!doc) return;
+  const walker = doc.createTreeWalker(root, 1 /* NodeFilter.SHOW_ELEMENT */);
+  let node = walker.nextNode();
+  while (node) {
+    clearDelegatedEvents(node as HTMLElement);
+    node = walker.nextNode();
+  }
 };
 
 /**
@@ -330,9 +374,9 @@ export const clearDelegatedEventsDeep = (root: HTMLElement): void => {
  * Used to detect which events need to be removed when vnode props change.
  */
 export const getRegisteredEventTypes = (element: HTMLElement): Set<string> => {
-    const byEvent = elementHandlerMap.get(element);
-    if (!byEvent) return new Set();
-    return new Set(byEvent.keys());
+  const byEvent = elementHandlerMap.get(element);
+  if (!byEvent) return new Set();
+  return new Set(byEvent.keys());
 };
 
 /**
@@ -340,15 +384,16 @@ export const getRegisteredEventTypes = (element: HTMLElement): Set<string> => {
  * Returns keys like "click:bubble", "click:capture" for precise phase-aware removal.
  */
 export const getRegisteredEventKeys = (element: HTMLElement): Set<string> => {
-    const byEvent = elementHandlerMap.get(element);
-    if (!byEvent) return new Set();
+  const byEvent = elementHandlerMap.get(element);
+  if (!byEvent) return new Set();
 
-    const keys = new Set<string>();
-    for (const [eventType, entry] of byEvent) {
-        if (entry.bubble || entry.bubbleSet?.size) keys.add(`${eventType}:bubble`);
-        if (entry.capture || entry.captureSet?.size) keys.add(`${eventType}:capture`);
-    }
-    return keys;
+  const keys = new Set<string>();
+  for (const [eventType, entry] of byEvent) {
+    if (entry.bubble || entry.bubbleSet?.size) keys.add(`${eventType}:bubble`);
+    if (entry.capture || entry.captureSet?.size)
+      keys.add(`${eventType}:capture`);
+  }
+  return keys;
 };
 
 /**
@@ -357,27 +402,29 @@ export const getRegisteredEventKeys = (element: HTMLElement): Set<string> => {
  * onClick + onClickCapture → onClickCapture only.
  */
 export const removeDelegatedEventByKey = (
-    element: HTMLElement,
-    eventType: string,
-    phase: "bubble" | "capture",
+  element: HTMLElement,
+  eventType: string,
+  phase: "bubble" | "capture",
 ): void => {
-    const byEvent = elementHandlerMap.get(element);
-    if (!byEvent) return;
+  const byEvent = elementHandlerMap.get(element);
+  if (!byEvent) return;
 
-    const entry = byEvent.get(eventType);
-    if (!entry) return;
+  const entry = byEvent.get(eventType);
+  if (!entry) return;
 
-    if (phase === "capture") {
-        entry.capture = undefined;
-        entry.captureSet = undefined;
-    } else {
-        entry.bubble = undefined;
-        entry.bubbleSet = undefined;
-    }
+  if (phase === "capture") {
+    entry.capture = undefined;
+    entry.captureSet = undefined;
+  } else {
+    entry.bubble = undefined;
+    entry.bubbleSet = undefined;
+  }
 
-    // Clean up entry if empty
-    const isEmpty = !entry.capture && !entry.bubble &&
-        (!entry.captureSet || entry.captureSet.size === 0) &&
-        (!entry.bubbleSet || entry.bubbleSet.size === 0);
-    if (isEmpty) byEvent.delete(eventType);
+  // Clean up entry if empty
+  const isEmpty =
+    !entry.capture &&
+    !entry.bubble &&
+    (!entry.captureSet || entry.captureSet.size === 0) &&
+    (!entry.bubbleSet || entry.bubbleSet.size === 0);
+  if (isEmpty) byEvent.delete(eventType);
 };

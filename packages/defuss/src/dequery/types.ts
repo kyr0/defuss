@@ -43,9 +43,8 @@ declare global {
 }
 
 export interface DequeryOptions<NT = DequerySyncMethodReturnType> {
+  /** @deprecated No longer used — kept for backward compatibility */
   timeout?: number;
-  autoStart?: boolean;
-  autoStartDelay?: number;
   resultStack?: NT[];
   globals?: Partial<Globals>;
 }
