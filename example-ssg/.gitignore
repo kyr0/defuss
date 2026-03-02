@@ -26,3 +26,6 @@ yarn-error.log*
 # jetbrains setting folder
 .idea/
 .vscode/
+
+# rpc transpiled files
+.rpc

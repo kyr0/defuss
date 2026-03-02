@@ -6,9 +6,10 @@ import Head from "../components/head.js"
 import Footer from '../components/footer.js'
 import Header from '../components/header.js'
 import ClickButton from '../components/button.js'
+import RpcDemo from '../components/rpc-demo.js'
 import { Hydrate } from "defuss-ssg/components"
+import { year } from "../lib/data.js"
 
-export const year = 2025;
 export const someData = await import('../data.json');
 
 <html>
@@ -28,6 +29,12 @@ Currently we can render buttons, but the client-side interactivity is not yet im
 <ClickButton type="send-feedback" label="Send Feedback" className="secondary" />
 
 <ClickButton type="get-data" label="Get Data" className="secondary" />
+
+## RPC Demo
+
+Call server-side functions directly from the browser with full type safety — no REST endpoints needed:
+
+<RpcDemo />
 
 We also have **infinite** layout options, because you can mix Markdown and HTML:
 
