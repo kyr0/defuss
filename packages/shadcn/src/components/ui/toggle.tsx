@@ -1,4 +1,5 @@
-import type { ElementProps, FC } from "defuss";
+import type { ElementProps, FC, Ref } from "defuss";
+import { createRef } from "defuss";
 import { cn } from "../../utilities/cn.js";
 import { buttonVariants } from "./button.js";
 
@@ -14,12 +15,15 @@ export const ToggleButton: FC<ToggleButtonProps> = ({
   pressed,
   children,
   onClick,
+  ref = createRef() as Ref<HTMLButtonElement>,
   ...props
 }) => {
+  const toggleRef = ref || createRef<HTMLButtonElement>();
   const isPressed = pressed === true;
 
   return (
     <button
+      ref={toggleRef}
       class={cn(
         buttonVariants({
           variant: isPressed ? "default" : "outline",

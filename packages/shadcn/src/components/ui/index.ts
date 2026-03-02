@@ -14,6 +14,7 @@ export * from "./combobox.js";
 export * from "./command.js";
 export * from "./dialog.js";
 // Basecoat dynamic components
+export * from "./drop-area.js";
 export * from "./dropdown-menu.js";
 export * from "./form.js";
 export * from "./input.js";
@@ -35,6 +36,7 @@ export * from "./table.js";
 export * from "./tabs.js";
 export * from "./textarea.js";
 export * from "./toast.js";
+export * from "./drop-area.js";
 // Interactive components (cont'd)
 export * from "./toggle.js";
 export * from "./tooltip.js";

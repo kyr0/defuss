@@ -1,8 +1,21 @@
-import type { ElementProps, FC } from "defuss";
+import type { ElementProps, FC, Ref } from "defuss";
+import { createRef } from "defuss";
 import { cn } from "../../utilities/cn.js";
 
 export type SkeletonProps = ElementProps<HTMLDivElement>;
 
-export const Skeleton: FC<SkeletonProps> = ({ className, ...props }) => (
-    <div class={cn("bg-accent animate-pulse rounded-md", className)} {...props} />
-);
+export const Skeleton: FC<SkeletonProps> = ({
+  className,
+  ref = createRef() as Ref<HTMLDivElement>,
+  ...props
+}) => {
+  const skeletonRef = ref || createRef<HTMLDivElement>();
+
+  return (
+    <div
+      ref={skeletonRef}
+      class={cn("bg-accent animate-pulse rounded-md", className)}
+      {...props}
+    />
+  );
+};
