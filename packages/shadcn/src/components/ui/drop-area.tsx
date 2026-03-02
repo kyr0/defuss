@@ -16,6 +16,8 @@ export type DropAreaProps = Omit<
   size?: DropAreaSize;
   style?: Partial<CSSProperties>;
   onDrop?: (event: DragEvent) => void;
+  onDragEnter?: (event: DragEvent) => void;
+  onDragLeave?: (event: DragEvent) => void;
 };
 
 export const DropArea: FC<DropAreaProps> = ({
@@ -25,9 +27,34 @@ export const DropArea: FC<DropAreaProps> = ({
   style,
   ref = createRef() as Ref<HTMLDivElement>,
   onDrop,
+  onDragEnter,
+  onDragLeave,
   ...props
 }) => {
   const dropAreaRef = ref || createRef<HTMLDivElement>();
+
+  const attachNativeDragHandlers = () => {
+    const el = dropAreaRef.current;
+    if (!el) return;
+
+    el.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+
+    el.addEventListener("dragenter", (e) => {
+      e.preventDefault();
+      onDragEnter?.(e);
+    });
+
+    el.addEventListener("dragleave", (e) => {
+      onDragLeave?.(e);
+    });
+
+    el.addEventListener("drop", (e) => {
+      e.preventDefault();
+      onDrop?.(e);
+    });
+  };
 
   return (
     <div
@@ -35,23 +62,18 @@ export const DropArea: FC<DropAreaProps> = ({
       ref={dropAreaRef}
       data-slot="drop-area"
       class={cn(
-        "text-muted-foreground flex flex-col items-center justify-center rounded-lg border-0 cursor-[copy] transition-colors hover:bg-muted/50",
+        "text-muted-foreground flex flex-col items-center justify-center rounded-lg border-0 transition-colors hover:bg-muted/50",
         sizeStyles[size],
         className,
       )}
       style={{
         border: "1px dashed var(--color-border)",
         borderRadius: "var(--radius-lg)",
+        cursor: "copy",
         ...style,
       }}
       {...props}
-      onDragOver={(e: DragEvent) => {
-        if (onDrop) e.preventDefault();
-      }}
-      onDrop={(e: DragEvent) => {
-        e.preventDefault();
-        onDrop?.(e);
-      }}
+      onMount={attachNativeDragHandlers}
     >
       {children}
     </div>
