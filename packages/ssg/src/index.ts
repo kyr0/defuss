@@ -4,3 +4,4 @@ export * from "./config.js";
 export * from "./build.js";
 export * from "./serve.js";
 export * from "./endpoints.js";
+export * from "./rpc.js";

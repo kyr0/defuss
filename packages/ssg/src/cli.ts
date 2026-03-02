@@ -6,10 +6,11 @@ import { setup } from "./setup.js";
 (async () => {
   const args = process.argv.slice(2);
   const debug = args.includes("--debug") || args.includes("-d");
+  const multicore = args.includes("--multicore");
   const positional = args.filter((a) => !a.startsWith("-"));
   const command = positional[0];
   const folder = positional[1];
-  const usage = "Usage: defuss-ssg <build|serve> <folder> [--debug]";
+  const usage = "Usage: defuss-ssg <build|serve> <folder> [--debug] [--multicore]";
 
   if (!command || !folder) {
     console.error(usage);
@@ -34,6 +35,7 @@ import { setup } from "./setup.js";
       projectDir,
       debug,
       mode: "serve",
+      multicore,
     });
   } else {
     console.error(usage);

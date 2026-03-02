@@ -1,7 +1,7 @@
 import cluster from "node:cluster";
 import os from "node:os";
 import process from "node:process";
-import express from "ultimate-express";
+import { Elysia } from "elysia";
 
 const HOST = process.env.HOST ?? "0.0.0.0";
 const BASE_PORT = Number(process.env.BASE_PORT ?? 3001);
@@ -15,47 +15,32 @@ const CPU_COUNT =
 const WORKERS = Number(process.env.WORKERS ?? CPU_COUNT);
 
 function createApp() {
-    const app = express();
-    app.disable("x-powered-by");
-
-    app.get("/", (_req, res) => res.status(200).send("ok"));
-    app.get("/health", (_req, res) => res.status(200).send("ok"));
-
-    app.get("/ping", (_req, res) => res.status(200).send("pong"));
-
-    app.get("/json", (_req, res) => res.status(200).json({ ok: true }));
-
-    // POST JSON payload to /json (for body+response benching)
-    app.post("/json", express.json(), (req, res) => {
-        res.status(200).json({ ok: true, got: req.body ?? null });
-    });
-
-    app.get("/query", (req, res) => {
-        res.status(200).json({ q: req.query.q ?? null });
-    });
-
-    app.post("/body", express.json(), (req, res) => {
-        res.status(200).json({
-            ok: true,
-            bytes: JSON.stringify(req.body ?? {}).length,
-        });
-    });
-
-    return app;
+    return new Elysia()
+        .get("/", () => new Response("ok", { status: 200 }))
+        .get("/health", () => new Response("ok", { status: 200 }))
+        .get("/ping", () => new Response("pong", { status: 200 }))
+        .get("/json", () => Response.json({ ok: true }))
+        .post("/json", ({ body }) => Response.json({ ok: true, got: body ?? null }))
+        .get("/query", ({ query }) => Response.json({ q: (query as any).q ?? null }))
+        .post("/body", ({ body }) =>
+            Response.json({
+                ok: true,
+                bytes: JSON.stringify(body ?? {}).length,
+            }),
+        );
 }
 
 function startWorker(port: number) {
     const app = createApp();
 
-    const server = app.listen(port as any, HOST as any, () => {
+    app.listen({ port, hostname: HOST }, () => {
         console.log(`[worker ${process.pid}] listening on http://${HOST}:${port}`);
     });
 
     const shutdown = () => {
         console.log(`[worker ${process.pid}] shutdown`);
         try {
-            // @ts-ignore
-            server?.close?.();
+            app.stop();
         } catch { }
         process.exit(0);
     };

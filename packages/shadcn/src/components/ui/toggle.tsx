@@ -21,7 +21,12 @@ export const ToggleButton: FC<ToggleButtonProps> = ({
   return (
     <button
       class={cn(
-        buttonVariants({ variant: isPressed ? "default" : "outline", size: "sm" }),
+        buttonVariants({
+          variant: isPressed ? "default" : "outline",
+          size: "sm",
+        }),
+        "border",
+        isPressed && "border-transparent",
         classProp,
         className,
       )}
@@ -29,7 +34,9 @@ export const ToggleButton: FC<ToggleButtonProps> = ({
       data-pressed={isPressed}
       onClick={(event) => {
         if (pressed === undefined) {
-          const button = (event.target as HTMLElement).closest("button") as HTMLButtonElement | null;
+          const button = (event.target as HTMLElement).closest(
+            "button",
+          ) as HTMLButtonElement | null;
           if (!button) {
             onClick?.(event);
             return;
@@ -41,6 +48,7 @@ export const ToggleButton: FC<ToggleButtonProps> = ({
           button.dataset.pressed = String(nextPressed);
 
           button.classList.toggle("btn-primary", nextPressed);
+          button.classList.toggle("border-transparent", nextPressed);
           button.classList.toggle("btn-outline", !nextPressed);
         }
 

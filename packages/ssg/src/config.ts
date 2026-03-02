@@ -1,6 +1,8 @@
 import { join } from "node:path";
 import type { SsgConfig } from "./types.js";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, unlinkSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import esbuild from "esbuild";
 import { rehypePlugins, remarkPlugins } from "./mdx-plugins.js";
 import { tailwindPlugin } from "./plugins/tailwind.js";
@@ -33,13 +35,15 @@ export const readConfig = async (
     });
     const code = result.outputFiles[0].text;
 
-    // Encode the code as a base64 data URL for dynamic import
-    const encoded = Buffer.from(code).toString("base64");
-    const dataUrl = `data:text/javascript;base64,${encoded}`;
-
-    // Dynamically import the module
-    const module = await import(dataUrl);
-    config = module.default;
+    // Write to a temp file instead of a data URL to avoid Bun's NameTooLong error
+    const tmpFile = join(tmpdir(), `defuss-ssg-config-${Date.now()}.mjs`);
+    await writeFile(tmpFile, code, "utf-8");
+    try {
+      const module = await import(tmpFile);
+      config = module.default;
+    } finally {
+      try { unlinkSync(tmpFile); } catch {}
+    }
   }
 
   // apply meaningful defaults
@@ -51,6 +55,7 @@ export const readConfig = async (
   config.tmp = config.tmp || configDefaults.tmp;
   config.remarkPlugins = config.remarkPlugins || configDefaults.remarkPlugins;
   config.rehypePlugins = config.rehypePlugins || configDefaults.rehypePlugins;
+  config.rpc = config.rpc ?? configDefaults.rpc;
 
   return config;
 };
@@ -64,4 +69,5 @@ export const configDefaults: SsgConfig = {
   plugins: [tailwindPlugin, autoHydratePlugin],
   remarkPlugins,
   rehypePlugins,
+  rpc: true,
 };

@@ -97,7 +97,7 @@ export const setup = async (projectDir: string): Promise<Status> => {
 
   // extract and validate package manager
   const pm = packageManager.split("@")[0];
-  const validPMs = ["npm", "yarn", "pnpm", "bun"];
+  const validPMs = ["bun", "npm", "yarn", "pnpm"];
   if (!validPMs.includes(pm)) {
     return {
       code: "UNSUPPORTED_PM",
@@ -148,7 +148,7 @@ export const setup = async (projectDir: string): Promise<Status> => {
 
   try {
     const bunEnv = { ...process.env, BUN_WORKSPACE_ROOT: projectDir };
-    await runInstall(pm, ["install", "--linker", "isolated"], projectDir,
+    await runInstall(pm, pm === "bun" ? ["install", "--no-cache", "--linker", "isolated"] : ["install"], projectDir,
       pm === "bun" ? bunEnv : undefined,
     );
     console.log("Dependencies installed successfully.");

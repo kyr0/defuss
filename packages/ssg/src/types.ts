@@ -75,6 +75,13 @@ export interface BuildOptions {
    * The path should be absolute.
    */
   changedFile?: string;
+
+  /**
+   * When true, the serve command spawns one worker per CPU core
+   * for load-balanced multi-process serving (useful for benchmarks).
+   * Defaults to false (single process).
+   */
+  multicore?: boolean;
 }
 
 export type PluginFn =
@@ -163,4 +170,12 @@ export interface SsgConfig {
    * like this: import { rehypePlugins as defaultRehypePlugins } from "defuss-ssg"
    */
   rehypePlugins: Options["rehypePlugins"];
+
+  /**
+   * RPC configuration.
+   * - `true` (default): auto-discover `rpc.ts` or `rpc.js` in the project root
+   * - `false`: disable RPC support
+   * - `string`: path to a custom RPC file (relative to project root)
+   */
+  rpc?: string | boolean;
 }

@@ -1,8 +1,10 @@
 import esbuild from "esbuild";
 import glob from "fast-glob";
 import { join, relative, dirname } from "node:path";
-import { existsSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { writeFile, readFile } from "node:fs/promises";
+import type { Elysia } from "elysia";
 import type { SsgConfig } from "./types.js";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -208,9 +210,13 @@ const loadEndpointModule = async (
   filePath: string,
 ): Promise<EndpointModule> => {
   const code = await readFile(filePath, "utf-8");
-  const encoded = Buffer.from(code).toString("base64");
-  const dataUrl = `data:text/javascript;base64,${encoded}`;
-  return import(dataUrl);
+  const tmpFile = join(tmpdir(), `defuss-ep-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`);
+  await writeFile(tmpFile, code, "utf-8");
+  try {
+    return await import(tmpFile);
+  } finally {
+    try { unlinkSync(tmpFile); } catch {}
+  }
 };
 
 // ── Resolve ──────────────────────────────────────────────────────────
@@ -397,23 +403,21 @@ export const buildEndpoints = async (
  * Loads the compiled `.mjs` from `.endpoints/` (cache-busted so edits
  * are picked up immediately in dev mode), finds the matching HTTP method
  * handler (falling back to `ALL`), and streams the Web `Response` back
- * through Express.
+ * through Elysia.
  */
 const handleEndpointRoute = async (
-  req: any,
-  res: any,
+  ctx: { request: Request; params: Record<string, string | undefined> },
   compiledFile: string,
   routePattern: string,
   method: HttpMethod,
-): Promise<void> => {
+): Promise<Response> => {
   // Load the module fresh on every request (cache-busted for dev)
   let currentModule: EndpointModule;
   try {
     currentModule = await loadEndpointModule(compiledFile);
   } catch (err) {
     console.error(`Failed to load endpoint: ${compiledFile}`, err);
-    res.status(500).send("Internal Server Error");
-    return;
+    return new Response("Internal Server Error", { status: 500 });
   }
 
   // Pick the matching handler; fall back to ALL
@@ -422,70 +426,30 @@ const handleEndpointRoute = async (
     (currentModule.ALL as EndpointHandler | undefined);
 
   if (!handlerFn) {
-    res.status(405).send("Method Not Allowed");
-    return;
+    return new Response("Method Not Allowed", { status: 405 });
   }
 
-  // ── Build a standard Web Request from Express req ──────────────
-  const protocol = req.protocol || "http";
-  const host = req.get?.("host") || req.headers?.host || "localhost";
-  const url = `${protocol}://${host}${req.originalUrl}`;
-
-  const reqInit: RequestInit = {
-    method: req.method,
-    headers: req.headers as HeadersInit,
-  };
-
-  // Read the raw body for methods that typically carry a payload
-  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-    try {
-      const chunks: Buffer[] = [];
-      await new Promise<void>((resolve, reject) => {
-        req.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
-        req.on("end", resolve);
-        req.on("error", reject);
-      });
-      if (chunks.length > 0) {
-        reqInit.body = Buffer.concat(chunks);
-      }
-    } catch {
-      // Body reading failed – continue without body
-    }
-  }
-
-  const request = new Request(url, reqInit);
-
-  const context: EndpointContext = {
-    params: req.params || {},
-    request,
+  const endpointContext: EndpointContext = {
+    params: ctx.params as Record<string, string | undefined>,
+    request: ctx.request,
     redirect: createRedirect,
   };
 
   try {
-    const response = await handlerFn(context);
+    const response = await handlerFn(endpointContext);
 
-    // Transfer status & headers
-    res.status(response.status);
-    response.headers.forEach((value: string, key: string) => {
-      res.set(key, value);
-    });
-
-    // HEAD → send headers only, strip the body
-    if (req.method === "HEAD") {
-      res.end();
-      return;
+    // HEAD → return response with body stripped
+    if (ctx.request.method === "HEAD") {
+      return new Response(null, {
+        status: response.status,
+        headers: response.headers,
+      });
     }
 
-    // Transfer the body
-    if (response.body) {
-      const buf = Buffer.from(await response.arrayBuffer());
-      res.send(buf);
-    } else {
-      res.end();
-    }
+    return response;
   } catch (error) {
-    console.error(`Endpoint error ${req.method} ${routePattern}:`, error);
-    res.status(500).send("Internal Server Error");
+    console.error(`Endpoint error ${ctx.request.method} ${routePattern}:`, error);
+    return new Response("Internal Server Error", { status: 500 });
   }
 };
 
@@ -506,7 +470,7 @@ const handleEndpointRoute = async (
  * (per the Astro spec).
  */
 export const registerEndpoints = async (
-  app: any,
+  app: Elysia,
   projectDir: string,
   config: SsgConfig,
   debug = false,
@@ -557,11 +521,11 @@ export const registerEndpoints = async (
     // Register a handler for each exported HTTP method
     for (const method of HTTP_METHODS) {
       if (method in module && typeof module[method] === "function") {
-        const expressMethod = method === "ALL" ? "all" : method.toLowerCase();
-        (app as any)[expressMethod](
+        const elysiaMethod = method === "ALL" ? "all" : method.toLowerCase() as any;
+        (app as any)[elysiaMethod](
           expressRoute,
-          async (req: any, res: any) =>
-            handleEndpointRoute(req, res, compiledFile, route, method),
+          (ctx: { request: Request; params: Record<string, string | undefined> }) =>
+            handleEndpointRoute(ctx, compiledFile, route, method),
         );
         if (debug) {
           console.log(`  ${method} ${expressRoute}`);
@@ -573,8 +537,8 @@ export const registerEndpoints = async (
     if (module.GET && !module.HEAD) {
       app.head(
         expressRoute,
-        async (req: any, res: any) =>
-          handleEndpointRoute(req, res, compiledFile, route, "GET"),
+        (ctx: { request: Request; params: Record<string, string | undefined> }) =>
+          handleEndpointRoute(ctx, compiledFile, route, "GET"),
       );
       if (debug) {
         console.log(`  HEAD ${expressRoute} (auto from GET)`);

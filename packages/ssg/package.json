@@ -1,6 +1,6 @@
 {
   "name": "defuss-ssg",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -26,8 +26,10 @@
     "pretest": "bun run build",
     "prebuild": "bun run clean",
     "build": "pkgroll",
-    "cli-build": "node ./dist/cli.mjs build ../../example-ssg/",
-    "cli-serve": "node ./dist/cli.mjs serve ../../example-ssg/",
+    "cli-build": "bun ./dist/cli.mjs build ../../example-ssg/",
+    "cli-serve": "bun ./dist/cli.mjs serve ../../example-ssg/",
+    "cli-serve:mc": "bun ./dist/cli.mjs serve ../../example-ssg/ --multicore",
+    "bench:rpc": "npx autocannon -p 256 -w 8 -c 1024 -d 30 -m POST -H 'content-type: application/json' -b '{\"className\":\"mathApi\",\"methodName\":\"add\",\"args\":[1,2]}' http://127.0.0.1:3000/rpc",
     "test": "echo 'No tests available'",
     "bench": "npx autocannon -p 32 -w 8 -c 200 -d 20 -m POST -H \"content-type: application/json\" -b '{\"hello\":\"world\"}' http://127.0.0.1:3000/body",
     "start": "tsx src/dynamic.ts",
@@ -86,11 +88,18 @@
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
+  "peerDependencies": {
+    "defuss-rpc": "*"
+  },
+  "peerDependenciesMeta": {
+    "defuss-rpc": {
+      "optional": true
+    }
+  },
   "dependencies": {
     "@mdx-js/esbuild": "^3.1.1",
-    "@types/ws": "^8.18.1",
     "chokidar": "^5.0.0",
-    "defuss": "workspace:*",
+    "defuss": "^3.4.0",
     "esbuild": "^0.27.3",
     "fast-glob": "^3.3.3",
     "rehype-katex": "^7.0.1",
@@ -102,12 +111,13 @@
     "remark-mdx-frontmatter": "^5.2.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "ultimate-express": "^2.0.17",
-    "ultimate-ws": "^2.0.7",
+    "elysia": "^1.2.25",
+    "@elysiajs/static": "^1.1.1",
     "unist-util-visit": "^5.1.0"
   },
   "devDependencies": {
     "@types/autocannon": "^7.12.7",
+    "@types/bun": "^1.3.9",
     "autocannon": "^8.0.0",
     "happy-dom": "^20.6.1",
     "pkgroll": "^2.25.2",

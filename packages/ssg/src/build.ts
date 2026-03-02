@@ -13,7 +13,8 @@ import {
 import { resolve, join, dirname, sep } from "node:path";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
 import type {
   BuildOptions,
   PluginFnPageDom,
@@ -343,12 +344,17 @@ export const build = async ({
         console.log("Relative output HTML path:", relativeOutputHtmlFilePath);
       }
 
-      // dynamically import the page module (bypass import cache via data URL)
+      // dynamically import the page module (bypass import cache via temp file)
       console.time(`[build] page:${pageLabel} import`);
       const code = await readFile(outputFile, "utf-8");
-      const encoded = Buffer.from(code).toString("base64");
-      const dataUrl = `data:text/javascript;base64,${encoded}`;
-      const exports = await import(dataUrl);
+      const tmpFile = join(tmpdir(), `defuss-page-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`);
+      await writeFile(tmpFile, code, "utf-8");
+      let exports: Record<string, any>;
+      try {
+        exports = await import(tmpFile);
+      } finally {
+        try { unlinkSync(tmpFile); } catch {}
+      }
       console.timeEnd(`[build] page:${pageLabel} import`);
 
       if (debug) {

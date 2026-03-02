@@ -37,33 +37,34 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
         // Fragment
         node.map((child) => processDefussComponents(child));
       } else if (node && typeof node === "object") {
+        const vnode = node as VNode<VNodeAttributes>;
         let clientSrcFile = null;
         if (
-          node.sourceInfo &&
-          typeof node.sourceInfo === "object" &&
-          typeof node.sourceInfo.fileName === "string" &&
-          node.sourceInfo.fileName.includes(tmpComponents) &&
-          node.type !== "script" && // skip already inserted hydration scripts
-          node.type !== "head" && // skip head elements
-          node.type !== "link" && // skip head elements
-          node.type !== "meta" && // skip head elements
-          node.type !== "title" // skip head elements
+          vnode.sourceInfo &&
+          typeof vnode.sourceInfo === "object" &&
+          typeof vnode.sourceInfo.fileName === "string" &&
+          vnode.sourceInfo.fileName.includes(tmpComponents) &&
+          vnode.type !== "script" && // skip already inserted hydration scripts
+          vnode.type !== "head" && // skip head elements
+          vnode.type !== "link" && // skip head elements
+          vnode.type !== "meta" && // skip head elements
+          vnode.type !== "title" // skip head elements
         ) {
           foundDefussComponent = true;
-          clientSrcFile = node.sourceInfo.fileName
+          clientSrcFile = vnode.sourceInfo.fileName
             .replaceAll(tmp, "")
             .replaceAll(sep, "/")
             .replace(/\.t?sx?$/, ".js");
 
           const id = `dh_${Math.random().toString(36).slice(2)}`;
 
-          console.log(`[auto-hydrate] Found component node. type="${node.type}", sourceInfo.fileName="${node.sourceInfo?.fileName}", hasComponentProps=${!!node.componentProps}, componentProps=`, JSON.stringify(node.componentProps)?.slice(0, 300));
-          console.log(`[auto-hydrate] Node keys:`, Object.keys(node));
+          console.log(`[auto-hydrate] Found component node. type="${vnode.type}", sourceInfo.fileName="${vnode.sourceInfo?.fileName}", hasComponentProps=${!!vnode.componentProps}, componentProps=`, JSON.stringify(vnode.componentProps)?.slice(0, 300));
+          console.log(`[auto-hydrate] Node keys:`, Object.keys(vnode));
 
           // Extract serializable component props (set by jsx runtime on function components)
           const componentProps: Record<string, any> = {};
-          if (node.componentProps) {
-            for (const [key, value] of Object.entries(node.componentProps)) {
+          if (vnode.componentProps) {
+            for (const [key, value] of Object.entries(vnode.componentProps)) {
               // Skip functions and undefined values — they can't be serialized
               if (typeof value === "function" || typeof value === "undefined") continue;
               try {
@@ -75,7 +76,7 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
             }
           }
 
-          node = {
+          node = ({
             // Hydration wrapper
             type: "div",
             attributes: {
@@ -83,7 +84,7 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
               "data-hydrate": "true",
             },
             children: [
-              node,
+              vnode,
               {
                 // Hydration script
                 type: "script",
@@ -149,17 +150,18 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
                 ],
               },
             ],
-          };
+          }) as RenderInput;
         }
 
         if (!clientSrcFile) {
+          const v = node as VNode<VNodeAttributes>;
           if (
-            typeof node.children !== "undefined" &&
-            Array.isArray(node.children)
+            typeof v.children !== "undefined" &&
+            Array.isArray(v.children)
           ) {
-            for (let i = 0; i < node.children.length; i++) {
-              node.children[i] = processDefussComponents(
-                node.children[i] as RenderInput,
+            for (let i = 0; i < v.children.length; i++) {
+              v.children[i] = processDefussComponents(
+                v.children[i] as RenderInput,
               );
             }
           }
