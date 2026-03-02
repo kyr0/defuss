@@ -21,7 +21,7 @@ Defuss follows the principle of "explicit simplicity" - it provides powerful too
 
 ## 🚀 Quickstart
 
-Install [Bun](https://bun.com/docs/installation) and [Node.js](https://nodejs.org/en/download/).
+Install [Bun](https://bun.com/docs/installation) and  [Node.js](https://nodejs.org/en/download/).
 
 Create a new `defuss` project with the `create-defuss` CLI tool:
 

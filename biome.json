@@ -42,7 +42,11 @@
         "noSvgWithoutTitle": "off",
         "useKeyWithClickEvents": "off",
         "useMediaCaption": "off",
-        "noAriaHiddenOnFocusable": "off"
+        "noAriaHiddenOnFocusable": "off",
+        "useSemanticElements": "off",
+        "noNoninteractiveElementToInteractiveRole": "off",
+        "useAriaPropsForRole": "off",
+        "useFocusableInteractive": "off"
       },
       "performance": {
         "noAccumulatingSpread": "off",
