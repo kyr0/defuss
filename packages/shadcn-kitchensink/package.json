@@ -1,7 +1,7 @@
 {
   "name": "defuss-shadcn-kitchensink",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "clean": "rm -rf ./node_modules/.bun && rm -rf ./dist && rm -rf ./turbo",
