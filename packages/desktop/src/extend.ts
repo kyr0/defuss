@@ -1,6 +1,5 @@
 import {
   CallChainImpl,
-  createCall,
   dequery,
   type Dequery,
 } from "defuss";
@@ -21,19 +20,17 @@ export class DequeryWithWindowManager<NT> extends CallChainImpl<
   */
 
   // register an app to the desktop shell
-  createDesktopApp(options: DefussAppConfig): PromiseLike<DefussApp> {
-    return createCall(this, "createDesktopApp", async () => {
-      return new DefussApp(options) as NT;
-    }) as unknown as PromiseLike<DefussApp>;
+  createDesktopApp(options: DefussAppConfig): this & Dequery<NT> {
+    new DefussApp(options);
+    return this as unknown as this & Dequery<NT>;
   }
 
   // create a desktop app icon
   createDesktopAppIcon(
     options: DesktopIconConfig,
-  ): PromiseLike<DefussDesktopAppIcon> {
-    return createCall(this, "createDesktopAppIcon", async () => {
-      return new DefussDesktopAppIcon(options) as NT;
-    }) as unknown as PromiseLike<DefussDesktopAppIcon>;
+  ): this & Dequery<NT> {
+    new DefussDesktopAppIcon(options);
+    return this as unknown as this & Dequery<NT>;
   }
 }
 

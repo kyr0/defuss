@@ -1,5 +1,5 @@
 import type { DefussApp } from "./app.js";
-import { taskbarManager } from "./index.js";
+import { taskbarManager } from "./taskbar.js";
 import type { Dimensions2D } from "./types.js";
 
 export interface DesktopIconConfig {

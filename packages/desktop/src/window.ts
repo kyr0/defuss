@@ -1,6 +1,6 @@
 import { $, type Ref } from "defuss";
 import type { WindowRefState } from "./regui/components/window.js";
-import { desktopManager } from "./index.js";
+import { desktopManager } from "./desktop.js";
 import type { Dimensions2D } from "./types.js";
 import { debounce } from "defuss-runtime";
 
