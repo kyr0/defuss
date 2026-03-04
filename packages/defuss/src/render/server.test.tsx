@@ -904,3 +904,46 @@ describe("dangerouslySetInnerHTML", () => {
     );
   });
 });
+
+describe("numeric zero child rendering (#50)", () => {
+  it("renders 0 as text content inside an element", () => {
+    const el = renderSync(<p>{0}</p>) as Element;
+    expect(el.textContent).toBe("0");
+  });
+
+  it("renders 0 alongside other text children", () => {
+    const el = renderSync(<span>{0} von {5} ausgewählt</span>) as Element;
+    expect(el.textContent).toBe("0 von 5 ausgewählt");
+  });
+
+  it("renders 0 from a variable", () => {
+    const count = 0;
+    const el = renderSync(<span>{count} von 5 ausgewählt</span>) as Element;
+    expect(el.textContent).toBe("0 von 5 ausgewählt");
+  });
+
+  it("renders multiple elements with 0 children correctly", () => {
+    const el = renderSync(
+      <div>
+        <p>{0}</p>
+        <p>{0} von {5} ausgewählt</p>
+        <p>{1} von {5} ausgewählt</p>
+      </div>,
+    ) as Element;
+
+    const paragraphs = el.querySelectorAll("p");
+    expect(paragraphs[0].textContent).toBe("0");
+    expect(paragraphs[1].textContent).toBe("0 von 5 ausgewählt");
+    expect(paragraphs[2].textContent).toBe("1 von 5 ausgewählt");
+  });
+
+  it("still filters out null and undefined children", () => {
+    const el = renderSync(<p>{null}{undefined}text</p>) as Element;
+    expect(el.textContent).toBe("text");
+  });
+
+  it("renders other falsy-but-valid values correctly", () => {
+    const el = renderSync(<p>{0}{""}</p>) as Element;
+    expect(el.textContent).toBe("0");
+  });
+});

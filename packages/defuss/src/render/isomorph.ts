@@ -84,8 +84,9 @@ export const jsx = (
   // extract children from attributes and ensure it's always an array
   // Filter null/undefined/booleans to match update/hydrate behavior
   // (booleans render as nothing, not as "true"/"false" text)
+  // Use nullish check (not truthiness) to preserve valid falsy children like 0 and ""
   let children: Array<VNodeChild> = (
-    attributes?.children
+    attributes?.children != null
       ? ([] as VNodeChild[]).concat(
           attributes.children as VNodeChild | VNodeChild[],
         )
@@ -336,7 +337,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       virtualNode: RenderInput,
       parentDomElement?: Element | Document,
     ): Element | undefined => {
-      let newEl: Element | undefined = undefined;
+      let newEl: Element | undefined;
 
       try {
         // if a synchronous function is still a function, VDOM has obviously not resolved, probably an
