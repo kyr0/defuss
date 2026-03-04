@@ -30,10 +30,10 @@ export type MaybeSourceMap =
 export default function defussVitePlugin({
   include,
   exclude,
+	enableJsxDevMode
 }: DefussVitePluginOptions = {}): PluginOption {
   let config: ResolvedConfig;
-
-  const shouldTransform = createFilter(
+	const shouldTransform = createFilter(
     include || [/\.[cm]?[tj]sx?$/],
     exclude || [/node_modules/],
   );
@@ -68,7 +68,13 @@ export default function defussVitePlugin({
       config = resolvedConfig;
     },
     async transform(code, url) {
-      const { id } = parseId(url);
+
+			const isDevMode =
+				enableJsxDevMode !== undefined
+					? enableJsxDevMode                        
+					: config.command === "serve";
+
+			const { id } = parseId(url);
 
       if (!shouldTransform(id)) {
         return null;
@@ -89,7 +95,7 @@ export default function defussVitePlugin({
           },
           transform: {
             react: {
-              development: true,
+              development: isDevMode,
               useBuiltins: false,
               throwIfNamespace: false,
               pragma: "jsx",
