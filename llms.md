@@ -225,6 +225,110 @@ const ProfileDialog = () => (
 
 ---
 
+## defuss-shadcn Kitchensink Reference
+
+The `packages/shadcn-kitchensink` app contains live demos and usage examples for every `defuss-shadcn` component. It is expected to be present in every defuss project (copied to the project root) alongside this `llms.md` file.
+
+When implementing UI with `defuss-shadcn`, consult the kitchensink screens for correct component composition, prop usage, and import paths.
+
+### Kitchensink Screen Index
+
+Each screen file demonstrates one component (or pattern) with multiple variants. Paths are relative to the kitchensink package root.
+
+#### Buttons & Indicators
+
+| Screen | Components | What it demonstrates |
+|--------|-----------|---------------------|
+| `src/screens/buttons/ButtonScreen.tsx` | `Button`, `ToggleButton` | All variants (primary/secondary/destructive/outline/ghost/link), sizes (sm/lg/icon), loading/spinner state, as-link |
+| `src/screens/badge/BadgeScreen.tsx` | `Badge` | Variants, custom colors, pill style (`rounded-full`), count badges (`tabular-nums`), sizes XS–XL, with icon, as link |
+| `src/screens/components/KbdScreen.tsx` | `Kbd`, `KbdGroup` | Keyboard shortcut display: `<KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup>` |
+| `src/screens/components/SpinnerScreen.tsx` | `Spinner` | Inline spinner in card, in disabled button, combined with `Item` component |
+
+#### Layout & Containers
+
+| Screen | Components | What it demonstrates |
+|--------|-----------|---------------------|
+| `src/screens/components/CardScreen.tsx` | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | Login form card, image card, avatar group card, interactive/link hover, 3-col grid, horizontal layout |
+| `src/screens/components/AccordionScreen.tsx` | `Accordion`, `AccordionItem`, `AccordionTrigger`, `AccordionContent` | In card, custom icons, with avatar, collapsible modes, `group-open:rotate-180` |
+| `src/screens/components/TabsScreen.tsx` | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` | Default tabs, with icons, pill style (`rounded-full`), 3-tab form with checkbox settings |
+| `src/screens/components/SidebarScreen.tsx` | `Sidebar`, `SidebarHeader`, `SidebarContent`, `SidebarFooter`, `SidebarGroup`, `SidebarGroupLabel`, `SidebarMenu`, `SidebarMenuItem`, `SidebarMenuButton`, `SidebarTrigger` | Collapsible sidebar with `id` + `SidebarTrigger sidebarId`, `initialOpen`, `isActive` highlight |
+| `src/screens/components/SeparatorScreen.tsx` | `Separator` | Horizontal divider between content sections |
+| `src/screens/components/ScrollableScreen.tsx` | _(CSS patterns)_ | List scroll (`overflow-y-auto scrollbar`), horizontal card grid, table scroll, dialog with scrollable content |
+| `src/screens/components/ItemScreen.tsx` | `Item`, `ItemContent`, `ItemTitle`, `ItemDescription`, `ItemLeading`, `ItemTrailing` | Outline/muted variants, leading icon, trailing action |
+
+#### Form Components
+
+| Screen | Components | What it demonstrates |
+|--------|-----------|---------------------|
+| `src/screens/components/FormScreen.tsx` | `Input`, `Label`, `Select`, `Textarea` | All input types, horizontal layout, fieldset+legend, **validation via `defuss-transval`** (`rule.extend()`, `transval()`, `access()`, `$().form()`, debounced field validation) |
+| `src/screens/components/CheckboxScreen.tsx` | _(native)_ | `<input type="checkbox" class="input">` with text/descriptions, disabled, in fieldset |
+| `src/screens/components/ComboboxScreen.tsx` | `Combobox`, `ComboboxOption` | `onValueChange`, `searchPlaceholder`, `data-keywords`, multiple selection with `createStore`, grouped options (`data-force`), disabled/invalid states |
+| `src/screens/components/RadioGroupScreen.tsx` | `RadioGroup`, `RadioGroupItem` | Horizontal layout, with descriptions, in form with validation, with icons, card-style bordered options |
+| `src/screens/components/SelectScreen.tsx` | `Select` | Basic native `<select>` wrapper |
+| `src/screens/components/SwitchScreen.tsx` | `Switch` | With `Label`, ON/OFF text labels, in card, disabled, horizontal form, multiple switches, custom colors |
+| `src/screens/components/SliderScreen.tsx` | `Slider`, `Label` | Range slider (`value={[20, 80]}`), disabled, value display with `onValueChange` + `createRef`, stepping, brightness/opacity demo |
+| `src/screens/components/TextareaScreen.tsx` | _(CSS)_ | `class="textarea"`, code editor style with header/footer toolbar |
+| `src/screens/components/FieldScreen.tsx` | _(CSS)_ | CSS `field`/`fieldset` classes, `data-orientation="horizontal"`, error (`aria-invalid`), disabled, responsive layout |
+| `src/screens/components/InputGroupScreen.tsx` | _(CSS patterns)_ | Search with icon + count, URL with prefix + tooltip, textarea with toolbar, input with checkmark |
+| `src/screens/components/LabelScreen.tsx` | `Label`, `Input` | `<Label htmlFor="...">` association with input |
+
+#### Navigation
+
+| Screen | Components | What it demonstrates |
+|--------|-----------|---------------------|
+| `src/screens/components/BreadcrumbScreen.tsx` | `Breadcrumb`, `BreadcrumbList`, `BreadcrumbItem`, `BreadcrumbLink`, `BreadcrumbSeparator`, `BreadcrumbPage` | Linear breadcrumb trail, ellipsis with `DropdownMenu` for collapsed items |
+| `src/screens/components/PaginationScreen.tsx` | _(CSS classes)_ | `btn-ghost`/`btn-icon-ghost`/`btn-icon-outline` classes, previous/next + page numbers + ellipsis |
+| `src/screens/components/CommandScreen.tsx` | `Command`, `CommandInput`, `CommandList`, `CommandItem`, `CommandMenuHeading`, `CommandSeparator`, `Kbd` | Search filtering (`data-filter`), keyboard shortcuts, disabled items, grouped sections |
+
+#### Overlays & Dialogs
+
+| Screen | Components | What it demonstrates |
+|--------|-----------|---------------------|
+| `src/screens/components/AlertDialogScreen.tsx` | `AlertDialogTrigger`, `AlertDialog`, `AlertDialogContent`, `AlertDialogHeader`, `AlertDialogFooter` | Confirmation dialog with `dialogId`/`id` pairing, `HTMLDialogElement.close()` for dismiss |
+| `src/screens/components/DialogScreen.tsx` | `Dialog`, `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose` | Native `<dialog>` + `showModal()`, `method="dialog"`, scrollable content, form dialog |
+| `src/screens/components/DropdownMenuScreen.tsx` | `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuHeading` | Checkbox/radio items, kbd shortcuts, icons, nested groups |
+| `src/screens/components/PopoverScreen.tsx` | `Popover`, `PopoverTrigger`, `PopoverContent` | With form, nested profile card, icon button trigger, text link trigger |
+| `src/screens/components/TooltipScreen.tsx` | `Tooltip` | `<Tooltip tooltip="..." side="top|left|right|bottom">`, on buttons, icons, badges, links |
+
+#### Feedback & Status
+
+| Screen | Components | What it demonstrates |
+|--------|-----------|---------------------|
+| `src/screens/components/AlertScreen.tsx` | `Alert`, `AlertTitle`, `AlertDescription` | Variants: default, `destructive`, `warning`, `info` (via CSS classes `alert-destructive`/`alert-warning`/`alert-info`) |
+| `src/screens/components/ToastScreen.tsx` | `Toaster`, `toast()` | `toast({ category, title, description })` function, categories: success/info/warning/error, action button, custom duration, multiple concurrent |
+| `src/screens/components/ProgressScreen.tsx` | `Progress` | `<Progress value={66}>`, animated bar with `onMount` + `createRef`, with label, percentage, custom colors |
+| `src/screens/components/SkeletonScreen.tsx` | `Skeleton` | `<Skeleton className="h-4 w-[150px]">`, circle (`rounded-full`), in list, in card, custom animation timing |
+
+#### Data Display
+
+| Screen | Components | What it demonstrates |
+|--------|-----------|---------------------|
+| `src/screens/components/AvatarScreen.tsx` | `Avatar`, `AvatarGroup`, `AvatarFallback` | `<Avatar src="..." alt="...">`, grouped avatars, `rounded-lg`, ring styling, grayscale filter |
+| `src/screens/components/TableScreen.tsx` | _(CSS + defuss-dataview)_ | Full data table with `createDataview`/`applyDataview`, `createStore` for state, sortable columns, pagination, search, status filter, edit/delete dialogs |
+
+#### Special
+
+| Screen | Components | What it demonstrates |
+|--------|-----------|---------------------|
+| `src/screens/components/DropAreaScreen.tsx` | `DropArea` | `<DropArea size="md|sm">`, file drop handling, custom `useDragOverSwap` hook with `createRef` |
+| `src/screens/components/EmptyScreen.tsx` | _(patterns)_ | 7 empty state variants (No Projects/Welcome/No Results/No Data/No Team/No Cards/Feature Disabled), dashed border container with icon + heading + description + action buttons |
+| `src/screens/components/ThemeSwitcherScreen.tsx` | _(patterns)_ | Theme switching via `basecoat:theme` CustomEvent, localStorage persistence, dark mode toggle with `document.documentElement.classList` |
+| `src/screens/components/ButtonGroupScreen.tsx` | _(CSS)_ | `class="button-group"` for shared borders, combined with dropdown menu, toggle group with active states |
+
+### Key Components Usage Pattern
+
+#### Alert
+```tsx
+import { Alert, AlertTitle, AlertDescription } from "defuss-shadcn";
+
+<Alert variant="destructive">
+  <AlertTitle>Error</AlertTitle>
+  <AlertDescription>Something went wrong.</AlertDescription>
+</Alert>
+```
+
+---
+
 ## JSX Rendering
 
 ### Basic Render (React-compatible)
