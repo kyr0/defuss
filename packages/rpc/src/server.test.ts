@@ -4,6 +4,7 @@ import {
   addHook,
   rpcRoute,
   clearRpcServer,
+  describeInstance,
 } from "./server.js";
 import { TestUserApi, TestProductApi } from "./test-api.js";
 
@@ -417,6 +418,192 @@ describe("RPC Server", () => {
 
       expect(called).toBe(true);
       expect(captured).toBe(42);
+    });
+
+    it("should allow guard to selectively block by method name", async () => {
+      createRpcServer({ TestUserApi });
+
+      addHook({
+        phase: "guard",
+        fn: async (
+          _className: string,
+          methodName: string,
+          _args: unknown[],
+          _request: Request,
+        ) => {
+          // Only allow getUserCount, block everything else
+          return methodName === "getUserCount";
+        },
+      });
+
+      // Allowed call
+      const allowedReq = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          className: "TestUserApi",
+          methodName: "getUserCount",
+          args: [],
+        }),
+      });
+      const allowedRes = await rpcRoute({ request: allowedReq } as any);
+      expect(allowedRes.status).toBe(200);
+
+      // Blocked call
+      const blockedReq = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          className: "TestUserApi",
+          methodName: "getUser",
+          args: ["1"],
+        }),
+      });
+      const blockedRes = await rpcRoute({ request: blockedReq } as any);
+      expect(blockedRes.status).toBe(403);
+    });
+
+    it("should support multiple guard hooks (all must pass)", async () => {
+      createRpcServer({ TestUserApi });
+
+      // First guard: always allow
+      addHook({
+        phase: "guard",
+        fn: async () => true,
+      });
+
+      // Second guard: block deleteUser
+      addHook({
+        phase: "guard",
+        fn: async (
+          _className: string,
+          methodName: string,
+        ) => {
+          return methodName !== "deleteUser";
+        },
+      });
+
+      const deleteReq = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          className: "TestUserApi",
+          methodName: "deleteUser",
+          args: ["1"],
+        }),
+      });
+      const deleteRes = await rpcRoute({ request: deleteReq } as any);
+      expect(deleteRes.status).toBe(403);
+
+      const countReq = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          className: "TestUserApi",
+          methodName: "getUserCount",
+          args: [],
+        }),
+      });
+      const countRes = await rpcRoute({ request: countReq } as any);
+      expect(countRes.status).toBe(200);
+    });
+  });
+
+  describe("createRpcServer - empty namespace", () => {
+    it("should clear entries when empty namespace is passed", async () => {
+      // Register some APIs
+      createRpcServer({ TestUserApi });
+
+      // Verify it works
+      const req1 = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          className: "TestUserApi",
+          methodName: "getUserCount",
+          args: [],
+        }),
+      });
+      const res1 = await rpcRoute({ request: req1 } as any);
+      expect(res1.status).toBe(200);
+
+      // Clear with empty namespace
+      createRpcServer({});
+
+      // Now calls should fail with 404
+      const req2 = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          className: "TestUserApi",
+          methodName: "getUserCount",
+          args: [],
+        }),
+      });
+      const res2 = await rpcRoute({ request: req2 } as any);
+      expect(res2.status).toBe(404);
+    });
+
+    it("should allow re-registering after clearing with empty namespace", async () => {
+      createRpcServer({ TestUserApi });
+      createRpcServer({}); // clear
+      createRpcServer({ TestProductApi }); // re-register different API
+
+      const schemaReq = new Request("http://localhost/rpc/schema", {
+        method: "POST",
+      });
+      const schemaRes = await rpcRoute({ request: schemaReq } as any);
+      const schema = await schemaRes.json();
+
+      expect(schema).toHaveLength(1);
+      expect(schema[0].className).toBe("TestProductApi");
+    });
+  });
+
+  describe("describeInstance", () => {
+    it("should describe prototype with properties", () => {
+      class WithProps {
+        name = "test";
+        count = 42;
+        getValue() {
+          return this.name;
+        }
+        async fetchData() {
+          return {};
+        }
+      }
+
+      const result = describeInstance(new WithProps()) as any;
+      expect(result.className).toBe("WithProps");
+      expect(result.properties.name).toBe("string");
+      expect(result.properties.count).toBe("number");
+    });
+
+    it("should handle nested objects in properties", () => {
+      class Nested {
+        meta = { version: "1.0", info: { deep: true } };
+      }
+
+      const result = describeInstance(new Nested()) as any;
+      expect(result.properties.meta).toBeDefined();
+      expect(result.properties.meta.className).toBe("Object");
+    });
+
+    it("should return null for null or non-object proto", () => {
+      expect(describeInstance(null)).toBeNull();
+      expect(describeInstance(undefined)).toBeNull();
+      expect(describeInstance("string")).toBeNull();
+      expect(describeInstance(42)).toBeNull();
+    });
+
+    it("should handle circular references", () => {
+      const a: any = {};
+      const b: any = { ref: a };
+      a.ref = b;
+
+      const result = describeInstance(a) as any;
+      // Should not throw, and the circular part should be "[Circular]"
+      expect(result).toBeDefined();
     });
   });
 });

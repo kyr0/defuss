@@ -27,6 +27,14 @@ export function clearSchemaCache() {
 const hooks: ClientHook[] = [];
 
 /**
+ * Clears all registered client hooks. Useful for test isolation.
+ */
+export function clearHooks() {
+  hooks.length = 0;
+  customHeaders = null;
+}
+
+/**
  * Adds a hook function that gets called at a specific time BEFORE or AFTER each RPC method invocation.
  * Can reject calls by returning false (only for guards).
  *
@@ -183,3 +191,6 @@ export async function getRpcClient<T extends Record<string, unknown>>() {
   }
   return client as T;
 }
+
+/** Alias for {@link getRpcClient} */
+export const createRpcClient = getRpcClient;

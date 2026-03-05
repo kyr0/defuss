@@ -1310,3 +1310,87 @@ const chain = $(parent).find(".child").addClass("x");
 // After await:  child HAS class (correct!)
 await chain;
 ```
+
+---
+
+## RPC Client
+
+Use `createRpcClient` (preferred name) to get a type-safe proxy client for calling server-side RPC APIs. It is an alias for `getRpcClient` — both are exported from `defuss-rpc/client`, but `createRpcClient` is the default going forward.
+
+```ts
+import { createRpcClient } from "defuss-rpc/client";
+import type { RpcApi } from "../rpc.js";
+
+const rpc = await createRpcClient<RpcApi>();
+```
+
+### Auth (Guard Functions)
+
+Use `addHook` with `phase: "guard"` in `rpc.ts` to protect RPC endpoints. The guard runs before every call and must return `true` to allow or `false` to block it.
+
+```ts
+import { addHook } from "defuss-rpc/server.js";
+
+// Auth-free RPC calls (login/logout must be accessible without token)
+const rpcCallWhitelist: WhitelistRpcCall[] = [
+  { className: "AuthApi", methodName: "login" },
+  { className: "AuthApi", methodName: "logout" },
+];
+
+// ACL hook to guard RPC calls
+addHook({
+  phase: "guard",
+  fn: (
+    className: string,
+    methodName: string,
+    args: unknown[],
+    request: Request,
+  ) => {
+    const token = request.headers.get("Authorization");
+
+    console.log("RPC Call:", { className, methodName, args });
+
+    // Check for whitelisted RPC calls and call through, else require auth
+    const isWhitelisted = rpcCallWhitelist.some(
+      (rpcCall) =>
+        rpcCall.className === className && rpcCall.methodName === methodName,
+    );
+
+    if (isWhitelisted) {
+      return true; // allow whitelisted calls without auth
+    }
+
+    // For all other calls, require a token (simulated auth)
+    if (!token || !token.startsWith("Bearer ")) {
+      console.log("Blocking RPC Call (no auth):", { className, methodName });
+      return false; // block the call
+    }
+
+    return true; // allow the call
+  },
+});
+```
+
+### Common Errors
+
+**`Error: Failed to fetch schema: Not Found`**
+
+```
+Error: Failed to fetch schema: Not Found
+    at getSchema (defuss-rpc_client__js.js?v=733ffaab:238:11)
+    at async getRpcClient (defuss-rpc_client__js.js?v=733ffaab:314:14)
+    at async
+```
+
+This means the `/rpc` endpoint is not reachable and the schema cannot be returned. The RPC route handler is missing or not registered.
+
+In Astro, create `src/pages/rpc/[...all].ts` with the following content:
+
+```ts
+import { rpcRoute } from "defuss-rpc/server.js";
+import "../../rpc.js";
+
+// export * from "defuss-rpc/api" which does this
+export const prerender = false;
+export const POST = rpcRoute;
+```

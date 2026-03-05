@@ -1,12 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   getSchema,
   getRpcClient,
   clearSchemaCache,
+  clearHooks,
   addHook,
   setHeaders,
 } from "./client.js";
-import { TestUserApi, TestProductApi } from "./test-api.js";
+import {
+  TestUserApi,
+  TestProductApi,
+  TestMathModule,
+  TestStringModule,
+} from "./test-api.js";
 import { withTestServer, TestRpcServer } from "./test-utils.js";
 
 // Define TestApiNamespace type that satisfies the constraint
@@ -18,7 +24,24 @@ type TestApiNamespace = {
   ) => any; // Index signature to satisfy RpcApiClass constraint
 };
 
+type TestModuleNamespace = {
+  TestMathModule: typeof TestMathModule;
+  TestStringModule: typeof TestStringModule;
+  [key: string]: unknown;
+};
+
+type MixedNamespace = {
+  TestUserApi: new () => TestUserApi;
+  TestMathModule: typeof TestMathModule;
+  [key: string]: unknown;
+};
+
 describe("RPC Client", () => {
+  beforeEach(() => {
+    clearSchemaCache();
+    clearHooks();
+  });
+
   describe("getSchema", () => {
     it("should fetch schema from server", async () => {
       await withTestServer({ TestUserApi, TestProductApi }, async (server) => {
@@ -477,6 +500,241 @@ describe("RPC Client", () => {
           await expect(productApi.getProduct("1")).rejects.toThrow(
             "RPC call to TestProductApi.getProduct was blocked by a guard",
           );
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      });
+    });
+
+    it("should call deleteUser via class-based proxy", async () => {
+      await withTestServer({ TestUserApi, TestProductApi }, async (server) => {
+        clearSchemaCache();
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (
+          url: string | URL | Request,
+          options?: RequestInit,
+        ) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          const serverUrl = server.getUrl();
+          if (urlStr.startsWith("/")) url = `${serverUrl}${urlStr}`;
+          return originalFetch(url, options);
+        };
+
+        try {
+          const client = await getRpcClient<TestApiNamespace>();
+          const userApi = new client.TestUserApi();
+          const result = await userApi.deleteUser("99");
+          expect(result).toEqual({ success: true, deletedId: "99" });
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      });
+    });
+  });
+
+  describe("getRpcClient - module-based API", () => {
+    it("should create module proxy with callable methods", async () => {
+      await withTestServer(
+        { TestMathModule, TestStringModule },
+        async (server) => {
+          clearSchemaCache();
+          const originalFetch = globalThis.fetch;
+          globalThis.fetch = async (
+            url: string | URL | Request,
+            options?: RequestInit,
+          ) => {
+            const urlStr = typeof url === "string" ? url : url.toString();
+            const serverUrl = server.getUrl();
+            if (urlStr.startsWith("/")) url = `${serverUrl}${urlStr}`;
+            return originalFetch(url, options);
+          };
+
+          try {
+            const client = await getRpcClient<TestModuleNamespace>();
+            expect(client.TestMathModule).toBeDefined();
+            expect(typeof client.TestMathModule).toBe("object");
+
+            const result = await (client.TestMathModule as any).add(3, 4);
+            expect(result).toBe(7);
+          } finally {
+            globalThis.fetch = originalFetch;
+          }
+        },
+      );
+    });
+
+    it("should call subtract and divide on module proxy", async () => {
+      await withTestServer({ TestMathModule }, async (server) => {
+        clearSchemaCache();
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (
+          url: string | URL | Request,
+          options?: RequestInit,
+        ) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          const serverUrl = server.getUrl();
+          if (urlStr.startsWith("/")) url = `${serverUrl}${urlStr}`;
+          return originalFetch(url, options);
+        };
+
+        try {
+          const client = await getRpcClient<TestModuleNamespace>();
+          const math = client.TestMathModule as any;
+
+          expect(await math.subtract(10, 3)).toBe(7);
+          expect(await math.divide(10, 2)).toBe(5);
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      });
+    });
+
+    it("should call string module echo, concat and now", async () => {
+      await withTestServer({ TestStringModule }, async (server) => {
+        clearSchemaCache();
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (
+          url: string | URL | Request,
+          options?: RequestInit,
+        ) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          const serverUrl = server.getUrl();
+          if (urlStr.startsWith("/")) url = `${serverUrl}${urlStr}`;
+          return originalFetch(url, options);
+        };
+
+        try {
+          const client = await getRpcClient<TestModuleNamespace>();
+          const str = client.TestStringModule as any;
+
+          expect(await str.echo("hello")).toBe("hello");
+          expect(await str.concat("foo", "bar")).toBe("foobar");
+
+          const dateResult = await str.now();
+          expect(dateResult).toBeDefined();
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      });
+    });
+
+    it("should dynamically create RPC caller for unknown methods on module proxy", async () => {
+      await withTestServer({ TestMathModule }, async (server) => {
+        clearSchemaCache();
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (
+          url: string | URL | Request,
+          options?: RequestInit,
+        ) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          const serverUrl = server.getUrl();
+          if (urlStr.startsWith("/")) url = `${serverUrl}${urlStr}`;
+          return originalFetch(url, options);
+        };
+
+        try {
+          const client = await getRpcClient<TestModuleNamespace>();
+          const math = client.TestMathModule as any;
+
+          // Accessing a method not in schema should still return a function (dynamic proxy)
+          expect(typeof math.unknownMethod).toBe("function");
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      });
+    });
+
+    it("should return undefined for symbol prop access on module proxy", async () => {
+      await withTestServer({ TestMathModule }, async (server) => {
+        clearSchemaCache();
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (
+          url: string | URL | Request,
+          options?: RequestInit,
+        ) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          const serverUrl = server.getUrl();
+          if (urlStr.startsWith("/")) url = `${serverUrl}${urlStr}`;
+          return originalFetch(url, options);
+        };
+
+        try {
+          const client = await getRpcClient<TestModuleNamespace>();
+          const math = client.TestMathModule as any;
+          const sym = Symbol("test");
+          expect(math[sym]).toBeUndefined();
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      });
+    });
+
+    it("should work with mixed class and module namespaces", async () => {
+      await withTestServer(
+        { TestUserApi, TestMathModule },
+        async (server) => {
+          clearSchemaCache();
+          const originalFetch = globalThis.fetch;
+          globalThis.fetch = async (
+            url: string | URL | Request,
+            options?: RequestInit,
+          ) => {
+            const urlStr = typeof url === "string" ? url : url.toString();
+            const serverUrl = server.getUrl();
+            if (urlStr.startsWith("/")) url = `${serverUrl}${urlStr}`;
+            return originalFetch(url, options);
+          };
+
+          try {
+            const client = await getRpcClient<MixedNamespace>();
+
+            // Class-based
+            const userApi = new (client.TestUserApi as any)();
+            const user = await userApi.getUser("5");
+            expect(user.id).toBe("5");
+
+            // Module-based
+            const result = await (client.TestMathModule as any).multiply(6, 7);
+            expect(result).toBe(42);
+          } finally {
+            globalThis.fetch = originalFetch;
+          }
+        },
+      );
+    });
+
+    it("should apply guards to module-based RPC calls", async () => {
+      await withTestServer({ TestMathModule }, async (server) => {
+        clearSchemaCache();
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (
+          url: string | URL | Request,
+          options?: RequestInit,
+        ) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          const serverUrl = server.getUrl();
+          if (urlStr.startsWith("/")) url = `${serverUrl}${urlStr}`;
+          return originalFetch(url, options);
+        };
+
+        addHook({
+          phase: "guard",
+          fn: (cls, meth) => {
+            if (cls === "TestMathModule" && meth === "add") return false;
+            return true;
+          },
+        });
+
+        try {
+          const client = await getRpcClient<TestModuleNamespace>();
+          const math = client.TestMathModule as any;
+
+          await expect(math.add(1, 2)).rejects.toThrow(
+            "RPC call to TestMathModule.add was blocked by a guard",
+          );
+
+          // Other methods should still work
+          expect(await math.multiply(3, 4)).toBe(12);
         } finally {
           globalThis.fetch = originalFetch;
         }
