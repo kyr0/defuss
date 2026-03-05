@@ -244,18 +244,18 @@ render(<App />, document.getElementById("app"));
 ```tsx
 import { $ } from "defuss";
 
-// Alternative: dequery-style rendering (async, allows chaining)
-await $(container).update(<div>Hello</div>);
+// Alternative: dequery-style rendering (sync, allows chaining)
+$(container).update(<div>Hello</div>);
 
 // Render to ref
 const ref = createRef<HTMLDivElement>();
-await $(container).update(<div ref={ref}>content</div>);
-await $(ref).update(<span>replaced</span>);
+$(container).update(<div ref={ref}>content</div>);
+$(ref).update(<span>replaced</span>);
 ```
 
 ### When to Use Each Pattern
 - **`render(jsx, container)`** - Simple, React-familiar, sync entry point
-- **`$(el).jsx()`** - Async, chainable, integrates with dequery operations
+- **`$(el).jsx()`** - Sync, chainable, integrates with dequery operations
 
 ### Components
 ```tsx
@@ -265,7 +265,7 @@ const Button = ({ label, onClick }: { label: string; onClick: () => void }) => (
 );
 
 // Use like React
-await $(container).update(<Button label="Click" onClick={() => console.log("clicked")} />);
+$(container).update(<Button label="Click" onClick={() => console.log("clicked")} />);
 ```
 
 ### Children Semantics
@@ -331,27 +331,26 @@ const Icon = ({ icon }) => (
 ```tsx
 $(container)              // wrap element
 $(ref)                    // wrap ref.current
-$(".class")               // query selector (sync)
-await $(container).find(".child")  // chained query
+$(".class")               // query selector
+$(container).find(".child")        // chained query
 ```
 
 ### DOM Manipulation
 ```tsx
-await $(ref).jsx(<span>new content</span>);  // JSX update (morphs in-place)
-await $(el).addClass("active");
-await $(el).removeClass("active");
-await $(el).toggleClass("visible");
-await $(el).css({ color: "red", padding: "10px" });
-await $(el).html("<span>raw</span>");
-await $(el).text("plain text");
-await $(el).attr("data-id", "123");
-await $(el).removeAttr("disabled");
+$(ref).jsx(<span>new content</span>);  // JSX update (morphs in-place)
+$(el).addClass("active");
+$(el).removeClass("active");
+$(el).toggleClass("visible");
+$(el).css({ color: "red", padding: "10px" });
+$(el).html("<span>raw</span>");
+$(el).text("plain text");
+$(el).attr("data-id", "123");
 ```
 
 ### Events
 ```tsx
-await $(el).on("click", handler);
-await $(el).off("click", handler);
+$(el).on("click", handler);
+$(el).off("click", handler);
 
 // Event phases
 <button onClick={handler}>bubble</button>
@@ -360,11 +359,11 @@ await $(el).off("click", handler);
 
 ### Forms
 ```tsx
-await $(form).form();                    // get all values as object
-await $(form).form({ username: "x" });   // set values
-await $(input).val();                    // get value
-await $(input).val("new");               // set value
-await $(form).serialize();               // URL-encoded string
+$(form).form();                    // get all values as object
+$(form).form({ username: "x" });   // set values
+$(input).val();                    // get value
+$(input).val("new");               // set value
+$(form).serialize();               // URL-encoded string
 ```
 
 ---
@@ -375,15 +374,15 @@ await $(form).serialize();               // URL-encoded string
 const ref = createRef<HTMLDivElement>();
 
 // Populate via JSX
-await $(container).jsx(<div ref={ref}>content</div>);
+$(container).jsx(<div ref={ref}>content</div>);
 ref.current.textContent;  // "content"
 
 // Update via ref
-await $(ref).jsx(<span>new</span>);
+$(ref).jsx(<span>new</span>);
 
 // IMPORTANT: Morphing preserves same DOM node
 const before = ref.current;
-await $(ref).jsx(<div ref={ref}>updated</div>);
+$(ref).jsx(<div ref={ref}>updated</div>);
 ref.current === before;  // true - same element, content changed
 ```
 
@@ -403,7 +402,7 @@ const CanvasComponent = ({ canvasRef, width, height }: CanvasProps) => (
 
 // Usage
 const canvasRef = createRef<HTMLCanvasElement>();
-await $(container).jsx(<CanvasComponent canvasRef={canvasRef} width={300} height={200} />);
+$(container).jsx(<CanvasComponent canvasRef={canvasRef} width={300} height={200} />);
 
 // Access canvas directly
 const ctx = canvasRef.current!.getContext("2d");
@@ -476,12 +475,12 @@ const Counter = () => (
   </div>
 );
 
-const render = async () => {
-  await $(ref).jsx(<Counter />);
+const rerender = () => {
+  $(ref).jsx(<Counter />);
 };
 
-await $(container).jsx(<div ref={ref}><Counter /></div>);
-store.subscribe(render);  // auto-rerender on change
+$(container).jsx(<div ref={ref}><Counter /></div>);
+store.subscribe(rerender);  // auto-rerender on change
 ```
 
 ### Custom Store Handlers
@@ -612,7 +611,7 @@ const WasmComponent = () => {
   const runComputation = async () => {
     await initWasm();
     const result = myWasmFunction(inputData);
-    await $(resultRef).jsx(<span>{result}</span>);
+    $(resultRef).jsx(<span>{result}</span>);
   };
 
   return (
@@ -779,10 +778,10 @@ const divRef = createRef<HTMLDivElement>();
 defuss morphs DOM in-place for efficiency:
 
 ```tsx
-await $(ref).jsx(<div class="a">first</div>);
+$(ref).jsx(<div class="a">first</div>);
 const el1 = ref.current;
 
-await $(ref).jsx(<div class="b">second</div>);
+$(ref).jsx(<div class="b">second</div>);
 const el2 = ref.current;
 
 el1 === el2;  // true - same DOM node, morphed in-place
@@ -1043,7 +1042,7 @@ export function Window({ ref = createRef<WindowRefState>(), title }: WindowProps
 ```tsx
 const winRef = createRef<WindowRefState>();
 
-await $(container).append(
+$(container).append(
   <Window ref={winRef} title="My Window" />
 );
 
