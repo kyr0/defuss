@@ -315,8 +315,8 @@ function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals
     if (isActive && !isControlled) return;
   }
 
-  // reconcile children
-  updateDomWithVdom(el, (vnode.children ?? []) as RenderInput, globals);
+  // reconcile children (direct call — bypasses morph guard for internal recursion)
+  morphDomDirect(el, (vnode.children ?? []) as RenderInput, globals);
 }
 
 /********************************************************
@@ -376,9 +376,73 @@ function morphNode(domNode: Node, child: ValidChild, globals: Globals): Node | n
 }
 
 /********************************************************
- * 6) Main state-preserving morph (key/id aware, move-not-replace)
+ * 6) Morph guard — tags DOM subtrees as "rendering" to prevent
+ *    re-entrant / conflicting morphs on the same or ancestor nodes.
+ *    Unrelated subtrees morph in parallel without blocking.
  ********************************************************/
+const renderingNodes = new WeakSet<Element>();
+const pendingMorphs = new Map<Element, { vdom: RenderInput; globals: Globals }>();
+
+function isAncestorRendering(el: Element): boolean {
+  let current = el.parentElement;
+  while (current) {
+    if (renderingNodes.has(current)) return true;
+    current = current.parentElement;
+  }
+  return false;
+}
+
+function flushPendingMorphs(): void {
+  if (pendingMorphs.size === 0) return;
+
+  // Snapshot and clear to avoid infinite loops if flush triggers more morphs
+  const snapshot = [...pendingMorphs.entries()];
+  pendingMorphs.clear();
+
+  for (const [el, { vdom, globals }] of snapshot) {
+    // Skip if element was detached during parent morph
+    if (!el.isConnected) continue;
+    // Re-enter through guarded path (handles nested conflicts)
+    updateDomWithVdom(el, vdom, globals);
+  }
+}
+
+/**
+ * Guarded entry point for DOM morphing.
+ *
+ * If the target element (or an ancestor) is already being morphed,
+ * the render is queued (latest-wins) and replayed after the active
+ * morph finishes.  Morphs on unrelated subtrees proceed immediately
+ * without blocking — conflict-free parallel rendering.
+ */
 export function updateDomWithVdom(
+  parentElement: Element,
+  newVDOM: RenderInput,
+  globals: Globals,
+): void {
+  // Re-entrant or ancestor conflict → queue latest, return
+  if (renderingNodes.has(parentElement) || isAncestorRendering(parentElement)) {
+    pendingMorphs.set(parentElement, { vdom: newVDOM, globals });
+    return;
+  }
+
+  renderingNodes.add(parentElement);
+  try {
+    morphDomDirect(parentElement, newVDOM, globals);
+  } finally {
+    renderingNodes.delete(parentElement);
+  }
+
+  // Flush any morphs that were queued during this render
+  flushPendingMorphs();
+}
+
+/********************************************************
+ * 7) Raw morph implementation (key/id aware, move-not-replace)
+ *    Called directly by the guard and by internal recursive
+ *    child reconciliation (patchElementInPlace).
+ ********************************************************/
+function morphDomDirect(
   parentElement: Element,
   newVDOM: RenderInput,
   globals: Globals,

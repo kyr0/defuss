@@ -251,17 +251,7 @@ const FileExplorerContent: FC = () => {
 const FileExplorer: FC = () => {
   const ref = createRef<HTMLDivElement>();
 
-  let renderPending = false;
-  const rerender = () => {
-    if (renderPending) return;
-    renderPending = true;
-    queueMicrotask(() => {
-      renderPending = false;
-      $(ref).jsx(<FileExplorerContent />);
-    });
-  };
-
-  fileStore.subscribe(rerender);
+  fileStore.subscribe(() => $(ref).jsx(<FileExplorerContent />));
 
   return (
     <div ref={ref}>
@@ -346,17 +336,7 @@ const OrgTreeContent: FC = () => {
 const OrgTree: FC = () => {
   const ref = createRef<HTMLDivElement>();
 
-  let renderPending = false;
-  const rerender = () => {
-    if (renderPending) return;
-    renderPending = true;
-    queueMicrotask(() => {
-      renderPending = false;
-      $(ref).jsx(<OrgTreeContent />);
-    });
-  };
-
-  orgStore.subscribe(rerender);
+  orgStore.subscribe(() => $(ref).jsx(<OrgTreeContent />));
 
   return (
     <div ref={ref}>

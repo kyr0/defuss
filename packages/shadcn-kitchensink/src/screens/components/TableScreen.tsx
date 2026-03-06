@@ -406,17 +406,7 @@ const DataviewTableContent: FC = () => {
 const DataviewTable: FC = () => {
   const ref = createRef<HTMLDivElement>();
 
-  let renderPending = false;
-  const rerender = () => {
-    if (renderPending) return;
-    renderPending = true;
-    queueMicrotask(() => {
-      renderPending = false;
-      $(ref).jsx(<DataviewTableContent />);
-    });
-  };
-
-  tableStore.subscribe(rerender);
+  tableStore.subscribe(() => $(ref).jsx(<DataviewTableContent />));
 
   return (
     <div ref={ref}>

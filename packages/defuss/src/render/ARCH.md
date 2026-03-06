@@ -451,11 +451,217 @@ One critique of morphing is that reading dom.childNodes causes "Reflow" or "Layo
 
 ---
 
-**9. Comprehensive Technical Details: The "FluxDOM" Implementation Reference**
+**9. The Morph Guard: Conflict-Free Re-Entrant Rendering**
+
+A subtle but critical problem emerges when FluxDOM's morphing algorithm is used in conjunction with store-driven reactive patterns. In real-world applications, the very act of morphing triggers side effects — `onMount` lifecycle callbacks, delegated event handlers, or store subscribers — that may themselves call `$(ref).jsx()` on the same DOM subtree that is currently being morphed. Without protection, the resulting **re-entrant morph** corrupts the in-progress reconciliation, leading to orphaned nodes, duplicated children, or lost state.
+
+### **9.1 The Re-Entrancy Problem**
+
+Consider the store-driven rendering pattern:
+
+```js
+store.subscribe(() => $(ref).jsx(<App />));
+```
+
+When the user clicks a button, the delegated event handler fires, mutates the store, and the subscriber immediately calls `$(ref).jsx()`. However, the *current* morph cycle (which is processing the click handler's `onMount` callbacks) has not yet finished walking the DOM tree. The second `jsx()` call now operates on an element whose children are in a partially reconciled state — some are new, some are old, and the keyed pools have been partially consumed.
+
+This is analogous to modifying a collection while iterating over it. The algorithm invariants break down, and the result is unpredictable.
+
+### **9.2 The Morph Guard Architecture**
+
+FluxDOM solves this with a **Morph Guard** — a thin coordination layer that sits in front of the raw morphing algorithm (`morphDomDirect`). The guard uses two data structures:
+
+1. **`renderingNodes: WeakSet<Element>`** — Tracks which elements are currently *inside* an active morph cycle. The `WeakSet` ensures zero memory overhead for elements that are later detached and garbage-collected.
+
+2. **`pendingMorphs: Map<Element, { vdom, globals }>`** — Queues the *latest* VDOM for elements that attempted to morph while a conflict was active. The `Map` provides **latest-wins coalescing**: if three rapid-fire store updates each trigger `$(ref).jsx()`, only the final VDOM is applied when the guard flushes.
+
+### **9.3 Conflict Detection: The Ancestor Walk**
+
+A morph on element `E` conflicts not only with another morph on `E` itself, but also with a morph on any *ancestor* of `E`. This is because `patchElementInPlace` recurses into children via `morphDomDirect`. If `E` is a child of `P`, and `P` is currently being morphed, then `P`'s reconciliation will eventually reach `E` and morph it. A concurrent morph on `E` would mutate `E`'s children out from under `P`'s iteration.
+
+The guard checks for this by walking `el.parentElement` upward:
+
+```js
+function isAncestorRendering(el: Element): boolean {
+  let current = el.parentElement;
+  while (current) {
+    if (renderingNodes.has(current)) return true;
+    current = current.parentElement;
+  }
+  return false;
+}
+```
+
+This walk is `O(D)` where `D` is the depth of the element in the DOM tree — typically 10-20 levels in real applications, making it effectively constant-time.
+
+### **9.4 The Guarded Entry Point**
+
+The public `updateDomWithVdom` function — called by `$(ref).jsx()`, `render()`, and `$(ref).update()` — wraps the raw morph in the guard:
+
+```js
+export function updateDomWithVdom(parentElement, newVDOM, globals) {
+  // Re-entrant or ancestor conflict → queue latest, return
+  if (renderingNodes.has(parentElement) || isAncestorRendering(parentElement)) {
+    pendingMorphs.set(parentElement, { vdom: newVDOM, globals });
+    return;
+  }
+
+  renderingNodes.add(parentElement);
+  try {
+    morphDomDirect(parentElement, newVDOM, globals);
+  } finally {
+    renderingNodes.delete(parentElement);
+  }
+
+  // Flush any morphs that were queued during this render
+  flushPendingMorphs();
+}
+```
+
+Key properties:
+
+* **Sync semantics preserved.** If no conflict exists, the morph executes immediately and synchronously — the caller gets back control with the DOM fully updated.
+* **Parallel safety.** Morphs on unrelated subtrees proceed without blocking. Only morphs that share an ancestor-descendant relationship are serialized.
+* **Latest-wins coalescing.** Multiple rapid-fire morphs on the same element collapse into a single application of the most recent VDOM, avoiding redundant reconciliation passes.
+* **`finally` block.** The rendering flag is always cleared, even if the morph throws, preventing the element from being permanently "locked."
+* **`isConnected` check during flush.** Queued morphs for elements that were detached during the parent morph are silently skipped — no work wasted on ghost nodes.
+
+### **9.5 Internal Recursion Bypass**
+
+The guard only protects the *external* entry point. Internal recursive calls — `patchElementInPlace` reconciling children — call `morphDomDirect` directly, bypassing the guard. This is correct because:
+
+1. The parent is already marked in `renderingNodes`, so children are implicitly protected.
+2. Adding guard overhead to every recursive child reconciliation would violate the `O(N)` complexity guarantee.
+3. The internal recursion is always synchronous and deterministic — it cannot cause the re-entrancy problem.
+
+### **9.6 Developer Ergonomics: Boilerplate Elimination**
+
+Without an implicit Morph Guard, developers would have to manually implement render coalescing in every store-driven component:
+
+```js
+// ❌ boilerplate in every component
+let renderPending = false;
+const rerender = () => {
+  if (renderPending) return;
+  renderPending = true;
+  queueMicrotask(() => {
+    renderPending = false;
+    $(ref).jsx(<Content />);
+  });
+};
+store.subscribe(rerender);
+```
+
+With the Morph Guard, this collapses to a single line:
+
+```js
+// ✅ the framework handles re-entrancy
+store.subscribe(() => $(ref).jsx(<Content />));
+```
+
+The guard guarantees that even if the store fires multiple times during a single morph cycle, only the final state is applied. This eliminates an entire class of boilerplate and removes a common source of developer error (forgetting the coalescing guard leads to visual glitches; adding it incorrectly leads to dropped updates).
+
+With this, implicit reactive patterns become safe and intuitive, fulfilling the promise of "implicit updates" without sacrificing correctness or performance.
+
+---
+
+**10. Intelligent Event Handling Under DOM Morphing**
+
+FluxDOM's Global Event Delegation (Section 4) eliminates the memory leak problem, but DOM morphing introduces a *new* event-related challenge: the **Morph Re-Dispatch Problem**. When the morph algorithm processes an element that currently has an in-flight event, the morphing of that element's attributes can cause the browser to re-dispatch the same native event, leading to handlers firing twice for a single user interaction.
+
+### **10.1 The Double-Fire Problem**
+
+Consider a tree view with a click handler on each row. When the user clicks a row:
+
+1. The delegated click handler fires.
+2. The handler mutates app state (e.g., toggles expansion).
+3. The store subscriber calls `$(ref).jsx(<TreeView />)`, morphing the DOM.
+4. During the morph, the clicked row's attributes are updated (e.g., `aria-expanded` changes).
+5. The browser detects that the element under the cursor has been mutated and re-dispatches the original click event.
+6. The delegated handler fires *again*, toggling the expansion back to its original state.
+
+From the user's perspective, nothing happened — the click appeared to be swallowed. In reality, it fired twice with opposite effects, canceling itself out.
+
+### **10.2 The Timestamp-Based Click Guard**
+
+The key insight is that the *re-dispatched* event and the *original* event share the **same `Event.timeStamp`**. Two genuinely separate clicks from the user will always have different timestamps (even millisecond-precision timers distinguish them, and `performance.now()` provides sub-millisecond resolution).
+
+FluxDOM provides a `createClickGuard()` utility that exploits this invariant:
+
+```js
+export function createClickGuard(): (e: MouseEvent) => boolean {
+  let lastTs = -1;
+  return (e: MouseEvent) => {
+    if (e.timeStamp === lastTs) return false; // same event, reject
+    lastTs = e.timeStamp;
+    return true;                               // new event, allow
+  };
+}
+```
+
+This guard is applied at the component level for interactive widgets that trigger re-renders from click handlers:
+
+```js
+const allowClick = createClickGuard();
+
+const handleClick = (e: MouseEvent) => {
+  if (!allowClick(e)) return;
+  // ... safe to proceed, this is a genuine new click
+};
+```
+
+### **10.3 Why Not `stopPropagation` or `preventDefault`?**
+
+These standard DOM methods do not solve the problem because:
+
+* **`stopPropagation()`** prevents events from reaching *other* handlers via bubbling, but the re-dispatch creates a new event dispatch cycle at the *same* target. The delegated listener at the document root receives it as if it were a fresh event.
+* **`preventDefault()`** suppresses the browser's *default action* (link navigation, form submission), not handler execution.
+* **`once: true`** removes the listener after the first invocation, but the global delegate listener must persist for all future clicks on other elements.
+
+The timestamp-based guard is the only mechanism that operates at the correct granularity: it allows the same handler to fire for different events while rejecting the morph-induced echo of the *same* event.
+
+### **10.4 Delegated Click Handling Pattern**
+
+Interactive components in FluxDOM use a **single delegated click handler** on their root element, rather than per-row handlers. This is critical for two reasons:
+
+1. **Morph stability.** Per-element handlers must be re-registered after every morph cycle. A single root handler survives morphs because the root element is preserved by the morph algorithm's contract (Section 3.3). With `data-*` attributes on child elements (`data-node-id`, `data-row-id`, `data-sortable`), the single handler uses `closest()` to identify which child was clicked:
+
+```js
+const handleClick = (e: MouseEvent) => {
+  if (!allowClick(e)) return;
+  const target = e.target as HTMLElement;
+  const row = target.closest(".tree-view-row") as HTMLElement | null;
+  if (row) {
+    const id = JSON.parse(row.dataset.nodeId);
+    onNodeSelect?.(id);
+  }
+};
+
+return <div onClick={handleClick}>{/* children with data-node-id */}</div>;
+```
+
+2. **Immediate interactivity.** Because the handler is attached to the root (which exists before children are rendered), click handling works immediately on the first render — there is no timing gap where children are in the DOM but their handlers have not yet been registered.
+
+### **10.5 ARIA and Boolean Attribute Handling**
+
+A related edge case arises with ARIA attributes under morphing. The HTML spec distinguishes between *boolean presence attributes* (e.g., `disabled`, where the attribute's presence alone is significant) and *string-valued attributes* (e.g., `aria-expanded="true"`).
+
+When FluxDOM's morph algorithm patches attributes, writing a JavaScript `true` value to an attribute produces a presence-only attribute (`<div aria-expanded>`), which ARIA parsers interpret differently from `<div aria-expanded="true">`. The framework therefore requires explicit stringification for ARIA values:
+
+```jsx
+aria-expanded={hasChildren ? String(isExpanded) : undefined}
+aria-selected={String(isSelected)}
+```
+
+This ensures screen readers and accessibility tools receive the correct state values, and avoids spurious attribute diffs during morphing (which could trigger unnecessary re-dispatches).
+
+---
+
+**11. Comprehensive Technical Details: The "FluxDOM" Implementation Reference**
 
 This section provides the rigorous technical detailing necessary to build the engine described above. It moves beyond high-level architecture into the specifics of the implementation code and edge-case handling.
 
-### **9.1 The "FluxDOM" Kernel**
+### **11.1 The "FluxDOM" Kernel**
 
 The kernel must be small, tree-shakeable, and self-contained.
 
@@ -517,7 +723,7 @@ class Component {
 }
 ```
 
-### **9.2 The Robust Morph Algorithm (Code-Level Logic)**
+### **11.2 The Robust Morph Algorithm (Code-Level Logic)**
 
 The morph function is the heart of the stability. It must handle the ref preservation logic.
 
@@ -628,7 +834,7 @@ function findMatchInRemaining(nodes, startIndex, vNode) {
 }
 ```
 
-### **9.3 The JSX Pragma & Event Extraction**
+### **11.3 The JSX Pragma & Event Extraction**
 
 To make the delegation work, the JSX Pragma must strip event handlers from the props and register them.
 
@@ -670,7 +876,7 @@ export function h(tag, props,...children) {
 }
 ```
 
-### **9.4 Memory Leak Analysis**
+### **11.4 Memory Leak Analysis**
 
 Let's verify the memory safety of this architecture:
 
@@ -684,7 +890,7 @@ Let's verify the memory safety of this architecture:
 
 This proves that the "Global Delegation + Component Instance" model creates a closed memory loop that the GC can handle trivially, unlike the "Anonymous function attached to DOM" model which creates obscure retention paths.
 
-### **9.5 Edge Cases: CSS and Internal Refs**
+### **11.5 Edge Cases: CSS and Internal Refs**
 
 CSS Styling:
 For a "Classic" synthesis, we should avoid CSS-in-JS complexity. The style prop should accept an object or string. The syncAttributes function in the morpher must handle this smartly to avoid thrashing.
@@ -714,9 +920,9 @@ This ensures that $(ref).update({ style: { color: 'red' } }) transitions the col
 
 ---
 
-**10. Conclusion and Future Outlook**
+**12. Conclusion and Future Outlook**
 
-While the framework's earlier native DOM moerphing algorithm implementation suffered from a "Crisis of Identity.", this is fixed by FluxDOM.
+While the framework's earlier native DOM morphing algorithm implementation suffered from a "Crisis of Identity.", this is fixed by FluxDOM.
 
 Earlier versions relied on destructive rendering techniques while attempting to maintain persistent JavaScript references, creating a broken contract where the `Ref` diverged from the current DOM graph (aka. "from new/future reality"). This pathology was exacerbated by leaky event binding strategy that filled the browser's heap with orphan closures.
 
@@ -725,6 +931,8 @@ The **FluxDOM** architecture solves these issues not by patching the old code, b
 1. **Identity Preservation:** Through a **Safe Morphing Algorithm** (inspired by idiomorph), we guarantee that $(ref) always points to the live node, because the live node is mutated in-place rather than replaced.
 2. **Memory Safety:** Through **Global Event Delegation**, we decouple event lifecycle from DOM lifecycle, eliminating the possibility of orphan listeners and circular reference leaks.
 3. **Implicit Simplicity:** By encapsulating the VNode generation logic *within* the DOM node's metadata, we enable the intuitive $(ref).update() API that the user requested, bridging the gap between the ease of jQuery and the robustness of React.
+4. **Re-Entrant Safety:** Through the **Morph Guard** (Section 9), we prevent re-entrant morphs from corrupting in-progress reconciliation. The guard tags actively-rendering subtrees, queues conflicting morphs with latest-wins coalescing, and flushes them after the active cycle completes — eliminating an entire class of developer boilerplate while allowing unrelated subtrees to morph in parallel without blocking.
+5. **Event Integrity Under Morphing:** Through the **Timestamp-Based Click Guard** (Section 10), we solve the Morph Re-Dispatch Problem — where attribute patching during a morph causes the browser to re-dispatch the same native event. By comparing `Event.timeStamp` values, the guard rejects morph-induced echoes while accepting genuine user interactions. Combined with a **single delegated handler per component root** and `data-*` attribute dispatch, this ensures immediate interactivity that survives morph cycles without per-element handler re-registration.
 
 This report confirms that it is indeed possible to safely improve the algorithm for stability and performance. The result is a "Neo-Classic" framework that is technically sound, performant, and joyfully simple to use.
 
