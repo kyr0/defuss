@@ -143,6 +143,7 @@ const MenuGroups: Array<{ type: string; label: string; items: MenuItem[] }> = [
       { label: "Textarea", url: "/components/textarea" },
       { label: "Toast", url: "/components/toast" },
       { label: "Tooltip", url: "/components/tooltip" },
+      { label: "Tree View", url: "/components/tree-view", isNew: true },
       {
         label: "Theme Switcher",
         url: "/components/theme-switcher",

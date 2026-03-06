@@ -3,6 +3,8 @@ import { $, createRef, createStore } from "defuss";
 import { CodePreview } from "../../components/CodePreview.js";
 import { createDataview, applyDataview } from "defuss-dataview";
 import type { DataviewState } from "defuss-dataview";
+import { DataTable } from "defuss-shadcn";
+import type { DataTableColumn } from "defuss-shadcn";
 
 type Invoice = { id: string; amount: number; status: string; email: string };
 
@@ -49,6 +51,27 @@ const getStatusColor = (status: string) => {
 
 const formatAmount = (amount: number) => `$${amount.toFixed(2)}`;
 
+const invoiceColumns: DataTableColumn[] = [
+  { field: "id", label: "Invoice", sortable: true, className: "font-medium" },
+  { field: "email", label: "Email", sortable: true },
+  {
+    field: "amount",
+    label: "Amount",
+    sortable: true,
+    className: "text-right",
+    render: (value) => <span>{formatAmount(value as number)}</span>,
+  },
+  {
+    field: "status",
+    label: "Status",
+    render: (value) => (
+      <span class={`badge badge-${getStatusColor(value as string)}`}>
+        {String(value)}
+      </span>
+    ),
+  },
+];
+
 interface TableState {
   view: DataviewState;
   data: Invoice[];
@@ -70,15 +93,8 @@ const tableStore = createStore<TableState>({
   editingRow: null,
 });
 
-// Module-level sort handler with guard to prevent double-fire
-let sortGuard = false;
+// Module-level sort handler
 const handleSort = (field: string) => {
-  if (sortGuard) return;
-  sortGuard = true;
-  requestAnimationFrame(() => {
-    sortGuard = false;
-  });
-
   const { view } = tableStore.value;
   const dir =
     view.sorters[0]?.field === field && view.sorters[0].direction === "asc"
@@ -230,99 +246,31 @@ const DataviewTableContent: FC = () => {
           <option value="Unpaid">Unpaid</option>
         </select>
       </div>
-      <div class="rounded-md border overflow-x-auto">
-        <table class="table w-full">
-          <thead>
-            <tr>
-              <th
-                class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-                onClick={() => handleSort("id")}
-              >
-                <div class="flex items-center select-none">
-                  Invoice
-                  {sortField === "id" && (
-                    <span class="ml-1">
-                      {sortDirection === "asc" ? "\u25B2" : "\u25BC"}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th
-                class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-                onClick={() => handleSort("email")}
-              >
-                <div class="flex items-center select-none">
-                  Email
-                  {sortField === "email" && (
-                    <span class="ml-1">
-                      {sortDirection === "asc" ? "\u25B2" : "\u25BC"}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th
-                class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 text-right"
-                onClick={() => handleSort("amount")}
-              >
-                <div class="flex items-center justify-end select-none">
-                  Amount
-                  {sortField === "amount" && (
-                    <span class="ml-1">
-                      {sortDirection === "asc" ? "\u25B2" : "\u25BC"}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th class="select-none">Status</th>
-              <th class="text-right select-none mr-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.length > 0 ? (
-              entries.map((entry) => (
-                <tr key={String(entry.row.id)}>
-                  <td class="font-medium">{entry.row.id}</td>
-                  <td>{entry.row.email}</td>
-                  <td class="text-right">
-                    {formatAmount(entry.row.amount as number)}
-                  </td>
-                  <td>
-                    <span
-                      class={`badge badge-${getStatusColor(entry.row.status as string)}`}
-                    >
-                      {entry.row.status}
-                    </span>
-                  </td>
-                  <td class="text-right">
-                    <div class="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-outline"
-                        onClick={() => handleEditOpen(entry.row as Invoice)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-sm"
-                        onClick={() => handleDelete(entry.row.id as string)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} class="text-center py-8 text-gray-500">
-                  No results found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        entries={entries}
+        columns={invoiceColumns}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        onSort={handleSort}
+        renderActions={(entry) => (
+          <>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline"
+              onClick={() => handleEditOpen(entry.row as Invoice)}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm"
+              onClick={() => handleDelete(entry.row.id as string)}
+            >
+              Delete
+            </button>
+          </>
+        )}
+      />
       <div class="flex items-center justify-between px-2">
         <div class="flex items-center gap-4">
           <span class="text-sm text-gray-700 dark:text-gray-400">

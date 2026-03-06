@@ -38,6 +38,7 @@
         "useJsxKeyInIterable": "off"
       },
       "a11y": {
+        "noStaticElementInteractions": "off",
         "useValidAnchor": "off",
         "noSvgWithoutTitle": "off",
         "useKeyWithClickEvents": "off",

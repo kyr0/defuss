@@ -40,6 +40,7 @@ import { ThemeSwitcherScreen } from "./components/ThemeSwitcherScreen.js";
 import { SeparatorScreen } from "./components/SeparatorScreen.js";
 import { FieldScreen } from "./components/FieldScreen.js";
 import { ScrollableScreen } from "./components/ScrollableScreen.js";
+import { TreeViewScreen } from "./components/TreeViewScreen.js";
 
 const COMPONENT_SCREENS: Record<string, FC> = {
   button: ButtonScreen,
@@ -79,6 +80,7 @@ const COMPONENT_SCREENS: Record<string, FC> = {
   textarea: TextareaScreen,
   toast: ToastScreen,
   tooltip: TooltipScreen,
+  "tree-view": TreeViewScreen,
   "theme-switcher": ThemeSwitcherScreen,
   separator: SeparatorScreen,
   scrollable: ScrollableScreen,
