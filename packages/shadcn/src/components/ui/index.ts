@@ -32,10 +32,12 @@ export * from "./skeleton.js";
 export * from "./slider.js";
 export * from "./spinner.js";
 export * from "./switch.js";
+export * from "./data-table.js";
 export * from "./table.js";
 export * from "./tabs.js";
 export * from "./textarea.js";
 export * from "./toast.js";
+export * from "./tree-view.js";
 export * from "./drop-area.js";
 // Interactive components (cont'd)
 export * from "./toggle.js";

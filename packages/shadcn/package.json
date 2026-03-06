@@ -10,6 +10,7 @@
   "scripts": {
     "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun",
     "pretest": "bun run build",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
     "prebuild": "bun run clean",
     "build": "pkgroll --sourcemap"
   },
@@ -45,8 +46,19 @@
   "dependencies": {
     "defuss": "^3.4.0"
   },
+  "peerDependencies": {
+    "defuss-dataview": "^0.3.0"
+  },
+  "peerDependenciesMeta": {
+    "defuss-dataview": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@types/node": "^25.0.9",
+    "@vitest/browser": "^4.0.17",
+    "@vitest/browser-playwright": "^4.0.17",
+    "defuss-dataview": "^0.3.0",
     "pkgroll": "^2.21.5",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
