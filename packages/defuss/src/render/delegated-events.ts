@@ -41,6 +41,14 @@ const elementHandlerMap = new WeakMap<EventTarget, Map<string, HandlerEntry>>();
 const bubbleDispatched = new WeakMap<Event, WeakSet<EventTarget>>();
 const captureDispatched = new WeakMap<Event, WeakSet<EventTarget>>();
 
+/**
+ * Re-entrancy guard: tracks which target+eventType+phase combos have an
+ * active handler on the call stack. When DOM morphing re-dispatches a *new*
+ * event object for the same element while the original handler is still
+ * running, this guard suppresses it.
+ */
+const activeDispatches = new WeakMap<EventTarget, Set<string>>();
+
 export const parseEventPropName = (
   propName: string,
 ): ParsedEventProp | null => {
@@ -145,36 +153,51 @@ const createPhaseHandler = (
       }
       targets.add(target);
 
-      // Execute only the handlers for this phase
-      if (phase === "capture") {
-        // Single handler (JSX mode)
-        if (entry.capture) {
-          entry.capture.call(target, event);
-          if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
-            return;
-        }
-        // Handler set (Dequery multi mode)
-        if (entry.captureSet) {
-          for (const handler of entry.captureSet) {
-            handler.call(target, event);
+      // Re-entrancy guard: skip if a handler for this target+eventType+phase
+      // is already on the call stack (morph echo suppression)
+      const dispatchKey = `${eventType}:${phase}`;
+      let activeSet = activeDispatches.get(target);
+      if (activeSet?.has(dispatchKey)) continue;
+      if (!activeSet) {
+        activeSet = new Set();
+        activeDispatches.set(target, activeSet);
+      }
+      activeSet.add(dispatchKey);
+
+      try {
+        // Execute only the handlers for this phase
+        if (phase === "capture") {
+          // Single handler (JSX mode)
+          if (entry.capture) {
+            entry.capture.call(target, event);
             if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
               return;
           }
-        }
-      } else {
-        // Bubble phase
-        if (entry.bubble) {
-          entry.bubble.call(target, event);
-          if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
-            return;
-        }
-        if (entry.bubbleSet) {
-          for (const handler of entry.bubbleSet) {
-            handler.call(target, event);
+          // Handler set (Dequery multi mode)
+          if (entry.captureSet) {
+            for (const handler of entry.captureSet) {
+              handler.call(target, event);
+              if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
+                return;
+            }
+          }
+        } else {
+          // Bubble phase
+          if (entry.bubble) {
+            entry.bubble.call(target, event);
             if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
               return;
           }
+          if (entry.bubbleSet) {
+            for (const handler of entry.bubbleSet) {
+              handler.call(target, event);
+              if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
+                return;
+            }
+          }
         }
+      } finally {
+        activeSet.delete(dispatchKey);
       }
     }
   };

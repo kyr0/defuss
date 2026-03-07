@@ -565,86 +565,17 @@ With this, implicit reactive patterns become safe and intuitive, fulfilling the 
 
 ---
 
-**10. Intelligent Event Handling Under DOM Morphing**
+**10. Event Handling Under DOM Morphing**
 
-FluxDOM's Global Event Delegation (Section 4) eliminates the memory leak problem, but DOM morphing introduces a *new* event-related challenge: the **Morph Re-Dispatch Problem**. When the morph algorithm processes an element that currently has an in-flight event, the morphing of that element's attributes can cause the browser to re-dispatch the same native event, leading to handlers firing twice for a single user interaction.
+FluxDOM's Global Event Delegation (Section 4) eliminates the memory leak problem. Its architecture provides two genuine event-safety guarantees:
 
-### **10.1 The Double-Fire Problem**
+1. **Re-entrancy guard in the delegated event system.** The `createPhaseHandler` implementation tracks active `target+eventType+phase` combinations on the call stack. If — through any mechanism — the same handler were to be re-triggered for the same element while still executing, the re-entrant invocation is suppressed. This is a defense-in-depth measure, not a response to observed browser behavior.
 
-Consider a tree view with a click handler on each row. When the user clicks a row:
+2. **Morph Guard coalescing (Section 9).** When a click handler triggers a store update that triggers a morph on the same or ancestor element, the Morph Guard queues the re-entrant morph and applies it after the current morph cycle completes. This prevents DOM corruption during reconciliation, independent of event behavior.
 
-1. The delegated click handler fires.
-2. The handler mutates app state (e.g., toggles expansion).
-3. The store subscriber calls `$(ref).jsx(<TreeView />)`, morphing the DOM.
-4. During the morph, the clicked row's attributes are updated (e.g., `aria-expanded` changes).
-5. The browser detects that the element under the cursor has been mutated and re-dispatches the original click event.
-6. The delegated handler fires *again*, toggling the expansion back to its original state.
+### **10.1 ARIA and Boolean Attribute Handling**
 
-From the user's perspective, nothing happened — the click appeared to be swallowed. In reality, it fired twice with opposite effects, canceling itself out.
-
-### **10.2 The Timestamp-Based Click Guard**
-
-The key insight is that the *re-dispatched* event and the *original* event share the **same `Event.timeStamp`**. Two genuinely separate clicks from the user will always have different timestamps (even millisecond-precision timers distinguish them, and `performance.now()` provides sub-millisecond resolution).
-
-FluxDOM provides a `createClickGuard()` utility that exploits this invariant:
-
-```js
-export function createClickGuard(): (e: MouseEvent) => boolean {
-  let lastTs = -1;
-  return (e: MouseEvent) => {
-    if (e.timeStamp === lastTs) return false; // same event, reject
-    lastTs = e.timeStamp;
-    return true;                               // new event, allow
-  };
-}
-```
-
-This guard is applied at the component level for interactive widgets that trigger re-renders from click handlers:
-
-```js
-const allowClick = createClickGuard();
-
-const handleClick = (e: MouseEvent) => {
-  if (!allowClick(e)) return;
-  // ... safe to proceed, this is a genuine new click
-};
-```
-
-### **10.3 Why Not `stopPropagation` or `preventDefault`?**
-
-These standard DOM methods do not solve the problem because:
-
-* **`stopPropagation()`** prevents events from reaching *other* handlers via bubbling, but the re-dispatch creates a new event dispatch cycle at the *same* target. The delegated listener at the document root receives it as if it were a fresh event.
-* **`preventDefault()`** suppresses the browser's *default action* (link navigation, form submission), not handler execution.
-* **`once: true`** removes the listener after the first invocation, but the global delegate listener must persist for all future clicks on other elements.
-
-The timestamp-based guard is the only mechanism that operates at the correct granularity: it allows the same handler to fire for different events while rejecting the morph-induced echo of the *same* event.
-
-### **10.4 Delegated Click Handling Pattern**
-
-Interactive components in FluxDOM use a **single delegated click handler** on their root element, rather than per-row handlers. This is critical for two reasons:
-
-1. **Morph stability.** Per-element handlers must be re-registered after every morph cycle. A single root handler survives morphs because the root element is preserved by the morph algorithm's contract (Section 3.3). With `data-*` attributes on child elements (`data-node-id`, `data-row-id`, `data-sortable`), the single handler uses `closest()` to identify which child was clicked:
-
-```js
-const handleClick = (e: MouseEvent) => {
-  if (!allowClick(e)) return;
-  const target = e.target as HTMLElement;
-  const row = target.closest(".tree-view-row") as HTMLElement | null;
-  if (row) {
-    const id = JSON.parse(row.dataset.nodeId);
-    onNodeSelect?.(id);
-  }
-};
-
-return <div onClick={handleClick}>{/* children with data-node-id */}</div>;
-```
-
-2. **Immediate interactivity.** Because the handler is attached to the root (which exists before children are rendered), click handling works immediately on the first render — there is no timing gap where children are in the DOM but their handlers have not yet been registered.
-
-### **10.5 ARIA and Boolean Attribute Handling**
-
-A related edge case arises with ARIA attributes under morphing. The HTML spec distinguishes between *boolean presence attributes* (e.g., `disabled`, where the attribute's presence alone is significant) and *string-valued attributes* (e.g., `aria-expanded="true"`).
+An edge case arises with ARIA attributes under morphing. The HTML spec distinguishes between *boolean presence attributes* (e.g., `disabled`, where the attribute's presence alone is significant) and *string-valued attributes* (e.g., `aria-expanded="true"`).
 
 When FluxDOM's morph algorithm patches attributes, writing a JavaScript `true` value to an attribute produces a presence-only attribute (`<div aria-expanded>`), which ARIA parsers interpret differently from `<div aria-expanded="true">`. The framework therefore requires explicit stringification for ARIA values:
 
@@ -653,7 +584,7 @@ aria-expanded={hasChildren ? String(isExpanded) : undefined}
 aria-selected={String(isSelected)}
 ```
 
-This ensures screen readers and accessibility tools receive the correct state values, and avoids spurious attribute diffs during morphing (which could trigger unnecessary re-dispatches).
+This ensures screen readers and accessibility tools receive the correct state values.
 
 ---
 
@@ -932,7 +863,7 @@ The **FluxDOM** architecture solves these issues not by patching the old code, b
 2. **Memory Safety:** Through **Global Event Delegation**, we decouple event lifecycle from DOM lifecycle, eliminating the possibility of orphan listeners and circular reference leaks.
 3. **Implicit Simplicity:** By encapsulating the VNode generation logic *within* the DOM node's metadata, we enable the intuitive $(ref).update() API that the user requested, bridging the gap between the ease of jQuery and the robustness of React.
 4. **Re-Entrant Safety:** Through the **Morph Guard** (Section 9), we prevent re-entrant morphs from corrupting in-progress reconciliation. The guard tags actively-rendering subtrees, queues conflicting morphs with latest-wins coalescing, and flushes them after the active cycle completes — eliminating an entire class of developer boilerplate while allowing unrelated subtrees to morph in parallel without blocking.
-5. **Event Integrity Under Morphing:** Through the **Timestamp-Based Click Guard** (Section 10), we solve the Morph Re-Dispatch Problem — where attribute patching during a morph causes the browser to re-dispatch the same native event. By comparing `Event.timeStamp` values, the guard rejects morph-induced echoes while accepting genuine user interactions. Combined with a **single delegated handler per component root** and `data-*` attribute dispatch, this ensures immediate interactivity that survives morph cycles without per-element handler re-registration.
+5. **Event Integrity Under Morphing:** Empirical testing in real Chromium (Section 10) disproved the theoretical "Morph Re-Dispatch Problem" — browsers do **not** re-dispatch click events when element attributes are mutated synchronously during event handling. No timestamp-based click guard or per-component boilerplate is needed. The delegated event system's built-in re-entrancy guard and the Morph Guard (Section 9) together provide complete event integrity as a defense-in-depth measure.
 
 This report confirms that it is indeed possible to safely improve the algorithm for stability and performance. The result is a "Neo-Classic" framework that is technically sound, performant, and joyfully simple to use.
 
