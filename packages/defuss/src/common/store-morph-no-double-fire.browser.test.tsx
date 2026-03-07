@@ -17,7 +17,6 @@ import { describe, it, expect, afterEach } from "vitest";
 import { renderSync } from "../render/client.js";
 import { updateDomWithVdom } from "../common/dom.js";
 import { createStore } from "../store/store.js";
-import { createRef } from "../render/ref.js";
 
 let container: HTMLDivElement;
 
@@ -28,7 +27,6 @@ afterEach(() => {
 });
 
 describe("Store-driven morph: no double-fire (Browser / Playwright)", () => {
-
   it("click → store.set → morph (attribute change) fires handler exactly once", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -40,6 +38,7 @@ describe("Store-driven morph: no double-fire (Browser / Playwright)", () => {
     // Component: a button that shows the count and has aria-pressed toggled by morph
     const CounterButton = () => (
       <button
+        type="button"
         id="counter-btn"
         aria-pressed={String(store.value.count % 2 === 1)}
         data-count={String(store.value.count)}
@@ -84,6 +83,7 @@ describe("Store-driven morph: no double-fire (Browser / Playwright)", () => {
 
     const CounterButton = () => (
       <button
+        type="button"
         id="multi-btn"
         aria-pressed={String(store.value.count % 2 === 1)}
         data-count={String(store.value.count)}
@@ -120,6 +120,7 @@ describe("Store-driven morph: no double-fire (Browser / Playwright)", () => {
 
     const ToggleButton = () => (
       <button
+        type="button"
         id="toggle-btn"
         class={store.value.active ? "btn active" : "btn"}
         aria-expanded={String(store.value.active)}
@@ -223,6 +224,7 @@ describe("Store-driven morph: no double-fire (Browser / Playwright)", () => {
     const Button = () => (
       <button
         id="echo-btn"
+        type="button"
         data-count={String(store.value.count)}
         onClick={(e: MouseEvent) => {
           events.push(e);

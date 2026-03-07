@@ -6,13 +6,18 @@ export default defineConfig({
     environment: "happy-dom",
     testTimeout: 290000, // 290 seconds per test
     include: ["**/*.test.{ts,tsx}"],
-    exclude: ["**/node_modules/**", "**/dist/**", "**/*.md", "**/kitchensink/*"],
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/*.md",
+      "**/kitchensink/*",
+    ],
     clearMocks: true,
     globals: true,
     coverage: {
       provider: "v8",
       include: ["src/**/*"],
-      exclude: ["**/*.{md,html}", "**/.DS_Store"]
+      exclude: ["**/*.{md,html}", "**/.DS_Store"],
     },
   },
 });

@@ -47,7 +47,8 @@
         "useSemanticElements": "off",
         "noNoninteractiveElementToInteractiveRole": "off",
         "useAriaPropsForRole": "off",
-        "useFocusableInteractive": "off"
+        "useFocusableInteractive": "off",
+        "useAriaPropsSupportedByRole": "off"
       },
       "performance": {
         "noAccumulatingSpread": "off",

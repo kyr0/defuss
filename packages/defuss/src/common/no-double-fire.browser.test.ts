@@ -19,9 +19,9 @@ let container: HTMLDivElement;
 afterEach(() => {
   if (container) {
     clearDelegatedEvents(container);
-    container.querySelectorAll("*").forEach((el) =>
-      clearDelegatedEvents(el as HTMLElement),
-    );
+    container.querySelectorAll("*").forEach((el) => {
+      clearDelegatedEvents(el as HTMLElement);
+    });
     container.remove();
   }
 });
@@ -159,7 +159,9 @@ describe("No double-fire (Browser / Playwright)", () => {
     container.appendChild(button);
 
     let fireCount = 0;
-    const handler = () => { fireCount++; };
+    const handler = () => {
+      fireCount++;
+    };
 
     registerDelegatedEvent(button, "click", handler);
     button.click();
@@ -183,8 +185,17 @@ describe("No double-fire (Browser / Playwright)", () => {
     let captureCount = 0;
     let bubbleCount = 0;
 
-    registerDelegatedEvent(button, "click", () => { captureCount++; }, { capture: true });
-    registerDelegatedEvent(button, "click", () => { bubbleCount++; });
+    registerDelegatedEvent(
+      button,
+      "click",
+      () => {
+        captureCount++;
+      },
+      { capture: true },
+    );
+    registerDelegatedEvent(button, "click", () => {
+      bubbleCount++;
+    });
 
     button.click();
     // Each phase fires exactly once
@@ -203,8 +214,12 @@ describe("No double-fire (Browser / Playwright)", () => {
 
     let count1 = 0;
     let count2 = 0;
-    registerDelegatedEvent(btn1, "click", () => { count1++; });
-    registerDelegatedEvent(btn2, "click", () => { count2++; });
+    registerDelegatedEvent(btn1, "click", () => {
+      count1++;
+    });
+    registerDelegatedEvent(btn2, "click", () => {
+      count2++;
+    });
 
     btn1.click();
     expect(count1).toBe(1);
