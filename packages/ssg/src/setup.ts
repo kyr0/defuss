@@ -23,7 +23,12 @@ const canResolve = (dep: string, dir: string): boolean => {
  * Run a package manager command and stream output with a rolling window.
  * Rejects if the process exits with a non-zero code.
  */
-const runInstall = (cmd: string, args: string[], cwd: string, env?: NodeJS.ProcessEnv): Promise<void> =>
+const runInstall = (
+  cmd: string,
+  args: string[],
+  cwd: string,
+  env?: NodeJS.ProcessEnv,
+): Promise<void> =>
   new Promise<void>((resolve, reject) => {
     const child = spawn(cmd, args, {
       cwd,
@@ -52,7 +57,10 @@ const runInstall = (cmd: string, args: string[], cwd: string, env?: NodeJS.Proce
     };
 
     const handleData = (chunk: Buffer) => {
-      const lines = chunk.toString().split(/\r\n|\n|\r/).filter((l) => l.trim().length > 0);
+      const lines = chunk
+        .toString()
+        .split(/\r\n|\n|\r/)
+        .filter((l) => l.trim().length > 0);
       for (const line of lines) pushLine(line);
     };
 
@@ -61,7 +69,12 @@ const runInstall = (cmd: string, args: string[], cwd: string, env?: NodeJS.Proce
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`${cmd} ${args.join(" ")} exited with code ${code ?? "unknown"}`));
+      else
+        reject(
+          new Error(
+            `${cmd} ${args.join(" ")} exited with code ${code ?? "unknown"}`,
+          ),
+        );
     });
   });
 
@@ -108,7 +121,7 @@ export const setup = async (projectDir: string): Promise<Status> => {
   // ── Dependency resolution check ────────────────────────────────────
   // If all required deps already exist in an ancestor node_modules
   // (e.g. workspace hoisting or a previous install), skip `install`
-  // entirely — avoids workspace:* resolution errors in monorepos.
+  // entirely - avoids workspace:* resolution errors in monorepos.
   const allDeps = {
     ...packageJson.dependencies,
     ...packageJson.devDependencies,
@@ -120,9 +133,7 @@ export const setup = async (projectDir: string): Promise<Status> => {
     depNames.length === 0 || depNames.every((d) => canResolve(d, projectDir));
 
   if (allResolvable) {
-    console.log(
-      `All dependencies already available — skipping install.`,
-    );
+    console.log(`All dependencies already available - skipping install.`);
     return { code: "OK", message: "Setup completed (deps already available)" };
   }
 
@@ -142,13 +153,18 @@ export const setup = async (projectDir: string): Promise<Status> => {
         child.on("close", () => resolve());
       });
     } catch {
-      // non-fatal — install may still work
+      // non-fatal - install may still work
     }
   }
 
   try {
     const bunEnv = { ...process.env, BUN_WORKSPACE_ROOT: projectDir };
-    await runInstall(pm, pm === "bun" ? ["install", "--no-cache", "--linker", "isolated"] : ["install"], projectDir,
+    await runInstall(
+      pm,
+      pm === "bun"
+        ? ["install", "--no-cache", "--linker", "isolated"]
+        : ["install"],
+      projectDir,
       pm === "bun" ? bunEnv : undefined,
     );
     console.log("Dependencies installed successfully.");
@@ -162,12 +178,12 @@ export const setup = async (projectDir: string): Promise<Status> => {
         console.log("Dependencies installed successfully via npm.");
       } catch (npmError) {
         console.warn(
-          `Warning: npm install also failed: ${(npmError as Error).message}\nContinuing anyway — dependencies may already be available.`,
+          `Warning: npm install also failed: ${(npmError as Error).message}\nContinuing anyway - dependencies may already be available.`,
         );
       }
     } else {
       console.warn(
-        `Warning: ${(error as Error).message}\nContinuing anyway — dependencies may already be available.`,
+        `Warning: ${(error as Error).message}\nContinuing anyway - dependencies may already be available.`,
       );
     }
   }

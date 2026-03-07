@@ -1,6 +1,6 @@
 /**
  * Runtime prop introspection for the storybook shell app.
- * This is a browser-side module — it mirrors the logic from src/prop-inspector.ts
+ * This is a browser-side module - it mirrors the logic from src/prop-inspector.ts
  * but runs in the browser context.
  */
 

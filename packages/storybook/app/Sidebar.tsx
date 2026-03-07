@@ -1,21 +1,19 @@
 import { type FC, createRef, $ } from "defuss";
-import { appStore, manifest, storybookConfig } from "./App.js";
+import { appStore, manifest } from "./App.js";
 
-interface SidebarGroup {
+interface StoryGroup {
   label: string;
   entries: Array<{ id: string; title: string; type: string }>;
 }
 
-function groupStories(entries: any[], filter: string): SidebarGroup[] {
-  const groups = new Map<string, SidebarGroup>();
+function groupStories(entries: any[], filter: string): StoryGroup[] {
+  const groups = new Map<string, StoryGroup>();
 
   for (const entry of entries) {
-    // Filter by search term
     if (filter && !entry.title.toLowerCase().includes(filter.toLowerCase())) {
       continue;
     }
 
-    // Group by slash-separated path: "Components/Button" → group "Components"
     const parts = entry.title.split("/");
     const groupLabel =
       parts.length > 1 ? parts.slice(0, -1).join("/") : "Stories";
@@ -38,7 +36,6 @@ function groupStories(entries: any[], filter: string): SidebarGroup[] {
 
 export const StorybookSidebar: FC = () => {
   const listRef = createRef<HTMLDivElement>();
-  const searchRef = createRef<HTMLInputElement>();
 
   const selectStory = (storyId: string) => {
     window.location.hash = storyId;
@@ -55,25 +52,34 @@ export const StorybookSidebar: FC = () => {
     const groups = groupStories(manifest, filter);
 
     $(listRef).jsx(
-      <div>
+      <div class="p-2">
         {groups.length === 0 ? (
           <div class="p-4 text-sm text-muted-foreground italic">
             No stories match your filter.
           </div>
         ) : (
           groups.map((group) => (
-            <div key={group.label}>
-              <div class="sb-group-label">{group.label}</div>
-              {group.entries.map((entry) => (
-                <div
-                  key={entry.id}
-                  class={`sb-story-item ${activeStoryId === entry.id ? "active" : ""}`}
-                  onClick={() => selectStory(entry.id)}
-                >
-                  <span class="mr-2">{entry.type === "mdx" ? "📄" : "🧩"}</span>
-                  {entry.title}
-                </div>
-              ))}
+            <div key={group.label} class="mb-2">
+              <div class="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {group.label}
+              </div>
+              <ul>
+                {group.entries.map((entry) => (
+                  <li key={entry.id}>
+                    <a
+                      class={`sb-story-item ${activeStoryId === entry.id ? "active" : ""}`}
+                      href={`#${entry.id}`}
+                      onClick={(e: MouseEvent) => {
+                        e.preventDefault();
+                        selectStory(entry.id);
+                      }}
+                    >
+                      <span class="mr-2">{entry.type === "mdx" ? "📄" : "🧩"}</span>
+                      {entry.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           ))
         )}
@@ -95,14 +101,13 @@ export const StorybookSidebar: FC = () => {
     <div onMount={onMount}>
       <div class="sb-sidebar-header">
         <input
-          ref={searchRef}
           type="text"
           placeholder="Filter stories..."
           class="input w-full text-sm"
           onInput={onSearchInput}
         />
       </div>
-      <div ref={listRef} class="py-1">
+      <div ref={listRef}>
         {/* Populated by renderList */}
       </div>
     </div>

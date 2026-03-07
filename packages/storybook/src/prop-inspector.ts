@@ -11,7 +11,7 @@ import type { InspectedProp, StoryMeta } from "./types.js";
 export function inspectProps(meta: StoryMeta): InspectedProp[] {
   const props: Map<string, InspectedProp> = new Map();
 
-  // Layer 2: Function reflection — extract param names and defaults from source
+  // Layer 2: Function reflection - extract param names and defaults from source
   if (meta.component) {
     const reflected = reflectFunctionProps(meta.component);
     for (const prop of reflected) {
@@ -48,7 +48,7 @@ export function inspectProps(meta: StoryMeta): InspectedProp[] {
     }
   }
 
-  // Filter out children, className, class — these aren't meaningful controls
+  // Filter out children, className, class - these aren't meaningful controls
   const skipProps = new Set([
     "children",
     "className",
@@ -185,7 +185,7 @@ function parseDefaultValue(raw: string): unknown {
     }
   }
 
-  // Object literal — return as string (can't safely eval)
+  // Object literal - return as string (can't safely eval)
   return raw;
 }
 

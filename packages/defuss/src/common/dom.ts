@@ -84,7 +84,11 @@ function isTextLike(value: unknown): value is string | number | boolean {
 }
 
 function isVNode(value: unknown): value is VNode<VNodeAttributes> {
-  return Boolean(value && typeof value === "object" && "type" in (value as Record<string, unknown>));
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "type" in (value as Record<string, unknown>),
+  );
 }
 
 function toValidChild(child: VNodeChild): ValidChild | undefined {
@@ -111,14 +115,22 @@ function normalizeChildren(input: RenderInput): Array<ValidChild> {
     if (typeof valid === "undefined") return;
 
     // unwrap Fragment-ish nodes (defuss sometimes uses "fragment", some code uses "Fragment")
-    if (isVNode(valid) && (valid.type === "fragment" || valid.type === "Fragment")) {
+    if (
+      isVNode(valid) &&
+      (valid.type === "fragment" || valid.type === "Fragment")
+    ) {
       const nested = Array.isArray(valid.children) ? valid.children : [];
       nested.forEach(pushChild);
       return;
     }
 
     // ignore booleans/null/undefined as render-nothing
-    if (valid === null || typeof valid === "undefined" || typeof valid === "boolean") return;
+    if (
+      valid === null ||
+      typeof valid === "undefined" ||
+      typeof valid === "boolean"
+    )
+      return;
 
     raw.push(valid);
   };
@@ -135,7 +147,11 @@ function normalizeChildren(input: RenderInput): Array<ValidChild> {
   };
 
   for (const child of raw) {
-    if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+    if (
+      typeof child === "string" ||
+      typeof child === "number" ||
+      typeof child === "boolean"
+    ) {
       buffer = (buffer ?? "") + String(child);
       continue;
     }
@@ -152,7 +168,8 @@ function getVNodeMatchKey(child: ValidChild): string | null {
   if (!child || typeof child !== "object") return null;
 
   const key = child.attributes?.key;
-  if (typeof key === "string" || typeof key === "number") return `k:${String(key)}`;
+  if (typeof key === "string" || typeof key === "number")
+    return `k:${String(key)}`;
 
   const id = child.attributes?.id;
   if (typeof id === "string" && id.length > 0) return `id:${id}`;
@@ -183,7 +200,11 @@ function getDomMatchKeys(node: Node): Array<string> {
  * 2) Check if a DOM node and a ValidChild match by type
  ********************************************************/
 function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
-  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+  if (
+    typeof child === "string" ||
+    typeof child === "number" ||
+    typeof child === "boolean"
+  ) {
     return domNode.nodeType === Node.TEXT_NODE;
   }
 
@@ -192,7 +213,8 @@ function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
 
     const el = domNode as HTMLElement;
     const oldTag = el.tagName.toLowerCase();
-    const newTag = typeof child.type === "string" ? child.type.toLowerCase() : "";
+    const newTag =
+      typeof child.type === "string" ? child.type.toLowerCase() : "";
     if (!newTag || oldTag !== newTag) return false;
 
     // Match only by tag name - class changes should be handled by patchElementInPlace
@@ -214,12 +236,19 @@ function createDomFromChild(
 
   if (child == null) return undefined;
 
-  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+  if (
+    typeof child === "string" ||
+    typeof child === "number" ||
+    typeof child === "boolean"
+  ) {
     return [globals.window.document.createTextNode(String(child))];
   }
 
   // create without parent (we'll insert manually and run lifecycle hooks afterwards)
-  const created = renderer.createElementOrElements(child) as Node | Array<Node> | undefined;
+  const created = renderer.createElementOrElements(child) as
+    | Node
+    | Array<Node>
+    | undefined;
 
   if (!created) return undefined;
   const nodes = Array.isArray(created) ? created : [created];
@@ -235,7 +264,10 @@ function shouldPreserveFormStateAttribute(
   vnode: VNode<VNodeAttributes>,
 ): boolean {
   const tag = el.tagName.toLowerCase();
-  const hasExplicit = Object.prototype.hasOwnProperty.call(vnode.attributes ?? {}, attrName);
+  const hasExplicit = Object.prototype.hasOwnProperty.call(
+    vnode.attributes ?? {},
+    attrName,
+  );
 
   if (hasExplicit) return false;
 
@@ -246,7 +278,11 @@ function shouldPreserveFormStateAttribute(
   return false;
 }
 
-function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals: Globals): void {
+function patchElementInPlace(
+  el: Element,
+  vnode: VNode<VNodeAttributes>,
+  globals: Globals,
+): void {
   const renderer = getRenderer(globals.window.document);
 
   // remove old attributes not present (but preserve uncontrolled form state)
@@ -263,7 +299,11 @@ function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals
     if (name.startsWith("on")) continue;
 
     // treat class/className as equivalent
-    if (name === "class" && (Object.prototype.hasOwnProperty.call(nextAttrs, "class") || Object.prototype.hasOwnProperty.call(nextAttrs, "className"))) {
+    if (
+      name === "class" &&
+      (Object.prototype.hasOwnProperty.call(nextAttrs, "class") ||
+        Object.prototype.hasOwnProperty.call(nextAttrs, "className"))
+    ) {
       continue;
     }
 
@@ -288,7 +328,11 @@ function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals
   for (const key of registeredKeys) {
     if (!nextEventKeys.has(key)) {
       const [eventType, phase] = key.split(":");
-      removeDelegatedEventByKey(el as HTMLElement, eventType, phase as "bubble" | "capture");
+      removeDelegatedEventByKey(
+        el as HTMLElement,
+        eventType,
+        phase as "bubble" | "capture",
+      );
     }
   }
 
@@ -310,21 +354,32 @@ function patchElementInPlace(el: Element, vnode: VNode<VNodeAttributes>, globals
 
   // preserve textarea live value unless explicitly controlled
   if (tag === "textarea") {
-    const isControlled = Object.prototype.hasOwnProperty.call(nextAttrs, "value");
+    const isControlled = Object.prototype.hasOwnProperty.call(
+      nextAttrs,
+      "value",
+    );
     const isActive = el.ownerDocument?.activeElement === el;
     if (isActive && !isControlled) return;
   }
 
-  // reconcile children (direct call — bypasses morph guard for internal recursion)
+  // reconcile children (direct call - bypasses morph guard for internal recursion)
   morphDomDirect(el, (vnode.children ?? []) as RenderInput, globals);
 }
 
 /********************************************************
  * 5) Morph a single DOM node to match a ValidChild
  ********************************************************/
-function morphNode(domNode: Node, child: ValidChild, globals: Globals): Node | null {
+function morphNode(
+  domNode: Node,
+  child: ValidChild,
+  globals: Globals,
+): Node | null {
   // text-like
-  if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+  if (
+    typeof child === "string" ||
+    typeof child === "number" ||
+    typeof child === "boolean"
+  ) {
     const text = String(child);
 
     if (domNode.nodeType === Node.TEXT_NODE) {
@@ -376,12 +431,15 @@ function morphNode(domNode: Node, child: ValidChild, globals: Globals): Node | n
 }
 
 /********************************************************
- * 6) Morph guard — tags DOM subtrees as "rendering" to prevent
+ * 6) Morph guard - tags DOM subtrees as "rendering" to prevent
  *    re-entrant / conflicting morphs on the same or ancestor nodes.
  *    Unrelated subtrees morph in parallel without blocking.
  ********************************************************/
 const renderingNodes = new WeakSet<Element>();
-const pendingMorphs = new Map<Element, { vdom: RenderInput; globals: Globals }>();
+const pendingMorphs = new Map<
+  Element,
+  { vdom: RenderInput; globals: Globals }
+>();
 
 function isAncestorRendering(el: Element): boolean {
   let current = el.parentElement;
@@ -413,7 +471,7 @@ function flushPendingMorphs(): void {
  * If the target element (or an ancestor) is already being morphed,
  * the render is queued (latest-wins) and replayed after the active
  * morph finishes.  Morphs on unrelated subtrees proceed immediately
- * without blocking — conflict-free parallel rendering.
+ * without blocking - conflict-free parallel rendering.
  */
 export function updateDomWithVdom(
   parentElement: Element,
@@ -777,7 +835,9 @@ export function addElementEvent(
 ): void {
   // Use delegated events for unified event handling (NEW ALGO)
   // multi: true allows multiple handlers per element (Dequery mode)
-  registerDelegatedEvent(target as HTMLElement, eventType, handler, { multi: true });
+  registerDelegatedEvent(target as HTMLElement, eventType, handler, {
+    multi: true,
+  });
 }
 
 export function removeElementEvent(

@@ -22,7 +22,7 @@ const fileData: FileNode[] = [
     id: "src",
     parentId: null,
     name: "src",
-    size: "—",
+    size: "-",
     type: "Folder",
     modified: "2025-03-01",
   },
@@ -30,7 +30,7 @@ const fileData: FileNode[] = [
     id: "src/components",
     parentId: "src",
     name: "components",
-    size: "—",
+    size: "-",
     type: "Folder",
     modified: "2025-03-01",
   },
@@ -70,7 +70,7 @@ const fileData: FileNode[] = [
     id: "src/utils",
     parentId: "src",
     name: "utils",
-    size: "—",
+    size: "-",
     type: "Folder",
     modified: "2025-02-20",
   },
@@ -102,7 +102,7 @@ const fileData: FileNode[] = [
     id: "public",
     parentId: null,
     name: "public",
-    size: "—",
+    size: "-",
     type: "Folder",
     modified: "2025-01-15",
   },
@@ -427,7 +427,7 @@ const entries = applyDataview(store.value.data, store.value.view);
         Simple Tree
       </h2>
       <p class="text-muted-foreground mb-4">
-        A minimal tree without extra columns — just names with expand/collapse
+        A minimal tree without extra columns - just names with expand/collapse
         and selection. Ideal for navigation structures, org charts, or category
         pickers.
       </p>

@@ -192,8 +192,7 @@ export const compileEndpoints = async (
   // Build the source→compiled mapping
   const mapping = new Map<string, string>();
   for (const src of sourceFiles) {
-    const rel = relative(pagesDir, src)
-      .replace(/\.(ts|js)$/, ".mjs");
+    const rel = relative(pagesDir, src).replace(/\.(ts|js)$/, ".mjs");
     mapping.set(src, join(outDir, rel));
   }
   return mapping;
@@ -210,12 +209,17 @@ const loadEndpointModule = async (
   filePath: string,
 ): Promise<EndpointModule> => {
   const code = await readFile(filePath, "utf-8");
-  const tmpFile = join(tmpdir(), `defuss-ep-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`);
+  const tmpFile = join(
+    tmpdir(),
+    `defuss-ep-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`,
+  );
   await writeFile(tmpFile, code, "utf-8");
   try {
     return await import(tmpFile);
   } finally {
-    try { unlinkSync(tmpFile); } catch {}
+    try {
+      unlinkSync(tmpFile);
+    } catch {}
   }
 };
 
@@ -241,7 +245,12 @@ export const resolveEndpoints = async (
   if (sourceFiles.length === 0) return [];
 
   console.time("[endpoints] compile-all");
-  const mapping = await compileEndpoints(sourceFiles, pagesDir, endpointsDir, debug);
+  const mapping = await compileEndpoints(
+    sourceFiles,
+    pagesDir,
+    endpointsDir,
+    debug,
+  );
   console.timeEnd("[endpoints] compile-all");
   const endpoints: ResolvedEndpoint[] = [];
 
@@ -289,7 +298,7 @@ export const resolveEndpoints = async (
  *    body is written to a static file in `dist/`.
  *
  * Endpoints that do NOT export `prerender = true` are compiled but
- * their handlers are NOT invoked — they will be served dynamically
+ * their handlers are NOT invoked - they will be served dynamically
  * from `.endpoints/`.
  */
 export const buildEndpoints = async (
@@ -312,9 +321,7 @@ export const buildEndpoints = async (
       (prerenderEndpoints.length
         ? `, ${prerenderEndpoints.length} pre-rendered`
         : "") +
-      (dynamicEndpoints.length
-        ? `, ${dynamicEndpoints.length} dynamic`
-        : ""),
+      (dynamicEndpoints.length ? `, ${dynamicEndpoints.length} dynamic` : ""),
   );
 
   // Only pre-render endpoints that opt in with `export const prerender = true`
@@ -448,7 +455,10 @@ const handleEndpointRoute = async (
 
     return response;
   } catch (error) {
-    console.error(`Endpoint error ${ctx.request.method} ${routePattern}:`, error);
+    console.error(
+      `Endpoint error ${ctx.request.method} ${routePattern}:`,
+      error,
+    );
     return new Response("Internal Server Error", { status: 500 });
   }
 };
@@ -461,7 +471,7 @@ const handleEndpointRoute = async (
  * Loads the already-compiled `.mjs` files from the `.endpoints/`
  * folder and registers an Express route for each exported HTTP method.
  *
- * Endpoints that export `prerender = true` are skipped — they were
+ * Endpoints that export `prerender = true` are skipped - they were
  * already written as static files during the build step and will be
  * served by the static-file middleware.
  *
@@ -499,7 +509,7 @@ export const registerEndpoints = async (
       continue;
     }
 
-    // Skip pre-rendered endpoints — they are served as static files
+    // Skip pre-rendered endpoints - they are served as static files
     if (module.prerender === true) {
       if (debug) {
         console.log(`Skipping prerender endpoint: ${route}`);
@@ -521,11 +531,14 @@ export const registerEndpoints = async (
     // Register a handler for each exported HTTP method
     for (const method of HTTP_METHODS) {
       if (method in module && typeof module[method] === "function") {
-        const elysiaMethod = method === "ALL" ? "all" : method.toLowerCase() as any;
+        const elysiaMethod =
+          method === "ALL" ? "all" : (method.toLowerCase() as any);
         (app as any)[elysiaMethod](
           expressRoute,
-          (ctx: { request: Request; params: Record<string, string | undefined> }) =>
-            handleEndpointRoute(ctx, compiledFile, route, method),
+          (ctx: {
+            request: Request;
+            params: Record<string, string | undefined>;
+          }) => handleEndpointRoute(ctx, compiledFile, route, method),
         );
         if (debug) {
           console.log(`  ${method} ${expressRoute}`);
@@ -537,8 +550,10 @@ export const registerEndpoints = async (
     if (module.GET && !module.HEAD) {
       app.head(
         expressRoute,
-        (ctx: { request: Request; params: Record<string, string | undefined> }) =>
-          handleEndpointRoute(ctx, compiledFile, route, "GET"),
+        (ctx: {
+          request: Request;
+          params: Record<string, string | undefined>;
+        }) => handleEndpointRoute(ctx, compiledFile, route, "GET"),
       );
       if (debug) {
         console.log(`  HEAD ${expressRoute} (auto from GET)`);

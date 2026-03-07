@@ -41,8 +41,11 @@ export const serve = async ({
   debug = false,
   multicore = false,
 }: BuildOptions): Promise<Status> => {
-  const isWorker = !!process.env.__WORKER_PORT || !!process.env.__WORKER_REUSEPORT;
-  const workerPort = process.env.__WORKER_PORT ? Number(process.env.__WORKER_PORT) : 0;
+  const isWorker =
+    !!process.env.__WORKER_PORT || !!process.env.__WORKER_REUSEPORT;
+  const workerPort = process.env.__WORKER_PORT
+    ? Number(process.env.__WORKER_PORT)
+    : 0;
 
   // Workers receive config via env to avoid re-compiling config.ts with esbuild
   let config: SsgConfig;
@@ -60,7 +63,7 @@ export const serve = async ({
   const componentsDir = join(projectDir, config.components);
   const assetsDir = join(projectDir, config.assets);
 
-  // initial build (and setup) — only on primary / single-process
+  // initial build (and setup) - only on primary / single-process
   if (!isWorker) {
     await build({ projectDir, debug, mode: "serve" });
   }
@@ -85,11 +88,17 @@ export const serve = async ({
 
     if (isLinux) {
       // ── Linux: all workers bind :3000 with reusePort (kernel LB) ──
-      console.log(`[multicore] Primary ${process.pid} spawning ${cpuCount} workers on port ${port} (reusePort)`);
+      console.log(
+        `[multicore] Primary ${process.pid} spawning ${cpuCount} workers on port ${port} (reusePort)`,
+      );
 
       function spawnWorker(i: number) {
         const proc = Bun.spawn(process.argv, {
-          env: { ...process.env, __WORKER_REUSEPORT: "1", __SSG_CONFIG: serializedConfig },
+          env: {
+            ...process.env,
+            __WORKER_REUSEPORT: "1",
+            __SSG_CONFIG: serializedConfig,
+          },
           stdout: "inherit",
           stderr: "inherit",
         });
@@ -98,10 +107,14 @@ export const serve = async ({
           if (!shuttingDown) {
             restartCounts[i]++;
             if (restartCounts[i] > MAX_RESTARTS) {
-              console.error(`[multicore] Worker ${proc.pid} exceeded ${MAX_RESTARTS} restarts, giving up`);
+              console.error(
+                `[multicore] Worker ${proc.pid} exceeded ${MAX_RESTARTS} restarts, giving up`,
+              );
               return;
             }
-            console.log(`[multicore] Worker ${proc.pid} exited (${code}), restarting in ${RESTART_DELAY_MS}ms (${restartCounts[i]}/${MAX_RESTARTS})`);
+            console.log(
+              `[multicore] Worker ${proc.pid} exited (${code}), restarting in ${RESTART_DELAY_MS}ms (${restartCounts[i]}/${MAX_RESTARTS})`,
+            );
             setTimeout(() => spawnWorker(i), RESTART_DELAY_MS);
           }
         });
@@ -111,14 +124,21 @@ export const serve = async ({
     } else {
       // ── macOS/Windows: per-worker ports + HTTP+WS reverse proxy LB on :3000 ──
       const backends: { host: string; port: number }[] = [];
-      for (let i = 0; i < cpuCount; i++) backends.push({ host: "127.0.0.1", port: baseWorkerPort + i });
+      for (let i = 0; i < cpuCount; i++)
+        backends.push({ host: "127.0.0.1", port: baseWorkerPort + i });
 
-      console.log(`[multicore] Primary ${process.pid} spawning ${cpuCount} workers on ports ${baseWorkerPort}..${baseWorkerPort + cpuCount - 1}`);
+      console.log(
+        `[multicore] Primary ${process.pid} spawning ${cpuCount} workers on ports ${baseWorkerPort}..${baseWorkerPort + cpuCount - 1}`,
+      );
 
       function spawnWorker(i: number) {
         const wp = baseWorkerPort + i;
         const proc = Bun.spawn(process.argv, {
-          env: { ...process.env, __WORKER_PORT: String(wp), __SSG_CONFIG: serializedConfig },
+          env: {
+            ...process.env,
+            __WORKER_PORT: String(wp),
+            __SSG_CONFIG: serializedConfig,
+          },
           stdout: "inherit",
           stderr: "inherit",
         });
@@ -127,10 +147,14 @@ export const serve = async ({
           if (!shuttingDown) {
             restartCounts[i]++;
             if (restartCounts[i] > MAX_RESTARTS) {
-              console.error(`[multicore] Worker port ${wp} (pid ${proc.pid}) exceeded ${MAX_RESTARTS} restarts, giving up`);
+              console.error(
+                `[multicore] Worker port ${wp} (pid ${proc.pid}) exceeded ${MAX_RESTARTS} restarts, giving up`,
+              );
               return;
             }
-            console.log(`[multicore] Worker port ${wp} (pid ${proc.pid}) exited (${code}), restarting in ${RESTART_DELAY_MS}ms (${restartCounts[i]}/${MAX_RESTARTS})`);
+            console.log(
+              `[multicore] Worker port ${wp} (pid ${proc.pid}) exited (${code}), restarting in ${RESTART_DELAY_MS}ms (${restartCounts[i]}/${MAX_RESTARTS})`,
+            );
             setTimeout(() => spawnWorker(i), RESTART_DELAY_MS);
           }
         });
@@ -139,11 +163,17 @@ export const serve = async ({
       for (let i = 0; i < cpuCount; i++) spawnWorker(i);
 
       // Wait until every worker is actually serving HTTP
-      async function waitForHttp(host: string, wport: number, timeoutMs = 15_000) {
+      async function waitForHttp(
+        host: string,
+        wport: number,
+        timeoutMs = 15_000,
+      ) {
         const deadline = Date.now() + timeoutMs;
         while (Date.now() < deadline) {
           try {
-            await fetch(`http://${host}:${wport}/`, { signal: AbortSignal.timeout(300) });
+            await fetch(`http://${host}:${wport}/`, {
+              signal: AbortSignal.timeout(300),
+            });
             return;
           } catch {}
           await new Promise((r) => setTimeout(r, 100));
@@ -165,7 +195,7 @@ export const serve = async ({
       const lrClients = new Set<any>();
 
       type WsData = {
-        backend: typeof backends[0];
+        backend: (typeof backends)[0];
         path: string;
         isLiveReload: boolean;
         upstream?: WebSocket;
@@ -181,11 +211,18 @@ export const serve = async ({
           const u = new URL(req.url);
 
           // WebSocket upgrade (for /livereload etc.)
-          if ((req.headers.get("upgrade") ?? "").toLowerCase() === "websocket") {
+          if (
+            (req.headers.get("upgrade") ?? "").toLowerCase() === "websocket"
+          ) {
             const backend = pick();
             const path = u.pathname + u.search;
             const isLiveReload = u.pathname === "/livereload";
-            if (bunServer.upgrade(req, { data: { backend, path, isLiveReload, queue: [] } })) return;
+            if (
+              bunServer.upgrade(req, {
+                data: { backend, path, isLiveReload, queue: [] },
+              })
+            )
+              return;
             return new Response("WebSocket upgrade failed", { status: 400 });
           }
 
@@ -193,7 +230,7 @@ export const serve = async ({
           const backend = pick();
           const upstreamUrl = `http://${backend.host}:${backend.port}${u.pathname}${u.search}`;
 
-          // Avoid `new Request(url, req)` — it causes Bun panic under concurrency
+          // Avoid `new Request(url, req)` - it causes Bun panic under concurrency
           return fetch(upstreamUrl, {
             method: req.method,
             headers: req.headers,
@@ -208,7 +245,9 @@ export const serve = async ({
           open(ws) {
             if (ws.data.isLiveReload) lrClients.add(ws);
             const { backend, path } = ws.data;
-            const upstream = new WebSocket(`ws://${backend.host}:${backend.port}${path}`);
+            const upstream = new WebSocket(
+              `ws://${backend.host}:${backend.port}${path}`,
+            );
             upstream.binaryType = "arraybuffer";
             ws.data.upstream = upstream;
 
@@ -221,25 +260,39 @@ export const serve = async ({
               if (typeof d === "string") ws.send(d);
               else ws.send(new Uint8Array(d as ArrayBuffer));
             };
-            upstream.onclose = () => { try { ws.close(); } catch {} };
-            upstream.onerror = () => { try { ws.close(); } catch {} };
+            upstream.onclose = () => {
+              try {
+                ws.close();
+              } catch {}
+            };
+            upstream.onerror = () => {
+              try {
+                ws.close();
+              } catch {}
+            };
           },
           message(ws, msg) {
             const u = ws.data.upstream;
             if (u && u.readyState === WebSocket.OPEN) {
               u.send(msg as any);
             } else {
-              ws.data.queue.push(typeof msg === "string" ? msg : new Uint8Array(msg));
+              ws.data.queue.push(
+                typeof msg === "string" ? msg : new Uint8Array(msg),
+              );
             }
           },
           close(ws) {
             if (ws.data.isLiveReload) lrClients.delete(ws);
-            try { ws.data.upstream?.close(); } catch {}
+            try {
+              ws.data.upstream?.close();
+            } catch {}
           },
         },
       });
 
-      console.log(`[multicore] HTTP LB ${process.pid} on http://localhost:${port} → ${backends.map((b) => `${b.host}:${b.port}`).join(", ")}`);
+      console.log(
+        `[multicore] HTTP LB ${process.pid} on http://localhost:${port} → ${backends.map((b) => `${b.host}:${b.port}`).join(", ")}`,
+      );
     }
 
     // ── File watching + rebuild in multicore primary ──
@@ -247,22 +300,34 @@ export const serve = async ({
     let mcPendingBuild: string | null = null;
 
     const mcTriggerBuild = async (filePath: string) => {
-      if (mcIsBuilding) { mcPendingBuild = filePath; return; }
+      if (mcIsBuilding) {
+        mcPendingBuild = filePath;
+        return;
+      }
       mcIsBuilding = true;
       try {
         console.log(`[multicore] File changed: ${filePath}`);
         console.time("[multicore] rebuild");
-        await build({ projectDir, debug, mode: "serve", changedFile: filePath });
+        await build({
+          projectDir,
+          debug,
+          mode: "serve",
+          changedFile: filePath,
+        });
         console.timeEnd("[multicore] rebuild");
 
         // Broadcast reload to all livereload WS clients connected through the LB
         if (!isLinux && typeof lrClients !== "undefined") {
           const msg = JSON.stringify({ command: "reload" });
           for (const ws of lrClients) {
-            try { ws.send(msg); } catch { lrClients.delete(ws); }
+            try {
+              ws.send(msg);
+            } catch {
+              lrClients.delete(ws);
+            }
           }
         }
-        // For Linux (reusePort), we can't track LB WS clients — skip for now
+        // For Linux (reusePort), we can't track LB WS clients - skip for now
       } catch (error) {
         console.error("[multicore] Rebuild failed:", error);
       } finally {
@@ -278,7 +343,14 @@ export const serve = async ({
     const mcWatcher = chokidar.watch(projectDir, {
       ignored: (p: string) => {
         const segs = p.split(/[\/\\]/);
-        return segs.some((s) => s === 'node_modules' || s === 'dist' || s === '.ssg-temp' || s === 'bun.lock' || (s.startsWith('.') && s.length > 1));
+        return segs.some(
+          (s) =>
+            s === "node_modules" ||
+            s === "dist" ||
+            s === ".ssg-temp" ||
+            s === "bun.lock" ||
+            (s.startsWith(".") && s.length > 1),
+        );
       },
       persistent: true,
       ignoreInitial: true,
@@ -289,7 +361,9 @@ export const serve = async ({
 
     function killAllWorkers() {
       for (const proc of procs) {
-        try { proc.kill(9); } catch {}
+        try {
+          proc.kill(9);
+        } catch {}
       }
     }
 
@@ -298,7 +372,9 @@ export const serve = async ({
       shuttingDown = true;
       console.log(`[multicore] Primary ${process.pid} shutting down...`);
       if (!isLinux && typeof lbServer !== "undefined") {
-        try { lbServer.stop(true); } catch {}
+        try {
+          lbServer.stop(true);
+        } catch {}
       }
       killAllWorkers();
       setTimeout(() => process.exit(0), 500);
@@ -307,7 +383,10 @@ export const serve = async ({
     process.on("SIGTERM", shutdown);
     process.on("SIGINT", shutdown);
 
-    return { code: "OK", message: `Multicore server running with ${cpuCount} workers` };
+    return {
+      code: "OK",
+      message: `Multicore server running with ${cpuCount} workers`,
+    };
   }
 
   // Determine listen port
@@ -326,7 +405,7 @@ export const serve = async ({
     }
   }
 
-  // Set up Elysia app — collect connected WebSocket clients for live-reload
+  // Set up Elysia app - collect connected WebSocket clients for live-reload
   const clients = new Set<any>();
   const app = new Elysia();
 
@@ -354,7 +433,8 @@ export const serve = async ({
 
   // Disable browser caching in dev mode so live-reload always gets fresh files
   app.onBeforeHandle(({ set }) => {
-    set.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate";
+    set.headers["Cache-Control"] =
+      "no-store, no-cache, must-revalidate, proxy-revalidate";
     set.headers["Pragma"] = "no-cache";
     set.headers["Expires"] = "0";
   });
@@ -389,12 +469,15 @@ export const serve = async ({
   // Don't keep the process alive just for the timer
   memInterval.unref();
 
-  app.listen({ port: listenPort, idleTimeout: 60, reusePort: useReusePort }, () => {
-    const label = isWorker ? `[worker ${process.pid}]` : "Server";
-    console.log(
-      `${label} running at http://localhost:${listenPort} for directory: ${outputDir}`,
-    );
-  });
+  app.listen(
+    { port: listenPort, idleTimeout: 60, reusePort: useReusePort },
+    () => {
+      const label = isWorker ? `[worker ${process.pid}]` : "Server";
+      console.log(
+        `${label} running at http://localhost:${listenPort} for directory: ${outputDir}`,
+      );
+    },
+  );
 
   // Workers: exit cleanly on SIGTERM/SIGINT from primary
   if (isWorker) {
@@ -405,107 +488,123 @@ export const serve = async ({
 
   // File watching and live-reload only in single-process mode (not workers)
   if (!isWorker) {
-  let isBuilding = false;
-  let pendingBuild: string | null = null;
+    let isBuilding = false;
+    let pendingBuild: string | null = null;
 
-  const triggerBuild = async (filePath: string) => {
-    if (isBuilding) {
-      pendingBuild = filePath;
-      if (debug) {
-        console.log("Build scheduled after current one completes");
-      }
-      return;
-    }
-    isBuilding = true;
-    try {
-      // Check if rpc.ts changed — re-initialize RPC instead of full rebuild
-      const rpcFile = discoverRpcFile(projectDir);
-      const isRpcFile = rpcFile && filePath === rpcFile;
-
-      if (isRpcFile) {
-        console.time("[serve] rpc-reload");
-        try {
-          const wasActive = rpcActive;
-          rpcActive = await initializeRpc(projectDir, config, debug);
-          // If RPC was not previously active but now is, we can't dynamically
-          // add routes to a running Elysia instance — log a restart hint instead
-          if (!wasActive && rpcActive) {
-            console.log("RPC is now active. Please restart the server to mount /rpc routes.");
-          }
-        } catch (error) {
-          console.error("RPC reload failed:", error);
-        }
-        console.timeEnd("[serve] rpc-reload");
-      } else {
-        console.time("[serve] rebuild");
-        await build({ projectDir, debug, mode: "serve", changedFile: filePath });
-        console.timeEnd("[serve] rebuild");
-      }
-
-      // Notify all connected clients to reload.
-      const pagesDir = join(projectDir, config.pages);
-      const isPageFile = filePath.startsWith(pagesDir + "/") || filePath.startsWith(pagesDir + sep);
-      const reloadPath = isPageFile
-        ? filePathToRoute(filePath, config, projectDir)
-        : undefined;
-
-      const message = JSON.stringify({
-        command: "reload",
-        ...(reloadPath ? { path: reloadPath } : {}),
-      });
-
-      for (const ws of clients) {
-        try {
-          ws.send(message);
-        } catch {
-          clients.delete(ws);
-        }
-      }
-    } catch (error) {
-      console.error("Build failed. Waiting for code change to fix that...");
-    } finally {
-      isBuilding = false;
-      if (pendingBuild) {
-        const pending = pendingBuild;
-        pendingBuild = null;
+    const triggerBuild = async (filePath: string) => {
+      if (isBuilding) {
+        pendingBuild = filePath;
         if (debug) {
-          console.log("Running pending build");
+          console.log("Build scheduled after current one completes");
         }
-        await triggerBuild(pending);
+        return;
       }
-    }
-  };
+      isBuilding = true;
+      try {
+        // Check if rpc.ts changed - re-initialize RPC instead of full rebuild
+        const rpcFile = discoverRpcFile(projectDir);
+        const isRpcFile = rpcFile && filePath === rpcFile;
 
-  // Watch the entire project directory, excluding dist, node_modules, and dotfiles
-  const watcher = chokidar.watch(projectDir, {
-    ignored: (p: string) => {
-      const segs = p.split(/[\/\\]/);
-      return segs.some((s) => s === 'node_modules' || s === 'dist' || s === '.ssg-temp' || s === 'bun.lock' || (s.startsWith('.') && s.length > 1));
-    },
-    persistent: true,
-    ignoreInitial: true,
-  });
+        if (isRpcFile) {
+          console.time("[serve] rpc-reload");
+          try {
+            const wasActive = rpcActive;
+            rpcActive = await initializeRpc(projectDir, config, debug);
+            // If RPC was not previously active but now is, we can't dynamically
+            // add routes to a running Elysia instance - log a restart hint instead
+            if (!wasActive && rpcActive) {
+              console.log(
+                "RPC is now active. Please restart the server to mount /rpc routes.",
+              );
+            }
+          } catch (error) {
+            console.error("RPC reload failed:", error);
+          }
+          console.timeEnd("[serve] rpc-reload");
+        } else {
+          console.time("[serve] rebuild");
+          await build({
+            projectDir,
+            debug,
+            mode: "serve",
+            changedFile: filePath,
+          });
+          console.timeEnd("[serve] rebuild");
+        }
 
-  watcher.on("change", async (path) => {
-    if (debug) {
-      console.log(`File changed: ${path}`);
-    }
-    await triggerBuild(path);
-  });
+        // Notify all connected clients to reload.
+        const pagesDir = join(projectDir, config.pages);
+        const isPageFile =
+          filePath.startsWith(pagesDir + "/") ||
+          filePath.startsWith(pagesDir + sep);
+        const reloadPath = isPageFile
+          ? filePathToRoute(filePath, config, projectDir)
+          : undefined;
 
-  watcher.on("add", async (path) => {
-    if (debug) {
-      console.log(`File added: ${path}`);
-    }
-    await triggerBuild(path);
-  });
+        const message = JSON.stringify({
+          command: "reload",
+          ...(reloadPath ? { path: reloadPath } : {}),
+        });
 
-  watcher.on("unlink", async (path) => {
-    if (debug) {
-      console.log(`File removed: ${path}`);
-    }
-    await triggerBuild(path);
-  });
+        for (const ws of clients) {
+          try {
+            ws.send(message);
+          } catch {
+            clients.delete(ws);
+          }
+        }
+      } catch (error) {
+        console.error("Build failed. Waiting for code change to fix that...");
+      } finally {
+        isBuilding = false;
+        if (pendingBuild) {
+          const pending = pendingBuild;
+          pendingBuild = null;
+          if (debug) {
+            console.log("Running pending build");
+          }
+          await triggerBuild(pending);
+        }
+      }
+    };
+
+    // Watch the entire project directory, excluding dist, node_modules, and dotfiles
+    const watcher = chokidar.watch(projectDir, {
+      ignored: (p: string) => {
+        const segs = p.split(/[\/\\]/);
+        return segs.some(
+          (s) =>
+            s === "node_modules" ||
+            s === "dist" ||
+            s === ".ssg-temp" ||
+            s === "bun.lock" ||
+            (s.startsWith(".") && s.length > 1),
+        );
+      },
+      persistent: true,
+      ignoreInitial: true,
+    });
+
+    watcher.on("change", async (path) => {
+      if (debug) {
+        console.log(`File changed: ${path}`);
+      }
+      await triggerBuild(path);
+    });
+
+    watcher.on("add", async (path) => {
+      if (debug) {
+        console.log(`File added: ${path}`);
+      }
+      await triggerBuild(path);
+    });
+
+    watcher.on("unlink", async (path) => {
+      if (debug) {
+        console.log(`File removed: ${path}`);
+      }
+      await triggerBuild(path);
+    });
   } // end if (!isWorker)
 
   return { code: "OK", message: "Server is running" };

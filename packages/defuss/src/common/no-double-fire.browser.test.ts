@@ -73,7 +73,7 @@ describe("No double-fire (Browser / Playwright)", () => {
     let fireCount = 0;
     registerDelegatedEvent(button, "click", () => {
       fireCount++;
-      // Mutate the element during the handler — browsers may re-dispatch
+      // Mutate the element during the handler - browsers may re-dispatch
       // when the element under the cursor changes; defuss must not double-fire.
       const pressed = button.getAttribute("aria-pressed") === "true";
       button.setAttribute("aria-pressed", String(!pressed));
@@ -145,7 +145,7 @@ describe("No double-fire (Browser / Playwright)", () => {
       innerCount++;
     });
 
-    // Click on inner — inner fires once, outer fires once (bubble)
+    // Click on inner - inner fires once, outer fires once (bubble)
     inner.click();
     expect(innerCount).toBe(1);
     expect(outerCount).toBe(1);

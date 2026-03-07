@@ -183,7 +183,7 @@ fn rrf(rank: usize, k: f32) -> f32 {
 Where `α ≃ 0.3-0.5` for most corpora. CombSUM and its cousin CombMNZ originate with Fox & Shaw (1994).
 
 **Key Advantages:**
-- **RRF** balances lexical recall with dense semantic precision—totally parameter-light
+- **RRF** balances lexical recall with dense semantic precision-totally parameter-light
 - **CombSUM** offers more granular control via α tuning for specific corpus characteristics
 - **Both strategies** are drop-in compatible with existing dense cosine similarity results
 

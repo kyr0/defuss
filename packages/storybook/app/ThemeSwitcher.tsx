@@ -45,12 +45,15 @@ export const ThemeSwitcher: FC = () => {
 
   return (
     <div class="flex items-center gap-1.5" onMount={onMount}>
-      {/* Theme variant select — only if themes are configured */}
+      {/* Theme variant select - only if themes are configured */}
       {themes.length > 0 && (
         <select ref={themeSelectRef} class="select h-7 text-xs leading-none">
           <option value="">Default</option>
           {themes.map((t) => (
-            <option key={t.name} value={t.name.toLowerCase().replace(/\s+/g, "-")}>
+            <option
+              key={t.name}
+              value={t.name.toLowerCase().replace(/\s+/g, "-")}
+            >
               {t.name}
             </option>
           ))}
@@ -65,7 +68,17 @@ export const ThemeSwitcher: FC = () => {
         title="Toggle dark mode"
       >
         <span class="hidden dark:block">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <circle cx="12" cy="12" r="4" />
             <path d="M12 2v2" />
             <path d="M12 20v2" />
@@ -78,7 +91,17 @@ export const ThemeSwitcher: FC = () => {
           </svg>
         </span>
         <span class="block dark:hidden">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
           </svg>
         </span>

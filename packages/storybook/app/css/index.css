@@ -33,6 +33,15 @@
   border-right: 1px solid var(--color-border, hsl(var(--border)));
   overflow-y: auto;
   background: var(--color-sidebar-background, hsl(var(--muted) / 0.3));
+  transition: width 0.2s ease, min-width 0.2s ease, opacity 0.2s ease;
+}
+
+.sb-sidebar-collapsed {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-right: none;
+  opacity: 0;
 }
 
 .sb-main {
@@ -57,11 +66,8 @@
 }
 
 .sb-preview-frame {
-  margin: 0 auto;
-  border: 1px solid var(--color-border, hsl(var(--border)));
-  border-radius: 0.5rem;
+  width: 100%;
   overflow: auto;
-  background: var(--color-background, hsl(var(--background)));
   transition: width 0.2s ease, height 0.2s ease;
 }
 
@@ -77,12 +83,17 @@
   border-bottom: 1px solid var(--color-border, hsl(var(--border)));
 }
 
+/* Story items */
 .sb-story-item {
-  padding: 0.375rem 1rem;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
   font-size: 0.875rem;
-  border-radius: 0.25rem;
+  cursor: pointer;
   transition: background-color 0.15s;
+  color: inherit;
+  text-decoration: none;
 }
 
 .sb-story-item:hover {
@@ -94,11 +105,110 @@
   color: var(--color-primary-foreground, hsl(var(--primary-foreground)));
 }
 
-.sb-group-label {
-  padding: 0.5rem 1rem 0.25rem;
-  font-size: 0.75rem;
+/* Prose typography for MDX docs and story descriptions */
+.sb-prose h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.75rem;
+}
+
+.sb-prose h2 {
+  font-size: 1.5rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  line-height: 1.3;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.sb-prose h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.sb-prose h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.sb-prose p {
+  margin-bottom: 0.75rem;
+  line-height: 1.65;
+}
+
+.sb-prose ul, .sb-prose ol {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.sb-prose ul {
+  list-style-type: disc;
+}
+
+.sb-prose ol {
+  list-style-type: decimal;
+}
+
+.sb-prose li {
+  margin-bottom: 0.25rem;
+  line-height: 1.6;
+}
+
+.sb-prose a {
+  color: var(--color-primary, hsl(var(--primary)));
+  text-decoration: underline;
+}
+
+.sb-prose code {
+  font-size: 0.875em;
+  background: var(--color-muted, hsl(var(--muted)));
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+.sb-prose pre {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  background: var(--color-muted, hsl(var(--muted)));
+}
+
+.sb-prose pre code {
+  background: none;
+  padding: 0;
+}
+
+.sb-prose blockquote {
+  border-left: 3px solid var(--color-border, hsl(var(--border)));
+  padding-left: 1rem;
+  margin-bottom: 0.75rem;
   color: var(--color-muted-foreground, hsl(var(--muted-foreground)));
+}
+
+.sb-prose hr {
+  border-color: var(--color-border, hsl(var(--border)));
+  margin: 1.5rem 0;
+}
+
+.sb-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.sb-prose th, .sb-prose td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border, hsl(var(--border)));
+  text-align: left;
+}
+
+.sb-prose th {
+  font-weight: 600;
+  background: var(--color-muted, hsl(var(--muted)));
 }

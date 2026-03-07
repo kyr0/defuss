@@ -56,7 +56,7 @@ describe("ready method", () => {
     // Spy on addEventListener to know when the listener is attached
     const addEventListenerSpy = vi.spyOn(document, "addEventListener");
 
-    // Start the ready method — returns synchronously
+    // Start the ready method - returns synchronously
     const result = $(document.body).ready(callback);
 
     // Listener should be attached immediately
@@ -102,11 +102,14 @@ describe("ready method", () => {
     // Spy on addEventListener
     const addEventListenerSpy = vi.spyOn(document, "addEventListener");
 
-    // Start the ready method without callback — returns synchronously
+    // Start the ready method without callback - returns synchronously
     const result = $(document.body).ready();
 
     // Listener should be attached
-    expect(addEventListenerSpy).toHaveBeenCalledWith("DOMContentLoaded", expect.any(Function));
+    expect(addEventListenerSpy).toHaveBeenCalledWith(
+      "DOMContentLoaded",
+      expect.any(Function),
+    );
 
     expect(result.length).toBe(1);
     expect(result[0]).toBe(document.body);
@@ -185,11 +188,14 @@ describe("ready method", () => {
     // Spy on addEventListener
     const addEventListenerSpy = vi.spyOn(document, "addEventListener");
 
-    // Start the ready method — returns synchronously
+    // Start the ready method - returns synchronously
     $(document.body).ready(callback);
 
     // Listener should be attached immediately
-    expect(addEventListenerSpy).toHaveBeenCalledWith("DOMContentLoaded", expect.any(Function));
+    expect(addEventListenerSpy).toHaveBeenCalledWith(
+      "DOMContentLoaded",
+      expect.any(Function),
+    );
 
     // Manually invoke the handler
     const handler = addEventListenerSpy.mock.lastCall![1] as EventListener;

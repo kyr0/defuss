@@ -3962,7 +3962,7 @@ Key takeaways:
 - **Field weights (BM25F)** rescue terse but high-signal zones (titles, headings).
 - **δ‐shift (BM25⁺)** stops long docs that *do* match from being drowned by length normalisation.
 - **Eager impacts (BM25S)** cut query CPU/time by ≈10-500×, letting you request a *larger* candidate pool for fusion.
-- **RRF / CombSUM** balance lexical recall with dense semantic precision—and are totally parameter-light.
+- **RRF / CombSUM** balance lexical recall with dense semantic precision-and are totally parameter-light.
 
 
 #### Recommended constants (battle-tested defaults)
@@ -3981,7 +3981,7 @@ Conclusion:
 
 **BM25FS⁺** lets you keep the familiar inverted index, adds just two constants (δ and field weights), and moves the heavy math offline.
 Fuse its top-N with the dense top-N using RRF first; sprinkle CombSUM if you want a touch more precision.
-You get *dense-level* recall on rare terms **and** BM25 style exact-match ranking—no extra model, no new serving cost.
+You get *dense-level* recall on rare terms **and** BM25 style exact-match ranking-no extra model, no new serving cost.
 
 #### Grounded in research
 

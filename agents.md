@@ -1315,7 +1315,7 @@ await chain;
 
 ## RPC Client
 
-Use `createRpcClient` (preferred name) to get a type-safe proxy client for calling server-side RPC APIs. It is an alias for `getRpcClient` — both are exported from `defuss-rpc/client`, but `createRpcClient` is the default going forward.
+Use `createRpcClient` (preferred name) to get a type-safe proxy client for calling server-side RPC APIs. It is an alias for `getRpcClient` - both are exported from `defuss-rpc/client`, but `createRpcClient` is the default going forward.
 
 ```ts
 import { createRpcClient } from "defuss-rpc/client";

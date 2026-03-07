@@ -1,6 +1,7 @@
 import { createFilter, type PluginOption, type ViteDevServer } from "vite";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { accessSync, existsSync } from "node:fs";
 import defuss from "defuss-vite";
 import tailwindcss from "@tailwindcss/vite";
 import mdx from "@mdx-js/rollup";
@@ -17,10 +18,12 @@ const VIRTUAL_MANIFEST = "virtual:storybook/manifest";
 const VIRTUAL_STORIES = "virtual:storybook/stories";
 const VIRTUAL_CONFIG = "virtual:storybook/config";
 const VIRTUAL_SOURCES = "virtual:storybook/sources";
+const VIRTUAL_PROJECT_CSS = "virtual:storybook/project-css";
 const RESOLVED_MANIFEST = "\0" + VIRTUAL_MANIFEST;
 const RESOLVED_STORIES = "\0" + VIRTUAL_STORIES;
 const RESOLVED_CONFIG = "\0" + VIRTUAL_CONFIG;
 const RESOLVED_SOURCES = "\0" + VIRTUAL_SOURCES;
+const RESOLVED_PROJECT_CSS = "\0" + VIRTUAL_PROJECT_CSS;
 
 /**
  * Main Vite plugin for defuss-storybook.
@@ -71,6 +74,7 @@ export function storybookVitePlugin(
       if (id === VIRTUAL_STORIES) return RESOLVED_STORIES;
       if (id === VIRTUAL_CONFIG) return RESOLVED_CONFIG;
       if (id === VIRTUAL_SOURCES) return RESOLVED_SOURCES;
+      if (id === VIRTUAL_PROJECT_CSS) return RESOLVED_PROJECT_CSS;
       return null;
     },
 
@@ -90,6 +94,30 @@ export function storybookVitePlugin(
       }
       if (id === RESOLVED_SOURCES) {
         return generateSourcesModule(entries);
+      }
+      if (id === RESOLVED_PROJECT_CSS) {
+        // Import the project's CSS files so components render styled
+        if (config.css.length > 0) {
+          return config.css
+            .map((cssPath) => `import "${resolve(config.projectDir, cssPath)}";`)
+            .join("\n");
+        }
+        // Auto-detect: look for common CSS entry files in the project
+        const commonEntries = [
+          "src/css/index.css",
+          "src/styles/index.css",
+          "src/index.css",
+          "src/global.css",
+          "src/app.css",
+        ];
+        for (const entry of commonEntries) {
+          const fullPath = resolve(config.projectDir, entry);
+          try {
+            accessSync(fullPath);
+            return `import "${fullPath}";`;
+          } catch {}
+        }
+        return "// No project CSS found";
       }
       return null;
     },
@@ -142,10 +170,7 @@ export function getAppDir(): string {
   const appFromSrc = resolve(thisDir, "app");
 
   // Prefer the built app directory, fall back to src
-  try {
-    const { existsSync } = require("node:fs");
-    if (existsSync(join(appFromDist, "index.html"))) return appFromDist;
-  } catch {}
+  if (existsSync(join(appFromDist, "index.html"))) return appFromDist;
 
   return appFromSrc;
 }

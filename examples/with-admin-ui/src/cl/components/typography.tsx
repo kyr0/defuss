@@ -22,7 +22,7 @@ export interface TypographyProps extends Props {
   [key: string]: any; // HTML only
 }
 
-// Heading utility—for h1–h4, also supports .uk-hX class and heading-style
+// Heading utility-for h1–h4, also supports .uk-hX class and heading-style
 export const Heading = ({
   level = 1,
   className = "",

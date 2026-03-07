@@ -9,16 +9,25 @@ export type AnyEventHandler = (ev: Event) => any;
 
 export type TargetOf<NT> = Extract<NT, EventTarget>;
 
-export type UnionToIntersection<U> =
-  (U extends any ? (x: U) => void : never) extends (x: infer I) => void ? I : never;
+export type UnionToIntersection<U> = (
+  U extends any
+    ? (x: U) => void
+    : never
+) extends (x: infer I) => void
+  ? I
+  : never;
 
-export type EventMapFor<T> =
-  T extends Window ? WindowEventMap :
-  T extends Document ? DocumentEventMap :
-  T extends SVGElement ? SVGElementEventMap :
-  T extends HTMLElement ? HTMLElementEventMap :
-  T extends Element ? ElementEventMap :
-  Record<string, Event>;
+export type EventMapFor<T> = T extends Window
+  ? WindowEventMap
+  : T extends Document
+    ? DocumentEventMap
+    : T extends SVGElement
+      ? SVGElementEventMap
+      : T extends HTMLElement
+        ? HTMLElementEventMap
+        : T extends Element
+          ? ElementEventMap
+          : Record<string, Event>;
 
 export type EventMapForAny<T> = UnionToIntersection<EventMapFor<T>>;
 
@@ -43,7 +52,7 @@ declare global {
 }
 
 export interface DequeryOptions<NT = DequerySyncMethodReturnType> {
-  /** @deprecated No longer used — kept for backward compatibility */
+  /** @deprecated No longer used - kept for backward compatibility */
   timeout?: number;
   resultStack?: NT[];
   globals?: Partial<Globals>;

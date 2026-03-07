@@ -1,4 +1,4 @@
-// defuss-storybook — public API
+// defuss-storybook - public API
 export { defineConfig, loadConfig } from "./config.js";
 export { scanStories } from "./scanner.js";
 export { storybookVitePlugin } from "./vite-plugin.js";

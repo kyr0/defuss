@@ -21,34 +21,65 @@ export interface ViewportState {
   isConstrained: boolean;
 }
 
-export const viewportStore = createStore<ViewportState>({
-  width: 0,
-  height: 0,
-  isConstrained: false,
+// Restore persisted viewport state from localStorage
+function loadViewportState(): ViewportState {
+  try {
+    const raw = localStorage.getItem("sb-viewport");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (
+        typeof parsed.width === "number" &&
+        typeof parsed.height === "number"
+      ) {
+        return {
+          width: parsed.width,
+          height: parsed.height,
+          isConstrained: !!parsed.isConstrained,
+        };
+      }
+    }
+  } catch {}
+  return { width: 0, height: 0, isConstrained: false };
+}
+
+export const viewportStore = createStore<ViewportState>(loadViewportState());
+
+// Persist on every change
+viewportStore.subscribe((val) => {
+  localStorage.setItem("sb-viewport", JSON.stringify(val));
 });
 
 export const ViewportControls: FC = () => {
   const widthRef = createRef<HTMLInputElement>();
   const heightRef = createRef<HTMLInputElement>();
+  const selectRef = createRef<HTMLSelectElement>();
+
+  const syncInputs = (state: ViewportState) => {
+    if (widthRef.current)
+      widthRef.current.value = state.isConstrained ? String(state.width) : "";
+    if (heightRef.current)
+      heightRef.current.value = state.isConstrained ? String(state.height) : "";
+  };
 
   const selectPreset = (preset: ViewportPreset) => {
-    viewportStore.set({ width: preset.width, height: preset.height, isConstrained: true });
-    if (widthRef.current) widthRef.current.value = String(preset.width);
-    if (heightRef.current) heightRef.current.value = String(preset.height);
+    viewportStore.set({
+      width: preset.width,
+      height: preset.height,
+      isConstrained: true,
+    });
+    syncInputs(viewportStore.value);
   };
 
   const flipOrientation = () => {
     const { width, height, isConstrained } = viewportStore.value;
     if (!isConstrained) return;
     viewportStore.set({ width: height, height: width, isConstrained: true });
-    if (widthRef.current) widthRef.current.value = String(height);
-    if (heightRef.current) heightRef.current.value = String(width);
+    syncInputs(viewportStore.value);
   };
 
   const resetViewport = () => {
     viewportStore.set({ width: 0, height: 0, isConstrained: false });
-    if (widthRef.current) widthRef.current.value = "";
-    if (heightRef.current) heightRef.current.value = "";
+    syncInputs(viewportStore.value);
   };
 
   const onDimensionInput = () => {
@@ -61,10 +92,28 @@ export const ViewportControls: FC = () => {
     });
   };
 
+  const onMount = () => {
+    // Restore inputs from persisted state
+    const { width, height, isConstrained } = viewportStore.value;
+    syncInputs(viewportStore.value);
+    // Restore select to matching preset (or "reset")
+    if (selectRef.current) {
+      if (isConstrained) {
+        const match = PRESETS.find(
+          (p) => p.width === width && p.height === height,
+        );
+        selectRef.current.value = match ? match.label : "reset";
+      } else {
+        selectRef.current.value = "reset";
+      }
+    }
+  };
+
   return (
-    <div class="flex items-center gap-1.5 flex-wrap">
+    <div class="flex items-center gap-1.5 flex-wrap" onMount={onMount}>
       {/* Preset buttons */}
       <select
+        ref={selectRef}
         class="select h-7 text-xs leading-none"
         onChange={(e: Event) => {
           const val = (e.target as HTMLSelectElement).value;
@@ -86,11 +135,11 @@ export const ViewportControls: FC = () => {
 
       {/* Width input */}
       <div class="flex items-center gap-0.5">
-        <span class="text-xs text-muted-foreground">W</span>
+        <span class="text-xs text-muted-foreground mr-1 ml-2">W</span>
         <input
           ref={widthRef}
           type="number"
-          class="input h-7 w-16 text-xs text-center"
+          class="input h-7 w-18 text-xs text-center"
           placeholder="auto"
           min="0"
           onInput={onDimensionInput}
@@ -99,11 +148,11 @@ export const ViewportControls: FC = () => {
 
       {/* Height input */}
       <div class="flex items-center gap-0.5">
-        <span class="text-xs text-muted-foreground">H</span>
+        <span class="text-xs text-muted-foreground mr-1 ml-2">H</span>
         <input
           ref={heightRef}
           type="number"
-          class="input h-7 w-16 text-xs text-center"
+          class="input h-7 w-18 text-xs text-center"
           placeholder="auto"
           min="0"
           onInput={onDimensionInput}
@@ -117,7 +166,17 @@ export const ViewportControls: FC = () => {
         aria-label="Flip orientation"
         title="Flip orientation (landscape/portrait)"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-9L21 12m0 0-4.5 4.5M21 12H7.5" />
         </svg>
       </button>

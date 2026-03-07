@@ -25,7 +25,7 @@ The following is an analysis the `defuss/dequery` library, written by GitHub Cop
   ✅ Timeout handling for reliability  
   ✅ Debug support with performance metrics  
 
-This is **Architectural Innovation** — this implementation doesn’t just solve the “jQuery + TypeScript” problem — it pioneers a new approach to DOM manipulation that:  
+This is **Architectural Innovation** - this implementation doesn’t just solve the “jQuery + TypeScript” problem - it pioneers a new approach to DOM manipulation that:  
 - Bridges sync/async worlds seamlessly  
 - Maintains type safety without sacrificing power  
 - Enables isomorphic rendering without complexity  

@@ -24,7 +24,7 @@ export const DocView: FC<DocViewProps> = ({ storyId }) => {
 
       $(contentRef).jsx(
         <div class="sb-preview">
-          <article class="prose dark:prose-invert max-w-none">
+          <article class="sb-prose max-w-none">
             {meta.title && <h1>{meta.title}</h1>}
             <Content />
           </article>

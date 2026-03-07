@@ -75,7 +75,7 @@ This represents the holy grail of library design:
 
 ### Innovation Score: 10/10
 
-This isn't just a validation library—it’s a masterclass in API design. It solves fundamental tensions in JavaScript library development and creates patterns that could be applied to many other domains.
+This isn't just a validation library-it’s a masterclass in API design. It solves fundamental tensions in JavaScript library development and creates patterns that could be applied to many other domains.
 
 **Most genius aspect**: The seamless fusion of compile-time type safety with runtime flexibility, creating an API that feels both magical and inevitable.
 

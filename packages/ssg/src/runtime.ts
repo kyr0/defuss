@@ -25,11 +25,15 @@ export const setupLiveReload = () => {
       const currentNorm = normalisePath(location.pathname);
       const eventNorm = normalisePath(path);
       const pathMatch = currentNorm === eventNorm;
-      console.log(`[live-reload] path=${path}, currentNorm=${currentNorm}, eventNorm=${eventNorm}, pathMatch=${pathMatch}`);
+      console.log(
+        `[live-reload] path=${path}, currentNorm=${currentNorm}, eventNorm=${eventNorm}, pathMatch=${pathMatch}`,
+      );
       if (!eventData.path || pathMatch) {
         // Clear prefetch cache and bust browser HTTP cache so we get
         // fresh rebuilt content after the server-side rebuild.
-        console.log("[live-reload] Clearing pageCache and triggering navigateTo with cache bust");
+        console.log(
+          "[live-reload] Clearing pageCache and triggering navigateTo with cache bust",
+        );
         pageCache.clear();
         bustCache = true;
         navigateTo(location.pathname, true);
@@ -90,7 +94,9 @@ const isInternalLink = (anchor: HTMLAnchorElement): boolean => {
 const prefetch = async (url: string): Promise<void> => {
   const key = normalisePath(url);
   if (pageCache.has(key) || fetching.has(key)) {
-    console.log(`[prefetch] SKIP url=${key} cached=${pageCache.has(key)} fetching=${fetching.has(key)}`);
+    console.log(
+      `[prefetch] SKIP url=${key} cached=${pageCache.has(key)} fetching=${fetching.has(key)}`,
+    );
     return;
   }
   fetching.add(key);
@@ -100,14 +106,18 @@ const prefetch = async (url: string): Promise<void> => {
       fetchOpts.cache = "reload";
       bustCache = false;
     }
-    console.log(`[prefetch] fetching url=${key} cache=${fetchOpts.cache || "default"}`);
+    console.log(
+      `[prefetch] fetching url=${key} cache=${fetchOpts.cache || "default"}`,
+    );
     const res = await fetch(key, fetchOpts);
     if (res.ok && res.headers.get("content-type")?.includes("text/html")) {
       const text = await res.text();
       pageCache.set(key, text);
       console.log(`[prefetch] cached url=${key} length=${text.length}`);
     } else {
-      console.log(`[prefetch] not cached: status=${res.status} content-type=${res.headers.get("content-type")}`);
+      console.log(
+        `[prefetch] not cached: status=${res.status} content-type=${res.headers.get("content-type")}`,
+      );
     }
   } catch (err) {
     console.error("[prefetch] error:", err);
@@ -119,7 +129,9 @@ const prefetch = async (url: string): Promise<void> => {
 /** Execute <script> tags found in the new body (hydration scripts etc.) */
 const executeScripts = (container: Element): void => {
   const scripts = container.querySelectorAll("script");
-  console.log(`[executeScripts] Found ${scripts.length} script(s) to re-execute`);
+  console.log(
+    `[executeScripts] Found ${scripts.length} script(s) to re-execute`,
+  );
   for (const oldScript of scripts) {
     const newScript = document.createElement("script");
     // Copy all attributes
@@ -127,7 +139,9 @@ const executeScripts = (container: Element): void => {
       newScript.setAttribute(attr.name, attr.value);
     }
     newScript.textContent = oldScript.textContent;
-    console.log(`[executeScripts] Replacing script id=${oldScript.id || '(none)'} type=${oldScript.type || '(none)'} len=${oldScript.textContent?.length}`);
+    console.log(
+      `[executeScripts] Replacing script id=${oldScript.id || "(none)"} type=${oldScript.type || "(none)"} len=${oldScript.textContent?.length}`,
+    );
     oldScript.replaceWith(newScript);
   }
 };
@@ -166,7 +180,7 @@ const updateHead = (doc: Document): void => {
 /**
  * Navigate to a URL using client-side DOM patching.
  * Fetches the target page HTML, swaps <body> content, re-runs hydration scripts,
- * and updates browser history — no full page reload needed.
+ * and updates browser history - no full page reload needed.
  * @param url The target pathname
  * @param replace If true, uses replaceState instead of pushState (for live-reload)
  */
@@ -180,77 +194,87 @@ export const navigateTo = async (
   navigating = true;
 
   try {
-  const key = normalisePath(url);
-  console.log(`[navigateTo] url=${url} key=${key} replace=${replace} cached=${pageCache.has(key)}`);
+    const key = normalisePath(url);
+    console.log(
+      `[navigateTo] url=${url} key=${key} replace=${replace} cached=${pageCache.has(key)}`,
+    );
 
-  // Fetch if not cached
-  if (!pageCache.has(key)) {
-    await prefetch(url);
-  }
-
-  const html = pageCache.get(key);
-  if (!html) {
-    console.log("[navigateTo] No HTML available, falling back to hard navigation");
-    // Fallback to hard navigation if fetch failed
-    location.href = url;
-    return;
-  }
-
-  console.log(`[navigateTo] HTML length=${html.length}`);
-
-  // Keep cache for instant back/forward; schedule a background refresh
-  // so the *next* visit gets fresh content without blocking this one.
-  setTimeout(() => prefetch(url), 500);
-
-  // Parse fetched HTML
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
-  const newBody = doc.body;
-
-  if (!newBody) {
-    console.log("[navigateTo] Parsed document has no body, hard navigating");
-    location.href = url;
-    return;
-  }
-
-  // Save scroll position for current page (for back/forward)
-  const scrollY = window.scrollY;
-  history.replaceState({ ...history.state, scrollY }, "");
-
-  // Update <head> (title, meta, styles)
-  updateHead(doc);
-
-  // Morph <body> content: swap innerHTML and re-execute scripts
-  console.log(`[navigateTo] Swapping body innerHTML (new length=${newBody.innerHTML.length})`);
-  document.body.innerHTML = newBody.innerHTML;
-
-  // Log hydration wrappers found in new DOM
-  const hydrateWrappers = document.querySelectorAll('[data-hydrate="true"]');
-  console.log(`[navigateTo] Found ${hydrateWrappers.length} hydration wrapper(s) in new DOM`);
-  hydrateWrappers.forEach((w, i) => {
-    const scripts = w.querySelectorAll('script[type="module"]');
-    console.log(`[navigateTo]   wrapper[${i}] id=${w.getAttribute('data-hydrate-id')} scripts=${scripts.length}`);
-  });
-
-  executeScripts(document.body);
-
-  // Update history
-  if (replace) {
-    history.replaceState({ navigated: true }, "", url);
-  } else {
-    history.pushState({ navigated: true }, "", url);
-  }
-
-  // Scroll to top for new pages, or to anchor if present
-  const hash = url.split("#")[1];
-  if (hash) {
-    const target = document.getElementById(hash);
-    if (target) {
-      target.scrollIntoView();
+    // Fetch if not cached
+    if (!pageCache.has(key)) {
+      await prefetch(url);
     }
-  } else {
-    window.scrollTo(0, 0);
-  }
+
+    const html = pageCache.get(key);
+    if (!html) {
+      console.log(
+        "[navigateTo] No HTML available, falling back to hard navigation",
+      );
+      // Fallback to hard navigation if fetch failed
+      location.href = url;
+      return;
+    }
+
+    console.log(`[navigateTo] HTML length=${html.length}`);
+
+    // Keep cache for instant back/forward; schedule a background refresh
+    // so the *next* visit gets fresh content without blocking this one.
+    setTimeout(() => prefetch(url), 500);
+
+    // Parse fetched HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const newBody = doc.body;
+
+    if (!newBody) {
+      console.log("[navigateTo] Parsed document has no body, hard navigating");
+      location.href = url;
+      return;
+    }
+
+    // Save scroll position for current page (for back/forward)
+    const scrollY = window.scrollY;
+    history.replaceState({ ...history.state, scrollY }, "");
+
+    // Update <head> (title, meta, styles)
+    updateHead(doc);
+
+    // Morph <body> content: swap innerHTML and re-execute scripts
+    console.log(
+      `[navigateTo] Swapping body innerHTML (new length=${newBody.innerHTML.length})`,
+    );
+    document.body.innerHTML = newBody.innerHTML;
+
+    // Log hydration wrappers found in new DOM
+    const hydrateWrappers = document.querySelectorAll('[data-hydrate="true"]');
+    console.log(
+      `[navigateTo] Found ${hydrateWrappers.length} hydration wrapper(s) in new DOM`,
+    );
+    hydrateWrappers.forEach((w, i) => {
+      const scripts = w.querySelectorAll('script[type="module"]');
+      console.log(
+        `[navigateTo]   wrapper[${i}] id=${w.getAttribute("data-hydrate-id")} scripts=${scripts.length}`,
+      );
+    });
+
+    executeScripts(document.body);
+
+    // Update history
+    if (replace) {
+      history.replaceState({ navigated: true }, "", url);
+    } else {
+      history.pushState({ navigated: true }, "", url);
+    }
+
+    // Scroll to top for new pages, or to anchor if present
+    const hash = url.split("#")[1];
+    if (hash) {
+      const target = document.getElementById(hash);
+      if (target) {
+        target.scrollIntoView();
+      }
+    } else {
+      window.scrollTo(0, 0);
+    }
   } finally {
     navigating = false;
   }
@@ -264,7 +288,9 @@ const setupClientNav = (): void => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     if (e.button !== 0) return; // only left click
 
-    const anchor = (e.target as Element)?.closest?.("a") as HTMLAnchorElement | null;
+    const anchor = (e.target as Element)?.closest?.(
+      "a",
+    ) as HTMLAnchorElement | null;
     if (!anchor || !isInternalLink(anchor)) return;
 
     e.preventDefault();
@@ -295,7 +321,9 @@ const setupPrefetch = (): void => {
 
   // ── Hover / touch prefetch (fastest: ~200ms before click) ──────────
   const onHoverIn = (e: Event) => {
-    const anchor = (e.target as Element)?.closest?.("a") as HTMLAnchorElement | null;
+    const anchor = (e.target as Element)?.closest?.(
+      "a",
+    ) as HTMLAnchorElement | null;
     if (!anchor || !isInternalLink(anchor)) return;
     prefetch(anchor.getAttribute("href")!);
   };
@@ -352,7 +380,7 @@ if (!(window as any).__defuss_runtime_init) {
 }
 
 // Live-reload WebSocket is always (re-)initialised so the newest module
-// closure is used — but setupLiveReload itself deduplicates the connection.
+// closure is used - but setupLiveReload itself deduplicates the connection.
 setupLiveReload();
 
 export { hydrate };

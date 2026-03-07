@@ -376,7 +376,7 @@ describe("DataTable", () => {
         $(tableRef).jsx(renderTable());
       });
 
-      // Initial: sorted by id asc — first row is INV001
+      // Initial: sorted by id asc - first row is INV001
       let firstCell = container.querySelector("tbody tr td") as HTMLElement;
       expect(firstCell.textContent).toContain("INV001");
 

@@ -13,7 +13,7 @@ export const TabsScreen: FC = () => {
     <div class="space-y-6">
       <h1 class="text-3xl font-bold tracking-tight">Tabs</h1>
       <p class="text-lg text-muted-foreground">
-        A set of layered sections of content—known as tab panels.
+        A set of layered sections of content-known as tab panels.
       </p>
 
       <CodePreview

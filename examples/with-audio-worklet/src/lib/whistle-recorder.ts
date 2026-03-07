@@ -540,7 +540,7 @@ export const createWhistleRecorder = (
         console.warn(
           "[whistle] No worklet messages for",
           lastMsgAt ? `${Math.round(now - lastMsgAt)}ms` : "ever",
-          "— check mic input, permissions, or worklet URL.",
+          "- check mic input, permissions, or worklet URL.",
         );
       }
     }, 1500);

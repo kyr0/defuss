@@ -1062,7 +1062,7 @@ export class CallChainImpl<
   }
 }
 
-// Dequery is just CallChainImpl — single class, no thenable
+// Dequery is just CallChainImpl - single class, no thenable
 export type Dequery<NT> = CallChainImpl<NT, any>;
 
 // --- Factory ---
@@ -1104,7 +1104,7 @@ export function dequery<
   options: DequeryOptions<NT> &
     ElementCreationOptions = getDefaultDequeryOptions(),
 ): ET {
-  // Function callback — execute synchronously
+  // Function callback - execute synchronously
   if (typeof selectorRefOrEl === "function") {
     const result = selectorRefOrEl();
     if (typeof result !== "undefined") {
@@ -1123,7 +1123,7 @@ export function dequery<
 
   if (typeof selectorRefOrEl === "string") {
     if (selectorRefOrEl.indexOf("<") === 0) {
-      // HTML string — create elements
+      // HTML string - create elements
       const elements = renderMarkup(selectorRefOrEl, chain.Parser);
       const renderRootEl = elements[0];
 
@@ -1144,7 +1144,7 @@ export function dequery<
       updateIndexAccess(chain);
       return chain as unknown as ET;
     }
-    // CSS selector — query immediately
+    // CSS selector - query immediately
     chain.query(selectorRefOrEl);
     return chain as unknown as ET;
   }

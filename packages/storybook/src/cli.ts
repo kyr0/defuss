@@ -8,7 +8,7 @@ import { loadConfig } from "./config.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const usage = `
-defuss-storybook — A lightweight storybook for defuss components
+defuss-storybook - A lightweight storybook for defuss components
 
 Usage:
   defuss-storybook dev  <folder>   Start dev server with HMR

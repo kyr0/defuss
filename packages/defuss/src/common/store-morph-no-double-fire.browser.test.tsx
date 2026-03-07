@@ -45,7 +45,7 @@ describe("Store-driven morph: no double-fire (Browser / Playwright)", () => {
         onClick={(e: MouseEvent) => {
           handlerFireCount++;
           timestamps.push(e.timeStamp);
-          // Mutate store — this triggers the subscriber below
+          // Mutate store - this triggers the subscriber below
           store.set({ count: store.value.count + 1 });
         }}
       >
@@ -61,7 +61,7 @@ describe("Store-driven morph: no double-fire (Browser / Playwright)", () => {
       updateDomWithVdom(container, <CounterButton />, globalThis as any);
     });
 
-    // Click the button — this should fire the handler exactly once,
+    // Click the button - this should fire the handler exactly once,
     // even though the morph updates aria-pressed on the clicked element
     const btn = container.querySelector("#counter-btn") as HTMLButtonElement;
     expect(btn).toBeTruthy();
@@ -146,7 +146,7 @@ describe("Store-driven morph: no double-fire (Browser / Playwright)", () => {
     expect(btn.getAttribute("aria-expanded")).toBe("true");
     expect(btn.classList.contains("active")).toBe(true);
 
-    // Click again — toggle back
+    // Click again - toggle back
     btn.click();
     expect(handlerFireCount).toBe(2);
     expect(store.value.active).toBe(false);
@@ -207,7 +207,7 @@ describe("Store-driven morph: no double-fire (Browser / Playwright)", () => {
     expect(store.value.expandedIds).toEqual([1]);
     expect(row1.getAttribute("aria-expanded")).toBe("true");
 
-    // Click again to collapse — must also fire exactly once
+    // Click again to collapse - must also fire exactly once
     row1.click();
     expect(handlerFireCount).toBe(2);
     expect(store.value.expandedIds).toEqual([]);
@@ -246,7 +246,7 @@ describe("Store-driven morph: no double-fire (Browser / Playwright)", () => {
     btn.click();
     btn.click();
 
-    // Each click should produce exactly one handler invocation — no echoes
+    // Each click should produce exactly one handler invocation - no echoes
     expect(events).toHaveLength(3);
     expect(store.value.count).toBe(3);
   });

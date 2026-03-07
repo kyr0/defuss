@@ -592,7 +592,7 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
         } else if (name === "value") {
           domElement.setAttribute("value", String(value));
         }
-        // selectedIndex has no HTML attribute equivalent — skip setAttribute
+        // selectedIndex has no HTML attribute equivalent - skip setAttribute
       } else {
         domElement.setAttribute(name, String(value));
       }

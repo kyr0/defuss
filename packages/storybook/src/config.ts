@@ -1,6 +1,10 @@
 import { resolve, join } from "node:path";
 import { existsSync } from "node:fs";
-import type { StorybookConfig, ResolvedStorybookConfig, ThemeConfig } from "./types.js";
+import type {
+  StorybookConfig,
+  ResolvedStorybookConfig,
+  ThemeConfig,
+} from "./types.js";
 
 /** Default configuration values */
 const defaults = {
@@ -15,7 +19,7 @@ const defaults = {
 
 /**
  * Load storybook configuration from the project directory.
- * Looks for `storybook.config.ts` — bun handles .ts imports natively.
+ * Looks for `storybook.config.ts` - bun handles .ts imports natively.
  */
 export async function loadConfig(
   projectDir: string,

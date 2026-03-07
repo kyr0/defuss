@@ -28,7 +28,7 @@ export type TreeViewProps = ElementProps<HTMLDivElement> & {
   selectedId?: DataviewJsonValue;
   /** Additional columns to display after the tree (name) column */
   columns?: TreeViewColumn[];
-  /** Custom row renderer — overrides default name + columns rendering */
+  /** Custom row renderer - overrides default name + columns rendering */
   renderRow?: (entry: DataviewEntry, level: number) => JSX.Element;
   /** Indentation width per depth level in pixels (default: 20) */
   indentSize?: number;
@@ -82,7 +82,7 @@ export const TreeView: FC<TreeViewProps> = ({
 }) => {
   const treeRef = ref || createRef<HTMLDivElement>();
 
-  // Single delegated click handler on the root — avoids per-row event
+  // Single delegated click handler on the root - avoids per-row event
   // registration so interactivity works immediately on first render.
   const handleClick = (e: MouseEvent) => {
     if (!allowClick(e)) return;
@@ -99,7 +99,7 @@ export const TreeView: FC<TreeViewProps> = ({
       return;
     }
 
-    // Row clicked — toggle expand/collapse if it has children, and select
+    // Row clicked - toggle expand/collapse if it has children, and select
     const row = target.closest(".tree-view-row") as HTMLElement | null;
     if (row) {
       e.stopPropagation();

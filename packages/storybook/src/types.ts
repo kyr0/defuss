@@ -1,4 +1,4 @@
-/** Story meta — describes a component and its available props */
+/** Story meta - describes a component and its available props */
 export interface StoryMeta {
   /** Display title, slash-separated for grouping (e.g. "Components/Button") */
   title: string;
@@ -6,7 +6,7 @@ export interface StoryMeta {
   component?: Function;
   /** Optional description shown in the docs panel */
   description?: string;
-  /** Explicit prop control declarations — overrides auto-detected props */
+  /** Explicit prop control declarations - overrides auto-detected props */
   argTypes?: Record<string, ArgType>;
   /** Default arg values applied to all stories unless overridden */
   args?: Record<string, unknown>;
@@ -44,7 +44,7 @@ export interface StoryModule {
   [storyName: string]: StoryFunction | StoryMeta | unknown;
 }
 
-/** A story render function — returns JSX */
+/** A story render function - returns JSX */
 export type StoryFunction = (args?: Record<string, unknown>) => unknown;
 
 /** Manifest entry for a discovered story file */

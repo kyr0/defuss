@@ -37,10 +37,10 @@ type FileNode = {
 };
 
 const sampleData: FileNode[] = [
-  { id: "src", parentId: null, name: "src", size: "—" },
+  { id: "src", parentId: null, name: "src", size: "-" },
   { id: "src/a.ts", parentId: "src", name: "a.ts", size: "1 KB" },
   { id: "src/b.ts", parentId: "src", name: "b.ts", size: "2 KB" },
-  { id: "lib", parentId: null, name: "lib", size: "—" },
+  { id: "lib", parentId: null, name: "lib", size: "-" },
   { id: "lib/c.ts", parentId: "lib", name: "c.ts", size: "3 KB" },
   { id: "readme", parentId: null, name: "README.md", size: "0.5 KB" },
 ];

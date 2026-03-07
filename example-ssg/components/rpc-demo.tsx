@@ -9,34 +9,31 @@ const RpcDemo: FC<RpcDemoProps> = () => {
   const inputARef = createRef<HTMLInputElement>();
   const inputBRef = createRef<HTMLInputElement>();
   const inputNameRef = createRef<HTMLInputElement>();
-	const formRef = createRef<HTMLFormElement>();
+  const formRef = createRef<HTMLFormElement>();
 
-	
+  type RpcApi = typeof rpcExports;
+  let rpcClient: RpcApi = null;
 
-	type RpcApi = typeof rpcExports;
-	let rpcClient: RpcApi = null;
-
-	const makeRpcClient = async () => {
-		if (rpcClient) return rpcClient; // simple memoization to avoid multiple clients
-		const { getRpcClient } = await import("defuss-rpc/client.js");
-		rpcClient = await getRpcClient<RpcApi>();
-		return rpcClient;
-	};
+  const makeRpcClient = async () => {
+    if (rpcClient) return rpcClient; // simple memoization to avoid multiple clients
+    const { getRpcClient } = await import("defuss-rpc/client.js");
+    rpcClient = await getRpcClient<RpcApi>();
+    return rpcClient;
+  };
 
   const getInputs = () => {
     const a = Number($(inputARef).val()) || 0;
     const b = Number($(inputBRef).val()) || 0;
-		const formData = $(formRef).form();
+    const formData = $(formRef).form();
 
-		console.log("Form data:", formData); // Debug: log the entire form data
+    console.log("Form data:", formData); // Debug: log the entire form data
 
     const name = String($(inputNameRef).val() || "World");
     return { a, b, name };
   };
 
   const callAdd = async () => {
-
-		console.log("Calling mathApi.add with inputs:", getInputs()); // Debug: log inputs before RPC call
+    console.log("Calling mathApi.add with inputs:", getInputs()); // Debug: log inputs before RPC call
     const rpc = await makeRpcClient();
     const { a, b } = getInputs();
     const sum = await rpc.mathApi.add(a, b);
@@ -60,7 +57,8 @@ const RpcDemo: FC<RpcDemoProps> = () => {
   return (
     <article id="rpc-demo">
       <header>
-        <strong>🚀 Live RPC Demo</strong> — call server functions from the browser
+        <strong>🚀 Live RPC Demo</strong> - call server functions from the
+        browser
       </header>
       <form class="grid" ref={formRef}>
         <label>
@@ -73,7 +71,12 @@ const RpcDemo: FC<RpcDemoProps> = () => {
         </label>
         <label>
           Name
-          <input ref={inputNameRef} type="text" value="defuss" placeholder="name" />
+          <input
+            ref={inputNameRef}
+            type="text"
+            value="defuss"
+            placeholder="name"
+          />
         </label>
       </form>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">

@@ -74,12 +74,17 @@ const loadRpcModule = async (
   compiledPath: string,
 ): Promise<Record<string, unknown>> => {
   const code = await readFile(compiledPath, "utf-8");
-  const tmpFile = join(tmpdir(), `defuss-rpc-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`);
+  const tmpFile = join(
+    tmpdir(),
+    `defuss-rpc-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`,
+  );
   await writeFile(tmpFile, code, "utf-8");
   try {
     return await import(tmpFile);
   } finally {
-    try { unlinkSync(tmpFile); } catch {}
+    try {
+      unlinkSync(tmpFile);
+    } catch {}
   }
 };
 
@@ -204,8 +209,9 @@ export const initializeRpc = async (
   }
 };
 
-// Cached reference to the rpcRoute handler — resolved once, reused on every request
-let _cachedRpcRoute: ((ctx: { request: Request }) => Promise<Response>) | null = null;
+// Cached reference to the rpcRoute handler - resolved once, reused on every request
+let _cachedRpcRoute: ((ctx: { request: Request }) => Promise<Response>) | null =
+  null;
 
 const getRpcRoute = async () => {
   if (_cachedRpcRoute) return _cachedRpcRoute;
@@ -224,7 +230,10 @@ const getRpcRoute = async () => {
  *
  * @param ctx Elysia context containing the parsed body and original request
  */
-export const handleRpcRequest = async (ctx: { request: Request; body: unknown }): Promise<Response> => {
+export const handleRpcRequest = async (ctx: {
+  request: Request;
+  body: unknown;
+}): Promise<Response> => {
   try {
     const rpcRoute = await getRpcRoute();
 

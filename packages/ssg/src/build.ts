@@ -14,7 +14,13 @@ import { resolve, join, dirname, sep } from "node:path";
 import { cp, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
-import { existsSync, mkdirSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+} from "node:fs";
 import type {
   BuildOptions,
   PluginFnPageDom,
@@ -102,20 +108,36 @@ export const build = async ({
       ? changedFile.slice(projectDir.length).replace(/^\//, "")
       : changedFile;
 
-    if (changedRelative.startsWith(config.pages + sep) || changedRelative.startsWith(config.pages + "/")) {
+    if (
+      changedRelative.startsWith(config.pages + sep) ||
+      changedRelative.startsWith(config.pages + "/")
+    ) {
       changeKind = "page";
-    } else if (changedRelative.startsWith(config.components + sep) || changedRelative.startsWith(config.components + "/")) {
+    } else if (
+      changedRelative.startsWith(config.components + sep) ||
+      changedRelative.startsWith(config.components + "/")
+    ) {
       changeKind = "component";
-    } else if (changedRelative.startsWith(config.assets + sep) || changedRelative.startsWith(config.assets + "/")) {
+    } else if (
+      changedRelative.startsWith(config.assets + sep) ||
+      changedRelative.startsWith(config.assets + "/")
+    ) {
       changeKind = "asset";
-    } else if (changedRelative === "config.ts" || changedRelative === "config.js") {
+    } else if (
+      changedRelative === "config.ts" ||
+      changedRelative === "config.js"
+    ) {
       changeKind = "config"; // treat as full rebuild
     }
 
     if (debug) {
-      console.log(`Incremental build — changeKind: ${changeKind}, file: ${changedRelative}`);
+      console.log(
+        `Incremental build - changeKind: ${changeKind}, file: ${changedRelative}`,
+      );
     }
-    console.log(`[build] changeKind=${changeKind}, changedRelative=${changedRelative}`);
+    console.log(
+      `[build] changeKind=${changeKind}, changedRelative=${changedRelative}`,
+    );
   }
 
   const isFullBuild = changeKind === "full" || changeKind === "config";
@@ -289,9 +311,13 @@ export const build = async ({
       const changedBaseName = changedRelative.replace(/\.[^.]+$/, ""); // e.g. "components/button"
       outputFiles = [];
 
-      console.log(`[build] component-dep: looking for pages depending on "${changedBaseName}"`);
+      console.log(
+        `[build] component-dep: looking for pages depending on "${changedBaseName}"`,
+      );
 
-      for (const [outputPath, meta] of Object.entries(pageBuildResult.metafile.outputs)) {
+      for (const [outputPath, meta] of Object.entries(
+        pageBuildResult.metafile.outputs,
+      )) {
         // Skip sourcemap outputs
         if (outputPath.endsWith(".map")) continue;
 
@@ -301,9 +327,13 @@ export const build = async ({
           return inputNorm.endsWith(changedBaseName);
         });
 
-        console.log(`[build] component-dep: output="${outputPath}", inputs=${inputPaths.length}, dependsOnChanged=${dependsOnChanged}`);
+        console.log(
+          `[build] component-dep: output="${outputPath}", inputs=${inputPaths.length}, dependsOnChanged=${dependsOnChanged}`,
+        );
         if (dependsOnChanged) {
-          console.log(`[build] component-dep:   matching inputs: ${inputPaths.filter(i => i.replace(/\.[^.]+$/, "").endsWith(changedBaseName)).join(", ")}`);
+          console.log(
+            `[build] component-dep:   matching inputs: ${inputPaths.filter((i) => i.replace(/\.[^.]+$/, "").endsWith(changedBaseName)).join(", ")}`,
+          );
         }
 
         if (dependsOnChanged) {
@@ -315,11 +345,13 @@ export const build = async ({
         }
       }
 
-      console.log(`[build] component-dep: ${outputFiles.length} page(s) affected out of ${Object.keys(pageBuildResult.metafile.outputs).filter(p => !p.endsWith(".map")).length} total`);
+      console.log(
+        `[build] component-dep: ${outputFiles.length} page(s) affected out of ${Object.keys(pageBuildResult.metafile.outputs).filter((p) => !p.endsWith(".map")).length} total`,
+      );
 
       // Fallback: if metafile analysis found nothing, render all pages
       if (outputFiles.length === 0) {
-        console.log(`[build] component-dep: FALLBACK — rendering all pages`);
+        console.log(`[build] component-dep: FALLBACK - rendering all pages`);
         outputFiles = await glob.async(join(tmpPagesDir, "**/*.js"));
       }
     } else {
@@ -347,13 +379,18 @@ export const build = async ({
       // dynamically import the page module (bypass import cache via temp file)
       console.time(`[build] page:${pageLabel} import`);
       const code = await readFile(outputFile, "utf-8");
-      const tmpFile = join(tmpdir(), `defuss-page-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`);
+      const tmpFile = join(
+        tmpdir(),
+        `defuss-page-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`,
+      );
       await writeFile(tmpFile, code, "utf-8");
       let exports: Record<string, any>;
       try {
         exports = await import(tmpFile);
       } finally {
-        try { unlinkSync(tmpFile); } catch {}
+        try {
+          unlinkSync(tmpFile);
+        } catch {}
       }
       console.timeEnd(`[build] page:${pageLabel} import`);
 
@@ -412,7 +449,9 @@ export const build = async ({
             projectDir,
             config,
           );
-          console.timeEnd(`[build] page:${pageLabel} dom-plugin:${plugin.name}`);
+          console.timeEnd(
+            `[build] page:${pageLabel} dom-plugin:${plugin.name}`,
+          );
         }
       }
 
@@ -436,7 +475,9 @@ export const build = async ({
             projectDir,
             config,
           );
-          console.timeEnd(`[build] page:${pageLabel} html-plugin:${plugin.name}`);
+          console.timeEnd(
+            `[build] page:${pageLabel} html-plugin:${plugin.name}`,
+          );
         }
       }
 
@@ -502,7 +543,9 @@ export const build = async ({
 
   const endTime = performance.now();
   const totalTime = (endTime - startTime) / 1000;
-  const label = isFullBuild ? "Full build" : `Incremental build (${changeKind}: ${changedRelative})`;
+  const label = isFullBuild
+    ? "Full build"
+    : `Incremental build (${changeKind}: ${changedRelative})`;
   console.log(`${label} completed in ${totalTime.toFixed(2)} seconds.`);
 
   return { code: "OK", message: "Build completed successfully" };

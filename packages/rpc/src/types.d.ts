@@ -1,6 +1,6 @@
 export type RpcApiClass = new (...args: unknown[]) => unknown;
 
-/** A plain object whose values are functions — used for object-based RPC modules. */
+/** A plain object whose values are functions - used for object-based RPC modules. */
 export type RpcApiModule = Record<string, (...args: any[]) => any>;
 
 /** A namespace entry can be either a class constructor or a plain object with functions. */

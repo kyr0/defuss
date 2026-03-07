@@ -1232,4 +1232,4 @@ describe("updateDomWithVdom (state-preserving morph)", () => {
 * **State preservation**: moving existing nodes preserves focus/selection/scroll far better than replace-by-index. Uncontrolled form state (e.g. `input.value`) is preserved unless the VDOM explicitly controls it.
 * **No listener explosions**: framework JSX event props are now handled via **global event delegation** (`delegated-events.ts`) and **overwrite** semantics (one handler per prop). Re-rendering won’t stack `addEventListener()` duplicates.
 
-If you want, I can also apply the same delegated-event wiring to `hydrate()` end-to-end (I gave you the exact drop-in for the event loop) and optionally switch `dequery().on()` to delegation too—but the changes above already fix the core “update breaks refs + leaks events” pathology described in your analysis.
+If you want, I can also apply the same delegated-event wiring to `hydrate()` end-to-end (I gave you the exact drop-in for the event loop) and optionally switch `dequery().on()` to delegation too-but the changes above already fix the core “update breaks refs + leaks events” pathology described in your analysis.
