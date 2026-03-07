@@ -14,7 +14,7 @@ Re-inventing web dev _again_.
 
 </h1>
 
-Defuss is a modern, full-featured, full-stack web framework - a European alternative to Next.js, React, Svelte, and Vue. It follows the highest principles of German Engineering. Designed to bring simplicity and determinism back to web dev. Here's what makes it special:
+`defuss` is a modern full-stack web framework - a European  alternative to Next.js, React, Svelte, and Vue. Guided by the principles of German engineering, it brings simplicity, determinism, and clarity back to web development. Here’s what makes it special:
 
 ## 🎯 Core philosophy
 Defuss follows the principle of "explicit simplicity" - it provides powerful tools while keeping complexity low and giving developers full control. You can read `defuss`-Code top-down. There is no _hidden magic_, like a depedency array that eventually creates a 7.3 Tbps [DDoS attack on Cloudflare](https://www.youtube.com/watch?app=desktop&v=gDVxBOGL99Q). `defuss` code is ideomatic and self-explainatory. 
