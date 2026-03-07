@@ -1,14 +1,23 @@
-import { Button, ToggleButton } from "defuss-shadcn";
+import { Button } from "defuss-shadcn";
 import type { StoryMeta } from "defuss-storybook";
 
 export const meta: StoryMeta = {
   title: "Components/Button",
   component: Button,
-  description: "Buttons trigger actions or navigation. Available in multiple variants and sizes.",
+  order: 1,
+  description:
+    "Buttons trigger actions or navigation. Available in multiple variants and sizes.",
   argTypes: {
     variant: {
       control: "select",
-      options: ["default", "secondary", "destructive", "outline", "ghost", "link"],
+      options: [
+        "default",
+        "secondary",
+        "destructive",
+        "outline",
+        "ghost",
+        "link",
+      ],
       defaultValue: "default",
       description: "Visual style variant",
     },
@@ -69,7 +78,20 @@ export const Disabled = () => <Button disabled>Disabled</Button>;
 /** Button with icon */
 export const WithIcon = () => (
   <Button>
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg>
     Add Item
   </Button>
 );

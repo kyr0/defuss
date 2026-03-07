@@ -15,6 +15,7 @@ import type { StoryMeta } from "defuss-storybook";
 
 export const meta: StoryMeta = {
   title: "Components/Dialog",
+  order: 3,
   description: "Dialogs display content that requires user attention or interaction.",
 };
 

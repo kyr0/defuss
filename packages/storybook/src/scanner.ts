@@ -3,6 +3,36 @@ import { readFileSync } from "node:fs";
 import { basename, relative, resolve } from "node:path";
 import type { StoryManifestEntry, ResolvedStorybookConfig } from "./types.js";
 
+/** Extract order from MDX frontmatter YAML */
+function extractMdxOrder(content: string): number {
+  const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!fmMatch) return Infinity;
+  const orderMatch = fmMatch[1].match(/^order:\s*(\d+)/m);
+  return orderMatch ? Number.parseInt(orderMatch[1], 10) : Infinity;
+}
+
+/** Extract order from TSX meta object */
+function extractTsxOrder(content: string): number {
+  const metaMatch = content.match(/export\s+const\s+meta[^=]*=\s*\{([\s\S]*?)\n\};/);
+  if (!metaMatch) return Infinity;
+  const orderMatch = metaMatch[1].match(/order:\s*(\d+)/);
+  return orderMatch ? Number.parseInt(orderMatch[1], 10) : Infinity;
+}
+
+/** Extract title from MDX frontmatter or TSX meta */
+function extractTitle(content: string, isMdx: boolean): string | null {
+  if (isMdx) {
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) return null;
+    const titleMatch = fmMatch[1].match(/^title:\s*(.+)/m);
+    return titleMatch ? titleMatch[1].trim().replace(/^["']|["']$/g, "") : null;
+  }
+  const metaMatch = content.match(/export\s+const\s+meta[^=]*=\s*\{([\s\S]*?)\n\};/);
+  if (!metaMatch) return null;
+  const titleMatch = metaMatch[1].match(/title:\s*["']([^"']+)["']/);
+  return titleMatch ? titleMatch[1] : null;
+}
+
 /**
  * Scan the project directory for story files matching the configured globs.
  * Returns a manifest of discovered story entries.
@@ -33,20 +63,35 @@ export async function scanStories(
       .replace(/\//g, "-")
       .toLowerCase();
 
+    // Read file to extract order and title from meta/frontmatter
+    let content = "";
+    try {
+      content = readFileSync(filePath, "utf-8");
+    } catch {}
+
+    const order = isMdx ? extractMdxOrder(content) : extractTsxOrder(content);
+    const metaTitle = extractTitle(content, isMdx);
+
     // Derive default title from filename: "Button.storybook.tsx" → "Button"
-    const title = fileName
+    const defaultTitle = fileName
       .replace(/\.storybook\.(tsx|mdx)$/, "")
-      .replace(/([a-z])([A-Z])/g, "$1 $2"); // CamelCase → "Camel Case"
+      .replace(/([a-z])([A-Z])/g, "$1 $2");
+
+    const title = metaTitle || defaultTitle;
 
     entries.push({
       id,
       title,
       filePath: resolve(filePath),
       relativePath,
-      storyNames: [], // populated at runtime after module import
+      storyNames: [],
       type,
+      order,
     });
   }
+
+  // Sort by order, then alphabetically by title
+  entries.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
 
   return entries;
 }
@@ -56,11 +101,12 @@ export async function scanStories(
  * This is imported as `virtual:storybook/manifest` in the shell app.
  */
 export function generateManifestModule(entries: StoryManifestEntry[]): string {
-  const manifest = entries.map(({ id, title, relativePath, type }) => ({
+  const manifest = entries.map(({ id, title, relativePath, type, order }) => ({
     id,
     title,
     relativePath,
     type,
+    order,
   }));
   return `export default ${JSON.stringify(manifest, null, 2)};`;
 }

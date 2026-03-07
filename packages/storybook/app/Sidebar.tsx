@@ -3,7 +3,8 @@ import { appStore, manifest } from "./App.js";
 
 interface StoryGroup {
   label: string;
-  entries: Array<{ id: string; title: string; type: string }>;
+  minOrder: number;
+  entries: Array<{ id: string; title: string; type: string; order: number }>;
 }
 
 function groupStories(entries: any[], filter: string): StoryGroup[] {
@@ -18,20 +19,29 @@ function groupStories(entries: any[], filter: string): StoryGroup[] {
     const groupLabel =
       parts.length > 1 ? parts.slice(0, -1).join("/") : "Stories";
     const itemTitle = parts[parts.length - 1];
+    const order = entry.order ?? Infinity;
 
     if (!groups.has(groupLabel)) {
-      groups.set(groupLabel, { label: groupLabel, entries: [] });
+      groups.set(groupLabel, { label: groupLabel, minOrder: order, entries: [] });
     }
-    groups.get(groupLabel)!.entries.push({
+    const group = groups.get(groupLabel)!;
+    if (order < group.minOrder) group.minOrder = order;
+    group.entries.push({
       id: entry.id,
       title: itemTitle,
       type: entry.type,
+      order,
     });
   }
 
-  return Array.from(groups.values()).sort((a, b) =>
-    a.label.localeCompare(b.label),
-  );
+  const result = Array.from(groups.values());
+  // Sort groups by lowest order of their entries, then alphabetically
+  result.sort((a, b) => a.minOrder - b.minOrder || a.label.localeCompare(b.label));
+  // Sort entries within each group by order, then alphabetically
+  for (const group of result) {
+    group.entries.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+  }
+  return result;
 }
 
 export const StorybookSidebar: FC = () => {

@@ -10,6 +10,8 @@ export interface StoryMeta {
   argTypes?: Record<string, ArgType>;
   /** Default arg values applied to all stories unless overridden */
   args?: Record<string, unknown>;
+  /** Sort order in the sidebar (lower = higher; default: Infinity) */
+  order?: number;
 }
 
 /** Control definition for a single prop */
@@ -61,6 +63,8 @@ export interface StoryManifestEntry {
   storyNames: string[];
   /** File type */
   type: "tsx" | "mdx";
+  /** Sort order in the sidebar (lower = higher; default: Infinity) */
+  order: number;
 }
 
 /** Configuration for defuss-storybook */

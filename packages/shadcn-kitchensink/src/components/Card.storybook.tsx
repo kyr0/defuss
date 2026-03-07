@@ -11,6 +11,7 @@ import type { StoryMeta } from "defuss-storybook";
 
 export const meta: StoryMeta = {
   title: "Components/Card",
+  order: 2,
   description: "Cards group related content and actions in a contained layout.",
 };
 
