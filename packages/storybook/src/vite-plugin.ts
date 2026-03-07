@@ -1,0 +1,142 @@
+import { createFilter, type PluginOption, type ViteDevServer } from "vite";
+import { join, resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import defuss from "defuss-vite";
+import tailwindcss from "@tailwindcss/vite";
+import mdx from "@mdx-js/rollup";
+import {
+  scanStories,
+  generateManifestModule,
+  generateStoriesModule,
+} from "./scanner.js";
+import { remarkPlugins, rehypePlugins } from "./mdx/plugins.js";
+import type { ResolvedStorybookConfig, StoryManifestEntry } from "./types.js";
+
+const VIRTUAL_MANIFEST = "virtual:storybook/manifest";
+const VIRTUAL_STORIES = "virtual:storybook/stories";
+const VIRTUAL_CONFIG = "virtual:storybook/config";
+const RESOLVED_MANIFEST = "\0" + VIRTUAL_MANIFEST;
+const RESOLVED_STORIES = "\0" + VIRTUAL_STORIES;
+const RESOLVED_CONFIG = "\0" + VIRTUAL_CONFIG;
+
+/**
+ * Main Vite plugin for defuss-storybook.
+ * Composes defuss-vite, tailwind, and MDX plugins, and serves virtual modules
+ * for the story manifest and dynamic imports.
+ */
+export function storybookVitePlugin(
+  config: ResolvedStorybookConfig,
+): PluginOption[] {
+  let entries: StoryManifestEntry[] = [];
+
+  const storyFilter = createFilter(
+    config.stories.map((p) => join(config.projectDir, p)),
+  );
+
+  const storybookPlugin: PluginOption = {
+    name: "vite:defuss-storybook",
+    enforce: "pre",
+
+    async buildStart() {
+      entries = await scanStories(config);
+    },
+
+    configureServer(srv) {
+      server = srv;
+
+      // Watch for story file additions/removals
+      const watchPatterns = config.stories.map((p) =>
+        join(config.projectDir, p),
+      );
+      srv.watcher.add(watchPatterns);
+
+      srv.watcher.on("add", async (file) => {
+        if (storyFilter(file)) {
+          entries = await scanStories(config);
+          invalidateVirtualModules(srv);
+        }
+      });
+
+      srv.watcher.on("unlink", async (file) => {
+        if (storyFilter(file)) {
+          entries = await scanStories(config);
+          invalidateVirtualModules(srv);
+        }
+      });
+    },
+
+    resolveId(id) {
+      if (id === VIRTUAL_MANIFEST) return RESOLVED_MANIFEST;
+      if (id === VIRTUAL_STORIES) return RESOLVED_STORIES;
+      if (id === VIRTUAL_CONFIG) return RESOLVED_CONFIG;
+      return null;
+    },
+
+    load(id) {
+      if (id === RESOLVED_MANIFEST) {
+        return generateManifestModule(entries);
+      }
+      if (id === RESOLVED_STORIES) {
+        return generateStoriesModule(entries);
+      }
+      if (id === RESOLVED_CONFIG) {
+        return `export default ${JSON.stringify({
+          title: config.title,
+          projectDir: config.projectDir,
+        })};`;
+      }
+      return null;
+    },
+
+    handleHotUpdate({ file, server: srv }) {
+      if (storyFilter(file)) {
+        // Invalidate virtual modules so they re-load with fresh data
+        invalidateVirtualModules(srv);
+        // Also send full reload for the story file itself
+        srv.ws.send({ type: "full-reload" });
+        return [];
+      }
+    },
+  };
+
+  // Compose all necessary plugins
+  return [
+    storybookPlugin,
+    defuss() as PluginOption,
+    tailwindcss() as PluginOption,
+    mdx({
+      jsxImportSource: "defuss",
+      remarkPlugins: remarkPlugins as any,
+      rehypePlugins: rehypePlugins as any,
+    }) as PluginOption,
+  ];
+}
+
+function invalidateVirtualModules(server: ViteDevServer) {
+  const manifestMod = server.moduleGraph.getModuleById(RESOLVED_MANIFEST);
+  if (manifestMod) server.moduleGraph.invalidateModule(manifestMod);
+
+  const storiesMod = server.moduleGraph.getModuleById(RESOLVED_STORIES);
+  if (storiesMod) server.moduleGraph.invalidateModule(storiesMod);
+}
+
+/**
+ * Get the path to the shell app directory.
+ * In the built package, it's at `<pkg>/app/`.
+ * In development, it's at `<pkg>/src/app/`.
+ */
+export function getAppDir(): string {
+  const thisDir = dirname(fileURLToPath(import.meta.url));
+  // In dist: packages/storybook/dist/vite-plugin.mjs → ../app
+  // In src:  packages/storybook/src/vite-plugin.ts  → ./app
+  const appFromDist = resolve(thisDir, "..", "app");
+  const appFromSrc = resolve(thisDir, "app");
+
+  // Prefer the built app directory, fall back to src
+  try {
+    const { existsSync } = require("node:fs");
+    if (existsSync(join(appFromDist, "index.html"))) return appFromDist;
+  } catch {}
+
+  return appFromSrc;
+}

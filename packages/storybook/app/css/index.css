@@ -1,0 +1,76 @@
+@import "tailwindcss";
+@import "basecoat-css";
+
+/* Storybook shell layout */
+.sb-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sb-sidebar {
+  width: 280px;
+  min-width: 280px;
+  border-right: 1px solid var(--color-border, hsl(var(--border)));
+  overflow-y: auto;
+  background: var(--color-sidebar-background, hsl(var(--muted) / 0.3));
+}
+
+.sb-main {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-header {
+  border-bottom: 1px solid var(--color-border, hsl(var(--border)));
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--color-background, hsl(var(--background)));
+}
+
+.sb-preview {
+  flex: 1;
+  padding: 2rem;
+}
+
+.sb-controls {
+  border-top: 1px solid var(--color-border, hsl(var(--border)));
+  padding: 1rem 1.5rem;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.sb-sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border, hsl(var(--border)));
+}
+
+.sb-story-item {
+  padding: 0.375rem 1rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s;
+}
+
+.sb-story-item:hover {
+  background: var(--color-accent, hsl(var(--accent)));
+}
+
+.sb-story-item.active {
+  background: var(--color-primary, hsl(var(--primary)));
+  color: var(--color-primary-foreground, hsl(var(--primary-foreground)));
+}
+
+.sb-group-label {
+  padding: 0.5rem 1rem 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted-foreground, hsl(var(--muted-foreground)));
+}

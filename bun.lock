@@ -508,6 +508,7 @@
         "defuss-dataview": "^0.3.0",
         "defuss-runtime": "^1.3.1",
         "defuss-shadcn": "^0.5.1",
+        "defuss-storybook": "workspace:*",
         "defuss-transval": "^1.3.0",
         "defuss-vite": "^1.1.3",
         "lightningcss": "^1.30.2",
@@ -554,6 +555,39 @@
       },
       "optionalPeers": [
         "defuss-rpc",
+      ],
+    },
+    "packages/storybook": {
+      "name": "defuss-storybook",
+      "version": "0.1.0",
+      "bin": {
+        "defuss-storybook": "dist/cli.mjs",
+      },
+      "dependencies": {
+        "@mdx-js/rollup": "^3.1.0",
+        "@tailwindcss/vite": "^4.1.18",
+        "basecoat-css": "^0.3.10",
+        "chokidar": "^5.0.0",
+        "defuss": "^3.4.0",
+        "defuss-vite": "^1.1.3",
+        "fast-glob": "^3.3.3",
+        "rehype-katex": "^7.0.1",
+        "remark-frontmatter": "^5.0.0",
+        "remark-gfm": "^4.0.1",
+        "remark-math": "^6.0.0",
+        "remark-mdx-frontmatter": "^5.2.0",
+        "tailwindcss": "^4.1.18",
+        "vite": "^7.3.1",
+      },
+      "devDependencies": {
+        "pkgroll": "^2.25.2",
+        "typescript": "^5.9.3",
+      },
+      "peerDependencies": {
+        "defuss-shadcn": "*",
+      },
+      "optionalPeers": [
+        "defuss-shadcn",
       ],
     },
     "packages/transval": {
@@ -1033,6 +1067,8 @@
     "@mdx-js/esbuild": ["@mdx-js/esbuild@3.1.1", "", { "dependencies": { "@mdx-js/mdx": "^3.0.0", "@types/unist": "^3.0.0", "source-map": "^0.7.0", "vfile": "^6.0.0", "vfile-message": "^4.0.0" }, "peerDependencies": { "esbuild": ">=0.14.0" } }, "sha512-NS35VhTdvKNj5/B1JSD5W3kN1R0WDHgk+zCWq+tSChQw5L2Bgeiz7yyZPFrc5LWuPVOxE1xMbJr82bO9VVzmfQ=="],
 
     "@mdx-js/mdx": ["@mdx-js/mdx@3.1.1", "", { "dependencies": { "@types/estree": "^1.0.0", "@types/estree-jsx": "^1.0.0", "@types/hast": "^3.0.0", "@types/mdx": "^2.0.0", "acorn": "^8.0.0", "collapse-white-space": "^2.0.0", "devlop": "^1.0.0", "estree-util-is-identifier-name": "^3.0.0", "estree-util-scope": "^1.0.0", "estree-walker": "^3.0.0", "hast-util-to-jsx-runtime": "^2.0.0", "markdown-extensions": "^2.0.0", "recma-build-jsx": "^1.0.0", "recma-jsx": "^1.0.0", "recma-stringify": "^1.0.0", "rehype-recma": "^1.0.0", "remark-mdx": "^3.0.0", "remark-parse": "^11.0.0", "remark-rehype": "^11.0.0", "source-map": "^0.7.0", "unified": "^11.0.0", "unist-util-position-from-estree": "^2.0.0", "unist-util-stringify-position": "^4.0.0", "unist-util-visit": "^5.0.0", "vfile": "^6.0.0" } }, "sha512-f6ZO2ifpwAQIpzGWaBQT2TXxPv6z3RBzQKpVftEWN78Vl/YweF1uwussDx8ECAXVtr3Rs89fKyG9YlzUs9DyGQ=="],
+
+    "@mdx-js/rollup": ["@mdx-js/rollup@3.1.1", "", { "dependencies": { "@mdx-js/mdx": "^3.0.0", "@rollup/pluginutils": "^5.0.0", "source-map": "^0.7.0", "vfile": "^6.0.0" }, "peerDependencies": { "rollup": ">=2" } }, "sha512-v8satFmBB+DqDzYohnm1u2JOvxx6Hl3pUvqzJvfs2Zk/ngZ1aRUhsWpXvwPkNeGN9c2NCm/38H29ZqXQUjf8dw=="],
 
     "@minimistjs/subarg": ["@minimistjs/subarg@1.0.0", "", { "dependencies": { "minimist": "^1.1.0" } }, "sha512-Q/ONBiM2zNeYUy0mVSO44mWWKYM3UHuEK43PKIOzJCbvUnPoMH1K+gk3cf1kgnCVJFlWmddahQQCmrmBGlk9jQ=="],
 
@@ -1783,6 +1819,8 @@
     "defuss-shadcn-kitchensink": ["defuss-shadcn-kitchensink@workspace:packages/shadcn-kitchensink"],
 
     "defuss-ssg": ["defuss-ssg@workspace:packages/ssg"],
+
+    "defuss-storybook": ["defuss-storybook@workspace:packages/storybook"],
 
     "defuss-transval": ["defuss-transval@workspace:packages/transval"],
 
