@@ -8,6 +8,7 @@ import {
   scanStories,
   generateManifestModule,
   generateStoriesModule,
+  generateSourcesModule,
 } from "./scanner.js";
 import { remarkPlugins, rehypePlugins } from "./mdx/plugins.js";
 import type { ResolvedStorybookConfig, StoryManifestEntry } from "./types.js";
@@ -15,9 +16,11 @@ import type { ResolvedStorybookConfig, StoryManifestEntry } from "./types.js";
 const VIRTUAL_MANIFEST = "virtual:storybook/manifest";
 const VIRTUAL_STORIES = "virtual:storybook/stories";
 const VIRTUAL_CONFIG = "virtual:storybook/config";
+const VIRTUAL_SOURCES = "virtual:storybook/sources";
 const RESOLVED_MANIFEST = "\0" + VIRTUAL_MANIFEST;
 const RESOLVED_STORIES = "\0" + VIRTUAL_STORIES;
 const RESOLVED_CONFIG = "\0" + VIRTUAL_CONFIG;
+const RESOLVED_SOURCES = "\0" + VIRTUAL_SOURCES;
 
 /**
  * Main Vite plugin for defuss-storybook.
@@ -42,8 +45,6 @@ export function storybookVitePlugin(
     },
 
     configureServer(srv) {
-      server = srv;
-
       // Watch for story file additions/removals
       const watchPatterns = config.stories.map((p) =>
         join(config.projectDir, p),
@@ -69,6 +70,7 @@ export function storybookVitePlugin(
       if (id === VIRTUAL_MANIFEST) return RESOLVED_MANIFEST;
       if (id === VIRTUAL_STORIES) return RESOLVED_STORIES;
       if (id === VIRTUAL_CONFIG) return RESOLVED_CONFIG;
+      if (id === VIRTUAL_SOURCES) return RESOLVED_SOURCES;
       return null;
     },
 
@@ -83,7 +85,11 @@ export function storybookVitePlugin(
         return `export default ${JSON.stringify({
           title: config.title,
           projectDir: config.projectDir,
+          themes: config.themes,
         })};`;
+      }
+      if (id === RESOLVED_SOURCES) {
+        return generateSourcesModule(entries);
       }
       return null;
     },
@@ -118,6 +124,9 @@ function invalidateVirtualModules(server: ViteDevServer) {
 
   const storiesMod = server.moduleGraph.getModuleById(RESOLVED_STORIES);
   if (storiesMod) server.moduleGraph.invalidateModule(storiesMod);
+
+  const sourcesMod = server.moduleGraph.getModuleById(RESOLVED_SOURCES);
+  if (sourcesMod) server.moduleGraph.invalidateModule(sourcesMod);
 }
 
 /**

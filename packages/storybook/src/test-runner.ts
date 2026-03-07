@@ -111,6 +111,7 @@ function generateVitestConfig(
   config: ResolvedStorybookConfig,
   tmpDir: string,
 ): string {
+  const instances = config.browsers.map((b) => `{ browser: "${b}" }`).join(", ");
   return `import { defineConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
 import defuss from "defuss-vite";
@@ -133,7 +134,7 @@ export default defineConfig({
     browser: {
       enabled: true,
       provider: playwright(),
-      instances: [{ browser: "${config.browser}" }],
+      instances: [${instances}],
       headless: true,
     },
     testTimeout: 30000,

@@ -1,15 +1,16 @@
 import { resolve, join } from "node:path";
 import { existsSync } from "node:fs";
-import type { StorybookConfig, ResolvedStorybookConfig } from "./types.js";
+import type { StorybookConfig, ResolvedStorybookConfig, ThemeConfig } from "./types.js";
 
 /** Default configuration values */
-const defaults: Required<StorybookConfig> = {
+const defaults = {
   stories: ["src/**/*.storybook.{tsx,mdx}"],
   port: 6006,
-  browser: "chromium",
+  browsers: ["chromium"] as ("chromium" | "firefox" | "webkit")[],
   title: "defuss Storybook",
   outDir: ".storybook",
-  css: [],
+  css: [] as string[],
+  themes: [] as ThemeConfig[],
 };
 
 /**
@@ -35,10 +36,11 @@ export async function loadConfig(
   return {
     stories: userConfig.stories ?? defaults.stories,
     port: userConfig.port ?? defaults.port,
-    browser: userConfig.browser ?? defaults.browser,
+    browsers: userConfig.browsers ?? defaults.browsers,
     title: userConfig.title ?? defaults.title,
     outDir: userConfig.outDir ?? defaults.outDir,
     css: userConfig.css ?? defaults.css,
+    themes: userConfig.themes ?? defaults.themes,
     projectDir: absProjectDir,
   };
 }

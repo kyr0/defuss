@@ -5,27 +5,34 @@ import manifest from "virtual:storybook/manifest";
 import storyImporters from "virtual:storybook/stories";
 // @ts-ignore — virtual module provided by vite-plugin
 import storybookConfig from "virtual:storybook/config";
+// @ts-ignore — virtual module provided by vite-plugin
+import storySources from "virtual:storybook/sources";
 
 import { StorybookSidebar } from "./Sidebar.js";
 import { StoryView } from "./StoryView.js";
 import { DocView } from "./DocView.js";
+import { ViewportControls } from "./ViewportControls.js";
+import { ThemeSwitcher } from "./ThemeSwitcher.js";
 
 interface AppState {
   activeStoryId: string | null;
   activeStoryName: string | null;
   filter: string;
+  sidebarOpen: boolean;
 }
 
 export const appStore = createStore<AppState>({
   activeStoryId: null,
   activeStoryName: null,
   filter: "",
+  sidebarOpen: true,
 });
 
-export { manifest, storyImporters, storybookConfig };
+export { manifest, storyImporters, storybookConfig, storySources };
 
 export const App: FC = () => {
   const mainRef = createRef<HTMLDivElement>();
+  const sidebarRef = createRef<HTMLDivElement>();
 
   // Read initial story from URL hash
   const hash = window.location.hash.slice(1); // remove #
@@ -36,6 +43,14 @@ export const App: FC = () => {
       appStore.set("activeStoryName", storyName || null);
     }
   }
+
+  const toggleSidebar = () => {
+    const next = !appStore.value.sidebarOpen;
+    appStore.set("sidebarOpen", next);
+    if (sidebarRef.current) {
+      sidebarRef.current.style.display = next ? "" : "none";
+    }
+  };
 
   const renderMain = () => {
     const { activeStoryId } = appStore.value;
@@ -76,7 +91,11 @@ export const App: FC = () => {
   };
 
   // Re-render main area when active story changes
-  appStore.subscribe(renderMain);
+  appStore.subscribe((newVal, oldVal) => {
+    if (newVal.activeStoryId !== oldVal.activeStoryId || newVal.activeStoryName !== oldVal.activeStoryName) {
+      renderMain();
+    }
+  });
 
   // Listen for hash changes (back/forward navigation)
   window.addEventListener("hashchange", () => {
@@ -86,6 +105,7 @@ export const App: FC = () => {
       activeStoryId: storyId || null,
       activeStoryName: storyName || null,
       filter: appStore.value.filter,
+      sidebarOpen: appStore.value.sidebarOpen,
     });
   });
 
@@ -96,11 +116,41 @@ export const App: FC = () => {
 
   return (
     <div class="sb-shell" onMount={onMount}>
-      <div class="sb-sidebar">
-        <StorybookSidebar />
-      </div>
-      <div class="sb-main" ref={mainRef}>
-        {/* Populated by renderMain */}
+      {/* Header toolbar */}
+      <header class="sb-toolbar">
+        <div class="flex items-center gap-2">
+          {/* Sidebar toggle */}
+          <button
+            class="btn-icon-ghost size-7"
+            onClick={toggleSidebar}
+            aria-label="Toggle sidebar"
+            title="Toggle sidebar"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2" />
+              <path d="M9 3v18" />
+            </svg>
+          </button>
+          <span class="text-sm font-semibold">{storybookConfig.title}</span>
+        </div>
+
+        {/* Viewport controls — center */}
+        <div class="flex-1 flex justify-center">
+          <ViewportControls />
+        </div>
+
+        {/* Theme + dark mode — right */}
+        <ThemeSwitcher />
+      </header>
+
+      {/* Body: sidebar + main */}
+      <div class="sb-body">
+        <div class="sb-sidebar" ref={sidebarRef}>
+          <StorybookSidebar />
+        </div>
+        <div class="sb-main" ref={mainRef}>
+          {/* Populated by renderMain */}
+        </div>
       </div>
     </div>
   );

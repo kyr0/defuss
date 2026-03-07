@@ -1,4 +1,5 @@
 import fg from "fast-glob";
+import { readFileSync } from "node:fs";
 import { basename, relative, resolve } from "node:path";
 import type { StoryManifestEntry, ResolvedStorybookConfig } from "./types.js";
 
@@ -73,4 +74,20 @@ export function generateStoriesModule(entries: StoryManifestEntry[]): string {
     .map((entry) => `  "${entry.id}": () => import("${entry.filePath}")`)
     .join(",\n");
   return `export default {\n${imports}\n};`;
+}
+
+/**
+ * Generate the virtual module code for raw story source code.
+ * Maps storyId → raw file contents as string.
+ */
+export function generateSourcesModule(entries: StoryManifestEntry[]): string {
+  const sources: Record<string, string> = {};
+  for (const entry of entries) {
+    try {
+      sources[entry.id] = readFileSync(entry.filePath, "utf-8");
+    } catch {
+      sources[entry.id] = "// Source not available";
+    }
+  }
+  return `export default ${JSON.stringify(sources)};`;
 }

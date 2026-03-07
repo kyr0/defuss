@@ -94,7 +94,6 @@ export const StorybookSidebar: FC = () => {
   return (
     <div onMount={onMount}>
       <div class="sb-sidebar-header">
-        <div class="font-semibold text-sm mb-2">{storybookConfig.title}</div>
         <input
           ref={searchRef}
           type="text"

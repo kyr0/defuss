@@ -1,26 +1,26 @@
 import { type FC, createRef, createStore, $ } from "defuss";
-import { storyImporters, manifest } from "./App.js";
+import { storyImporters, manifest, storySources } from "./App.js";
 import { PropEditor } from "./PropEditor.js";
+import { CodePreview } from "./CodePreview.js";
+import { viewportStore } from "./ViewportControls.js";
 
 interface StoryViewProps {
   storyId: string;
   storyName?: string | null;
 }
 
-export const StoryView: FC<StoryViewProps> = ({ storyId, storyName }) => {
-  const headerRef = createRef<HTMLDivElement>();
-  const previewRef = createRef<HTMLDivElement>();
-  const tabsRef = createRef<HTMLDivElement>();
-  const controlsRef = createRef<HTMLDivElement>();
-  const sourceRef = createRef<HTMLDivElement>();
-
+export const StoryView: FC<StoryViewProps> = ({ storyId }) => {
+  const containerRef = createRef<HTMLDivElement>();
+  const playgroundPreviewRef = createRef<HTMLDivElement>();
   const propsStore = createStore<Record<string, unknown>>({});
+
+  let currentMeta: any = {};
 
   const onMount = async () => {
     const importer = storyImporters[storyId];
     if (!importer) {
-      $(previewRef).jsx(
-        <div class="text-red-500">No importer found for story: {storyId}</div>,
+      $(containerRef).jsx(
+        <div class="text-red-500 p-6">No importer found for story: {storyId}</div>,
       );
       return;
     }
@@ -29,172 +29,188 @@ export const StoryView: FC<StoryViewProps> = ({ storyId, storyName }) => {
     try {
       mod = await importer();
     } catch (err: any) {
-      $(previewRef).jsx(
-        <div class="text-red-500">
+      $(containerRef).jsx(
+        <div class="text-red-500 p-6">
           <p class="font-semibold">Failed to load story module:</p>
-          <pre class="mt-2 text-sm bg-muted p-3 rounded overflow-auto">
-            {String(err)}
-          </pre>
+          <pre class="mt-2 text-sm bg-muted p-3 rounded overflow-auto">{String(err)}</pre>
         </div>,
       );
       return;
     }
 
     const meta = mod.meta || mod.default?.meta || {};
+    currentMeta = meta;
     const storyExports = getStoryExports(mod);
 
     if (storyExports.length === 0) {
-      $(previewRef).jsx(
-        <div class="text-muted-foreground italic">
-          No story exports found. Export named functions from your
-          .storybook.tsx file.
+      $(containerRef).jsx(
+        <div class="text-muted-foreground italic p-6">
+          No story exports found. Export named functions from your .storybook.tsx file.
         </div>,
       );
       return;
     }
-
-    // Find the entry in manifest for display title
-    const entry = manifest.find((e: any) => e.id === storyId);
-    const displayTitle = meta.title || entry?.title || storyId;
-
-    // Render header
-    $(headerRef).jsx(
-      <div class="sb-header">
-        <h1 class="text-lg font-semibold">{displayTitle}</h1>
-        {meta.description && (
-          <span class="text-sm text-muted-foreground">{meta.description}</span>
-        )}
-      </div>,
-    );
 
     // Set up initial props from meta.args
     if (meta.args) {
       propsStore.set({ ...meta.args });
     }
 
-    // Determine which story to show (first one by default or one matching storyName)
-    const activeStoryKey = storyName
-      ? storyExports.find(
-          ([name]) => name.toLowerCase() === storyName.toLowerCase(),
-        )?.[0]
-      : storyExports[0]?.[0];
+    // Get raw source code for this story
+    const rawSource = (storySources as Record<string, string>)[storyId] || "";
 
-    // Render story tabs
-    renderTabs(storyExports, activeStoryKey || storyExports[0][0]);
+    // Find the playground story: look for "Default" by name, or the first one that accepts args
+    const defaultEntry = findPlaygroundStory(storyExports);
+    const variantEntries = storyExports.filter(([name]) => name !== defaultEntry[0]);
 
-    // Render the active story
-    if (activeStoryKey) {
-      renderStory(mod[activeStoryKey], meta);
-    }
+    // Render the full layout once
+    renderLayout(defaultEntry, variantEntries, meta, rawSource);
 
-    // Render prop controls
-    renderControls(meta);
-
-    // Re-render story when props change
-    propsStore.subscribe(() => {
-      if (activeStoryKey) {
-        renderStory(mod[activeStoryKey], meta);
-      }
-    });
+    // Only re-render the playground preview content on prop/viewport changes
+    propsStore.subscribe(() => renderPlaygroundContent(defaultEntry, meta));
+    viewportStore.subscribe(() => renderPlaygroundContent(defaultEntry, meta));
   };
 
-  const renderTabs = (
-    storyExports: [string, Function][],
-    activeKey: string,
+  /** Re-render just the playground preview content (not the CodePreview wrapper or PropEditor) */
+  const renderPlaygroundContent = (
+    [, defaultFn]: [string, Function],
+    meta: any,
   ) => {
-    if (storyExports.length <= 1) {
-      $(tabsRef).jsx(<div />);
+    const mergedProps = { ...(meta.args || {}), ...propsStore.value };
+    let result: any;
+    try {
+      result = defaultFn.length > 0 ? defaultFn(mergedProps) : defaultFn();
+    } catch (err: any) {
+      $(playgroundPreviewRef).jsx(
+        <div class="text-red-500 p-4">
+          <pre class="text-sm">{String(err)}</pre>
+        </div>,
+      );
       return;
     }
 
-    $(tabsRef).jsx(
-      <div class="flex gap-1 px-4 pt-3">
-        {storyExports.map(([name]) => (
-          <button
-            key={name}
-            class={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-              name === activeKey
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-accent"
-            }`}
-            onClick={() => {
-              window.location.hash = `${storyId}/${name.toLowerCase()}`;
-            }}
-          >
-            {formatStoryName(name)}
-          </button>
-        ))}
+    const { width, height, isConstrained } = viewportStore.value;
+    const style: Record<string, string> = {};
+    if (isConstrained && width > 0) style.width = `${width}px`;
+    if (isConstrained && height > 0) style.height = `${height}px`;
+
+    $(playgroundPreviewRef).jsx(
+      <div class="sb-preview-frame" style={isConstrained ? style : undefined}>
+        {result}
       </div>,
     );
   };
 
-  const renderStory = (storyFn: Function, meta: any) => {
+  /** Render the full page layout (called once on mount) */
+  const renderLayout = (
+    defaultEntry: [string, Function],
+    variantEntries: [string, Function][],
+    meta: any,
+    rawSource: string,
+  ) => {
+    const entry = manifest.find((e: any) => e.id === storyId);
+    const displayTitle = meta.title || entry?.title || storyId;
+    const [defaultKey, defaultFn] = defaultEntry;
+
+    // Render initial default story
+    const mergedProps = { ...(meta.args || {}), ...propsStore.value };
+    let defaultResult: any;
+    let defaultError: string | null = null;
     try {
-      const mergedProps = { ...(meta.args || {}), ...propsStore.value };
-      // If the story function accepts args, pass them
-      const result = storyFn.length > 0 ? storyFn(mergedProps) : storyFn();
-      $(previewRef).jsx(
-        <div class="sb-preview">
-          <div class="border rounded-lg p-8 min-h-[200px] flex items-center justify-center bg-background">
-            {result}
-          </div>
-        </div>,
-      );
+      defaultResult = defaultFn.length > 0 ? defaultFn(mergedProps) : defaultFn();
     } catch (err: any) {
-      $(previewRef).jsx(
-        <div class="sb-preview">
-          <div class="text-red-500">
-            <p class="font-semibold">Error rendering story:</p>
-            <pre class="mt-2 text-sm bg-muted p-3 rounded overflow-auto">
-              {String(err)}
-            </pre>
-          </div>
-        </div>,
-      );
+      defaultError = String(err);
     }
 
-    // Show source code
-    try {
-      const source = storyFn.toString();
-      $(sourceRef).jsx(
-        <details class="px-6 pb-4">
-          <summary class="text-sm text-muted-foreground cursor-pointer py-2 select-none">
-            View Source
-          </summary>
-          <pre class="mt-2 text-sm bg-muted p-4 rounded-lg overflow-auto">
-            <code>{source}</code>
-          </pre>
-        </details>,
-      );
-    } catch {
-      $(sourceRef).jsx(<div />);
-    }
-  };
+    const { width, height, isConstrained } = viewportStore.value;
+    const previewStyle: Record<string, string> = {};
+    if (isConstrained && width > 0) previewStyle.width = `${width}px`;
+    if (isConstrained && height > 0) previewStyle.height = `${height}px`;
 
-  const renderControls = (meta: any) => {
-    if (!meta.argTypes && !meta.args && !meta.component) {
-      $(controlsRef).jsx(<div />);
-      return;
-    }
+    const defaultSource = extractStorySource(rawSource, defaultKey);
+    const hasControls = !!(meta.argTypes || meta.args || meta.component);
 
-    $(controlsRef).jsx(
-      <div class="sb-controls">
-        <PropEditor meta={meta} propsStore={propsStore} />
+    $(containerRef).jsx(
+      <div class="p-6 space-y-6">
+        {/* Header */}
+        <div>
+          <h1 class="text-xl font-semibold">{displayTitle}</h1>
+          {meta.description && (
+            <p class="text-sm text-muted-foreground mt-1">{meta.description}</p>
+          )}
+        </div>
+
+        {/* Playground section */}
+        <section>
+          <h2 class="text-base font-semibold mb-3">Playground</h2>
+          <CodePreview code={defaultSource} language="tsx">
+            <div ref={playgroundPreviewRef}>
+              {defaultError ? (
+                <div class="text-red-500 p-4">
+                  <pre class="text-sm">{defaultError}</pre>
+                </div>
+              ) : (
+                <div class="sb-preview-frame" style={isConstrained ? previewStyle : undefined}>
+                  {defaultResult}
+                </div>
+              )}
+            </div>
+          </CodePreview>
+
+          {/* Prop controls (only for playground) */}
+          {hasControls && (
+            <div class="mt-4">
+              <PropEditor meta={meta} propsStore={propsStore} />
+            </div>
+          )}
+        </section>
+
+        {/* Divider + Variants */}
+        {variantEntries.length > 0 && (
+          <>
+            <hr class="border-border" />
+            {variantEntries.map(([name, fn]) => {
+              const variantSource = extractStorySource(rawSource, name);
+              const description = extractJSDocComment(rawSource, name);
+              let result: any;
+              let error: string | null = null;
+              try {
+                result = fn();
+              } catch (err: any) {
+                error = String(err);
+              }
+
+              return (
+                <section key={name}>
+                  <h2 class="text-base font-semibold">{formatStoryName(name)}</h2>
+                  {description && (
+                    <p class="text-sm text-muted-foreground mt-0.5 mb-3">{description}</p>
+                  )}
+                  {error ? (
+                    <div class="text-red-500">
+                      <pre class="text-sm bg-muted p-3 rounded overflow-auto">{error}</pre>
+                    </div>
+                  ) : (
+                    <CodePreview code={variantSource} language="tsx">
+                      <div class="sb-preview-frame">
+                        {result}
+                      </div>
+                    </CodePreview>
+                  )}
+                </section>
+              );
+            })}
+          </>
+        )}
       </div>,
     );
   };
 
   return (
-    <div onMount={onMount}>
-      <div ref={headerRef} />
-      <div ref={tabsRef} />
-      <div ref={previewRef}>
-        <div class="flex items-center justify-center h-64 text-muted-foreground">
-          Loading story...
-        </div>
+    <div ref={containerRef} onMount={onMount}>
+      <div class="flex items-center justify-center h-64 text-muted-foreground">
+        Loading story...
       </div>
-      <div ref={sourceRef} />
-      <div ref={controlsRef} />
     </div>
   );
 };
@@ -215,4 +231,45 @@ function formatStoryName(name: string): string {
   return name
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/^./, (c) => c.toUpperCase());
+}
+
+/**
+ * Find the story to use for the Playground.
+ * Priority: export named "Default" > first export that accepts args > first export.
+ */
+function findPlaygroundStory(exports: [string, Function][]): [string, Function] {
+  const byName = exports.find(([name]) => name.toLowerCase() === "default");
+  if (byName) return byName;
+  const withArgs = exports.find(([, fn]) => fn.length > 0);
+  if (withArgs) return withArgs;
+  return exports[0];
+}
+
+/**
+ * Extract the source code of a single exported story function from the raw file.
+ * Looks for `export const Name = ...` and captures until the next export or end of file.
+ */
+function extractStorySource(rawSource: string, storyName: string): string {
+  // Match `export const StoryName = ...` block
+  const pattern = new RegExp(
+    `(?:^|\\n)((?:\\/\\*\\*[\\s\\S]*?\\*\\/\\s*)?export\\s+(?:const|function)\\s+${storyName}\\b[\\s\\S]*?)(?=\\n(?:\\/\\*\\*|export\\s)|$)`,
+  );
+  const match = rawSource.match(pattern);
+  if (match) {
+    return match[1].trim();
+  }
+  // Fallback: return full source
+  return rawSource;
+}
+
+/**
+ * Extract the JSDoc comment immediately before a named export.
+ * Returns the text content (without the comment markers) or null.
+ */
+function extractJSDocComment(rawSource: string, storyName: string): string | null {
+  const pattern = new RegExp(
+    `\\/\\*\\*\\s*\\n?\\s*\\*\\s*(.+?)\\s*\\n?\\s*\\*\\/\\s*\\nexport\\s+(?:const|function)\\s+${storyName}\\b`,
+  );
+  const match = rawSource.match(pattern);
+  return match ? match[1].trim() : null;
 }

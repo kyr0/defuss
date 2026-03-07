@@ -69,20 +69,46 @@ export interface StorybookConfig {
   stories?: string[];
   /** Dev server port (default: 6006) */
   port?: number;
-  /** Browser for Playwright tests (default: "chromium") */
-  browser?: "chromium" | "firefox" | "webkit";
+  /** Browsers for Playwright tests (default: ["chromium"]) */
+  browsers?: ("chromium" | "firefox" | "webkit")[];
   /** Title shown in the storybook shell (default: "defuss Storybook") */
   title?: string;
   /** Build output directory relative to project root (default: ".storybook") */
   outDir?: string;
   /** CSS files to include in the storybook shell */
   css?: string[];
+  /** Theme CSS file paths to register as switchable themes */
+  themes?: ThemeConfig[];
+}
+
+/** A theme that can be switched in the storybook UI */
+export interface ThemeConfig {
+  /** Display name for the theme */
+  name: string;
+  /** CSS class added to <html> when active (e.g. "theme-claude") */
+  className: string;
+  /** Path to the CSS file (relative to project root), imported at build time */
+  cssPath?: string;
 }
 
 /** Resolved configuration with all defaults applied */
-export interface ResolvedStorybookConfig extends Required<StorybookConfig> {
+export interface ResolvedStorybookConfig {
+  stories: string[];
+  port: number;
+  browsers: ("chromium" | "firefox" | "webkit")[];
+  title: string;
+  outDir: string;
+  css: string[];
+  themes: ThemeConfig[];
   /** Absolute path to the project directory */
   projectDir: string;
+}
+
+/** Viewport preset for the preview iframe */
+export interface ViewportPreset {
+  label: string;
+  width: number;
+  height: number;
 }
 
 /** Result of prop introspection */
