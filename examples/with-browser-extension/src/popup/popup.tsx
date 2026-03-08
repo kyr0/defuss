@@ -35,10 +35,8 @@ registerRpc("PopupRpc", PopupRpc);
 
 // -- RPC client for the service worker --
 type WorkerRpc = { WorkerRpc: WorkerRpcApi };
-let rpc: WorkerRpc;
-const rpcReady = createWorkerRpcClient<WorkerRpc>().then((client) => {
-  rpc = client;
-});
+const rpc = await createWorkerRpcClient<WorkerRpc>();
+const { WorkerRpc } = rpc;
 
 // -- Theme toggle (persisted via chrome.storage prefs) --
 
@@ -60,16 +58,11 @@ const themeStore = createStore<{ dark: boolean }>({
 document.documentElement.classList.toggle("dark", themeStore.value.dark);
 
 // Restore saved theme from prefs on load
-rpcReady.then(async () => {
-  const val = await rpc.WorkerRpc.getPrefValue("__defuss_ext_darkMode", true);
-  if (typeof val === "boolean") {
-    document.documentElement.classList.toggle("dark", val);
-    themeStore.set({ dark: val });
-    if (switchRef.current) {
-      switchRef.current.checked = val;
-    }
-  }
-});
+const savedTheme = await rpc.WorkerRpc.getPrefValue("__defuss_ext_darkMode", true);
+if (typeof savedTheme === "boolean") {
+  document.documentElement.classList.toggle("dark", savedTheme);
+  themeStore.set({ dark: savedTheme });
+}
 
 themeStore.subscribe((val) => {
   // Sync the Switch toggle
@@ -77,11 +70,9 @@ themeStore.subscribe((val) => {
     switchRef.current.checked = val.dark;
   }
   // Persist theme preference to chrome.storage via worker RPC
-  if (rpc) {
-    rpc.WorkerRpc.setPrefValue("__defuss_ext_darkMode", val.dark, true).catch(
-      (err) => console.warn("Failed to persist theme:", err),
-    );
-  }
+  WorkerRpc.setPrefValue("__defuss_ext_darkMode", val.dark, true).catch(
+    (err) => console.warn("Failed to persist theme:", err),
+  );
 });
 
 // -- Counter demo (persisted via defuss-db through the worker) --
@@ -89,21 +80,18 @@ const counterStore = createStore({ count: 0 });
 const counterRef = createRef<HTMLSpanElement>();
 
 // Restore saved count from defuss-db on load
-rpcReady.then(async () => {
-  const val = await rpc.WorkerRpc.dbGet("popup_counter");
-  if (val != null) {
-    const parsed = Number(val);
-    if (!Number.isNaN(parsed)) {
-      counterStore.set({ count: parsed });
-      $(counterRef).text(String(parsed));
-    }
+const savedCount = await WorkerRpc.dbGet("popup_counter");
+if (savedCount != null) {
+  const parsed = Number(savedCount);
+  if (!Number.isNaN(parsed)) {
+    counterStore.set({ count: parsed });
   }
-});
+}
 
 function updateCount(count: number) {
   counterStore.set({ count });
   // Persist to defuss-db via worker RPC
-  rpc?.WorkerRpc.dbSet("popup_counter", String(count)).catch(
+  WorkerRpc.dbSet("popup_counter", String(count)).catch(
     (err) => console.warn("Failed to persist count:", err),
   );
 }
@@ -217,7 +205,7 @@ const ActiveTabCard: FC = () => (
     <CardContent>
       <div class="flex flex-wrap gap-2">
         <Button onClick={() => {
-          rpc?.WorkerRpc.tabRpcCall("TabRpc", "showAlert", "Hello from defuss!").catch(
+          rpc.WorkerRpc.tabRpcCall("TabRpc", "showAlert", "Hello from defuss!").catch(
             (err) => console.warn("tabRpcCall failed:", err),
           );
         }}>
@@ -314,21 +302,8 @@ const IMAGE_STORAGE_KEY = "demo_image";
 const imageRef = createRef<HTMLImageElement>();
 const dropStatusRef = createRef<HTMLParagraphElement>();
 
-// Restore saved image on popup load
-rpcReady.then(async () => {
-  const buffer = await rpc.WorkerRpc.readFile(IMAGE_STORAGE_KEY);
-  if (buffer) {
-    const blob = new Blob([buffer]);
-    const url = URL.createObjectURL(blob);
-    if (imageRef.current) {
-      imageRef.current.src = url;
-      imageRef.current.style.display = "block";
-    }
-    if (dropStatusRef.current) {
-      dropStatusRef.current.textContent = "Image restored from storage";
-    }
-  }
-});
+// Pre-fetch saved image (applied after render)
+const savedImage = await WorkerRpc.readFile(IMAGE_STORAGE_KEY);
 
 const handleImageDrop = async (event: DragEvent) => {
   const file = event.dataTransfer?.files?.[0];
@@ -428,3 +403,20 @@ const App: FC = () => (
 );
 
 render(<App />, document.getElementById("app")!);
+
+// Apply pre-fetched data now that refs are populated
+if (typeof savedTheme === "boolean" && switchRef.current) {
+  switchRef.current.checked = savedTheme;
+}
+
+if (savedImage) {
+  const blob = new Blob([savedImage]);
+  const imageUrl = URL.createObjectURL(blob);
+  if (imageRef.current) {
+    imageRef.current.src = imageUrl;
+    imageRef.current.style.display = "block";
+  }
+  if (dropStatusRef.current) {
+    dropStatusRef.current.textContent = "Image restored from storage";
+  }
+}

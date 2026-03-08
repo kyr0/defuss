@@ -4,10 +4,8 @@ import type { WorkerRpcApi } from "./worker-rpc";
 
 // RPC client to call the worker
 type WorkerRpc = { WorkerRpc: WorkerRpcApi };
-let rpc: WorkerRpc;
-const rpcReady = createWorkerRpcClient<WorkerRpc>().then((client) => {
-  rpc = client;
-});
+const rpc = await createWorkerRpcClient<WorkerRpc>();
+const { WorkerRpc } = rpc;
 
 /** Content-script RPC methods callable from the worker (and indirectly from popup) */
 export const TabRpc = {
@@ -22,13 +20,13 @@ export const TabRpc = {
     inputDb.set(detail.value);
 
     // Forward to worker + popup
-    rpcReady.then(() => rpc.WorkerRpc.onCapturedEvent("input", detail));
+    WorkerRpc.onCapturedEvent("input", detail);
   },
 
   /** Handle a captured click event from the MAIN-world prehook */
   onCapturedClick(detail: Record<string, unknown>): void {
     // Forward to worker + popup
-    rpcReady.then(() => rpc.WorkerRpc.onCapturedEvent("click", detail));
+    WorkerRpc.onCapturedEvent("click", detail);
   },
 };
 

@@ -2,6 +2,7 @@ import { dbGetValue, dbSetValue } from "./lib/worker/db";
 import { getValue, setValue } from "./lib/worker/prefs";
 import { getArrayBufferValue, setArrayBufferValue, removeBlobValue } from "./lib/worker/blob";
 import { createTabRpcClient } from "./lib/rpc";
+import { DSON } from "defuss-dson";
 
 /** Worker-side RPC methods callable from popup and content-script */
 export const WorkerRpc = {
@@ -55,7 +56,7 @@ export const WorkerRpc = {
       action: "__rpc",
       className: "PopupRpc",
       methodName: "onCapturedEvent",
-      args: [type, detail],
+      args: DSON.stringify([type, detail]),
     }).catch(() => {});
   },
 };
