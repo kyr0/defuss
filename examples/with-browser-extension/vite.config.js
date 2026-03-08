@@ -22,7 +22,7 @@ export default defineConfig({
           renderChunk(code, chunk) {
             // Service workers don't have `window`; Vite's preload helper uses it
             if (chunk.fileName.includes("worker")) {
-              return code.replace(/\bwindow\b/g, "globalThis");
+              return { code: code.replace(/\bwindow\b/g, "globalThis"), map: null };
             }
           },
         },

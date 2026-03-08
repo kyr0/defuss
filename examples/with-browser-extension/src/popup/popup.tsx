@@ -1,6 +1,6 @@
 import "./popup-styles.css";
 
-import { render, createRef, createStore } from "defuss";
+import { $, render, createRef, createStore } from "defuss";
 import type { FC } from "defuss";
 import {
   Button,
@@ -43,26 +43,48 @@ function workerMessage(action: string, data: Record<string, unknown>): Promise<a
   });
 }
 
+// -- Helper to call a typed function in the active tab's content script --
+function runFnInActiveTab(fnName: string, ...args: any[]): void {
+  workerMessage("run-fn-in-tab", { fnName, args }).catch(
+    (err) => console.warn("runFnInActiveTab failed:", err),
+  );
+}
+
 // -- Theme toggle (persisted via chrome.storage prefs) --
+
+// Set up the basecoat:theme listener (same pattern as kitchensink)
+document.addEventListener("basecoat:theme", ((event: CustomEvent) => {
+  const mode = event.detail?.mode;
+  const isDark = mode === "dark" ? true
+    : mode === "light" ? false
+    : !document.documentElement.classList.contains("dark");
+  document.documentElement.classList.toggle("dark", isDark);
+  themeStore.set({ dark: isDark });
+}) as EventListener);
+
 const themeStore = createStore<{ dark: boolean }>({
   dark: window.matchMedia("(prefers-color-scheme: dark)").matches,
 });
 
-function applyTheme(dark: boolean) {
-  document.documentElement.classList.toggle("dark", dark);
-}
-
-applyTheme(themeStore.value.dark);
+// Apply initial theme synchronously
+document.documentElement.classList.toggle("dark", themeStore.value.dark);
 
 // Restore saved theme from prefs on load
 workerMessage("get", { key: "__defuss_ext_darkMode", local: true }).then((val) => {
   if (typeof val === "boolean") {
+    document.documentElement.classList.toggle("dark", val);
     themeStore.set({ dark: val });
+    if (switchRef.current) {
+      switchRef.current.checked = val;
+    }
   }
 });
 
 themeStore.subscribe((val) => {
-  applyTheme(val.dark);
+  // Sync the Switch toggle
+  if (switchRef.current) {
+    switchRef.current.checked = val.dark;
+  }
   // Persist theme preference to chrome.storage via worker
   workerMessage("set", { key: "__defuss_ext_darkMode", value: val.dark, local: true }).catch(
     (err) => console.warn("Failed to persist theme:", err),
@@ -80,9 +102,7 @@ workerMessage("db-get", { key: "popup_counter" }).then((val) => {
     if (!Number.isNaN(parsed)) {
       counterStore.set({ count: parsed });
       // Update the ref directly in case JSX already rendered with default value
-      if (counterRef.current) {
-        counterRef.current.textContent = String(parsed);
-      }
+      $(counterRef).text(String(parsed));
     }
   }
 });
@@ -96,9 +116,7 @@ function updateCount(count: number) {
 }
 
 counterStore.subscribe(() => {
-  if (counterRef.current) {
-    counterRef.current.textContent = String(counterStore.value.count);
-  }
+  $(counterRef).text(String(counterStore.value.count));
 });
 
 // -- Progress demo --
@@ -107,13 +125,20 @@ const progressRef = createRef<HTMLDivElement>();
 
 // -- Components --
 
+const switchRef = createRef<HTMLInputElement>();
+
 const ThemeToggle: FC = () => (
   <div class="flex items-center gap-2">
     <Label htmlFor="dark-mode">Dark mode</Label>
     <Switch
+      ref={switchRef}
       id="dark-mode"
       checked={themeStore.value.dark}
-      onCheckedChange={(checked: boolean) => themeStore.set({ dark: checked })}
+      onCheckedChange={(checked: boolean) => {
+        document.dispatchEvent(
+          new CustomEvent("basecoat:theme", { detail: { mode: checked ? "dark" : "light" } }),
+        );
+      }}
     />
   </div>
 );
@@ -185,6 +210,22 @@ const BadgeShowcase: FC = () => (
         <Badge variant="secondary">Secondary</Badge>
         <Badge variant="destructive">Destructive</Badge>
         <Badge variant="outline">Outline</Badge>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ActiveTabCard: FC = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Active Tab</CardTitle>
+      <CardDescription>Run functions in the active tab's content script</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div class="flex flex-wrap gap-2">
+        <Button onClick={() => runFnInActiveTab("showAlert", "Hello from defuss!")}>
+          Show Notification
+        </Button>
       </div>
     </CardContent>
   </Card>
@@ -285,6 +326,7 @@ const App: FC = () => (
         <TabsTrigger value="feedback">Feedback</TabsTrigger>
       </TabsList>
       <TabsContent value="components" class="space-y-4 mt-4">
+        <ActiveTabCard />
         <ButtonShowcase />
         <BadgeShowcase />
         <CounterCard />

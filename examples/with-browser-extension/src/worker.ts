@@ -56,14 +56,26 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
         case "run-command": {
           console.log("RUN COMMAND", data.name, data.args);
+          sendResponse({ success: true });
+          break;
+        }
+
+        case "run-fn-in-tab": {
+          console.log("RUN FN IN TAB", data.fnName, data.args);
           try {
-            const result = await chrome.runtime.sendMessage({
-              action: "run-command",
-              text: JSON.stringify({ name: data.name, args: data.args }),
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tab?.id) {
+              sendResponse({ success: false, error: "No active tab" });
+              break;
+            }
+            const result = await chrome.tabs.sendMessage(tab.id, {
+              action: "run-fn",
+              fnName: data.fnName,
+              args: data.args,
             });
             sendResponse({ success: true, result });
           } catch (error: any) {
-            console.error("Command execution failed:", error);
+            console.error("run-fn-in-tab failed:", error);
             sendResponse({ success: false, error: error.message });
           }
           break;
