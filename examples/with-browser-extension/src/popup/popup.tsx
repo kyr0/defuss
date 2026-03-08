@@ -27,7 +27,7 @@ import {
 import { createWorkerRpcClient } from "../lib/rpc";
 import { registerRpc } from "../lib/rpc";
 import type { WorkerRpcApi } from "../worker-rpc";
-import { PopupRpc } from "../popup-rpc";
+import { PopupRpc } from "./popup-rpc";
 
 // -- Register popup RPC so the worker can forward captured events to us --
 registerRpc("PopupRpc", PopupRpc);
