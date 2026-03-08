@@ -23,6 +23,7 @@ import {
   AlertDescription,
   Separator,
   Progress,
+  DropArea,
 } from "defuss-shadcn";
 import { createWorkerRpcClient } from "../lib/rpc";
 import { registerRpc } from "../lib/rpc";
@@ -308,6 +309,93 @@ const AlertShowcase: FC = () => (
   </div>
 );
 
+// -- Image Drop demo (persisted via blob storage through worker RPC) --
+const IMAGE_STORAGE_KEY = "demo_image";
+const imageRef = createRef<HTMLImageElement>();
+const dropStatusRef = createRef<HTMLParagraphElement>();
+
+// Restore saved image on popup load
+rpcReady.then(async () => {
+  const buffer = await rpc.WorkerRpc.readFile(IMAGE_STORAGE_KEY);
+  if (buffer) {
+    const blob = new Blob([buffer]);
+    const url = URL.createObjectURL(blob);
+    if (imageRef.current) {
+      imageRef.current.src = url;
+      imageRef.current.style.display = "block";
+    }
+    if (dropStatusRef.current) {
+      dropStatusRef.current.textContent = "Image restored from storage";
+    }
+  }
+});
+
+const handleImageDrop = async (event: DragEvent) => {
+  const file = event.dataTransfer?.files?.[0];
+  if (!file || !file.type.startsWith("image/")) {
+    if (dropStatusRef.current) {
+      dropStatusRef.current.textContent = "Please drop an image file";
+    }
+    return;
+  }
+
+  // Show preview immediately
+  const url = URL.createObjectURL(file);
+  if (imageRef.current) {
+    imageRef.current.src = url;
+    imageRef.current.style.display = "block";
+  }
+  if (dropStatusRef.current) {
+    dropStatusRef.current.textContent = `Saving ${file.name}...`;
+  }
+
+  // Save via worker RPC
+  const buffer = await file.arrayBuffer();
+  await rpc.WorkerRpc.saveFile(IMAGE_STORAGE_KEY, buffer);
+
+  if (dropStatusRef.current) {
+    dropStatusRef.current.textContent = `Saved: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+  }
+};
+
+const ImageDropCard: FC = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Image Storage</CardTitle>
+      <CardDescription>Drop an image to save it via blob storage (persists across sessions)</CardDescription>
+    </CardHeader>
+    <CardContent class="space-y-3">
+      <DropArea size="sm" onDrop={handleImageDrop}>
+        <p class="text-sm font-medium">Drop an image here</p>
+        <p class="text-xs text-muted-foreground">PNG, JPG, GIF, WebP</p>
+      </DropArea>
+      <img
+        ref={imageRef}
+        alt="Stored image"
+        class="w-full rounded-lg object-contain max-h-48"
+        style={{ display: "none" }}
+      />
+      <p ref={dropStatusRef} class="text-xs text-muted-foreground" />
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={async () => {
+          await rpc.WorkerRpc.deleteFile(IMAGE_STORAGE_KEY);
+          if (imageRef.current) {
+            imageRef.current.src = "";
+            imageRef.current.style.display = "none";
+          }
+          if (dropStatusRef.current) {
+            dropStatusRef.current.textContent = "Image deleted";
+          }
+        }}
+      >
+        Clear image
+      </Button>
+    </CardContent>
+  </Card>
+);
+
 const App: FC = () => (
   <div class="p-4 space-y-4">
     <div class="flex items-center justify-between">
@@ -323,6 +411,7 @@ const App: FC = () => (
       </TabsList>
       <TabsContent value="components" class="space-y-4 mt-4">
         <ActiveTabCard />
+        <ImageDropCard />
         <ButtonShowcase />
         <BadgeShowcase />
         <CounterCard />

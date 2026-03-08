@@ -1,5 +1,6 @@
 import { dbGetValue, dbSetValue } from "./lib/worker/db";
 import { getValue, setValue } from "./lib/worker/prefs";
+import { getArrayBufferValue, setArrayBufferValue, removeBlobValue } from "./lib/worker/blob";
 import { createTabRpcClient } from "./lib/rpc";
 
 /** Worker-side RPC methods callable from popup and content-script */
@@ -18,6 +19,18 @@ export const WorkerRpc = {
 
   async setPrefValue(key: string, value: unknown, local = true): Promise<void> {
     await setValue(key, value, local);
+  },
+
+  async saveFile(name: string, data: ArrayBuffer): Promise<void> {
+    await setArrayBufferValue(name, data);
+  },
+
+  async readFile(name: string): Promise<ArrayBuffer | undefined> {
+    return getArrayBufferValue(name);
+  },
+
+  async deleteFile(name: string): Promise<void> {
+    await removeBlobValue(name);
   },
 
   /** Forward an RPC call to the active tab's content script */

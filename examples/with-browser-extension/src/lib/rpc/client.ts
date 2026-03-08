@@ -1,3 +1,4 @@
+import { DSON } from "defuss-dson";
 import type { RpcCallMessage, RpcResponse, RpcSchema } from "./types";
 
 // -- Transport helpers --
@@ -65,12 +66,14 @@ function buildProxy<T>(
           action: "__rpc",
           className: schema.name,
           methodName,
-          args,
+          args: DSON.stringify(args),
         });
         if (!response.success) {
           throw new Error(response.error ?? "RPC call failed");
         }
-        return response.result;
+        return response.result !== undefined
+          ? DSON.parse(response.result)
+          : undefined;
       };
     }
 
@@ -96,7 +99,7 @@ export async function createWorkerRpcClient<T>(): Promise<T> {
     action: "__rpc_schema",
     className: "",
     methodName: "",
-    args: [],
+    args: DSON.stringify([]),
   });
 
   if (!schemaResponse.success || !schemaResponse.schema) {
@@ -128,7 +131,7 @@ export async function createTabRpcClient<T>(
     action: "__rpc_schema",
     className: "",
     methodName: "",
-    args: [],
+    args: DSON.stringify([]),
   });
 
   if (!schemaResponse.success || !schemaResponse.schema) {

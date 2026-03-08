@@ -1,3 +1,4 @@
+import { DSON } from "defuss-dson";
 import type { RpcCallMessage, RpcResponse, RpcSchema } from "./types";
 
 /** Registry of all RPC endpoints in this context */
@@ -37,8 +38,9 @@ async function handleRpcMessage(
   }
 
   try {
-    const result = await method(...(message.args || []));
-    return { success: true, result };
+    const args = message.args ? (DSON.parse(message.args) as unknown[]) : [];
+    const result = await method(...args);
+    return { success: true, result: DSON.stringify(result) };
   } catch (err: any) {
     return { success: false, error: err?.message ?? String(err) };
   }

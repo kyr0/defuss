@@ -31,8 +31,6 @@ export const setValue = async (key: string, value: any, local = true) => {
   });
 };
 
-// TODO: setBlobValue, getBlobValue with unlimitedStorage permission; https://developer.chrome.com/docs/extensions/reference/api/storage?hl=de
-
 export const getPref = async (
   key: string,
   defaultValue?: string,

@@ -9,13 +9,13 @@ export interface RpcCallMessage {
   action: "__rpc" | "__rpc_schema";
   className: string;
   methodName: string;
-  args: unknown[];
+  args: string; // DSON-encoded args array
 }
 
 /** Wire format for an RPC response */
 export interface RpcResponse {
   success: boolean;
-  result?: unknown;
+  result?: string; // DSON-encoded result
   error?: string;
   schema?: RpcSchema[];
 }
