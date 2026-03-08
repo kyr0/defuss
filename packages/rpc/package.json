@@ -1,6 +1,6 @@
 {
   "name": "defuss-rpc",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -45,6 +45,16 @@
         "types": "./dist/server.d.mts",
         "default": "./dist/server.mjs"
       }
+    },
+    "./express-server.js": {
+      "require": {
+        "types": "./dist/express-server.d.cts",
+        "default": "./dist/express-server.cjs"
+      },
+      "import": {
+        "types": "./dist/express-server.d.mts",
+        "default": "./dist/express-server.mjs"
+      }
     }
   },
   "types": "./dist/types.d.cts",
@@ -52,7 +62,6 @@
     "dist"
   ],
   "devDependencies": {
-    "@types/express": "^5.0.6",
     "@vitest/coverage-v8": "^4.0.18",
     "express": "^5.2.1",
     "happy-dom": "^20.6.1",
@@ -71,6 +80,13 @@
     "happy-dom": "^20.6.1"
   },
   "peerDependencies": {
-    "astro": "*"
+    "astro": "*",
+    "express": ">=4",
+    "@types/express": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "astro": { "optional": true },
+    "express": { "optional": true },
+    "@types/express": { "optional": true }
   }
 }

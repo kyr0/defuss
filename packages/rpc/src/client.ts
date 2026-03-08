@@ -3,12 +3,18 @@ import type { ClientHook, RpcApiClass, RpcApiSchema, RpcSchemaEntry } from "./ty
 
 export * from "./types.d.js";
 
+export interface RpcClientOptions {
+  /** Base URL for the RPC server (e.g. "http://localhost:3210"). Defaults to current origin. */
+  baseUrl?: string;
+}
+
 /**
  * Fetches the RPC API schema from the server.
+ * @param baseUrl - Optional base URL for the RPC server
  * @returns The RPC API schema from the server
  */
-export async function getSchema() {
-  const response = await fetch("/rpc/schema", { method: "POST" });
+export async function getSchema(baseUrl = "") {
+  const response = await fetch(`${baseUrl}/rpc/schema`, { method: "POST" });
   if (!response.ok) {
     throw new Error(`Failed to fetch schema: ${response.statusText}`);
   }
@@ -57,7 +63,7 @@ export function setHeaders(headers: HeadersInit) {
 /**
  * Create an async RPC caller function for a given namespace and method.
  */
-function createRpcMethod(namespaceName: string, methodName: string) {
+function createRpcMethod(namespaceName: string, methodName: string, baseUrl = "") {
   return async (...args: unknown[]) => {
     const request: RequestInit = {
       method: "POST",
@@ -88,7 +94,7 @@ function createRpcMethod(namespaceName: string, methodName: string) {
       }
     }
 
-    const response = await fetch("/rpc", request);
+    const response = await fetch(`${baseUrl}/rpc`, request);
 
     // Call response hooks
     for (const responseHook of hooks.filter(
@@ -137,9 +143,10 @@ function createRpcMethod(namespaceName: string, methodName: string) {
  * @typeParam T - The type of the RPC API namespace
  * @returns A proxy object that implements the RPC API
  */
-export async function getRpcClient<T extends Record<string, unknown>>() {
+export async function getRpcClient<T extends Record<string, unknown>>(options?: RpcClientOptions) {
+  const baseUrl = options?.baseUrl ?? "";
   if (schema === null) {
-    schema = await getSchema();
+    schema = await getSchema(baseUrl);
   }
   const client = {} as Record<string, unknown>;
 
@@ -151,7 +158,7 @@ export async function getRpcClient<T extends Record<string, unknown>>() {
 
       const moduleProxy: Record<string, unknown> = {};
       for (const methodName of methodNames) {
-        moduleProxy[methodName] = createRpcMethod(moduleName, methodName);
+        moduleProxy[methodName] = createRpcMethod(moduleName, methodName, baseUrl);
       }
 
       client[moduleName] = new Proxy(moduleProxy, {
@@ -161,7 +168,7 @@ export async function getRpcClient<T extends Record<string, unknown>>() {
           }
           // For unknown methods, dynamically create an RPC caller
           if (typeof prop === "string") {
-            return createRpcMethod(moduleName, prop);
+            return createRpcMethod(moduleName, prop, baseUrl);
           }
           return undefined;
         },
@@ -181,7 +188,7 @@ export async function getRpcClient<T extends Record<string, unknown>>() {
             {
               get: (_target, methodName) => {
                 if (typeof methodName !== "string") return undefined;
-                return createRpcMethod(className, methodName);
+                return createRpcMethod(className, methodName, baseUrl);
               },
             },
           );
