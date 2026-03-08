@@ -53,6 +53,38 @@ EventTarget.prototype.addEventListener = function (
     originalAddEventListener.call(this, type, wrappedListener, options);
   }
 
+  // Intercept "click" events on any element
+  if (type === "click" && this instanceof HTMLElement) {
+    const wrappedListener = function (this: EventTarget, event: Event) {
+      const target = event.target as HTMLElement;
+
+      document.dispatchEvent(
+        new CustomEvent("__defuss_ext_click", {
+          detail: {
+            tagName: target.tagName,
+            id: target.id || "",
+            className: target.className || "",
+            textContent: (target.textContent || "").slice(0, 100),
+            url: location.href,
+          },
+        }),
+      );
+
+      // Call the original listener
+      if (typeof listener === "function") {
+        return listener.call(this, event);
+      }
+      if (
+        typeof listener === "object" &&
+        typeof listener.handleEvent === "function"
+      ) {
+        return listener.handleEvent.call(this, event);
+      }
+    };
+
+    originalAddEventListener.call(this, type, wrappedListener, options);
+  }
+
   // All other events pass through unmodified
   originalAddEventListener.call(this, type, listener, options);
 };

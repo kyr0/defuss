@@ -1,49 +1,28 @@
-// async chrome extension storage-synced db key values, connected to worker
+import { createWorkerRpcClient } from "../rpc";
+import type { WorkerRpcApi } from "../../worker-rpc";
+
+type WorkerRpc = { WorkerRpc: WorkerRpcApi };
+let rpc: WorkerRpc;
+const rpcReady = createWorkerRpcClient<WorkerRpc>().then((client) => {
+  rpc = client;
+});
+
+// async chrome extension storage-synced db key values, connected to worker via RPC
 export const db = <T>(key: string, defaultValue?: T) => {
-  async function setValue(key: string, value: any) {
-    return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(
-        { action: "db-set", text: JSON.stringify({ key, value }) },
-        (response) => {
-          if (response.success) {
-            resolve(key);
-            console.log("db set value success", key, value);
-          } else {
-            reject(`db value was not set for key: ${key}`);
-          }
-        },
-      );
-    });
-  }
-
-  async function getValue(key: string) {
-    return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(
-        { action: "db-get", text: JSON.stringify({ key }) },
-        (response) => {
-          if (response.success) {
-            try {
-              const value = JSON.parse(response.value);
-              console.log("db get value success", key, value);
-              resolve(value);
-            } catch (error) {
-              resolve(defaultValue);
-            }
-          } else {
-            reject(`could not get value for key: ${key}`);
-          }
-        },
-      );
-    });
-  }
-
   return {
     get: async (): Promise<T> => {
-      const v = (await getValue(key)) as T;
-      return typeof v === "undefined"
-        ? (Promise.resolve(defaultValue) as T)
-        : v;
+      await rpcReady;
+      const val = await rpc.WorkerRpc.dbGet(key);
+      if (val == null) return defaultValue as T;
+      try {
+        return JSON.parse(val) as T;
+      } catch {
+        return defaultValue as T;
+      }
     },
-    set: async (value: T) => setValue(key, value),
+    set: async (value: T) => {
+      await rpcReady;
+      await rpc.WorkerRpc.dbSet(key, JSON.stringify(value));
+    },
   };
 };

@@ -24,31 +24,20 @@ import {
   Separator,
   Progress,
 } from "defuss-shadcn";
+import { createWorkerRpcClient } from "../lib/rpc";
+import { registerRpc } from "../lib/rpc";
+import type { WorkerRpcApi } from "../worker-rpc";
+import { PopupRpc } from "../popup-rpc";
 
-// -- Helper to talk to the service worker --
-function workerMessage(action: string, data: Record<string, unknown>): Promise<any> {
-  return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(
-      { action, text: JSON.stringify(data) },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else if (response?.success) {
-          resolve(response.value != null ? JSON.parse(response.value) : undefined);
-        } else {
-          reject(new Error("Worker responded with failure"));
-        }
-      },
-    );
-  });
-}
+// -- Register popup RPC so the worker can forward captured events to us --
+registerRpc("PopupRpc", PopupRpc);
 
-// -- Helper to call a typed function in the active tab's content script --
-function runFnInActiveTab(fnName: string, ...args: any[]): void {
-  workerMessage("run-fn-in-tab", { fnName, args }).catch(
-    (err) => console.warn("runFnInActiveTab failed:", err),
-  );
-}
+// -- RPC client for the service worker --
+type WorkerRpc = { WorkerRpc: WorkerRpcApi };
+let rpc: WorkerRpc;
+const rpcReady = createWorkerRpcClient<WorkerRpc>().then((client) => {
+  rpc = client;
+});
 
 // -- Theme toggle (persisted via chrome.storage prefs) --
 
@@ -70,7 +59,8 @@ const themeStore = createStore<{ dark: boolean }>({
 document.documentElement.classList.toggle("dark", themeStore.value.dark);
 
 // Restore saved theme from prefs on load
-workerMessage("get", { key: "__defuss_ext_darkMode", local: true }).then((val) => {
+rpcReady.then(async () => {
+  const val = await rpc.WorkerRpc.getPrefValue("__defuss_ext_darkMode", true);
   if (typeof val === "boolean") {
     document.documentElement.classList.toggle("dark", val);
     themeStore.set({ dark: val });
@@ -85,10 +75,12 @@ themeStore.subscribe((val) => {
   if (switchRef.current) {
     switchRef.current.checked = val.dark;
   }
-  // Persist theme preference to chrome.storage via worker
-  workerMessage("set", { key: "__defuss_ext_darkMode", value: val.dark, local: true }).catch(
-    (err) => console.warn("Failed to persist theme:", err),
-  );
+  // Persist theme preference to chrome.storage via worker RPC
+  if (rpc) {
+    rpc.WorkerRpc.setPrefValue("__defuss_ext_darkMode", val.dark, true).catch(
+      (err) => console.warn("Failed to persist theme:", err),
+    );
+  }
 });
 
 // -- Counter demo (persisted via defuss-db through the worker) --
@@ -96,12 +88,12 @@ const counterStore = createStore({ count: 0 });
 const counterRef = createRef<HTMLSpanElement>();
 
 // Restore saved count from defuss-db on load
-workerMessage("db-get", { key: "popup_counter" }).then((val) => {
+rpcReady.then(async () => {
+  const val = await rpc.WorkerRpc.dbGet("popup_counter");
   if (val != null) {
     const parsed = Number(val);
     if (!Number.isNaN(parsed)) {
       counterStore.set({ count: parsed });
-      // Update the ref directly in case JSX already rendered with default value
       $(counterRef).text(String(parsed));
     }
   }
@@ -109,8 +101,8 @@ workerMessage("db-get", { key: "popup_counter" }).then((val) => {
 
 function updateCount(count: number) {
   counterStore.set({ count });
-  // Persist to defuss-db via worker
-  workerMessage("db-set", { key: "popup_counter", value: String(count) }).catch(
+  // Persist to defuss-db via worker RPC
+  rpc?.WorkerRpc.dbSet("popup_counter", String(count)).catch(
     (err) => console.warn("Failed to persist count:", err),
   );
 }
@@ -219,11 +211,15 @@ const ActiveTabCard: FC = () => (
   <Card>
     <CardHeader>
       <CardTitle>Active Tab</CardTitle>
-      <CardDescription>Run functions in the active tab's content script</CardDescription>
+      <CardDescription>Run functions in the active tab's content script via RPC</CardDescription>
     </CardHeader>
     <CardContent>
       <div class="flex flex-wrap gap-2">
-        <Button onClick={() => runFnInActiveTab("showAlert", "Hello from defuss!")}>
+        <Button onClick={() => {
+          rpc?.WorkerRpc.tabRpcCall("TabRpc", "showAlert", "Hello from defuss!").catch(
+            (err) => console.warn("tabRpcCall failed:", err),
+          );
+        }}>
           Show Notification
         </Button>
       </div>

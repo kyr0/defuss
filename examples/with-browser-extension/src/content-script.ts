@@ -1,49 +1,37 @@
 import { db } from "./lib/content-script";
-import type { ContentScriptFnName } from "./lib/content-script";
+import { registerRpc, createWorkerRpcClient } from "./lib/rpc";
+import { TabRpc } from "./tab-rpc";
+import type { WorkerRpcApi } from "./worker-rpc";
 
-// -- Typed function registry for functions callable from popup/worker --
-const fnRegistry: Record<ContentScriptFnName, (...args: any[]) => any> = {
-  showAlert: (message: string) => {
-    alert(message);
-  },
-};
+// Register content-script RPC endpoint
+registerRpc("TabRpc", TabRpc);
 
-// Expose on globalThis so they can be referenced directly
-(globalThis as any).runFnInActiveTab = (fnName: ContentScriptFnName, ...args: any[]) => {
-  const fn = fnRegistry[fnName];
-  if (fn) return fn(...args);
-  console.warn(`[defuss-ext] Unknown fn: ${fnName}`);
-};
-
-for (const [name, fn] of Object.entries(fnRegistry)) {
-  (globalThis as any)[name] = fn;
-}
-
-// Listen for run-fn messages from the background worker
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-  if (request.action === "run-fn") {
-    const fn = fnRegistry[request.fnName as ContentScriptFnName];
-    if (fn) {
-      try {
-        const result = fn(...(request.args || []));
-        sendResponse({ success: true, result });
-      } catch (error: any) {
-        sendResponse({ success: false, error: error.message });
-      }
-    } else {
-      sendResponse({ success: false, error: `Unknown fn: ${request.fnName}` });
-    }
-    return true;
-  }
+// RPC client to call the worker
+type WorkerRpc = { WorkerRpc: WorkerRpcApi };
+let rpc: WorkerRpc;
+const rpcReady = createWorkerRpcClient<WorkerRpc>().then((client) => {
+  rpc = client;
 });
 
 // Listen for input events forwarded from the MAIN-world prehook via CustomEvent
 document.addEventListener("__defuss_ext_input", ((event: CustomEvent) => {
-  const { tagName, name, value, url } = event.detail;
+  const { name, value, url } = event.detail;
 
   // Persist captured input via defuss-db through the worker
   const inputDb = db<string>(`input:${url}:${name}`);
   inputDb.set(value);
+
+  // Notify worker + popup via RPC
+  rpcReady.then(() =>
+    rpc.WorkerRpc.onCapturedEvent("input", event.detail),
+  );
+}) as EventListener);
+
+// Listen for click events forwarded from the MAIN-world prehook via CustomEvent
+document.addEventListener("__defuss_ext_click", ((event: CustomEvent) => {
+  rpcReady.then(() =>
+    rpc.WorkerRpc.onCapturedEvent("click", event.detail),
+  );
 }) as EventListener);
 
 function init() {
