@@ -74,88 +74,43 @@ for (const side of ["top", "bottom", "left", "right"]) {
 
 console.log("[defuss-extension]: Code execution before tab even loads.");
 
-// --- Intercept input and click events at the earliest possible moment and forward them to the content script via CustomEvents ---
-const originalAddEventListener = EventTarget.prototype.addEventListener;
+// --- Intercept input and click events via document-level capture listeners ---
+// Using capture phase ensures we see events before any page handler can stopPropagation.
+// A single listener per event type guarantees exactly one CustomEvent per user action.
 
-// --- Base class override to hook ANY event listener ---
-EventTarget.prototype.addEventListener = function (
-  type: string,
-  listener: EventListenerOrEventListenerObject,
-  options?: boolean | AddEventListenerOptions,
-): void {
-  // Only intercept "input" events on actual input/textarea/select elements
-  if (
-    type === "input" &&
-    this instanceof HTMLElement &&
-    (this.tagName === "INPUT" ||
-      this.tagName === "TEXTAREA" ||
-      this.tagName === "SELECT")
-  ) {
-    const wrappedListener = function (this: EventTarget, event: Event) {
-      const target = event.target as HTMLInputElement;
+document.addEventListener("click", (event: MouseEvent) => {
+  const target = event.target as HTMLElement | null;
+  if (!target) return;
 
-      // Forward the input value to the content script via a CustomEvent
-      document.dispatchEvent(
-        new CustomEvent("__defuss_ext_input", {
-          detail: {
-            tagName: target.tagName,
-            name: target.name || target.id || "",
-            value: target.value,
-            url: location.href,
-          },
-        }),
-      );
+  document.dispatchEvent(
+    new CustomEvent("__defuss_ext_click", {
+      detail: {
+        tagName: target.tagName,
+        id: target.id || "",
+        className: target.className || "",
+        textContent: (target.textContent || "").slice(0, 100),
+        url: location.href,
+      },
+    }),
+  );
+}, true);
 
-      // Call the original listener
-      if (typeof listener === "function") {
-        return listener.call(this, event);
-      }
-      if (
-        typeof listener === "object" &&
-        typeof listener.handleEvent === "function"
-      ) {
-        return listener.handleEvent.call(this, event);
-      }
-    };
+document.addEventListener("input", (event: Event) => {
+  const target = event.target as HTMLInputElement | null;
+  if (!target) return;
+  if (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA" && target.tagName !== "SELECT") return;
 
-    originalAddEventListener.call(this, type, wrappedListener, options);
-  }
-
-  // Intercept "click" events on any element
-  if (type === "click" && this instanceof HTMLElement) {
-    const wrappedListener = function (this: EventTarget, event: Event) {
-      const target = event.target as HTMLElement;
-
-      document.dispatchEvent(
-        new CustomEvent("__defuss_ext_click", {
-          detail: {
-            tagName: target.tagName,
-            id: target.id || "",
-            className: target.className || "",
-            textContent: (target.textContent || "").slice(0, 100),
-            url: location.href,
-          },
-        }),
-      );
-
-      // Call the original listener
-      if (typeof listener === "function") {
-        return listener.call(this, event);
-      }
-      if (
-        typeof listener === "object" &&
-        typeof listener.handleEvent === "function"
-      ) {
-        return listener.handleEvent.call(this, event);
-      }
-    };
-
-    originalAddEventListener.call(this, type, wrappedListener, options);
-  }
-
-  // All other events pass through unmodified
-  originalAddEventListener.call(this, type, listener, options);
-};
+  document.dispatchEvent(
+    new CustomEvent("__defuss_ext_input", {
+      detail: {
+        tagName: target.tagName,
+        name: target.name || target.id || "",
+        value: target.value,
+        url: location.href,
+      },
+    }),
+  );
+}, true);
 
 // -- DOM MutationObserver: count mutations and report every 5 seconds --
 let domMutationCount = 0;

@@ -19,3 +19,8 @@ export interface RpcResponse {
   error?: string;
   schema?: RpcSchema[];
 }
+
+/** Metadata appended as the last argument to RPC method calls */
+export interface RpcMeta {
+  sender?: chrome.runtime.MessageSender;
+}

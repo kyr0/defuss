@@ -1,7 +1,10 @@
 import { dbGetValue, dbSetValue } from "./lib/worker/db";
 import { getValue, setValue } from "./lib/worker/prefs";
 import { getArrayBufferValue, setArrayBufferValue, removeBlobValue } from "./lib/worker/blob";
+import { getServerRpc } from "./lib/worker/server-rpc";
 import { createTabRpcClient } from "./lib/rpc";
+import type { RpcMeta } from "./lib/rpc";
+import type { WorkItem } from "./types";
 import { DSON } from "defuss-dson";
 
 /** Worker-side RPC methods callable from popup and content-script */
@@ -34,6 +37,12 @@ export const WorkerRpc = {
     await removeBlobValue(name);
   },
 
+  /** Fetch work items from the server via defuss-rpc */
+  async getWorkItems(): Promise<WorkItem[]> {
+    const rpc = await getServerRpc();
+    return rpc.JobApi.getWorkItems();
+  },
+
   /** Forward an RPC call to the active tab's content script */
   async tabRpcCall(
     className: string,
@@ -48,8 +57,10 @@ export const WorkerRpc = {
   async onCapturedEvent(
     type: string,
     detail: Record<string, unknown>,
+    meta?: RpcMeta,
   ): Promise<void> {
-    console.log(`[worker] captured ${type}:`, detail);
+    const tabId = meta?.sender?.tab?.id;
+    console.log(`[worker] captured ${type} from tab ${tabId ?? "unknown"}:`, detail);
 
     // Forward to popup (if open) — best-effort, ignore errors
     chrome.runtime.sendMessage({

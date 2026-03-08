@@ -19,6 +19,7 @@ function getSchemas(): RpcSchema[] {
 /** Handle an incoming RPC message, return the response */
 async function handleRpcMessage(
   message: RpcCallMessage,
+  sender?: chrome.runtime.MessageSender,
 ): Promise<RpcResponse> {
   if (message.action === "__rpc_schema") {
     return { success: true, schema: getSchemas() };
@@ -39,7 +40,7 @@ async function handleRpcMessage(
 
   try {
     const args = message.args ? (DSON.parse(message.args) as unknown[]) : [];
-    const result = await method(...args);
+    const result = await method(...args, { sender });
     return { success: true, result: DSON.stringify(result) };
   } catch (err: any) {
     return { success: false, error: err?.message ?? String(err) };
@@ -53,12 +54,17 @@ function ensureListener() {
   if (listenerInstalled) return;
   listenerInstalled = true;
 
-  chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action !== "__rpc" && request.action !== "__rpc_schema") {
-      return false; // not for us
+      return false; // not an RPC message
     }
 
-    handleRpcMessage(request as RpcCallMessage).then(sendResponse);
+    // Only handle messages for classes registered in this context
+    if (request.action === "__rpc" && !registry.has(request.className)) {
+      return false; // not for us — let the correct context handle it
+    }
+
+    handleRpcMessage(request as RpcCallMessage, sender).then(sendResponse);
     return true; // async response
   });
 }
