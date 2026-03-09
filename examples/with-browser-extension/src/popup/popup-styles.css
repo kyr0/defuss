@@ -1,60 +1,60 @@
 @import "tailwindcss";
-@import "basecoat-css";
+@import "defuss-shadcn/css";
 
-:root {
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.586 0.253 17.585);
-  --primary-foreground: oklch(0.969 0.015 12.422);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.712 0.194 13.428);
-  --chart-1: oklch(0.81 0.117 11.638);
-  --chart-2: oklch(0.645 0.246 16.439);
-  --chart-3: oklch(0.586 0.253 17.585);
-  --chart-4: oklch(0.514 0.222 16.935);
-  --chart-5: oklch(0.455 0.188 13.697);
+.defuss-shadcn {
+  --defuss-radius: 0.65rem;
+  --defuss-background: oklch(1 0 0);
+  --defuss-foreground: oklch(0.141 0.005 285.823);
+  --defuss-card: oklch(1 0 0);
+  --defuss-card-foreground: oklch(0.141 0.005 285.823);
+  --defuss-popover: oklch(1 0 0);
+  --defuss-popover-foreground: oklch(0.141 0.005 285.823);
+  --defuss-primary: oklch(0.586 0.253 17.585);
+  --defuss-primary-foreground: oklch(0.969 0.015 12.422);
+  --defuss-secondary: oklch(0.967 0.001 286.375);
+  --defuss-secondary-foreground: oklch(0.21 0.006 285.885);
+  --defuss-muted: oklch(0.967 0.001 286.375);
+  --defuss-muted-foreground: oklch(0.552 0.016 285.938);
+  --defuss-accent: oklch(0.967 0.001 286.375);
+  --defuss-accent-foreground: oklch(0.21 0.006 285.885);
+  --defuss-destructive: oklch(0.577 0.245 27.325);
+  --defuss-border: oklch(0.92 0.004 286.32);
+  --defuss-input: oklch(0.92 0.004 286.32);
+  --defuss-ring: oklch(0.712 0.194 13.428);
+  --defuss-chart-1: oklch(0.81 0.117 11.638);
+  --defuss-chart-2: oklch(0.645 0.246 16.439);
+  --defuss-chart-3: oklch(0.586 0.253 17.585);
+  --defuss-chart-4: oklch(0.514 0.222 16.935);
+  --defuss-chart-5: oklch(0.455 0.188 13.697);
 }
 
-.dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.645 0.246 16.439);
-  --primary-foreground: oklch(0.969 0.015 12.422);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.41 0.159 10.272);
-  --chart-1: oklch(0.81 0.117 11.638);
-  --chart-2: oklch(0.645 0.246 16.439);
-  --chart-3: oklch(0.586 0.253 17.585);
-  --chart-4: oklch(0.514 0.222 16.935);
-  --chart-5: oklch(0.455 0.188 13.697);
+:is(.defuss-shadcn.dark, .dark .defuss-shadcn) {
+  --defuss-background: oklch(0.141 0.005 285.823);
+  --defuss-foreground: oklch(0.985 0 0);
+  --defuss-card: oklch(0.21 0.006 285.885);
+  --defuss-card-foreground: oklch(0.985 0 0);
+  --defuss-popover: oklch(0.21 0.006 285.885);
+  --defuss-popover-foreground: oklch(0.985 0 0);
+  --defuss-primary: oklch(0.645 0.246 16.439);
+  --defuss-primary-foreground: oklch(0.969 0.015 12.422);
+  --defuss-secondary: oklch(0.274 0.006 286.033);
+  --defuss-secondary-foreground: oklch(0.985 0 0);
+  --defuss-muted: oklch(0.274 0.006 286.033);
+  --defuss-muted-foreground: oklch(0.705 0.015 286.067);
+  --defuss-accent: oklch(0.274 0.006 286.033);
+  --defuss-accent-foreground: oklch(0.985 0 0);
+  --defuss-destructive: oklch(0.704 0.191 22.216);
+  --defuss-border: oklch(1 0 0 / 10%);
+  --defuss-input: oklch(1 0 0 / 15%);
+  --defuss-ring: oklch(0.41 0.159 10.272);
+  --defuss-chart-1: oklch(0.81 0.117 11.638);
+  --defuss-chart-2: oklch(0.645 0.246 16.439);
+  --defuss-chart-3: oklch(0.586 0.253 17.585);
+  --defuss-chart-4: oklch(0.514 0.222 16.935);
+  --defuss-chart-5: oklch(0.455 0.188 13.697);
 }
 
-.btn-outline {
+.defuss-shadcn .btn-outline {
   color: var(--color-foreground);
 }
 
