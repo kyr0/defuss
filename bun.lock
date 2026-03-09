@@ -77,12 +77,11 @@
       "dependencies": {
         "@crxjs/vite-plugin": "^2.3.0",
         "@tailwindcss/vite": "^4.1.18",
-        "basecoat-css": "^0.3.10",
         "defuss": "^3.4.1",
-        "defuss-db": "^1.1.3",
+        "defuss-db": "^1.1.4",
         "defuss-dson": "^1.1.1",
         "defuss-rpc": "^1.3.1",
-        "defuss-shadcn": "^0.5.1",
+        "defuss-shadcn": "^0.6.1",
         "defuss-vite": "^1.1.3",
         "dexie": "^4.3.0",
         "tailwindcss": "^4.1.18",
@@ -365,7 +364,7 @@
     },
     "packages/db": {
       "name": "defuss-db",
-      "version": "1.1.3",
+      "version": "1.1.4",
       "dependencies": {
         "@libsql/client": "^0.15.7",
         "defuss-env": "^1.0.2",
@@ -506,13 +505,12 @@
     },
     "packages/shadcn": {
       "name": "defuss-shadcn",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "devDependencies": {
         "@tailwindcss/cli": "^4.1.0",
         "@types/node": "^25.0.9",
         "@vitest/browser": "^4.0.17",
         "@vitest/browser-playwright": "^4.0.17",
-        "basecoat-css": "^0.3.10",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "defuss-dataview": "^0.3.0",
@@ -541,7 +539,7 @@
         "defuss-dataview": "^0.3.0",
         "defuss-runtime": "^1.3.1",
         "defuss-shadcn": "^0.6.0",
-        "defuss-storybook": "^0.2.0",
+        "defuss-storybook": "^0.2.1",
         "defuss-transval": "^1.3.0",
         "defuss-vite": "^1.1.3",
         "lightningcss": "^1.30.2",
@@ -592,7 +590,7 @@
     },
     "packages/storybook": {
       "name": "defuss-storybook",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "bin": {
         "defuss-storybook": "dist/cli.mjs",
       },
@@ -1646,8 +1644,6 @@
     "base-64": ["base-64@1.0.0", "", {}, "sha512-kwDPIFCGx0NZHog36dj+tHiwP4QMzsZ3AgMViUBKI0+V5n4U0ufTCUMhnQ04diaRI8EX/QcPfql7zlhZ7j4zgg=="],
 
     "base64-js": ["base64-js@1.5.1", "", {}, "sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA=="],
-
-    "basecoat-css": ["basecoat-css@0.3.11", "", {}, "sha512-cU91Egcg9AhKJ1HswpKFItHC//FWDt1T8AlL5Yk9Fh5I2WYe+QhN3MtiVJ2vemqFF4iAM1vfbikhhjc+vkr2zA=="],
 
     "baseline-browser-mapping": ["baseline-browser-mapping@2.9.19", "", { "bin": { "baseline-browser-mapping": "dist/cli.js" } }, "sha512-ipDqC8FrAl/76p2SSWKSI+H9tFwm7vYqXQrItCuiVPt26Km0jS+NzSsBWAaBusvSbQcfJG+JitdMm+wZAgTYqg=="],
 
@@ -3452,8 +3448,6 @@
     "defuss-db/mongodb": ["mongodb@6.21.0", "", { "dependencies": { "@mongodb-js/saslprep": "^1.3.0", "bson": "^6.10.4", "mongodb-connection-string-url": "^3.0.2" }, "peerDependencies": { "@aws-sdk/credential-providers": "^3.188.0", "@mongodb-js/zstd": "^1.1.0 || ^2.0.0", "gcp-metadata": "^5.2.0", "kerberos": "^2.0.1", "mongodb-client-encryption": ">=6.0.0 <7", "snappy": "^7.3.2", "socks": "^2.7.1" }, "optionalPeers": ["@aws-sdk/credential-providers", "@mongodb-js/zstd", "gcp-metadata", "kerberos", "mongodb-client-encryption", "snappy", "socks"] }, "sha512-URyb/VXMjJ4da46OeSXg+puO39XH9DeQpWCslifrRn9JWugy0D+DvvBvkm2WxmHe61O/H19JM66p1z7RHVkZ6A=="],
 
     "defuss-extension/@biomejs/biome": ["@biomejs/biome@2.4.6", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "2.4.6", "@biomejs/cli-darwin-x64": "2.4.6", "@biomejs/cli-linux-arm64": "2.4.6", "@biomejs/cli-linux-arm64-musl": "2.4.6", "@biomejs/cli-linux-x64": "2.4.6", "@biomejs/cli-linux-x64-musl": "2.4.6", "@biomejs/cli-win32-arm64": "2.4.6", "@biomejs/cli-win32-x64": "2.4.6" }, "bin": { "biome": "bin/biome" } }, "sha512-QnHe81PMslpy3mnpL8DnO2M4S4ZnYPkjlGCLWBZT/3R9M6b5daArWMMtEfP52/n174RKnwRIf3oT8+wc9ihSfQ=="],
-
-    "defuss-extension/defuss-shadcn": ["defuss-shadcn@0.5.1", "", { "dependencies": { "defuss": "^3.4.0" } }, "sha512-Q6rxbfC1AK48JfD6cpEaYFUHsCBNTYNcld/eoZvxGFo57yIspqrD/w/dOMYFw/pJXVnAFye1LaEcX6AO2mI13w=="],
 
     "defuss-ssg/esbuild": ["esbuild@0.27.3", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.27.3", "@esbuild/android-arm": "0.27.3", "@esbuild/android-arm64": "0.27.3", "@esbuild/android-x64": "0.27.3", "@esbuild/darwin-arm64": "0.27.3", "@esbuild/darwin-x64": "0.27.3", "@esbuild/freebsd-arm64": "0.27.3", "@esbuild/freebsd-x64": "0.27.3", "@esbuild/linux-arm": "0.27.3", "@esbuild/linux-arm64": "0.27.3", "@esbuild/linux-ia32": "0.27.3", "@esbuild/linux-loong64": "0.27.3", "@esbuild/linux-mips64el": "0.27.3", "@esbuild/linux-ppc64": "0.27.3", "@esbuild/linux-riscv64": "0.27.3", "@esbuild/linux-s390x": "0.27.3", "@esbuild/linux-x64": "0.27.3", "@esbuild/netbsd-arm64": "0.27.3", "@esbuild/netbsd-x64": "0.27.3", "@esbuild/openbsd-arm64": "0.27.3", "@esbuild/openbsd-x64": "0.27.3", "@esbuild/openharmony-arm64": "0.27.3", "@esbuild/sunos-x64": "0.27.3", "@esbuild/win32-arm64": "0.27.3", "@esbuild/win32-ia32": "0.27.3", "@esbuild/win32-x64": "0.27.3" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-8VwMnyGCONIs6cWue2IdpHxHnAjzxnw2Zr7MkVxB2vjmQ2ivqGFb4LEG3SMnv0Gb2F/G/2yA8zUaiL1gywDCCg=="],
 

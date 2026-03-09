@@ -15,7 +15,7 @@ export const Installation: FC = () => {
         <div class="rounded-md bg-muted p-4 overflow-x-auto">
           <pre>
             <code class="text-sm">
-              pnpm add defuss defuss-shadcn basecoat-css tailwindcss
+              pnpm add defuss defuss-shadcn tailwindcss
               @tailwindcss/vite defuss-vite
             </code>
           </pre>
@@ -53,7 +53,7 @@ export default defineConfig({
           <pre>
             <code class="text-sm">{`/* src/css/index.css */
 @import "tailwindcss";
-@import "basecoat-css";
+@import "defuss-shadcn/css";
 
 /* Optional app/theme layers */
 @import "./theme.css";

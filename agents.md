@@ -134,11 +134,11 @@ bun add defuss-shadcn
 
 ### CSS Prerequisites
 
-Use Tailwind and Basecoat styles in your app stylesheet:
+Use Tailwind and `defuss-shadcn` styles in your app stylesheet:
 
 ```css
 @import "tailwindcss";
-@import "basecoat-css";
+@import "defuss-shadcn/css";
 ```
 
 You can then layer project/theme overrides after those imports.
