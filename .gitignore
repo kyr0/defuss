@@ -21,3 +21,4 @@ __screenshots__
 .vscode
 .ssg-temp
 .log
+.storybook

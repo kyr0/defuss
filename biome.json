@@ -28,7 +28,8 @@
         "noImplicitAnyLet": "off",
         "noFallthroughSwitchClause": "off",
         "noConfusingVoidType": "off",
-        "noEmptyInterface": "off"
+        "noEmptyInterface": "off",
+        "useIterableCallbackReturn": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
