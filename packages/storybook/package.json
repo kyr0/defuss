@@ -1,6 +1,6 @@
 {
   "name": "defuss-storybook",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -9,7 +9,7 @@
     "defuss-storybook": "dist/cli.mjs"
   },
   "license": "MIT",
-  "description": "A lightweight storyboo implementation for defuss. Zero-config, Vite-powered, with dynamic prop controls and Playwright testing.",
+  "description": "A lightweight storybook implementation for defuss. Zero-config, Vite-powered, with dynamic prop controls and Playwright testing.",
   "keywords": [
     "storybook",
     "defuss",
@@ -55,7 +55,6 @@
   "dependencies": {
     "@mdx-js/rollup": "^3.1.0",
     "@tailwindcss/vite": "^4.1.18",
-    "basecoat-css": "^0.3.10",
     "chokidar": "^5.0.0",
     "defuss": "^3.4.0",
     "defuss-vite": "^1.1.3",
@@ -73,11 +72,11 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "defuss-shadcn": "*"
+    "defuss-shadcn": ">=0.6.0"
   },
   "peerDependenciesMeta": {
     "defuss-shadcn": {
-      "optional": true
+      "optional": false
     }
   },
   "packageManager": "bun@1.3.9"

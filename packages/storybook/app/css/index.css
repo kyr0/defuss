@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "basecoat-css";
+@import "defuss-shadcn/css";
 
 /* Storybook shell layout */
 .sb-shell {
