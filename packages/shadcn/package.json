@@ -1,7 +1,7 @@
 {
   "name": "defuss-shadcn",
   "type": "module",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "A modern Shadcn-like component library for defuss that build on Tailwind CSS 4 and Basecoat UI.",
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
@@ -12,7 +12,8 @@
     "pretest": "bun run build",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "prebuild": "bun run clean",
-    "build": "pkgroll --sourcemap"
+    "build": "pkgroll --sourcemap --packagejson='*.js' --packagejson='*.mjs' --packagejson='*.cjs' --packagejson='*.d.ts' --packagejson='*.d.mts' --packagejson='*.d.cts'",
+    "postbuild": "bunx tsx scripts/build-css.ts"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -26,8 +27,11 @@
         "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
       }
-    }
+    },
+    "./css": "./dist/css/shadcn.cdn.css",
+    "./css/min": "./dist/css/shadcn.cdn.min.css"
   },
+  "style": "./dist/css/shadcn.cdn.css",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
@@ -43,29 +47,33 @@
     "shadcn"
   ],
   "license": "MIT",
-  "dependencies": {
-    "defuss": "^3.4.0"
-  },
   "peerDependencies": {
+    "defuss": ">=3.4.0",
     "defuss-dataview": "^0.3.0"
   },
   "peerDependenciesMeta": {
     "defuss-dataview": {
       "optional": true
+    },
+    "defuss": {
+      "optional": false
     }
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
     "@types/node": "^25.0.9",
     "@vitest/browser": "^4.0.17",
     "@vitest/browser-playwright": "^4.0.17",
+    "basecoat-css": "^0.3.10",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "defuss-dataview": "^0.3.0",
-    "pkgroll": "^2.21.5",
+    "pkgroll": "^2.27.0",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^4.1.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.17",
-    "tailwind-merge": "^3.4.0",
-    "clsx": "^2.1.1",
-    "class-variance-authority": "^0.7.1"
+    "vitest": "^4.0.17"
   },
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
