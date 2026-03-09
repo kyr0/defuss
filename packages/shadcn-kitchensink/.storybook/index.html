@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>defuss Storybook</title>
+
+  <!-- Highlight.js for code syntax highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" media="(prefers-color-scheme: light)" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" media="(prefers-color-scheme: dark)" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/xml.min.js"></script>
+
+  <script>
+    // Apply dark mode preference before first paint
+    (function() {
+      var stored = localStorage.getItem('themeMode');
+      if (stored ? stored === 'dark'
+        : matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      }
+
+      var apply = function(dark) {
+        document.documentElement.classList.toggle('dark', dark);
+        try { localStorage.setItem('themeMode', dark ? 'dark' : 'light'); } catch (_) { }
+      };
+
+      document.addEventListener('basecoat:theme', function(event) {
+        var mode = event.detail && event.detail.mode;
+        apply(mode === 'dark' ? true
+          : mode === 'light' ? false
+            : !document.documentElement.classList.contains('dark'));
+      });
+    })();
+  </script>
+  <script>
+    // Restore theme variant before first paint
+    (function() {
+      try {
+        var storedTheme = localStorage.getItem('themeVariant');
+        if (storedTheme) document.documentElement.classList.add('theme-' + storedTheme);
+      } catch (_) { }
+    })();
+  </script>
+  <script type="module" crossorigin src="/assets/index-DP1mjfDI.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-ohp0RJ7l.css">
+</head>
+<body class="min-h-screen bg-background text-foreground">
+  <div id="app"></div>
+</body>
+</html>

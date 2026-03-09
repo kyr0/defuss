@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "basecoat-css";
+@import "defuss-shadcn/css";
 @import "./theme.css";
 @import "./themes/claude.css";
 @import "./themes/doom64.css";
