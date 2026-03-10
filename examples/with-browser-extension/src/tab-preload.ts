@@ -6,73 +6,112 @@
  *   content script via CustomEvents (MAIN world has no chrome.runtime access).
  */
 
-// -- Demo: inject 4 glowing border elements with clockwise moving gradient --
-const style = document.createElement("style");
-style.textContent = `
-@keyframes __defuss_slide_fwd {
-  0%   { background-position: 0% 0%; }
-  100% { background-position: 100% 100%; }
-}
-@keyframes __defuss_slide_rev {
-  0%   { background-position: 100% 100%; }
-  100% { background-position: 0% 0%; }
-}
-@keyframes __defuss_glow_color {
-  0%   { filter: hue-rotate(0deg); }
-  100% { filter: hue-rotate(360deg); }
-}
-.__defuss_border {
-  position: fixed !important;
-  z-index: 2147483647 !important;
-  pointer-events: none !important;
-}
-/* Top: flows left → right (clockwise) */
-.__defuss_border_top {
-  top: 0; left: 0; right: 0;
-  height: 3px !important;
-  background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899, #f59e0b, #10b981, #06b6d4, #6366f1) !important;
-  background-size: 200% 100% !important;
-  animation: __defuss_slide_fwd 3s linear infinite, __defuss_glow_color 6s linear infinite !important;
-  box-shadow: 0 0 10px 2px #8b5cf680, 0 0 20px 4px #ec489940 !important;
-}
-/* Right: flows top → bottom (clockwise) */
-.__defuss_border_right {
-  top: 0; bottom: 0; right: 0;
-  width: 3px !important;
-  background: linear-gradient(180deg, #6366f1, #8b5cf6, #ec4899, #f59e0b, #10b981, #06b6d4, #6366f1) !important;
-  background-size: 100% 200% !important;
-  animation: __defuss_slide_fwd 3s linear infinite, __defuss_glow_color 6s linear infinite !important;
-  box-shadow: 0 0 10px 2px #8b5cf680, 0 0 20px 4px #ec489940 !important;
-}
-/* Bottom: flows right → left (clockwise) */
-.__defuss_border_bottom {
-  bottom: 0; left: 0; right: 0;
-  height: 3px !important;
-  background: linear-gradient(270deg, #6366f1, #8b5cf6, #ec4899, #f59e0b, #10b981, #06b6d4, #6366f1) !important;
-  background-size: 200% 100% !important;
-  animation: __defuss_slide_fwd 3s linear infinite, __defuss_glow_color 6s linear infinite !important;
-  box-shadow: 0 0 10px 2px #8b5cf680, 0 0 20px 4px #ec489940 !important;
-}
-/* Left: flows bottom → top (clockwise) */
-.__defuss_border_left {
-  top: 0; bottom: 0; left: 0;
-  width: 3px !important;
-  background: linear-gradient(0deg, #6366f1, #8b5cf6, #ec4899, #f59e0b, #10b981, #06b6d4, #6366f1) !important;
-  background-size: 100% 200% !important;
-  animation: __defuss_slide_fwd 3s linear infinite, __defuss_glow_color 6s linear infinite !important;
-  box-shadow: 0 0 10px 2px #8b5cf680, 0 0 20px 4px #ec489940 !important;
-}
-`;
-(document.head || document.documentElement).appendChild(style);
-
-// Create the 4 border elements
-for (const side of ["top", "bottom", "left", "right"]) {
-  const el = document.createElement("div");
-  el.className = `__defuss_border __defuss_border_${side}`;
-  (document.body || document.documentElement).appendChild(el);
-}
-
 console.log("[defuss-extension]: Code execution before tab even loads.");
+
+// --- Automation border (created early, hidden by default) ---
+// Border CSS is loaded via manifest content_scripts.css (bypasses page CSP).
+
+let borderIntervalId: ReturnType<typeof setInterval> | null = null;
+let borderVisible = false;
+
+/** Ensure the 4 border elements exist; show/hide based on current state */
+function ensureBorderElements(): void {
+  const appendTarget = document.body || document.documentElement;
+  for (const side of ["top", "bottom", "left", "right"]) {
+    const sideClass = `__defuss_border_${side}`;
+    if (!document.querySelector(`.${sideClass}`)) {
+      const el = document.createElement("div");
+      el.className = `__defuss_border ${sideClass}`;
+      if (borderVisible) el.classList.add("__defuss_border_visible");
+      appendTarget.appendChild(el);
+      console.log(`[defuss-border] created .${sideClass} (visible: ${borderVisible}) in`, appendTarget.tagName);
+    }
+  }
+}
+
+/** Create border elements as soon as there's something to attach to */
+function initBorder(): void {
+  console.log("[defuss-border] initBorder() called | body:", !!document.body, "| documentElement:", !!document.documentElement);
+  ensureBorderElements();
+  const count = document.querySelectorAll(".__defuss_border").length;
+  console.log(`[defuss-border] init complete: ${count} border elements in DOM`);
+}
+
+function showBorder(): void {
+  console.log("[defuss-border] showBorder() called");
+  borderVisible = true;
+  ensureBorderElements();
+  const borders = document.querySelectorAll(".__defuss_border");
+  console.log(`[defuss-border] found ${borders.length} border elements to make visible`);
+  borders.forEach((el) => {
+    el.classList.add("__defuss_border_visible");
+    el.classList.remove("__defuss_border_error");
+  });
+  // Re-inject if page re-renders remove elements
+  if (borderIntervalId === null) {
+    borderIntervalId = setInterval(ensureBorderElements, 1_000);
+  }
+}
+
+function hideBorder(): void {
+  console.log("[defuss-border] hideBorder() called");
+  borderVisible = false;
+  if (borderIntervalId !== null) {
+    clearInterval(borderIntervalId);
+    borderIntervalId = null;
+  }
+  document.querySelectorAll(".__defuss_border").forEach((el) => {
+    el.classList.remove("__defuss_border_visible");
+  });
+}
+
+function errorBorder(): void {
+  console.log("[defuss-border] errorBorder() called");
+  document.querySelectorAll(".__defuss_border").forEach((el) => {
+    el.classList.add("__defuss_border_error");
+  });
+}
+
+// Listen for ISOLATED-world signals via postMessage (crosses world boundaries)
+console.log("[defuss-border] registering postMessage listener");
+window.addEventListener("message", (event: MessageEvent) => {
+  // Only accept messages from the same window (same page, different world)
+  if (event.source !== window) return;
+  const data = event.data;
+  if (typeof data !== "object" || data === null) return;
+  if (data.__defuss !== true) return;
+
+  console.log("[defuss-border] received postMessage:", data.action);
+
+  switch (data.action) {
+    case "border_show":
+      showBorder();
+      break;
+    case "border_hide":
+      hideBorder();
+      break;
+    case "border_error":
+      errorBorder();
+      break;
+  }
+});
+
+// Inject border elements early (hidden) — as soon as a root exists
+if (document.body || document.documentElement) {
+  console.log("[defuss-border] root already exists, initializing immediately");
+  initBorder();
+} else {
+  console.log("[defuss-border] no root yet, waiting for body via MutationObserver");
+  // At document_start, body may not exist yet — wait for it
+  const waitForBody = new MutationObserver(() => {
+    if (document.body) {
+      console.log("[defuss-border] body appeared, initializing now");
+      waitForBody.disconnect();
+      initBorder();
+    }
+  });
+  waitForBody.observe(document.documentElement || document, { childList: true, subtree: true });
+}
 
 // --- Intercept input and click events via document-level capture listeners ---
 // Using capture phase ensures we see events before any page handler can stopPropagation.

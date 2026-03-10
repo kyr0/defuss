@@ -1,6 +1,10 @@
 import { dbGetValue, dbSetValue } from "./lib/worker/db";
 import { getValue, setValue } from "./lib/worker/prefs";
-import { getArrayBufferValue, setArrayBufferValue, removeBlobValue } from "./lib/worker/blob";
+import {
+  getArrayBufferValue,
+  setArrayBufferValue,
+  removeBlobValue,
+} from "./lib/worker/blob";
 import { getServerRpc } from "./lib/worker/server-rpc";
 import { createTabRpcClient } from "./lib/rpc";
 import type { RpcMeta } from "./lib/rpc";
@@ -49,7 +53,10 @@ export const WorkerRpc = {
     methodName: string,
     ...args: unknown[]
   ): Promise<unknown> {
-    const rpc = await createTabRpcClient<Record<string, Record<string, (...a: any[]) => any>>>();
+    const rpc =
+      await createTabRpcClient<
+        Record<string, Record<string, (...a: any[]) => any>>
+      >();
     return rpc[className][methodName](...args);
   },
 
@@ -60,15 +67,20 @@ export const WorkerRpc = {
     meta?: RpcMeta,
   ): Promise<void> {
     const tabId = meta?.sender?.tab?.id;
-    console.log(`[worker] captured ${type} from tab ${tabId ?? "unknown"}:`, detail);
+    console.log(
+      `[worker] captured ${type} from tab ${tabId ?? "unknown"}:`,
+      detail,
+    );
 
     // Forward to popup (if open) — best-effort, ignore errors
-    chrome.runtime.sendMessage({
-      action: "__rpc",
-      className: "PopupRpc",
-      methodName: "onCapturedEvent",
-      args: DSON.stringify([type, detail]),
-    }).catch(() => {});
+    chrome.runtime
+      .sendMessage({
+        action: "__rpc",
+        className: "PopupRpc",
+        methodName: "onCapturedEvent",
+        args: DSON.stringify([type, detail]),
+      })
+      .catch(() => {});
   },
 };
 

@@ -43,9 +43,12 @@ const { WorkerRpc } = rpc;
 // Set up the basecoat:theme listener (same pattern as kitchensink)
 document.addEventListener("basecoat:theme", ((event: CustomEvent) => {
   const mode = event.detail?.mode;
-  const isDark = mode === "dark" ? true
-    : mode === "light" ? false
-    : !document.documentElement.classList.contains("dark");
+  const isDark =
+    mode === "dark"
+      ? true
+      : mode === "light"
+        ? false
+        : !document.documentElement.classList.contains("dark");
   document.documentElement.classList.toggle("dark", isDark);
   themeStore.set({ dark: isDark });
 }) as EventListener);
@@ -58,7 +61,10 @@ const themeStore = createStore<{ dark: boolean }>({
 document.documentElement.classList.toggle("dark", themeStore.value.dark);
 
 // Restore saved theme from prefs on load
-const savedTheme = await rpc.WorkerRpc.getPrefValue("__defuss_ext_darkMode", true);
+const savedTheme = await rpc.WorkerRpc.getPrefValue(
+  "__defuss_ext_darkMode",
+  true,
+);
 if (typeof savedTheme === "boolean") {
   document.documentElement.classList.toggle("dark", savedTheme);
   themeStore.set({ dark: savedTheme });
@@ -70,8 +76,8 @@ themeStore.subscribe((val) => {
     switchRef.current.checked = val.dark;
   }
   // Persist theme preference to chrome.storage via worker RPC
-  WorkerRpc.setPrefValue("__defuss_ext_darkMode", val.dark, true).catch(
-    (err) => console.warn("Failed to persist theme:", err),
+  WorkerRpc.setPrefValue("__defuss_ext_darkMode", val.dark, true).catch((err) =>
+    console.warn("Failed to persist theme:", err),
   );
 });
 
@@ -91,8 +97,8 @@ if (savedCount != null) {
 function updateCount(count: number) {
   counterStore.set({ count });
   // Persist to defuss-db via worker RPC
-  WorkerRpc.dbSet("popup_counter", String(count)).catch(
-    (err) => console.warn("Failed to persist count:", err),
+  WorkerRpc.dbSet("popup_counter", String(count)).catch((err) =>
+    console.warn("Failed to persist count:", err),
   );
 }
 
@@ -117,7 +123,9 @@ const ThemeToggle: FC = () => (
       checked={themeStore.value.dark}
       onCheckedChange={(checked: boolean) => {
         document.dispatchEvent(
-          new CustomEvent("basecoat:theme", { detail: { mode: checked ? "dark" : "light" } }),
+          new CustomEvent("basecoat:theme", {
+            detail: { mode: checked ? "dark" : "light" },
+          }),
         );
       }}
     />
@@ -128,7 +136,9 @@ const CounterCard: FC = () => (
   <Card>
     <CardHeader>
       <CardTitle>Counter</CardTitle>
-      <CardDescription>Store-driven reactivity demo (persisted in defuss-db)</CardDescription>
+      <CardDescription>
+        Store-driven reactivity demo (persisted in defuss-db)
+      </CardDescription>
     </CardHeader>
     <CardContent>
       <div class="flex items-center gap-4">
@@ -200,15 +210,21 @@ const ActiveTabCard: FC = () => (
   <Card>
     <CardHeader>
       <CardTitle>Active Tab</CardTitle>
-      <CardDescription>Run functions in the active tab's content script via RPC</CardDescription>
+      <CardDescription>
+        Run functions in the active tab's content script via RPC
+      </CardDescription>
     </CardHeader>
     <CardContent>
       <div class="flex flex-wrap gap-2">
-        <Button onClick={() => {
-          rpc.WorkerRpc.tabRpcCall("TabRpc", "showAlert", "Hello from defuss!").catch(
-            (err) => console.warn("tabRpcCall failed:", err),
-          );
-        }}>
+        <Button
+          onClick={() => {
+            rpc.WorkerRpc.tabRpcCall(
+              "TabRpc",
+              "showAlert",
+              "Hello from defuss!",
+            ).catch((err) => console.warn("tabRpcCall failed:", err));
+          }}
+        >
           Show Notification
         </Button>
       </div>
@@ -337,7 +353,9 @@ const ImageDropCard: FC = () => (
   <Card>
     <CardHeader>
       <CardTitle>Image Storage</CardTitle>
-      <CardDescription>Drop an image to save it via blob storage (persists across sessions)</CardDescription>
+      <CardDescription>
+        Drop an image to save it via blob storage (persists across sessions)
+      </CardDescription>
     </CardHeader>
     <CardContent class="space-y-3">
       <DropArea size="sm" onDrop={handleImageDrop}>
@@ -346,7 +364,7 @@ const ImageDropCard: FC = () => (
       </DropArea>
       <img
         ref={imageRef}
-        alt="Stored image"
+        alt="Stored img"
         class="w-full rounded-lg object-contain max-h-48"
         style={{ display: "none" }}
       />

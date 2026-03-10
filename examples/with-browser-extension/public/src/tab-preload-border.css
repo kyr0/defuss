@@ -1,0 +1,68 @@
+/*
+ * Automation border styles – loaded via manifest content_scripts.css
+ * to bypass page CSP (no inline <style> injection needed).
+ */
+
+@keyframes __defuss_slide_fwd {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+@keyframes __defuss_slide_rev {
+  0%   { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+@keyframes __defuss_glow_color {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+.__defuss_border {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  display: none !important;
+}
+.__defuss_border.__defuss_border_visible {
+  display: block !important;
+}
+.__defuss_border_top {
+  top: 0; left: 0; right: 0;
+  height: 3px !important;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899, #f59e0b, #10b981, #06b6d4, #6366f1) !important;
+  background-size: 200% 100% !important;
+  animation: __defuss_slide_fwd 3s linear infinite, __defuss_glow_color 6s linear infinite !important;
+  box-shadow: 0 0 10px 2px #8b5cf680, 0 0 20px 4px #ec489940 !important;
+}
+.__defuss_border_right {
+  top: 0; bottom: 0; right: 0;
+  width: 3px !important;
+  background: linear-gradient(180deg, #6366f1, #8b5cf6, #ec4899, #f59e0b, #10b981, #06b6d4, #6366f1) !important;
+  background-size: 100% 200% !important;
+  animation: __defuss_slide_fwd 3s linear infinite, __defuss_glow_color 6s linear infinite !important;
+  box-shadow: 0 0 10px 2px #8b5cf680, 0 0 20px 4px #ec489940 !important;
+}
+.__defuss_border_bottom {
+  bottom: 0; left: 0; right: 0;
+  height: 3px !important;
+  background: linear-gradient(270deg, #6366f1, #8b5cf6, #ec4899, #f59e0b, #10b981, #06b6d4, #6366f1) !important;
+  background-size: 200% 100% !important;
+  animation: __defuss_slide_fwd 3s linear infinite, __defuss_glow_color 6s linear infinite !important;
+  box-shadow: 0 0 10px 2px #8b5cf680, 0 0 20px 4px #ec489940 !important;
+}
+.__defuss_border_left {
+  top: 0; bottom: 0; left: 0;
+  width: 3px !important;
+  background: linear-gradient(0deg, #6366f1, #8b5cf6, #ec4899, #f59e0b, #10b981, #06b6d4, #6366f1) !important;
+  background-size: 100% 200% !important;
+  animation: __defuss_slide_fwd 3s linear infinite, __defuss_glow_color 6s linear infinite !important;
+  box-shadow: 0 0 10px 2px #8b5cf680, 0 0 20px 4px #ec489940 !important;
+}
+@keyframes __defuss_pulse_error {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.2; }
+  100% { opacity: 1; }
+}
+.__defuss_border.__defuss_border_error {
+  background: #ef4444 !important;
+  box-shadow: 0 0 10px 2px #ef444480, 0 0 20px 4px #ef444440 !important;
+  animation: __defuss_pulse_error 0.8s ease-in-out infinite !important;
+}

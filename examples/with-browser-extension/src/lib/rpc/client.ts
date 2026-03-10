@@ -33,9 +33,7 @@ function sendToTab(
 }
 
 /** Resolve "active" to the actual tab ID */
-async function resolveTabId(
-  tabId: number | "active",
-): Promise<number> {
+async function resolveTabId(tabId: number | "active"): Promise<number> {
   if (typeof tabId === "number") return tabId;
   const [tab] = await chrome.tabs.query({
     active: true,
@@ -55,7 +53,10 @@ function buildProxy<T>(
   schemas: RpcSchema[],
   send: (msg: RpcCallMessage) => Promise<RpcResponse>,
 ): T {
-  const proxy: Record<string, Record<string, (...args: any[]) => Promise<any>>> = {};
+  const proxy: Record<
+    string,
+    Record<string, (...args: any[]) => Promise<any>>
+  > = {};
 
   for (const schema of schemas) {
     const methods: Record<string, (...args: any[]) => Promise<any>> = {};

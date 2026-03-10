@@ -13,7 +13,9 @@ document.addEventListener("__defuss_ext_click", ((event: CustomEvent) => {
   TabRpc.onCapturedClick(event.detail);
 }) as EventListener);
 
-document.addEventListener("__defuss_ext_dom_mutations", ((event: CustomEvent) => {
+document.addEventListener("__defuss_ext_dom_mutations", ((
+  event: CustomEvent,
+) => {
   const { count, url } = event.detail;
   console.log(`[tab] ${count} DOM mutations in the last 5s on ${url}`);
 }) as EventListener);
