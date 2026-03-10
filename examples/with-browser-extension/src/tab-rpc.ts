@@ -1,8 +1,9 @@
 import { db } from "./lib/content-script";
 import { createWorkerRpcClient } from "./lib/rpc";
 import type { WorkerRpcApi } from "./worker-rpc";
-import { executeGoogleSearch } from "./tools/google-search";
-import type { WorkItemResult } from "./types";
+import { executeTool } from "./lib/content-script/tool-registry";
+import "./tab-tools"; // register all content-script tools
+import type { WorkItemType, WorkItemResult } from "./types";
 
 // RPC client to call the worker
 type WorkerRpc = { WorkerRpc: WorkerRpcApi };
@@ -31,12 +32,12 @@ export const TabRpc = {
     WorkerRpc.onCapturedEvent("click", detail);
   },
 
-  /** Execute Google Search DOM extraction (called by the worker via tab RPC) */
-  async executeGoogleSearch(data: {
-    topK?: number;
-    ai_summary?: boolean;
-  }): Promise<WorkItemResult<string>> {
-    return executeGoogleSearch(data);
+  /** Execute a registered content-script tool by type */
+  async executeTool(
+    type: WorkItemType,
+    data: unknown,
+  ): Promise<WorkItemResult> {
+    return executeTool(type, data);
   },
 };
 

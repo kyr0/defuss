@@ -5,7 +5,7 @@
   "scripts": {
     "prebuild": "rm -rf ./dist && rm -rf ./node_modules/.bun",
     "build": "vite build",
-    "server": "tsx server.ts"
+    "test:browser-automation": "tsx example-browser-automation.ts"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "dependencies": {

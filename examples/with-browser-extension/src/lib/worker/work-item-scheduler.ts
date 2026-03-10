@@ -1,4 +1,5 @@
 import { getServerRpc } from "./server-rpc";
+import { withRetry } from "./work-item-retry";
 import type { WorkItem, WorkItemType, WorkItemResult } from "../../types";
 
 /** Interface that each tool must implement to handle a specific work item type */
@@ -65,28 +66,37 @@ export class WorkItemScheduler {
     const tool = this.tools.get(item.type);
 
     if (!tool) {
-      console.warn(`[scheduler] no tool registered for type "${item.type}", skipping item ${item.id}`);
+      console.warn(
+        `[scheduler] no tool registered for type "${item.type}", skipping item ${item.id}`,
+      );
       return;
     }
 
-    let result: WorkItemResult;
-
-    try {
-      result = await tool.executeInWorker(item);
-    } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      result = {
-        success: false,
-        error: { name: error.name, message: error.message, stack: error.stack },
-      };
-    }
+    const result = await withRetry(async () => {
+      try {
+        return await tool.executeInWorker(item);
+      } catch (err: unknown) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        return {
+          success: false as const,
+          error: {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+          },
+        };
+      }
+    }, item.options);
 
     // Submit result back to the server
     try {
       const rpc = await getServerRpc();
       await rpc.JobApi.submitWorkItemResult(item.id, result);
     } catch (err) {
-      console.warn(`[scheduler] failed to submit result for item ${item.id}:`, err);
+      console.warn(
+        `[scheduler] failed to submit result for item ${item.id}:`,
+        err,
+      );
     }
   }
 }

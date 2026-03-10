@@ -10,13 +10,17 @@ import { waitForTabLoad } from "../lib/worker/tools";
 import type { TabRpcApi } from "../tab-rpc";
 import type { WorkItem, WorkItemResult } from "../types";
 import type { WorkItemTool } from "../lib/worker/work-item-scheduler";
+import type { ContentScriptTool } from "../lib/content-script/tool-registry";
 
 export interface GoogleSearchPayload {
   query: string;
   topK?: number;
   /** Whether to wait for and include Google's AI summary (default: false) */
-  ai_summary?: boolean;
+  aiSummary?: boolean;
 }
+
+/** Result type returned by the google_search tool */
+export type GoogleSearchResult = string;
 
 /**
  * Worker-side tool that opens a Google Search tab and delegates
@@ -51,12 +55,12 @@ export const GoogleSearchWorkerTool: WorkItemTool<GoogleSearchPayload, string> =
         // Wait for the page to fully load
         await waitForTabLoad(tabId);
 
-        // Call the content script's executeGoogleSearch via tab RPC
+        // Call the content script's executeTool via tab RPC
         const rpc = await createTabRpcClient<{ TabRpc: TabRpcApi }>(tabId);
-        const result = await rpc.TabRpc.executeGoogleSearch({
+        const result = (await rpc.TabRpc.executeTool("google_search", {
           topK: topK ?? 3,
-          ai_summary: item.payload.ai_summary,
-        });
+          aiSummary: item.payload.aiSummary,
+        })) as WorkItemResult<string>;
 
         // Close tab unless debug mode, closeTab is false, or the search failed
         const shouldClose = item.options?.closeTab ?? true;
@@ -84,14 +88,13 @@ export const GoogleSearchWorkerTool: WorkItemTool<GoogleSearchPayload, string> =
 
 /**
  * Execute Google Search DOM extraction inside the tab's content-script context.
- * Called by the worker via TabRpc.
  */
-export async function executeGoogleSearch(data: {
+async function executeGoogleSearch(data: {
   topK?: number;
-  ai_summary?: boolean;
+  aiSummary?: boolean;
 }): Promise<WorkItemResult<string>> {
   try {
-    const { topK = 3, ai_summary = false } = data;
+    const { topK = 3, aiSummary = false } = data;
 
     // Signal that this tab is being automated
     await showAutomationBorder();
@@ -105,13 +108,14 @@ export async function executeGoogleSearch(data: {
     let resultMarkdown = "";
 
     // 0. AI Summary (if requested)
-    if (ai_summary) {
+    if (aiSummary) {
       const aiEl = await waitForSelector(
         ['[data-processed="true"] [data-subtree="aimfl,mfl"]'],
         15_000,
       );
       if (aiEl) {
-        const summaryText = (aiEl as HTMLElement).parentElement?.innerText ?? "";
+        const summaryText =
+          (aiEl as HTMLElement).parentElement?.innerText ?? "";
         if (summaryText) {
           resultMarkdown += "### AI Summary\n";
           resultMarkdown += summaryText.trim();
@@ -159,3 +163,12 @@ export async function executeGoogleSearch(data: {
     };
   }
 }
+
+/** Content-script-side tool registration for Google Search */
+export const GoogleSearchContentScriptTool: ContentScriptTool<
+  { topK?: number; aiSummary?: boolean },
+  string
+> = {
+  type: "google_search",
+  execute: executeGoogleSearch,
+};

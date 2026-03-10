@@ -20,6 +20,14 @@ export interface WorkItemOptions {
   focusAutomation?: boolean;
   /** Whether to close the tab after work/tool completion (default: true) */
   closeTab?: boolean;
+  /** Whether to retry on failure (default: true) */
+  retry?: boolean;
+  /** Maximum number of retry attempts (default: 3) */
+  maxRetries?: number;
+  /** Delay in ms before the first retry (default: 2000) */
+  retryDelayMs?: number;
+  /** Exponential backoff multiplier applied to retryDelayMs after each attempt (default: 1.5) */
+  retryExponentialBackoff?: number;
 }
 
 export interface WorkItem<P = unknown, R = unknown> {
