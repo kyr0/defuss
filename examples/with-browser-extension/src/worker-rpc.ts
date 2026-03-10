@@ -41,10 +41,10 @@ export const WorkerRpc = {
     await removeBlobValue(name);
   },
 
-  /** Fetch work items from the server via defuss-rpc */
-  async getWorkItems(): Promise<WorkItem[]> {
+  /** Claim pending work items from the server via defuss-rpc */
+  async claimWorkItems(): Promise<WorkItem[]> {
     const rpc = await getServerRpc();
-    return rpc.JobApi.getWorkItems();
+    return rpc.JobApi.claimWorkItems();
   },
 
   /** Forward an RPC call to the active tab's content script */

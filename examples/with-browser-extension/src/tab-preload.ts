@@ -24,14 +24,22 @@ function ensureBorderElements(): void {
       el.className = `__defuss_border ${sideClass}`;
       if (borderVisible) el.classList.add("__defuss_border_visible");
       appendTarget.appendChild(el);
-      console.log(`[defuss-border] created .${sideClass} (visible: ${borderVisible}) in`, appendTarget.tagName);
+      console.log(
+        `[defuss-border] created .${sideClass} (visible: ${borderVisible}) in`,
+        appendTarget.tagName,
+      );
     }
   }
 }
 
 /** Create border elements as soon as there's something to attach to */
 function initBorder(): void {
-  console.log("[defuss-border] initBorder() called | body:", !!document.body, "| documentElement:", !!document.documentElement);
+  console.log(
+    "[defuss-border] initBorder() called | body:",
+    !!document.body,
+    "| documentElement:",
+    !!document.documentElement,
+  );
   ensureBorderElements();
   const count = document.querySelectorAll(".__defuss_border").length;
   console.log(`[defuss-border] init complete: ${count} border elements in DOM`);
@@ -42,7 +50,9 @@ function showBorder(): void {
   borderVisible = true;
   ensureBorderElements();
   const borders = document.querySelectorAll(".__defuss_border");
-  console.log(`[defuss-border] found ${borders.length} border elements to make visible`);
+  console.log(
+    `[defuss-border] found ${borders.length} border elements to make visible`,
+  );
   borders.forEach((el) => {
     el.classList.add("__defuss_border_visible");
     el.classList.remove("__defuss_border_error");
@@ -101,7 +111,9 @@ if (document.body || document.documentElement) {
   console.log("[defuss-border] root already exists, initializing immediately");
   initBorder();
 } else {
-  console.log("[defuss-border] no root yet, waiting for body via MutationObserver");
+  console.log(
+    "[defuss-border] no root yet, waiting for body via MutationObserver",
+  );
   // At document_start, body may not exist yet — wait for it
   const waitForBody = new MutationObserver(() => {
     if (document.body) {
@@ -110,46 +122,62 @@ if (document.body || document.documentElement) {
       initBorder();
     }
   });
-  waitForBody.observe(document.documentElement || document, { childList: true, subtree: true });
+  waitForBody.observe(document.documentElement || document, {
+    childList: true,
+    subtree: true,
+  });
 }
 
 // --- Intercept input and click events via document-level capture listeners ---
 // Using capture phase ensures we see events before any page handler can stopPropagation.
 // A single listener per event type guarantees exactly one CustomEvent per user action.
 
-document.addEventListener("click", (event: MouseEvent) => {
-  const target = event.target as HTMLElement | null;
-  if (!target) return;
+document.addEventListener(
+  "click",
+  (event: MouseEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
 
-  document.dispatchEvent(
-    new CustomEvent("__defuss_ext_click", {
-      detail: {
-        tagName: target.tagName,
-        id: target.id || "",
-        className: target.className || "",
-        textContent: (target.textContent || "").slice(0, 100),
-        url: location.href,
-      },
-    }),
-  );
-}, true);
+    document.dispatchEvent(
+      new CustomEvent("__defuss_ext_click", {
+        detail: {
+          tagName: target.tagName,
+          id: target.id || "",
+          className: target.className || "",
+          textContent: (target.textContent || "").slice(0, 100),
+          url: location.href,
+        },
+      }),
+    );
+  },
+  true,
+);
 
-document.addEventListener("input", (event: Event) => {
-  const target = event.target as HTMLInputElement | null;
-  if (!target) return;
-  if (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA" && target.tagName !== "SELECT") return;
+document.addEventListener(
+  "input",
+  (event: Event) => {
+    const target = event.target as HTMLInputElement | null;
+    if (!target) return;
+    if (
+      target.tagName !== "INPUT" &&
+      target.tagName !== "TEXTAREA" &&
+      target.tagName !== "SELECT"
+    )
+      return;
 
-  document.dispatchEvent(
-    new CustomEvent("__defuss_ext_input", {
-      detail: {
-        tagName: target.tagName,
-        name: target.name || target.id || "",
-        value: target.value,
-        url: location.href,
-      },
-    }),
-  );
-}, true);
+    document.dispatchEvent(
+      new CustomEvent("__defuss_ext_input", {
+        detail: {
+          tagName: target.tagName,
+          name: target.name || target.id || "",
+          value: target.value,
+          url: location.href,
+        },
+      }),
+    );
+  },
+  true,
+);
 
 // -- DOM MutationObserver: count mutations and report every 5 seconds --
 let domMutationCount = 0;
@@ -181,15 +209,14 @@ if (document.documentElement) {
   waitForRoot.observe(document, { childList: true });
 }
 
-// Report accumulated count every 5 seconds
+// Report accumulated count at the configured interval
 setInterval(() => {
-  if (domMutationCount > 0) {
-    const count = domMutationCount;
-    domMutationCount = 0;
-    document.dispatchEvent(
-      new CustomEvent("__defuss_ext_dom_mutations", {
-        detail: { count, url: location.href },
-      }),
-    );
-  }
-}, 5000);
+  const count = domMutationCount;
+  domMutationCount = 0;
+  // Always dispatch – a zero count lets listeners detect stability
+  document.dispatchEvent(
+    new CustomEvent("__defuss_ext_dom_mutations", {
+      detail: { count, url: location.href },
+    }),
+  );
+}, 500);

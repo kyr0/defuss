@@ -1,29 +1,17 @@
 import type { WorkItemOptions, WorkItemResult } from "../../types";
+import config, { type RetryConfig } from "../../../config";
 
-/** Resolved retry configuration with defaults applied */
-export interface RetryConfig {
-  retry: boolean;
-  maxRetries: number;
-  retryDelayMs: number;
-  retryExponentialBackoff: number;
-}
+export type { RetryConfig };
 
-/** Browser-automation-friendly defaults */
-const DEFAULTS: RetryConfig = {
-  retry: true,
-  maxRetries: 3,
-  retryDelayMs: 2_000,
-  retryExponentialBackoff: 1.5,
-};
-
-/** Merge caller-supplied options with defaults */
+/** Merge caller-supplied options with defaults from config */
 export function resolveRetryConfig(options?: WorkItemOptions): RetryConfig {
+  const defaults = config.retry;
   return {
-    retry: options?.retry ?? DEFAULTS.retry,
-    maxRetries: options?.maxRetries ?? DEFAULTS.maxRetries,
-    retryDelayMs: options?.retryDelayMs ?? DEFAULTS.retryDelayMs,
+    retry: options?.retry ?? defaults.retry,
+    maxRetries: options?.maxRetries ?? defaults.maxRetries,
+    retryDelayMs: options?.retryDelayMs ?? defaults.retryDelayMs,
     retryExponentialBackoff:
-      options?.retryExponentialBackoff ?? DEFAULTS.retryExponentialBackoff,
+      options?.retryExponentialBackoff ?? defaults.retryExponentialBackoff,
   };
 }
 

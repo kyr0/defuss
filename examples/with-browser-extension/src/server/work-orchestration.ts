@@ -5,6 +5,9 @@ import type { WorkItem, WorkItemResult } from "../types.js";
 /** Items waiting to be picked up by the extension */
 export const pendingWorkItems = new Map<string, WorkItem>();
 
+/** Items currently being processed by an extension */
+export const inProgressWorkItems = new Map<string, WorkItem>();
+
 /** Completed items with their results */
 export const completedWorkItems = new Map<
   string,
@@ -19,13 +22,32 @@ export const completionResolvers = new Map<
 
 /** Enqueue a work item for the extension to pick up. */
 export function enqueueWorkItem<P = unknown, R = unknown>(
-  item: Omit<WorkItem<P, R>, "id">,
+  item: Omit<WorkItem<P, R>, "id" | "status">,
 ): WorkItem<P, R> {
   const id = crypto.randomUUID();
-  const workItem: WorkItem<P, R> = { id, ...item };
+  const workItem: WorkItem<P, R> = { id, status: "pending", ...item };
   pendingWorkItems.set(id, workItem as WorkItem);
   console.log(`[orchestration] enqueued work item ${id} (type: ${item.type})`);
   return workItem;
+}
+
+/**
+ * Atomically claim all pending work items. Moves them from `pending` to
+ * `in-progress` so no other caller receives the same items.
+ */
+export function claimWorkItems(): WorkItem[] {
+  const items = Array.from(pendingWorkItems.values());
+  for (const item of items) {
+    pendingWorkItems.delete(item.id);
+    item.status = "in-progress";
+    inProgressWorkItems.set(item.id, item);
+  }
+  if (items.length > 0) {
+    console.log(
+      `[orchestration] claimed ${items.length} item(s) (${pendingWorkItems.size} pending, ${inProgressWorkItems.size} in-progress)`,
+    );
+  }
+  return items;
 }
 
 /** Return all pending (not-yet-completed) work items. */
@@ -43,33 +65,41 @@ export function getCompletedItems(): Array<WorkItem & { completedAt: number }> {
  * extension submits a result). Resolves any pending `observeWorkItem` promise.
  */
 export function completeWorkItem(id: string, result: WorkItemResult): void {
-  if (result.success) {
-    const item = pendingWorkItems.get(id);
-    if (item) {
-      pendingWorkItems.delete(id);
-      const completed = {
-        ...item,
-        result: result.result,
-        success: true,
-        completedAt: Date.now(),
-      };
-      completedWorkItems.set(id, completed);
-      console.log(
-        `[orchestration] work item ${id} completed successfully (${pendingWorkItems.size} pending, ${completedWorkItems.size} done)`,
-      );
+  // Item may be in-progress (normal path) or still pending (legacy/edge case)
+  const item = inProgressWorkItems.get(id) ?? pendingWorkItems.get(id);
 
-      // Resolve any awaiting observer
-      const resolver = completionResolvers.get(id);
-      if (resolver) {
-        completionResolvers.delete(id);
-        resolver.resolve(completed);
-      }
-    } else {
-      console.warn(
-        `[orchestration] received result for unknown/already-completed item ${id}`,
-      );
+  if (!item) {
+    console.warn(
+      `[orchestration] received result for unknown/already-completed item ${id}`,
+    );
+    return;
+  }
+
+  // Remove from whichever map it was in
+  inProgressWorkItems.delete(id);
+  pendingWorkItems.delete(id);
+
+  if (result.success) {
+    const completed = {
+      ...item,
+      status: "completed" as const,
+      result: result.result,
+      success: true,
+      completedAt: Date.now(),
+    };
+    completedWorkItems.set(id, completed);
+    console.log(
+      `[orchestration] work item ${id} completed successfully (${pendingWorkItems.size} pending, ${inProgressWorkItems.size} in-progress, ${completedWorkItems.size} done)`,
+    );
+
+    // Resolve any awaiting observer
+    const resolver = completionResolvers.get(id);
+    if (resolver) {
+      completionResolvers.delete(id);
+      resolver.resolve(completed);
     }
   } else {
+    item.status = "failed";
     console.warn(`[orchestration] work item ${id} failed:`, result.error);
 
     // Reject any awaiting observer
@@ -81,7 +111,6 @@ export function completeWorkItem(id: string, result: WorkItemResult): void {
       err.name = result.error?.name ?? "WorkItemError";
       resolver.reject(err);
     }
-    // Failed items stay in pendingItems so they can be retried
   }
 }
 
@@ -98,7 +127,11 @@ export function observeWorkItem<P = unknown, R = unknown>(
   if (completed) return Promise.resolve(completed as unknown as WorkItem<P, R>);
 
   // Not even known?
-  if (!pendingWorkItems.has(id) && !completedWorkItems.has(id)) {
+  if (
+    !pendingWorkItems.has(id) &&
+    !inProgressWorkItems.has(id) &&
+    !completedWorkItems.has(id)
+  ) {
     return Promise.reject(new Error(`Unknown work item: ${id}`));
   }
 
@@ -127,7 +160,7 @@ export function observeWorkItem<P = unknown, R = unknown>(
  * ```
  */
 export async function doWorkItem<P = unknown, R = unknown>(
-  item: Omit<WorkItem<P, R>, "id">,
+  item: Omit<WorkItem<P, R>, "id" | "status">,
 ): Promise<WorkItem<P, R>> {
   const workItem = enqueueWorkItem<P, R>(item);
   return observeWorkItem<P, R>(workItem.id);

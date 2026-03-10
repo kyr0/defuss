@@ -30,9 +30,12 @@ export interface WorkItemOptions {
   retryExponentialBackoff?: number;
 }
 
+export type WorkItemStatus = "pending" | "in-progress" | "completed" | "failed";
+
 export interface WorkItem<P = unknown, R = unknown> {
   id: string; // UUID
   type: WorkItemType;
+  status: WorkItemStatus;
   payload: P;
   /** When true, keep diagnostic tabs open after execution */
   debug?: boolean;

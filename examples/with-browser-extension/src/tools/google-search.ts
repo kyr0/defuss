@@ -2,6 +2,7 @@ import { createTabRpcClient } from "../lib/rpc";
 import { htmlToMarkdown } from "../lib/content-script/html-to-markdown";
 import {
   waitForSelector,
+  waitForDomStable,
   showErrorBorder,
   showAutomationBorder,
   hideAutomationBorder,
@@ -84,7 +85,7 @@ export const GoogleSearchWorkerTool: WorkItemTool<GoogleSearchPayload, string> =
     },
   };
 
-// ─── Content-script-side executor (runs in tab's isolated world) ────────────
+// --- Content-script-side executor (runs in tab's isolated world) ---
 
 /**
  * Execute Google Search DOM extraction inside the tab's content-script context.
@@ -107,34 +108,26 @@ async function executeGoogleSearch(data: {
 
     let resultMarkdown = "";
 
-    // 0. AI Summary (if requested)
     if (aiSummary) {
-      const aiEl = await waitForSelector(
-        ['[data-processed="true"] [data-subtree="aimfl,mfl"]'],
-        15_000,
-      );
-      if (aiEl) {
-        const summaryText =
-          (aiEl as HTMLElement).parentElement?.innerText ?? "";
-        if (summaryText) {
-          resultMarkdown += "### AI Summary\n";
-          resultMarkdown += summaryText.trim();
-          resultMarkdown += "\n\n---\n\n";
-        }
+      // Wait for the AI summary content to finish streaming/rendering
+      await waitForDomStable({
+        selector: '[data-subtree="aimc"], [data-spe="true"]',
+        quietPeriodMs: 500,
+        timeoutMs: 10_000,
+      });
+
+      const aiSummaryContent =
+        document.querySelector('[data-subtree="aimc"]') ??
+        document.querySelector('[data-spe="true"]');
+
+      if (aiSummaryContent) {
+        resultMarkdown += "### AI Summary\n";
+        resultMarkdown += htmlToMarkdown(aiSummaryContent);
+        resultMarkdown += "\n\n---\n\n";
       }
     }
 
-    // 1. Answer box / Knowledge Panel
-    const answerBox =
-      document.querySelector('[data-spe="true"]') ??
-      document.querySelector('[data-subtree="aimc"]');
-    if (answerBox) {
-      resultMarkdown += "### Answer Box\n";
-      resultMarkdown += htmlToMarkdown(answerBox);
-      resultMarkdown += "\n\n---\n\n";
-    }
-
-    // 2. Top K organic results
+    // 1. Top K organic results
     const results = Array.from(document.querySelectorAll("[data-rpos]"));
     const topResults = results.slice(0, topK);
 

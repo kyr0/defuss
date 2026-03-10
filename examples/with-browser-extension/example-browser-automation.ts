@@ -22,8 +22,8 @@ await server.start();
 const result = await doWorkItem<GoogleSearchPayload, GoogleSearchResult>({
   type: "google_search",
   payload: {
-    query: "what is defuss?",
-    aiSummary: false,
+    query: "What's the defuss framework by kyr0 (Aron Homberg)?",
+    aiSummary: true,
   },
   options: { focusAutomation: true, closeTab: false },
 });

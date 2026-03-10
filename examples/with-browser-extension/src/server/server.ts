@@ -6,7 +6,7 @@ import {
   doWorkItem,
   observeWorkItem,
   completeWorkItem,
-  getPendingItems,
+  claimWorkItems,
 } from "./work-orchestration.js";
 import config from "../../config.js";
 
@@ -14,9 +14,9 @@ export { enqueueWorkItem, doWorkItem, observeWorkItem };
 
 // -- RPC API --
 const WorkApi = {
-  /** Return only pending (not-yet-completed) work items */
-  async getWorkItems(): Promise<Array<WorkItem>> {
-    return getPendingItems();
+  /** Claim all pending work items (atomically moves them to in-progress) */
+  async claimWorkItems(): Promise<Array<WorkItem>> {
+    return claimWorkItems();
   },
 
   /** Receive a processed work item result from the extension */
@@ -28,7 +28,7 @@ const WorkApi = {
   },
 
   /** Enqueue a new work item (callable via RPC for external orchestration) */
-  async enqueue(item: Omit<WorkItem, "id">): Promise<WorkItem> {
+  async enqueue(item: Omit<WorkItem, "id" | "status">): Promise<WorkItem> {
     return enqueueWorkItem(item);
   },
 };

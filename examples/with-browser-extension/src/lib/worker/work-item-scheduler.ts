@@ -49,14 +49,19 @@ export class WorkItemScheduler {
 
     try {
       const rpc = await getServerRpc();
-      const items = await rpc.JobApi.getWorkItems();
-      console.log(`[scheduler] polled ${items.length} work item(s)`);
+      const items = await rpc.JobApi.claimWorkItems();
+      console.log(`[scheduler] claimed ${items.length} work item(s)`);
 
       for (const item of items) {
         await this.processItem(item);
       }
-    } catch (err) {
-      console.warn("[scheduler] poll failed:", err);
+    } catch (_err) {
+      /*
+      console.warn(
+        "[scheduler] poll failed (no automation script running?):",
+        err,
+      );
+			*/
     } finally {
       this.processing = false;
     }
