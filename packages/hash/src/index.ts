@@ -55,10 +55,10 @@ function assertReady(): void {
 }
 
 /**
- * Convenience path: hash any JS value. Pays the JS→WASM object graph
- * transfer cost via serde_wasm_bindgen.
+ * WASM convenience path: hash any JS value. Pays the JS→WASM object graph
+ * transfer cost via serde_wasm_bindgen. Requires init().
  */
-export function contentHash(
+export function contentHashWasm(
   value: JsonValue,
   skipPaths: readonly string[] = [],
 ): string {
@@ -90,7 +90,7 @@ export function contentHashJsonBytes(
   return wasmContentHashJsonBytes(bytes, [...skipPaths]);
 }
 
-export class ContentHasher {
+export class ContentHasherWasm {
   readonly #inner: {
     hash(value: unknown): string;
     hash_json_str(json: string): string;
@@ -118,8 +118,15 @@ export class ContentHasher {
   }
 }
 
-export function createContentHasher(
+export function createContentHasherWasm(
   skipPaths: readonly string[] = [],
-): ContentHasher {
-  return new ContentHasher(skipPaths);
+): ContentHasherWasm {
+  return new ContentHasherWasm(skipPaths);
 }
+
+// Primary exports — pure TypeScript JIT-optimized hasher (no WASM, no init() needed)
+export {
+  contentHash,
+  ContentHasher,
+  createContentHasher,
+} from "./content-hash-js";

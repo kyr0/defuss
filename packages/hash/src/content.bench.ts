@@ -3,7 +3,9 @@ import { beforeAll, bench, describe } from "vitest";
 import {
   contentHash,
   contentHashJson,
+  contentHashWasm,
   createContentHasher,
+  createContentHasherWasm,
   init,
 } from "./index";
 import { createFixture } from "./test-fixture";
@@ -11,7 +13,8 @@ import { createFixture } from "./test-fixture";
 const sample = createFixture(256);
 const skip = ["[*].distance", "[*].tsz", "[*].nteStart", "[*].nteEnde"];
 
-let hasher: ReturnType<typeof createContentHasher>;
+let wasmHasher: ReturnType<typeof createContentHasherWasm>;
+let jsHasher: ReturnType<typeof createContentHasher>;
 let sampleJson: string;
 
 /** Naive baseline: md5(JSON.stringify(data)) — no key-order stability, no skip. */
@@ -61,7 +64,8 @@ function stableStringifyWithSkip(
 
 beforeAll(async () => {
   await init();
-  hasher = createContentHasher(skip);
+  wasmHasher = createContentHasherWasm(skip);
+  jsHasher = createContentHasher(skip);
   sampleJson = JSON.stringify(sample);
 });
 
@@ -76,16 +80,16 @@ describe("baselines", () => {
 });
 
 describe("WASM convenience path (JsValue crossing)", () => {
-  bench("contentHash (WASM, with skip)", () => {
-    contentHash(sample, skip);
+  bench("contentHashWasm (WASM, with skip)", () => {
+    contentHashWasm(sample, skip);
   });
 
-  bench("contentHash (WASM, no skip)", () => {
-    contentHash(sample);
+  bench("contentHashWasm (WASM, no skip)", () => {
+    contentHashWasm(sample);
   });
 
-  bench("reused ContentHasher.hash (WASM, with skip)", () => {
-    hasher.hash(sample);
+  bench("reused ContentHasherWasm.hash (WASM, with skip)", () => {
+    wasmHasher.hash(sample);
   });
 });
 
@@ -98,11 +102,25 @@ describe("WASM fast path (JSON string → Rust)", () => {
     contentHashJson(sampleJson);
   });
 
-  bench("reused ContentHasher.hashJson (WASM, with skip)", () => {
-    hasher.hashJson(sampleJson);
+  bench("reused ContentHasherWasm.hashJson (WASM, with skip)", () => {
+    wasmHasher.hashJson(sampleJson);
   });
 
   bench("JSON.stringify + contentHashJson (full round-trip, with skip)", () => {
     contentHashJson(JSON.stringify(sample), skip);
+  });
+});
+
+describe("contentHash — primary (pure TS, JIT-optimized)", () => {
+  bench("contentHash (with skip)", () => {
+    contentHash(sample, skip);
+  });
+
+  bench("contentHash (no skip)", () => {
+    contentHash(sample);
+  });
+
+  bench("reused ContentHasher.hash (with skip)", () => {
+    jsHasher.hash(sample);
   });
 });
