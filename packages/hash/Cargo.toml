@@ -1,0 +1,21 @@
+[package]
+name = "defuss_hash"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "A library of fast and stable special-purpose hashing functions such as JSON content hashing in Rust + WebAssembly with skip paths, rendezvous hashing, etc."
+repository = "https://github.com/kyr0/defuss"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "rust/src/lib.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+serde_json = "1.0"
+wasm-bindgen = "0.2.105"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
