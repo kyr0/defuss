@@ -20,6 +20,13 @@ export interface DomStabilityConfig {
   timeoutMs: number;
 }
 
+export interface SyntheticEventsConfig {
+  /** Per-keystroke delay in ms for typing simulation (default: 50) */
+  keystrokeDelayMs: number;
+  /** Delay in ms between mouse events during a click (default: 50) */
+  clickDelayMs: number;
+}
+
 export interface Config {
   /** The endpoint URL of the RPC server */
   serverEndpoint: string;
@@ -29,6 +36,8 @@ export interface Config {
   retry: RetryConfig;
   /** DOM stability detection settings */
   domStability: DomStabilityConfig;
+  /** Synthetic event simulation timings */
+  syntheticEvents: SyntheticEventsConfig;
 }
 
 export default {
@@ -45,5 +54,9 @@ export default {
     checkIntervalMs: 200,
     quietPeriodMs: 1_000,
     timeoutMs: 15_000,
+  },
+  syntheticEvents: {
+    keystrokeDelayMs: 25,
+    clickDelayMs: 75,
   },
 } as Config;

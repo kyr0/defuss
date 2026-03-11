@@ -1,4 +1,4 @@
-export type WorkItemType = "google_search";
+export type WorkItemType = "google_search" | "116117_arztsuche";
 
 /** Serializable error envelope (DSON-safe, no Error prototype) */
 export interface WorkItemError {

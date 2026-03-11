@@ -6,5 +6,7 @@
  */
 import { registerContentScriptTool } from "./lib/content-script/tool-registry";
 import { GoogleSearchContentScriptTool } from "./tools/google-search";
+import { ArztSucheContentScriptTool } from "./tools/116117-arztsuche";
 
 registerContentScriptTool(GoogleSearchContentScriptTool);
+registerContentScriptTool(ArztSucheContentScriptTool);
