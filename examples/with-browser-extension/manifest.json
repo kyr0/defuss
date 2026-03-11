@@ -43,7 +43,9 @@
     "storage",
     "unlimitedStorage",
     "offscreen",
-    "alarms"
+    "alarms",
+    "cookies",
+    "browsingData"
   ],
   "background": {
     "service_worker": "src/worker.ts",

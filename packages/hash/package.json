@@ -6,14 +6,12 @@
     "access": "public"
   },
   "license": "MIT",
-  "description": "A library of fast and stable special-purpose hashing functions such as JSON content hashing in Rust + WebAssembly with skip paths, rendezvous hashing, etc.",
+  "description": "A library of fast and stable special-purpose hashing functions: JIT-optimized content hashing with key-order stability and skip paths, rendezvous hashing, etc.",
   "keywords": [
     "hash",
     "content-hash",
     "json",
-    "wasm",
-    "webassembly",
-    "rust",
+    "stable-hash",
     "isomorphic",
     "deduplication",
     "defuss",
@@ -25,8 +23,7 @@
     "type": "git"
   },
   "scripts": {
-    "setup": "bun run scripts/setup.ts",
-    "clean": "rm -rf ./coverage ./dist ./wasm/pkg ./node_modules/.vite",
+    "clean": "rm -rf ./coverage ./dist ./node_modules/.vite",
     "prebuild": "bun run clean",
     "build": "bun scripts/build.ts",
     "pretest": "bun run build",
@@ -44,20 +41,12 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
       }
-    },
-    "./wasm": {
-      "import": {
-        "types": "./wasm/pkg/defuss_hash.d.ts",
-        "default": "./wasm/pkg/defuss_hash.js"
-      }
     }
   },
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "wasm/pkg",
-    "rust/src/content.md",
     "README.md",
     "LICENSE"
   ],
@@ -71,7 +60,6 @@
     "@vitest/coverage-v8": "^4.0.18",
     "playwright": "^1.58.2",
     "typescript": "^5.9.3",
-    "vite-plugin-wasm": "^3.5.0",
     "vitest": "^4.0.18"
   }
 }

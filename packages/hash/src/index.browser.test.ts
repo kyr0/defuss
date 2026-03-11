@@ -1,15 +1,9 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import { contentHash, createContentHasher, init, isReady } from "./index";
+import { describe, expect, it } from "vitest";
+import { contentHash, createContentHasher } from "./index";
 import { createFixture } from "./test-fixture";
 
-beforeAll(async () => {
-  await init();
-});
-
 describe("defuss-hash in browser", () => {
-  it("initializes and hashes in chromium", () => {
-    expect(isReady()).toBe(true);
-
+  it("hashes in chromium", () => {
     const left = { b: 2, a: 1, nested: { x: [1, 2, 3] } };
     const right = { nested: { x: [1, 2, 3] }, a: 1, b: 2 };
 

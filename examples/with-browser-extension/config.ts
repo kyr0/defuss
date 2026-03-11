@@ -52,7 +52,7 @@ export default {
   domStability: {
     mutationReportIntervalMs: 500,
     checkIntervalMs: 200,
-    quietPeriodMs: 1_000,
+    quietPeriodMs: 800,
     timeoutMs: 15_000,
   },
   syntheticEvents: {
