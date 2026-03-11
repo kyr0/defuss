@@ -1,12 +1,136 @@
 /**
  * Tab preload script (runs at document_start in MAIN world).
  *
+ * - Intercepts fetch + XHR network requests (patched FIRST, before anything).
  * - Injects early DOM modifications (e.g. styles) before the page renders.
  * - Intercepts input/click events and forwards them to the ISOLATED-world
  *   content script via CustomEvents (MAIN world has no chrome.runtime access).
  */
 
-console.log("[defuss-extension]: Code execution before tab even loads.");
+// =========================================================================
+// Network interception — MUST be the very first thing that runs.
+// Patches fetch + XHR before the page's own scripts can cache references.
+// Interceptors are registered later via postMessage from the content script.
+// =========================================================================
+
+const networkInterceptors = new Map<
+  string,
+  { urlPattern: string; requestId: string }
+>();
+
+// --- fetch monkey-patch ---
+const originalFetch = window.fetch.bind(window);
+
+window.fetch = async function (...args: Parameters<typeof fetch>) {
+  const url = typeof args[0] === "string" ? args[0] : (args[0] as Request).url;
+  console.log(`[defuss-net] fetch: ${url}`);
+
+  const response = await originalFetch(...args);
+  notifyInterceptors("fetch", url, response.status, () =>
+    response.clone().text(),
+  );
+  return response;
+};
+
+// --- XHR monkey-patch ---
+const OriginalXHR = window.XMLHttpRequest;
+const originalXHROpen = OriginalXHR.prototype.open;
+const originalXHRSend = OriginalXHR.prototype.send;
+
+OriginalXHR.prototype.open = function (
+  this: XMLHttpRequest,
+  method: string,
+  url: string | URL,
+  ...rest: unknown[]
+) {
+  const resolvedUrl = String(url);
+  (this as unknown as Record<string, unknown>).__defuss_url = resolvedUrl;
+  (this as unknown as Record<string, unknown>).__defuss_method = method;
+  console.log(`[defuss-net] xhr.open: ${method} ${resolvedUrl}`);
+  return (originalXHROpen as Function).call(this, method, url, ...rest);
+};
+
+OriginalXHR.prototype.send = function (
+  this: XMLHttpRequest,
+  ...args: unknown[]
+) {
+  const xhrUrl = (this as unknown as Record<string, string>).__defuss_url;
+  const xhrMethod = (this as unknown as Record<string, string>).__defuss_method;
+  console.log(`[defuss-net] xhr.send: ${xhrMethod} ${xhrUrl}`);
+
+  if (xhrUrl) {
+    this.addEventListener("load", function () {
+      console.log(
+        `[defuss-net] xhr.load: ${xhrMethod} ${xhrUrl} (${this.status}), interceptors: ${networkInterceptors.size}`,
+      );
+      notifyInterceptors("xhr", xhrUrl, this.status, () =>
+        Promise.resolve(this.responseText),
+      );
+    });
+  }
+
+  return (originalXHRSend as Function).call(this, ...args);
+};
+
+/** Normalize a URL to its pathname, always starting with / */
+function toNormalizedPath(raw: string): string {
+  try {
+    return new URL(raw, location.href).pathname;
+  } catch {
+    // Fallback: ensure leading slash
+    return raw.startsWith("/") ? raw : `/${raw}`;
+  }
+}
+
+/** Shared helper: check all registered interceptors and post matching results */
+function notifyInterceptors(
+  source: string,
+  url: string,
+  status: number,
+  getText: () => Promise<string>,
+): void {
+  if (networkInterceptors.size === 0) return;
+
+  const urlPath = toNormalizedPath(url);
+  console.log(
+    `[defuss-net] checking ${networkInterceptors.size} interceptor(s) against ${source} ${url} (path: ${urlPath})`,
+  );
+
+  for (const [requestId, interceptor] of networkInterceptors) {
+    const patternPath = toNormalizedPath(interceptor.urlPattern);
+    const matches = urlPath.startsWith(patternPath);
+    console.log(
+      `[defuss-net]   pattern "${patternPath}" vs "${urlPath}" => ${matches}`,
+    );
+    if (matches) {
+      getText()
+        .then((body) => {
+          window.postMessage(
+            {
+              __defuss: true,
+              action: "fetch_intercepted",
+              requestId,
+              url,
+              status,
+              body,
+            },
+            "*",
+          );
+          console.log(
+            `[defuss-net] intercepted ${source} ${url} (${status}) for ${requestId}`,
+          );
+        })
+        .catch(() => {
+          // ignore read errors
+        });
+      networkInterceptors.delete(requestId);
+    }
+  }
+}
+
+console.log(
+  "[defuss-extension]: Network interception installed (fetch + XHR).",
+);
 
 // --- Automation border (created early, hidden by default) ---
 // Border CSS is loaded via manifest content_scripts.css (bypasses page CSP).
@@ -102,6 +226,15 @@ window.addEventListener("message", (event: MessageEvent) => {
       break;
     case "border_error":
       errorBorder();
+      break;
+    case "intercept_fetch":
+      networkInterceptors.set(data.requestId, {
+        urlPattern: data.urlPattern,
+        requestId: data.requestId,
+      });
+      console.log(
+        `[defuss-net] registered interceptor ${data.requestId} for "${data.urlPattern}"`,
+      );
       break;
   }
 });

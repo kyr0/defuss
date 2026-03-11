@@ -1,4 +1,3 @@
-import { createTabRpcClient } from "../lib/rpc";
 import { htmlToMarkdown } from "../lib/content-script/html-to-markdown";
 import {
   waitForSelector,
@@ -7,8 +6,7 @@ import {
   showAutomationBorder,
   hideAutomationBorder,
 } from "../lib/content-script/tools";
-import { waitForTabLoad } from "../lib/worker/tools";
-import type { TabRpcApi } from "../tab-rpc";
+import { waitForTabLoad, waitForContentScript } from "../lib/worker/tools";
 import type { WorkItem, WorkItemResult } from "../types";
 import type { WorkItemTool } from "../lib/worker/work-item-scheduler";
 import type { ContentScriptTool } from "../lib/content-script/tool-registry";
@@ -56,8 +54,8 @@ export const GoogleSearchWorkerTool: WorkItemTool<GoogleSearchPayload, string> =
         // Wait for the page to fully load
         await waitForTabLoad(tabId);
 
-        // Call the content script's executeTool via tab RPC
-        const rpc = await createTabRpcClient<{ TabRpc: TabRpcApi }>(tabId);
+        // Wait for the content script to initialise its RPC listener
+        const rpc = await waitForContentScript(tabId);
         const result = (await rpc.TabRpc.executeTool("google_search", {
           topK: topK ?? 3,
           aiSummary: item.payload.aiSummary,

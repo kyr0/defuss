@@ -1,4 +1,3 @@
-import { createTabRpcClient } from "../lib/rpc";
 import {
   waitForSelector,
   waitForDomStable,
@@ -7,8 +6,8 @@ import {
   hideAutomationBorder,
 } from "../lib/content-script/tools";
 import { fill, click } from "../lib/content-script/synthetic-events";
-import { waitForTabLoad } from "../lib/worker/tools";
-import type { TabRpcApi } from "../tab-rpc";
+import { interceptFetch } from "../lib/content-script/network-intercept";
+import { waitForTabLoad, waitForContentScript } from "../lib/worker/tools";
 import type { WorkItem, WorkItemResult } from "../types";
 import type { WorkItemTool } from "../lib/worker/work-item-scheduler";
 import type { ContentScriptTool } from "../lib/content-script/tool-registry";
@@ -24,8 +23,8 @@ export interface ArztSuchePayload {
   place: string;
 }
 
-/** The tool returns the inner HTML of `.search-results-container` */
-export type ArztSucheResult = string;
+/** Raw API response from /api/data */
+export type ArztSucheResult = Record<string, unknown>;
 
 // ---------------------------------------------------------------------------
 // Worker-side tool
@@ -60,8 +59,8 @@ export const ArztSucheWorkerTool: WorkItemTool<
 
       await waitForTabLoad(tabId);
 
-      // Delegate the actual DOM work to the content script
-      const rpc = await createTabRpcClient<{ TabRpc: TabRpcApi }>(tabId);
+      // Wait for the content script to initialise its RPC listener
+      const rpc = await waitForContentScript(tabId);
       const result = (await rpc.TabRpc.executeTool("116117_arztsuche", {
         query: item.payload.query,
         place: item.payload.place,
@@ -153,34 +152,32 @@ async function executeArztSuche(
     }
     await click(placeOption as HTMLElement);
 
-    // 6. Click the search button
+    // 6. Register network interceptor BEFORE clicking search
+    const apiResponsePromise = interceptFetch("/api/data", 30_000);
+
+    // 7. Click the search button
     const searchBtn = await waitForSelector(["#searchBtn"], 5_000);
     if (!searchBtn) {
       throw new Error("Timeout: #searchBtn not found");
     }
     await click(searchBtn as HTMLElement);
 
-    // 7. Wait for the results container to appear, then let the DOM stabilise
-    await waitForSelector([".search-results-container"], 30_000);
-    await waitForDomStable({
-      selector: ".search-results-container",
-      quietPeriodMs: 2_000,
-      timeoutMs: 30_000,
-    });
-
-    // 8. Extract the results HTML
-    const resultsContainer = document.querySelector(
-      ".search-results-container",
+    // 8. Await the intercepted API response
+    const intercepted = await apiResponsePromise;
+    const apiResponse = JSON.parse(intercepted.body) as ArztSucheResult;
+    console.log(
+      `[arztsuche] intercepted /api/data (${intercepted.status}), entries:`,
+      (apiResponse as Record<string, unknown>).arztPraxisDatas
+        ? (
+            (apiResponse as Record<string, unknown>)
+              .arztPraxisDatas as unknown[]
+          ).length
+        : "unknown",
     );
-    const html = resultsContainer?.innerHTML ?? "";
 
     hideAutomationBorder();
 
-    if (!html) {
-      return { success: true, result: "No results found." };
-    }
-
-    return { success: true, result: html };
+    return { success: true, result: apiResponse };
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
     showErrorBorder();
