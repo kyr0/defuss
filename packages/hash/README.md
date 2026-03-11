@@ -92,6 +92,29 @@ A trailing `*` skips the matched node's direct children while preserving the par
 
 Deterministic, minimal-disruption work-item assignment across a set of peers. When a peer joins or leaves, only ~`1/n` of keys are remapped.
 
+### How It Works
+
+For each work item and each peer, the algorithm computes a score and picks the peer with the highest score.
+
+- same input set => same winner (deterministic)
+- no central coordinator needed (stateless)
+- minimal churn on membership changes
+
+This makes it a good default for distributed polling workers, queue consumers, partition assignment, and leader-per-key patterns.
+
+### Rebalancing Behavior
+
+- adding one peer to `n` peers remaps about `1/(n+1)` of keys
+- removing one peer from `n` peers remaps about `1/n` of keys
+
+In practice, this means you can scale up/down without reassigning most work items.
+
+### Complexity
+
+For one lookup, time complexity is `O(number_of_peers)` and memory overhead is `O(1)` (excluding input storage).
+
+### API
+
 ```ts
 import {
   pickResponsiblePeer,
@@ -106,3 +129,38 @@ const owner = pickResponsiblePeer("work-item-42", peers);
 // Check if a specific peer is responsible
 const isMine = isResponsibleForWorkItem("peer-1", "work-item-42", peers);
 ```
+
+### Practical Notes
+
+- keep peer ids stable and unique
+- use the same peer list order/content on all nodes at decision time
+- for very large peer sets, cache peer lists and avoid rebuilding arrays on each lookup
+- if you need weighted balancing, extend scoring with weights before selecting the max
+
+### Small Rebalance Example
+
+```ts
+import { pickResponsiblePeer } from "defuss-hash";
+
+const before = ["peer-a", "peer-b", "peer-c"];
+const after = ["peer-a", "peer-b", "peer-c", "peer-d"];
+
+let moved = 0;
+const total = 10_000;
+
+for (let i = 0; i < total; i++) {
+  const key = `job-${i}`;
+  const a = pickResponsiblePeer(key, before);
+  const b = pickResponsiblePeer(key, after);
+  if (a !== b) moved++;
+}
+
+console.log(`moved ratio: ${moved / total}`); // close to ~1/4
+```
+
+### When Not to Use Rendezvous Hashing
+
+- **Weighted fairness required** — if peers have different capacities (e.g. 2× CPU), the uniform scoring does not account for that weight; you would need a custom score multiplier or a weighted consistent hash instead.
+- **Topology-aware placement** — if your assignment must respect rack, region, or availability-zone affinity, rendezvous hashing has no built-in concept of locality; use a placement system that understands your topology.
+- **Very large, frequently-changing peer sets** — each lookup scans all peers in `O(n)`. For thousands of peers with sub-millisecond SLA on every lookup, consider a ring-based consistent hash (e.g. jump consistent hash) which does `O(log n)` lookups.
+- **Strong anti-affinity or co-location constraints** — e.g. "this key must never land on the same host as that key". Rendezvous hashing has no mechanism for placement constraints beyond pure score maximization.
