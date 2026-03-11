@@ -1,10 +1,10 @@
 [workspace]
 members = [
-    "packages/search",
+  "packages/hash",
 ]
 exclude = [
-    "examples/with-wasm-c-rust-matmul",
-    "examples/with-tauri/src-tauri",
+  "examples/with-wasm-c-rust-matmul",
+  "examples/with-tauri/src-tauri",
 ]
 resolver = "2"
 
