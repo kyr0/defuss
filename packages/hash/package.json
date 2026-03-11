@@ -33,7 +33,7 @@
     "pretest:browser": "bun run build",
     "prebench": "bun run build"
   },
-  "author": "Aron Homberg",
+  "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
   "exports": {
     ".": {
