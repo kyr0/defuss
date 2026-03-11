@@ -7,7 +7,12 @@ import {
 } from "../lib/content-script/tools";
 import { fill, click } from "../lib/content-script/synthetic-events";
 import { interceptFetch } from "../lib/content-script/network-intercept";
-import { waitForTabLoad, waitForContentScript } from "../lib/worker/tools";
+import {
+  waitForTabLoad,
+  waitForContentScript,
+  clearCookies,
+  clearStorage,
+} from "../lib/worker/tools";
 import type { WorkItem, WorkItemResult } from "../types";
 import type { WorkItemTool } from "../lib/worker/work-item-scheduler";
 import type { ContentScriptTool } from "../lib/content-script/tool-registry";
@@ -43,6 +48,10 @@ export const ArztSucheWorkerTool: WorkItemTool<
 
     let tabId: number | undefined;
     try {
+      // Clear cookies and storage before opening tab to avoid session issues
+      await clearCookies("https://arztsuche.116117.de");
+      await clearStorage("https://arztsuche.116117.de");
+
       const focusTab = item.options?.focusAutomation ?? true;
       const tab = await chrome.tabs.create({ url, active: focusTab });
       tabId = tab.id;

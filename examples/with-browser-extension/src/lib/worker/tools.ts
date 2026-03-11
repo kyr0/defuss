@@ -39,6 +39,47 @@ export function waitForTabLoad(
  * `chrome.runtime.onMessage` listener yet. This helper retries the
  * RPC schema handshake until the content script responds.
  */
+/**
+ * Clear all cookies for a specific origin (e.g. "https://arztsuche.116117.de").
+ * Uses chrome.cookies API to enumerate and remove each cookie individually,
+ * which is more precise than browsingData (which only filters by time range).
+ */
+export async function clearCookies(origin: string): Promise<number> {
+  const url = origin.endsWith("/") ? origin : `${origin}/`;
+  const cookies = await chrome.cookies.getAll({ url });
+
+  await Promise.all(
+    cookies.map((cookie) => {
+      const protocol = cookie.secure ? "https" : "http";
+      const cookieUrl = `${protocol}://${cookie.domain.replace(/^\./, "")}${cookie.path}`;
+      return chrome.cookies.remove({ url: cookieUrl, name: cookie.name });
+    }),
+  );
+
+  console.log(`[worker] cleared ${cookies.length} cookie(s) for ${origin}`);
+  return cookies.length;
+}
+
+/**
+ * Clear localStorage, cacheStorage, and indexedDB for a specific origin.
+ * Uses chrome.browsingData API — works from the service worker without a tab.
+ * Note: sessionStorage is tab-scoped and cleared automatically when tabs close.
+ * To clear sessionStorage in an open tab, use the MAIN-world clear_sessionstorage
+ * postMessage command via the content script.
+ */
+export async function clearStorage(origin: string): Promise<void> {
+  const normalizedOrigin = origin.replace(/\/$/, "");
+  await chrome.browsingData.remove(
+    { origins: [normalizedOrigin] },
+    {
+      localStorage: true,
+      cacheStorage: true,
+      indexedDB: true,
+    },
+  );
+  console.log(`[worker] cleared storage for ${normalizedOrigin}`);
+}
+
 export async function waitForContentScript(
   tabId: number,
   {

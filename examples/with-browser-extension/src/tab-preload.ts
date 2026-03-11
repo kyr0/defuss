@@ -236,6 +236,22 @@ window.addEventListener("message", (event: MessageEvent) => {
         `[defuss-net] registered interceptor ${data.requestId} for "${data.urlPattern}"`,
       );
       break;
+    case "clear_localstorage":
+      try {
+        localStorage.clear();
+        console.log("[defuss-storage] localStorage cleared");
+      } catch (e) {
+        console.warn("[defuss-storage] failed to clear localStorage:", e);
+      }
+      break;
+    case "clear_sessionstorage":
+      try {
+        sessionStorage.clear();
+        console.log("[defuss-storage] sessionStorage cleared");
+      } catch (e) {
+        console.warn("[defuss-storage] failed to clear sessionStorage:", e);
+      }
+      break;
   }
 });
 

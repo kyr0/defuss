@@ -118,9 +118,13 @@ export class ExpressRpcServer {
     });
   }
 
-  async stop(): Promise<void> {
+  async stop(graceful = true): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.server) {
+        if (!graceful) {
+          // Force-close idle keep-alive sockets so close() resolves promptly
+          this.server.closeAllConnections?.();
+        }
         this.server.close((err?: Error) => {
           if (err) {
             reject(err);
