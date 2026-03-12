@@ -3,8 +3,8 @@ import { bench, describe } from "vitest";
 import {
   contentHash,
   createContentHasher,
-} from "./index";
-import { createFixture } from "./test-fixture";
+} from "../src/index";
+import { createFixture } from "../src/test-fixture";
 
 const sample = createFixture(256);
 const skip = ["[*].distance", "[*].tsz", "[*].nteStart", "[*].nteEnde"];

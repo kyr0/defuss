@@ -5,7 +5,7 @@
     "vitest.config.ts",
     "vitest.browser.config.ts",
     "vitest.bench.config.ts"
-  ],
+, "bench"  ],
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
