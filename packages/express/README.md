@@ -223,7 +223,7 @@ bun run bench:server # start benchmark server standalone
 
 ## Benchmarks
 
-Measured with [autocannon](https://github.com/mcollina/autocannon) on Apple M1 Pro (10 cores), 100 concurrent connections, 10 s per scenario + 3 s warmup. Server uses `resourceAwareLoadBalancer`. Payloads are serialized/deserialized through `defuss-dson` (typed superset of JSON supporting `Date`, `Map`, `Set`, `RegExp`, `BigInt`, `Uint8Array`, …).
+Measured with [autocannon](https://github.com/mcollina/autocannon) on Apple Macbook Air M4 (8 cores), 100 concurrent connections, 10 s per scenario + 3 s warmup. Server uses `resourceAwareLoadBalancer`. Payloads are serialized/deserialized through `defuss-dson` (typed superset of JSON supporting `Date`, `Map`, `Set`, `RegExp`, `BigInt`, `Uint8Array`, …).
 
 ```
 bun run bench
