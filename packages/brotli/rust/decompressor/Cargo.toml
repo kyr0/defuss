@@ -1,0 +1,17 @@
+[package]
+name = "defuss_brotli_decompressor"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+description = "WASM wrapper around the pure-Rust brotli decoder."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+brotli-decompressor = { version = "5.0.0", default-features = true, features = ["std"] }
+wasm-bindgen = "0.2.105"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

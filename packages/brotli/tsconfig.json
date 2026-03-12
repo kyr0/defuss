@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "declaration": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "allowSyntheticDefaultImports": true,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "src",
+    "bench",
+    "examples",
+    "vitest.config.ts",
+    "vitest.browser.config.ts",
+    "vitest.bench.config.ts",
+    "vitest.bench.browser.config.ts"
+  ]
+}
