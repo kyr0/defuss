@@ -1,6 +1,6 @@
 {
   "name": "defuss-rpc",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -63,7 +63,7 @@
   ],
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.18",
-    "defuss-express": "^0.1.1",
+    "defuss-express": "^0.2.1",
     "happy-dom": "^20.6.1",
     "pkgroll": "^2.25.2",
     "tsx": "^4.21.0",
