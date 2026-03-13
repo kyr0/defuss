@@ -1,6 +1,6 @@
 {
   "name": "defuss-express",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "type": "module",
   "license": "MIT",
   "description": "Extremely performant (!), express-compatible, auto-multi-core, QUIC/HTTP/3-enabled, WebSocket-capable, load-balanced, ultimate-express-powered server runtime for defuss.",
@@ -31,6 +31,10 @@
     "dev": "node --import tsx ./examples/basic.ts",
     "example:basic": "node --import tsx ./examples/basic.ts",
     "example:advanced": "node --import tsx ./examples/advanced.ts",
+    "example:file-delivery": "node --import tsx ./examples/file-delivery.ts",
+    "example:websocket": "node --import tsx ./examples/websocket.ts",
+    "example:file-upload": "node --import tsx ./examples/file-upload.ts",
+    "example:sse": "node --import tsx ./examples/server-sent-events.ts",
     "bench": "node --import tsx ./bench/throughput.ts",
     "bench:server": "node --import tsx ./bench/dson-server.ts"
   },
@@ -54,9 +58,10 @@
   "devDependencies": {
     "@types/node": "^25.4.0",
     "defuss-dson": "^1.1.1",
+    "defuss-jwt": "^1.0.1",
     "pkgroll": "^2.27.0",
-    "typescript": "^5.9.3",
     "tsx": "^4.19.4",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }
 }

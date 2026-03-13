@@ -5,6 +5,7 @@ import { getServerConfig, resolveServerConfig, setServerConfig } from "./config.
 import { startPrimaryRuntime, stopPrimaryRuntime } from "./master.js";
 import { startWorkerRuntime, stopWorkerRuntime } from "./worker.js";
 import {
+  createResourceAwareLoadBalancer,
   defaultLoadBalancer,
   leastConnectionsLoadBalancer,
   resourceAwareLoadBalancer,
@@ -21,6 +22,18 @@ import type {
   StartServerResult,
   WorkerRuntimeStats,
 } from "./types.js";
+import type { ResourceAwareLoadBalancerWeights } from "./load-balancers.js";
+
+// Re-export Express types from ultimate-express for downstream consumers
+import type UltimateExpressModule from "ultimate-express";
+export type ExpressRequest = UltimateExpressModule.Request;
+export type ExpressResponse = UltimateExpressModule.Response;
+export type ExpressNextFunction = UltimateExpressModule.NextFunction;
+export type ExpressApplication = UltimateExpressModule.Application;
+export type ExpressRequestHandler = UltimateExpressModule.RequestHandler;
+export type ExpressErrorRequestHandler = UltimateExpressModule.ErrorRequestHandler;
+export type ExpressRouter = UltimateExpressModule.Router;
+export type ExpressHandler = UltimateExpressModule.Handler;
 
 const normalizeConfig = (next?: ServerConfigInput): ResolvedServerConfig =>
   next ? setServerConfig(next) : resolveServerConfig();
@@ -60,6 +73,7 @@ export const stopServer = async (): Promise<void> =>
   cluster.isPrimary ? stopPrimaryRuntime(getServerConfig()) : stopWorkerRuntime(getServerConfig());
 
 export {
+  createResourceAwareLoadBalancer,
   defaultLoadBalancer,
   express,
   expressDefault,
@@ -77,6 +91,7 @@ export type {
   LoadBalancerFunction,
   ParsedRequest,
   ResolvedServerConfig,
+  ResourceAwareLoadBalancerWeights,
   ServerConfigInput,
   StartServerResult,
   WorkerRuntimeStats,

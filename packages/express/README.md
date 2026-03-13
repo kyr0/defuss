@@ -50,10 +50,10 @@ app.get("/", (_req, res) => {
 await startServer(app);
 
 process.on("SIGINT", () => {
-  void stopServer();
+  stopServer();
 });
 process.on("SIGTERM", () => {
-  void stopServer();
+  stopServer();
 });
 ```
 

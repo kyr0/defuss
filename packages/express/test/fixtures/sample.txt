@@ -1,0 +1,3 @@
+Hello from defuss-express test fixture.
+This file is used for file delivery integration tests.
+Line 3 for good measure.

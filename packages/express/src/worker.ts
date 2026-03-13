@@ -18,6 +18,15 @@ const getWorkerIndex = (): number => Number(process.env.DEFUSS_WORKER_INDEX ?? 0
 const getWorkerPort = (config: ResolvedServerConfig): number =>
   config.baseWorkerPort + getWorkerIndex();
 
+/**
+ * Collect a point-in-time memory and process snapshot.
+ *
+ * **Note**: `cpuPercent` is always `0` here — CPU utilisation requires a
+ * delta between two `process.cpuUsage()` readings and is only available
+ * from {@link createCpuSampler}.  Callers that transmit this snapshot over
+ * IPC (e.g. {@link createStatsReporter}) overwrite `cpuPercent` with the
+ * sampler's result before sending.
+ */
 const serializeWorkerStats = (): WorkerRuntimeStats => {
   const memory = process.memoryUsage();
   return {
@@ -34,6 +43,18 @@ const serializeWorkerStats = (): WorkerRuntimeStats => {
   };
 };
 
+/**
+ * Create a CPU utilisation sampler based on `process.cpuUsage()` deltas.
+ *
+ * Each call to the returned function computes the percentage of one logical
+ * CPU core consumed since the **previous** call (or since construction on
+ * the very first call).  A value above 100 means more than one core was
+ * active during the interval.
+ *
+ * The first invocation measures CPU from sampler-construction time onward,
+ * which naturally captures any startup work — subsequent readings reflect
+ * ongoing steady-state load.
+ */
 const createCpuSampler = () => {
   let previousUsage = process.cpuUsage();
   let previousTime = process.hrtime.bigint();

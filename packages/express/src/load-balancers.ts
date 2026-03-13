@@ -37,13 +37,72 @@ export const leastConnectionsLoadBalancer: LoadBalancerFunction = ({
   return withFallback(sorted);
 };
 
-const scoreResourceAware = (candidate: BackendCandidate): number => {
+/**
+ * Scoring weights for {@link createResourceAwareLoadBalancer}.
+ * All values are non-negative multipliers applied to the corresponding metric.
+ */
+export type ResourceAwareLoadBalancerWeights = {
+  /** Multiplier for active proxy connection count (default `10`). */
+  connectionWeight?: number;
+  /** Multiplier for CPU usage percentage 0–100+ (default `2`). */
+  cpuWeight?: number;
+  /** Multiplier for heap utilisation ratio 0–1 (default `100`). */
+  heapWeight?: number;
+};
+
+const scoreResourceAware = (
+  candidate: BackendCandidate,
+  weights: Required<ResourceAwareLoadBalancerWeights>,
+): number => {
   const stats = candidate.stats;
   const cpu = stats?.cpuPercent ?? 0;
   const heapRatio =
     stats && stats.heapTotalBytes > 0 ? stats.heapUsedBytes / stats.heapTotalBytes : 0;
 
-  return candidate.activeProxyConnections * 10 + cpu * 2 + heapRatio * 100;
+  return (
+    candidate.activeProxyConnections * weights.connectionWeight +
+    cpu * weights.cpuWeight +
+    heapRatio * weights.heapWeight
+  );
+};
+
+/**
+ * Create a composite scoring load balancer with configurable metric weights.
+ *
+ * The candidate with the **lowest** score wins.  Formula:
+ *
+ * ```
+ * score = connections × connectionWeight
+ *       + cpuPercent × cpuWeight
+ *       + (heapUsed / heapTotal) × heapWeight
+ * ```
+ *
+ * Default weights (`10 / 2 / 100`) bias toward spreading connections first,
+ * then avoiding CPU-hot workers, then avoiding memory pressure.
+ *
+ * @example
+ * ```ts
+ * // CPU-first variant — strongly prefer idle workers
+ * const balancer = createResourceAwareLoadBalancer({ cpuWeight: 50 });
+ * await startServer(app, { loadBalancer: balancer });
+ * ```
+ */
+export const createResourceAwareLoadBalancer = ({
+  connectionWeight = 10,
+  cpuWeight = 2,
+  heapWeight = 100,
+}: ResourceAwareLoadBalancerWeights = {}): LoadBalancerFunction => {
+  const weights: Required<ResourceAwareLoadBalancerWeights> = {
+    connectionWeight,
+    cpuWeight,
+    heapWeight,
+  };
+  return ({ candidates }) => {
+    const sorted = [...candidates].sort(
+      (left, right) => scoreResourceAware(left, weights) - scoreResourceAware(right, weights),
+    );
+    return withFallback(sorted);
+  };
 };
 
 /**
@@ -55,15 +114,10 @@ const scoreResourceAware = (candidate: BackendCandidate): number => {
  * ```
  *
  * The candidate with the **lowest** score wins.
+ *
+ * To customise the scoring weights use {@link createResourceAwareLoadBalancer}.
  */
-export const resourceAwareLoadBalancer: LoadBalancerFunction = ({
-  candidates,
-}) => {
-  const sorted = [...candidates].sort(
-    (left, right) => scoreResourceAware(left) - scoreResourceAware(right),
-  );
-  return withFallback(sorted);
-};
+export const resourceAwareLoadBalancer: LoadBalancerFunction = createResourceAwareLoadBalancer();
 
 /** Default balancer — currently {@link roundRobinLoadBalancer}. */
 export const defaultLoadBalancer = roundRobinLoadBalancer;
