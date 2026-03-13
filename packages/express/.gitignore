@@ -1,2 +1,3 @@
 dist/
 .bench-tmp/
+.tmp*
