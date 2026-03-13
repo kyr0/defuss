@@ -4,6 +4,11 @@ import wasm from "vite-plugin-wasm";
 
 export default defineConfig({
   plugins: [wasm()],
+  server: {
+    fs: {
+      allow: ["."],
+    },
+  },
   test: {
     browser: {
       enabled: true,

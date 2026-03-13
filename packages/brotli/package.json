@@ -1,6 +1,6 @@
 {
   "name": "defuss-brotli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "license": "MIT",
   "description": "A pure-Rust Brotli WebAssembly package with split compressor/decompressor exports for small build sizes.",
@@ -55,6 +55,7 @@
     "pretest:browser": "bun run build",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "example": "bun run build && bun examples/quality-comparison.ts",
+    "test:e2e": "bun run build && bun e2e/e2e.ts",
     "bench": "bun run build && vitest bench --run --config vitest.bench.config.ts",
     "bench:browser": "bun run build && vitest bench --run --config vitest.bench.browser.config.ts",
     "prepublishOnly": "bun run build"
