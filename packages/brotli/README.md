@@ -65,12 +65,12 @@ valid UTF-8, replacement characters (U+FFFD) are inserted rather than throwing.
 
 ```ts
 interface BrotliCompressOptions {
-  quality?: number;  // 0–11, default 6
-  lgwin?: number;    // 10–24, default 22
+  quality?: number;  // 0-11, default 6
+  lgwin?: number;    // 10-24, default 22
 }
 ```
 
-- **`quality`** - 0 is fastest/largest, 11 is slowest/smallest. 5–7 is the sweet spot for on-the-fly web serving.
+- **`quality`** - 0 is fastest/largest, 11 is slowest/smallest. 5-7 is the sweet spot for on-the-fly web serving.
 - **`lgwin`** - Sliding window size exponent. Larger windows find more matches at the cost of memory. 22 covers most web-text repetition patterns.
 
 ### Decompression Options
@@ -99,8 +99,8 @@ Hard cap on decompressed output to prevent **decompression bombs**. Raise explic
 
 ### Limits
 
-- `quality` must be an integer in **0–11** (Brotli spec hard limit).
-- `lgwin` must be an integer in **10–24** (Brotli spec hard limit).
+- `quality` must be an integer in **0-11** (Brotli spec hard limit).
+- `lgwin` must be an integer in **10-24** (Brotli spec hard limit).
 - `maxOutputSize` defaults to **64 MiB** - the WASM module rejects output exceeding this.
 - Browser WASM memory is capped at **~2 GB** on 64-bit platforms (practical upper bound for very large payloads).
 
@@ -128,59 +128,59 @@ bun run bench:browser   # Chromium via Playwright
 
 ### Node.js (Bun)
 
-**Text Compression – `compressText`** (ops/sec, higher is better):
+**Text Compression - `compressText`** (ops/sec, higher is better):
 
 | Payload | Quality 1 | Quality 6 | Quality 11 |
 |---|---|---|---|
-| Short JSON (83 B) | – | 33,773 | – |
-| Markdown (2 KB) | 16,612 | 10,098 | 327 |
-| HTML (8 KB) | 5,010 | 2,473 | 19 |
+| Short JSON (83 B) | - | 37,239 | - |
+| Markdown (2 KB) | 19,819 | 10,141 | 404 |
+| HTML (8 KB) | 5,191 | 2,704 | 18 |
 
-**Binary Compression – `compress`** (ops/sec):
+**Binary Compression - `compress`** (ops/sec):
 
 | Payload | Quality 1 | Quality 6 | Quality 11 |
 |---|---|---|---|
-| Pseudorandom (512 B) | – | 25,331 | – |
-| SVG (4.9 MB) | 8.6 | 4.2 | 0.15 |
-| PNG (2.1 MB) | 39.2 | 81.4 | 0.21 |
+| Pseudorandom (512 B) | - | 29,430 | - |
+| SVG (4.9 MB) | 8.0 | 4.0 | 0.15 |
+| PNG (2.1 MB) | 39.6 | 82.8 | 0.21 |
 
 PNG compresses faster than SVG at q6 because already-compressed data triggers
 Brotli's fast-path fallback earlier, producing less work per byte.
 
-**Text Decompression – `decompressText`** (ops/sec):
+**Text Decompression - `decompressText`** (ops/sec):
 
 | Payload | ops/sec |
 |---|---|
-| Short JSON (83 B) | 143,102 |
-| Markdown (2 KB) | 46,341 |
-| HTML (8 KB) | 34,720 |
+| Short JSON (83 B) | 141,241 |
+| Markdown (2 KB) | 47,757 |
+| HTML (8 KB) | 37,288 |
 
-**Binary Decompression – `decompress`** (ops/sec):
+**Binary Decompression - `decompress`** (ops/sec):
 
 | Payload | ops/sec |
 |---|---|
-| Pseudorandom (512 B) | 111,424 |
-| SVG (4.9 MB) | 34.5 |
-| PNG (2.1 MB) | 654 |
+| Pseudorandom (512 B) | 115,493 |
+| SVG (4.9 MB) | 30.7 |
+| PNG (2.1 MB) | 699 |
 
 ### Browser (Chromium)
 
-**Text Compression – `compressText`** (ops/sec, higher is better):
+**Text Compression - `compressText`** (ops/sec, higher is better):
 
 | Payload | Quality 1 | Quality 6 | Quality 11 |
 |---|---|---|---|
-| Short JSON (83 B) | – | 36,264 | – |
+| Short JSON (83 B) | - | 36,264 | - |
 | Markdown (2 KB) | 36,002 | 12,932 | 408 |
 | HTML (8 KB) | 8,222 | 2,535 | 19 |
 
-**Binary Compression – `compress`** (ops/sec):
+**Binary Compression - `compress`** (ops/sec):
 
 | Payload | Quality 1 | Quality 6 | Quality 11 |
 |---|---|---|---|
-| Pseudorandom (512 B) | – | 29,712 | – |
+| Pseudorandom (512 B) | - | 29,712 | - |
 | SVG (4.9 MB) | 15.9 | 4.8 | 0.15 |
 
-**Text Decompression – `decompressText`** (ops/sec):
+**Text Decompression - `decompressText`** (ops/sec):
 
 | Payload | ops/sec |
 |---|---|
@@ -188,7 +188,7 @@ Brotli's fast-path fallback earlier, producing less work per byte.
 | Markdown (2 KB) | 51,946 |
 | HTML (8 KB) | 35,990 |
 
-**Binary Decompression – `decompress`** (ops/sec):
+**Binary Decompression - `decompress`** (ops/sec):
 
 | Payload | ops/sec |
 |---|---|
@@ -212,44 +212,44 @@ Sample output:
 ════════════════════════════════════════════════════════════════════════
   Quality  │      Output  │    Ratio  │  Compress ms  │  Decompress ms
   ───────  │  ──────────  │  ───────  │  ───────────  │  ─────────────
-        1  │        87 B  │   104.8%  │         1.22  │           0.39
-        4  │        83 B  │   100.0%  │         0.38  │           0.39
-        6  │        80 B  │    96.4%  │         1.41  │           0.22
-        9  │        80 B  │    96.4%  │         2.14  │           0.19
-       11  │        85 B  │   102.4%  │         3.44  │           0.21
+        1  │        87 B  │   104.8%  │         1.02  │           0.32
+        4  │        83 B  │   100.0%  │         0.55  │           0.74
+        6  │        80 B  │    96.4%  │         0.67  │           0.16
+        9  │        80 B  │    96.4%  │         2.13  │           0.12
+       11  │        85 B  │   102.4%  │         3.54  │           0.28
 
 ════════════════════════════════════════════════════════════════════════
   Pseudorandom binary (512 B)  (512 B input)
 ════════════════════════════════════════════════════════════════════════
   Quality  │      Output  │    Ratio  │  Compress ms  │  Decompress ms
   ───────  │  ──────────  │  ───────  │  ───────────  │  ─────────────
-        1  │       286 B  │    55.9%  │         0.08  │           0.88
-        4  │       278 B  │    54.3%  │         0.27  │           0.07
-        6  │       270 B  │    52.7%  │         0.34  │           0.09
-        9  │       259 B  │    50.6%  │         0.65  │           0.05
-       11  │       239 B  │    46.7%  │         3.16  │           0.39
+        1  │       286 B  │    55.9%  │         0.08  │           0.91
+        4  │       278 B  │    54.3%  │         0.28  │           0.06
+        6  │       270 B  │    52.7%  │         0.27  │           0.09
+        9  │       259 B  │    50.6%  │         0.59  │           0.05
+       11  │       239 B  │    46.7%  │         2.60  │           0.28
 
 ════════════════════════════════════════════════════════════════════════
   SVG (4.9 MB)  (4.9 MB input)
 ════════════════════════════════════════════════════════════════════════
   Quality  │      Output  │    Ratio  │  Compress ms  │  Decompress ms
   ───────  │  ──────────  │  ───────  │  ───────────  │  ─────────────
-        1  │      2.8 MB  │    57.0%  │        67.01  │          70.33
-        4  │      1.9 MB  │    38.0%  │        85.98  │          41.85
-        6  │      1.8 MB  │    37.4%  │       203.16  │          42.70
-        9  │      1.8 MB  │    36.8%  │       506.93  │          41.66
-       11  │      1.7 MB  │    34.5%  │      5108.92  │          47.78
+        1  │      2.8 MB  │    57.0%  │        68.27  │          74.07
+        4  │      1.9 MB  │    38.0%  │        85.92  │          43.93
+        6  │      1.8 MB  │    37.4%  │       208.86  │          43.04
+        9  │      1.8 MB  │    36.8%  │       504.55  │          42.33
+       11  │      1.7 MB  │    34.5%  │      5093.09  │          49.22
 
 ════════════════════════════════════════════════════════════════════════
   PNG (2.1 MB)  (2.1 MB input)
 ════════════════════════════════════════════════════════════════════════
   Quality  │      Output  │    Ratio  │  Compress ms  │  Decompress ms
   ───────  │  ──────────  │  ───────  │  ───────────  │  ─────────────
-        1  │      2.1 MB  │   100.1%  │        16.59  │          11.37
-        4  │      2.1 MB  │   100.0%  │         6.00  │          10.96
-        6  │      2.1 MB  │   100.0%  │        13.40  │          11.11
-        9  │      2.0 MB  │    99.0%  │       192.97  │          23.06
-       11  │      2.0 MB  │    96.2%  │      3101.38  │          30.33
+        1  │      2.1 MB  │   100.1%  │        17.39  │          11.60
+        4  │      2.1 MB  │   100.0%  │         5.75  │          11.06
+        6  │      2.1 MB  │   100.0%  │        13.64  │          10.74
+        9  │      2.0 MB  │    99.0%  │       206.06  │          23.39
+       11  │      2.0 MB  │    96.2%  │      3162.39  │          30.90
 
 ════════════════════════════════════════════════════════════════════════
  All round-trips passed
@@ -259,7 +259,7 @@ Sample output:
 **Key takeaways:**
 
 - **SVG** (text-based) compresses well: 57% → 34.5% ratio as quality increases, at the cost of much longer compression times at q11.
-- **PNG** (already compressed) barely shrinks: ~100% ratio at q1–q6, only 96% at q11 — Brotli can't improve on an already-compressed binary format.
+- **PNG** (already compressed) barely shrinks: ~100% ratio at q1-q6, only 96% at q11 — Brotli can't improve on an already-compressed binary format.
 - **Short text** can actually *grow* at low quality levels (104.8% at q1) — the Brotli header overhead exceeds the savings on tiny payloads.
 
 ## Defaults
