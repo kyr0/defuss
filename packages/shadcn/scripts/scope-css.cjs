@@ -162,7 +162,7 @@ for (const prop of customProps) {
   }
 }
 if (issues === 0) {
-  console.log('Verification: All custom property references are prefixed ✓');
+  console.log('Verification: All custom property references are prefixed [OK]');
 }
 
 writeFileSync(filePath, css);
