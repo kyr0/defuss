@@ -12,6 +12,12 @@ import type {
 
 export * from "./types.d.js";
 
+/** Base path of the RPC dispatch endpoint. */
+export const RPC_PATH = "/rpc" as const;
+
+/** Base path of the RPC schema-discovery endpoint. */
+export const RPC_SCHEMA_PATH = "/rpc/schema" as const;
+
 /** Map from namespace name → entry (class or module). */
 const rpcApiEntries: Map<string, RpcApiEntry> = new Map();
 
@@ -34,6 +40,22 @@ export function addHook(hook: ServerHook) {
   hooks.push(hook);
 }
 
+/**
+ * Register an API namespace map with the RPC server.
+ *
+ * - Each key becomes the `className` identifier used in RPC calls.
+ * - Values can be a **class constructor** (instantiated fresh per-call) or a **plain object module**.
+ * - **Idempotent**: if the registry already has entries, subsequent calls are silently ignored.
+ *   This prevents accidental double-registration during hot-reload or module re-evaluation.
+ * - Pass an empty object `{}` to explicitly clear the registry (prefer `clearRpcServer()` in tests).
+ *
+ * Must be called before the first request reaches `rpcRoute`.
+ *
+ * @param ns - Map of namespace name → class constructor or plain module object.
+ *
+ * @example
+ * createRpcServer({ UserApi, OrderApi, mathUtils });
+ */
 export function createRpcServer(ns: ApiNamespace) {
   // Clear existing entries if empty namespace is passed
   if (Object.keys(ns).length === 0) {
@@ -49,17 +71,49 @@ export function createRpcServer(ns: ApiNamespace) {
   }
 }
 
-// Functions for testing - to clear state between tests
+/**
+ * Clear the RPC server registry and remove all registered hooks.
+ *
+ * Intended for **test isolation only** — resets global state between test cases so each test
+ * starts with a clean namespace registry and an empty hook list.
+ */
 export function clearRpcServer() {
   rpcApiEntries.clear();
   hooks.length = 0;
 }
 
+/**
+ * Astro `APIRoute` handler for the defuss-rpc server.
+ *
+ * Mount this at `/rpc/[...all]` in your Astro project (e.g. `src/pages/rpc/[...all].ts`).
+ * It handles two logical endpoints:
+ *
+ * | Method | Path           | Description                                                |
+ * |--------|----------------|------------------------------------------------------------|
+ * | any    | `/rpc/schema`  | Returns the full JSON schema of all registered namespaces. |
+ * | POST   | `/rpc`         | Dispatches a single RPC call described in the request body.|
+ *
+ * **Request body** (`POST /rpc`): `RpcCallDescriptor` JSON — `{ className, methodName, args }`.
+ *
+ * **Response body**: DSON-serialized return value (`Content-Type: application/json`).
+ * DSON extends JSON to preserve `Date`, `Map`, `Set`, `ArrayBuffer`, `BigInt`, and typed arrays.
+ *
+ * **Hook execution order:**
+ * 1. Guard hooks — any hook returning `false` short-circuits with HTTP 403.
+ * 2. Method/function invocation on the registered namespace entry.
+ * 3. Result hooks — run after a successful return, before the response is flushed.
+ *
+ * **HTTP status codes:**
+ * - `403` — A guard hook returned `false`.
+ * - `404` — Namespace (`className`) or method/function name not found.
+ * - `500` — The method/function threw during execution.
+ */
 export const rpcRoute: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
-  const pathname = url.pathname.replace(/\/+$/, ""); // Remove trailing slashes
+  // Normalize trailing slashes so "/rpc/schema/" and "/rpc/schema" resolve identically.
+  const pathname = url.pathname.replace(/\/+$/, "");
 
-  if (pathname.endsWith("/rpc/schema")) {
+  if (pathname.endsWith(RPC_SCHEMA_PATH)) {
     // Return schema describing all registered classes and modules
     const schemaEntries: RpcSchemaEntry[] = [];
 
@@ -95,6 +149,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
   // Call "guard" hooks
   for (const hook of hooks.filter((h) => h.phase === "guard")) {
     const allowed = await hook.fn(className, methodName, args, request);
+    // Only an explicit `false` return blocks the call; `void`/`undefined` implicitly allows it.
     if (allowed === false) {
       console.error("[defuss-rpc] Forbidden by hook", { className, methodName, args, request });
       return new Response(JSON.stringify({ error: "Forbidden by hook" }), {
@@ -201,6 +256,15 @@ export function describeModule(
   };
 }
 
+/**
+ * Introspect a prototype object and return a descriptor of its class name, methods, and properties.
+ *
+ * Used internally to build the schema entry for class-based namespaces.
+ *
+ * @param proto - The prototype to inspect (pass `MyClass.prototype`).
+ * @param seen  - WeakSet tracking already-visited prototypes to break circular chains.
+ *                Circular references are replaced with the sentinel string `"[Circular]"`.
+ */
 export function describeInstance(
   proto: unknown,
   seen = new WeakSet(),

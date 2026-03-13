@@ -1,7 +1,10 @@
 import { DSON } from "defuss-dson";
-import type { ClientHook, RpcApiClass, RpcApiSchema, RpcSchemaEntry } from "./types.d.js";
-
+import type { ClientHook, RpcApiClass, RpcApiSchema } from "./types.d.js";
 export * from "./types.d.js";
+
+/** Client-side endpoint paths — must stay in sync with server.ts `RPC_PATH`/`RPC_SCHEMA_PATH`. */
+const RPC_PATH = "/rpc" as const;
+const RPC_SCHEMA_PATH = "/rpc/schema" as const;
 
 export interface RpcClientOptions {
   /** Base URL for the RPC server (e.g. "http://localhost:3210"). Defaults to current origin. */
@@ -10,17 +13,23 @@ export interface RpcClientOptions {
 
 /**
  * Fetches the RPC API schema from the server.
- * @param baseUrl - Optional base URL for the RPC server
- * @returns The RPC API schema from the server
+ *
+ * Uses `POST` because `rpcRoute` mounts with `.all()` (accepts any HTTP method), and some
+ * hosting environments strip body content from `GET` requests.
+ *
+ * @param baseUrl - Optional base URL for the RPC server (e.g. `"http://localhost:3210"`).
+ *                  Defaults to `""` (current origin).
+ * @returns The parsed `RpcApiSchema` array from the server.
  */
 export async function getSchema(baseUrl = "") {
-  const response = await fetch(`${baseUrl}/rpc/schema`, { method: "POST" });
+  const response = await fetch(`${baseUrl}${RPC_SCHEMA_PATH}`, { method: "POST" });
   if (!response.ok) {
     throw new Error(`Failed to fetch schema: ${response.statusText}`);
   }
   return response.json();
 }
 
+/** Cached schema — populated on the first `getSchema()` call. Invalidate with `clearSchemaCache()`. */
 let schema: RpcApiSchema | null = null;
 
 /**
@@ -50,6 +59,7 @@ export function addHook(hook: ClientHook) {
   hooks.push(hook);
 }
 
+/** Custom headers merged into every RPC fetch request. Set via `setHeaders()`, cleared via `clearHooks()`. */
 let customHeaders: HeadersInit | null = null;
 
 /**
@@ -61,7 +71,24 @@ export function setHeaders(headers: HeadersInit) {
 }
 
 /**
- * Create an async RPC caller function for a given namespace and method.
+ * Factory that returns an async RPC caller function for a given namespace and method name.
+ *
+ * Each returned function, when called with positional arguments, executes the full client-side
+ * hook pipeline before and after the network request:
+ *
+ * 1. **Guard hooks** (`"guard"` phase) — run before the fetch is dispatched.
+ *    Any hook returning falsy throws an Error and aborts the call.
+ * 2. **Fetch** — POST to `{baseUrl}/rpc` with JSON body `{ className, methodName, args }`.
+ * 3. **Response hooks** (`"response"` phase) — run after the raw HTTP Response arrives,
+ *    before the body is read. Useful for logging or early rejection based on status.
+ * 4. **DSON deserialization** — response text is parsed with `DSON.parse`, which restores
+ *    `Date`, `Map`, `Set`, `ArrayBuffer`, `BigInt`, and typed arrays that plain `JSON.parse` drops.
+ * 5. **Result hooks** (`"result"` phase) — run after deserialization with the final `data` value.
+ *
+ * @param namespaceName - The registered namespace (class or module name).
+ * @param methodName    - The method or function name on the namespace.
+ * @param baseUrl       - Optional base URL prefix (default `""` = current origin).
+ * @returns An async function `(...args) => Promise<unknown>` that dispatches the RPC call.
  */
 function createRpcMethod(namespaceName: string, methodName: string, baseUrl = "") {
   return async (...args: unknown[]) => {
@@ -94,7 +121,7 @@ function createRpcMethod(namespaceName: string, methodName: string, baseUrl = ""
       }
     }
 
-    const response = await fetch(`${baseUrl}/rpc`, request);
+    const response = await fetch(`${baseUrl}${RPC_PATH}`, request);
 
     // Call response hooks
     for (const responseHook of hooks.filter(
@@ -110,7 +137,11 @@ function createRpcMethod(namespaceName: string, methodName: string, baseUrl = ""
     }
 
     if (!response.ok) {
-      throw new Error(`RPC call failed: ${response.statusText}`);
+      const body = await response.text();
+      throw Object.assign(
+        new Error(`RPC call failed: ${response.status} ${response.statusText}`),
+        { status: response.status, body, namespace: namespaceName, method: methodName },
+      );
     }
     const data = DSON.parse(await response.text());
 
@@ -142,6 +173,10 @@ function createRpcMethod(namespaceName: string, methodName: string, baseUrl = ""
  *
  * @typeParam T - The type of the RPC API namespace
  * @returns A proxy object that implements the RPC API
+ *
+ * @remarks
+ * The schema is cached globally after the first fetch. If you need to connect to a different
+ * server URL in the same process, call `clearSchemaCache()` before calling `getRpcClient()` again.
  */
 export async function getRpcClient<T extends Record<string, unknown>>(options?: RpcClientOptions) {
   const baseUrl = options?.baseUrl ?? "";

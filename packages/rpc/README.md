@@ -168,14 +168,14 @@ console.log(schema); // Array of class schemas with methods and properties
 ```
 
 
-##### Alternative: Use with Express.js
+##### Alternative: Use with defuss-express
 ```ts
-// server.ts - Express.js server setup
-import express from "express";
+// server.ts - defuss-express server setup
+import { express } from "defuss-express";
 import { rpcRoute } from "defuss-rpc/server";
 import "./rpc.js"; // Import to register the RPC API
 
-const app = express();
+const app = express({ threads: 0 });
 const port = 3000;
 
 // Parse JSON bodies
@@ -196,18 +196,14 @@ app.use((req, res, next) => {
 // RPC endpoint handler
 app.post("/rpc", async (req, res) => {
   try {
-    // Convert Express request to standard Request object
     const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
     const request = new Request(url, {
       method: req.method,
-      headers: req.headers as Record<string, string>,
+      headers: req.headers,
       body: JSON.stringify(req.body),
     });
 
-    // Use the defuss-rpc route handler
     const response = await rpcRoute({ request });
-    
-    // Send response back to Express
     const responseText = await response.text();
     res.status(response.status)
        .set("content-type", response.headers.get("content-type") || "application/json")
@@ -227,7 +223,7 @@ app.post("/rpc/schema", async (req, res) => {
     const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
     const request = new Request(url, {
       method: req.method,
-      headers: req.headers as Record<string, string>,
+      headers: req.headers,
       body: JSON.stringify(req.body),
     });
 
@@ -245,8 +241,8 @@ app.post("/rpc/schema", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`RPC server running on http://localhost:${port}`);
+app.listen(port, (listenPort) => {
+  console.log(`RPC server running on http://localhost:${listenPort}`);
 });
 ```
 
