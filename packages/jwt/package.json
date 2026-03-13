@@ -30,7 +30,8 @@
     "prebuild": "bun run clean",
     "build": "pkgroll",
     "cli-gen-keys": "node ./dist/cli.mjs gen-keys",
-    "test": "vitest --run  --coverage"
+    "test": "vitest --run  --coverage",    
+    "prepublishOnly": "bun run build"
   },
   "dependencies": {
     "jose": "^6.1.0"
