@@ -6,15 +6,21 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, execSync, type ChildProcess } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { createAuth, genEd25519Pair } from "defuss-jwt";
 
 const PORT = Number(process.env.TEST_PORT ?? 4444);
 const BASE = `http://localhost:${PORT}`;
 
+const isWindows = process.platform === "win32";
+
 /** Resolve the absolute path to `node` so spawn works even when PATH is incomplete. */
 function resolveNode(): string {
   try {
-    return execSync("which node", { encoding: "utf8" }).trim();
+    const cmd = isWindows ? "where node" : "which node";
+    // `where` may return multiple lines on Windows; take the first one.
+    return execSync(cmd, { encoding: "utf8" }).trim().split(/\r?\n/)[0];
   } catch {
     return "node"; // fallback to bare name
   }
@@ -23,12 +29,13 @@ function resolveNode(): string {
 let server: ChildProcess;
 
 function startTestServer(): Promise<ChildProcess> {
+  const cwd = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   return new Promise((resolve, reject) => {
     const child = spawn(
       resolveNode(),
       ["--import", "tsx", "test/fixtures/test-server.ts"],
       {
-        cwd: new URL("..", import.meta.url).pathname,
+        cwd,
         stdio: ["ignore", "pipe", "pipe"],
         env: { ...process.env, TEST_PORT: String(PORT) },
       },
