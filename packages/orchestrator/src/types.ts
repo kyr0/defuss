@@ -276,7 +276,8 @@ export interface DurableStore {
 	close(snapshot: DurableStoreSnapshot): Promise<void>;
 }
 
-export type { Attributes as TelemetryAttributes, TelemetrySink } from "defuss-open-telemetry";
+import type { Attributes, TelemetrySink } from "defuss-open-telemetry";
+export type { Attributes as TelemetryAttributes, TelemetrySink };
 
 /** Configuration for {@link createOrchestrator}. */
 export interface OrchestratorConfig<TTelemetry = Record<string, JsonValue>> {

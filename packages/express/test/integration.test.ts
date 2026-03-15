@@ -5,18 +5,27 @@
  * and exercises HTTP endpoints, file delivery, SSE, JWT auth, and file upload.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, execSync, type ChildProcess } from "node:child_process";
 import { createAuth, genEd25519Pair } from "defuss-jwt";
 
 const PORT = Number(process.env.TEST_PORT ?? 4444);
 const BASE = `http://localhost:${PORT}`;
+
+/** Resolve the absolute path to `node` so spawn works even when PATH is incomplete. */
+function resolveNode(): string {
+  try {
+    return execSync("which node", { encoding: "utf8" }).trim();
+  } catch {
+    return "node"; // fallback to bare name
+  }
+}
 
 let server: ChildProcess;
 
 function startTestServer(): Promise<ChildProcess> {
   return new Promise((resolve, reject) => {
     const child = spawn(
-      "node",
+      resolveNode(),
       ["--import", "tsx", "test/fixtures/test-server.ts"],
       {
         cwd: new URL("..", import.meta.url).pathname,
@@ -84,10 +93,7 @@ afterAll(async () => {
   await new Promise((r) => setTimeout(r, 500));
 });
 
-// ─────────────────────────────────────────────────────────────────────
 // Health check
-// ─────────────────────────────────────────────────────────────────────
-
 describe("health check", () => {
   it("responds with ok", async () => {
     const res = await fetch(`${BASE}/health`);
@@ -98,10 +104,7 @@ describe("health check", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────
 // File delivery
-// ─────────────────────────────────────────────────────────────────────
-
 describe("file delivery", () => {
   it("serves a file inline with cache-control", async () => {
     const res = await fetch(`${BASE}/file/inline`);
@@ -139,10 +142,7 @@ describe("file delivery", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────
 // File upload
-// ─────────────────────────────────────────────────────────────────────
-
 describe("file upload", () => {
   it("accepts a binary upload and reports correct size", async () => {
     const payload = Buffer.alloc(1024, 0xab);
@@ -181,10 +181,7 @@ describe("file upload", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────
 // Server-Sent Events
-// ─────────────────────────────────────────────────────────────────────
-
 describe("server-sent events", () => {
   it("streams multiple events then closes", async () => {
     const res = await fetch(`${BASE}/sse`);
@@ -205,10 +202,7 @@ describe("server-sent events", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────
 // JWT / Bearer token auth
-// ─────────────────────────────────────────────────────────────────────
-
 describe("bearer token auth", () => {
   it("rejects requests without Authorization header", async () => {
     const res = await fetch(`${BASE}/protected`);

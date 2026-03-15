@@ -405,8 +405,6 @@ export function createOrchestrator<TTelemetry = Record<string, unknown>>(
 		};
 	}
 
-	// ── public tick ──────────────────────────────────────────────────────
-
 	function tick(ts = now()): void {
 		// Process expired retry-wait items → pending
 		let entry = retryHeap.peek();
@@ -472,9 +470,7 @@ export function createOrchestrator<TTelemetry = Record<string, unknown>>(
 		compactPendingQueue();
 		publishGauges();
 	}
-
-	// ── return orchestrator object ───────────────────────────────────────
-
+	
 	return {
 		async start(): Promise<void> {
 			const snapshot = await durableStore.load();
