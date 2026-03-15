@@ -27,6 +27,7 @@
     "clean": "rm -rf ./dist",
     "build": "pkgroll",
     "check": "tsc --noEmit",
+    "pretest": "bun run build",
     "test": "vitest run",
     "dev": "node --import tsx ./examples/basic.ts",
     "example:basic": "node --import tsx ./examples/basic.ts",
