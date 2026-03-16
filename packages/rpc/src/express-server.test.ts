@@ -1,3 +1,4 @@
+import { DSON } from "defuss-dson";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ExpressRpcServer, createExpressRpcServer } from "./express-server.js";
 import { createRpcServer, clearRpcServer } from "./server.js";
@@ -103,7 +104,7 @@ describe("Express RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUser",
           args: ["123"],
@@ -111,7 +112,6 @@ describe("Express RPC Server", () => {
       });
 
       const responseText = await response.text();
-      const { DSON } = await import("defuss-dson");
       const result = await DSON.parse(responseText);
 
       expect(response.status).toBe(200);
@@ -129,7 +129,7 @@ describe("Express RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUserCount",
           args: [],
@@ -137,7 +137,6 @@ describe("Express RPC Server", () => {
       });
 
       const responseText = await response.text();
-      const { DSON } = await import("defuss-dson");
       const result = await DSON.parse(responseText);
 
       expect(response.status).toBe(200);
@@ -156,7 +155,7 @@ describe("Express RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "createUser",
           args: [userData],
@@ -164,7 +163,6 @@ describe("Express RPC Server", () => {
       });
 
       const responseText = await response.text();
-      const { DSON } = await import("defuss-dson");
       const result = await DSON.parse(responseText);
 
       expect(response.status).toBe(200);
@@ -181,7 +179,7 @@ describe("Express RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "NonExistentApi",
           methodName: "someMethod",
           args: [],
@@ -200,7 +198,7 @@ describe("Express RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "nonExistentMethod",
           args: [],

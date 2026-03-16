@@ -98,7 +98,7 @@ function createRpcMethod(namespaceName: string, methodName: string, baseUrl = ""
         "Content-Type": "application/json",
         ...(customHeaders || {}),
       },
-      body: JSON.stringify({
+      body: DSON.stringify({
         className: namespaceName,
         methodName,
         args,

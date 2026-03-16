@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { DSON } from "defuss-dson";
 import {
   createRpcServer,
   addHook,
@@ -116,7 +117,7 @@ describe("RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUser",
           args: ["123"],
@@ -128,7 +129,6 @@ describe("RPC Server", () => {
 
       const result = await response.text();
       // Parse DSON response
-      const { DSON } = await import("defuss-dson");
       const userData = await DSON.parse(result);
 
       expect(userData).toEqual({
@@ -147,7 +147,7 @@ describe("RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "updateUser",
           args: ["456", { name: "Updated User", age: 25 }],
@@ -158,7 +158,6 @@ describe("RPC Server", () => {
       expect(response.status).toBe(200);
 
       const result = await response.text();
-      const { DSON } = await import("defuss-dson");
       const userData = await DSON.parse(result);
 
       expect(userData.id).toBe("456");
@@ -175,7 +174,7 @@ describe("RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUserCount",
           args: [],
@@ -186,7 +185,6 @@ describe("RPC Server", () => {
       expect(response.status).toBe(200);
 
       const result = await response.text();
-      const { DSON } = await import("defuss-dson");
       const count = await DSON.parse(result);
 
       expect(count).toBe(42);
@@ -200,7 +198,7 @@ describe("RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestProductApi",
           methodName: "getComplexData",
           args: [],
@@ -211,7 +209,6 @@ describe("RPC Server", () => {
       expect(response.status).toBe(200);
 
       const result = await response.text();
-      const { DSON } = await import("defuss-dson");
       const complexData = await DSON.parse(result);
 
       expect(complexData.metadata).toBeDefined();
@@ -229,7 +226,7 @@ describe("RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "NonExistentApi",
           methodName: "someMethod",
           args: [],
@@ -251,7 +248,7 @@ describe("RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "nonExistentMethod",
           args: [],
@@ -275,7 +272,7 @@ describe("RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestProductApi",
           methodName: "throwError",
           args: [],
@@ -314,7 +311,7 @@ describe("RPC Server", () => {
           "Content-Type": "application/json",
           Authorization: "Bearer valid-token",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUserCount",
           args: [],
@@ -346,7 +343,7 @@ describe("RPC Server", () => {
           "Content-Type": "application/json",
           Authorization: "Bearer invalid-token",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUserCount",
           args: [],
@@ -369,7 +366,7 @@ describe("RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUserCount",
           args: [],
@@ -406,7 +403,7 @@ describe("RPC Server", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUserCount",
           args: [],
@@ -440,7 +437,7 @@ describe("RPC Server", () => {
       const allowedReq = new Request("http://localhost/rpc", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUserCount",
           args: [],
@@ -453,7 +450,7 @@ describe("RPC Server", () => {
       const blockedReq = new Request("http://localhost/rpc", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUser",
           args: ["1"],
@@ -486,7 +483,7 @@ describe("RPC Server", () => {
       const deleteReq = new Request("http://localhost/rpc", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "deleteUser",
           args: ["1"],
@@ -498,7 +495,7 @@ describe("RPC Server", () => {
       const countReq = new Request("http://localhost/rpc", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUserCount",
           args: [],
@@ -518,7 +515,7 @@ describe("RPC Server", () => {
       const req1 = new Request("http://localhost/rpc", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUserCount",
           args: [],
@@ -534,7 +531,7 @@ describe("RPC Server", () => {
       const req2 = new Request("http://localhost/rpc", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: DSON.stringify({
           className: "TestUserApi",
           methodName: "getUserCount",
           args: [],

@@ -20,7 +20,7 @@ async function callRpc(
   const request = new Request(`http://localhost${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: DSON.stringify(body),
   });
   return rpcRoute({ request } as any);
 }
@@ -29,7 +29,7 @@ async function callSchema() {
   const request = new Request("http://localhost/rpc/schema", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: DSON.stringify({}),
   });
   return rpcRoute({ request } as any);
 }

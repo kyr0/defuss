@@ -53,12 +53,14 @@ export class TestRpcServer {
       throw new Error("Server not started");
     }
 
+    const { DSON } = await import("defuss-dson");
+
     const response = await fetch(`${this.serverInfo.url}/rpc`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
+      body: DSON.stringify({
         className,
         methodName,
         args,
@@ -71,7 +73,6 @@ export class TestRpcServer {
     }
 
     const result = await response.text();
-    const { DSON } = await import("defuss-dson");
     return DSON.parse(result);
   }
 

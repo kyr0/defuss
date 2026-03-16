@@ -1,0 +1,27 @@
+{
+  "name": "with-rpc-upload",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "defuss": "workspace:*",
+    "defuss-dson": "workspace:*",
+    "defuss-rpc": "workspace:*",
+    "defuss-express": "workspace:*",
+    "defuss-vite": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/browser": "^4.0.18",
+    "playwright": "^1.52.0",
+    "@vitest/browser-playwright": "^4.0.18",
+    "typescript": "^5.9.3",
+    "vite": "^6.3.5",
+    "vitest": "^4.0.18"
+  }
+}

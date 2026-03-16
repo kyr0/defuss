@@ -142,8 +142,8 @@ export const rpcRoute: APIRoute = async ({ request }) => {
     });
   }
 
-  // Handle RPC calls
-  const callDescriptor: RpcCallDescriptor = await request.json();
+  // Handle RPC calls — use DSON.parse so typed arrays (Uint8Array etc.) survive the round-trip.
+  const callDescriptor: RpcCallDescriptor = DSON.parse(await request.text());
   const { className, methodName, args } = callDescriptor;
 
   // Call "guard" hooks

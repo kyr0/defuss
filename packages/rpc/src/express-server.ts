@@ -51,8 +51,8 @@ export class ExpressRpcServer {
   }
 
   private setupMiddleware() {
-    // JSON body parser runs first so req.body is populated for CORS and RPC handling.
-    this.app.use(express.json({ limit: this.jsonSizeLimit }));
+    // Text body parser keeps the raw DSON string intact so typed arrays survive deserialization.
+    this.app.use(express.text({ limit: this.jsonSizeLimit, type: "application/json" }));
 
     // CORS — applied to every response, including pre-flight OPTIONS requests.
     this.app.use((req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction) => {
@@ -94,9 +94,9 @@ export class ExpressRpcServer {
    * Adapts an Express request into a Fetch API `Request`, delegates to `rpcRoute`,
    * and maps the resulting Fetch `Response` back to the Express response.
    *
-   * Body re-serialization: Express `json()` middleware has already parsed the body into
-   * `req.body`. Since `rpcRoute` expects `.json()` to work on the `Request`, we
-   * `JSON.stringify(req.body)` to reconstruct the raw JSON text.
+   * Body forwarding: `express.text()` middleware gives us the raw DSON string in
+   * `req.body`. We forward it as-is so `rpcRoute` can `DSON.parse()` it and
+   * reconstruct typed arrays like `Uint8Array`.
    */
   private async handleRpcRequest(req: ExpressRequest, res: ExpressResponse) {
     try {
@@ -105,10 +105,9 @@ export class ExpressRpcServer {
       const astroRequest = new Request(url, {
         method: req.method,
         headers: req.headers as Record<string, string>,
-        // Express already parsed req.body; re-serialize so rpcRoute can read it via .json().
         body:
-          req.method !== "GET" && req.method !== "HEAD"
-            ? JSON.stringify(req.body)
+          req.method !== "GET" && req.method !== "HEAD" && typeof req.body === "string" && req.body
+            ? req.body
             : undefined,
       });
 
