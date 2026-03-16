@@ -1,5 +1,5 @@
 import { DSON } from "defuss-dson";
-import type { ClientHook, RpcApiClass, RpcApiSchema } from "./types.d.js";
+import type { ClientHook, DsonStreamFrame, RpcApiClass, RpcApiSchema } from "./types.d.js";
 export * from "./types.d.js";
 
 /** Client-side endpoint paths — must stay in sync with server.ts `RPC_PATH`/`RPC_SCHEMA_PATH`. */
@@ -164,6 +164,109 @@ function createRpcMethod(namespaceName: string, methodName: string, baseUrl = ""
 }
 
 /**
+ * Factory that returns an async generator RPC caller for a given namespace and method.
+ *
+ * When the server method is a generator, the HTTP response is an NDJSON stream of
+ * `DsonStreamFrame` objects. This function reads that stream line-by-line and reconstructs
+ * an async generator on the client that yields and returns exactly what the server generator did.
+ *
+ * Uses the same guard / response hook pipeline as `createRpcMethod`.
+ *
+ * @param namespaceName - The registered namespace (class or module name).
+ * @param methodName    - The method or function name on the namespace.
+ * @param baseUrl       - Optional base URL prefix (default `""` = current origin).
+ * @returns An async generator function `(...args) => AsyncGenerator<unknown, unknown>`.
+ */
+function createRpcGeneratorMethod(namespaceName: string, methodName: string, baseUrl = "") {
+  return async function* (...args: unknown[]) {
+    const request: RequestInit = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(customHeaders || {}),
+      },
+      body: DSON.stringify({
+        className: namespaceName,
+        methodName,
+        args,
+      }),
+    };
+
+    // Call guards
+    for (const guardHook of hooks.filter((h) => h.phase === "guard")) {
+      const allowed = await guardHook.fn(namespaceName, methodName, args, request);
+      if (!allowed) {
+        throw new Error(`RPC call to ${namespaceName}.${methodName} was blocked by a guard`);
+      }
+    }
+
+    const response = await fetch(`${baseUrl}${RPC_PATH}`, request);
+
+    // Call response hooks
+    for (const responseHook of hooks.filter((h: ClientHook) => h.phase === "response")) {
+      await responseHook.fn(namespaceName, methodName, args, request, response);
+    }
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw Object.assign(
+        new Error(`RPC call failed: ${response.status} ${response.statusText}`),
+        { status: response.status, body, namespace: namespaceName, method: methodName },
+      );
+    }
+
+    // Read the NDJSON stream line-by-line
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let returnValue: unknown = undefined;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      // Keep the last (possibly incomplete) line in the buffer
+      buffer = lines.pop()!;
+
+      for (const line of lines) {
+        if (!line) continue;
+        const frame: DsonStreamFrame = DSON.parse(line);
+
+        if (frame.type === "yield") {
+          yield frame.value;
+        } else if (frame.type === "return") {
+          returnValue = frame.value;
+          // Don't break — let the read loop finish naturally
+        } else if (frame.type === "error") {
+          throw new Error(frame.error.message);
+        }
+      }
+    }
+
+    // Process any remaining data in the buffer
+    if (buffer) {
+      const frame: DsonStreamFrame = DSON.parse(buffer);
+      if (frame.type === "yield") {
+        yield frame.value;
+      } else if (frame.type === "return") {
+        returnValue = frame.value;
+      } else if (frame.type === "error") {
+        throw new Error(frame.error.message);
+      }
+    }
+
+    // Call result hooks with the return value
+    for (const resultHook of hooks.filter((h: ClientHook) => h.phase === "result")) {
+      await resultHook.fn(namespaceName, methodName, args, request, response, returnValue);
+    }
+
+    return returnValue;
+  };
+}
+
+/**
  * Get the RPC client proxy object.
  *
  * Supports both class-based and module-based (plain object) RPC namespaces.
@@ -193,7 +296,9 @@ export async function getRpcClient<T extends Record<string, unknown>>(options?: 
 
       const moduleProxy: Record<string, unknown> = {};
       for (const methodName of methodNames) {
-        moduleProxy[methodName] = createRpcMethod(moduleName, methodName, baseUrl);
+        moduleProxy[methodName] = entry.methods[methodName]?.generator
+          ? createRpcGeneratorMethod(moduleName, methodName, baseUrl)
+          : createRpcMethod(moduleName, methodName, baseUrl);
       }
 
       client[moduleName] = new Proxy(moduleProxy, {
@@ -223,7 +328,9 @@ export async function getRpcClient<T extends Record<string, unknown>>(options?: 
             {
               get: (_target, methodName) => {
                 if (typeof methodName !== "string") return undefined;
-                return createRpcMethod(className, methodName, baseUrl);
+                return entry.methods[methodName]?.generator
+                  ? createRpcGeneratorMethod(className, methodName, baseUrl)
+                  : createRpcMethod(className, methodName, baseUrl);
               },
             },
           );

@@ -1,5 +1,5 @@
 import type { AstroIntegration } from "astro";
-import { defussRpc } from "./vite-plugin.js";
+import { defussRpc as defussRpcVitePlugin } from "./vite-plugin.js";
 import { setRpcConfig, type RpcPluginOptions } from "./rpc-state.js";
 
 /**
@@ -11,13 +11,13 @@ import { setRpcConfig, type RpcPluginOptions } from "./rpc-state.js";
  * // astro.config.ts
  * import { defineConfig } from "astro/config";
  * import defuss from "defuss-astro";
- * import { defussRpcIntegration } from "defuss-rpc/astro.js";
+ * import { defussRpc } from "defuss-rpc/astro.js";
  * import { MyApi } from "./src/api/my-api.ts";
  *
  * export default defineConfig({
  *   integrations: [
  *     defuss(),
- *     defussRpcIntegration({ api: { MyApi } }),
+ *     defussRpc({ api: { MyApi } }),
  *   ],
  * });
  * ```
@@ -36,7 +36,7 @@ import { setRpcConfig, type RpcPluginOptions } from "./rpc-state.js";
  * const endpoint = Astro.locals.rpcEndpoint;
  * ```
  */
-export function defussRpcIntegration(options: RpcPluginOptions): AstroIntegration {
+export function defussRpc(options: RpcPluginOptions): AstroIntegration {
   return {
     name: "defuss-rpc",
     hooks: {
@@ -47,7 +47,7 @@ export function defussRpcIntegration(options: RpcPluginOptions): AstroIntegratio
         // Add the Vite plugin (handles dev server startup + virtual module)
         updateConfig({
           vite: {
-            plugins: [defussRpc(options) as any],
+            plugins: [defussRpcVitePlugin(options) as any],
           },
         });
 
@@ -60,5 +60,8 @@ export function defussRpcIntegration(options: RpcPluginOptions): AstroIntegratio
     },
   };
 }
+
+/** @deprecated Use `defussRpc` instead. */
+export const defussRpcIntegration = defussRpc;
 
 export type { RpcPluginOptions };

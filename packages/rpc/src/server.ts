@@ -2,10 +2,12 @@ import type { APIRoute } from "astro";
 import { DSON } from "defuss-dson";
 import type {
   ApiNamespace,
+  DsonStreamFrame,
   RpcApiClass,
   RpcApiEntry,
   RpcApiModule,
   RpcCallDescriptor,
+  RpcMethodDescriptor,
   RpcSchemaEntry,
   ServerHook,
 } from "./types.d.js";
@@ -28,6 +30,69 @@ const hooks: ServerHook[] = [];
  */
 function isRpcClass(entry: RpcApiEntry): entry is RpcApiClass {
   return typeof entry === "function" && !!entry.prototype;
+}
+
+/**
+ * Returns true when `value` exposes `Symbol.asyncIterator` or `Symbol.iterator`
+ * (excluding plain strings and arrays, which are iterable but not generators).
+ */
+function isGeneratorResult(value: unknown): value is AsyncIterable<unknown> | Iterable<unknown> {
+  if (value == null || typeof value === "string" || Array.isArray(value)) return false;
+  return (
+    typeof (value as any)[Symbol.asyncIterator] === "function" ||
+    typeof (value as any)[Symbol.iterator] === "function"
+  );
+}
+
+/**
+ * Detect the constructor name to determine if a function is async, a generator, or both.
+ */
+function describeFn(fn: Function): RpcMethodDescriptor {
+  const ctorName = fn.constructor?.name ?? "";
+  return {
+    async: ctorName === "AsyncFunction" || ctorName === "AsyncGeneratorFunction",
+    generator: ctorName === "GeneratorFunction" || ctorName === "AsyncGeneratorFunction",
+  };
+}
+
+/**
+ * Create a streaming NDJSON Response from an async or sync iterable.
+ * Each line is a DSON-serialized `DsonStreamFrame`.
+ *
+ * Uses manual `.next()` loop (not `for await...of`) to capture the generator's return value.
+ */
+function streamGeneratorResponse(iter: AsyncIterator<unknown> | Iterator<unknown>): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async pull(controller) {
+      try {
+        const { done, value } = await iter.next();
+        if (done) {
+          // Terminal return frame — value is the generator's return value
+          const frame: DsonStreamFrame = { type: "return", value: value ?? null };
+          controller.enqueue(encoder.encode(DSON.stringify(frame) + "\n"));
+          controller.close();
+        } else {
+          const frame: DsonStreamFrame = { type: "yield", value };
+          controller.enqueue(encoder.encode(DSON.stringify(frame) + "\n"));
+        }
+      } catch (error: unknown) {
+        const frame: DsonStreamFrame = {
+          type: "error",
+          error: {
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          },
+        };
+        controller.enqueue(encoder.encode(DSON.stringify(frame) + "\n"));
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: { "Content-Type": "application/x-ndjson" },
+  });
 }
 
 /**
@@ -121,7 +186,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
       if (isRpcClass(entry)) {
         const desc = describeInstance(entry.prototype) as {
           className: string;
-          methods: Record<string, { async: boolean }>;
+          methods: Record<string, RpcMethodDescriptor>;
           properties: Record<string, unknown>;
         };
         schemaEntries.push({
@@ -184,10 +249,12 @@ export const rpcRoute: APIRoute = async ({ request }) => {
       );
     }
     try {
-      result = await (method as (...args: unknown[]) => unknown).apply(
-        instance,
-        args,
-      );
+      result = (method as (...args: unknown[]) => unknown).apply(instance, args);
+      // For non-generator async functions, await the result.
+      // For generators, we keep the raw iterator — don't await it.
+      if (!isGeneratorResult(result) && result instanceof Promise) {
+        result = await result;
+      }
     } catch (error: unknown) {
       console.error("[defuss-rpc] Error calling method", { className, methodName, args, request, error });
       return new Response(
@@ -210,7 +277,10 @@ export const rpcRoute: APIRoute = async ({ request }) => {
       );
     }
     try {
-      result = await (fn as (...args: unknown[]) => unknown)(...args);
+      result = (fn as (...args: unknown[]) => unknown)(...args);
+      if (!isGeneratorResult(result) && result instanceof Promise) {
+        result = await result;
+      }
     } catch (error: unknown) {
       console.error("[defuss-rpc] Error calling function", { className, methodName, args, request, error });
       return new Response(
@@ -220,6 +290,14 @@ export const rpcRoute: APIRoute = async ({ request }) => {
         { status: 500, headers: { "Content-Type": "application/json" } },
       );
     }
+  }
+
+  // Generator result → stream NDJSON frames
+  if (isGeneratorResult(result)) {
+    const iter = Symbol.asyncIterator in (result as any)
+      ? (result as AsyncIterable<unknown>)[Symbol.asyncIterator]()
+      : (result as Iterable<unknown>)[Symbol.iterator]();
+    return streamGeneratorResponse(iter);
   }
 
   // Call "result" hooks
@@ -241,12 +319,10 @@ export function describeModule(
   name: string,
   obj: RpcApiModule,
 ): RpcSchemaEntry {
-  const methods: Record<string, { async: boolean }> = {};
+  const methods: Record<string, RpcMethodDescriptor> = {};
   for (const key of Object.keys(obj)) {
     if (typeof obj[key] === "function") {
-      const fn = obj[key] as Function;
-      const isAsync = fn.constructor.name === "AsyncFunction";
-      methods[key] = { async: isAsync };
+      methods[key] = describeFn(obj[key] as Function);
     }
   }
   return {
@@ -285,11 +361,10 @@ export function describeInstance(
     .reduce(
       (acc, name) => {
         const fn = (proto as Record<string, unknown>)[name] as Function;
-        const isAsync = fn.constructor.name === "AsyncFunction";
-        acc[name] = { async: isAsync };
+        acc[name] = describeFn(fn);
         return acc;
       },
-      {} as Record<string, { async: boolean }>,
+      {} as Record<string, RpcMethodDescriptor>,
     );
 
   const properties = Object.keys(proto).reduce(

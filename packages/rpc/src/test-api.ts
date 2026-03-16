@@ -88,8 +88,6 @@ export class TestProductApi {
   }
 }
 
-// ── Module-based test API (plain objects with functions) ──────────────
-
 /** Simple math utilities as a plain object module */
 export const TestMathModule = {
   add: async (a: number, b: number): Promise<number> => a + b,
@@ -109,4 +107,36 @@ export const TestStringModule = {
   upper: async (msg: string): Promise<string> => msg.toUpperCase(),
   concat: async (a: string, b: string): Promise<string> => a + b,
   now: async (): Promise<Date> => new Date(),
+};
+
+/** Module with async generator functions for streaming tests */
+export const TestStreamModule = {
+  /** Yields numbers 0..n-1, then returns the total count. */
+  async *countUp(n: number) {
+    for (let i = 0; i < n; i++) {
+      yield i;
+    }
+    return n;
+  },
+
+  /** Yields two values then throws an error mid-stream. */
+  async *throwMidStream() {
+    yield "a";
+    yield "b";
+    throw new Error("mid-stream error");
+  },
+
+  /** Yields string chunks simulating a chat response. */
+  async *chat(message: string) {
+    const words = message.split(" ");
+    for (const word of words) {
+      yield word;
+    }
+    return message;
+  },
+
+  /** A regular (non-generator) async function, co-located for schema tests. */
+  async ping() {
+    return "pong";
+  },
 };

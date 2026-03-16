@@ -72,17 +72,18 @@ describe("RPC Client", () => {
             (s: any) => s.className === "TestUserApi",
           );
           expect(userApiSchema).toBeDefined();
-          expect(userApiSchema.methods.getUser).toEqual({ async: true });
-          expect(userApiSchema.methods.createUser).toEqual({ async: true });
-          expect(userApiSchema.methods.getUserCount).toEqual({ async: false });
+          expect(userApiSchema.methods.getUser).toEqual({ async: true, generator: false });
+          expect(userApiSchema.methods.createUser).toEqual({ async: true, generator: false });
+          expect(userApiSchema.methods.getUserCount).toEqual({ async: false, generator: false });
 
           const productApiSchema = schema.find(
             (s: any) => s.className === "TestProductApi",
           );
           expect(productApiSchema).toBeDefined();
-          expect(productApiSchema.methods.getProduct).toEqual({ async: true });
+          expect(productApiSchema.methods.getProduct).toEqual({ async: true, generator: false });
           expect(productApiSchema.methods.searchProducts).toEqual({
             async: true,
+            generator: false,
           });
         } finally {
           globalThis.fetch = originalFetch;

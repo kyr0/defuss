@@ -114,15 +114,27 @@ export class ExpressRpcServer {
       // Call the existing rpcRoute handler
       const response = await rpcRoute({ request: astroRequest } as any);
 
-      // Convert Response to Express response
-      const responseText = await response.text();
       const contentType =
         response.headers.get("content-type") || "application/json";
 
-      res
-        .status(response.status)
-        .set("content-type", contentType)
-        .send(responseText);
+      if (contentType === "application/x-ndjson" && response.body) {
+        // Stream NDJSON responses chunk-by-chunk instead of buffering
+        res.status(response.status).set("content-type", contentType);
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      } else {
+        // Buffer and send the full response for non-streaming content
+        const responseText = await response.text();
+        res
+          .status(response.status)
+          .set("content-type", contentType)
+          .send(responseText);
+      }
     } catch (error) {
       console.error("RPC request error:", error);
       res.status(500).json({

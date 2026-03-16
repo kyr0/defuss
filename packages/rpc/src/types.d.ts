@@ -11,10 +11,17 @@ export type RpcApiEntry = RpcApiClass | RpcApiModule;
  * Schema descriptor for a single class-based RPC namespace.
  * Returned as part of the array from `/rpc/schema`.
  */
+
+/** Descriptor for a single method/function in the RPC schema. */
+export interface RpcMethodDescriptor {
+  async: boolean;
+  generator: boolean;
+}
+
 export interface RpcClassSchema {
   kind: "class";
   className: string;
-  methods: Record<string, { async: boolean }>;
+  methods: Record<string, RpcMethodDescriptor>;
   properties: Record<string, unknown>;
 }
 
@@ -25,7 +32,7 @@ export interface RpcClassSchema {
 export interface RpcModuleSchema {
   kind: "module";
   moduleName: string;
-  methods: Record<string, { async: boolean }>;
+  methods: Record<string, RpcMethodDescriptor>;
 }
 
 /**
@@ -147,3 +154,15 @@ export type ClientHook = {
   fn: ClientHookFn;
   phase: ClientHookPhase;
 };
+
+/**
+ * A single NDJSON frame sent by the server when an RPC method returns a generator.
+ *
+ * - `yield`  — one yielded value (non-terminal).
+ * - `return` — the generator's return value (terminal, stream ends after this).
+ * - `error`  — an error thrown during iteration (terminal).
+ */
+export type DsonStreamFrame =
+  | { type: "yield"; value: unknown }
+  | { type: "return"; value: unknown }
+  | { type: "error"; error: { message: string; stack?: string } };

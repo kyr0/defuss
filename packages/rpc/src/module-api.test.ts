@@ -8,6 +8,7 @@ import {
 import {
   TestMathModule,
   TestStringModule,
+  TestStreamModule,
   TestUserApi,
 } from "./test-api.js";
 import { DSON } from "defuss-dson";
@@ -246,6 +247,55 @@ describe("Module-based RPC", () => {
         expect.any(Request),
         7,
       );
+    });
+  });
+
+  describe("generator module", () => {
+    it("should include generator: true in schema for async generator functions", async () => {
+      createRpcServer({ TestStreamModule });
+      const response = await callSchema();
+      const schema = await response.json();
+
+      expect(schema).toHaveLength(1);
+      expect(schema[0].kind).toBe("module");
+      expect(schema[0].moduleName).toBe("TestStreamModule");
+      expect(schema[0].methods.countUp).toEqual({ async: true, generator: true });
+      expect(schema[0].methods.ping).toEqual({ async: true, generator: false });
+    });
+
+    it("should stream NDJSON for generator methods via callRpc", async () => {
+      createRpcServer({ TestStreamModule });
+
+      const response = await callRpc({
+        className: "TestStreamModule",
+        methodName: "countUp",
+        args: [2],
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("application/x-ndjson");
+
+      const text = await response.text();
+      const frames = text.split("\n").filter(Boolean).map((l) => DSON.parse(l));
+
+      expect(frames).toHaveLength(3);
+      expect(frames[0]).toEqual({ type: "yield", value: 0 });
+      expect(frames[1]).toEqual({ type: "yield", value: 1 });
+      expect(frames[2]).toEqual({ type: "return", value: 2 });
+    });
+
+    it("should return normal DSON for non-generator methods in a mixed module", async () => {
+      createRpcServer({ TestStreamModule });
+
+      const response = await callRpc({
+        className: "TestStreamModule",
+        methodName: "ping",
+        args: [],
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("application/json");
+      expect(DSON.parse(await response.text())).toBe("pong");
     });
   });
 });

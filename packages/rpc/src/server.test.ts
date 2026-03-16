@@ -7,7 +7,7 @@ import {
   clearRpcServer,
   describeInstance,
 } from "./server.js";
-import { TestUserApi, TestProductApi } from "./test-api.js";
+import { TestUserApi, TestProductApi, TestStreamModule } from "./test-api.js";
 
 describe("RPC Server", () => {
   beforeEach(() => {
@@ -94,17 +94,17 @@ describe("RPC Server", () => {
       );
       expect(userApiSchema).toBeDefined();
       expect(userApiSchema.methods).toBeDefined();
-      expect(userApiSchema.methods.getUser).toEqual({ async: true });
-      expect(userApiSchema.methods.createUser).toEqual({ async: true });
-      expect(userApiSchema.methods.getUserCount).toEqual({ async: false });
+      expect(userApiSchema.methods.getUser).toEqual({ async: true, generator: false });
+      expect(userApiSchema.methods.createUser).toEqual({ async: true, generator: false });
+      expect(userApiSchema.methods.getUserCount).toEqual({ async: false, generator: false });
 
       // Check TestProductApi schema
       const productApiSchema = schema.find(
         (s: any) => s.className === "TestProductApi",
       );
       expect(productApiSchema).toBeDefined();
-      expect(productApiSchema.methods.getProduct).toEqual({ async: true });
-      expect(productApiSchema.methods.searchProducts).toEqual({ async: true });
+      expect(productApiSchema.methods.getProduct).toEqual({ async: true, generator: false });
+      expect(productApiSchema.methods.searchProducts).toEqual({ async: true, generator: false });
     });
   });
 
@@ -601,6 +601,116 @@ describe("RPC Server", () => {
       const result = describeInstance(a) as any;
       // Should not throw, and the circular part should be "[Circular]"
       expect(result).toBeDefined();
+    });
+  });
+
+  describe("Generator / streaming", () => {
+    /** Helper: collect all NDJSON frames from a streaming response */
+    async function collectFrames(response: Response) {
+      const text = await response.text();
+      return text
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => DSON.parse(line));
+    }
+
+    it("should report generator: true in the module schema", async () => {
+      createRpcServer({ TestStreamModule });
+      const req = new Request("http://localhost/rpc/schema", { method: "POST" });
+      const res = await rpcRoute({ request: req } as any);
+      const schema = await res.json();
+
+      expect(schema).toHaveLength(1);
+      expect(schema[0].methods.countUp).toEqual({ async: true, generator: true });
+      expect(schema[0].methods.throwMidStream).toEqual({ async: true, generator: true });
+      expect(schema[0].methods.chat).toEqual({ async: true, generator: true });
+      expect(schema[0].methods.ping).toEqual({ async: true, generator: false });
+    });
+
+    it("should stream NDJSON frames for a generator method", async () => {
+      createRpcServer({ TestStreamModule });
+
+      const req = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: DSON.stringify({ className: "TestStreamModule", methodName: "countUp", args: [3] }),
+      });
+
+      const res = await rpcRoute({ request: req } as any);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("application/x-ndjson");
+
+      const frames = await collectFrames(res);
+      // 3 yield frames + 1 return frame
+      expect(frames).toHaveLength(4);
+      expect(frames[0]).toEqual({ type: "yield", value: 0 });
+      expect(frames[1]).toEqual({ type: "yield", value: 1 });
+      expect(frames[2]).toEqual({ type: "yield", value: 2 });
+      expect(frames[3]).toEqual({ type: "return", value: 3 });
+    });
+
+    it("should emit an error frame when a generator throws mid-stream", async () => {
+      createRpcServer({ TestStreamModule });
+
+      const req = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: DSON.stringify({
+          className: "TestStreamModule",
+          methodName: "throwMidStream",
+          args: [],
+        }),
+      });
+
+      const res = await rpcRoute({ request: req } as any);
+      expect(res.status).toBe(200);
+
+      const frames = await collectFrames(res);
+      // 2 yields + 1 error
+      expect(frames).toHaveLength(3);
+      expect(frames[0]).toEqual({ type: "yield", value: "a" });
+      expect(frames[1]).toEqual({ type: "yield", value: "b" });
+      expect(frames[2].type).toBe("error");
+      expect(frames[2].error.message).toBe("mid-stream error");
+    });
+
+    it("should stream chat words as individual frames", async () => {
+      createRpcServer({ TestStreamModule });
+
+      const req = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: DSON.stringify({
+          className: "TestStreamModule",
+          methodName: "chat",
+          args: ["hello world"],
+        }),
+      });
+
+      const res = await rpcRoute({ request: req } as any);
+      const frames = await collectFrames(res);
+
+      expect(frames).toHaveLength(3); // 2 yields + 1 return
+      expect(frames[0]).toEqual({ type: "yield", value: "hello" });
+      expect(frames[1]).toEqual({ type: "yield", value: "world" });
+      expect(frames[2]).toEqual({ type: "return", value: "hello world" });
+    });
+
+    it("should still return a normal DSON response for non-generator methods in a mixed module", async () => {
+      createRpcServer({ TestStreamModule });
+
+      const req = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: DSON.stringify({ className: "TestStreamModule", methodName: "ping", args: [] }),
+      });
+
+      const res = await rpcRoute({ request: req } as any);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("application/json");
+
+      const text = await res.text();
+      expect(DSON.parse(text)).toBe("pong");
     });
   });
 });
