@@ -61,7 +61,4 @@ export function defussRpc(options: RpcPluginOptions): AstroIntegration {
   };
 }
 
-/** @deprecated Use `defussRpc` instead. */
-export const defussRpcIntegration = defussRpc;
-
 export type { RpcPluginOptions };
