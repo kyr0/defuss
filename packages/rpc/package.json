@@ -1,6 +1,6 @@
 {
   "name": "defuss-rpc",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -55,6 +55,46 @@
         "types": "./dist/express-server.d.mts",
         "default": "./dist/express-server.mjs"
       }
+    },
+    "./vite-plugin.js": {
+      "require": {
+        "types": "./dist/vite-plugin.d.cts",
+        "default": "./dist/vite-plugin.cjs"
+      },
+      "import": {
+        "types": "./dist/vite-plugin.d.mts",
+        "default": "./dist/vite-plugin.mjs"
+      }
+    },
+    "./astro.js": {
+      "require": {
+        "types": "./dist/astro-integration.d.cts",
+        "default": "./dist/astro-integration.cjs"
+      },
+      "import": {
+        "types": "./dist/astro-integration.d.mts",
+        "default": "./dist/astro-integration.mjs"
+      }
+    },
+    "./astro-middleware.js": {
+      "require": {
+        "types": "./dist/astro-middleware.d.cts",
+        "default": "./dist/astro-middleware.cjs"
+      },
+      "import": {
+        "types": "./dist/astro-middleware.d.mts",
+        "default": "./dist/astro-middleware.mjs"
+      }
+    },
+    "./rpc-state.js": {
+      "require": {
+        "types": "./dist/rpc-state.d.cts",
+        "default": "./dist/rpc-state.cjs"
+      },
+      "import": {
+        "types": "./dist/rpc-state.d.mts",
+        "default": "./dist/rpc-state.mjs"
+      }
     }
   },
   "types": "./dist/types.d.cts",
@@ -81,10 +121,12 @@
   },
   "peerDependencies": {
     "astro": "*",
-    "defuss-express": ">=0.1.0"
+    "defuss-express": ">=0.1.0",
+    "vite": ">=5.0.0"
   },
   "peerDependenciesMeta": {
     "astro": { "optional": true },
-    "defuss-express": { "optional": true }
+    "defuss-express": { "optional": true },
+    "vite": { "optional": true }
   }
 }
