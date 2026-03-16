@@ -9,11 +9,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "defuss": "workspace:*",
-    "defuss-dson": "workspace:*",
-    "defuss-rpc": "workspace:*",
-    "defuss-express": "workspace:*",
-    "defuss-vite": "workspace:*"
+    "defuss": "^3.4.1",
+    "defuss-dson": "^1.1.1",
+    "defuss-rpc": "^1.5.0",
+    "defuss-express": "^0.2.1",
+    "defuss-vite": "^1.1.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
