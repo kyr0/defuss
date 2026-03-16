@@ -10,7 +10,13 @@
   "keywords": [
     "rpc",
     "defuss",
-    "astro"
+    "astro",
+    "ndjson",
+    "streaming",
+    "isomorphic",
+    "astro-integration",
+    "vite-plugin",
+    "express-middleware"
   ],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",

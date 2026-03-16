@@ -14,274 +14,414 @@ Remote Procedure Call (RPC)
 
 </h1>
 
-> `defuss-rpc` is a tiny but powerful RPC library for building type-safe APIs in JavaScript and TypeScript. It enables seamless client-server communication with automatic type safety and minimal setup.
-
-**💡 Can you imagine?** The whole codebase is written in only ~180 Lines of Code, providing full-featured RPC capabilities including type-safe client generation, server-side method routing, and automatic serialization using `defuss-dson`.
+> `defuss-rpc` is a tiny but powerful RPC library for building type-safe APIs in JavaScript and TypeScript. It enables seamless client-server communication with automatic type safety, bi-directional, seamless binary data format support (via `DSON` - just pass `Uint8Array` around; uploads and downloads of TB of data are possible, including streaming and chunked transfers, progress tracking, resend, hash integrity checks, etc.), generator streaming, and minimal setup.
 
 ## ✨ Features
 
-- ✅ **Type-safe**: Full TypeScript support with automatic client type generation
-- ✅ **Minimal setup**: Just define your API classes and go
-- ✅ **Automatic serialization**: Uses `defuss-dson` for robust data serialization
-- ✅ **Proxy-based client**: Dynamic client generation with method interception
-- ✅ **Schema introspection**: Automatic API schema generation and discovery
-- ✅ **Authentication and logging support**: Built-in custom header and hook function support for access control, logging, performance monitoring and more
-- ✅ **Framework agnostic**: Works with Astro, Express.js, and any framework that supports Request/Response
-- ✅ **Zero runtime dependencies**: Tiny bundle size with minimal overhead
+- ✅ **Type-safe** - Full TypeScript support with automatic client type generation
+- ✅ **Classes & Modules** - Define APIs as classes (stateful) or plain objects (functional)
+- ✅ **Generator Streaming** - `async *` generators stream to the client as NDJSON, consumed via `for await...of`
+- ✅ **DSON Serialization** - `Date`, `Map`, `Set`, `Uint8Array`, `BigInt`, and more survive the wire
+- ✅ **Vite Plugin** - Auto-starts an RPC server alongside Vite dev, with file watching and HMR
+- ✅ **Astro Integration** - First-class Astro support via `defussRpc()`, with `Astro.locals.rpcEndpoint`
+- ✅ **ExpressRpcServer** - Managed Express.js adapter with CORS, health check, and streaming support
+- ✅ **Hook System** - Guard and result hooks on both server and client for auth, logging, and auditing
+- ✅ **Schema Introspection** - Automatic API schema generation and discovery at `/rpc/schema`
+- ✅ **Framework Agnostic** - Works with Astro, Vite, Express.js, or any framework that supports `Request`/`Response`
 
-<h3 align="center">
+---
 
-Getting Started
+## Getting Started
 
-</h3>
-
-#### 1. Install `defuss-rpc`:
+### 1. Install
 
 ```bash
 bun install defuss-rpc
 ```
 
-#### 2. Define your API classes:
+### 2. Define your API
+
+APIs can be **classes** (instantiated fresh per call) or **plain objects** (module-style):
 
 ```ts
-// <root>/service/FooApi.ts
+// src/api/foo-api.ts - Class-based API
 export class FooApi {
   async getFoo(id: string) {
-    // Your implementation here
-    return { id, name: "Foo Item", data: "..." };
+    return { id, name: "Foo Item" };
   }
-  
-  async createFoo(item: { name: string; data: string }) {
-    // Your implementation here
+  async createFoo(item: { name: string }) {
     return { id: "new-id", ...item };
   }
 }
+```
 
-// <root>/service/BarApi.ts
-export class BarApi {
-  async baz(value: string) {
-    // Your implementation here
-    return { result: `Processed: ${value}` };
+```ts
+// src/api/math-utils.ts - Module-based API
+export const MathUtils = {
+  async add(a: number, b: number) {
+    return a + b;
+  },
+  async multiply(a: number, b: number) {
+    return a * b;
+  },
+};
+```
+
+### 3. Create the RPC registry
+
+```ts
+// src/rpc.ts
+import { FooApi } from "./api/foo-api.js";
+import { MathUtils } from "./api/math-utils.js";
+
+const RpcApi = { FooApi, MathUtils };
+export default RpcApi;
+export type RpcApi = typeof RpcApi;
+```
+
+### 4. Wire it up
+
+Choose one of the integrations below - [Astro](#astro-integration), [Vite](#vite-plugin), or [Express](#expressrpcserver).
+
+### 5. Use on the client
+
+```ts
+import { getRpcClient } from "defuss-rpc/client";
+import type { RpcApi } from "../rpc.js";
+
+const rpc = await getRpcClient<RpcApi>();
+
+// Class-based: instantiate, then call methods
+const fooApi = new rpc.FooApi();
+const foo = await fooApi.getFoo("123"); // fully typed
+
+// Module-based: call functions directly
+const sum = await rpc.MathUtils.add(2, 3); // 5
+```
+
+---
+
+## Astro Integration
+
+The `defussRpc()` Astro integration wraps the Vite plugin and injects middleware to populate `Astro.locals.rpcEndpoint`.
+
+```ts
+// astro.config.ts
+import { defineConfig } from "astro/config";
+import defuss from "defuss-astro";
+import node from "@astrojs/node";
+import { defussRpc } from "defuss-rpc/astro.js";
+import RpcApi from "./src/rpc.js";
+
+export default defineConfig({
+  integrations: [
+    defuss({ include: ["src/**/*.tsx"] }),
+    defussRpc({
+      api: RpcApi,
+      port: 0,                       // 0 = random available port
+      watch: ["src/api/**/*.ts"],     // hot-reload API files
+    }),
+  ],
+  adapter: node({ mode: "standalone" }),
+});
+```
+
+Add the type to your `env.d.ts`:
+
+```ts
+declare namespace App {
+  interface Locals {
+    rpcEndpoint: string;
   }
 }
 ```
 
-#### 3. Set up the server and API registry:
+No manual route handler needed - the integration handles everything.
 
-##### Create the RPC API definition
+---
+
+## Vite Plugin
+
+Use the Vite plugin directly in non-Astro projects:
+
 ```ts
-// <root>/rpc.ts - Shared RPC API definition
-import { createRpcServer, setGuardFunction } from "defuss-rpc/server";
-import { FooApi } from "./service/FooApi.js";
-import { BarApi } from "./service/BarApi.js";
+// vite.config.ts
+import { defineConfig } from "vite";
+import defuss from "defuss-vite";
+import { defussRpc } from "defuss-rpc/vite-plugin.js";
+import RpcApi from "./src/rpc.js";
 
-// server-side RPC API definition
-export const RpcApi = {
-  FooApi,
-  BarApi,
-};
+export default defineConfig({
+  plugins: [
+    defuss(),
+    defussRpc({
+      api: RpcApi,
+      port: 0,
+      watch: ["src/api/**/*.ts"],
+    }),
+  ],
+});
+```
 
-setGuardFunction(async (request) => {
-  const payload = await request.json();
-  console.log("Guard function called with request:", payload);
-  // Implement your guard logic here
-  return true;
+The plugin:
+- Starts an `ExpressRpcServer` alongside Vite's dev server
+- Provides a `virtual:defuss-rpc` module exporting `rpcBaseUrl`
+- Watches API files and hot-reloads the RPC namespace on change
+
+```ts
+// Client code
+import { rpcBaseUrl } from "virtual:defuss-rpc";
+import { getRpcClient } from "defuss-rpc/client";
+
+const rpc = await getRpcClient<RpcApi>({ baseUrl: rpcBaseUrl });
+```
+
+### Plugin Options
+
+| Option          | Type                   | Default              | Description                                           |
+| :-------------- | :--------------------- | :------------------- | :---------------------------------------------------- |
+| `api`           | `ApiNamespace`         | *(required)*         | Map of namespace name → class or module               |
+| `port`          | `number`               | `0`                  | Port for the RPC server (`0` = OS-assigned)           |
+| `basePath`      | `string`               | `""`                 | URL prefix for all RPC endpoints                      |
+| `jsonSizeLimit` | `string`               | `"10mb"`             | Max request body size                                 |
+| `corsOrigin`    | `string \| string[]`   | `"*"`                | `Access-Control-Allow-Origin` value                   |
+| `watch`         | `string \| string[]`   | `["src/**/*.ts"]`    | Glob patterns for API file watching                   |
+| `productionUrl` | `string`               | `undefined`          | Hardcoded RPC URL for production builds               |
+
+---
+
+## ExpressRpcServer
+
+A managed Express adapter that bridges `rpcRoute` to an HTTP server with CORS, health checks, and NDJSON streaming support. Used internally by the Vite plugin, but also available standalone:
+
+```ts
+import { createRpcServer } from "defuss-rpc/server";
+import { ExpressRpcServer } from "defuss-rpc/express-server";
+import RpcApi from "./rpc.js";
+
+createRpcServer(RpcApi);
+
+const server = new ExpressRpcServer({
+  port: 3210,
+  corsOrigin: "https://app.example.com",
 });
 
-createRpcServer(RpcApi); // expose the RPC API
+const { port, url } = await server.start();
+console.log(`RPC server running on ${url}`);
 
-// client-side RPC API type (for type safety)
-export type RpcApi = typeof RpcApi;
+// Later:
+await server.stop();
 ```
 
-##### Create the RPC route handler (Astro)
-```ts
-// pages/rpc/[...all].ts - Astro catch-all route handler
-import { rpcRoute } from "defuss-rpc/server";
-import "../../rpc.js"; // Import to register the RPC API
+**Endpoints exposed:**
+| Endpoint              | Description                               |
+| :-------------------- | :---------------------------------------- |
+| `GET/POST /health`    | Liveness check `{ status: "ok" }`         |
+| `POST /rpc`           | Dispatch an RPC call                      |
+| `POST /rpc/schema`    | Return the registered namespace schema    |
 
-// Export the RPC route handler
-export const POST = rpcRoute;
-export const prerender = false;
+---
+
+## Generator Streaming
+
+Any `async *` generator function in your API automatically streams to the client using the NDJSON protocol. The client receives an async generator that you consume with `for await...of`.
+
+### Server - define a generator
+
+```ts
+// src/api/chat.ts
+export const ChatApi = {
+  async *streamMessage(prompt: string) {
+    const words = "Hello from the streaming RPC server!".split(" ");
+    for (const word of words) {
+      await new Promise((r) => setTimeout(r, 100));
+      yield word;
+    }
+    return words.join(" "); // return value is the final frame
+  },
+
+  async ping() {
+    return "pong";
+  },
+};
 ```
 
-#### 4. Use on the client:
+### Client - consume the stream
 
 ```ts
-// <root>/component/some-component.ts
 import { getRpcClient } from "defuss-rpc/client";
-import type { RpcApi } from "../rpc.js";
 
-// Get the RPC client with full type safety
-// For Astro (default):
 const rpc = await getRpcClient<RpcApi>();
 
-// For Express.js or custom base URL:
-// const rpc = await getRpcClient<RpcApi>("http://localhost:3000");
-
-// Create API instances of the services, just as if we were on the server and use them
-const fooApi = new rpc.FooApi();
-const barApi = new rpc.BarApi();
-
-// Call methods with full TypeScript support
-const foo = await fooApi.getFoo("123");
-const result = await barApi.baz("test value");
-
-console.log(foo.name); // TypeScript knows this is a string
-console.log(result.result); // Fully typed response
+for await (const chunk of rpc.ChatApi.streamMessage("hi")) {
+  console.log(chunk); // "Hello", "from", "the", ...
+}
 ```
 
-<h3 align="center">
+### Wire protocol
 
-Advanced Features
+Generator responses use `Content-Type: application/x-ndjson`. Each line is a DSON-serialized frame:
 
-</h3>
+```jsonl
+{"type":"yield","value":"Hello"}
+{"type":"yield","value":"from"}
+{"type":"yield","value":"the"}
+{"type":"return","value":"Hello from the streaming RPC server!"}
+```
 
-#### Authentication & Guards
+If the generator throws, an error frame is sent:
 
-Protect your RPC endpoints with guard functions:
+```jsonl
+{"type":"error","error":{"message":"Something went wrong","stack":"..."}}
+```
+
+Non-generator methods continue to use standard single-response JSON as before.
+
+---
+
+## Hook System
+
+Both server and client support a hook system for cross-cutting concerns like auth, logging, and auditing.
+
+### Server hooks
 
 ```ts
-// <root>/rpc.ts - Set up guard function for authentication
-import { setGuardFunction, type RpcCallDescriptor } from "defuss-rpc/server";
+import { addHook } from "defuss-rpc/server";
 
-setGuardFunction(async (request: Request) => {
-  const authHeader = request.headers.get("authorization");
-  const call: RpcCallDescriptor = await request.json();
+// Guard hook - runs before method invocation. Return false to reject (HTTP 403).
+addHook({
+  phase: "guard",
+  fn: async (className, methodName, args, request) => {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader) return false; // blocks the call
+    return true;
+  },
+});
 
-  // call.className, call.methodName, call.args can be used to check permissions
-  console.log("Guard function called with request:", call);
-  // Your authentication logic here - e.g. check JWT token, look up user in database and check for ACL
-  return true; // Return true to allow access, false to deny (results in 403 Forbidden)
+// Result hook - runs after successful return, before response is sent.
+addHook({
+  phase: "result",
+  fn: async (className, methodName, args, request, result) => {
+    console.log(`${className}.${methodName} returned`, result);
+  },
 });
 ```
 
-#### Schema Introspection
+### Client hooks
 
-The RPC server automatically provides schema information:
+```ts
+import { addHook, setHeaders } from "defuss-rpc/client";
+
+// Set custom headers on every RPC request
+setHeaders({ Authorization: "Bearer my-token" });
+
+// Guard hook - runs before the fetch is dispatched
+addHook({
+  phase: "guard",
+  fn: async (className, methodName, args, request) => {
+    console.log(`Calling ${className}.${methodName}`);
+    return true; // return false to abort the call
+  },
+});
+
+// Response hook - runs after the HTTP response arrives, before body is read
+addHook({
+  phase: "response",
+  fn: async (className, methodName, args, request, response) => {
+    console.log(`Response status: ${response.status}`);
+  },
+});
+
+// Result hook - runs after DSON deserialization
+addHook({
+  phase: "result",
+  fn: async (className, methodName, args, request, response, data) => {
+    console.log(`Got result:`, data);
+  },
+});
+```
+
+---
+
+## Schema Introspection
+
+The RPC server automatically generates a schema describing all registered namespaces:
 
 ```ts
 import { getSchema } from "defuss-rpc/client";
 
-const schema = await getSchema(); // btw. it caches the schema for the page lifetime
-console.log(schema); // Array of class schemas with methods and properties
+const schema = await getSchema(); // cached for the page lifetime
 ```
 
+Example response:
 
-##### Alternative: Use with defuss-express
-```ts
-// server.ts - defuss-express server setup
-import { express } from "defuss-express";
-import { rpcRoute } from "defuss-rpc/server";
-import "./rpc.js"; // Import to register the RPC API
-
-const app = express({ threads: 0 });
-const port = 3000;
-
-// Parse JSON bodies
-app.use(express.json());
-
-// Add CORS headers
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-  if (req.method === "OPTIONS") {
-    res.sendStatus(200);
-  } else {
-    next();
+```json
+[
+  {
+    "kind": "class",
+    "className": "FooApi",
+    "methods": {
+      "getFoo": { "async": true, "generator": false },
+      "createFoo": { "async": true, "generator": false }
+    },
+    "properties": {}
+  },
+  {
+    "kind": "module",
+    "moduleName": "ChatApi",
+    "methods": {
+      "streamMessage": { "async": true, "generator": true },
+      "ping": { "async": true, "generator": false }
+    }
   }
-});
-
-// RPC endpoint handler
-app.post("/rpc", async (req, res) => {
-  try {
-    const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
-    const request = new Request(url, {
-      method: req.method,
-      headers: req.headers,
-      body: JSON.stringify(req.body),
-    });
-
-    const response = await rpcRoute({ request });
-    const responseText = await response.text();
-    res.status(response.status)
-       .set("content-type", response.headers.get("content-type") || "application/json")
-       .send(responseText);
-  } catch (error) {
-    console.error("RPC request error:", error);
-    res.status(500).json({
-      error: "Internal server error",
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-// RPC schema endpoint
-app.post("/rpc/schema", async (req, res) => {
-  try {
-    const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
-    const request = new Request(url, {
-      method: req.method,
-      headers: req.headers,
-      body: JSON.stringify(req.body),
-    });
-
-    const response = await rpcRoute({ request });
-    const responseText = await response.text();
-    res.status(response.status)
-       .set("content-type", response.headers.get("content-type") || "application/json")
-       .send(responseText);
-  } catch (error) {
-    console.error("RPC schema error:", error);
-    res.status(500).json({
-      error: "Internal server error",
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-app.listen(port, (listenPort) => {
-  console.log(`RPC server running on http://localhost:${listenPort}`);
-});
+]
 ```
 
-<h3 align="center">
+---
 
-🚀 How does `defuss-rpc` work?
+## DSON Transport
 
-</h3>
+All RPC payloads are serialized with [`defuss-dson`](../dson/), which extends JSON to preserve types that `JSON.stringify` drops:
 
-Inside this package, you'll find the following relevant folders and files:
+- `Date`, `Map`, `Set`
+- `Uint8Array`, `Int32Array`, `ArrayBuffer`, and all typed arrays
+- `BigInt`
+- `undefined` (inside objects)
+
+This means you can pass and return binary data (`Uint8Array`), dates, maps, and sets transparently - no manual encoding needed.
+
+---
+
+## Architecture
 
 ```text
 /
-├── src/client.ts     # Client-side RPC implementation
-├── src/server.ts     # Server-side RPC implementation  
-├── src/types.d.ts    # TypeScript type definitions
+├── src/
+│   ├── client.ts            # Proxy-based RPC client, generator consumer
+│   ├── server.ts            # rpcRoute handler, schema generation, streaming
+│   ├── express-server.ts    # ExpressRpcServer adapter with CORS & streaming
+│   ├── vite-plugin.ts       # Vite plugin: dev server, virtual module, HMR
+│   ├── astro-integration.ts # Astro integration wrapping the Vite plugin
+│   ├── astro-middleware.ts  # Injects Astro.locals.rpcEndpoint
+│   ├── rpc-state.ts         # Shared state: config, base URL, server reference
+│   └── types.d.ts           # TypeScript type definitions
 ├── tsconfig.json
 ├── LICENSE
-├── package.json
+└── package.json
 ```
 
-#### Architecture
+1. **Server** - `createRpcServer()` registers namespace entries. `rpcRoute` handles dispatch: schema requests return introspection data, RPC calls route to the class instance or module function. Generator results are streamed as NDJSON via `ReadableStream`.
 
-1. **Server-side**: 
-   - Classes are registered with `createRpcServer()`
-   - The `rpcRoute` handler processes incoming RPC calls
-   - Method calls are dynamically routed to the appropriate class instances
-   - Results are serialized using `defuss-dson`
+2. **Client** - `getRpcClient()` fetches the schema, then builds a `Proxy`-based client. Regular methods use `fetch` + DSON. Generator methods return `async function*` that reads the NDJSON stream via `getReader()` and reconstructs the yields/returns/errors.
 
-2. **Client-side**:
-   - `getRpcClient()` creates a type-safe proxy-based client
-   - Method calls are intercepted and sent as HTTP requests
-   - Responses are automatically deserialized back to JavaScript objects
-   - Full TypeScript intellisense and type checking
+3. **Express Adapter** - `ExpressRpcServer` converts Express requests to Fetch API `Request` objects, delegates to `rpcRoute`, and maps the response back. NDJSON responses are piped chunk-by-chunk via `res.write()`.
 
-3. **Type Safety**:
-   - Share your API class definitions between client and server
-   - The client provides the same interface as your server classes
-   - Compile-time type checking ensures method signatures match
+4. **Vite/Astro** - The Vite plugin starts an `ExpressRpcServer` in dev, exposes `rpcBaseUrl` via a virtual module, and watches API files for hot-reload. The Astro integration wraps this and adds middleware for `Astro.locals.rpcEndpoint`.
+
+## Examples
+
+- [`examples/with-rpc-upload`](../../examples/with-rpc-upload/) - Chunked binary file upload with `Uint8Array` via DSON
+- [`examples/with-rpc-chat-streaming`](../../examples/with-rpc-chat-streaming/) - AI-style chat streaming using async generators
 
 ## 🧞 Commands
 
@@ -289,9 +429,9 @@ All commands are run from the root of the project, from a terminal:
 
 | Command       | Action                                           |
 | :------------ | :----------------------------------------------- |
-| `npm build`   | Build a new version of the RPC package.         |
-| `npm test`    | Run the test suite.                             |
-| `npm publish` | Publish a new version of the `defuss-rpc` package. |
+| `bun run build`   | Build the RPC package.                      |
+| `bun run test`    | Run the test suite.                         |
+| `bun run publish` | Publish a new version of `defuss-rpc`.      |
 
 ---
 
