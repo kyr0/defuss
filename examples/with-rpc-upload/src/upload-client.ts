@@ -1,5 +1,6 @@
 import { getRpcClient } from "defuss-rpc/client.js";
 import type { FileUploadApi } from "./api/file-upload.js";
+import RpcApi from "./rpc.js";
 
 /** Progress state emitted during each step of a chunked file upload. */
 export interface UploadProgress {
@@ -31,9 +32,9 @@ export interface UploadProgress {
 export async function* uploadFile(
   file: File,
   rpcBaseUrl: string,
-  chunkSize = 65536,
+  chunkSize = 65536 * 16, // 1 MiB
 ): AsyncGenerator<UploadProgress> {
-  const client = await getRpcClient<{ FileUploadApi: new () => FileUploadApi }>({
+  const client = await getRpcClient<typeof RpcApi>({
     baseUrl: rpcBaseUrl,
   });
 

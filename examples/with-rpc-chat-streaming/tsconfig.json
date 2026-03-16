@@ -1,0 +1,10 @@
+{
+  "extends": "astro/tsconfigs/base",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "defuss",
+    "baseUrl": ".",
+    "types": ["node"]
+  },
+  "include": ["src", "test", "src/virtual-defuss-rpc.d.ts"]
+}
