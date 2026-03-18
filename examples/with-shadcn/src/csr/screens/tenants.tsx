@@ -26,6 +26,7 @@ import {
 import { getRpcClient } from "../lib/rpc-client";
 import type { Tenant, TenantPlan } from "../../models/tenant.js";
 import { AdminLayout } from "../layouts/admin.js";
+import { DataTableSkeleton } from "../components/data-table-skeleton";
 import { t } from "../i18n";
 
 /**
@@ -156,7 +157,7 @@ export function TenantsScreen() {
     const tenants = tenantsRef.state?.tenants || [];
     const current = editRef.state?.tenant || null;
 
-    if (loading) return <p className="text-muted-foreground">{t("tenants.loading")}</p>;
+    if (loading) return <DataTableSkeleton columns={5} rows={5} />;
 
     const query = (searchRef.state?.query || "").trim().toLowerCase();
     const filteredTenants = query
@@ -209,6 +210,11 @@ export function TenantsScreen() {
           sortField={currentSort.field}
           sortDirection={currentSort.direction}
           onSort={handleSort}
+          renderActionsHeader={() => (
+            <th>
+              <div className="flex justify-end select-none">{t("common.actions")}</div>
+            </th>
+          )}
           renderActions={(entry) => {
             const tenant = entry.row as unknown as Tenant;
             return (

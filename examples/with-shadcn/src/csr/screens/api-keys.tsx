@@ -31,6 +31,7 @@ import { getRpcClient } from "../lib/rpc-client";
 import type { ApiKey } from "../../models/api-key.js";
 import type { Tenant } from "../../models/tenant.js";
 import { AdminLayout } from "../layouts/admin.js";
+import { DataTableSkeleton } from "../components/data-table-skeleton";
 import { t } from "../i18n";
 
 /**
@@ -178,7 +179,7 @@ export function ApiKeysScreen() {
     const tenants = dataRef.state?.tenants || [];
     const fullKey = createStateRef.state?.fullKey;
 
-    if (loading) return <p className="text-muted-foreground">{t("apiKeys.loading")}</p>;
+    if (loading) return <DataTableSkeleton columns={5} rows={5} />;
 
     const query = (searchRef.state?.query || "").trim().toLowerCase();
     const filteredApiKeys = query
@@ -255,6 +256,11 @@ export function ApiKeysScreen() {
           sortField={currentSort.field}
           sortDirection={currentSort.direction}
           onSort={handleSort}
+          renderActionsHeader={() => (
+            <th>
+              <div className="flex justify-end select-none">{t("common.actions")}</div>
+            </th>
+          )}
           renderActions={(entry) => {
             const apiKey = entry.row as unknown as ApiKey;
             return <Button variant="destructive" size="sm" onClick={() => confirmRevoke(apiKey)}>{t("apiKeys.revoke")}</Button>;

@@ -13,19 +13,20 @@ export const LanguageSwitcher: FC = () => {
     if (stored) {
       select.value = stored;
     }
+  };
 
-    select.addEventListener("change", () => {
-      const lang = select.value;
-      localStorage.setItem("language", lang);
-      changeLanguage(lang);
-      Router.navigate(window.location.pathname);
-    });
+  const onChange = (e: Event) => {
+    const select = e.target as HTMLSelectElement;
+    const lang = select.value;
+    localStorage.setItem("language", lang);
+    changeLanguage(lang);
+    Router.navigate(window.location.pathname);
   };
 
   return (
-    <select ref={selectRef} class="select h-8 leading-none text-sm" aria-label={t("language.label")} onMount={onMount}>
-      <option value="en">{t("language.en")}</option>
-      <option value="de">{t("language.de")}</option>
+    <select ref={selectRef} class="select h-8 leading-none text-sm" aria-label={t("language.label")} onMount={onMount} onChange={onChange}>
+      <option value="en">🇺🇸 {t("language.en")}</option>
+      <option value="de">🇩🇪 {t("language.de")}</option>
     </select>
   );
 };

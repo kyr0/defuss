@@ -19,7 +19,8 @@
     "missing_required_fields": "Missing required fields",
     "unexpected_error": "Unexpected error",
     "please_try_again": "Please try again.",
-    "are_you_sure": "Are you sure?"
+    "are_you_sure": "Are you sure?",
+    "actions": "Actions"
   },
   "login": {
     "title": "Sign in to your account",
@@ -60,8 +61,9 @@
     "api_keys": "API Keys",
     "logout": "Logout",
     "admin_footer": "Admin",
-    "brand_name": "defuss",
-    "close_sidebar": "Close sidebar"
+    "brand_name": "defuss Admin",
+    "close_sidebar": "Close sidebar",
+    "open_sidebar": "Open sidebar"
   },
   "language": {
     "label": "Language",

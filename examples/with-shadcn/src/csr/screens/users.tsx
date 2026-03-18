@@ -27,6 +27,7 @@ import { getRpcClient } from "../lib/rpc-client";
 import type { Tenant } from "../../models/tenant.js";
 import type { User, UserRole, UserStatus } from "../../models/user.js";
 import { AdminLayout } from "../layouts/admin.js";
+import { DataTableSkeleton } from "../components/data-table-skeleton";
 import { t } from "../i18n";
 
 /**
@@ -96,7 +97,7 @@ export function UsersScreen() {
   };
 
   const saveUser = async () => {
-    const form = await $(formRef).form<{
+    const form = $(formRef).form<{
       name: string;
       email: string;
       role: UserRole;
@@ -185,7 +186,7 @@ export function UsersScreen() {
     const tenants = usersRef.state?.tenants || [];
     const current = editRef.state?.user || null;
 
-    if (loading) return <p className="text-muted-foreground">{t("users.loading")}</p>;
+    if (loading) return <DataTableSkeleton columns={6} rows={5} />;
 
     const query = (searchRef.state?.query || "").trim().toLowerCase();
     const filteredUsers = query
@@ -259,6 +260,11 @@ export function UsersScreen() {
           sortField={currentSort.field}
           sortDirection={currentSort.direction}
           onSort={handleSort}
+          renderActionsHeader={() => (
+            <th>
+              <div className="flex justify-end select-none">{t("common.actions")}</div>
+            </th>
+          )}
           renderActions={(entry) => {
             const user = entry.row as unknown as User;
             return (

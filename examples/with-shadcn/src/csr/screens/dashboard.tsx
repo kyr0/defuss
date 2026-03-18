@@ -7,6 +7,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Skeleton,
   toast,
 } from "defuss-shadcn";
 import { getRpcClient } from "../lib/rpc-client.js";
@@ -79,7 +80,41 @@ export function DashboardScreen() {
   const renderContent = () => {
     const state = stateRef.state!;
     if (state.loading) {
-      return <p className="text-muted-foreground">{t("dashboard.loading")}</p>;
+      return (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-16 mt-1" />
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader><Skeleton className="h-5 w-32" /></CardHeader>
+              <CardContent className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="border-b pb-2 last:border-0 space-y-1">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><Skeleton className="h-5 w-28" /></CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-9 w-full rounded-md" />
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      );
     }
 
     const { stats, recentActivity } = state.data;
@@ -134,7 +169,7 @@ export function DashboardScreen() {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto" onMount={() => loadDashboardData()}>
+      <div className="max-w-7xl mx-auto overflow-hidden h-screen" onMount={() => loadDashboardData()}>
         <div className="mb-8">
           <h1 className="text-3xl font-bold">{t("dashboard.title")}</h1>
           <p className="text-muted-foreground mt-2">{t("dashboard.subtitle")}</p>

@@ -87,3 +87,26 @@ body {
     color: var(--color-foreground);
   }
 }
+
+/* Admin page enter animation */
+.admin-page-enter {
+  animation: admin-fade-in 0.3s ease-out both;
+}
+
+@keyframes admin-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Admin header: translucent background + blur */
+.admin-header-blur {
+  background: oklch(from var(--color-background) l c h / 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
