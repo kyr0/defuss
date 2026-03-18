@@ -13,7 +13,7 @@ import type { DataviewState } from "defuss-dataview";
 import { DataTable } from "../../index.js";
 import type { DataTableColumn } from "../../index.js";
 
-// ── Helpers ────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------
 
 const createContainer = (): HTMLDivElement => {
   const el = document.createElement("div");
@@ -28,7 +28,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const nextTick = () => new Promise<void>((r) => queueMicrotask(() => r()));
 
-// ── Test Data ──────────────────────────────────────────────────────────
+// -- Test Data ----------------------------------------------------------
 
 type Invoice = {
   id: string;
@@ -58,7 +58,7 @@ const makeEntries = (data: Invoice[] = sampleData) => {
   return applyDataview(data, view);
 };
 
-// ── Suite ──────────────────────────────────────────────────────────────
+// -- Suite --------------------------------------------------------------
 
 let container: HTMLDivElement;
 
@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 describe("DataTable", () => {
-  // ── Rendering ──────────────────────────────────────────────────────
+  // -- Rendering ------------------------------------------------------
 
   describe("Rendering", () => {
     it("should render all rows", async () => {
@@ -162,7 +162,7 @@ describe("DataTable", () => {
     });
   });
 
-  // ── Sorting ────────────────────────────────────────────────────────
+  // -- Sorting --------------------------------------------------------
 
   describe("Sorting", () => {
     it("should call onSort when a sortable header is clicked", async () => {
@@ -256,7 +256,7 @@ describe("DataTable", () => {
     });
   });
 
-  // ── Row Clicks ─────────────────────────────────────────────────────
+  // -- Row Clicks -----------------------------------------------------
 
   describe("Row clicks", () => {
     it("should call onRowClick when a row is clicked", async () => {
@@ -324,7 +324,7 @@ describe("DataTable", () => {
     });
   });
 
-  // ── Store-driven re-render ─────────────────────────────────────────
+  // -- Store-driven re-render -----------------------------------------
 
   describe("Store-driven re-render", () => {
     it("should re-render when store changes (sort toggle)", async () => {
@@ -448,7 +448,7 @@ describe("DataTable", () => {
     });
   });
 
-  // ── Edge cases ─────────────────────────────────────────────────────
+  // -- Edge cases -----------------------------------------------------
 
   describe("Edge cases", () => {
     it("should handle numeric IDs", async () => {

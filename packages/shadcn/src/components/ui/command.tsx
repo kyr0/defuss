@@ -190,7 +190,7 @@ const initCommand = (container: HTMLDivElement) => {
   }
 
   (container as any).dataset.commandInitialized = true;
-  container.dispatchEvent(new CustomEvent("basecoat:initialized"));
+  container.dispatchEvent(new CustomEvent("defuss:initialized"));
 };
 
 export const Command: FC<CommandProps> = ({

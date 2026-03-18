@@ -14,7 +14,7 @@ export const Skeleton: FC<SkeletonProps> = ({
   return (
     <div
       ref={skeletonRef}
-      class={cn("bg-accent animate-pulse rounded-md", className)}
+      class={cn("defuss-skeleton", className)}
       {...props}
     />
   );

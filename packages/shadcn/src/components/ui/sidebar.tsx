@@ -25,24 +25,28 @@ export type SidebarMenuButtonProps = ElementProps<HTMLAnchorElement> & {
   isActive?: boolean;
 };
 
+const EVENT_SIDEBAR = "defuss:sidebar";
+const EVENT_LOCATIONCHANGE = "defuss:locationchange";
+
 // Monkey patching the history API to detect client-side navigation
 if (
   typeof window !== "undefined" &&
+  !(window.history as any).__defussPatched &&
   !(window.history as any).__basecoatPatched
 ) {
   const originalPushState = window.history.pushState;
   window.history.pushState = function (...args) {
     originalPushState.apply(this, args);
-    window.dispatchEvent(new Event("basecoat:locationchange"));
+    window.dispatchEvent(new Event(EVENT_LOCATIONCHANGE));
   };
 
   const originalReplaceState = window.history.replaceState;
   window.history.replaceState = function (...args) {
     originalReplaceState.apply(this, args);
-    window.dispatchEvent(new Event("basecoat:locationchange"));
+    window.dispatchEvent(new Event(EVENT_LOCATIONCHANGE));
   };
 
-  (window.history as any).__basecoatPatched = true;
+  (window.history as any).__defussPatched = true;
 }
 
 const initSidebar = (sidebarComponent: HTMLElement) => {
@@ -100,10 +104,11 @@ const initSidebar = (sidebarComponent: HTMLElement) => {
 
   const sidebarId = sidebarComponent.id;
 
-  document.addEventListener("basecoat:sidebar", ((event: CustomEvent) => {
-    if (event.detail?.id && event.detail.id !== sidebarId) return;
+  const onSidebarEvent = (event: Event) => {
+    const custom = event as CustomEvent;
+    if (custom.detail?.id && custom.detail.id !== sidebarId) return;
 
-    switch (event.detail?.action) {
+    switch (custom.detail?.action) {
       case "open":
         setState(true);
         break;
@@ -114,7 +119,9 @@ const initSidebar = (sidebarComponent: HTMLElement) => {
         setState(!open);
         break;
     }
-  }) as EventListener);
+  };
+
+  document.addEventListener(EVENT_SIDEBAR, onSidebarEvent as EventListener);
 
   sidebarComponent.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
@@ -141,12 +148,12 @@ const initSidebar = (sidebarComponent: HTMLElement) => {
   });
 
   window.addEventListener("popstate", updateCurrentPageLinks);
-  window.addEventListener("basecoat:locationchange", updateCurrentPageLinks);
+  window.addEventListener(EVENT_LOCATIONCHANGE, updateCurrentPageLinks);
 
   updateState();
   updateCurrentPageLinks();
   (sidebarComponent as any).dataset.sidebarInitialized = true;
-  sidebarComponent.dispatchEvent(new CustomEvent("basecoat:initialized"));
+  sidebarComponent.dispatchEvent(new CustomEvent("defuss:initialized"));
 };
 
 export const Sidebar: FC<SidebarProps> = ({
@@ -186,7 +193,7 @@ export const SidebarTrigger: FC<SidebarTriggerProps> = ({
 }) => {
   const handleClick = () => {
     document.dispatchEvent(
-      new CustomEvent("basecoat:sidebar", {
+      new CustomEvent(EVENT_SIDEBAR, {
         detail: { id: sidebarId, action },
       }),
     );

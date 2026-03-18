@@ -12,6 +12,9 @@ export type DropdownMenuSeparatorProps = ElementProps<HTMLHRElement>;
 export type DropdownMenuLabelProps = ElementProps<HTMLDivElement>;
 export type DropdownMenuHeadingProps = ElementProps<HTMLSpanElement>;
 
+const EVENT_POPOVER = "defuss:popover";
+const LEGACY_EVENT_POPOVER = "defuss:popover";
+
 /**
  * Initialize dropdown menu behavior on mount - 1:1 port of Basecoat dropdown-menu.js
  */
@@ -72,7 +75,7 @@ const initDropdownMenu = (dropdownMenuComponent: HTMLDivElement) => {
 
   const openPopover = (initialSelection: false | "first" | "last" = false) => {
     document.dispatchEvent(
-      new CustomEvent("basecoat:popover", {
+      new CustomEvent(EVENT_POPOVER, {
         detail: { source: dropdownMenuComponent },
       }),
     );
@@ -219,14 +222,22 @@ const initDropdownMenu = (dropdownMenuComponent: HTMLDivElement) => {
     }
   });
 
-  document.addEventListener("basecoat:popover", ((event: CustomEvent) => {
-    if (event.detail.source !== dropdownMenuComponent) {
+  const onPopoverEvent = (event: Event) => {
+    const custom = event as CustomEvent;
+    if (custom.detail.source !== dropdownMenuComponent) {
       closePopover(false);
     }
-  }) as EventListener);
+  };
+
+  document.addEventListener(EVENT_POPOVER, onPopoverEvent as EventListener);
+  document.addEventListener(
+    LEGACY_EVENT_POPOVER,
+    onPopoverEvent as EventListener,
+  );
 
   (dropdownMenuComponent as any).dataset.dropdownMenuInitialized = true;
-  dropdownMenuComponent.dispatchEvent(new CustomEvent("basecoat:initialized"));
+  dropdownMenuComponent.dispatchEvent(new CustomEvent("defuss:initialized"));
+  dropdownMenuComponent.dispatchEvent(new CustomEvent("defuss:initialized"));
 };
 
 export const DropdownMenu: FC<DropdownMenuProps> = ({

@@ -87,7 +87,7 @@ const initTabs = (tabsComponent: HTMLDivElement) => {
   });
 
   (tabsComponent as any).dataset.tabsInitialized = true;
-  tabsComponent.dispatchEvent(new CustomEvent("basecoat:initialized"));
+  tabsComponent.dispatchEvent(new CustomEvent("defuss:initialized"));
 };
 
 export const Tabs: FC<TabsProps> = ({

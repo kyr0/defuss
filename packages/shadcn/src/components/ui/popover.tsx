@@ -33,6 +33,9 @@ export type PopoverContentProps = ElementProps<HTMLDivElement> & {
   placement?: PopoverPlacement;
 };
 
+const EVENT_POPOVER = "defuss:popover";
+const LEGACY_EVENT_POPOVER = "defuss:popover";
+
 /**
  * Initialize popover behavior on mount - 1:1 port of Basecoat popover.js
  */
@@ -80,7 +83,7 @@ const initPopover = (popoverComponent: HTMLDivElement) => {
 
   const openPopover = () => {
     document.dispatchEvent(
-      new CustomEvent("basecoat:popover", {
+      new CustomEvent(EVENT_POPOVER, {
         detail: { source: popoverComponent },
       }),
     );
@@ -121,14 +124,22 @@ const initPopover = (popoverComponent: HTMLDivElement) => {
     }
   });
 
-  document.addEventListener("basecoat:popover", ((event: CustomEvent) => {
-    if (event.detail.source !== popoverComponent) {
+  const onPopoverEvent = (event: Event) => {
+    const custom = event as CustomEvent;
+    if (custom.detail.source !== popoverComponent) {
       closePopover(false);
     }
-  }) as EventListener);
+  };
+
+  document.addEventListener(EVENT_POPOVER, onPopoverEvent as EventListener);
+  document.addEventListener(
+    LEGACY_EVENT_POPOVER,
+    onPopoverEvent as EventListener,
+  );
 
   (popoverComponent as any).dataset.popoverInitialized = true;
-  popoverComponent.dispatchEvent(new CustomEvent("basecoat:initialized"));
+  popoverComponent.dispatchEvent(new CustomEvent("defuss:initialized"));
+  popoverComponent.dispatchEvent(new CustomEvent("defuss:initialized"));
 };
 
 export const Popover: FC<PopoverProps> = ({

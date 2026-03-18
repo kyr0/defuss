@@ -61,7 +61,7 @@ const initCombobox = (
     filter.setAttribute("aria-expanded", "false");
     popover.setAttribute("aria-hidden", "true");
     component.dataset.comboboxInitialized = "true";
-    component.dispatchEvent(new CustomEvent("basecoat:initialized"));
+    component.dispatchEvent(new CustomEvent("defuss:initialized"));
     return;
   }
 
@@ -126,7 +126,7 @@ const initCombobox = (
 
   const open = () => {
     document.dispatchEvent(
-      new CustomEvent("basecoat:popover", {
+      new CustomEvent("defuss:popover", {
         detail: { source: component },
       }),
     );
@@ -272,7 +272,7 @@ const initCombobox = (
     }
   });
 
-  document.addEventListener("basecoat:popover", ((event: CustomEvent) => {
+  document.addEventListener("defuss:popover", ((event: CustomEvent) => {
     if (event.detail.source !== component) {
       close(false);
     }
@@ -305,7 +305,7 @@ const initCombobox = (
 
   popover.setAttribute("aria-hidden", "true");
   component.dataset.comboboxInitialized = "true";
-  component.dispatchEvent(new CustomEvent("basecoat:initialized"));
+  component.dispatchEvent(new CustomEvent("defuss:initialized"));
 };
 
 export const Combobox: FC<ComboboxProps> = ({

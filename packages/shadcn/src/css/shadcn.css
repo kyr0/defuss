@@ -211,6 +211,12 @@
 /* Button */
 @layer components {
   .defuss-shadcn {
+    .defuss-skeleton {
+      @apply rounded-md;
+      background-color: var(--defuss-skeleton-bg, var(--color-accent, var(--defuss-accent, oklch(0.97 0 0))));
+      animation: defuss-skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
     .btn,
     .btn-primary,
     .btn-secondary,
@@ -1201,6 +1207,34 @@
         @apply text-muted-foreground mt-4 text-sm;
       }
     }
+
+    .data-table {
+      .data-table-sortable-header {
+        @apply cursor-pointer transition-colors hover:bg-muted/50;
+      }
+
+      tr[data-row-id].data-table-row-clickable {
+        @apply transition-colors hover:bg-muted/40;
+      }
+
+      .data-table-empty {
+        @apply text-muted-foreground;
+      }
+    }
+
+    .tree-view {
+      .tree-view-row {
+        @apply transition-colors hover:bg-accent/50;
+      }
+
+      .tree-view-row.is-selected {
+        @apply bg-accent text-accent-foreground;
+      }
+
+      .tree-view-toggle {
+        @apply transition-colors hover:bg-accent;
+      }
+    }
   }
 }
 
@@ -1295,6 +1329,86 @@
   from {
     opacity: 0;
     transform: translateY(100%);
+  }
+}
+
+@keyframes defuss-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Token utility fallbacks */
+@layer utilities {
+  .defuss-shadcn {
+    .text-primary {
+      color: var(--color-primary);
+    }
+
+    .text-primary-foreground {
+      color: var(--color-primary-foreground);
+    }
+
+    .bg-primary {
+      background-color: var(--color-primary);
+    }
+
+    .bg-primary-foreground {
+      background-color: var(--color-primary-foreground);
+    }
+
+    .border-primary {
+      border-color: var(--color-primary);
+    }
+
+    .hover\:text-primary:hover {
+      color: var(--color-primary);
+    }
+
+    .hover\:bg-primary:hover {
+      background-color: var(--color-primary);
+    }
+
+    .text-sidebar-foreground {
+      color: var(--color-sidebar-foreground);
+    }
+
+    .text-sidebar-primary-foreground {
+      color: var(--color-sidebar-primary-foreground);
+    }
+
+    .text-sidebar-accent-foreground {
+      color: var(--color-sidebar-accent-foreground);
+    }
+
+    .bg-sidebar {
+      background-color: var(--color-sidebar);
+    }
+
+    .bg-sidebar-primary {
+      background-color: var(--color-sidebar-primary);
+    }
+
+    .bg-sidebar-accent {
+      background-color: var(--color-sidebar-accent);
+    }
+
+    .border-sidebar-border {
+      border-color: var(--color-sidebar-border);
+    }
+
+    .hover\:bg-sidebar-accent:hover {
+      background-color: var(--color-sidebar-accent);
+    }
+
+    .hover\:text-sidebar-accent-foreground:hover {
+      color: var(--color-sidebar-accent-foreground);
+    }
   }
 }
 

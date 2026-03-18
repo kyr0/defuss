@@ -4,7 +4,7 @@ import { cn } from "../../utilities/cn.js";
 import { createClickGuard } from "../../utilities/click-guard.js";
 import type { DataviewEntry, DataviewJsonValue } from "defuss-dataview";
 
-// ── Types ──────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------
 
 export interface TreeViewColumn {
   field: string;
@@ -34,7 +34,7 @@ export type TreeViewProps = ElementProps<HTMLDivElement> & {
   indentSize?: number;
 };
 
-// ── Chevron Icon ───────────────────────────────────────────────────────
+// -- Chevron Icon -------------------------------------------------------
 
 const ChevronIcon: FC<{ expanded: boolean }> = ({ expanded }) => (
   <svg
@@ -54,7 +54,7 @@ const ChevronIcon: FC<{ expanded: boolean }> = ({ expanded }) => (
   </svg>
 );
 
-// ── Dot Icon (leaf indicator) ──────────────────────────────────────────
+// -- Dot Icon (leaf indicator) ------------------------------------------
 
 const LeafDot: FC = () => (
   <span class="size-4 shrink-0 flex items-center justify-center">
@@ -62,7 +62,7 @@ const LeafDot: FC = () => (
   </span>
 );
 
-// ── Component ──────────────────────────────────────────────────────────
+// -- Component ----------------------------------------------------------
 
 const allowClick = createClickGuard();
 
@@ -136,10 +136,8 @@ export const TreeView: FC<TreeViewProps> = ({
             aria-expanded={hasChildren ? String(isExpanded) : undefined}
             aria-selected={String(isSelected)}
             class={cn(
-              "tree-view-row flex items-center w-full cursor-pointer select-none",
-              "hover:bg-accent/50 transition-colors",
-              "text-sm py-1.5 px-2",
-              isSelected && "bg-accent text-accent-foreground",
+              "tree-view-row flex items-center w-full cursor-pointer select-none text-sm py-1.5 px-2",
+              isSelected && "is-selected",
             )}
           >
             {/* Tree column: indent + chevron/dot + name */}
@@ -150,7 +148,7 @@ export const TreeView: FC<TreeViewProps> = ({
               {hasChildren ? (
                 <button
                   type="button"
-                  class="tree-view-toggle inline-flex items-center justify-center shrink-0 p-0.5 rounded hover:bg-accent"
+                  class="tree-view-toggle inline-flex items-center justify-center shrink-0 p-0.5 rounded"
                   aria-label={isExpanded ? "Collapse" : "Expand"}
                 >
                   <ChevronIcon expanded={isExpanded} />

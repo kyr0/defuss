@@ -8,6 +8,8 @@ export type ToastProps = ElementProps<HTMLDivElement> & {
   duration?: number;
 };
 
+const EVENT_TOAST = "defuss:toast";
+
 const ICONS = {
   success:
     '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
@@ -143,8 +145,7 @@ const initToaster = (container: HTMLDivElement) => {
       initToast(el as HTMLElement);
     });
   (container as any).dataset.toasterInitialized = "true";
-  container.dispatchEvent(new CustomEvent("basecoat:initialized"));
-};
+  container.dispatchEvent(new CustomEvent("defuss:initialized"));};
 
 export interface ToastConfig {
   category?: "success" | "error" | "info" | "warning";
@@ -216,10 +217,13 @@ export const toast = (config: ToastConfig) => {
 
 // Listen for global toast events
 if (typeof document !== "undefined") {
-  document.addEventListener("basecoat:toast", ((event: CustomEvent) => {
-    const config = event.detail?.config || {};
+  const onToastEvent = (event: Event) => {
+    const custom = event as CustomEvent;
+    const config = custom.detail?.config || {};
     toast(config);
-  }) as EventListener);
+  };
+
+  document.addEventListener(EVENT_TOAST, onToastEvent as EventListener);
 }
 
 export const Toaster: FC<ToasterProps> = ({

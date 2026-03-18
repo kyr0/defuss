@@ -12,7 +12,7 @@ import type { DataviewState, DataviewJsonValue } from "defuss-dataview";
 import { TreeView } from "../../index.js";
 import type { TreeViewColumn } from "../../index.js";
 
-// ── Helpers ────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------
 
 const createContainer = (): HTMLDivElement => {
   const el = document.createElement("div");
@@ -27,7 +27,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const nextTick = () => new Promise<void>((r) => queueMicrotask(() => r()));
 
-// ── Test Data ──────────────────────────────────────────────────────────
+// -- Test Data ----------------------------------------------------------
 
 type FileNode = {
   id: string;
@@ -55,7 +55,7 @@ const makeView = (expandedIds: (string | number)[] = []): DataviewState =>
     },
   });
 
-// ── Suite ──────────────────────────────────────────────────────────────
+// -- Suite --------------------------------------------------------------
 
 let container: HTMLDivElement;
 
@@ -68,7 +68,7 @@ afterEach(() => {
 });
 
 describe("TreeView", () => {
-  // ── Rendering ──────────────────────────────────────────────────────
+  // -- Rendering ------------------------------------------------------
 
   describe("Rendering", () => {
     it("should render top-level nodes when nothing is expanded", async () => {
@@ -164,7 +164,7 @@ describe("TreeView", () => {
     });
   });
 
-  // ── Selection ──────────────────────────────────────────────────────
+  // -- Selection ------------------------------------------------------
 
   describe("Selection (click on row)", () => {
     it("should call onNodeSelect when a row is clicked", async () => {
@@ -235,7 +235,7 @@ describe("TreeView", () => {
     });
   });
 
-  // ── Expand/Collapse ────────────────────────────────────────────────
+  // -- Expand/Collapse ------------------------------------------------
 
   describe("Expand / Collapse (click on chevron)", () => {
     it("should call onNodeToggle when the chevron button is clicked", async () => {
@@ -309,7 +309,7 @@ describe("TreeView", () => {
     });
   });
 
-  // ── Store-driven re-render ─────────────────────────────────────────
+  // -- Store-driven re-render -----------------------------------------
 
   describe("Store-driven re-render", () => {
     it("should expand/collapse when store updates and tree re-renders", async () => {
@@ -431,7 +431,7 @@ describe("TreeView", () => {
     });
   });
 
-  // ── Numeric IDs ────────────────────────────────────────────────────
+  // -- Numeric IDs ----------------------------------------------------
 
   describe("Numeric IDs", () => {
     const numData = [
@@ -466,7 +466,7 @@ describe("TreeView", () => {
     });
   });
 
-  // ── Indentation ────────────────────────────────────────────────────
+  // -- Indentation ----------------------------------------------------
 
   describe("Indentation", () => {
     it("should indent children with paddingLeft based on depth", async () => {

@@ -4,7 +4,7 @@ import { cn } from "../../utilities/cn.js";
 import { createClickGuard } from "../../utilities/click-guard.js";
 import type { DataviewEntry, DataviewJsonValue } from "defuss-dataview";
 
-// ── Types ──────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------
 
 export interface DataTableColumn {
   /** Field key in each data row */
@@ -40,13 +40,15 @@ export type DataTableProps = ElementProps<HTMLDivElement> & {
   onRowClick?: (entry: DataviewEntry) => void;
   /** Optional actions column renderer (last column) */
   renderActions?: (entry: DataviewEntry) => JSX.Element;
+  /** Optional custom header for the actions column (overrides default "Actions" label) */
+  renderActionsHeader?: () => JSX.Element;
   /** Field used as the row key (default: "id") */
   idField?: string;
   /** Message shown when entries is empty */
   emptyMessage?: string;
 };
 
-// ── Component ──────────────────────────────────────────────────────────
+// -- Component ----------------------------------------------------------
 
 const allowClick = createClickGuard();
 
@@ -59,6 +61,7 @@ export const DataTable: FC<DataTableProps> = ({
   onSort,
   onRowClick,
   renderActions,
+  renderActionsHeader,
   idField = "id",
   emptyMessage = "No results found.",
   ref = createRef() as Ref<HTMLDivElement>,
@@ -109,8 +112,7 @@ export const DataTable: FC<DataTableProps> = ({
                   data-field={col.field}
                   data-sortable={col.sortable ? "" : undefined}
                   class={cn(
-                    col.sortable &&
-                      "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800",
+                    col.sortable && "data-table-sortable-header",
                     col.className,
                   )}
                 >
@@ -129,7 +131,13 @@ export const DataTable: FC<DataTableProps> = ({
                 </th>
               );
             })}
-            {renderActions && <th class="text-right select-none">Actions</th>}
+            {renderActions && (
+              renderActionsHeader ? renderActionsHeader() : (
+                <th>
+                  <div class="flex justify-end select-none">Actions</div>
+                </th>
+              )
+            )}
           </tr>
         </thead>
         <tbody>
@@ -140,7 +148,7 @@ export const DataTable: FC<DataTableProps> = ({
                 <tr
                   key={rowKey}
                   data-row-id={rowKey}
-                  class={onRowClick ? "cursor-pointer" : undefined}
+                  class={onRowClick ? "data-table-row-clickable" : undefined}
                 >
                   {columns.map((col) => {
                     const value = entry.row[col.field];
@@ -168,7 +176,7 @@ export const DataTable: FC<DataTableProps> = ({
             <tr>
               <td
                 colSpan={columns.length + (renderActions ? 1 : 0)}
-                class="text-center py-8 text-gray-500"
+                class="text-center py-8 data-table-empty"
               >
                 {emptyMessage}
               </td>
