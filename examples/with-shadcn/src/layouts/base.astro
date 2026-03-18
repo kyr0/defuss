@@ -1,0 +1,121 @@
+---
+import "./base.css";
+
+interface Props {
+  title: string;
+}
+---
+
+<!doctype html>
+<html class="defuss-shadcn" lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/webp" href="/favicon.webp" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="keywords"
+      content="Astro, TypeScript, defuss, web development, modern web, frontend"
+    />
+    <meta
+      name="description"
+      content="Admin UI built with Astro, defuss, TypeScript, and defuss-shadcn."
+    />
+    <title>{Astro.props.title}</title>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <link
+      rel="preload"
+      href="/fonts/geist-font/fonts/GeistVariableVF.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/geist-font/fonts/GeistMonoVariableVF.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/fonts/geist-font/style.css" />
+
+    <script is:inline>
+      (() => {
+        const applyThemeVariant = (themeVariant) => {
+          document.documentElement.classList.forEach((c) => {
+            if (c.startsWith("theme-")) {
+              document.documentElement.classList.remove(c);
+            }
+          });
+
+          if (themeVariant) {
+            document.documentElement.classList.add(`theme-${themeVariant}`);
+            try {
+              localStorage.setItem("themeVariant", themeVariant);
+            } catch (_error) {}
+          } else {
+            try {
+              localStorage.removeItem("themeVariant");
+            } catch (_error) {}
+          }
+        };
+
+        try {
+          const stored = localStorage.getItem("themeMode");
+          if (
+            stored
+              ? stored === "dark"
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ) {
+            document.documentElement.classList.add("dark");
+          }
+
+          const storedVariant = localStorage.getItem("themeVariant");
+          if (storedVariant) {
+            applyThemeVariant(storedVariant);
+          }
+        } catch (_error) {}
+
+        const apply = (dark) => {
+          document.documentElement.classList.toggle("dark", dark);
+          try {
+            localStorage.setItem("themeMode", dark ? "dark" : "light");
+          } catch (_error) {}
+        };
+
+        document.addEventListener("defuss:theme", (event) => {
+          const custom = event;
+          const mode = custom?.detail?.mode;
+          apply(
+            mode === "dark"
+              ? true
+              : mode === "light"
+                ? false
+                : !document.documentElement.classList.contains("dark"),
+          );
+        });
+
+        document.addEventListener("basecoat:theme", (event) => {
+          const custom = event;
+          const mode = custom?.detail?.mode;
+          const variant = custom?.detail?.themeVariant;
+          if (typeof variant === "string") {
+            applyThemeVariant(variant);
+          }
+          apply(
+            mode === "dark"
+              ? true
+              : mode === "light"
+                ? false
+                : !document.documentElement.classList.contains("dark"),
+          );
+        });
+      })();
+    </script>
+  </head>
+
+  <body class="defuss-shadcn font-geist-sans antialiased bg-background text-foreground">
+    <slot />
+  </body>
+</html>

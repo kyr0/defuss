@@ -1,0 +1,27 @@
+---
+import BaseLayout from "../layouts/base.astro";
+import { App } from "../csr/app";
+
+export const prerender = false;
+const rpcEndpoint = Astro.locals.rpcEndpoint;
+Astro.locals.APP_PROPS = null;
+---
+
+<script
+  id="app-props"
+  data-props={JSON.stringify(Astro.locals.APP_PROPS)}
+  is:inline
+>
+  const appData = document
+    .getElementById("app-props")
+    ?.getAttribute("data-props");
+  window.$APP_PROPS = appData ? JSON.parse(appData) : null;
+</script>
+
+<script define:vars={{ rpcEndpoint }}>
+  window.__RPC_ENDPOINT__ = rpcEndpoint;
+</script>
+
+<BaseLayout title="Astro + defuss Admin UI Demo">
+  <App client:only />
+</BaseLayout>

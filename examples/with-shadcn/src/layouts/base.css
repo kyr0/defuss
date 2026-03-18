@@ -1,0 +1,89 @@
+@import "tailwindcss";
+@import "defuss-shadcn/css";
+@import "./theme.css";
+@import "./themes/claude.css";
+@import "./themes/doom64.css";
+@import "./themes/supabase.css";
+
+html,
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pre-auth panel: floating accent orbs */
+.pre-auth-orb {
+  position: absolute;
+  border-radius: 9999px;
+  background: white;
+  opacity: 0.06;
+  filter: blur(80px);
+  will-change: transform, opacity;
+}
+
+.pre-auth-orb-1 {
+  width: 400px;
+  height: 400px;
+  top: -10%;
+  right: -10%;
+  animation: orb-drift-1 12s ease-in-out infinite alternate;
+}
+
+.pre-auth-orb-2 {
+  width: 300px;
+  height: 300px;
+  bottom: -5%;
+  left: -5%;
+  animation: orb-drift-2 10s ease-in-out infinite alternate;
+}
+
+.pre-auth-orb-3 {
+  width: 200px;
+  height: 200px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: orb-drift-3 14s ease-in-out infinite alternate;
+}
+
+@keyframes orb-drift-1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.06; }
+  100% { transform: translate(-40px, 60px) scale(1.15); opacity: 0.1; }
+}
+
+@keyframes orb-drift-2 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.05; }
+  100% { transform: translate(50px, -40px) scale(1.1); opacity: 0.08; }
+}
+
+@keyframes orb-drift-3 {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.04; }
+  100% { transform: translate(-40%, -60%) scale(1.2); opacity: 0.07; }
+}
+
+/* Pre-auth content fade-in */
+.pre-auth-content {
+  animation: pre-auth-fade-in 0.8s ease-out both;
+}
+
+@keyframes pre-auth-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.defuss-shadcn {
+  .btn-outline,
+  .btn-sm-outline,
+  .btn-lg-outline,
+  .btn-icon-outline,
+  .btn-sm-icon-outline,
+  .btn-lg-icon-outline {
+    color: var(--color-foreground);
+  }
+}

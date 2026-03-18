@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "defuss",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "resolveJsonModule": true,
+    "types": ["astro/client"],
+    "strict": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@components/*": ["src/csr/components/*"],
+      "@core/*": ["src/lib/core/*"],
+      "@model/*": ["src/models/*"],
+      "@layouts/*": ["src/layouts/*"]
+    }
+  },
+  "include": ["src", "i18n", "test", "astro.config.ts", "vitest.config.ts", ".astro/types.d.ts"]
+}
