@@ -18,12 +18,16 @@
         try { localStorage.setItem('themeMode', dark ? 'dark' : 'light'); } catch (_) { }
       };
 
-      document.addEventListener('basecoat:theme', (event) => {
+      const onThemeEvent = (event) => {
         const mode = event.detail?.mode;
         apply(mode === 'dark' ? true
           : mode === 'light' ? false
             : !document.documentElement.classList.contains('dark'));
-      });
+      };
+
+      document.addEventListener('defuss:theme', onThemeEvent);
+      // Backward compatibility while migrating event names
+      document.addEventListener('defuss:theme', onThemeEvent);
     })();
   </script>
   <!-- Theme variant -->

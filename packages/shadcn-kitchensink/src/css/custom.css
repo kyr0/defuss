@@ -30,4 +30,23 @@
     color: var(--color-muted-foreground);
     display: flex;
   }
+
+  & .on-this-page .on-this-page-link {
+    display: block;
+    text-decoration: none;
+    color: var(--color-muted-foreground);
+    transition: color var(--default-transition-duration)
+      var(--default-transition-timing-function);
+  }
+
+  & .on-this-page .on-this-page-link:hover {
+    color: var(--color-primary);
+  }
+
+  /* Keep sidebar "New" badges bound to sidebar theme tokens. */
+  & [data-new-link]::after {
+    background-color: var(--color-sidebar-primary);
+    color: var(--color-sidebar-primary-foreground);
+  }
+
 }

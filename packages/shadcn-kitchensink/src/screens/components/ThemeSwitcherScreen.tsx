@@ -9,9 +9,9 @@ export const ThemeSwitcherScreen: FC = () => {
         A component that allows the user to switch between light and dark mode.
       </p>
       <p class="text-sm text-muted-foreground">
-        Note: There is no dedicated Theme Switcher component in Basecoat.
+        Note: There is no dedicated Theme Switcher component.
         Instead, use the provided JavaScript pattern with the{" "}
-        <code>basecoat:theme</code> custom event.
+        <code>defuss:theme</code> custom event.
       </p>
 
       <h2
@@ -42,7 +42,7 @@ export const ThemeSwitcherScreen: FC = () => {
       try { localStorage.setItem('themeMode', dark ? 'dark' : 'light'); } catch (_) {}
     };
 
-    document.addEventListener('basecoat:theme', (event) => {
+    document.addEventListener('defuss:theme', (event) => {
       const mode = event.detail?.mode;
       apply(mode === 'dark' ? true
             : mode === 'light' ? false
@@ -65,7 +65,7 @@ export const ThemeSwitcherScreen: FC = () => {
   aria-label="Toggle dark mode"
   data-tooltip="Toggle dark mode"
   data-side="bottom"
-  onclick="document.dispatchEvent(new CustomEvent('basecoat:theme'))"
+  onclick="document.dispatchEvent(new CustomEvent('defuss:theme'))"
   class="btn-icon-outline size-8"
 >
   <span class="hidden dark:block">
@@ -93,7 +93,7 @@ export const ThemeSwitcherScreen: FC = () => {
           type="button"
           aria-label="Toggle dark mode"
           onClick={() =>
-            document.dispatchEvent(new CustomEvent("basecoat:theme"))
+            document.dispatchEvent(new CustomEvent("defuss:theme"))
           }
           class="btn-icon-outline size-8"
         >
@@ -146,9 +146,9 @@ export const ThemeSwitcherScreen: FC = () => {
       </h2>
       <CodePreview
         code={`<div class="flex gap-2">
-  <button type="button" class="btn" onclick="document.dispatchEvent(new CustomEvent('basecoat:theme', { detail: { mode: 'light' } }))">Light</button>
-  <button type="button" class="btn" onclick="document.dispatchEvent(new CustomEvent('basecoat:theme', { detail: { mode: 'dark' } }))">Dark</button>
-  <button type="button" class="btn" onclick="document.dispatchEvent(new CustomEvent('basecoat:theme'))">Toggle</button>
+  <button type="button" class="btn" onclick="document.dispatchEvent(new CustomEvent('defuss:theme', { detail: { mode: 'light' } }))">Light</button>
+  <button type="button" class="btn" onclick="document.dispatchEvent(new CustomEvent('defuss:theme', { detail: { mode: 'dark' } }))">Dark</button>
+  <button type="button" class="btn" onclick="document.dispatchEvent(new CustomEvent('defuss:theme'))">Toggle</button>
 </div>`}
         language="tsx"
       >
@@ -158,7 +158,7 @@ export const ThemeSwitcherScreen: FC = () => {
             class="btn"
             onClick={() =>
               document.dispatchEvent(
-                new CustomEvent("basecoat:theme", {
+                new CustomEvent("defuss:theme", {
                   detail: { mode: "light" },
                 }),
               )
@@ -171,7 +171,7 @@ export const ThemeSwitcherScreen: FC = () => {
             class="btn"
             onClick={() =>
               document.dispatchEvent(
-                new CustomEvent("basecoat:theme", { detail: { mode: "dark" } }),
+                new CustomEvent("defuss:theme", { detail: { mode: "dark" } }),
               )
             }
           >
@@ -181,7 +181,7 @@ export const ThemeSwitcherScreen: FC = () => {
             type="button"
             class="btn"
             onClick={() =>
-              document.dispatchEvent(new CustomEvent("basecoat:theme"))
+              document.dispatchEvent(new CustomEvent("defuss:theme"))
             }
           >
             Toggle

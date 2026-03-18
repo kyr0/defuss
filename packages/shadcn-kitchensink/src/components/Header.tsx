@@ -34,16 +34,16 @@ export const Header: FC = () => {
   };
 
   const toggleSidebar = () => {
-    document.dispatchEvent(new CustomEvent("basecoat:sidebar"));
+    document.dispatchEvent(new CustomEvent("defuss:sidebar"));
   };
 
   const toggleTheme = () => {
-    document.dispatchEvent(new CustomEvent("basecoat:theme"));
+    document.dispatchEvent(new CustomEvent("defuss:theme"));
   };
 
   return (
     <header
-      class="bg-background sticky inset-x-0 top-0 isolate flex shrink-0 items-center gap-2 border-b z-10"
+      class="bg-background sticky inset-x-0 top-0 isolate flex shrink-0 items-center gap-2 border-b z-10 bg-opacity-90 backdrop-blur"
       onMount={onMount}
     >
       <div class="flex h-14 w-full items-center gap-2 px-4">

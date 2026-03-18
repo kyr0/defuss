@@ -98,6 +98,7 @@ const buildList = (items: TocItem[]): HTMLUListElement => {
     const a = document.createElement("a");
     a.href = `#${item.id}`;
     a.textContent = item.label;
+    a.className = "on-this-page-link";
     li.appendChild(a);
 
     if (item.children && item.children.length > 0) {
@@ -168,7 +169,7 @@ export const OnThisPage: FC = () => {
     >
       <nav
         ref={navRef}
-        class="hidden sticky top-22 space-y-2 [&_ul]:m-0 [&_ul]:list-none [&_ul_ul]:pl-4 [&_li]:mt-0 [&_li]:pt-2 [&_a]:inline-block [&_a]:no-underline [&_a]:transition-colors [&_a]:hover:text-foreground [&_a]:text-muted-foreground"
+        class="on-this-page hidden sticky top-22 space-y-2 [&_ul]:m-0 [&_ul]:list-none [&_ul_ul]:pl-4 [&_li]:mt-0 [&_li]:pt-2"
       >
         <h4 class="font-medium">On This Page</h4>
         <div ref={listHostRef} />

@@ -6,7 +6,7 @@ import type { TreeViewColumn } from "defuss-shadcn";
 import { createDataview, applyDataview, toggleExpanded } from "defuss-dataview";
 import type { DataviewState, DataviewJsonValue } from "defuss-dataview";
 
-// ── File Explorer Demo Data ────────────────────────────────────────────
+// -- File Explorer Demo Data --------------------------------------------
 
 type FileNode = {
   id: string;
@@ -154,7 +154,7 @@ const fileColumns: TreeViewColumn[] = [
   { field: "modified", label: "Modified", className: "w-28 hidden sm:block" },
 ];
 
-// ── File Explorer Store ────────────────────────────────────────────────
+// -- File Explorer Store ------------------------------------------------
 
 interface FileExplorerState {
   view: DataviewState;
@@ -260,7 +260,7 @@ const FileExplorer: FC = () => {
   );
 };
 
-// ── Simple Tree Demo Data ──────────────────────────────────────────────
+// -- Simple Tree Demo Data ----------------------------------------------
 
 type OrgNode = {
   id: number;
@@ -284,7 +284,7 @@ const orgData: OrgNode[] = [
   { id: 12, parentId: 3, name: "Hiro Tanaka", role: "Junior Engineer" },
 ];
 
-// ── Simple Tree Store ──────────────────────────────────────────────────
+// -- Simple Tree Store --------------------------------------------------
 
 interface OrgTreeState {
   view: DataviewState;
@@ -345,10 +345,10 @@ const OrgTree: FC = () => {
   );
 };
 
-// ── Utility (imported from shadcn but local for the demo) ──────────────
+// -- Utility (imported from shadcn but local for the demo) --------------
 import { cn } from "defuss-shadcn";
 
-// ── Screen ─────────────────────────────────────────────────────────────
+// -- Screen -------------------------------------------------------------
 
 export const TreeViewScreen: FC = () => {
   return (
