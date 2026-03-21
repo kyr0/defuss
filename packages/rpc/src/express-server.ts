@@ -1,4 +1,16 @@
-import { express, type ExpressRequest, type ExpressResponse, type ExpressNextFunction } from "defuss-express";
+import {
+  createGzip,
+  gunzipSync,
+  gzipSync,
+  inflateSync,
+  constants as zlibConstants,
+} from "node:zlib";
+import {
+  express,
+  type ExpressRequest,
+  type ExpressResponse,
+  type ExpressNextFunction,
+} from "defuss-express";
 import { rpcRoute } from "./server.js";
 
 export interface ExpressRpcServerOptions {
@@ -13,6 +25,23 @@ export interface ExpressRpcServerOptions {
    * - Defaults to `"*"` (permissive, suitable for development and internal services).
    */
   corsOrigin?: string | string[];
+  /**
+   * Enable transport-level gzip compression for RPC responses.
+   *
+   * - `true` (default): compress with `Z_BEST_SPEED` (level 1) — optimised for
+   *   latency-sensitive streaming (e.g. real-time PCM audio over NDJSON).
+   * - `false`: disable compression entirely.
+   * - `{ level: 1–9 }`: enable with a custom zlib compression level.
+   *
+   * Streaming (NDJSON) responses use `Z_SYNC_FLUSH` so each frame is immediately
+   * decompressible by the client.  Browsers transparently decompress
+   * `Content-Encoding: gzip` in `fetch()`, so no client-side changes are needed.
+   *
+   * When enabled the server also accepts gzip / deflate-compressed **request**
+   * bodies (`Content-Encoding: gzip | deflate`) — useful for uploading large
+   * binary payloads such as PCM audio chunks.
+   */
+  compression?: boolean | { level?: number };
 }
 
 /**
@@ -35,6 +64,7 @@ export class ExpressRpcServer {
   private basePath: string;
   private jsonSizeLimit: string;
   private corsOrigin: string;
+  private compression: { enabled: boolean; level: number };
 
   constructor(options: ExpressRpcServerOptions = {}) {
     this.app = express({ threads: 0 });
@@ -46,39 +76,106 @@ export class ExpressRpcServer {
       ? options.corsOrigin.join(",")
       : (options.corsOrigin ?? "*");
 
+    // Resolve compression config: true → level 1, false → disabled, { level } → custom.
+    const comp = options.compression ?? true;
+    if (comp === false) {
+      this.compression = { enabled: false, level: 0 };
+    } else if (comp === true) {
+      this.compression = { enabled: true, level: 1 }; // Z_BEST_SPEED
+    } else {
+      this.compression = { enabled: true, level: comp.level ?? 1 };
+    }
+
     this.setupMiddleware();
     this.setupRoutes();
   }
 
   private setupMiddleware() {
+    // Phase 2: Decompress gzip / deflate request bodies before the text parser runs.
+    // When a client sends `Content-Encoding: gzip` (e.g. compressed PCM upload),
+    // we transparently inflate the body so `express.text()` receives plain text.
+    if (this.compression.enabled) {
+      this.app.use(
+        (
+          req: ExpressRequest,
+          _res: ExpressResponse,
+          next: ExpressNextFunction,
+        ) => {
+          const encoding = (req.headers as Record<string, string>)[
+            "content-encoding"
+          ];
+          if (!encoding) return next();
+
+          try {
+            const rawBody =
+              typeof req.body === "string"
+                ? Buffer.from(req.body, "latin1")
+                : req.body instanceof Buffer || req.body instanceof Uint8Array
+                  ? Buffer.from(req.body)
+                  : null;
+
+            if (rawBody && rawBody.length > 0) {
+              const decompressed = encoding.includes("gzip")
+                ? gunzipSync(rawBody)
+                : encoding.includes("deflate")
+                  ? inflateSync(rawBody)
+                  : null;
+
+              if (decompressed) {
+                (req as any).body = decompressed.toString("utf-8");
+                delete (req.headers as Record<string, string>)[
+                  "content-encoding"
+                ];
+              }
+            }
+          } catch (_err) {
+            // If decompression fails, fall through — the text parser will handle it
+            // (likely producing a parse error, which is the correct behaviour).
+          }
+          next();
+        },
+      );
+    }
+
     // Text body parser keeps the raw DSON string intact so typed arrays survive deserialization.
-    this.app.use(express.text({ limit: this.jsonSizeLimit, type: "application/json" }));
+    this.app.use(
+      express.text({ limit: this.jsonSizeLimit, type: "application/json" }),
+    );
 
     // CORS — applied to every response, including pre-flight OPTIONS requests.
-    this.app.use((req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction) => {
-      res.header("Access-Control-Allow-Origin", this.corsOrigin);
-      res.header(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS",
-      );
-      res.header(
-        "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-      );
+    this.app.use(
+      (
+        req: ExpressRequest,
+        res: ExpressResponse,
+        next: ExpressNextFunction,
+      ) => {
+        res.header("Access-Control-Allow-Origin", this.corsOrigin);
+        res.header(
+          "Access-Control-Allow-Methods",
+          "GET, POST, PUT, DELETE, OPTIONS",
+        );
+        res.header(
+          "Access-Control-Allow-Headers",
+          "Origin, X-Requested-With, Content-Type, Accept, Authorization, Content-Encoding",
+        );
 
-      if (req.method === "OPTIONS") {
-        res.sendStatus(200);
-      } else {
-        next();
-      }
-    });
+        if (req.method === "OPTIONS") {
+          res.sendStatus(200);
+        } else {
+          next();
+        }
+      },
+    );
   }
 
   private setupRoutes() {
     // Health check endpoint
-    this.app.all(`${this.basePath}/health`, (_req: ExpressRequest, res: ExpressResponse) => {
-      res.json({ status: "ok", timestamp: new Date().toISOString() });
-    });
+    this.app.all(
+      `${this.basePath}/health`,
+      (_req: ExpressRequest, res: ExpressResponse) => {
+        res.json({ status: "ok", timestamp: new Date().toISOString() });
+      },
+    );
 
     // RPC endpoint - forward to the existing rpcRoute handler
     this.app.all(`${this.basePath}/rpc`, this.handleRpcRequest.bind(this));
@@ -106,7 +203,10 @@ export class ExpressRpcServer {
         method: req.method,
         headers: req.headers as Record<string, string>,
         body:
-          req.method !== "GET" && req.method !== "HEAD" && typeof req.body === "string" && req.body
+          req.method !== "GET" &&
+          req.method !== "HEAD" &&
+          typeof req.body === "string" &&
+          req.body
             ? req.body
             : undefined,
       });
@@ -117,23 +217,81 @@ export class ExpressRpcServer {
       const contentType =
         response.headers.get("content-type") || "application/json";
 
+      const acceptEncoding =
+        (req.headers as Record<string, string>)["accept-encoding"] || "";
+      const useGzip =
+        this.compression.enabled && acceptEncoding.includes("gzip");
+
       if (contentType === "application/x-ndjson" && response.body) {
-        // Stream NDJSON responses chunk-by-chunk instead of buffering
+        // Stream NDJSON responses chunk-by-chunk instead of buffering.
+        // When gzip is negotiated, pipe through a zlib Gzip transform with
+        // Z_SYNC_FLUSH so each NDJSON frame is immediately decompressible
+        // (critical for real-time audio streaming latency).
         res.status(response.status).set("content-type", contentType);
-        const reader = response.body.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          res.write(value);
+
+        if (useGzip) {
+          res.set("content-encoding", "gzip");
+          res.set("vary", "Accept-Encoding");
+
+          const gzip = createGzip({
+            level: this.compression.level,
+            flush: zlibConstants.Z_SYNC_FLUSH,
+          });
+
+          gzip.on("data", (compressed: Buffer) => {
+            res.write(compressed);
+          });
+
+          const reader = response.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            // Write the raw NDJSON bytes into the gzip transform.
+            // Z_SYNC_FLUSH ensures each write produces output immediately.
+            await new Promise<void>((resolve, reject) => {
+              gzip.write(value, (err) => (err ? reject(err) : resolve()));
+            });
+          }
+
+          // Finalise the gzip stream and wait for all compressed output
+          // (incl. the gzip trailer) to be emitted via the 'data' handler
+          // before closing the HTTP response.
+          await new Promise<void>((resolve, reject) => {
+            gzip.on("end", () => resolve());
+            gzip.on("error", reject);
+            gzip.end();
+          });
+          res.end();
+        } else {
+          const reader = response.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            res.write(value);
+          }
+          res.end();
         }
-        res.end();
       } else {
-        // Buffer and send the full response for non-streaming content
+        // Buffer and send the full response for non-streaming content.
         const responseText = await response.text();
-        res
-          .status(response.status)
-          .set("content-type", contentType)
-          .send(responseText);
+
+        if (useGzip && responseText.length > 1024) {
+          // Compress larger buffered responses (>1 KB) to save bandwidth.
+          const compressed = gzipSync(responseText, {
+            level: this.compression.level,
+          });
+          res
+            .status(response.status)
+            .set("content-type", contentType)
+            .set("content-encoding", "gzip")
+            .set("vary", "Accept-Encoding");
+          res.end(compressed);
+        } else {
+          res
+            .status(response.status)
+            .set("content-type", contentType)
+            .send(responseText);
+        }
       }
     } catch (error) {
       console.error("RPC request error:", error);

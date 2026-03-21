@@ -12,7 +12,9 @@ import type {
   ServerHook,
 } from "./types.d.js";
 
+// re-export for type / code safety
 export * from "./types.d.js";
+export type * from "./rpc-state.js";
 
 /** Base path of the RPC dispatch endpoint. */
 export const RPC_PATH = "/rpc" as const;
@@ -36,8 +38,11 @@ function isRpcClass(entry: RpcApiEntry): entry is RpcApiClass {
  * Returns true when `value` exposes `Symbol.asyncIterator` or `Symbol.iterator`
  * (excluding plain strings and arrays, which are iterable but not generators).
  */
-function isGeneratorResult(value: unknown): value is AsyncIterable<unknown> | Iterable<unknown> {
-  if (value == null || typeof value === "string" || Array.isArray(value)) return false;
+function isGeneratorResult(
+  value: unknown,
+): value is AsyncIterable<unknown> | Iterable<unknown> {
+  if (value == null || typeof value === "string" || Array.isArray(value))
+    return false;
   return (
     typeof (value as any)[Symbol.asyncIterator] === "function" ||
     typeof (value as any)[Symbol.iterator] === "function"
@@ -50,8 +55,10 @@ function isGeneratorResult(value: unknown): value is AsyncIterable<unknown> | It
 function describeFn(fn: Function): RpcMethodDescriptor {
   const ctorName = fn.constructor?.name ?? "";
   return {
-    async: ctorName === "AsyncFunction" || ctorName === "AsyncGeneratorFunction",
-    generator: ctorName === "GeneratorFunction" || ctorName === "AsyncGeneratorFunction",
+    async:
+      ctorName === "AsyncFunction" || ctorName === "AsyncGeneratorFunction",
+    generator:
+      ctorName === "GeneratorFunction" || ctorName === "AsyncGeneratorFunction",
   };
 }
 
@@ -61,7 +68,9 @@ function describeFn(fn: Function): RpcMethodDescriptor {
  *
  * Uses manual `.next()` loop (not `for await...of`) to capture the generator's return value.
  */
-function streamGeneratorResponse(iter: AsyncIterator<unknown> | Iterator<unknown>): Response {
+function streamGeneratorResponse(
+  iter: AsyncIterator<unknown> | Iterator<unknown>,
+): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async pull(controller) {
@@ -69,7 +78,10 @@ function streamGeneratorResponse(iter: AsyncIterator<unknown> | Iterator<unknown
         const { done, value } = await iter.next();
         if (done) {
           // Terminal return frame — value is the generator's return value
-          const frame: DsonStreamFrame = { type: "return", value: value ?? null };
+          const frame: DsonStreamFrame = {
+            type: "return",
+            value: value ?? null,
+          };
           controller.enqueue(encoder.encode(DSON.stringify(frame) + "\n"));
           controller.close();
         } else {
@@ -216,7 +228,12 @@ export const rpcRoute: APIRoute = async ({ request }) => {
     const allowed = await hook.fn(className, methodName, args, request);
     // Only an explicit `false` return blocks the call; `void`/`undefined` implicitly allows it.
     if (allowed === false) {
-      console.error("[defuss-rpc] Forbidden by hook", { className, methodName, args, request });
+      console.error("[defuss-rpc] Forbidden by hook", {
+        className,
+        methodName,
+        args,
+        request,
+      });
       return new Response(JSON.stringify({ error: "Forbidden by hook" }), {
         status: 403,
         headers: { "Content-Type": "application/json" },
@@ -226,7 +243,12 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 
   const entry = rpcApiEntries.get(className);
   if (!entry) {
-    console.error("[defuss-rpc] Namespace not found", { className, methodName, args, request });
+    console.error("[defuss-rpc] Namespace not found", {
+      className,
+      methodName,
+      args,
+      request,
+    });
     return new Response(
       JSON.stringify({ error: `Namespace ${className} not found` }),
       { status: 404, headers: { "Content-Type": "application/json" } },
@@ -240,7 +262,12 @@ export const rpcRoute: APIRoute = async ({ request }) => {
     const instance = new entry() as Record<string, unknown>;
     const method = instance[methodName];
     if (typeof method !== "function") {
-      console.error("[defuss-rpc] Method not found", { className, methodName, args, request });
+      console.error("[defuss-rpc] Method not found", {
+        className,
+        methodName,
+        args,
+        request,
+      });
       return new Response(
         JSON.stringify({
           error: `Method ${methodName} not found on class ${className}`,
@@ -249,14 +276,23 @@ export const rpcRoute: APIRoute = async ({ request }) => {
       );
     }
     try {
-      result = (method as (...args: unknown[]) => unknown).apply(instance, args);
+      result = (method as (...args: unknown[]) => unknown).apply(
+        instance,
+        args,
+      );
       // For non-generator async functions, await the result.
       // For generators, we keep the raw iterator — don't await it.
       if (!isGeneratorResult(result) && result instanceof Promise) {
         result = await result;
       }
     } catch (error: unknown) {
-      console.error("[defuss-rpc] Error calling method", { className, methodName, args, request, error });
+      console.error("[defuss-rpc] Error calling method", {
+        className,
+        methodName,
+        args,
+        request,
+        error,
+      });
       return new Response(
         JSON.stringify({
           error: `Error calling method ${methodName}: ${error instanceof Error ? error.message : String(error)}`,
@@ -268,7 +304,12 @@ export const rpcRoute: APIRoute = async ({ request }) => {
     // Module-based: call function directly on the object
     const fn = (entry as Record<string, unknown>)[methodName];
     if (typeof fn !== "function") {
-      console.error("[defuss-rpc] Function not found", { className, methodName, args, request });
+      console.error("[defuss-rpc] Function not found", {
+        className,
+        methodName,
+        args,
+        request,
+      });
       return new Response(
         JSON.stringify({
           error: `Function ${methodName} not found on module ${className}`,
@@ -282,7 +323,13 @@ export const rpcRoute: APIRoute = async ({ request }) => {
         result = await result;
       }
     } catch (error: unknown) {
-      console.error("[defuss-rpc] Error calling function", { className, methodName, args, request, error });
+      console.error("[defuss-rpc] Error calling function", {
+        className,
+        methodName,
+        args,
+        request,
+        error,
+      });
       return new Response(
         JSON.stringify({
           error: `Error calling function ${methodName}: ${error instanceof Error ? error.message : String(error)}`,
@@ -294,9 +341,10 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 
   // Generator result → stream NDJSON frames
   if (isGeneratorResult(result)) {
-    const iter = Symbol.asyncIterator in (result as any)
-      ? (result as AsyncIterable<unknown>)[Symbol.asyncIterator]()
-      : (result as Iterable<unknown>)[Symbol.iterator]();
+    const iter =
+      Symbol.asyncIterator in (result as any)
+        ? (result as AsyncIterable<unknown>)[Symbol.asyncIterator]()
+        : (result as Iterable<unknown>)[Symbol.iterator]();
     return streamGeneratorResponse(iter);
   }
 

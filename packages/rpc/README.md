@@ -396,18 +396,18 @@ This means you can pass and return binary data (`Uint8Array`), dates, maps, and 
 
 ```text
 /
-├── src/
-│   ├── client.ts            # Proxy-based RPC client, generator consumer
-│   ├── server.ts            # rpcRoute handler, schema generation, streaming
-│   ├── express-server.ts    # ExpressRpcServer adapter with CORS & streaming
-│   ├── vite-plugin.ts       # Vite plugin: dev server, virtual module, HMR
-│   ├── astro-integration.ts # Astro integration wrapping the Vite plugin
-│   ├── astro-middleware.ts  # Injects Astro.locals.rpcEndpoint
-│   ├── rpc-state.ts         # Shared state: config, base URL, server reference
-│   └── types.d.ts           # TypeScript type definitions
-├── tsconfig.json
-├── LICENSE
-└── package.json
+├-- src/
+│   ├-- client.ts            # Proxy-based RPC client, generator consumer
+│   ├-- server.ts            # rpcRoute handler, schema generation, streaming
+│   ├-- express-server.ts    # ExpressRpcServer adapter with CORS & streaming
+│   ├-- vite-plugin.ts       # Vite plugin: dev server, virtual module, HMR
+│   ├-- astro-integration.ts # Astro integration wrapping the Vite plugin
+│   ├-- astro-middleware.ts  # Injects Astro.locals.rpcEndpoint
+│   ├-- rpc-state.ts         # Shared state: config, base URL, server reference
+│   └-- types.d.ts           # TypeScript type definitions
+├-- tsconfig.json
+├-- LICENSE
+└-- package.json
 ```
 
 1. **Server** - `createRpcServer()` registers namespace entries. `rpcRoute` handles dispatch: schema requests return introspection data, RPC calls route to the class instance or module function. Generator results are streamed as NDJSON via `ReadableStream`.

@@ -1,6 +1,14 @@
 import { DSON } from "defuss-dson";
-import type { ClientHook, DsonStreamFrame, RpcApiClass, RpcApiSchema } from "./types.d.js";
+import type {
+  ClientHook,
+  DsonStreamFrame,
+  RpcApiClass,
+  RpcApiSchema,
+} from "./types.d.js";
+
+// re-export for type / code safety
 export * from "./types.d.js";
+export type * from "./rpc-state.js";
 
 /** Client-side endpoint paths — must stay in sync with server.ts `RPC_PATH`/`RPC_SCHEMA_PATH`. */
 const RPC_PATH = "/rpc" as const;
@@ -22,7 +30,9 @@ export interface RpcClientOptions {
  * @returns The parsed `RpcApiSchema` array from the server.
  */
 export async function getSchema(baseUrl = "") {
-  const response = await fetch(`${baseUrl}${RPC_SCHEMA_PATH}`, { method: "POST" });
+  const response = await fetch(`${baseUrl}${RPC_SCHEMA_PATH}`, {
+    method: "POST",
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch schema: ${response.statusText}`);
   }
@@ -90,7 +100,11 @@ export function setHeaders(headers: HeadersInit) {
  * @param baseUrl       - Optional base URL prefix (default `""` = current origin).
  * @returns An async function `(...args) => Promise<unknown>` that dispatches the RPC call.
  */
-function createRpcMethod(namespaceName: string, methodName: string, baseUrl = "") {
+function createRpcMethod(
+  namespaceName: string,
+  methodName: string,
+  baseUrl = "",
+) {
   return async (...args: unknown[]) => {
     const request: RequestInit = {
       method: "POST",
@@ -127,20 +141,19 @@ function createRpcMethod(namespaceName: string, methodName: string, baseUrl = ""
     for (const responseHook of hooks.filter(
       (h: ClientHook) => h.phase === "response",
     )) {
-      await responseHook.fn(
-        namespaceName,
-        methodName,
-        args,
-        request,
-        response,
-      );
+      await responseHook.fn(namespaceName, methodName, args, request, response);
     }
 
     if (!response.ok) {
       const body = await response.text();
       throw Object.assign(
         new Error(`RPC call failed: ${response.status} ${response.statusText}`),
-        { status: response.status, body, namespace: namespaceName, method: methodName },
+        {
+          status: response.status,
+          body,
+          namespace: namespaceName,
+          method: methodName,
+        },
       );
     }
     const data = DSON.parse(await response.text());
@@ -177,7 +190,11 @@ function createRpcMethod(namespaceName: string, methodName: string, baseUrl = ""
  * @param baseUrl       - Optional base URL prefix (default `""` = current origin).
  * @returns An async generator function `(...args) => AsyncGenerator<unknown, unknown>`.
  */
-function createRpcGeneratorMethod(namespaceName: string, methodName: string, baseUrl = "") {
+function createRpcGeneratorMethod(
+  namespaceName: string,
+  methodName: string,
+  baseUrl = "",
+) {
   return async function* (...args: unknown[]) {
     const request: RequestInit = {
       method: "POST",
@@ -194,16 +211,25 @@ function createRpcGeneratorMethod(namespaceName: string, methodName: string, bas
 
     // Call guards
     for (const guardHook of hooks.filter((h) => h.phase === "guard")) {
-      const allowed = await guardHook.fn(namespaceName, methodName, args, request);
+      const allowed = await guardHook.fn(
+        namespaceName,
+        methodName,
+        args,
+        request,
+      );
       if (!allowed) {
-        throw new Error(`RPC call to ${namespaceName}.${methodName} was blocked by a guard`);
+        throw new Error(
+          `RPC call to ${namespaceName}.${methodName} was blocked by a guard`,
+        );
       }
     }
 
     const response = await fetch(`${baseUrl}${RPC_PATH}`, request);
 
     // Call response hooks
-    for (const responseHook of hooks.filter((h: ClientHook) => h.phase === "response")) {
+    for (const responseHook of hooks.filter(
+      (h: ClientHook) => h.phase === "response",
+    )) {
       await responseHook.fn(namespaceName, methodName, args, request, response);
     }
 
@@ -211,7 +237,12 @@ function createRpcGeneratorMethod(namespaceName: string, methodName: string, bas
       const body = await response.text();
       throw Object.assign(
         new Error(`RPC call failed: ${response.status} ${response.statusText}`),
-        { status: response.status, body, namespace: namespaceName, method: methodName },
+        {
+          status: response.status,
+          body,
+          namespace: namespaceName,
+          method: methodName,
+        },
       );
     }
 
@@ -258,8 +289,17 @@ function createRpcGeneratorMethod(namespaceName: string, methodName: string, bas
     }
 
     // Call result hooks with the return value
-    for (const resultHook of hooks.filter((h: ClientHook) => h.phase === "result")) {
-      await resultHook.fn(namespaceName, methodName, args, request, response, returnValue);
+    for (const resultHook of hooks.filter(
+      (h: ClientHook) => h.phase === "result",
+    )) {
+      await resultHook.fn(
+        namespaceName,
+        methodName,
+        args,
+        request,
+        response,
+        returnValue,
+      );
     }
 
     return returnValue;
@@ -281,7 +321,9 @@ function createRpcGeneratorMethod(namespaceName: string, methodName: string, bas
  * The schema is cached globally after the first fetch. If you need to connect to a different
  * server URL in the same process, call `clearSchemaCache()` before calling `getRpcClient()` again.
  */
-export async function getRpcClient<T extends Record<string, unknown>>(options?: RpcClientOptions) {
+export async function getRpcClient<T extends Record<string, unknown>>(
+  options?: RpcClientOptions,
+) {
   const baseUrl = options?.baseUrl ?? "";
   if (schema === null) {
     schema = await getSchema(baseUrl);

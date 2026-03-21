@@ -1,6 +1,6 @@
 {
   "name": "defuss-rpc",
-  "version": "1.5.0",
+  "version": "1.5.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -27,7 +27,8 @@
     "prebuild": "bun run clean",
     "build": "pkgroll",
     "test": "vitest run --coverage",
-    "dev:server": "tsx src/example-server.ts"
+    "dev:server": "tsx src/example-server.ts",
+    "prepublishOnly": "bun run build"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -131,8 +132,14 @@
     "vite": ">=5.0.0"
   },
   "peerDependenciesMeta": {
-    "astro": { "optional": true },
-    "defuss-express": { "optional": true },
-    "vite": { "optional": true }
+    "astro": {
+      "optional": true
+    },
+    "defuss-express": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
   }
 }
