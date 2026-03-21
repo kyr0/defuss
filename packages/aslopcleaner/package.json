@@ -1,0 +1,58 @@
+{
+  "name": "aslopcleaner",
+  "version": "1.0.0",
+  "description": "High-performance CLI to replace common LLM/AI Unicode punctuation and symbols with ASCII equivalents.",
+  "type": "module",
+  "bin": {
+    "aslopcleaner": "./dist/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kyr0/defuss.git"
+  },
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "homepage": "https://github.com/kyr0/defuss",
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "bun@1.3.9",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && pkgroll",
+    "start": "node dist/cli.mjs",
+    "dev": "node --enable-source-maps src/cli.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "run:example": "tsx example/example.ts"
+  },
+  "keywords": [
+    "ascii",
+    "bun",
+    "node",
+    "cli",
+    "unicode",
+    "sanitizer",
+    "llm"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "fast-glob": "^3.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@vitest/coverage-v8": "^3.1.1",
+    "pkgroll": "^2.11.3",
+    "tsx": "^4.19.4",
+    "vitest": "^3.1.1"
+  }
+}
