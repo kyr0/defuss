@@ -1,8 +1,8 @@
-import type { MatchOccurrence, ReplacementRule } from './types.js';
+import type { MatchOccurrence, ReplacementRule } from "./types.js";
 
 export function findOccurrences(
   content: string,
-  rules: readonly ReplacementRule[]
+  rules: readonly ReplacementRule[],
 ): MatchOccurrence[] {
   const matches: MatchOccurrence[] = [];
 
@@ -23,7 +23,7 @@ export function findOccurrences(
 }
 
 export function countByMatch(
-  matches: readonly MatchOccurrence[]
+  matches: readonly MatchOccurrence[],
 ): Map<string, number> {
   const counts = new Map<string, number>();
 
@@ -37,14 +37,14 @@ export function countByMatch(
 export function applyOccurrences(
   content: string,
   matches: readonly MatchOccurrence[],
-  replacements: ReadonlyMap<string, string>
+  replacements: ReadonlyMap<string, string>,
 ): string {
   if (matches.length === 0) {
     return content;
   }
 
   let cursor = 0;
-  let output = '';
+  let output = "";
 
   for (const occurrence of matches) {
     if (occurrence.index < cursor) {

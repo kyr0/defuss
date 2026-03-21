@@ -1,4 +1,4 @@
-import { open } from 'node:fs/promises';
+import { open } from "node:fs/promises";
 
 const SAMPLE_SIZE = 1024;
 const MAX_SAMPLES = 5;
@@ -42,7 +42,7 @@ function scoreSample(buffer: Uint8Array): number {
 }
 
 export async function isProbablyBinary(filePath: string): Promise<boolean> {
-  const handle = await open(filePath, 'r');
+  const handle = await open(filePath, "r");
 
   try {
     const stats = await handle.stat();
@@ -50,7 +50,12 @@ export async function isProbablyBinary(filePath: string): Promise<boolean> {
     const sampleBuffer = Buffer.allocUnsafe(SAMPLE_SIZE);
 
     for (const offset of offsets) {
-      const { bytesRead } = await handle.read(sampleBuffer, 0, SAMPLE_SIZE, offset);
+      const { bytesRead } = await handle.read(
+        sampleBuffer,
+        0,
+        SAMPLE_SIZE,
+        offset,
+      );
       if (bytesRead === 0) {
         continue;
       }

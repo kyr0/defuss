@@ -1,6 +1,6 @@
 {
   "name": "aslopcleaner",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "High-performance CLI to replace common LLM/AI Unicode punctuation and symbols with ASCII equivalents.",
   "type": "module",
   "bin": {
