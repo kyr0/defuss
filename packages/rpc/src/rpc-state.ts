@@ -9,8 +9,16 @@ export interface RpcPluginOptions {
    *
    * - `0` (default) — let the OS assign a random available port.
    * - Any positive integer — bind to that specific port.
+   *
+   * When omitted and `protocol` is `"https"`, defaults to `443`; for `"http"` defaults to `0`.
    */
   port?: number;
+  /**
+   * Protocol used to construct the RPC endpoint URL.
+   *
+   * @default `"http"`
+   */
+  protocol?: "http" | "https";
   /**
    * Host/IP the RPC server should bind to.
    *
@@ -20,7 +28,7 @@ export interface RpcPluginOptions {
    */
   host?: string;
   /**
-   * URL prefix prepended to every RPC endpoint (`/rpc`, `/rpc/schema`, `/health`).
+   * URL path prefix prepended to every RPC route (`/rpc`, `/rpc/schema`, `/health`).
    *
    * @example `"/api/v1"` → endpoints become `/api/v1/rpc`, `/api/v1/health`, etc.
    * @default `""`
@@ -62,16 +70,49 @@ export interface RpcPluginOptions {
    */
   watch?: string | string[];
   /**
-   * Hardcoded RPC base URL emitted into the virtual module during production builds.
+   * Full RPC endpoint URL the **client** should use to reach the RPC server.
    *
-   * When set, the `virtual:defuss-rpc` module exports this value as `rpcBaseUrl`
-   * instead of relying on `import.meta.env.VITE_DEFUSS_RPC_URL`.
+   * When set, this value is emitted as `rpcEndpoint` in the `virtual:defuss-rpc`
+   * module and used by the client for all RPC calls.
+   *
+   * When omitted, the endpoint is automatically constructed from
+   * `protocol`, `host`, `port`, and `basePath`.
+   *
+   * @example `"https://api.example.com/rpc"`
+   */
+  endpoint?: string;
+
+  /**
+   * @deprecated Use `endpoint` instead. Will be removed in a future version.
    */
   productionUrl?: string;
 }
 
+/**
+ * Constructs the full RPC endpoint URL from individual option parts.
+ *
+ * If `endpoint` is set explicitly, it is returned as-is.
+ * Otherwise, the URL is built from `protocol`, `host`, `port`, and `basePath`.
+ */
+export function buildEndpoint(options: Pick<RpcPluginOptions, "endpoint" | "productionUrl" | "protocol" | "host" | "port" | "basePath">, resolvedPort?: number): string {
+  // Explicit endpoint takes priority, then deprecated productionUrl
+  if (options.endpoint) return options.endpoint;
+  if (options.productionUrl) return options.productionUrl;
+
+  const protocol = options.protocol ?? "http";
+  const host = options.host ?? "localhost";
+  const port = resolvedPort ?? options.port ?? 0;
+  const basePath = options.basePath ?? "";
+
+  // Omit port from URL when it matches the protocol default
+  const isDefaultPort = (protocol === "http" && port === 80) || (protocol === "https" && port === 443);
+  const portSuffix = isDefaultPort ? "" : `:${port}`;
+
+  return `${protocol}://${host}${portSuffix}${basePath}`;
+}
+
 export let rpcConfig: RpcPluginOptions | null = null;
-export let rpcBaseUrl = "";
+export let rpcEndpoint = "";
 export let rpcServer: ExpressRpcServer | null = null;
 
 export function setRpcConfig(config: RpcPluginOptions): void {
@@ -82,13 +123,18 @@ export function getRpcConfig(): RpcPluginOptions | null {
   return rpcConfig;
 }
 
-export function setRpcBaseUrl(url: string): void {
-  rpcBaseUrl = url;
+export function setRpcEndpoint(url: string): void {
+  rpcEndpoint = url;
 }
 
-export function getRpcBaseUrl(): string {
-  return rpcBaseUrl;
+export function getRpcEndpoint(): string {
+  return rpcEndpoint;
 }
+
+/** @deprecated Use `getRpcEndpoint()` instead. */
+export const getRpcBaseUrl = getRpcEndpoint;
+/** @deprecated Use `setRpcEndpoint()` instead. */
+export const setRpcBaseUrl = setRpcEndpoint;
 
 export function setRpcServer(server: ExpressRpcServer): void {
   rpcServer = server;

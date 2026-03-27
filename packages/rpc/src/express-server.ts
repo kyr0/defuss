@@ -16,6 +16,13 @@ import { rpcRoute } from "./server.js";
 export interface ExpressRpcServerOptions {
   port?: number;
   /**
+   * Protocol used to construct the endpoint URL returned by `start()` and `getUrl()`.
+   *
+   * Does **not** enable TLS on the server itself (use a reverse proxy for HTTPS).
+   * @default `"http"`
+   */
+  protocol?: "http" | "https";
+  /**
    * Host/IP the server should bind to.
    *
    * - `"localhost"` (default) — only reachable from the local machine.
@@ -69,6 +76,7 @@ export class ExpressRpcServer {
   private app: ReturnType<typeof express>;
   private server: ReturnType<ReturnType<typeof express>["listen"]> | null;
   private port: number;
+  private protocol: "http" | "https";
   private host: string;
   private basePath: string;
   private jsonSizeLimit: string;
@@ -79,6 +87,7 @@ export class ExpressRpcServer {
     this.app = express({ threads: 0 });
     this.server = null;
     this.port = options.port || 0; // 0 means random available port
+    this.protocol = options.protocol || "http";
     this.host = options.host || "localhost";
     this.basePath = options.basePath || "";
     this.jsonSizeLimit = options.jsonSizeLimit || "1mb";
@@ -323,7 +332,7 @@ export class ExpressRpcServer {
     return new Promise((resolve) => {
       this.server = this.app.listen(this.port, this.host, (listenPort: number) => {
         this.port = listenPort;
-        const url = `http://${this.host}:${listenPort}${this.basePath}`;
+        const url = `${this.protocol}://${this.host}:${listenPort}${this.basePath}`;
 
         console.log(`RPC server running on ${url}`);
         resolve({ port: listenPort, url });
@@ -358,7 +367,7 @@ export class ExpressRpcServer {
   /** Returns the full base URL of the server (e.g. `"http://localhost:3210"`). */
   getUrl(): string {
     const port = this.getPort();
-    return `http://${this.host}:${port}${this.basePath}`;
+    return `${this.protocol}://${this.host}:${port}${this.basePath}`;
   }
 }
 

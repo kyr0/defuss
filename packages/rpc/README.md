@@ -95,11 +95,14 @@ Choose one of the integrations below - [Astro](#astro-integration), [Vite](#vite
 
 ### 5. Use on the client
 
+When using the Vite or Astro plugin, the RPC endpoint is **auto-registered** — just import the virtual module anywhere in your app and call `getRpcClient()` without options:
+
 ```ts
+import "virtual:defuss-rpc"; // auto-registers the endpoint (import once in your entry point)
 import { getRpcClient } from "defuss-rpc/client";
 import type { RpcApi } from "../rpc.js";
 
-const rpc = await getRpcClient<RpcApi>();
+const rpc = await getRpcClient<RpcApi>(); // endpoint is resolved automatically
 
 // Class-based: instantiate, then call methods
 const fooApi = new rpc.FooApi();
@@ -108,6 +111,21 @@ const foo = await fooApi.getFoo("123"); // fully typed
 // Module-based: call functions directly
 const sum = await rpc.MathUtils.add(2, 3); // 5
 ```
+
+You can also read the endpoint value directly if needed:
+
+```ts
+import { rpcEndpoint } from "virtual:defuss-rpc";
+console.log(rpcEndpoint); // e.g. "http://localhost:3210"
+```
+
+Or override the endpoint per-client:
+
+```ts
+const rpc = await getRpcClient<RpcApi>({ baseUrl: "http://other-host:4000" });
+```
+
+**Resolution order:** explicit `baseUrl` option → auto-registered endpoint from virtual module → `""` (current page origin).
 
 ---
 
@@ -175,15 +193,15 @@ export default defineConfig({
 
 The plugin:
 - Starts an `ExpressRpcServer` alongside Vite's dev server
-- Provides a `virtual:defuss-rpc` module exporting `rpcBaseUrl`
+- Provides a `virtual:defuss-rpc` module that **auto-registers** the RPC endpoint with the client
 - Watches API files and hot-reloads the RPC namespace on change
 
 ```ts
-// Client code
-import { rpcBaseUrl } from "virtual:defuss-rpc";
+// Client code — just import the virtual module and go
+import "virtual:defuss-rpc";
 import { getRpcClient } from "defuss-rpc/client";
 
-const rpc = await getRpcClient<RpcApi>({ baseUrl: rpcBaseUrl });
+const rpc = await getRpcClient<RpcApi>(); // endpoint auto-resolved
 ```
 
 ### Plugin Options
@@ -192,12 +210,13 @@ const rpc = await getRpcClient<RpcApi>({ baseUrl: rpcBaseUrl });
 | :-------------- | :--------------------- | :------------------- | :---------------------------------------------------- |
 | `api`           | `ApiNamespace`         | *(required)*         | Map of namespace name → class or module               |
 | `port`          | `number`               | `0`                  | Port for the RPC server (`0` = OS-assigned)           |
+| `protocol`      | `"http" \| "https"`    | `"http"`             | Protocol for the endpoint URL                         |
 | `host`          | `string`               | `"localhost"`        | Host/IP to bind (`"0.0.0.0"` for all interfaces)     |
 | `basePath`      | `string`               | `""`                 | URL prefix for all RPC endpoints                      |
 | `jsonSizeLimit` | `string`               | `"1mb"`              | Max request body size (use `upload()` for large files) |
 | `corsOrigin`    | `string \| string[]`   | `"*"`                | `Access-Control-Allow-Origin` value                   |
 | `watch`         | `string \| string[]`   | `["src/**/*.ts"]`    | Glob patterns for API file watching                   |
-| `productionUrl` | `string`               | `undefined`          | Hardcoded RPC URL for production builds               |
+| `endpoint`      | `string`               | *(auto-constructed)* | Full RPC endpoint URL for the client to connect to    |
 
 ---
 
@@ -427,7 +446,7 @@ This means you can pass and return binary data (`Uint8Array`), dates, maps, and 
 
 3. **Express Adapter** - `ExpressRpcServer` converts Express requests to Fetch API `Request` objects, delegates to `rpcRoute`, and maps the response back. NDJSON responses are piped chunk-by-chunk via `res.write()`.
 
-4. **Vite/Astro** - The Vite plugin starts an `ExpressRpcServer` in dev, exposes `rpcBaseUrl` via a virtual module, and watches API files for hot-reload. The Astro integration wraps this and adds middleware for `Astro.locals.rpcEndpoint`.
+4. **Vite/Astro** - The Vite plugin starts an `ExpressRpcServer` in dev, exposes `rpcEndpoint` via a virtual module, and watches API files for hot-reload. The Astro integration wraps this and adds middleware for `Astro.locals.rpcEndpoint`.
 
 ## Examples
 

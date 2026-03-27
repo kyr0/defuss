@@ -3,9 +3,9 @@ import { createFilter } from "vite";
 import { createRpcServer, clearRpcServer } from "./server.js";
 import { ExpressRpcServer } from "./express-server.js";
 import {
-  setRpcBaseUrl,
+  setRpcEndpoint,
   setRpcServer,
-  getRpcBaseUrl,
+  getRpcEndpoint,
   setRpcConfig,
   type RpcPluginOptions,
 } from "./rpc-state.js";
@@ -35,10 +35,10 @@ const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
  *
  * Client code:
  * ```ts
- * import { rpcBaseUrl } from "virtual:defuss-rpc";
+ * import { rpcEndpoint } from "virtual:defuss-rpc";
  * import { getRpcClient } from "defuss-rpc/client.js";
  *
- * const client = getRpcClient({ baseUrl: rpcBaseUrl });
+ * const client = getRpcClient({ baseUrl: rpcEndpoint });
  * ```
  */
 export function defussRpc(options: RpcPluginOptions): PluginOption {
@@ -69,6 +69,7 @@ export function defussRpc(options: RpcPluginOptions): PluginOption {
       // Start the Express RPC server
       const server = new ExpressRpcServer({
         port: options.port,
+        protocol: options.protocol,
         host: options.host,
         basePath: options.basePath,
         jsonSizeLimit: options.jsonSizeLimit,
@@ -76,7 +77,10 @@ export function defussRpc(options: RpcPluginOptions): PluginOption {
       });
 
       const { url } = await server.start();
-      setRpcBaseUrl(url);
+
+      // If an explicit endpoint was provided, use it; otherwise derive from the running server
+      const endpoint = options.endpoint ?? options.productionUrl ?? url;
+      setRpcEndpoint(endpoint);
       setRpcServer(server);
 
       // Stop the RPC server when Vite shuts down
@@ -119,17 +123,39 @@ export function defussRpc(options: RpcPluginOptions): PluginOption {
 
     load(id) {
       if (id === RESOLVED_VIRTUAL_MODULE_ID) {
+        // Auto-register the endpoint so getRpcClient() works without options
+        const autoRegister = [
+          `import { _setDefaultEndpoint } from "defuss-rpc/client.js";`,
+          `_setDefaultEndpoint(rpcEndpoint);`,
+        ];
+
         if (isBuild) {
-          // Build mode: use productionUrl or env variable fallback
-          if (options.productionUrl) {
-            return `export const rpcBaseUrl = ${JSON.stringify(options.productionUrl)};`;
+          // Build mode: use explicit endpoint, deprecated productionUrl, or env variable fallback
+          const explicitEndpoint = options.endpoint ?? options.productionUrl;
+          if (explicitEndpoint) {
+            return [
+              `export const rpcEndpoint = ${JSON.stringify(explicitEndpoint)};`,
+              `/** @deprecated Use rpcEndpoint instead. */`,
+              `export const rpcBaseUrl = rpcEndpoint;`,
+              ...autoRegister,
+            ].join("\n");
           }
           // Fall back to an env variable that can be set at runtime
-          return `export const rpcBaseUrl = import.meta.env.VITE_DEFUSS_RPC_URL || "";`;
+          return [
+            `export const rpcEndpoint = import.meta.env.VITE_DEFUSS_RPC_URL || "";`,
+            `/** @deprecated Use rpcEndpoint instead. */`,
+            `export const rpcBaseUrl = rpcEndpoint;`,
+            ...autoRegister,
+          ].join("\n");
         }
         // Dev mode: use the actual running server URL
-        const url = getRpcBaseUrl();
-        return `export const rpcBaseUrl = ${JSON.stringify(url)};`;
+        const url = getRpcEndpoint();
+        return [
+          `export const rpcEndpoint = ${JSON.stringify(url)};`,
+          `/** @deprecated Use rpcEndpoint instead. */`,
+          `export const rpcBaseUrl = rpcEndpoint;`,
+          ...autoRegister,
+        ].join("\n");
       }
       return null;
     },

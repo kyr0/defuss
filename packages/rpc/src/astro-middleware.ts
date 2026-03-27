@@ -1,9 +1,9 @@
 import { defineMiddleware } from "astro/middleware";
 import {
-  getRpcBaseUrl,
+  getRpcEndpoint,
   getRpcConfig,
   getRpcServer,
-  setRpcBaseUrl,
+  setRpcEndpoint,
   setRpcServer,
 } from "./rpc-state.js";
 import { createRpcServer } from "./server.js";
@@ -28,7 +28,7 @@ declare global {
  *   for all subsequent requests.
  */
 export const onRequest = defineMiddleware(async (context, next) => {
-  let url = getRpcBaseUrl();
+  let url = getRpcEndpoint();
 
   // Production lazy-start: if no server is running yet, start one
   if (!url && !getRpcServer()) {
@@ -40,6 +40,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       // Start the Express RPC server
       const server = new ExpressRpcServer({
         port: config.port,
+        protocol: config.protocol,
         host: config.host,
         basePath: config.basePath,
         jsonSizeLimit: config.jsonSizeLimit,
@@ -47,8 +48,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
       });
 
       const result = await server.start();
-      url = result.url;
-      setRpcBaseUrl(url);
+
+      // If an explicit endpoint was provided, use it; otherwise derive from the running server
+      url = config.endpoint ?? config.productionUrl ?? result.url;
+      setRpcEndpoint(url);
       setRpcServer(server);
     }
   }

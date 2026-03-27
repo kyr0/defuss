@@ -14,8 +14,33 @@ export type * from "./rpc-state.js";
 const RPC_PATH = "/rpc" as const;
 const RPC_SCHEMA_PATH = "/rpc/schema" as const;
 
+/**
+ * Default RPC endpoint URL, auto-set when the `virtual:defuss-rpc` module is
+ * imported anywhere in the application.  Falls back to `""` (current origin)
+ * when not set.
+ */
+let _defaultEndpoint = "";
+
+/**
+ * Registers the default RPC endpoint used by `getRpcClient()` when no explicit
+ * `baseUrl` option is provided.
+ *
+ * This is called automatically by the `virtual:defuss-rpc` module emitted by
+ * the Vite / Astro plugin — you normally don't need to call it yourself.
+ *
+ * @param url - Full RPC endpoint URL (e.g. `"http://localhost:3210"`).
+ */
+export function _setDefaultEndpoint(url: string): void {
+  _defaultEndpoint = url;
+}
+
 export interface RpcClientOptions {
-  /** Base URL for the RPC server (e.g. "http://localhost:3210"). Defaults to current origin. */
+  /**
+   * Base URL for the RPC server (e.g. `"http://localhost:3210"`).
+   *
+   * When omitted, falls back to the endpoint auto-registered by the
+   * `virtual:defuss-rpc` module, or `""` (current origin) if neither is set.
+   */
   baseUrl?: string;
 }
 
@@ -324,7 +349,7 @@ function createRpcGeneratorMethod(
 export async function getRpcClient<T extends Record<string, unknown>>(
   options?: RpcClientOptions,
 ) {
-  const baseUrl = options?.baseUrl ?? "";
+  const baseUrl = options?.baseUrl ?? _defaultEndpoint;
   if (schema === null) {
     schema = await getSchema(baseUrl);
   }
