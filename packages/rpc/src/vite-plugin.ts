@@ -11,7 +11,7 @@ import {
 } from "./rpc-state.js";
 
 const VIRTUAL_MODULE_ID = "virtual:defuss-rpc";
-const RESOLVED_VIRTUAL_MODULE_ID = "\0" + VIRTUAL_MODULE_ID;
+const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
 
 /**
  * Vite plugin that starts an `ExpressRpcServer` alongside Vite's dev server,
@@ -43,7 +43,9 @@ const RESOLVED_VIRTUAL_MODULE_ID = "\0" + VIRTUAL_MODULE_ID;
  */
 export function defussRpc(options: RpcPluginOptions): PluginOption {
   const watchPatterns = options.watch
-    ? (Array.isArray(options.watch) ? options.watch : [options.watch])
+    ? Array.isArray(options.watch)
+      ? options.watch
+      : [options.watch]
     : ["src/**/*.ts"];
 
   const watchFilter = createFilter(watchPatterns);
@@ -67,6 +69,7 @@ export function defussRpc(options: RpcPluginOptions): PluginOption {
       // Start the Express RPC server
       const server = new ExpressRpcServer({
         port: options.port,
+        host: options.host,
         basePath: options.basePath,
         jsonSizeLimit: options.jsonSizeLimit,
         corsOrigin: options.corsOrigin,
@@ -86,7 +89,9 @@ export function defussRpc(options: RpcPluginOptions): PluginOption {
 
       viteServer.watcher.on("change", (file) => {
         if (watchFilter(file)) {
-          console.log(`[defuss-rpc] API file changed: ${file}, re-registering namespace...`);
+          console.log(
+            `[defuss-rpc] API file changed: ${file}, re-registering namespace...`,
+          );
           // Clear and re-register the RPC namespace
           // The Express server keeps running — it delegates to rpcRoute which reads from the live registry
           clearRpcServer();

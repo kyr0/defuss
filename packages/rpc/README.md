@@ -14,7 +14,17 @@ Remote Procedure Call (RPC)
 
 </h1>
 
-> `defuss-rpc` is a tiny but powerful RPC library for building type-safe APIs in JavaScript and TypeScript. It enables seamless client-server communication with automatic type safety, bi-directional, seamless binary data format support (via `DSON` - just pass `Uint8Array` around; uploads and downloads of TB of data are possible, including streaming and chunked transfers, progress tracking, resend, hash integrity checks, etc.), generator streaming, and minimal setup.
+> **⚠️ Runtime Requirement: Node.js only.** The RPC server uses [`uWebSockets.js`](https://github.com/uNetworking/uWebSockets.js) (via `ultimate-express`), a native addon that **requires Node.js**. It does **not** run under Bun or Deno.
+>
+> | | Supported Versions |
+> |---|---|
+> | **Node.js** | **20, 22, 24, 25** |
+> | **Platforms** | macOS (x64, arm64), Linux (x64, arm64), Windows (x64) |
+> | **Linux glibc** | **≥ 2.38** (Ubuntu 24.04+, Debian 13+, RHEL 9.4+) |
+>
+> Tests **must** be run with `bun run test` (which invokes `vitest` under Node.js). **Do not** use `bun test` — that triggers Bun's built-in test runner which cannot load the uWebSockets.js native addon.
+
+`defuss-rpc` is a tiny but powerful RPC library for building type-safe APIs in JavaScript and TypeScript. It enables seamless client-server communication with automatic type safety, bi-directional, seamless binary data format support (via `DSON` - just pass `Uint8Array` around; uploads and downloads of TB of data are possible, including streaming and chunked transfers, progress tracking, resend, hash integrity checks, etc.), generator streaming, and minimal setup.
 
 ## ✨ Features
 
@@ -182,8 +192,9 @@ const rpc = await getRpcClient<RpcApi>({ baseUrl: rpcBaseUrl });
 | :-------------- | :--------------------- | :------------------- | :---------------------------------------------------- |
 | `api`           | `ApiNamespace`         | *(required)*         | Map of namespace name → class or module               |
 | `port`          | `number`               | `0`                  | Port for the RPC server (`0` = OS-assigned)           |
+| `host`          | `string`               | `"localhost"`        | Host/IP to bind (`"0.0.0.0"` for all interfaces)     |
 | `basePath`      | `string`               | `""`                 | URL prefix for all RPC endpoints                      |
-| `jsonSizeLimit` | `string`               | `"10mb"`             | Max request body size                                 |
+| `jsonSizeLimit` | `string`               | `"1mb"`              | Max request body size (use `upload()` for large files) |
 | `corsOrigin`    | `string \| string[]`   | `"*"`                | `Access-Control-Allow-Origin` value                   |
 | `watch`         | `string \| string[]`   | `["src/**/*.ts"]`    | Glob patterns for API file watching                   |
 | `productionUrl` | `string`               | `undefined`          | Hardcoded RPC URL for production builds               |
@@ -430,8 +441,10 @@ All commands are run from the root of the project, from a terminal:
 | Command       | Action                                           |
 | :------------ | :----------------------------------------------- |
 | `bun run build`   | Build the RPC package.                      |
-| `bun run test`    | Run the test suite.                         |
+| `bun run test`    | Run the test suite (**runs under Node.js via Vitest**). |
 | `bun run publish` | Publish a new version of `defuss-rpc`.      |
+
+> **Note:** `bun run test` invokes `vitest run` which executes under Node.js. Do **not** use `bun test` (Bun's built-in test runner) — the uWebSockets.js native addon is incompatible with Bun's module loader.
 
 ---
 

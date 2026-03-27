@@ -1,12 +1,12 @@
 {
   "name": "defuss-rpc",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "license": "MIT",
-  "description": "Remote Procedure Call (RPC) for defuss.",
+  "description": "Remote Procedure Call (RPC) for defuss. Requires Node.js 20, 22, 24, or 25 (uses uWebSockets.js native addon). Linux requires glibc >= 2.38.",
   "keywords": [
     "rpc",
     "defuss",
@@ -118,7 +118,7 @@
     "vitest": "^4.0.18"
   },
   "engines": {
-    "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
+    "node": "^20.0.0 || ^22.0.0 || ^24.0.0 || ^25.0.0"
   },
   "dependencies": {
     "defuss-dson": "^1.1.1"

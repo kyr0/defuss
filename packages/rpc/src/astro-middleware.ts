@@ -40,6 +40,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       // Start the Express RPC server
       const server = new ExpressRpcServer({
         port: config.port,
+        host: config.host,
         basePath: config.basePath,
         jsonSizeLimit: config.jsonSizeLimit,
         corsOrigin: config.corsOrigin,
