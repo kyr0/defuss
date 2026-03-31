@@ -1,7 +1,7 @@
 {
   "name": "defuss-shadcn",
   "type": "module",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "A modern Shadcn-like component library for defuss that build on Tailwind CSS 4 and Basecoat UI.",
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
@@ -10,7 +10,7 @@
   "scripts": {
     "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun",
     "pretest": "bun run build",
-    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "test": "vitest run --config vitest.browser.config.ts",
     "prebuild": "bun run clean",
     "build": "pkgroll --sourcemap --packagejson='*.js' --packagejson='*.mjs' --packagejson='*.cjs' --packagejson='*.d.ts' --packagejson='*.d.mts' --packagejson='*.d.cts'",
     "postbuild": "bunx tsx scripts/build-css.ts"
