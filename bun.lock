@@ -264,11 +264,11 @@
         "@tailwindcss/vite": "^4.1.18",
         "astro": "^5.16.11",
         "browserslist": "^4.28.1",
-        "defuss": "^3.4.1",
+        "defuss": "^3.4.4",
         "defuss-astro": "^1.6.0",
         "defuss-dataview": "^0.3.0",
-        "defuss-rpc": "^1.5.0",
-        "defuss-shadcn": "^0.6.0",
+        "defuss-rpc": "^1.5.5",
+        "defuss-shadcn": "^0.6.3",
         "defuss-transval": "^1.3.0",
         "lightningcss": "^1.30.2",
         "mongodb": "^7.0.0",
@@ -416,7 +416,7 @@
     },
     "packages/aslopcleaner": {
       "name": "aslopcleaner",
-      "version": "1.0.5",
+      "version": "1.0.7",
       "bin": {
         "aslopcleaner": "./dist/cli.mjs",
       },
@@ -467,7 +467,7 @@
         "vitest": "^4.0.18",
       },
     },
-    "packages/container": {
+    "packages/container_wip": {
       "name": "defuss-container",
       "version": "0.1.0",
       "dependencies": {
@@ -524,7 +524,7 @@
     },
     "packages/defuss": {
       "name": "defuss",
-      "version": "3.4.2",
+      "version": "3.4.4",
       "dependencies": {
         "@types/w3c-xmlserializer": "^2.0.4",
         "csstype": "^3.2.3",
@@ -573,6 +573,20 @@
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",
         "vitest": "^4.0.17",
+      },
+    },
+    "packages/embedding_wip": {
+      "name": "defuss-embedding",
+      "version": "0.1.0",
+      "dependencies": {
+        "@huggingface/transformers": "^3.8.1",
+      },
+      "devDependencies": {
+        "@vitest/browser-playwright": "^4.0.18",
+        "pkgroll": "^2.25.2",
+        "playwright": "^1.55.0",
+        "typescript": "^5.9.3",
+        "vitest": "^4.0.18",
       },
     },
     "packages/env": {
@@ -638,7 +652,7 @@
     },
     "packages/multicore": {
       "name": "defuss-multicore",
-      "version": "1.0.0",
+      "version": "0.0.2",
       "devDependencies": {
         "@vitest/browser": "^4.1.2",
         "@vitest/browser-playwright": "^4.1.2",
@@ -717,7 +731,7 @@
     },
     "packages/shadcn": {
       "name": "defuss-shadcn",
-      "version": "0.6.2",
+      "version": "0.6.3",
       "devDependencies": {
         "@tailwindcss/cli": "^4.1.0",
         "@types/node": "^25.0.9",
@@ -743,20 +757,23 @@
     },
     "packages/shadcn-kitchensink": {
       "name": "defuss-shadcn-kitchensink",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "dependencies": {
         "@tailwindcss/vite": "^4.1.18",
         "browserslist": "^4.28.1",
-        "defuss": "^3.4.1",
+        "defuss": "^3.4.4",
         "defuss-dataview": "^0.3.0",
         "defuss-runtime": "^1.3.1",
-        "defuss-shadcn": "^0.6.0",
-        "defuss-storybook": "^0.2.1",
+        "defuss-shadcn": "^0.6.3",
+        "defuss-storybook": "^0.2.2",
         "defuss-transval": "^1.3.0",
         "defuss-vite": "^1.1.3",
         "lightningcss": "^1.30.2",
         "tailwindcss": "^4.1.18",
-        "vite": "^7.3.1",
+      },
+      "devDependencies": {
+        "@vitest/browser-playwright": "^4.1.2",
+        "vitest": "^4.1.2",
       },
     },
     "packages/ssg": {
@@ -802,7 +819,7 @@
     },
     "packages/storybook": {
       "name": "defuss-storybook",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "bin": {
         "defuss-storybook": "dist/cli.mjs",
       },
@@ -810,7 +827,7 @@
         "@mdx-js/rollup": "^3.1.0",
         "@tailwindcss/vite": "^4.1.18",
         "chokidar": "^5.0.0",
-        "defuss": "^3.4.0",
+        "defuss": "^3.4.4",
         "defuss-vite": "^1.1.3",
         "fast-glob": "^3.3.3",
         "rehype-katex": "^7.0.1",
@@ -829,7 +846,7 @@
         "defuss-shadcn": ">=0.6.0",
       },
     },
-    "packages/tlsbot": {
+    "packages/tlsbot_wip": {
       "name": "defuss-tlsbot",
       "version": "0.1.0",
       "bin": {
@@ -2123,7 +2140,7 @@
 
     "defuss-brotli": ["defuss-brotli@workspace:packages/brotli"],
 
-    "defuss-container": ["defuss-container@workspace:packages/container"],
+    "defuss-container": ["defuss-container@workspace:packages/container_wip"],
 
     "defuss-dataview": ["defuss-dataview@workspace:packages/dataview"],
 
@@ -2132,6 +2149,8 @@
     "defuss-desktop": ["defuss-desktop@workspace:packages/desktop"],
 
     "defuss-dson": ["defuss-dson@workspace:packages/dson"],
+
+    "defuss-embedding": ["defuss-embedding@workspace:packages/embedding_wip"],
 
     "defuss-env": ["defuss-env@workspace:packages/env"],
 
@@ -2165,7 +2184,7 @@
 
     "defuss-talkinghead-headtts-demo": ["defuss-talkinghead-headtts-demo@workspace:examples/with-three.js"],
 
-    "defuss-tlsbot": ["defuss-tlsbot@workspace:packages/tlsbot"],
+    "defuss-tlsbot": ["defuss-tlsbot@workspace:packages/tlsbot_wip"],
 
     "defuss-transval": ["defuss-transval@workspace:packages/transval"],
 

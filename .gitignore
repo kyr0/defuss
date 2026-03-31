@@ -28,3 +28,5 @@ __screenshots__
 .vitest-attachments/
 dist*/
 *_wip/
+.storybook-*/
+scaffold*/
