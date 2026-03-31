@@ -120,10 +120,10 @@ import path from "node:path";
 export default defineConfig({
   plugins: [defuss()],
   resolve: {
-    alias: {
-      "defuss": path.resolve("${config.projectDir}", "node_modules/defuss/src/index.ts"),
-      "defuss/jsx-runtime": path.resolve("${config.projectDir}", "node_modules/defuss/src/render/index.ts"),
-    },
+    alias: [
+      { find: "defuss/jsx-runtime", replacement: path.resolve("${config.projectDir}", "node_modules/defuss/src/render/index.ts") },
+      { find: /^defuss$/, replacement: path.resolve("${config.projectDir}", "node_modules/defuss/src/index.ts") },
+    ],
   },
   esbuild: {
     jsx: "automatic",
