@@ -7,11 +7,8 @@ export type OnHandleRouteChangeFn = (
 export type OnRouteChangeFn = (cb: OnHandleRouteChangeFn) => void;
 export type RouterStrategy = "page-refresh" | "slot-refresh";
 
-export type BeforeUnmountHookFn = () =>
-  | boolean
-  | void
-  | Promise<boolean | void>;
-export type UnmountHookFn = () => void;
+export type BeforeLeaveHookFn = () => boolean | void | Promise<boolean | void>;
+export type LeaveHookFn = () => void;
 
 /**
  * Context object passed to components rendered via Route's `component` prop.
@@ -36,32 +33,32 @@ export interface RouteContext {
   request: RouteRequest;
 
   /**
-   * Register a hook that fires before leaving the current route.
+   * Register a hook that fires before the route is unmounted.
    * Returning `false` (or a Promise resolving to `false`) blocks navigation,
    * allowing implementation of confirmation dialogs.
    */
-  onBeforeLeave(fn: BeforeUnmountHookFn): void;
+  onBeforeLeave(fn: BeforeLeaveHookFn): void;
 
   /**
-   * Register a hook that fires after the route has been left
+   * Register a hook that fires after the route has been unmounted
    * (navigation completed, new route is rendered).
    */
-  onLeave(fn: UnmountHookFn): void;
+  onLeave(fn: LeaveHookFn): void;
 }
 
 /**
- * Props mixin for screen components rendered by `<Route component={...} />`.
- * Extend your component props with this to get typed access to route context.
+ * Props interface for components rendered via Route's `component` prop.
+ * Extend your component's props with this to receive the `route` context.
  *
  * @example
  * ```tsx
- * import { Router, type Props, type RouteProps } from "defuss";
+ * import { type Props, type RouteProps } from "defuss";
  *
- * export interface ProjectDetailsProps extends Props, RouteProps {}
+ * interface MyScreenProps extends Props, RouteProps {}
  *
- * export function ProjectDetailsScreen({ route }: ProjectDetailsProps) {
- *   const { projectName } = route.request.params;
- *   return <h1>Project: {projectName}</h1>;
+ * function MyScreen({ route }: MyScreenProps) {
+ *   const { userId } = route.request.params;
+ *   return <h1>User #{userId}</h1>;
  * }
  * ```
  */
@@ -112,24 +109,24 @@ export interface Router {
   createRouteContext(request: RouteRequest): RouteContext;
 
   /**
-   * Run all registered beforeUnmount hooks sequentially.
+   * Run all registered beforeLeave hooks sequentially.
    * Returns `false` if any hook returns `false` (navigation should be blocked).
    * @internal
    */
-  runBeforeUnmountHooks(): Promise<boolean>;
+  runBeforeLeaveHooks(): Promise<boolean>;
 
   /**
-   * Run all registered unmount hooks.
+   * Run all registered leave hooks.
    * @internal
    */
-  runUnmountHooks(): void;
+  runLeaveHooks(): void;
 
   /**
-   * Clear all lifecycle hooks and return the old unmount hooks
+   * Clear all lifecycle hooks and return the old leave hooks
    * so they can be called after the new route has been rendered.
    * @internal
    */
-  clearRouteLifecycle(): { unmountHooks: Array<UnmountHookFn> };
+  clearRouteLifecycle(): { leaveHooks: Array<LeaveHookFn> };
 }
 
 export interface RouterConfig {
@@ -456,12 +453,12 @@ export const setupRouter = (
     pendingResolvers: [],
     currentPath: "",
     popAttached: false,
-    lifecycleHooks: { beforeUnmount: [], unmount: [] },
+    lifecycleHooks: { beforeLeave: [], leave: [] },
   };
 
   // Ensure lifecycleHooks exists (for pre-existing state without it)
   if (!state.lifecycleHooks) {
-    state.lifecycleHooks = { beforeUnmount: [], unmount: [] };
+    state.lifecycleHooks = { beforeLeave: [], leave: [] };
   }
 
   // Aliases for cleaner code
@@ -628,37 +625,34 @@ export const setupRouter = (
     createRouteContext(request: RouteRequest): RouteContext {
       return {
         request,
-        onBeforeLeave(fn: BeforeUnmountHookFn) {
-					// for the developer, it seem more intuitive to call this
-					// "onBeforeLeave" (you "leave" a route), but internally it's really a "beforeUnmount" hook 
-					// since it runs before the old route is unmounted.
-          state.lifecycleHooks.beforeUnmount.push(fn);
+        onBeforeLeave(fn: BeforeLeaveHookFn) {
+          state.lifecycleHooks.beforeLeave.push(fn);
         },
-        onLeave(fn: UnmountHookFn) {
-          state.lifecycleHooks.unmount.push(fn);
+        onLeave(fn: LeaveHookFn) {
+          state.lifecycleHooks.leave.push(fn);
         },
       };
     },
 
-    async runBeforeUnmountHooks(): Promise<boolean> {
-      for (const fn of state.lifecycleHooks.beforeUnmount) {
+    async runBeforeLeaveHooks(): Promise<boolean> {
+      for (const fn of state.lifecycleHooks.beforeLeave) {
         const result = await fn();
         if (result === false) return false;
       }
       return true;
     },
 
-    runUnmountHooks() {
-      for (const fn of state.lifecycleHooks.unmount) {
+    runLeaveHooks() {
+      for (const fn of state.lifecycleHooks.leave) {
         fn();
       }
     },
 
-    clearRouteLifecycle(): { unmountHooks: Array<UnmountHookFn> } {
-      const oldUnmountHooks = [...state.lifecycleHooks.unmount];
-      state.lifecycleHooks.beforeUnmount = [];
-      state.lifecycleHooks.unmount = [];
-      return { unmountHooks: oldUnmountHooks };
+    clearRouteLifecycle(): { leaveHooks: Array<LeaveHookFn> } {
+      const oldLeaveHooks = [...state.lifecycleHooks.leave];
+      state.lifecycleHooks.beforeLeave = [];
+      state.lifecycleHooks.leave = [];
+      return { leaveHooks: oldLeaveHooks };
     },
   };
 
@@ -705,8 +699,8 @@ interface RouterState {
   currentPath: string;
   popAttached: boolean;
   lifecycleHooks: {
-    beforeUnmount: Array<BeforeUnmountHookFn>;
-    unmount: Array<UnmountHookFn>;
+    beforeLeave: Array<BeforeLeaveHookFn>;
+    leave: Array<LeaveHookFn>;
   };
 }
 
@@ -726,7 +720,7 @@ if (!globalThis[ROUTER_STATE_KEY]) {
     pendingResolvers: [],
     currentPath: "",
     popAttached: false,
-    lifecycleHooks: { beforeUnmount: [], unmount: [] },
+    lifecycleHooks: { beforeLeave: [], leave: [] },
   };
 }
 

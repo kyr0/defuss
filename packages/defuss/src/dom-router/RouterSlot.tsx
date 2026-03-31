@@ -73,8 +73,8 @@ export const RouterSlot: FC<RouterSlotProps> = ({
 
 			// For different-path navigation, run lifecycle hooks
 			if (!isSamePath) {
-				// Run beforeUnmount hooks — can block navigation
-				const allowed = await router.runBeforeUnmountHooks();
+				// Run beforeLeave hooks — can block navigation
+				const allowed = await router.runBeforeLeaveHooks();
 				if (!allowed) {
 					// Rollback: restore old URL and re-resolve old route
 					window.history.pushState({}, "", lastPath);
@@ -82,8 +82,8 @@ export const RouterSlot: FC<RouterSlotProps> = ({
 					return;
 				}
 
-				// Save old unmount hooks before clearing (new route will register fresh ones during morph)
-				const { unmountHooks } = router.clearRouteLifecycle();
+				// Save old leave hooks before clearing (new route will register fresh ones during morph)
+				const { leaveHooks } = router.clearRouteLifecycle();
 
 				await $(ref).update(
 					typeof RouterOutlet === "function" ? RouterOutlet() : [],
@@ -91,7 +91,7 @@ export const RouterSlot: FC<RouterSlotProps> = ({
 				);
 
 				// Fire old route's unmount hooks after new route has been rendered
-				for (const fn of unmountHooks) {
+				for (const fn of leaveHooks) {
 					fn();
 				}
 			} else {

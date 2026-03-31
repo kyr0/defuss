@@ -17,7 +17,7 @@ describe("DOM Router", () => {
       pendingResolvers: [],
       currentPath: "",
       popAttached: false,
-      lifecycleHooks: { beforeUnmount: [], unmount: [] },
+      lifecycleHooks: { beforeLeave: [], leave: [] },
     };
 
     // Create a mock window object with history API
@@ -382,49 +382,49 @@ describe("DOM Router", () => {
       expect(typeof ctx.onLeave).toBe("function");
     });
 
-    it("should register and run beforeUnmount hooks", async () => {
+    it("should register and run beforeLeave hooks", async () => {
       const hook = vi.fn(() => true);
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
       ctx.onBeforeLeave(hook);
 
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(true);
       expect(hook).toHaveBeenCalledOnce();
     });
 
-    it("should block navigation when beforeUnmount returns false", async () => {
+    it("should block navigation when beforeLeave returns false", async () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
       ctx.onBeforeLeave(() => false);
 
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(false);
     });
 
-    it("should block navigation when async beforeUnmount resolves to false", async () => {
+    it("should block navigation when async beforeLeave resolves to false", async () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
       ctx.onBeforeLeave(async () => false);
 
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(false);
     });
 
-    it("should allow navigation when beforeUnmount returns undefined", async () => {
+    it("should allow navigation when beforeLeave returns undefined", async () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
       ctx.onBeforeLeave(() => {});
 
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(true);
     });
 
-    it("should short-circuit on first blocking beforeUnmount hook", async () => {
+    it("should short-circuit on first blocking beforeLeave hook", async () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
@@ -434,13 +434,13 @@ describe("DOM Router", () => {
       ctx.onBeforeLeave(hook1);
       ctx.onBeforeLeave(hook2);
 
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(false);
       expect(hook1).toHaveBeenCalledOnce();
       expect(hook2).not.toHaveBeenCalled();
     });
 
-    it("should register and run unmount hooks", () => {
+    it("should register and run leave hooks", () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
@@ -448,11 +448,11 @@ describe("DOM Router", () => {
       const hook = vi.fn();
       ctx.onLeave(hook);
 
-      router.runUnmountHooks();
+      router.runLeaveHooks();
       expect(hook).toHaveBeenCalledOnce();
     });
 
-    it("should run multiple unmount hooks in order", () => {
+    it("should run multiple leave hooks in order", () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
@@ -461,35 +461,35 @@ describe("DOM Router", () => {
       ctx.onLeave(() => order.push(1));
       ctx.onLeave(() => order.push(2));
 
-      router.runUnmountHooks();
+      router.runLeaveHooks();
       expect(order).toEqual([1, 2]);
     });
 
-    it("should clear lifecycle hooks and return old unmount hooks", async () => {
+    it("should clear lifecycle hooks and return old leave hooks", async () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
 
       const beforeHook = vi.fn();
-      const unmountHook = vi.fn();
+      const leaveHook = vi.fn();
       ctx.onBeforeLeave(beforeHook);
-      ctx.onLeave(unmountHook);
+      ctx.onLeave(leaveHook);
 
-      const { unmountHooks } = router.clearRouteLifecycle();
-      expect(unmountHooks).toHaveLength(1);
+      const { leaveHooks } = router.clearRouteLifecycle();
+      expect(leaveHooks).toHaveLength(1);
 
-      // Old unmount hooks are returned for deferred execution
-      unmountHooks[0]();
-      expect(unmountHook).toHaveBeenCalledOnce();
+      // Old leave hooks are returned for deferred execution
+      leaveHooks[0]();
+      expect(leaveHook).toHaveBeenCalledOnce();
 
       // After clearing, running hooks should do nothing
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       // Cleared — no hooks to block
       expect(allowed).toBe(true);
     });
 
     it("should allow navigation with no hooks registered", async () => {
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(true);
     });
   });

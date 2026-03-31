@@ -140,12 +140,12 @@ describe("DOM Router Browser Integration", () => {
       expect(typeof ctx.onLeave).toBe("function");
     });
 
-    it("should allow navigation when no beforeUnmount hooks are registered", async () => {
-      const allowed = await router.runBeforeUnmountHooks();
+    it("should allow navigation when no beforeLeave hooks are registered", async () => {
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(true);
     });
 
-    it("should allow navigation when beforeUnmount returns true", async () => {
+    it("should allow navigation when beforeLeave returns true", async () => {
       router.add({ path: "/page" });
       window.history.pushState({}, "", "/page");
       const req = router.match("/page");
@@ -153,11 +153,11 @@ describe("DOM Router Browser Integration", () => {
 
       ctx.onBeforeLeave(() => true);
 
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(true);
     });
 
-    it("should block navigation when beforeUnmount returns false", async () => {
+    it("should block navigation when beforeLeave returns false", async () => {
       router.add({ path: "/page" });
       window.history.pushState({}, "", "/page");
       const req = router.match("/page");
@@ -165,11 +165,11 @@ describe("DOM Router Browser Integration", () => {
 
       ctx.onBeforeLeave(() => false);
 
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(false);
     });
 
-    it("should block navigation when async beforeUnmount resolves to false", async () => {
+    it("should block navigation when async beforeLeave resolves to false", async () => {
       router.add({ path: "/page" });
       window.history.pushState({}, "", "/page");
       const req = router.match("/page");
@@ -180,7 +180,7 @@ describe("DOM Router Browser Integration", () => {
         return false;
       });
 
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(false);
     });
 
@@ -197,12 +197,12 @@ describe("DOM Router Browser Integration", () => {
         return true;
       });
 
-      const allowed = await router.runBeforeUnmountHooks();
+      const allowed = await router.runBeforeLeaveHooks();
       expect(allowed).toBe(false);
       expect(secondCalled).toBe(false);
     });
 
-    it("should fire unmount hooks", () => {
+    it("should fire leave hooks", () => {
       router.add({ path: "/page" });
       window.history.pushState({}, "", "/page");
       const req = router.match("/page");
@@ -213,11 +213,11 @@ describe("DOM Router Browser Integration", () => {
         unmounted = true;
       });
 
-      router.runUnmountHooks();
+      router.runLeaveHooks();
       expect(unmounted).toBe(true);
     });
 
-    it("should clear lifecycle hooks and return old unmount hooks", () => {
+    it("should clear lifecycle hooks and return old leave hooks", () => {
       // Clear any leaked state from previous tests
       router.clearRouteLifecycle();
 
@@ -232,15 +232,15 @@ describe("DOM Router Browser Integration", () => {
         unmounted = true;
       });
 
-      const { unmountHooks } = router.clearRouteLifecycle();
+      const { leaveHooks } = router.clearRouteLifecycle();
 
-      // Old unmount hooks are returned
-      expect(unmountHooks).toHaveLength(1);
-      unmountHooks[0]();
+      // Old leave hooks are returned
+      expect(leaveHooks).toHaveLength(1);
+      leaveHooks[0]();
       expect(unmounted).toBe(true);
 
       // After clearing, no hooks block
-      router.runBeforeUnmountHooks().then((allowed) => {
+      router.runBeforeLeaveHooks().then((allowed) => {
         expect(allowed).toBe(true);
       });
     });
