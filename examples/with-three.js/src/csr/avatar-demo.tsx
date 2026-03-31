@@ -1,390 +1,250 @@
 import { $ } from "defuss";
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Input,
-  Label,
-  toast,
+	Alert,
+	AlertDescription,
+	AlertTitle,
+	Button,
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+	Label,
 } from "defuss-shadcn";
 import { TalkingHead } from "@met4citizen/talkinghead";
-import { HeadTTS } from "@met4citizen/headtts";
+import { LipsyncEn } from "@met4citizen/talkinghead/modules/lipsync-en.mjs";
 
-const AVATAR_URL = "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7.0/avatars/brunette.glb";
-const HEADTTS_VERSION = "1.2.0";
-const HEADTTS_WORKER = `https://cdn.jsdelivr.net/npm/@met4citizen/headtts@${HEADTTS_VERSION}/modules/worker-tts.mjs`;
-const HEADTTS_DICTIONARIES = `https://cdn.jsdelivr.net/npm/@met4citizen/headtts@${HEADTTS_VERSION}/dictionaries/`;
-const HEADTTS_DEFAULT_SAMPLE_RATE = 24000;
+const CDN_BASE = "https://cdn.jsdelivr.net/gh/met4citizen/HeadTTS@main/avatars";
+const AUDIO_URL = "/reference.wav";
 
-const DEFAULT_TEXT =
-  "Hello from defuss. This demo streams raw PCM from HeadTTS into TalkingHead and applies the returned viseme timeline in real time.";
-
-const VOICES = [
-  "af_bella",
-  "af_sarah",
-  "am_fenrir",
-  "am_michael",
+const AVATARS = [
+	{ id: "julia", label: "Julia (Female)", url: `${CDN_BASE}/julia.glb`, body: "F" as const },
+	{ id: "david", label: "David (Male)", url: `${CDN_BASE}/david.glb`, body: "M" as const },
 ] as const;
 
 type DemoState = {
-  head: any | null;
-  headtts: any | null;
-  initialized: boolean;
-  streamToken: number;
-  chunkCount: number;
-  active: boolean;
+	head: any | null;
+	audioBuffer: AudioBuffer | null;
+	initialized: boolean;
+	currentAvatar: string;
 };
 
 const state: DemoState = {
-  head: null,
-  headtts: null,
-  initialized: false,
-  streamToken: 0,
-  chunkCount: 0,
-  active: false,
+	head: null,
+	audioBuffer: null,
+	initialized: false,
+	currentAvatar: "",
 };
 
+function getSelectedAvatar() {
+	const id = q<HTMLSelectElement>("demo-avatar").value;
+	return AVATARS.find((a) => a.id === id) ?? AVATARS[0];
+}
+
 function q<T extends HTMLElement>(id: string): T {
-  const node = document.getElementById(id);
-  if (!node) {
-    throw new Error(`Missing DOM node #${id}`);
-  }
-  return node as T;
+	const node = document.getElementById(id);
+	if (!node) {
+		throw new Error(`Missing DOM node #${id}`);
+	}
+	return node as T;
 }
 
 function logLine(line: string) {
-  const log = q<HTMLPreElement>("demo-log");
-  const timestamp = new Date().toLocaleTimeString();
-  const next = `${timestamp}  ${line}`;
-  log.textContent = log.textContent ? `${next}\n${log.textContent}` : next;
+	const log = q<HTMLPreElement>("demo-log");
+	const timestamp = new Date().toLocaleTimeString();
+	const next = `${timestamp}  ${line}`;
+	log.textContent = log.textContent ? `${next}\n${log.textContent}` : next;
 }
 
 function setStatus(title: string, description: string, variant: "default" | "destructive" = "default") {
-  $(q("demo-status")).update(
-    <Alert variant={variant === "destructive" ? "destructive" : undefined}>
-      <AlertTitle>{title}</AlertTitle>
-      <AlertDescription>{description}</AlertDescription>
-    </Alert>,
-  );
-}
-
-function setSubtitles(text: string) {
-  const node = q<HTMLDivElement>("demo-subtitles");
-  node.textContent = text;
-}
-
-function getText() {
-  return q<HTMLTextAreaElement>("demo-text").value.trim();
-}
-
-function getVoice() {
-  return q<HTMLSelectElement>("demo-voice").value;
-}
-
-function getSpeed() {
-  const value = Number(q<HTMLInputElement>("demo-speed").value);
-  return Number.isFinite(value) && value > 0 ? value : 1;
-}
-
-function bufferFromUnknownAudio(audio: unknown): ArrayBuffer {
-  if (audio instanceof ArrayBuffer) return audio;
-  if (ArrayBuffer.isView(audio)) {
-    return audio.buffer.slice(audio.byteOffset, audio.byteOffset + audio.byteLength);
-  }
-  if (typeof audio === "string") {
-    const binary = atob(audio);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-    return bytes.buffer;
-  }
-  throw new Error("HeadTTS audio payload is not an ArrayBuffer, typed array, or base64 string.");
+	$(q("demo-status")).update(
+		<Alert variant={variant === "destructive" ? "destructive" : undefined}>
+			<AlertTitle>{title}</AlertTitle>
+			<AlertDescription>{description}</AlertDescription>
+		</Alert>,
+	);
 }
 
 async function ensureReady() {
-  if (state.initialized && state.head && state.headtts) return;
+	const avatar = getSelectedAvatar();
 
-  setStatus("Initializing…", "Loading the avatar, 3D scene, and HeadTTS backends.");
-  logLine("Creating TalkingHead instance.");
+	// Re-init if avatar selection changed
+	if (state.initialized && state.currentAvatar !== avatar.id) {
+		state.initialized = false;
+		state.head = null;
+		q("avatar-stage").innerHTML = "";
+		logLine(`Switching avatar to ${avatar.label}…`);
+	}
 
-  const head = new TalkingHead(q("avatar-stage"), {
-    cameraView: "upper",
-    avatarMood: "neutral",
-    lipsyncLang: "en",
-    lipsyncModules: [],
-    modelFPS: 60,
-  });
+	if (state.initialized && state.head && state.audioBuffer) return;
 
-  await head.showAvatar(
-    {
-      url: AVATAR_URL,
-      body: "F",
-      avatarMood: "neutral",
-      lipsyncLang: "en",
-      ttsLang: "en-US",
-      ttsVoice: "en-US-Standard-F",
-      baseline: {
-        headRotateX: -0.05,
-        eyeBlinkLeft: 0.15,
-        eyeBlinkRight: 0.15,
-      },
-    },
-    () => {
-      logLine("Avatar asset loaded.");
-    },
-  );
+	setStatus("Initializing\u2026", `Loading ${avatar.label} and decoding the reference audio.`);
+	logLine(`Creating TalkingHead with ${avatar.label}.`);
 
-  logLine("Creating HeadTTS client.");
-  const headtts = new HeadTTS({
-    endpoints: ["webgpu", "wasm"],
-    languages: ["en-us"],
-    voices: [getVoice()],
-    workerModule: HEADTTS_WORKER,
-    dictionaryURL: HEADTTS_DICTIONARIES,
-    audioSampleRate: HEADTTS_DEFAULT_SAMPLE_RATE,
-  });
+	const head = new TalkingHead(q("avatar-stage"), {
+		cameraView: "upper",
+		avatarMood: "neutral",
+		lipsyncLang: "en",
+		lipsyncModules: [],
+		modelFPS: 60,
+	});
 
-  headtts.onerror = (error: unknown) => {
-    console.error(error);
-    setStatus("HeadTTS error", String(error), "destructive");
-    logLine(`HeadTTS error: ${String(error)}`);
-  };
+	// Monkey-patch the English lipsync module (avoids Vite dynamic import issue)
+	head.lipsync["en"] = new LipsyncEn();
+	logLine("English lipsync module injected.");
 
-  await headtts.connect();
-  logLine("HeadTTS connected.");
+	await head.showAvatar(
+		{
+			url: avatar.url,
+			body: avatar.body,
+			avatarMood: "neutral",
+			lipsyncLang: "en",
+			ttsLang: "en-US",
+			ttsVoice: avatar.body === "M" ? "en-US-Standard-D" : "en-US-Standard-F",
+			baseline: {
+				headRotateX: -0.05,
+				eyeBlinkLeft: 0.15,
+				eyeBlinkRight: 0.15,
+			},
+		},
+		() => {
+			logLine("Avatar asset loaded.");
+		},
+	);
 
-  state.head = head;
-  state.headtts = headtts;
-  state.initialized = true;
+	logLine("Fetching reference audio\u2026");
+	const response = await fetch(AUDIO_URL);
+	if (!response.ok) throw new Error(`Failed to fetch ${AUDIO_URL}: ${response.status}`);
+	const arrayBuffer = await response.arrayBuffer();
+	const audioCtx = new AudioContext();
+	const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+	await audioCtx.close();
+	logLine(`Audio decoded: ${audioBuffer.duration.toFixed(2)}s, ${audioBuffer.sampleRate}Hz.`);
 
-  setStatus(
-    "Ready",
-    "Avatar initialized. Press “Speak” to stream PCM chunks and viseme timing into TalkingHead.",
-  );
+	state.head = head;
+	state.audioBuffer = audioBuffer;
+	state.initialized = true;
+	state.currentAvatar = avatar.id;
 
-  toast({
-    title: "Demo ready",
-    description: "TalkingHead and HeadTTS are initialized.",
-  });
+	setStatus("Ready", `${avatar.label} loaded. Press \u201cSpeak\u201d to play back the reference audio with lip-sync.`);
 }
 
 async function handleInit() {
-  try {
-    await ensureReady();
-  } catch (error) {
-    console.error(error);
-    setStatus("Initialization failed", String(error), "destructive");
-    logLine(`Initialization failed: ${String(error)}`);
-  }
+	try {
+		await ensureReady();
+	} catch (error) {
+		console.error(error);
+		setStatus("Initialization failed", String(error), "destructive");
+		logLine(`Initialization failed: ${String(error)}`);
+	}
 }
 
 async function handleSpeak() {
-  const input = getText();
-  if (!input) {
-    setStatus("Missing text", "Enter some text before starting synthesis.", "destructive");
-    return;
-  }
+	try {
+		await ensureReady();
 
-  try {
-    await ensureReady();
+		const head = state.head!;
+		const audioBuffer = state.audioBuffer!;
 
-    const head = state.head!;
-    const headtts = state.headtts!;
-    const token = ++state.streamToken;
+		logLine("Playing reference audio with lip-sync\u2026");
+		setStatus("Speaking\u2026", "Playing reference.wav through TalkingHead with word-level lip-sync.");
 
-    state.chunkCount = 0;
-    state.active = true;
+		// Build simple word timing spread across the audio duration
+		const durationMs = audioBuffer.duration * 1000;
+		const sampleWords = "Hello from defuss this is a talking head avatar demo with reference audio playback".split(" ");
+		const wordDuration = durationMs / sampleWords.length;
+		const wtimes = sampleWords.map((_, i) => i * wordDuration);
+		const wdurations = sampleWords.map(() => wordDuration);
 
-    setSubtitles("");
-    logLine(`Starting stream using voice=${getVoice()} speed=${getSpeed().toFixed(2)}.`);
+		head.speakAudio(
+			{
+				audio: audioBuffer,
+				words: sampleWords,
+				wtimes,
+				wdurations,
+			},
+			{ lipsyncLang: "en" },
+		);
 
-    try {
-      head.streamInterrupt?.();
-    } catch {
-      // Ignore stale stream interruption errors.
-    }
-
-    await head.streamStart(
-      {
-        sampleRate: HEADTTS_DEFAULT_SAMPLE_RATE,
-        gain: 1,
-        lipsyncLang: "en",
-        lipsyncType: "visemes",
-        waitForAudioChunks: true,
-      },
-      () => {
-        logLine("Avatar audio playback started.");
-      },
-      () => {
-        logLine("Avatar audio playback ended.");
-      },
-      (subtitle: string) => {
-        if (token !== state.streamToken) return;
-        setSubtitles(subtitle);
-      },
-    );
-
-    headtts.onmessage = (message: any) => {
-      if (token !== state.streamToken) return;
-
-      if (message.type === "audio") {
-        const audioBuffer = bufferFromUnknownAudio(message.data?.audio);
-
-        state.chunkCount += 1;
-        logLine(
-          `Chunk ${state.chunkCount}: ${audioBuffer.byteLength} bytes, ${message.data?.visemes?.length ?? 0} visemes.`,
-        );
-
-        head.streamAudio({
-          audio: audioBuffer,
-          visemes: message.data?.visemes,
-          vtimes: message.data?.vtimes,
-          vdurations: message.data?.vdurations,
-        });
-      } else if (message.type === "error") {
-        console.error(message.data);
-        setStatus("Synthesis failed", String(message.data?.error ?? "Unknown synthesis error."), "destructive");
-        logLine(`Synthesis failed: ${String(message.data?.error ?? "Unknown synthesis error.")}`);
-      }
-    };
-
-    headtts.onend = () => {
-      if (token !== state.streamToken) return;
-      state.active = false;
-      head.streamNotifyEnd();
-      setStatus(
-        "Done",
-        `Finished streaming ${state.chunkCount} audio chunk${state.chunkCount === 1 ? "" : "s"}.`,
-      );
-      logLine("HeadTTS queue drained. streamNotifyEnd() sent.");
-    };
-
-    headtts.setup({
-      voice: getVoice(),
-      language: "en-us",
-      speed: getSpeed(),
-      audioEncoding: "pcm",
-    });
-
-    setStatus("Streaming…", "HeadTTS is synthesizing PCM chunks and TalkingHead is consuming them.");
-    await headtts.synthesize({ input });
-  } catch (error) {
-    console.error(error);
-    state.active = false;
-    setStatus("Speak failed", String(error), "destructive");
-    logLine(`Speak failed: ${String(error)}`);
-  }
+		logLine("speakAudio() called. Avatar is speaking.");
+		setStatus("Speaking\u2026", `Playing ${audioBuffer.duration.toFixed(1)}s of audio.`);
+	} catch (error) {
+		console.error(error);
+		setStatus("Speak failed", String(error), "destructive");
+		logLine(`Speak failed: ${String(error)}`);
+	}
 }
 
-function handleInterrupt() {
-  state.streamToken += 1;
-  state.active = false;
-  setSubtitles("");
-
-  try {
-    state.head?.streamInterrupt?.();
-  } catch (error) {
-    console.warn(error);
-  }
-
-  setStatus("Interrupted", "The current avatar stream was interrupted locally.");
-  logLine("Stream interrupted.");
+function handleStop() {
+	try {
+		state.head?.stopSpeaking?.();
+	} catch (error) {
+		console.warn(error);
+	}
+	setStatus("Stopped", "Playback stopped.");
+	logLine("Playback stopped.");
 }
 
 function handleResetLog() {
-  q<HTMLPreElement>("demo-log").textContent = "";
+	q<HTMLPreElement>("demo-log").textContent = "";
 }
 
 export function AvatarDemoScreen() {
-  return (
-    <main class="demo-shell">
-      <Card class="demo-card">
-        <CardHeader>
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <CardTitle>TalkingHead × HeadTTS</CardTitle>
-              <CardDescription>
-                defuss DOM-first demo. No VDOM assumptions. PCM stream + viseme timing.
-              </CardDescription>
-            </div>
-            <span class="pill">defuss-shadcn</span>
-          </div>
-        </CardHeader>
-        <CardContent class="control-grid">
-          <div id="demo-status">
-            <Alert>
-              <AlertTitle>Not initialized</AlertTitle>
-              <AlertDescription>
-                Click “Initialize” once. The first run loads the avatar asset and the HeadTTS model backend.
-              </AlertDescription>
-            </Alert>
-          </div>
+	return (
+		<main class="demo-shell">
+			<Card class="demo-card">
+				<CardHeader>
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<CardTitle className="text-lg mb-2 font-bold">TalkingHead</CardTitle>
+							<CardDescription>
+								three.js integration demo. Plays a reference WAV file with word-level lip-sync.
+							</CardDescription>
+						</div>
+					</div>
+				</CardHeader>
+				<CardContent class="control-grid">
+					<div id="demo-status">
+						<Alert class="mt-4 border p-2 rounded-md	bg-yellow-50 text-yellow-800">
+							<AlertTitle>Not initialized</AlertTitle>
+							<AlertDescription class="text-sm">
+								Click "Initialize" to load the 3D avatar and decode the reference audio.
+							</AlertDescription>
+						</Alert>
+					</div>
 
-          <div class="field-grid">
-            <Label for="demo-text">Text</Label>
-            <textarea id="demo-text" class="demo-textarea">{DEFAULT_TEXT}</textarea>
-          </div>
+					<div class="field-grid">
+						<Label for="demo-avatar">Avatar</Label>
+						<select id="demo-avatar" class="demo-select">
+							{AVATARS.map((a) => (
+								<option key={a.id} value={a.id}>{a.label}</option>
+							))}
+						</select>
+					</div>
 
-          <div class="kv-grid">
-            <div class="field-grid">
-              <Label for="demo-voice">Voice</Label>
-              <select id="demo-voice" class="demo-select">
-                {VOICES.map((voice) => (
-                  <option value={voice}>{voice}</option>
-                ))}
-              </select>
-            </div>
+					<div class="button-row">
+						<Button onClick={handleInit}>Initialize</Button>
+						<Button onClick={handleSpeak}>Speak</Button>
+						<Button variant="secondary" onClick={handleStop}>
+							Stop
+						</Button>
+						<Button variant="secondary" onClick={handleResetLog}>
+							Clear log
+						</Button>
+					</div>
 
-            <div class="field-grid">
-              <Label for="demo-speed">Speed</Label>
-              <Input id="demo-speed" type="number" step="0.1" min="0.25" max="4" value="1" />
-            </div>
-          </div>
+					<div class="field-grid">
+						<Label>Log</Label>
+						<pre id="demo-log" class="demo-log" />
+					</div>
+				</CardContent>
+			</Card>
 
-          <div class="button-row">
-            <Button onClick={handleInit}>Initialize</Button>
-            <Button onClick={handleSpeak}>Speak (PCM stream)</Button>
-            <Button variant="secondary" onClick={handleInterrupt}>
-              Interrupt
-            </Button>
-            <Button variant="secondary" onClick={handleResetLog}>
-              Clear log
-            </Button>
-          </div>
-
-          <p class="muted-note">
-            This demo uses HeadTTS in browser mode with explicit CDN worker/dictionary URLs so it works cleanly inside
-            the Astro + defuss app without assuming React-style asset wiring.
-          </p>
-
-          <div class="field-grid">
-            <Label>Subtitles</Label>
-            <div id="demo-subtitles" class="demo-log" />
-          </div>
-
-          <div class="field-grid">
-            <Label>Log</Label>
-            <pre id="demo-log" class="demo-log" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card class="demo-card">
-        <CardHeader>
-          <CardTitle>Avatar viewport</CardTitle>
-          <CardDescription>
-            Swap the avatar URL for your own Mixamo-compatible GLB with ARKit + Oculus viseme blendshapes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div id="avatar-stage" class="avatar-stage" />
-        </CardContent>
-      </Card>
-    </main>
-  );
+			<Card class="demo-card">
+				<CardContent>
+					<div id="avatar-stage" class="avatar-stage" />
+				</CardContent>
+			</Card>
+		</main>
+	);
 }
