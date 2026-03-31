@@ -13,7 +13,8 @@
     "test": "vitest run --config vitest.browser.config.ts",
     "prebuild": "bun run clean",
     "build": "pkgroll --sourcemap --packagejson='*.js' --packagejson='*.mjs' --packagejson='*.cjs' --packagejson='*.d.ts' --packagejson='*.d.mts' --packagejson='*.d.cts'",
-    "postbuild": "bunx tsx scripts/build-css.ts"
+    "postbuild": "bunx tsx scripts/build-css.ts",
+    "prepublishOnly": "bun run build"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
