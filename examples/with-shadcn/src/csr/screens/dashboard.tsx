@@ -1,5 +1,5 @@
 import { $, createRef, Router } from "defuss";
-import type { RouteContext } from "defuss";
+import type { RouteProps } from "defuss";
 import { setHeaders } from "defuss-rpc/client.js";
 import {
 	Button,
@@ -39,7 +39,7 @@ const initialData: DashboardData = {
  * Dashboard screen showing stats cards, recent activity feed,
  * and quick-action navigation buttons.
  */
-export function DashboardScreen({ route: _route }: { route?: RouteContext }) {
+export function DashboardScreen({ route }: RouteProps) {
 	const stateRef = createRef<HTMLElement, { data: DashboardData; loading: boolean }>(undefined, {
 		data: initialData,
 		loading: true,

@@ -1,5 +1,5 @@
 import { $, createRef, Router } from "defuss";
-import type { RouteContext } from "defuss";
+import type { RouteProps } from "defuss";
 import { createDataview, applyDataview } from "defuss-dataview";
 import { setHeaders } from "defuss-rpc/client.js";
 import {
@@ -36,7 +36,7 @@ import { t } from "../i18n";
  * User management screen with searchable data table, create/edit dialog,
  * status toggling, and delete confirmation.
  */
-export function UsersScreen({ route }: { route?: RouteContext }) {
+export function UsersScreen({ route }: RouteProps) {
 	const usersRef = createRef<HTMLElement, { users: User[]; tenants: Tenant[] }>(undefined, { users: [], tenants: [] });
 	const loadingRef = createRef<HTMLElement, { loading: boolean }>(undefined, { loading: true });
 	const editRef = createRef<HTMLElement, { mode: "create" | "edit"; user: Partial<User> | null }>(undefined, {

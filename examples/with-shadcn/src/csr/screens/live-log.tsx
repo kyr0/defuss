@@ -1,4 +1,4 @@
-import type { FC, RouteContext } from "defuss";
+import type { FC, RouteProps } from "defuss";
 import { $, createRef, createStore } from "defuss";
 import { createDataview, applyDataview } from "defuss-dataview";
 import type { DataviewState } from "defuss-dataview";
@@ -346,7 +346,7 @@ const LiveLogContent: FC = () => {
 
 // -- Screen -----------------------------------------------------------------
 
-export function LiveLogScreen({ route }: { route?: RouteContext }) {
+export function LiveLogScreen({ route }: RouteProps) {
 	const contentRef = createRef<HTMLDivElement>();
 	let intervalId: ReturnType<typeof setInterval> | undefined;
 	let unsubscribe: (() => void) | undefined;

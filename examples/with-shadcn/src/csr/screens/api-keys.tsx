@@ -1,5 +1,5 @@
 import { $, createRef } from "defuss";
-import type { RouteContext } from "defuss";
+import type { RouteProps } from "defuss";
 import { createDataview, applyDataview } from "defuss-dataview";
 import { setHeaders } from "defuss-rpc/client.js";
 import {
@@ -40,7 +40,7 @@ import { t } from "../i18n";
  * API key management screen with searchable data table,
  * key generation dialog, and revoke confirmation.
  */
-export function ApiKeysScreen({ route }: { route?: RouteContext }) {
+export function ApiKeysScreen({ route }: RouteProps) {
 	const dataRef = createRef<HTMLElement, { apiKeys: ApiKey[]; tenants: Tenant[] }>(undefined, { apiKeys: [], tenants: [] });
 	const loadingRef = createRef<HTMLElement, { loading: boolean }>(undefined, { loading: true });
 	const createStateRef = createRef<HTMLElement, { fullKey: string | null }>(undefined, { fullKey: null });

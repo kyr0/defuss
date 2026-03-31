@@ -1,5 +1,5 @@
 import { $, createRef } from "defuss";
-import type { RouteContext } from "defuss";
+import type { RouteProps } from "defuss";
 import { createDataview, applyDataview } from "defuss-dataview";
 import { setHeaders } from "defuss-rpc/client.js";
 import {
@@ -35,7 +35,7 @@ import { t } from "../i18n";
  * Tenant management screen with searchable data table,
  * create/edit dialog, and delete confirmation with cascade warning.
  */
-export function TenantsScreen({ route }: { route?: RouteContext }) {
+export function TenantsScreen({ route }: RouteProps) {
 	const tenantsRef = createRef<HTMLElement, { tenants: Tenant[] }>(undefined, { tenants: [] });
 	const loadingRef = createRef<HTMLElement, { loading: boolean }>(undefined, { loading: true });
 	const editRef = createRef<HTMLElement, { mode: "create" | "edit"; tenant: Partial<Tenant> | null }>(undefined, {
