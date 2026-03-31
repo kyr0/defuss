@@ -1,0 +1,72 @@
+{
+  "name": "defuss-multicore",
+  "version": "0.0.1-alpha.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "description": "Isomorphic multicore execution + linear algebra. Web Workers (browser) + worker_threads (Node.js). Auto-split, loop-unrolled vector/matrix ops, parallel map/filter/reduce.",
+  "keywords": [
+    "multicore",
+    "parallel",
+    "worker",
+    "web-worker",
+    "worker-threads",
+    "isomorphic",
+    "matrix",
+    "vector",
+    "dotproduct",
+    "matmul",
+    "loop-unrolling",
+    "simd",
+    "typed-array"
+  ],
+  "repository": {
+    "url": "git+https://github.com/kyr0/defuss.git",
+    "type": "git"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun",
+    "pretest": "bun run build",
+    "prebuild": "bun run clean",
+    "build": "pkgroll",
+    "test": "vitest --run --coverage",
+    "test:browser": "vitest --run --config vitest.browser.config.ts",
+    "bench": "node --import tsx/esm src/bench.ts",
+    "bench:browser": "vitest --run --config vitest.browser.config.ts --testNamePattern=benchmark"
+  },
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
+  },
+  "devDependencies": {
+    "@vitest/browser": "^4.1.2",
+    "@vitest/browser-playwright": "^4.1.2",
+    "@vitest/coverage-v8": "^4.1.2",
+    "pkgroll": "^2.21.5",
+    "playwright": "^1.58.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.2"
+  }
+}
