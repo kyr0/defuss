@@ -66,9 +66,9 @@ Inside this package, you'll find the following relevant folders and files:
 
 ```text
 /
-├── src/index.ts
-├── src/types.ts
-├── package.json
+├-- src/index.ts
+├-- src/types.ts
+├-- package.json
 ```
 
 ## 🧞 Commands

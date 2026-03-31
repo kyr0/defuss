@@ -22,7 +22,8 @@
     "clean": "rm -rf ./dist",
     "pretest": "bun run build",
     "prebuild": "bun run clean",
-    "build": "pkgroll --minify --sourcemap"
+    "build": "pkgroll --minify --sourcemap",
+    "prepublishOnly": "bun run build"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
