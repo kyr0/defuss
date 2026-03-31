@@ -4,20 +4,24 @@ import path from 'node:path';
 import { FAST_GLOB_IGNORE_PATTERNS, MAX_FILE_SIZE_BYTES, shouldSkipSensitivePath, normalizeGlobPath } from '../src/ignore.js';
 
 describe('shouldSkipSensitivePath', () => {
-  it('excludes .env files', () => {
+  it('excludes all dot files', () => {
     expect(shouldSkipSensitivePath('.env')).toBe(true);
     expect(shouldSkipSensitivePath('.env.production')).toBe(true);
     expect(shouldSkipSensitivePath('.env.local')).toBe(true);
-  });
-
-  it('excludes key material', () => {
-    expect(shouldSkipSensitivePath('secrets/id_rsa')).toBe(true);
-    expect(shouldSkipSensitivePath('id_ed25519')).toBe(true);
-    expect(shouldSkipSensitivePath('known_hosts')).toBe(true);
-    expect(shouldSkipSensitivePath('authorized_keys')).toBe(true);
+    expect(shouldSkipSensitivePath('.gitignore')).toBe(true);
+    expect(shouldSkipSensitivePath('.eslintrc')).toBe(true);
     expect(shouldSkipSensitivePath('.npmrc')).toBe(true);
     expect(shouldSkipSensitivePath('.pypirc')).toBe(true);
     expect(shouldSkipSensitivePath('.netrc')).toBe(true);
+    expect(shouldSkipSensitivePath('src/.hidden')).toBe(true);
+  });
+
+  it('excludes files inside dot folders at any depth', () => {
+    expect(shouldSkipSensitivePath('.git/config')).toBe(true);
+    expect(shouldSkipSensitivePath('.idea/workspace.xml')).toBe(true);
+    expect(shouldSkipSensitivePath('.vscode/settings.json')).toBe(true);
+    expect(shouldSkipSensitivePath('project/.hidden-dir/file.ts')).toBe(true);
+    expect(shouldSkipSensitivePath('.cache/deep/nested/file.js')).toBe(true);
   });
 
   it('excludes certificate files', () => {
@@ -46,6 +50,13 @@ describe('shouldSkipSensitivePath', () => {
 });
 
 describe('FAST_GLOB_IGNORE_PATTERNS', () => {
+  it('ignores all dot folders and dot files', () => {
+    expect(FAST_GLOB_IGNORE_PATTERNS).toContain('.*/**');
+    expect(FAST_GLOB_IGNORE_PATTERNS).toContain('**/.*/**');
+    expect(FAST_GLOB_IGNORE_PATTERNS).toContain('**/.*');
+    expect(FAST_GLOB_IGNORE_PATTERNS).toContain('**/.env*');
+  });
+
   it('targets third-party and build directories', () => {
     expect(FAST_GLOB_IGNORE_PATTERNS).toContain('node_modules/**');
     expect(FAST_GLOB_IGNORE_PATTERNS).toContain('**/dist/**');

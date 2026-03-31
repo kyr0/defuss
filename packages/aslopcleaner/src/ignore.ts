@@ -89,16 +89,33 @@ const SENSITIVE_SUFFIXES = [
 
 export const MAX_FILE_SIZE_BYTES = 125 * 1024;
 
-export const FAST_GLOB_IGNORE_PATTERNS: readonly string[] =
-  SKIPPED_DIRECTORIES.flatMap((directory) => [
+export const FAST_GLOB_IGNORE_PATTERNS: readonly string[] = [
+  // All dot folders at any depth (and everything inside them)
+  ".*/**",
+  "**/.*/**",
+  // All dot files at any depth
+  "**/.*",
+  // All .env* files at any depth
+  "**/.env*",
+  // Explicit directory list
+  ...SKIPPED_DIRECTORIES.flatMap((directory) => [
     `${directory}/**`,
     `**/${directory}/**`,
-  ]);
+  ]),
+];
 
 export function shouldSkipSensitivePath(filePath: string): boolean {
   const baseName = path.basename(filePath).toLowerCase();
+  const normalizedPath = filePath.split(path.sep).join("/");
 
-  if (baseName === ".env" || baseName.startsWith(".env.")) {
+  // Skip all dot files (basename starts with ".")
+  if (baseName.startsWith(".")) {
+    return true;
+  }
+
+  // Skip any file inside a dot folder at any depth
+  const segments = normalizedPath.split("/");
+  if (segments.some((seg, i) => i < segments.length - 1 && seg.startsWith("."))) {
     return true;
   }
 

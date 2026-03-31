@@ -7,7 +7,6 @@ export const REPLACEMENT_RULES: readonly ReplacementRule[] = [
   { match: "‒", replacement: "-", description: "figure dash" },
   { match: "―", replacement: "--", description: "horizontal bar" },
   { match: "‐", replacement: "-", description: "hyphen" },
-  { match: "-", replacement: "-", description: "non-breaking hyphen" },
   { match: "⁃", replacement: "-", description: "hyphen bullet" },
   { match: "﹘", replacement: "-", description: "small em dash" },
   { match: "﹣", replacement: "-", description: "small hyphen-minus" },
@@ -182,7 +181,7 @@ export const REPLACEMENT_RULES: readonly ReplacementRule[] = [
   { match: "＂", replacement: '"', description: "fullwidth quotation mark" },
   { match: "＇", replacement: "'", description: "fullwidth apostrophe" },
   { match: "′", replacement: "'", description: "prime" },
-  { match: "‵", replacement: "'", description: "reversed prime" },
+  { match: "‵", replacement: "`", description: "reversed prime" },
   { match: "ʹ", replacement: "'", description: "modifier letter prime" },
   { match: "ʻ", replacement: "'", description: "modifier letter turned comma" },
   { match: "ʼ", replacement: "'", description: "modifier letter apostrophe" },
@@ -207,15 +206,13 @@ export const REPLACEMENT_RULES: readonly ReplacementRule[] = [
     description: "modifier letter vertical line",
   },
   { match: "ˊ", replacement: "'", description: "modifier letter acute accent" },
-  { match: "ˋ", replacement: "'", description: "modifier letter grave accent" },
+  { match: "ˋ", replacement: "`", description: "modifier letter grave accent" },
   {
     match: "˴",
-    replacement: "'",
+    replacement: "`",
     description: "modifier letter middle grave accent",
   },
   { match: "´", replacement: "'", description: "acute accent" },
-  { match: "`", replacement: "'", description: "grave accent" },
-
   { match: "″", replacement: '""', description: "double prime" },
   { match: "‶", replacement: '""', description: "reversed double prime" },
   {
@@ -280,7 +277,7 @@ export const REPLACEMENT_RULES: readonly ReplacementRule[] = [
   { match: "¬", replacement: "!", description: "not sign" },
   { match: "±", replacement: "+/-", description: "plus-minus" },
   { match: "∓", replacement: "-/+", description: "minus-or-plus" },
-  { match: "×", replacement: "*", description: "multiplication sign" },
+  { match: "×", replacement: "x", description: "times sign" },
   { match: "÷", replacement: "/", description: "division sign" },
   { match: "⁄", replacement: "/", description: "fraction slash" },
   { match: "∕", replacement: "/", description: "division slash" },
@@ -637,6 +634,46 @@ export const REPLACEMENT_RULES: readonly ReplacementRule[] = [
   { match: "％", replacement: "%", description: "fullwidth percent" },
   { match: "＋", replacement: "+", description: "fullwidth plus" },
   { match: "＝", replacement: "=", description: "fullwidth equals" },
+  {
+    match: "═",
+    replacement: "=",
+    description: "box drawings double horizontal",
+  },
+  {
+    match: "╬",
+    replacement: "+",
+    description: "box drawings double horizontal and vertical",
+  },
+  {
+    match: "╪",
+    replacement: "+",
+    description: "box drawings double vertical and horizontal",
+  },
+  {
+    match: "╫",
+    replacement: "+",
+    description: "box drawings vertical double and horizontal",
+  },
+  {
+    match: "╩",
+    replacement: "+",
+    description: "box drawings double up and horizontal",
+  },
+  {
+    match: "╨",
+    replacement: "+",
+    description: "box drawings double down and horizontal",
+  },
+  {
+    match: "╂",
+    replacement: "+",
+    description: "box drawings light vertical and horizontal",
+  },
+  {
+    match: "╋",
+    replacement: "+",
+    description: "box drawings heavy vertical and horizontal",
+  },
 ] as const;
 
 export const REPLACEMENT_RULE_MAP = new Map(
