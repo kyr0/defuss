@@ -34,7 +34,8 @@
     "test": "vitest --run --coverage",
     "test:browser": "vitest --run --config vitest.browser.config.ts",
     "bench": "node --import tsx/esm src/bench.ts",
-    "bench:browser": "vitest --run --config vitest.browser.config.ts --testNamePattern=benchmark"
+    "bench:browser": "vitest --run --config vitest.browser.config.ts --testNamePattern=benchmark",
+    "prepublishOnly": "bun run build"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
