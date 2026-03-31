@@ -20,7 +20,11 @@
     "unexpected_error": "Unexpected error",
     "please_try_again": "Please try again.",
     "are_you_sure": "Are you sure?",
-    "actions": "Actions"
+    "actions": "Actions",
+    "unsaved_changes_title": "Unsaved Changes",
+    "unsaved_changes_description": "You have an open dialog. Leaving this page will discard any unsaved changes.",
+    "stay": "Stay on page",
+    "leave": "Leave page"
   },
   "login": {
     "title": "Sign in to your account",
@@ -59,6 +63,7 @@
     "users": "Users",
     "tenants": "Tenants",
     "api_keys": "API Keys",
+    "live_log": "Live Log",
     "logout": "Logout",
     "admin_footer": "Admin",
     "brand_name": "defuss Admin",
@@ -194,5 +199,22 @@
     "toast_load_failed": "Failed to load API keys",
     "toast_create_failed": "Failed to create API key",
     "toast_revoke_failed": "Failed to revoke API key"
+  },
+  "liveLog": {
+    "title": "Live Log",
+    "subtitle": "Streaming system events with stable sorting, filtering, and pagination.",
+    "search_placeholder": "Search logs by id, source, or message...",
+    "all_levels": "All Levels",
+    "pause": "Pause",
+    "resume": "Resume",
+    "status_live": "Live updates every second",
+    "status_paused": "Updates paused",
+    "total_entries": "Total entries",
+    "showing": "Showing",
+    "of": "of",
+    "rows_per_page": "Rows per page",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page"
   }
 }

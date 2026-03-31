@@ -20,7 +20,11 @@
     "unexpected_error": "Unerwarteter Fehler",
     "please_try_again": "Bitte versuchen Sie es erneut.",
     "are_you_sure": "Sind Sie sicher?",
-    "actions": "Aktionen"
+    "actions": "Aktionen",
+    "unsaved_changes_title": "Ungespeicherte Änderungen",
+    "unsaved_changes_description": "Ein Dialog ist noch geöffnet. Beim Verlassen gehen alle ungespeicherten Änderungen verloren.",
+    "stay": "Auf Seite bleiben",
+    "leave": "Seite verlassen"
   },
   "login": {
     "title": "In Ihrem Konto anmelden",
@@ -59,6 +63,7 @@
     "users": "Benutzer",
     "tenants": "Mandanten",
     "api_keys": "API-Schlüssel",
+    "live_log": "Live-Log",
     "logout": "Abmelden",
     "admin_footer": "Admin",
     "brand_name": "defuss Admin",
@@ -194,5 +199,22 @@
     "toast_load_failed": "API-Schlüssel konnten nicht geladen werden",
     "toast_create_failed": "API-Schlüssel konnte nicht erstellt werden",
     "toast_revoke_failed": "API-Schlüssel konnte nicht widerrufen werden"
+  },
+  "liveLog": {
+    "title": "Live-Log",
+    "subtitle": "Streaming-Systemereignisse mit stabiler Sortierung, Filterung und Pagination.",
+    "search_placeholder": "Logs nach ID, Quelle oder Nachricht durchsuchen...",
+    "all_levels": "Alle Level",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "status_live": "Live-Updates jede Sekunde",
+    "status_paused": "Updates pausiert",
+    "total_entries": "Einträge gesamt",
+    "showing": "Zeige",
+    "of": "von",
+    "rows_per_page": "Zeilen pro Seite",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "page": "Seite"
   }
 }

@@ -87,18 +87,6 @@ interface Props {
         document.addEventListener("defuss:theme", (event) => {
           const custom = event;
           const mode = custom?.detail?.mode;
-          apply(
-            mode === "dark"
-              ? true
-              : mode === "light"
-                ? false
-                : !document.documentElement.classList.contains("dark"),
-          );
-        });
-
-        document.addEventListener("basecoat:theme", (event) => {
-          const custom = event;
-          const mode = custom?.detail?.mode;
           const variant = custom?.detail?.themeVariant;
           if (typeof variant === "string") {
             applyThemeVariant(variant);
