@@ -1,0 +1,22 @@
+.defuss-shadcn {
+  --background: 222 25% 8%;
+  --foreground: 210 40% 98%;
+  --card: 222 20% 11%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 20% 11%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 212 100% 68%;
+  --primary-foreground: 222 47% 11%;
+  --secondary: 217 20% 18%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217 20% 16%;
+  --muted-foreground: 215 20% 70%;
+  --accent: 198 93% 60%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 72% 52%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217 17% 22%;
+  --input: 217 17% 22%;
+  --ring: 212 100% 68%;
+  --radius: 0.75rem;
+}

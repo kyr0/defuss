@@ -1,0 +1,10 @@
+---
+import BaseLayout from "../layouts/base.astro";
+import { App } from "../csr/app";
+
+export const prerender = false;
+---
+
+<BaseLayout>
+  <App client:only />
+</BaseLayout>

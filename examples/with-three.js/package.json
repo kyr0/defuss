@@ -1,0 +1,24 @@
+{
+  "name": "defuss-talkinghead-headtts-demo",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.5.2",
+    "@met4citizen/headtts": "^1.2.0",
+    "@met4citizen/talkinghead": "^1.7.0",
+    "@tailwindcss/vite": "^4.1.18",
+    "astro": "^5.16.11",
+    "defuss": "^3.4.2",
+    "defuss-astro": "^1.6.0",
+    "defuss-shadcn": "^0.6.2",
+    "lightningcss": "^1.30.2",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4.1.18"
+  }
+}
