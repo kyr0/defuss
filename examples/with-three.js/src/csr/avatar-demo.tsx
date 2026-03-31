@@ -56,9 +56,9 @@ function logLine(line: string) {
 	log.textContent = log.textContent ? `${next}\n${log.textContent}` : next;
 }
 
-function setStatus(title: string, description: string, variant: "default" | "destructive" = "default") {
+function setStatus(title: string, description: string, variant: "default" | "destructive" | "warning" = "default") {
 	$(q("demo-status")).update(
-		<Alert variant={variant === "destructive" ? "destructive" : undefined}>
+		<Alert variant={variant !== "default" ? variant : undefined}>
 			<AlertTitle>{title}</AlertTitle>
 			<AlertDescription>{description}</AlertDescription>
 		</Alert>,
@@ -73,6 +73,7 @@ async function ensureReady() {
 		state.initialized = false;
 		state.head = null;
 		q("avatar-stage").innerHTML = "";
+		setStatus("Switching avatar…", `Loading ${avatar.label}. Please wait.`, "warning");
 		logLine(`Switching avatar to ${avatar.label}…`);
 	}
 
