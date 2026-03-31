@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { createPool, type PoolHooks } from "./pool.js";
 
-// ─── Mock worker infrastructure ─────────────────────────────────────
+// --- Mock worker infrastructure -------------------------------------
 
 interface MockWorker {
   id: number;
@@ -48,7 +48,7 @@ const simulateError = (worker: MockWorker, error: string) => {
   }
 };
 
-// ─── createPool ─────────────────────────────────────────────────────
+// --- createPool -----------------------------------------------------
 
 describe("createPool", () => {
   it("creates a pool with correct size", () => {
@@ -96,7 +96,7 @@ describe("createPool", () => {
     const p2 = pool.execute([2]);
     const p3 = pool.execute([3]);
 
-    expect(workers.length).toBe(3); // 3 concurrent tasks → 3 workers
+    expect(workers.length).toBe(3); // 3 concurrent tasks => 3 workers
 
     simulateResult(workers[0], "a");
     simulateResult(workers[1], "b");
@@ -117,7 +117,7 @@ describe("createPool", () => {
 
     expect(workers.length).toBe(2); // max 2
 
-    // Complete first task → queued task should be dispatched
+    // Complete first task => queued task should be dispatched
     simulateResult(workers[0], "a");
     expect(await p1).toBe("a");
 
@@ -165,7 +165,7 @@ describe("createPool", () => {
     expect(workers[0].terminated).toBe(true);
   });
 
-  // ─── warmup ─────────────────────────────────────────────────────
+  // --- warmup -----------------------------------------------------
 
   it("warmup pre-spawns workers", () => {
     const workers: MockWorker[] = [];
@@ -184,7 +184,7 @@ describe("createPool", () => {
     expect(workers.length).toBe(2);
   });
 
-  // ─── terminate ────────────────────────────────────────────────────
+  // --- terminate ----------------------------------------------------
 
   it("terminate kills all workers", async () => {
     const workers: MockWorker[] = [];
@@ -212,7 +212,7 @@ describe("createPool", () => {
     await expect(p2).rejects.toThrow("terminated");
   });
 
-  // ─── task message format ──────────────────────────────────────────
+  // --- task message format ------------------------------------------
 
   it("sends execute message with correct format", () => {
     const workers: MockWorker[] = [];

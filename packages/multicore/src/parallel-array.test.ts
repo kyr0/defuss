@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { map, filter, reduce } from "./parallel-array.js";
 
-// ─── map ────────────────────────────────────────────────────────────
+// --- map ------------------------------------------------------------
 
 describe("parallel map", () => {
   it("doubles each element (small array, fallback path)", async () => {
@@ -51,7 +51,7 @@ describe("parallel map", () => {
   });
 });
 
-// ─── filter ─────────────────────────────────────────────────────────
+// --- filter ---------------------------------------------------------
 
 describe("parallel filter", () => {
   it("filters even numbers (small array, fallback path)", async () => {
@@ -102,7 +102,7 @@ describe("parallel filter", () => {
   });
 });
 
-// ─── reduce ─────────────────────────────────────────────────────────
+// --- reduce ---------------------------------------------------------
 
 describe("parallel reduce", () => {
   it("sums array (small array, fallback path)", async () => {

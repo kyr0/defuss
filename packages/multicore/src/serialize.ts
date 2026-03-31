@@ -14,7 +14,7 @@ export const warnIfClosure = (fn: Function): void => {
 
   // Arrow functions and regular functions both captured
   // Look for variable references that suggest closure capture.
-  // This is heuristic — not guaranteed to catch everything.
+  // This is heuristic - not guaranteed to catch everything.
   const bodyMatch = src.match(/\{([\s\S]*)\}$/);
   if (!bodyMatch) return; // single-expression arrow, likely safe
 
@@ -109,7 +109,7 @@ if (typeof require !== 'undefined') {
       parentPort.on('message', __handleMessage);
     }
   } catch (_) {
-    // Not in worker_threads context — ignore
+    // Not in worker_threads context - ignore
   }
 }
 `.trim();

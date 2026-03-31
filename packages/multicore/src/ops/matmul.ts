@@ -2,12 +2,12 @@ import type { NumericArray, Matrix, OpOptions } from "../types.js";
 import { selectUnrollFactor, getDotKernel } from "./unroll.js";
 
 /**
- * Matrix multiplication.  C = A × B
+ * Matrix multiplication.  C = A x B
  *
  * Row-parallel: each "worker" computes a slice of C's rows.
  * Inner dot product uses the unrolled kernel (4/8/16) for the k-dimension.
  *
- * Complexity: O(M × N × K) with M = A.rows, K = A.cols = B.rows, N = B.cols.
+ * Complexity: O(M x N x K) with M = A.rows, K = A.cols = B.rows, N = B.cols.
  */
 export const matmul = <T extends NumericArray>(
   A: Matrix<T>,

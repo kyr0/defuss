@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { isTypedArray, isCallOptions } from "./types.js";
 
-// ─── isTypedArray ───────────────────────────────────────────────────
+// --- isTypedArray ---------------------------------------------------
 
 describe("isTypedArray", () => {
   it("returns true for Float32Array", () => {
@@ -69,7 +69,7 @@ describe("isTypedArray", () => {
   });
 });
 
-// ─── isCallOptions ──────────────────────────────────────────────────
+// --- isCallOptions --------------------------------------------------
 
 describe("isCallOptions", () => {
   it("returns true for { cores: 4 }", () => {

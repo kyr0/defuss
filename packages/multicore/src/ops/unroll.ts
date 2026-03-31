@@ -1,12 +1,12 @@
 import type { NumericArray } from "../types.js";
 
-// ─── Unroll Factor Selection ────────────────────────────────────────
+// --- Unroll Factor Selection ----------------------------------------
 
 /**
  * Auto-select loop unroll factor based on dimensionality.
- * - dims < 16  → 4  (16-byte stepping)
- * - dims < 64  → 8  (32-byte stepping)
- * - dims >= 64 → 16 (64-byte stepping, matches WASM SIMD 4×4)
+ * - dims < 16  => 4  (16-byte stepping)
+ * - dims < 64  => 8  (32-byte stepping)
+ * - dims >= 64 => 16 (64-byte stepping, matches WASM SIMD 4x4)
  */
 export const selectUnrollFactor = (dims: number): 4 | 8 | 16 => {
   if (dims < 16) return 4;
@@ -14,7 +14,7 @@ export const selectUnrollFactor = (dims: number): 4 | 8 | 16 => {
   return 16;
 };
 
-// ─── Element-Wise Kernels ───────────────────────────────────────────
+// --- Element-Wise Kernels -------------------------------------------
 
 type ElementOp = "add" | "sub" | "mul" | "div";
 
@@ -88,7 +88,7 @@ export const createElementWiseKernel = (
   };
 };
 
-// ─── Dot Product Kernels ────────────────────────────────────────────
+// --- Dot Product Kernels --------------------------------------------
 
 /**
  * Create an unrolled dot product kernel for the given factor.
@@ -164,7 +164,7 @@ export const createDotKernel = (
   };
 };
 
-// ─── Pre-built Kernel Caches ────────────────────────────────────────
+// --- Pre-built Kernel Caches ----------------------------------------
 
 // Element-wise kernels keyed by op and factor
 const ewCache = new Map<string, ReturnType<typeof createElementWiseKernel>>();

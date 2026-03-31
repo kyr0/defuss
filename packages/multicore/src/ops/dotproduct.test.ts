@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { dotProduct } from "./dotproduct.js";
 
-// ─── Naive reference ────────────────────────────────────────────────
+// --- Naive reference ------------------------------------------------
 
 const naiveDot = (a: number[], b: number[]): number =>
   a.reduce((sum, v, i) => sum + v * b[i], 0);
@@ -12,7 +12,7 @@ const randomArray = (len: number): number[] =>
 const randomF32 = (len: number): Float32Array =>
   new Float32Array(randomArray(len));
 
-// ─── Basic correctness ─────────────────────────────────────────────
+// --- Basic correctness ---------------------------------------------
 
 describe("dotProduct", () => {
   it("computes correct result for small Float32Array vectors", () => {
@@ -38,7 +38,7 @@ describe("dotProduct", () => {
     expect(result.length).toBe(3);
     expect(result[0]).toBeCloseTo(1, 5);  // unit x dot unit x
     expect(result[1]).toBeCloseTo(1, 5);  // unit y dot unit y
-    expect(result[2]).toBeCloseTo(3, 5);  // (1,1,1)·(1,1,1) = 3
+    expect(result[2]).toBeCloseTo(3, 5);  // (1,1,1)-(1,1,1) = 3
   });
 
   it("handles orthogonal vectors (result = 0)", () => {
@@ -56,7 +56,7 @@ describe("dotProduct", () => {
     expect(result[0]).toBeCloseTo(-14, 4);
   });
 
-  // ─── Dimensions across all unroll thresholds ────────────────────
+  // --- Dimensions across all unroll thresholds --------------------
 
   it("works with dims < 16 (unroll-4 path)", () => {
     const dims = 7;
@@ -106,7 +106,7 @@ describe("dotProduct", () => {
     expect(result[0]).toBeCloseTo(expected, -1); // Float32 precision
   });
 
-  // ─── Force unroll factor via options ──────────────────────────────
+  // --- Force unroll factor via options ------------------------------
 
   it("respects explicit unroll option", () => {
     const dims = 768;
@@ -120,7 +120,7 @@ describe("dotProduct", () => {
     }
   });
 
-  // ─── Large batch ──────────────────────────────────────────────────
+  // --- Large batch --------------------------------------------------
 
   it("handles batch of 100 vector pairs", () => {
     const dims = 64;
@@ -137,7 +137,7 @@ describe("dotProduct", () => {
     }
   });
 
-  // ─── TypedArray types ─────────────────────────────────────────────
+  // --- TypedArray types ---------------------------------------------
 
   it("works with Float64Array", () => {
     const a = [new Float64Array([1.5, 2.5, 3.5, 4.5])];
@@ -170,7 +170,7 @@ describe("dotProduct", () => {
     expect(result[0]).toBe(20);
   });
 
-  // ─── Edge cases ───────────────────────────────────────────────────
+  // --- Edge cases ---------------------------------------------------
 
   it("returns empty Float32Array for empty input", () => {
     const result = dotProduct([], []);
@@ -186,7 +186,7 @@ describe("dotProduct", () => {
     expect(result).toBeInstanceOf(Float32Array);
   });
 
-  // ─── Error handling ───────────────────────────────────────────────
+  // --- Error handling -----------------------------------------------
 
   it("throws RangeError when vector counts differ", () => {
     expect(() =>

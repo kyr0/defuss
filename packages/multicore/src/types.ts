@@ -1,4 +1,4 @@
-// ─── Numeric Types ──────────────────────────────────────────────────
+// --- Numeric Types --------------------------------------------------
 
 /** Union of all typed array constructors supported for parallel ops */
 export type TypedArray =
@@ -17,10 +17,10 @@ export type NumericArray = number[] | TypedArray;
 /** A matrix is an array of row vectors (each row is a NumericArray) */
 export type Matrix<T extends NumericArray = Float32Array> = T[];
 
-/** Batch of vectors (same shape as Matrix — alias for clarity) */
+/** Batch of vectors (same shape as Matrix - alias for clarity) */
 export type Vectors<T extends NumericArray = Float32Array> = T[];
 
-// ─── Worker Message Protocol ────────────────────────────────────────
+// --- Worker Message Protocol ----------------------------------------
 
 export type WorkerMessage =
   | WorkerExecuteMessage
@@ -54,7 +54,7 @@ export interface WorkerAbortMessage {
   id: string;
 }
 
-// ─── Pool Configuration ─────────────────────────────────────────────
+// --- Pool Configuration ---------------------------------------------
 
 export interface PoolConfig {
   /** Maximum number of workers in the pool (default: core count) */
@@ -82,7 +82,7 @@ export interface WorkerPool {
   terminate(): Promise<void>;
 }
 
-// ─── Multicore Options ──────────────────────────────────────────────
+// --- Multicore Options ----------------------------------------------
 
 export interface MulticoreOptions<R = unknown> {
   /** Override core count (default: all available cores) */
@@ -105,11 +105,11 @@ export interface CallOptions {
   transfer?: boolean;
 }
 
-// ─── Parallel Result ────────────────────────────────────────────────
+// --- Parallel Result ------------------------------------------------
 
 /**
- * Dual interface: use as `PromiseLike` (await → R[]) or as `AsyncIterable`
- * (for-await-of → yields each R as workers complete).
+ * Dual interface: use as `PromiseLike` (await => R[]) or as `AsyncIterable`
+ * (for-await-of => yields each R as workers complete).
  */
 export interface ParallelResult<R> extends AsyncIterable<R>, PromiseLike<R[]> {}
 
@@ -118,9 +118,9 @@ export interface ParallelResult<R> extends AsyncIterable<R>, PromiseLike<R[]> {}
  */
 export interface ReducedParallelResult<R> extends AsyncIterable<R>, PromiseLike<R> {}
 
-// ─── Parallel Function ──────────────────────────────────────────────
+// --- Parallel Function ----------------------------------------------
 
-/** The callable returned by `multicore(fn)` — same arg types, parallel return */
+/** The callable returned by `multicore(fn)` - same arg types, parallel return */
 export type ParallelFn<T extends (...args: unknown[]) => unknown> = (
   ...args: [...Parameters<T>, CallOptions?]
 ) => ParallelResult<ReturnType<T>>;
@@ -129,14 +129,14 @@ export type ReducedParallelFn<T extends (...args: unknown[]) => unknown> = (
   ...args: [...Parameters<T>, CallOptions?]
 ) => ReducedParallelResult<ReturnType<T>>;
 
-// ─── Op Options ─────────────────────────────────────────────────────
+// --- Op Options -----------------------------------------------------
 
 export interface OpOptions extends CallOptions {
   /** Force a specific unroll factor (default: auto-select by dimension) */
   unroll?: 4 | 8 | 16;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────
+// --- Helpers --------------------------------------------------------
 
 /** Check if a value is a TypedArray */
 export const isTypedArray = (v: unknown): v is TypedArray =>

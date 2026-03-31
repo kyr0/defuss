@@ -3,7 +3,7 @@ import { createPool, type PoolHooks } from "./pool.js";
 
 /**
  * Creates a Web Worker pool using Blob URLs.
- * Workers are created from serialized function strings — no separate file needed.
+ * Workers are created from serialized function strings - no separate file needed.
  */
 export const createBrowserPool = (script: string, config?: PoolConfig): WorkerPool => {
   const blobUrls = new Set<string>();

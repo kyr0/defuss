@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { serializeFunction, warnIfClosure } from "./serialize.js";
 
-// ─── serializeFunction ──────────────────────────────────────────────
+// --- serializeFunction ----------------------------------------------
 
 describe("serializeFunction", () => {
   it("returns a string", () => {
@@ -63,19 +63,19 @@ describe("serializeFunction", () => {
     expect(script).toContain("sum += arr[i]");
   });
 
-  // ─── Actually evaluable ─────────────────────────────────────────
+  // --- Actually evaluable -----------------------------------------
 
   it("generates evaluable code that can define __fn", () => {
     const fn = (a: number, b: number) => a + b;
     const script = serializeFunction(fn);
-    // The script should be valid JS — we can at least parse the function part
+    // The script should be valid JS - we can at least parse the function part
     expect(script).toContain("const __fn =");
     // Should start with 'use strict'
     expect(script.startsWith("'use strict'")).toBe(true);
   });
 });
 
-// ─── warnIfClosure ──────────────────────────────────────────────────
+// --- warnIfClosure --------------------------------------------------
 
 describe("warnIfClosure", () => {
   it("does not warn for pure arrow functions", () => {
@@ -96,7 +96,7 @@ describe("warnIfClosure", () => {
 
   it("warns when arrow function references 'this'", () => {
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    // Note: arrow functions that reference this — this is toString'd
+    // Note: arrow functions that reference this - this is toString'd
     const fn = eval("((x) => { return this.value + x; })");
     warnIfClosure(fn);
     // May or may not warn depending on toString output;

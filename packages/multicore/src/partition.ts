@@ -4,9 +4,9 @@ import { isTypedArray, type TypedArray } from "./types.js";
  * Partitions function arguments for distribution across `cores` workers.
  *
  * Rules:
- * - Array args → `.slice()` into `cores` chunks
- * - TypedArray args → `.subarray()` for zero-copy views
- * - Everything else → broadcast unchanged to every worker
+ * - Array args => `.slice()` into `cores` chunks
+ * - TypedArray args => `.subarray()` for zero-copy views
+ * - Everything else => broadcast unchanged to every worker
  *
  * Returns an array of length `cores`, where each element is the arg list
  * for that worker.
@@ -117,7 +117,7 @@ export const getCoreCount = (): number => {
     return navigator.hardwareConcurrency;
   }
   try {
-    // Dynamic require for Node.js — avoid static import for browser bundles
+    // Dynamic require for Node.js - avoid static import for browser bundles
     const os = require("node:os");
     return os.cpus().length;
   } catch {

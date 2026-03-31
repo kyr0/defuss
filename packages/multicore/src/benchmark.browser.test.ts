@@ -15,7 +15,7 @@ import { matadd } from "./ops/matadd.js";
 import { matsub } from "./ops/matsub.js";
 import { matdiv } from "./ops/matdiv.js";
 
-// ─── Helpers ───────────────────────────────────────────────────────
+// --- Helpers -------------------------------------------------------
 
 /** Generates a random Float64Array of length `n` using a seeded LCG for reproducibility */
 const seededRandom = (n: number, seed: number): Float64Array => {
@@ -92,7 +92,7 @@ const bench = (label: string, fn: () => void): number => {
   return ms;
 };
 
-// ─── Parallel Random Number Generation ─────────────────────────────
+// --- Parallel Random Number Generation -----------------------------
 
 describe("parallel random number generation", () => {
   it("generates 1M random numbers across Web Workers", async () => {
@@ -128,13 +128,13 @@ describe("parallel random number generation", () => {
   });
 });
 
-// ─── Large Matrix Benchmarks ───────────────────────────────────────
+// --- Large Matrix Benchmarks ---------------------------------------
 
 describe("large matrix benchmarks (parallel vs baseline)", () => {
 
-  // ── matadd: 1000×1000 (1M elements) ──────────────────────────────
+  // -- matadd: 1000x1000 (1M elements) ------------------------------
 
-  it("matadd 1000×1000: unrolled vs naive baseline", () => {
+  it("matadd 1000x1000: unrolled vs naive baseline", () => {
     const rows = 1000, cols = 1000;
     const flatA = seededRandom(rows * cols, 42);
     const flatB = seededRandom(rows * cols, 137);
@@ -144,11 +144,11 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
     let resultNaive!: Float64Array[];
     let resultUnrolled!: Float64Array[];
 
-    const tNaive = bench("matadd naive 1000×1000", () => {
+    const tNaive = bench("matadd naive 1000x1000", () => {
       resultNaive = naiveElementWise(A, B, "add");
     });
 
-    const tUnrolled = bench("matadd unrolled 1000×1000", () => {
+    const tUnrolled = bench("matadd unrolled 1000x1000", () => {
       resultUnrolled = matadd(A, B);
     });
 
@@ -161,9 +161,9 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
     console.log(`  [matadd 1M] speedup: ${(tNaive / tUnrolled).toFixed(2)}x`);
   });
 
-  // ── matsub: 1000×1000 (1M elements) ──────────────────────────────
+  // -- matsub: 1000x1000 (1M elements) ------------------------------
 
-  it("matsub 1000×1000: unrolled vs naive baseline", () => {
+  it("matsub 1000x1000: unrolled vs naive baseline", () => {
     const rows = 1000, cols = 1000;
     const A = toMatrix(seededRandom(rows * cols, 55), rows, cols);
     const B = toMatrix(seededRandom(rows * cols, 99), rows, cols);
@@ -171,11 +171,11 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
     let resultNaive!: Float64Array[];
     let resultUnrolled!: Float64Array[];
 
-    const tNaive = bench("matsub naive 1000×1000", () => {
+    const tNaive = bench("matsub naive 1000x1000", () => {
       resultNaive = naiveElementWise(A, B, "sub");
     });
 
-    const tUnrolled = bench("matsub unrolled 1000×1000", () => {
+    const tUnrolled = bench("matsub unrolled 1000x1000", () => {
       resultUnrolled = matsub(A, B);
     });
 
@@ -186,9 +186,9 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
     console.log(`  [matsub 1M] speedup: ${(tNaive / tUnrolled).toFixed(2)}x`);
   });
 
-  // ── matdiv: 1000×1000 (1M elements) ──────────────────────────────
+  // -- matdiv: 1000x1000 (1M elements) ------------------------------
 
-  it("matdiv 1000×1000: unrolled vs naive baseline", () => {
+  it("matdiv 1000x1000: unrolled vs naive baseline", () => {
     const rows = 1000, cols = 1000;
     const A = toMatrix(seededRandom(rows * cols, 77), rows, cols);
     // Avoid division by zero: shift B values to [0.5, 1.5)
@@ -199,11 +199,11 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
     let resultNaive!: Float64Array[];
     let resultUnrolled!: Float64Array[];
 
-    const tNaive = bench("matdiv naive 1000×1000", () => {
+    const tNaive = bench("matdiv naive 1000x1000", () => {
       resultNaive = naiveElementWise(A, B, "div");
     });
 
-    const tUnrolled = bench("matdiv unrolled 1000×1000", () => {
+    const tUnrolled = bench("matdiv unrolled 1000x1000", () => {
       resultUnrolled = matdiv(A, B);
     });
 
@@ -214,9 +214,9 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
     console.log(`  [matdiv 1M] speedup: ${(tNaive / tUnrolled).toFixed(2)}x`);
   });
 
-  // ── matmul: 200×300 * 300×200 (120K multiply-accumulates) ────────
+  // -- matmul: 200x300 * 300x200 (120K multiply-accumulates) --------
 
-  it("matmul 200×300 * 300×200: unrolled vs naive baseline", () => {
+  it("matmul 200x300 * 300x200: unrolled vs naive baseline", () => {
     const M = 200, K = 300, N = 200;
     const A = toMatrix(seededRandom(M * K, 11), M, K);
     const B = toMatrix(seededRandom(K * N, 22), K, N);
@@ -224,11 +224,11 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
     let resultNaive!: Float64Array[];
     let resultUnrolled!: Float64Array[];
 
-    const tNaive = bench(`matmul naive ${M}×${K} * ${K}×${N}`, () => {
+    const tNaive = bench(`matmul naive ${M}x${K} * ${K}x${N}`, () => {
       resultNaive = naiveMatmul(A, B, M, K, N);
     });
 
-    const tUnrolled = bench(`matmul unrolled ${M}×${K} * ${K}×${N}`, () => {
+    const tUnrolled = bench(`matmul unrolled ${M}x${K} * ${K}x${N}`, () => {
       resultUnrolled = matmul(A, B);
     });
 
@@ -239,12 +239,12 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
       }
     }
 
-    console.log(`  [matmul ${M}×${K}*${K}×${N}] speedup: ${(tNaive / tUnrolled).toFixed(2)}x`);
+    console.log(`  [matmul ${M}x${K}*${K}x${N}] speedup: ${(tNaive / tUnrolled).toFixed(2)}x`);
   });
 
-  // ── matmul: 500×500 * 500×500 (125M multiply-accumulates) ───────
+  // -- matmul: 500x500 * 500x500 (125M multiply-accumulates) -------
 
-  it("matmul 500×500: unrolled vs naive baseline", () => {
+  it("matmul 500x500: unrolled vs naive baseline", () => {
     const N = 500;
     const A = toMatrix(seededRandom(N * N, 33), N, N);
     const B = toMatrix(seededRandom(N * N, 44), N, N);
@@ -252,11 +252,11 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
     let resultNaive!: Float64Array[];
     let resultUnrolled!: Float64Array[];
 
-    const tNaive = bench(`matmul naive ${N}×${N}`, () => {
+    const tNaive = bench(`matmul naive ${N}x${N}`, () => {
       resultNaive = naiveMatmul(A, B, N, N, N);
     });
 
-    const tUnrolled = bench(`matmul unrolled ${N}×${N}`, () => {
+    const tUnrolled = bench(`matmul unrolled ${N}x${N}`, () => {
       resultUnrolled = matmul(A, B);
     });
 
@@ -265,12 +265,12 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
       expect(resultUnrolled[i][j]).toBeCloseTo(resultNaive[i][j], 2);
     }
 
-    console.log(`  [matmul ${N}×${N}] speedup: ${(tNaive / tUnrolled).toFixed(2)}x`);
+    console.log(`  [matmul ${N}x${N}] speedup: ${(tNaive / tUnrolled).toFixed(2)}x`);
   });
 
-  // ── dotProduct: 100K pairs, 768-dim (LLM embedding similarity) ──
+  // -- dotProduct: 100K pairs, 768-dim (LLM embedding similarity) --
 
-  it("dotProduct 100K×768-dim: unrolled vs naive baseline", () => {
+  it("dotProduct 100Kx768-dim: unrolled vs naive baseline", () => {
     const pairs = 100_000;
     const dim = 768;
     const as: Float64Array[] = [];
@@ -285,11 +285,11 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
     let resultNaive!: Float32Array;
     let resultUnrolled!: Float32Array;
 
-    const tNaive = bench(`dotProduct naive ${pairs}×${dim}`, () => {
+    const tNaive = bench(`dotProduct naive ${pairs}x${dim}`, () => {
       resultNaive = naiveDotProduct(as, bs);
     });
 
-    const tUnrolled = bench(`dotProduct unrolled ${pairs}×${dim}`, () => {
+    const tUnrolled = bench(`dotProduct unrolled ${pairs}x${dim}`, () => {
       resultUnrolled = dotProduct(as, bs);
     });
 
@@ -299,11 +299,11 @@ describe("large matrix benchmarks (parallel vs baseline)", () => {
     }
     expect(resultUnrolled[pairs - 1]).toBeCloseTo(resultNaive[pairs - 1], 1);
 
-    console.log(`  [dotProduct ${pairs}×${dim}] speedup: ${(tNaive / tUnrolled).toFixed(2)}x`);
+    console.log(`  [dotProduct ${pairs}x${dim}] speedup: ${(tNaive / tUnrolled).toFixed(2)}x`);
   });
 });
 
-// ─── Multicore Web Worker Benchmarks (parallel vs single-thread) ───
+// --- Multicore Web Worker Benchmarks (parallel vs single-thread) ---
 
 describe("multicore Web Worker benchmarks (parallel vs single-thread)", () => {
 
@@ -415,10 +415,10 @@ describe("multicore Web Worker benchmarks (parallel vs single-thread)", () => {
   });
 });
 
-// ─── Crypto / Compression Primitives (CPU-heavy per-element) ───────
+// --- Crypto / Compression Primitives (CPU-heavy per-element) -------
 
 /**
- * CRC32 — the checksum used by gzip, ZIP, PNG, Ethernet, CAN bus.
+ * CRC32 - the checksum used by gzip, ZIP, PNG, Ethernet, CAN bus.
  * Pure arithmetic: table-lookup + XOR per byte. Fully self-contained.
  *
  * This is the textbook "slice-by-1" algorithm. The 256-entry lookup table
@@ -447,7 +447,7 @@ const crc32 = (buf: Uint8Array): number => {
 };
 
 /**
- * FNV-1a 32-bit hash — used in hash tables, bloom filters, cache keys.
+ * FNV-1a 32-bit hash - used in hash tables, bloom filters, cache keys.
  * Simple but extremely common; e.g. Rust's default hasher uses FNV.
  */
 const fnv1a32 = (buf: Uint8Array): number => {
@@ -460,7 +460,7 @@ const fnv1a32 = (buf: Uint8Array): number => {
 };
 
 /**
- * PBKDF2-like key stretching — iterates a simple hash N rounds.
+ * PBKDF2-like key stretching - iterates a simple hash N rounds.
  * This simulates the CPU cost of password-based key derivation
  * (argon2, scrypt, PBKDF2) without needing Web Crypto.
  */
@@ -479,9 +479,9 @@ const stretchKey = (seed: number, rounds: number): number => {
 
 describe("crypto/compression primitive benchmarks (parallel vs single-thread)", () => {
 
-  // ── CRC32: batch checksum of 500K small messages (64 bytes each) ──
+  // -- CRC32: batch checksum of 500K small messages (64 bytes each) --
 
-  it("CRC32: 500K × 64-byte messages — parallel vs single-thread", async () => {
+  it("CRC32: 500K x 64-byte messages - parallel vs single-thread", async () => {
     const msgCount = 500_000;
     const msgSize = 64;
 
@@ -497,16 +497,16 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
       messages[i] = buf;
     }
 
-    // ── Single-thread baseline ──
+    // -- Single-thread baseline --
     const baselineChecksums = new Uint32Array(msgCount);
     const t0 = performance.now();
     for (let i = 0; i < msgCount; i++) {
       baselineChecksums[i] = crc32(messages[i]);
     }
     const tBaseline = performance.now() - t0;
-    console.log(`  [CRC32 baseline] ${msgCount} × ${msgSize}B: ${tBaseline.toFixed(2)} ms`);
+    console.log(`  [CRC32 baseline] ${msgCount} x ${msgSize}B: ${tBaseline.toFixed(2)} ms`);
 
-    // ── Parallel via multicore ──
+    // -- Parallel via multicore --
     // Pack messages into a flat array of indices + pass raw data
     // Worker reconstructs messages and computes checksums per chunk
     const parallelCRC32 = multicore(
@@ -550,7 +550,7 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
     const t1 = performance.now();
     const parallelChecksums = await parallelCRC32(indices);
     const tParallel = performance.now() - t1;
-    console.log(`  [CRC32 parallel] ${msgCount} × ${msgSize}B: ${tParallel.toFixed(2)} ms`);
+    console.log(`  [CRC32 parallel] ${msgCount} x ${msgSize}B: ${tParallel.toFixed(2)} ms`);
 
     // Correctness: spot-check first 200 + last 100
     for (let i = 0; i < 200; i++) {
@@ -561,12 +561,12 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
     }
 
     const speedup = tBaseline / tParallel;
-    console.log(`  [CRC32 500K×64B] cores: ${getPoolSize()}, speedup: ${speedup.toFixed(2)}x`);
+    console.log(`  [CRC32 500Kx64B] cores: ${getPoolSize()}, speedup: ${speedup.toFixed(2)}x`);
   });
 
-  // ── FNV-1a: batch hash of 1M × 128-byte messages ─────────────────
+  // -- FNV-1a: batch hash of 1M x 128-byte messages -----------------
 
-  it("FNV-1a: 1M × 128-byte messages — parallel vs single-thread", async () => {
+  it("FNV-1a: 1M x 128-byte messages - parallel vs single-thread", async () => {
     const msgCount = 1_000_000;
     const msgSize = 128;
 
@@ -588,7 +588,7 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
       baselineHashes[i] = fnv1a32(messages[i]);
     }
     const tBaseline = performance.now() - t0;
-    console.log(`  [FNV-1a baseline] ${msgCount} × ${msgSize}B: ${tBaseline.toFixed(2)} ms`);
+    console.log(`  [FNV-1a baseline] ${msgCount} x ${msgSize}B: ${tBaseline.toFixed(2)} ms`);
 
     // Parallel
     const parallelFNV = multicore(
@@ -626,7 +626,7 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
     const t1 = performance.now();
     const parallelHashes = await parallelFNV(indices);
     const tParallel = performance.now() - t1;
-    console.log(`  [FNV-1a parallel] ${msgCount} × ${msgSize}B: ${tParallel.toFixed(2)} ms`);
+    console.log(`  [FNV-1a parallel] ${msgCount} x ${msgSize}B: ${tParallel.toFixed(2)} ms`);
 
     for (let i = 0; i < 200; i++) {
       expect(parallelHashes[i]).toBe(baselineHashes[i]);
@@ -636,12 +636,12 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
     }
 
     const speedup = tBaseline / tParallel;
-    console.log(`  [FNV-1a 1M×128B] cores: ${getPoolSize()}, speedup: ${speedup.toFixed(2)}x`);
+    console.log(`  [FNV-1a 1Mx128B] cores: ${getPoolSize()}, speedup: ${speedup.toFixed(2)}x`);
   });
 
-  // ── Key Stretching: 100K seeds × 1000 rounds (PBKDF2-like) ───────
+  // -- Key Stretching: 100K seeds x 1000 rounds (PBKDF2-like) -------
 
-  it("key stretching: 100K seeds × 1000 rounds — parallel vs single-thread", async () => {
+  it("key stretching: 100K seeds x 1000 rounds - parallel vs single-thread", async () => {
     const count = 100_000;
     const rounds = 1000;
 
@@ -652,7 +652,7 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
       baselineResults[i] = stretchKey(i, rounds);
     }
     const tBaseline = performance.now() - t0;
-    console.log(`  [stretch baseline] ${count} × ${rounds} rounds: ${tBaseline.toFixed(2)} ms`);
+    console.log(`  [stretch baseline] ${count} x ${rounds} rounds: ${tBaseline.toFixed(2)} ms`);
 
     // Parallel
     const parallelStretch = multicore(
@@ -686,7 +686,7 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
     const t1 = performance.now();
     const parallelResults = await parallelStretch(seeds);
     const tParallel = performance.now() - t1;
-    console.log(`  [stretch parallel] ${count} × ${rounds} rounds: ${tParallel.toFixed(2)} ms`);
+    console.log(`  [stretch parallel] ${count} x ${rounds} rounds: ${tParallel.toFixed(2)} ms`);
 
     // Correctness
     for (let i = 0; i < 200; i++) {
@@ -697,14 +697,14 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
     }
 
     const speedup = tBaseline / tParallel;
-    console.log(`  [stretch 100K×1K] cores: ${getPoolSize()}, speedup: ${speedup.toFixed(2)}x`);
+    console.log(`  [stretch 100Kx1K] cores: ${getPoolSize()}, speedup: ${speedup.toFixed(2)}x`);
     // Key stretching is CPU-heavy enough that parallel should win
     expect(speedup).toBeGreaterThan(1.0);
   });
 
-  // ── CRC32 of large buffers: 10K × 4KB messages (network packets) ──
+  // -- CRC32 of large buffers: 10K x 4KB messages (network packets) --
 
-  it("CRC32: 10K × 4KB buffers (network packet checksumming) — parallel vs single-thread", async () => {
+  it("CRC32: 10K x 4KB buffers (network packet checksumming) - parallel vs single-thread", async () => {
     const msgCount = 10_000;
     const msgSize = 4096;
 
@@ -726,9 +726,9 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
       baselineChecksums[i] = crc32(messages[i]);
     }
     const tBaseline = performance.now() - t0;
-    console.log(`  [CRC32-4KB baseline] ${msgCount} × ${msgSize}B: ${tBaseline.toFixed(2)} ms`);
+    console.log(`  [CRC32-4KB baseline] ${msgCount} x ${msgSize}B: ${tBaseline.toFixed(2)} ms`);
 
-    // Parallel — pass indices, workers regenerate + compute
+    // Parallel - pass indices, workers regenerate + compute
     const parallelCRC32_4K = multicore(
       (chunk: number[]) => {
         const tbl = new Uint32Array(256);
@@ -767,13 +767,13 @@ describe("crypto/compression primitive benchmarks (parallel vs single-thread)", 
     const t1 = performance.now();
     const parallelChecksums = await parallelCRC32_4K(indices);
     const tParallel = performance.now() - t1;
-    console.log(`  [CRC32-4KB parallel] ${msgCount} × ${msgSize}B: ${tParallel.toFixed(2)} ms`);
+    console.log(`  [CRC32-4KB parallel] ${msgCount} x ${msgSize}B: ${tParallel.toFixed(2)} ms`);
 
     for (let i = 0; i < 100; i++) {
       expect(parallelChecksums[i]).toBe(baselineChecksums[i]);
     }
 
     const speedup = tBaseline / tParallel;
-    console.log(`  [CRC32 10K×4KB] cores: ${getPoolSize()}, speedup: ${speedup.toFixed(2)}x`);
+    console.log(`  [CRC32 10Kx4KB] cores: ${getPoolSize()}, speedup: ${speedup.toFixed(2)}x`);
   });
 });

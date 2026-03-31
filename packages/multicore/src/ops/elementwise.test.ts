@@ -4,7 +4,7 @@ import { matsub } from "./matsub.js";
 import { matdiv } from "./matdiv.js";
 import type { NumericArray, Matrix } from "../types.js";
 
-// ─── Helpers ────────────────────────────────────────────────────────
+// --- Helpers --------------------------------------------------------
 
 const randomF32Row = (cols: number) =>
   new Float32Array(Array.from({ length: cols }, () => Math.random() * 10 - 5));
@@ -38,7 +38,7 @@ const naiveOp = (
 const toNumbers = (mat: NumericArray[]): number[][] =>
   mat.map((row) => Array.from(row as any));
 
-// ─── matadd ─────────────────────────────────────────────────────────
+// --- matadd ---------------------------------------------------------
 
 describe("matadd", () => {
   it("adds two 2x4 Float32Array matrices", () => {
@@ -113,7 +113,7 @@ describe("matadd", () => {
   });
 });
 
-// ─── matsub ─────────────────────────────────────────────────────────
+// --- matsub ---------------------------------------------------------
 
 describe("matsub", () => {
   it("subtracts two 2x4 Float32Array matrices", () => {
@@ -162,7 +162,7 @@ describe("matsub", () => {
   });
 });
 
-// ─── matdiv ─────────────────────────────────────────────────────────
+// --- matdiv ---------------------------------------------------------
 
 describe("matdiv", () => {
   it("divides two 1x4 Float32Array matrices", () => {
@@ -223,10 +223,10 @@ describe("matdiv", () => {
   });
 });
 
-// ─── Cross-op consistency ───────────────────────────────────────────
+// --- Cross-op consistency -------------------------------------------
 
 describe("cross-op: add then sub yields original", () => {
-  it("A + B - B ≈ A", () => {
+  it("A + B - B ~= A", () => {
     const A = [randomF64Row(32), randomF64Row(32)];
     const B = [randomF64Row(32), randomF64Row(32)];
     const sum = matadd(A, B);

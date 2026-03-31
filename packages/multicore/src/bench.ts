@@ -16,7 +16,7 @@ import { matadd } from "./ops/matadd.js";
 import { matsub } from "./ops/matsub.js";
 import { matdiv } from "./ops/matdiv.js";
 
-// ─── Helpers ────────────────────────────────────────────────────────
+// --- Helpers --------------------------------------------------------
 
 const seededRandom = (n: number, seed: number): Float64Array => {
   const out = new Float64Array(n);
@@ -36,7 +36,7 @@ const toMatrix = (flat: Float64Array, rows: number, cols: number): Float64Array[
   return mat;
 };
 
-// ─── Naive baselines ────────────────────────────────────────────────
+// --- Naive baselines ------------------------------------------------
 
 const naiveMatmul = (
   A: Float64Array[], B: Float64Array[], M: number, K: number, N: number,
@@ -134,7 +134,7 @@ const generateMessage = (seed: number, size: number): Uint8Array => {
   return buf;
 };
 
-// ─── Timing ─────────────────────────────────────────────────────────
+// --- Timing ---------------------------------------------------------
 
 const WARMUP_RUNS = 2;
 const BENCH_RUNS = 5;
@@ -164,7 +164,7 @@ const timedMedianAsync = async (fn: () => Promise<void>, runs = BENCH_RUNS, warm
   return timings[Math.floor(timings.length / 2)];
 };
 
-// ─── Result collection ──────────────────────────────────────────────
+// --- Result collection ----------------------------------------------
 
 interface BenchResult {
   section: string;
@@ -186,12 +186,12 @@ const record = (
   results.push({ section, operation, size, baselineMs, optimizedMs, speedup, readmeClaim });
 };
 
-// ─── Section 1: Loop-Unrolled Ops ───────────────────────────────────
+// --- Section 1: Loop-Unrolled Ops -----------------------------------
 
 const benchLoopUnrolled = () => {
-  console.log("\n━━━ Loop-Unrolled Ops vs Naive Baseline (single-thread) ━━━\n");
+  console.log("\n--- Loop-Unrolled Ops vs Naive Baseline (single-thread) ---\n");
 
-  // dotProduct: 100K × 768-dim
+  // dotProduct: 100K x 768-dim
   {
     const pairs = 100_000, dim = 768;
     const as: Float64Array[] = [];
@@ -203,10 +203,10 @@ const benchLoopUnrolled = () => {
 
     const tNaive = timedMedian(() => { naiveDotProduct(as, bs); });
     const tOpt = timedMedian(() => { dotProduct(as, bs); });
-    record("Loop-Unrolled", "dotProduct", `${pairs / 1000}K × ${dim}-dim`, tNaive, tOpt, 5.20);
+    record("Loop-Unrolled", "dotProduct", `${pairs / 1000}K x ${dim}-dim`, tNaive, tOpt, 5.20);
   }
 
-  // matmul: 500×500
+  // matmul: 500x500
   {
     const N = 500;
     const A = toMatrix(seededRandom(N * N, 33), N, N);
@@ -214,10 +214,10 @@ const benchLoopUnrolled = () => {
 
     const tNaive = timedMedian(() => { naiveMatmul(A, B, N, N, N); });
     const tOpt = timedMedian(() => { matmul(A, B); });
-    record("Loop-Unrolled", "matmul", `${N}×${N}`, tNaive, tOpt, 2.24);
+    record("Loop-Unrolled", "matmul", `${N}x${N}`, tNaive, tOpt, 2.24);
   }
 
-  // matmul: 200×300 * 300×200
+  // matmul: 200x300 * 300x200
   {
     const M = 200, K = 300, N = 200;
     const A = toMatrix(seededRandom(M * K, 11), M, K);
@@ -225,10 +225,10 @@ const benchLoopUnrolled = () => {
 
     const tNaive = timedMedian(() => { naiveMatmul(A, B, M, K, N); });
     const tOpt = timedMedian(() => { matmul(A, B); });
-    record("Loop-Unrolled", "matmul", `${M}×${K} × ${K}×${N}`, tNaive, tOpt, 1.96);
+    record("Loop-Unrolled", "matmul", `${M}x${K} x ${K}x${N}`, tNaive, tOpt, 1.96);
   }
 
-  // matadd: 1000×1000
+  // matadd: 1000x1000
   {
     const rows = 1000, cols = 1000;
     const A = toMatrix(seededRandom(rows * cols, 42), rows, cols);
@@ -236,10 +236,10 @@ const benchLoopUnrolled = () => {
 
     const tNaive = timedMedian(() => { naiveElementWise(A, B, "add"); });
     const tOpt = timedMedian(() => { matadd(A, B); });
-    record("Loop-Unrolled", "matadd", `${rows}×${cols}`, tNaive, tOpt, 1.63);
+    record("Loop-Unrolled", "matadd", `${rows}x${cols}`, tNaive, tOpt, 1.63);
   }
 
-  // matsub: 1000×1000
+  // matsub: 1000x1000
   {
     const rows = 1000, cols = 1000;
     const A = toMatrix(seededRandom(rows * cols, 55), rows, cols);
@@ -247,10 +247,10 @@ const benchLoopUnrolled = () => {
 
     const tNaive = timedMedian(() => { naiveElementWise(A, B, "sub"); });
     const tOpt = timedMedian(() => { matsub(A, B); });
-    record("Loop-Unrolled", "matsub", `${rows}×${cols}`, tNaive, tOpt, 0.51);
+    record("Loop-Unrolled", "matsub", `${rows}x${cols}`, tNaive, tOpt, 0.51);
   }
 
-  // matdiv: 1000×1000
+  // matdiv: 1000x1000
   {
     const rows = 1000, cols = 1000;
     const A = toMatrix(seededRandom(rows * cols, 77), rows, cols);
@@ -260,19 +260,19 @@ const benchLoopUnrolled = () => {
 
     const tNaive = timedMedian(() => { naiveElementWise(A, B, "div"); });
     const tOpt = timedMedian(() => { matdiv(A, B); });
-    record("Loop-Unrolled", "matdiv", `${rows}×${cols}`, tNaive, tOpt, 0.76);
+    record("Loop-Unrolled", "matdiv", `${rows}x${cols}`, tNaive, tOpt, 0.76);
   }
 };
 
-// ─── Section 2: Multicore Workers ───────────────────────────────────
+// --- Section 2: Multicore Workers -----------------------------------
 
 const benchMulticore = async () => {
-  console.log("\n━━━ Multicore Workers vs Single-Thread ━━━\n");
+  console.log("\n--- Multicore Workers vs Single-Thread ---\n");
 
   const cores = getPoolSize();
   console.log(`  CPU cores: ${cores}\n`);
 
-  // Key stretching: 100K × 1000 rounds
+  // Key stretching: 100K x 1000 rounds
   {
     const count = 100_000, rounds = 1000;
     const seeds = Array.from({ length: count }, (_, i) => i);
@@ -309,10 +309,10 @@ const benchMulticore = async () => {
     );
 
     const tOpt = await timedMedianAsync(async () => { await parallelStretch(seeds); });
-    record("Multicore", "Key stretching (PBKDF2-like)", `${count / 1000}K × ${rounds} rounds`, tBaseline, tOpt, 4.52);
+    record("Multicore", "Key stretching (PBKDF2-like)", `${count / 1000}K x ${rounds} rounds`, tBaseline, tOpt, 4.52);
   }
 
-  // CRC32: 500K × 64B
+  // CRC32: 500K x 64B
   {
     const msgCount = 500_000, msgSize = 64;
     const messages: Uint8Array[] = new Array(msgCount);
@@ -358,10 +358,10 @@ const benchMulticore = async () => {
 
     const indices = Array.from({ length: msgCount }, (_, i) => i);
     const tOpt = await timedMedianAsync(async () => { await parallelCRC32(indices); });
-    record("Multicore", "CRC32 (small messages)", `${msgCount / 1000}K × ${msgSize}B`, tBaseline, tOpt, 2.34);
+    record("Multicore", "CRC32 (small messages)", `${msgCount / 1000}K x ${msgSize}B`, tBaseline, tOpt, 2.34);
   }
 
-  // CRC32: 10K × 4KB
+  // CRC32: 10K x 4KB
   {
     const msgCount = 10_000, msgSize = 4096;
     const messages: Uint8Array[] = new Array(msgCount);
@@ -407,10 +407,10 @@ const benchMulticore = async () => {
 
     const indices = Array.from({ length: msgCount }, (_, i) => i);
     const tOpt = await timedMedianAsync(async () => { await parallelCRC32_4K(indices); });
-    record("Multicore", "CRC32 (network packets)", `${msgCount / 1000}K × ${msgSize / 1024}KB`, tBaseline, tOpt, 1.26);
+    record("Multicore", "CRC32 (network packets)", `${msgCount / 1000}K x ${msgSize / 1024}KB`, tBaseline, tOpt, 1.26);
   }
 
-  // FNV-1a: 1M × 128B
+  // FNV-1a: 1M x 128B
   {
     const msgCount = 1_000_000, msgSize = 128;
     const messages: Uint8Array[] = new Array(msgCount);
@@ -453,7 +453,7 @@ const benchMulticore = async () => {
 
     const indices = Array.from({ length: msgCount }, (_, i) => i);
     const tOpt = await timedMedianAsync(async () => { await parallelFNV(indices); });
-    record("Multicore", "FNV-1a hash", `1M × ${msgSize}B`, tBaseline, tOpt, 0.82);
+    record("Multicore", "FNV-1a hash", `1M x ${msgSize}B`, tBaseline, tOpt, 0.82);
   }
 
   // Filter: 2M items
@@ -532,20 +532,20 @@ const benchMulticore = async () => {
   }
 };
 
-// ─── Report ─────────────────────────────────────────────────────────
+// --- Report ---------------------------------------------------------
 
 const printReport = () => {
   const pad = (s: string, n: number) => s.padEnd(n);
   const rpad = (s: string, n: number) => s.padStart(n);
 
-  const SEP = "─".repeat(100);
+  const SEP = "-".repeat(100);
   const HEADER = `${pad("Operation", 32)} ${pad("Size", 24)} ${rpad("Baseline", 10)} ${rpad("Optimized", 10)} ${rpad("Speedup", 9)} ${rpad("README", 9)} ${rpad("Δ", 6)}`;
 
   let lastSection = "";
 
-  console.log(`\n${"━".repeat(100)}`);
+  console.log(`\n${"-".repeat(100)}`);
   console.log("  defuss-multicore benchmark results (median of 5 runs, 2 warmup)");
-  console.log(`${"━".repeat(100)}`);
+  console.log(`${"-".repeat(100)}`);
 
   for (const r of results) {
     if (r.section !== lastSection) {
@@ -559,25 +559,25 @@ const printReport = () => {
 
     const baseline = `${r.baselineMs.toFixed(1)}ms`;
     const optimized = `${r.optimizedMs.toFixed(1)}ms`;
-    const speedup = `${r.speedup.toFixed(2)}×`;
-    const readme = r.readmeClaim !== null ? `${r.readmeClaim.toFixed(2)}×` : "—";
+    const speedup = `${r.speedup.toFixed(2)}x`;
+    const readme = r.readmeClaim !== null ? `${r.readmeClaim.toFixed(2)}x` : "-";
     const delta = r.readmeClaim !== null
       ? `${r.speedup >= r.readmeClaim ? "+" : ""}${((r.speedup / r.readmeClaim - 1) * 100).toFixed(0)}%`
-      : "—";
+      : "-";
 
     console.log(
       `${pad(r.operation, 32)} ${pad(r.size, 24)} ${rpad(baseline, 10)} ${rpad(optimized, 10)} ${rpad(speedup, 9)} ${rpad(readme, 9)} ${rpad(delta, 6)}`,
     );
   }
 
-  console.log(`\n${"━".repeat(100)}`);
+  console.log(`\n${"-".repeat(100)}`);
   console.log("  Δ = measured vs README claim. Positive = faster than claimed.");
   console.log(`  Environment: ${typeof process !== "undefined" ? `Node.js ${process.version}` : "Browser"} on ${typeof process !== "undefined" ? process.arch : "unknown"}`);
   console.log(`  CPU cores: ${getPoolSize()}`);
-  console.log(`${"━".repeat(100)}\n`);
+  console.log(`${"-".repeat(100)}\n`);
 };
 
-// ─── Main ───────────────────────────────────────────────────────────
+// --- Main -----------------------------------------------------------
 
 const main = async () => {
   console.log("\ndefuss-multicore benchmark");

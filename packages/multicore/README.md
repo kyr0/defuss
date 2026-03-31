@@ -2,7 +2,7 @@
 
 Isomorphic multicore execution + loop-unrolled linear algebra for JavaScript/TypeScript.
 
-- **Web Workers** in the browser, **worker_threads** in Node.js — same API
+- **Web Workers** in the browser, **worker_threads** in Node.js - same API
 - Auto-splits arrays/TypedArrays across CPU cores
 - JIT loop-unrolled vector/matrix ops (4x/8x/16x unroll factors, auto-selected)
 - Parallel `map`, `filter`, `reduce` for any array
@@ -47,7 +47,7 @@ for await (const r of parallel(data)) { ... }    // stream as workers finish
 
 - Array/TypedArray args are **auto-split** across cores
 - Scalar args are **broadcast** to every worker
-- Returns `ParallelResult<R>` — both `PromiseLike<R[]>` and `AsyncIterable<R>`
+- Returns `ParallelResult<R>` - both `PromiseLike<R[]>` and `AsyncIterable<R>`
 
 #### `MulticoreOptions<R>`
 
@@ -55,15 +55,15 @@ for await (const r of parallel(data)) { ... }    // stream as workers finish
 |-------------|---------------------------|------------------------|-------------|
 | `cores`     | `number`                  | `navigator.hardwareConcurrency` | Number of worker threads |
 | `threshold` | `number`                  | `1024`                 | Min array length before parallelizing (falls back to main thread below this) |
-| `reduce`    | `(a: R, b: R) => R`      | —                      | Reduce partial results into a single value |
+| `reduce`    | `(a: R, b: R) => R`      | -                      | Reduce partial results into a single value |
 | `eager`     | `boolean`                 | `false`                | Pre-spawn workers immediately instead of on first call |
 
 #### `CallOptions` (per-call overrides)
 
 | Option     | Type           | Default  | Description |
 |------------|----------------|----------|-------------|
-| `cores`    | `number`       | —        | Override core count for this call |
-| `signal`   | `AbortSignal`  | —        | Cancel in-flight workers |
+| `cores`    | `number`       | -        | Override core count for this call |
+| `signal`   | `AbortSignal`  | -        | Cancel in-flight workers |
 | `transfer` | `boolean`      | `true`   | Auto-detect and transfer ArrayBuffer ownership (zero-copy) |
 
 ### `map(array, fn, options?)`
@@ -98,7 +98,7 @@ const sum = await reduce(hugeArray, (a, b) => a + b, 0);
 
 ### `dotProduct(as, bs)`
 
-Batch dot product of vector pairs. JIT loop-unrolled (up to 16× unroll).
+Batch dot product of vector pairs. JIT loop-unrolled (up to 16x unroll).
 
 ```ts
 import { dotProduct } from "defuss-multicore";
@@ -117,7 +117,7 @@ Matrix multiplication with transpose optimization + loop unrolling.
 ```ts
 import { matmul } from "defuss-multicore";
 
-// A: M×K, B: K×N → C: M×N
+// A: MxK, B: KxN => C: MxN
 const C: Float64Array[] = matmul(A, B);
 ```
 
@@ -133,7 +133,7 @@ const diff = matsub(A, B);
 const quot = matdiv(A, B);
 ```
 
-All matrix ops use `Matrix<Float64Array>` — an array of row vectors (`Float64Array[]`).
+All matrix ops use `Matrix<Float64Array>` - an array of row vectors (`Float64Array[]`).
 
 ### `getPoolSize()`
 
@@ -161,32 +161,32 @@ All benchmarks measured on Node.js (worker_threads) on Apple Silicon (10 cores).
 
 ### Loop-Unrolled Ops vs Naive Baseline
 
-Single-threaded comparison — same thread, unrolled kernels vs naive loops:
+Single-threaded comparison - same thread, unrolled kernels vs naive loops:
 
 | Operation | Size | Speedup |
 |-----------|------|---------|
-| **matmul** | 200 × 300 × 200 | **2.36×** |
-| **matadd** | 1000 × 1000 | **2.11×** |
-| **matmul** | 500 × 500 | **2.06×** |
-| **dotProduct** | 100K × 768-dim | **1.46×** |
-| **matsub** | 1000 × 1000 | 0.49× |
-| **matdiv** | 1000 × 1000 | 0.37× |
+| **matmul** | 200 x 300 x 200 | **2.36x** |
+| **matadd** | 1000 x 1000 | **2.11x** |
+| **matmul** | 500 x 500 | **2.06x** |
+| **dotProduct** | 100K x 768-dim | **1.46x** |
+| **matsub** | 1000 x 1000 | 0.49x |
+| **matdiv** | 1000 x 1000 | 0.37x |
 
-Loop unrolling shines on **compute-heavy inner loops** like matrix multiplication, where the unrolled kernel avoids branch overhead and allows the CPU to pipeline instructions. Element-wise ops (add/sub/div) benefit less because the operation per element is trivial — the memory access pattern dominates.
+Loop unrolling shines on **compute-heavy inner loops** like matrix multiplication, where the unrolled kernel avoids branch overhead and allows the CPU to pipeline instructions. Element-wise ops (add/sub/div) benefit less because the operation per element is trivial - the memory access pattern dominates.
 
 ### Multicore Workers vs Single-Thread
 
-Worker parallelism — dispatching across all CPU cores vs running on the main thread:
+Worker parallelism - dispatching across all CPU cores vs running on the main thread:
 
 | Workload | Size | Speedup |
 |----------|------|---------|
-| **Key stretching** (PBKDF2-like) | 100K × 1000 rounds | **4.89×** |
-| **CRC32** (network packets) | 10K × 4KB | **1.31×** |
-| **CRC32** (small messages) | 500K × 64B | 0.80× |
-| **Transform** (sin+cos) | 5M items | 0.60× |
-| **FNV-1a** hash | 1M × 128B | 0.44× |
-| **Filter** elements | 2M items | 0.39× |
-| **Sum** (accumulate) | 10M items | 0.06× |
+| **Key stretching** (PBKDF2-like) | 100K x 1000 rounds | **4.89x** |
+| **CRC32** (network packets) | 10K x 4KB | **1.31x** |
+| **CRC32** (small messages) | 500K x 64B | 0.80x |
+| **Transform** (sin+cos) | 5M items | 0.60x |
+| **FNV-1a** hash | 1M x 128B | 0.44x |
+| **Filter** elements | 2M items | 0.39x |
+| **Sum** (accumulate) | 10M items | 0.06x |
 
 ## When to Use `multicore()`
 
@@ -194,30 +194,30 @@ The benchmarks tell a clear story: **worker parallelism pays off when each chunk
 
 ### DO: Parallelize These
 
-- **Key derivation / password hashing** — thousands of rounds per item (4.9× speedup)
-- **Batch checksumming** (CRC32, SHA, etc.) of large messages — enough work per chunk to amortize dispatch
-- **Heavy per-element computation** — image processing, physics simulation, compression
+- **Key derivation / password hashing** - thousands of rounds per item (4.9x speedup)
+- **Batch checksumming** (CRC32, SHA, etc.) of large messages - enough work per chunk to amortize dispatch
+- **Heavy per-element computation** - image processing, physics simulation, compression
 - **Any workload where each chunk runs >5ms** on a single core
 
 ### DON'T: Parallelize These
 
-- **Simple reductions** (sum, min, max) — main-thread loop is faster than worker dispatch
-- **Trivial transforms** (multiply, add constant) — memory-bandwidth bound, not CPU-bound
-- **Small arrays** (<1024 elements) — the `threshold` option exists for this reason
-- **Single function calls** — multicore is for **batches**, not individual invocations
-- **I/O-bound work** — fetch, file reads, DB queries are already async; workers add overhead
+- **Simple reductions** (sum, min, max) - main-thread loop is faster than worker dispatch
+- **Trivial transforms** (multiply, add constant) - memory-bandwidth bound, not CPU-bound
+- **Small arrays** (<1024 elements) - the `threshold` option exists for this reason
+- **Single function calls** - multicore is for **batches**, not individual invocations
+- **I/O-bound work** - fetch, file reads, DB queries are already async; workers add overhead
 
 ### DO: Use Loop-Unrolled Ops
 
-- **`matmul`** for matrix multiplication, neural network layers (2×+ speedup)
-- **`matadd`** for accumulating matrices (2.1×)
-- **`dotProduct`** for embedding similarity, cosine distance, attention scores (1.5×+ speedup)
+- **`matmul`** for matrix multiplication, neural network layers (2x+ speedup)
+- **`matadd`** for accumulating matrices (2.1x)
+- **`dotProduct`** for embedding similarity, cosine distance, attention scores (1.5x+ speedup)
 
 ### Key Principles
 
-1. **Measure first.** The `threshold` option exists so small inputs fall back to the main thread automatically. But "small" depends on your workload — a 10K-element array of simple additions is too small; a 10K-element array of 1000-round hash stretches is perfect.
+1. **Measure first.** The `threshold` option exists so small inputs fall back to the main thread automatically. But "small" depends on your workload - a 10K-element array of simple additions is too small; a 10K-element array of 1000-round hash stretches is perfect.
 
-2. **Worker functions must be pure.** They run in isolated contexts — no closures, no imports, no DOM access. Everything the function needs must be passed as arguments or computed inline.
+2. **Worker functions must be pure.** They run in isolated contexts - no closures, no imports, no DOM access. Everything the function needs must be passed as arguments or computed inline.
 
 3. **Transferables are auto-detected.** ArrayBuffers are transferred (zero-copy) by default. Disable with `{ transfer: false }` if you need to reuse the buffer after the call.
 

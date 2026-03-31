@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { matmul } from "./matmul.js";
 
-// ─── Naive reference implementation ─────────────────────────────────
+// --- Naive reference implementation ---------------------------------
 
 const naiveMatmul = (A: number[][], B: number[][]): number[][] => {
   const M = A.length;
@@ -29,7 +29,7 @@ const randomF32Row = (cols: number) =>
 const randomF64Row = (cols: number) =>
   new Float64Array(Array.from({ length: cols }, () => Math.random() * 4 - 2));
 
-// ─── Basic correctness ─────────────────────────────────────────────
+// --- Basic correctness ---------------------------------------------
 
 describe("matmul", () => {
   it("multiplies 2x3 * 3x2 identity-like", () => {
@@ -62,7 +62,7 @@ describe("matmul", () => {
     expect(Array.from(C[1])).toEqual([43, 50]);
   });
 
-  it("multiplies row vector * column vector → 1x1", () => {
+  it("multiplies row vector * column vector => 1x1", () => {
     const A = [new Float32Array([1, 2, 3])]; // 1x3
     const B = [new Float32Array([4]), new Float32Array([5]), new Float32Array([6])]; // 3x1
     const C = matmul(A, B);
@@ -72,7 +72,7 @@ describe("matmul", () => {
     expect(C[0][0]).toBe(32);
   });
 
-  it("multiplies column vector * row vector → outer product", () => {
+  it("multiplies column vector * row vector => outer product", () => {
     const A = [new Float32Array([1]), new Float32Array([2]), new Float32Array([3])]; // 3x1
     const B = [new Float32Array([4, 5, 6])]; // 1x3
     const C = matmul(A, B);
@@ -83,7 +83,7 @@ describe("matmul", () => {
     expect(Array.from(C[2])).toEqual([12, 15, 18]);
   });
 
-  // ─── Identity matrix ─────────────────────────────────────────────
+  // --- Identity matrix ---------------------------------------------
 
   it("A * I = A for 4x4 identity", () => {
     const A = [
@@ -106,7 +106,7 @@ describe("matmul", () => {
     }
   });
 
-  // ─── Against naive reference ──────────────────────────────────────
+  // --- Against naive reference --------------------------------------
 
   it("matches naive for 8x16 * 16x8", () => {
     const M = 8, K = 16, N = 8;
@@ -150,7 +150,7 @@ describe("matmul", () => {
     }
   });
 
-  // ─── TypedArray types ─────────────────────────────────────────────
+  // --- TypedArray types ---------------------------------------------
 
   it("preserves Float32Array type in output", () => {
     const A = [new Float32Array([1, 2])];
@@ -189,7 +189,7 @@ describe("matmul", () => {
     expect(C[0]).toBeInstanceOf(Int32Array);
   });
 
-  // ─── Unroll option ────────────────────────────────────────────────
+  // --- Unroll option ------------------------------------------------
 
   it("works with explicit unroll=4", () => {
     const A = [new Float32Array([1, 2, 3, 4])];
@@ -203,7 +203,7 @@ describe("matmul", () => {
     expect(C[0][0]).toBe(10); // 1+2+3+4
   });
 
-  // ─── Edge cases ───────────────────────────────────────────────────
+  // --- Edge cases ---------------------------------------------------
 
   it("returns empty array for empty input", () => {
     const C = matmul([] as Float32Array[], []);
@@ -212,11 +212,11 @@ describe("matmul", () => {
 
   it("throws RangeError when A.cols !== B.rows", () => {
     const A = [new Float32Array([1, 2, 3])]; // 1x3
-    const B = [new Float32Array([1, 2])];     // 1x2 — should be 3xN
+    const B = [new Float32Array([1, 2])];     // 1x2 - should be 3xN
     expect(() => matmul(A, B)).toThrow(RangeError);
   });
 
-  // ─── Larger exercise for cache/transpose ──────────────────────────
+  // --- Larger exercise for cache/transpose --------------------------
 
   it("handles 64x64 * 64x64 (stresses transpose + unroll-16)", () => {
     const N = 64;

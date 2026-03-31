@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { multicore, getPoolSize } from "./multicore.js";
 
-// ─── multicore HOF ──────────────────────────────────────────────────
+// --- multicore HOF --------------------------------------------------
 
 describe("multicore", () => {
-  // ─── Main-thread fallback path (small arrays < threshold) ───────
+  // --- Main-thread fallback path (small arrays < threshold) -------
 
   describe("main-thread fallback", () => {
     it("executes on main thread for small arrays", async () => {
@@ -13,7 +13,7 @@ describe("multicore", () => {
         { threshold: 1024 },
       );
 
-      // 5 items < 1024 threshold → main-thread execution
+      // 5 items < 1024 threshold => main-thread execution
       const result = await sum([1, 2, 3, 4, 5]);
       // Fallback wraps single result in array
       expect(result).toEqual([15]);
@@ -25,7 +25,7 @@ describe("multicore", () => {
         { threshold: 1024 },
       );
 
-      // Small input → fallback
+      // Small input => fallback
       const result = identity(42);
 
       // PromiseLike
@@ -55,7 +55,7 @@ describe("multicore", () => {
         { threshold: 1024, reduce: (a: number, b: number) => a + b },
       );
 
-      // Fallback with reduce → single value (not array)
+      // Fallback with reduce => single value (not array)
       const result = await sum([1, 2, 3, 4, 5]);
       expect(result).toBe(15);
     });
@@ -66,13 +66,13 @@ describe("multicore", () => {
         { threshold: 10 },
       );
 
-      // 5 items < 10 → fallback
+      // 5 items < 10 => fallback
       const r = await fn([1, 2, 3, 4, 5]);
       expect(r).toEqual([5]);
     });
   });
 
-  // ─── Worker path (large arrays) ──────────────────────────────────
+  // --- Worker path (large arrays) ----------------------------------
 
   describe("worker execution", () => {
     it("distributes large array across workers and collects results", async () => {
@@ -81,7 +81,7 @@ describe("multicore", () => {
         { cores: 4, threshold: 10 },
       );
 
-      // 100 items > 10 threshold → worker path
+      // 100 items > 10 threshold => worker path
       const arr = Array.from({ length: 100 }, (_, i) => i + 1);
       const results = await chunkSum(arr);
 
@@ -177,7 +177,7 @@ describe("multicore", () => {
     });
   });
 
-  // ─── TypedArray handling ──────────────────────────────────────────
+  // --- TypedArray handling ------------------------------------------
 
   describe("TypedArray support", () => {
     it("splits TypedArray using subarray (zero-copy)", async () => {
@@ -194,7 +194,7 @@ describe("multicore", () => {
   });
 });
 
-// ─── getPoolSize ────────────────────────────────────────────────────
+// --- getPoolSize ----------------------------------------------------
 
 describe("getPoolSize", () => {
   it("returns a positive integer", () => {

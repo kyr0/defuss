@@ -7,7 +7,7 @@ import {
   getDotKernel,
 } from "./unroll.js";
 
-// ─── selectUnrollFactor ─────────────────────────────────────────────
+// --- selectUnrollFactor ---------------------------------------------
 
 describe("selectUnrollFactor", () => {
   it("returns 4 for dims < 16", () => {
@@ -30,7 +30,7 @@ describe("selectUnrollFactor", () => {
   });
 });
 
-// ─── Naive reference implementations ────────────────────────────────
+// --- Naive reference implementations --------------------------------
 
 const naiveElementWise = (
   op: "add" | "sub" | "mul" | "div",
@@ -49,7 +49,7 @@ const naiveElementWise = (
 const naiveDot = (a: number[], b: number[]): number =>
   a.reduce((sum, v, i) => sum + v * b[i], 0);
 
-// ─── Helper: generate random data ──────────────────────────────────
+// --- Helper: generate random data ----------------------------------
 
 const randomArray = (len: number): number[] =>
   Array.from({ length: len }, () => Math.random() * 10 - 5);
@@ -59,7 +59,7 @@ const toTyped = <T extends Float32Array | Float64Array | Int32Array | Uint8Array
   arr: number[],
 ): T => new Ctor(arr);
 
-// ─── createElementWiseKernel ────────────────────────────────────────
+// --- createElementWiseKernel ----------------------------------------
 
 describe("createElementWiseKernel", () => {
   const ops = ["add", "sub", "mul", "div"] as const;
@@ -67,7 +67,7 @@ describe("createElementWiseKernel", () => {
 
   for (const op of ops) {
     for (const factor of factors) {
-      describe(`${op} × unroll-${factor}`, () => {
+      describe(`${op} x unroll-${factor}`, () => {
         it("handles length exactly divisible by factor", () => {
           const len = factor * 5;
           const a = randomArray(len);
@@ -186,7 +186,7 @@ describe("createElementWiseKernel", () => {
   });
 });
 
-// ─── createDotKernel ────────────────────────────────────────────────
+// --- createDotKernel ------------------------------------------------
 
 describe("createDotKernel", () => {
   const factors = [4, 8, 16] as const;
@@ -276,7 +276,7 @@ describe("createDotKernel", () => {
   });
 });
 
-// ─── Kernel caching ─────────────────────────────────────────────────
+// --- Kernel caching -------------------------------------------------
 
 describe("getElementWiseKernel (caching)", () => {
   it("returns the same kernel for same op+factor", () => {
@@ -312,7 +312,7 @@ describe("getDotKernel (caching)", () => {
   });
 });
 
-// ─── Cross-check: all unroll factors agree ──────────────────────────
+// --- Cross-check: all unroll factors agree --------------------------
 
 describe("cross-factor consistency", () => {
   it("all dot kernel factors produce the same result for 768-dim vectors", () => {

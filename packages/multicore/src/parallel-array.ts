@@ -2,7 +2,7 @@ import type { CallOptions, ParallelResult } from "./types.js";
 import { multicore } from "./multicore.js";
 
 /**
- * Parallel `Array.prototype.map` — distributes work across CPU cores.
+ * Parallel `Array.prototype.map` - distributes work across CPU cores.
  *
  * @example
  * ```ts
@@ -40,7 +40,7 @@ export const map = <T, U>(
 };
 
 /**
- * Parallel `Array.prototype.filter` — distributes predicate across CPU cores.
+ * Parallel `Array.prototype.filter` - distributes predicate across CPU cores.
  *
  * @example
  * ```ts
@@ -75,7 +75,7 @@ export const filter = <T>(
 };
 
 /**
- * Parallel `Array.prototype.reduce` — each worker reduces its chunk,
+ * Parallel `Array.prototype.reduce` - each worker reduces its chunk,
  * then main thread reduces the partial results.
  *
  * @example

@@ -18,7 +18,7 @@ import { matadd } from "./ops/matadd.js";
 import { matsub } from "./ops/matsub.js";
 import { matdiv } from "./ops/matdiv.js";
 
-// ─── Environment Sanity ────────────────────────────────────────────
+// --- Environment Sanity --------------------------------------------
 
 describe("browser environment", () => {
   it("detects Web Worker support", () => {
@@ -32,7 +32,7 @@ describe("browser environment", () => {
   });
 });
 
-// ─── multicore HOF (Web Workers) ───────────────────────────────────
+// --- multicore HOF (Web Workers) -----------------------------------
 
 describe("multicore HOF in browser", () => {
   it("executes a pure function across Web Workers", async () => {
@@ -125,7 +125,7 @@ describe("multicore HOF in browser", () => {
   });
 });
 
-// ─── parallel map/filter/reduce (browser Web Workers) ──────────────
+// --- parallel map/filter/reduce (browser Web Workers) --------------
 
 describe("parallel map in browser", () => {
   it("maps over large array using Web Workers", async () => {
@@ -158,7 +158,7 @@ describe("parallel reduce in browser", () => {
   });
 });
 
-// ─── Vector/Matrix ops (computation correctness in browser) ────────
+// --- Vector/Matrix ops (computation correctness in browser) --------
 
 describe("dotProduct in browser", () => {
   it("computes correct dot product of Float32Arrays", () => {
@@ -271,7 +271,7 @@ describe("element-wise matrix ops in browser", () => {
     expect(C[0]).toBeInstanceOf(Float32Array);
   });
 
-  it("round-trip A + B - B ≈ A", () => {
+  it("round-trip A + B - B ~= A", () => {
     const A = [new Float64Array([1.5, 2.7, 3.1, 4.9])];
     const B = [new Float64Array([10.1, 20.2, 30.3, 40.4])];
     const sum = matadd(A, B);

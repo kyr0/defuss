@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { partitionArgs, shouldFallback, detectTransferables, getCoreCount } from "./partition.js";
 
-// ─── partitionArgs ──────────────────────────────────────────────────
+// --- partitionArgs --------------------------------------------------
 
 describe("partitionArgs", () => {
   it("splits a plain Array evenly across cores", () => {
@@ -17,7 +17,7 @@ describe("partitionArgs", () => {
   it("handles uneven splits (extra elements go to first chunks)", () => {
     const arr = [1, 2, 3, 4, 5];
     const result = partitionArgs([arr], 3);
-    // 5/3 = 1 base + 2 remainder → first 2 get 2 items, last gets 1
+    // 5/3 = 1 base + 2 remainder => first 2 get 2 items, last gets 1
     expect(result[0]).toEqual([[1, 2]]);
     expect(result[1]).toEqual([[3, 4]]);
     expect(result[2]).toEqual([[5]]);
@@ -106,7 +106,7 @@ describe("partitionArgs", () => {
   });
 });
 
-// ─── shouldFallback ─────────────────────────────────────────────────
+// --- shouldFallback -------------------------------------------------
 
 describe("shouldFallback", () => {
   it("returns true when largest array < threshold", () => {
@@ -147,7 +147,7 @@ describe("shouldFallback", () => {
   });
 });
 
-// ─── detectTransferables ────────────────────────────────────────────
+// --- detectTransferables --------------------------------------------
 
 describe("detectTransferables", () => {
   it("detects ArrayBuffer references from TypedArray args", () => {
@@ -214,7 +214,7 @@ describe("detectTransferables", () => {
   });
 });
 
-// ─── getCoreCount ───────────────────────────────────────────────────
+// --- getCoreCount ---------------------------------------------------
 
 describe("getCoreCount", () => {
   it("returns a positive integer", () => {
