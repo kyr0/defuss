@@ -1,6 +1,6 @@
 {
   "name": "defuss-storybook",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -26,7 +26,8 @@
     "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun",
     "prebuild": "bun run clean",
     "build": "pkgroll --sourcemap",
-    "test": "echo 'No tests available'"
+    "test": "echo 'No tests available'",
+    "prepublishOnly": "bun run build"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

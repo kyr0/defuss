@@ -3,7 +3,7 @@ import { storybookConfig } from "./App.js";
 
 /**
  * Dark/light mode toggle + theme variant switcher.
- * Uses the same `basecoat:theme` CustomEvent pattern as the kitchensink.
+ * Uses the same `defuss:theme` CustomEvent pattern as the kitchensink.
  */
 export const ThemeSwitcher: FC = () => {
   const themeSelectRef = createRef<HTMLSelectElement>();
@@ -12,7 +12,7 @@ export const ThemeSwitcher: FC = () => {
     storybookConfig.themes || [];
 
   const toggleDarkMode = () => {
-    document.dispatchEvent(new CustomEvent("basecoat:theme"));
+    document.dispatchEvent(new CustomEvent("defuss:theme"));
   };
 
   const applyThemeVariant = (themeVariant: string) => {

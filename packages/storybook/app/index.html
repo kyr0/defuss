@@ -26,7 +26,7 @@
         try { localStorage.setItem('themeMode', dark ? 'dark' : 'light'); } catch (_) { }
       };
 
-      document.addEventListener('basecoat:theme', function(event) {
+      document.addEventListener('defuss:theme', function(event) {
         var mode = event.detail && event.detail.mode;
         apply(mode === 'dark' ? true
           : mode === 'light' ? false
