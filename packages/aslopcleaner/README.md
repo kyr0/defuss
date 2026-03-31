@@ -12,6 +12,15 @@ High-performance CLI to normalize common LLM/AI Unicode punctuation and symbols 
 - Prompts once per file in interactive mode.
 - Replaces everything automatically in non-interactive mode with `-y`.
 
+## Run it
+
+```bash
+bunx aslopcleaner    # Bun
+npx aslopcleaner     # npm
+pnpx aslopcleaner    # pnpm
+yarn dlx aslopcleaner # Yarn
+```
+
 ## Default replacements
 
 ### Dashes / hyphens
@@ -332,15 +341,6 @@ High-performance CLI to normalize common LLM/AI Unicode punctuation and symbols 
 - `╨` => `+` (box drawings double down and horizontal)
 - `╂` => `+` (box drawings light vertical and horizontal)
 - `╋` => `+` (box drawings heavy vertical and horizontal)
-
-## Run it
-
-```bash
-bunx aslopcleaner    # Bun
-npx aslopcleaner     # npm
-pnpx aslopcleaner    # pnpm
-yarn dlx aslopcleaner # Yarn
-```
 
 ### Local testing
 
