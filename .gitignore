@@ -22,3 +22,9 @@ __screenshots__
 .ssg-temp
 .log
 .storybook
+.tools/
+.cache/
+.vitest/
+.vitest-attachments/
+dist*/
+*_wip/

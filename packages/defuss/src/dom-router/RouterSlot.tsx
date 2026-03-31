@@ -70,12 +70,38 @@ export const RouterSlot: FC<RouterSlotProps> = ({
     router.onRouteChange(async () => {
       const currentPath = router.getRequest().path;
       const isSamePath = currentPath === lastPath;
-      lastPath = currentPath;
 
-      await $(ref).update(
-        typeof RouterOutlet === "function" ? RouterOutlet() : [],
-        isSamePath ? undefined : transitionConfig,
-      );
+      // For different-path navigation, run lifecycle hooks
+      if (!isSamePath) {
+        // Run beforeUnmount hooks — can block navigation
+        const allowed = await router.runBeforeUnmountHooks();
+        if (!allowed) {
+          // Rollback: restore old URL and re-resolve old route
+          window.history.pushState({}, "", lastPath);
+          router.resolve(lastPath);
+          return;
+        }
+
+        // Save old unmount hooks before clearing (new route will register fresh ones during morph)
+        const { unmountHooks } = router.clearRouteLifecycle();
+
+        await $(ref).update(
+          typeof RouterOutlet === "function" ? RouterOutlet() : [],
+          transitionConfig,
+        );
+
+        // Fire old route's unmount hooks after new route has been rendered
+        for (const fn of unmountHooks) {
+          fn();
+        }
+      } else {
+        // Same path — no lifecycle, no transition
+        await $(ref).update(
+          typeof RouterOutlet === "function" ? RouterOutlet() : [],
+        );
+      }
+
+      lastPath = currentPath;
     });
   }
 

@@ -17,6 +17,7 @@ describe("DOM Router", () => {
       pendingResolvers: [],
       currentPath: "",
       popAttached: false,
+      lifecycleHooks: { beforeUnmount: [], unmount: [] },
     };
 
     // Create a mock window object with history API
@@ -108,6 +109,92 @@ describe("DOM Router", () => {
       expect(req.match).toBe(false);
       expect(req.matchedRoute).toBeNull();
       expect(req.path).toBe("/initial"); // path is still populated
+    });
+
+    it("should update currentRequest when match() finds a match", () => {
+      // Simulate the initial state: URL is /project/my-project
+      mockWindow.document.location.pathname = "/project/my-project";
+      mockWindow.document.location.href =
+        "http://localhost:3000/project/my-project";
+      mockWindow.location.pathname = "/project/my-project";
+      mockWindow.location.href = "http://localhost:3000/project/my-project";
+
+      // Re-create router with the updated mock window
+      router = setupRouter({ strategy: "slot-refresh" }, mockWindow);
+
+      router.add({ path: "/project/:projectName" });
+
+      // match() with a specific path should update currentRequest
+      const req = router.match("/project/:projectName");
+      expect(req.match).toBe(true);
+      expect(req.params.projectName).toBe("my-project");
+
+      // getRequest() should now return the same match
+      const getReq = router.getRequest();
+      expect(getReq.match).toBe(true);
+      expect(getReq.params.projectName).toBe("my-project");
+    });
+
+    it("should NOT overwrite currentRequest when match() does not match", () => {
+      // Simulate URL: /project/my-project
+      mockWindow.document.location.pathname = "/project/my-project";
+      mockWindow.document.location.href =
+        "http://localhost:3000/project/my-project";
+      mockWindow.location.pathname = "/project/my-project";
+      mockWindow.location.href = "http://localhost:3000/project/my-project";
+
+      router = setupRouter({ strategy: "slot-refresh" }, mockWindow);
+
+      router.add({ path: "/" });
+      router.add({ path: "/project/:projectName" });
+
+      // First, match the correct route to set currentRequest
+      const matchReq = router.match("/project/:projectName");
+      expect(matchReq.match).toBe(true);
+
+      // Now match a different route that doesn't match the URL
+      const noMatchReq = router.match("/");
+      expect(noMatchReq.match).toBe(false);
+
+      // currentRequest should still be the previous successful match
+      const getReq = router.getRequest();
+      expect(getReq.match).toBe(true);
+      expect(getReq.params.projectName).toBe("my-project");
+    });
+
+    it("should provide correct params via getRequest() when simulating SSR+client routing", () => {
+      // This simulates the SSR scenario:
+      // Server renders /project/my-project, browser loads it,
+      // then defuss client-side router initializes.
+      mockWindow.document.location.pathname = "/project/my-project";
+      mockWindow.document.location.href =
+        "http://localhost:3000/project/my-project";
+      mockWindow.location.pathname = "/project/my-project";
+      mockWindow.location.href = "http://localhost:3000/project/my-project";
+
+      router = setupRouter({ strategy: "slot-refresh" }, mockWindow);
+
+      // Simulate Route registration order (like RouterOutlet does):
+      // Route "/" is registered first
+      router.add({ path: "/" });
+      // Then Route "/project/:projectName"
+      router.add({ path: "/project/:projectName" });
+
+      // Route for "/" calls match("/") — no match, currentRequest stays null
+      const rootMatch = router.match("/");
+      expect(rootMatch.match).toBe(false);
+
+      // Route for "/project/:projectName" calls match() — matches! Updates currentRequest.
+      const projectMatch = router.match("/project/:projectName");
+      expect(projectMatch.match).toBe(true);
+      expect(projectMatch.params.projectName).toBe("my-project");
+
+      // Now a child component (rendered lazily via component prop) calls getRequest():
+      const request = router.getRequest();
+      expect(request.match).toBe(true);
+      expect(request.matchedRoute).toBe("/project/:projectName");
+      expect(request.params.projectName).toBe("my-project");
+      expect(request.path).toBe("/project/my-project");
     });
   });
 
@@ -281,6 +368,129 @@ describe("DOM Router", () => {
         "popstate",
         expect.any(Function),
       );
+    });
+  });
+
+  describe("route lifecycle hooks", () => {
+    it("should create a RouteContext with request and hook methods", () => {
+      router.add({ path: "/initial" });
+      const req = router.match("/initial");
+      const ctx = router.createRouteContext(req);
+
+      expect(ctx.request).toBe(req);
+      expect(typeof ctx.onBeforeUnmount).toBe("function");
+      expect(typeof ctx.onUnmount).toBe("function");
+    });
+
+    it("should register and run beforeUnmount hooks", async () => {
+      const hook = vi.fn(() => true);
+      router.add({ path: "/initial" });
+      const req = router.match("/initial");
+      const ctx = router.createRouteContext(req);
+      ctx.onBeforeUnmount(hook);
+
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(true);
+      expect(hook).toHaveBeenCalledOnce();
+    });
+
+    it("should block navigation when beforeUnmount returns false", async () => {
+      router.add({ path: "/initial" });
+      const req = router.match("/initial");
+      const ctx = router.createRouteContext(req);
+      ctx.onBeforeUnmount(() => false);
+
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(false);
+    });
+
+    it("should block navigation when async beforeUnmount resolves to false", async () => {
+      router.add({ path: "/initial" });
+      const req = router.match("/initial");
+      const ctx = router.createRouteContext(req);
+      ctx.onBeforeUnmount(async () => false);
+
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(false);
+    });
+
+    it("should allow navigation when beforeUnmount returns undefined", async () => {
+      router.add({ path: "/initial" });
+      const req = router.match("/initial");
+      const ctx = router.createRouteContext(req);
+      ctx.onBeforeUnmount(() => {});
+
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(true);
+    });
+
+    it("should short-circuit on first blocking beforeUnmount hook", async () => {
+      router.add({ path: "/initial" });
+      const req = router.match("/initial");
+      const ctx = router.createRouteContext(req);
+
+      const hook1 = vi.fn(() => false);
+      const hook2 = vi.fn(() => true);
+      ctx.onBeforeUnmount(hook1);
+      ctx.onBeforeUnmount(hook2);
+
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(false);
+      expect(hook1).toHaveBeenCalledOnce();
+      expect(hook2).not.toHaveBeenCalled();
+    });
+
+    it("should register and run unmount hooks", () => {
+      router.add({ path: "/initial" });
+      const req = router.match("/initial");
+      const ctx = router.createRouteContext(req);
+
+      const hook = vi.fn();
+      ctx.onUnmount(hook);
+
+      router.runUnmountHooks();
+      expect(hook).toHaveBeenCalledOnce();
+    });
+
+    it("should run multiple unmount hooks in order", () => {
+      router.add({ path: "/initial" });
+      const req = router.match("/initial");
+      const ctx = router.createRouteContext(req);
+
+      const order: number[] = [];
+      ctx.onUnmount(() => order.push(1));
+      ctx.onUnmount(() => order.push(2));
+
+      router.runUnmountHooks();
+      expect(order).toEqual([1, 2]);
+    });
+
+    it("should clear lifecycle hooks and return old unmount hooks", async () => {
+      router.add({ path: "/initial" });
+      const req = router.match("/initial");
+      const ctx = router.createRouteContext(req);
+
+      const beforeHook = vi.fn();
+      const unmountHook = vi.fn();
+      ctx.onBeforeUnmount(beforeHook);
+      ctx.onUnmount(unmountHook);
+
+      const { unmountHooks } = router.clearRouteLifecycle();
+      expect(unmountHooks).toHaveLength(1);
+
+      // Old unmount hooks are returned for deferred execution
+      unmountHooks[0]();
+      expect(unmountHook).toHaveBeenCalledOnce();
+
+      // After clearing, running hooks should do nothing
+      const allowed = await router.runBeforeUnmountHooks();
+      // Cleared — no hooks to block
+      expect(allowed).toBe(true);
+    });
+
+    it("should allow navigation with no hooks registered", async () => {
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(true);
     });
   });
 });

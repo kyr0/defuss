@@ -7,6 +7,68 @@ export type OnHandleRouteChangeFn = (
 export type OnRouteChangeFn = (cb: OnHandleRouteChangeFn) => void;
 export type RouterStrategy = "page-refresh" | "slot-refresh";
 
+export type BeforeUnmountHookFn = () =>
+  | boolean
+  | void
+  | Promise<boolean | void>;
+export type UnmountHookFn = () => void;
+
+/**
+ * Context object passed to components rendered via Route's `component` prop.
+ * Provides access to the current route request and lifecycle hooks.
+ *
+ * @example
+ * ```tsx
+ * const MyScreen = ({ route }: { route: RouteContext }) => {
+ *   route.onBeforeUnmount(() => {
+ *     // Return false to block navigation (e.g. unsaved changes)
+ *     return confirm("Leave page?");
+ *   });
+ *   route.onUnmount(() => {
+ *     console.log("Route was left");
+ *   });
+ *   return <div>Current path: {route.request.path}</div>;
+ * };
+ * ```
+ */
+export interface RouteContext {
+  /** The matched RouteRequest for the current route */
+  request: RouteRequest;
+
+  /**
+   * Register a hook that fires before the route is unmounted.
+   * Returning `false` (or a Promise resolving to `false`) blocks navigation,
+   * allowing implementation of confirmation dialogs.
+   */
+  onBeforeUnmount(fn: BeforeUnmountHookFn): void;
+
+  /**
+   * Register a hook that fires after the route has been unmounted
+   * (navigation completed, new route is rendered).
+   */
+  onUnmount(fn: UnmountHookFn): void;
+}
+
+/**
+ * Props mixin for screen components rendered by `<Route component={...} />`.
+ * Extend your component props with this to get typed access to route context.
+ *
+ * @example
+ * ```tsx
+ * import { Router, type Props, type RouteProps } from "defuss";
+ *
+ * export interface ProjectDetailsProps extends Props, RouteProps {}
+ *
+ * export function ProjectDetailsScreen({ route }: ProjectDetailsProps) {
+ *   const { projectName } = route.request.params;
+ *   return <h1>Project: {projectName}</h1>;
+ * }
+ * ```
+ */
+export interface RouteProps {
+  route: RouteContext;
+}
+
 export interface Router {
   listeners: Array<OnHandleRouteChangeFn>;
   strategy: RouterStrategy;
@@ -24,7 +86,7 @@ export interface Router {
   /**
    * Returns a promise that resolves when the router is ready (routes are registered).
    * Call this before using getRequest() in components that render inside Route.
-   * 
+   *
    * @example
    * ```tsx
    * const MyComponent = async () => {
@@ -41,6 +103,33 @@ export interface Router {
    * @internal
    */
   setReady(): void;
+
+  /**
+   * Create a RouteContext object for a matched route request.
+   * The context provides lifecycle hooks (onBeforeUnmount, onUnmount)
+   * and is passed to components rendered via Route's `component` prop.
+   */
+  createRouteContext(request: RouteRequest): RouteContext;
+
+  /**
+   * Run all registered beforeUnmount hooks sequentially.
+   * Returns `false` if any hook returns `false` (navigation should be blocked).
+   * @internal
+   */
+  runBeforeUnmountHooks(): Promise<boolean>;
+
+  /**
+   * Run all registered unmount hooks.
+   * @internal
+   */
+  runUnmountHooks(): void;
+
+  /**
+   * Clear all lifecycle hooks and return the old unmount hooks
+   * so they can be called after the new route has been rendered.
+   * @internal
+   */
+  clearRouteLifecycle(): { unmountHooks: Array<UnmountHookFn> };
 }
 
 export interface RouterConfig {
@@ -68,15 +157,15 @@ export interface RouteRegistration {
 
 /**
  * Represents the current routing state and URL information.
- * 
- * This object is **always returned** by `Router.getRequest()`, `Router.match()`, 
+ *
+ * This object is **always returned** by `Router.getRequest()`, `Router.match()`,
  * and `Router.resolve()`. Unlike returning `false` on no match, this provides
  * a deterministic API where you can always access URL information.
- * 
+ *
  * @example
  * ```tsx
  * const req = Router.getRequest();
- * 
+ *
  * // Check if a registered route matched
  * if (req.match) {
  *   console.log(`Matched route: ${req.matchedRoute}`);
@@ -84,12 +173,12 @@ export interface RouteRegistration {
  * } else {
  *   console.log('No matching route');
  * }
- * 
+ *
  * // URL components are always available regardless of match
  * console.log(`Current path: ${req.path}`);
  * console.log(`Base URL: ${req.baseUrl}`);
  * ```
- * 
+ *
  * @example
  * ```tsx
  * // Dynamic route like "/components/:name"
@@ -214,7 +303,8 @@ export const tokenizePath = (path: string): TokenizedPath => {
   // Handle optional trailing slash
   if (pattern.endsWith("/")) {
     pattern = pattern.slice(0, -1) + "/?";
-  } else if (pattern !== "") { // Don't add /? to empty string
+  } else if (pattern !== "") {
+    // Don't add /? to empty string
     pattern += "/?";
   }
 
@@ -232,7 +322,8 @@ const parseParams = (str: string): RouteParams => {
   const params: RouteParams = {};
   if (!str) return params;
   // Remove leading ? or # if present
-  const cleanStr = str.startsWith("?") || str.startsWith("#") ? str.slice(1) : str;
+  const cleanStr =
+    str.startsWith("?") || str.startsWith("#") ? str.slice(1) : str;
   if (!cleanStr) return params;
   const searchParams = new URLSearchParams(cleanStr);
   for (const [key, value] of searchParams.entries()) {
@@ -250,7 +341,7 @@ const buildRouteRequest = (
   pathname: string,
   matched: boolean,
   matchedRoute: string | null,
-  params: RouteParams = {}
+  params: RouteParams = {},
 ): RouteRequest => {
   let protocol = "";
   let domain = "";
@@ -304,9 +395,8 @@ export const matchRouteRegistrations = (
   actualPathName: string,
   haystackPathName?: string,
   opts: MatchRouteRegistrationsOpts = {},
-  windowImpl?: Window
+  windowImpl?: Window,
 ): RouteRequest => {
-
   const invokeHandler = opts.invokeHandler ?? true;
 
   for (const route of routeRegistrations) {
@@ -339,7 +429,7 @@ export const matchRouteRegistrations = (
       actualPathName,
       true,
       route.path,
-      params
+      params,
     );
 
     if (invokeHandler && typeof route.handler === "function") {
@@ -366,7 +456,13 @@ export const setupRouter = (
     pendingResolvers: [],
     currentPath: "",
     popAttached: false,
+    lifecycleHooks: { beforeUnmount: [], unmount: [] },
   };
+
+  // Ensure lifecycleHooks exists (for pre-existing state without it)
+  if (!state.lifecycleHooks) {
+    state.lifecycleHooks = { beforeUnmount: [], unmount: [] };
+  }
 
   // Aliases for cleaner code
   const routeRegistrations = state.routeRegistrations;
@@ -392,7 +488,7 @@ export const setupRouter = (
       pathname,
       undefined,
       { invokeHandler },
-      windowImpl
+      windowImpl,
     );
     return state.currentRequest;
   };
@@ -420,26 +516,32 @@ export const setupRouter = (
     match(path?: string): RouteRequest {
       const pathname = windowImpl?.document.location.pathname ?? "/";
 
-      // Note: match() checks if a specific route matches, but does NOT update
-      // state.currentRequest. Only resolve()/resolveFromLocation() should do that.
       const req = matchRouteRegistrations(
         routeRegistrations,
         pathname,
         path,
         { invokeHandler: false },
-        windowImpl
+        windowImpl,
       );
+
+      // When a route matches, update currentRequest so that getRequest()
+      // returns the correct match info for child components rendered lazily
+      // (e.g. via the Route component={...} prop).
+      if (req.match) {
+        state.currentRequest = req;
+      }
 
       return req;
     },
     resolve(pathname?: string): RouteRequest {
-      const actualPathname = pathname ?? windowImpl?.document.location.pathname ?? "/";
+      const actualPathname =
+        pathname ?? windowImpl?.document.location.pathname ?? "/";
       state.currentRequest = matchRouteRegistrations(
         routeRegistrations,
         actualPathname,
         undefined,
         { invokeHandler: false },
-        windowImpl
+        windowImpl,
       );
       return state.currentRequest;
     },
@@ -470,7 +572,7 @@ export const setupRouter = (
           pathname,
           undefined,
           { invokeHandler: false },
-          windowImpl
+          windowImpl,
         );
 
         // Queue listeners to be called asynchronously
@@ -522,6 +624,39 @@ export const setupRouter = (
       }
       state.pendingResolvers = [];
     },
+
+    createRouteContext(request: RouteRequest): RouteContext {
+      return {
+        request,
+        onBeforeUnmount(fn: BeforeUnmountHookFn) {
+          state.lifecycleHooks.beforeUnmount.push(fn);
+        },
+        onUnmount(fn: UnmountHookFn) {
+          state.lifecycleHooks.unmount.push(fn);
+        },
+      };
+    },
+
+    async runBeforeUnmountHooks(): Promise<boolean> {
+      for (const fn of state.lifecycleHooks.beforeUnmount) {
+        const result = await fn();
+        if (result === false) return false;
+      }
+      return true;
+    },
+
+    runUnmountHooks() {
+      for (const fn of state.lifecycleHooks.unmount) {
+        fn();
+      }
+    },
+
+    clearRouteLifecycle(): { unmountHooks: Array<UnmountHookFn> } {
+      const oldUnmountHooks = [...state.lifecycleHooks.unmount];
+      state.lifecycleHooks.beforeUnmount = [];
+      state.lifecycleHooks.unmount = [];
+      return { unmountHooks: oldUnmountHooks };
+    },
   };
 
   // Handle browser back/forward navigation
@@ -535,7 +670,6 @@ export const setupRouter = (
 
       // resolve new request, keep cache in sync on back/forward
       resolveFromLocation(false);
-
 
       // Queue listeners to be called asynchronously to ensure proper timing
       queueMicrotask(() => {
@@ -567,6 +701,10 @@ interface RouterState {
   pendingResolvers: Array<() => void>;
   currentPath: string;
   popAttached: boolean;
+  lifecycleHooks: {
+    beforeUnmount: Array<BeforeUnmountHookFn>;
+    unmount: Array<UnmountHookFn>;
+  };
 }
 
 declare global {
@@ -585,6 +723,7 @@ if (!globalThis[ROUTER_STATE_KEY]) {
     pendingResolvers: [],
     currentPath: "",
     popAttached: false,
+    lifecycleHooks: { beforeUnmount: [], unmount: [] },
   };
 }
 
@@ -592,4 +731,5 @@ if (!globalThis[ROUTER_STATE_KEY]) {
 export const getRouterState = (): RouterState => globalThis[ROUTER_STATE_KEY]!;
 
 const existingRouter = globalThis[ROUTER_GLOBAL_KEY];
-export const Router: Router = existingRouter ?? (globalThis[ROUTER_GLOBAL_KEY] = setupRouter());
+export const Router: Router =
+  existingRouter ?? (globalThis[ROUTER_GLOBAL_KEY] = setupRouter());

@@ -4,124 +4,259 @@ import type { Router } from "./router.js";
 
 // This test suite runs in a real browser (headless Chrome) via Vitest Browser Mode
 describe("DOM Router Browser Integration", () => {
-    let router: Router;
+  let router: Router;
 
-    beforeEach(() => {
-        // In browser tests, we use the real window
-        // We use slot-refresh to test history API integration
-        router = setupRouter({ strategy: "slot-refresh" });
+  beforeEach(() => {
+    // In browser tests, we use the real window
+    // We use slot-refresh to test history API integration
+    router = setupRouter({ strategy: "slot-refresh" });
+  });
+
+  afterEach(() => {
+    if (router.clearRouteLifecycle) router.clearRouteLifecycle();
+    if (router.destroy) router.destroy();
+    // Reset URL to clean state
+    window.history.pushState({}, "", "/");
+  });
+
+  it("should match dynamic parameters in real browser environment", async () => {
+    router.add({ path: "/components/:name" });
+
+    // Navigate
+    router.navigate("/components/lala");
+
+    // Wait for microtask (router uses queueMicrotask/setTimeout for async updates)
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Check match - now always returns object
+    const req = router.getRequest();
+
+    expect(req.match).toBe(true);
+    expect(req.matchedRoute).toBe("/components/:name");
+    expect(req.path).toBe("/components/lala");
+    expect(req.params).toEqual({ name: "lala" });
+  });
+
+  it("should extract query and hash params", async () => {
+    router.add({ path: "/search" });
+
+    // Navigate with query and hash
+    router.navigate("/search?q=test&page=1#sort=desc");
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const req = router.getRequest();
+
+    expect(req.match).toBe(true);
+    expect(req.queryParams).toEqual({ q: "test", page: "1" });
+    expect(req.hashParams).toEqual({ sort: "desc" });
+  });
+
+  it("should populate URL fields correctly", async () => {
+    router.add({ path: "/" });
+    router.navigate("/");
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const req = router.getRequest();
+
+    // Protocol should be http or https
+    expect(["http", "https"]).toContain(req.protocol);
+    expect(req.domain).toBe("localhost");
+    expect(req.port).toBeTruthy(); // Should have a port in dev
+    expect(req.baseUrl).toMatch(/^https?:\/\/localhost:\d+$/);
+    expect(req.path).toBe("/");
+    expect(req.url).toMatch(/^https?:\/\/localhost:\d+\/$/);
+  });
+
+  it("should match deep paths with wildcards", async () => {
+    router.add({ path: "/files/*" });
+
+    router.navigate("/files/images/logo.png");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const req = router.getRequest();
+
+    expect(req.match).toBe(true);
+    expect(req.params["wildcard"]).toBe("images/logo.png");
+  });
+
+  it("should handle mixed parameters and wildcards", async () => {
+    router.add({ path: "/api/v:version/endpoints/*" });
+
+    router.navigate("/api/v2/endpoints/users/123/profile");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const req = router.getRequest();
+
+    expect(req.match).toBe(true);
+    expect(req.params["version"]).toBe("2");
+    expect(req.params["wildcard"]).toBe("users/123/profile");
+  });
+
+  it("should handle optional trailing slashes", async () => {
+    router.add({ path: "/about/" });
+
+    router.navigate("/about");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const reqWithNoSlash = router.getRequest();
+    expect(reqWithNoSlash.match).toBe(true); // Should match despite missing slash
+
+    router.navigate("/about/");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const reqWithSlash = router.getRequest();
+    expect(reqWithSlash.match).toBe(true);
+  });
+
+  it("should return match: false when no route matches but still have URL info", async () => {
+    router.add({ path: "/other" });
+
+    router.navigate("/unknown-path");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const req = router.getRequest();
+
+    expect(req.match).toBe(false);
+    expect(req.matchedRoute).toBeNull();
+    expect(req.path).toBe("/unknown-path");
+    // URL info should still be populated
+    expect(req.protocol).toBeTruthy();
+    expect(req.domain).toBe("localhost");
+  });
+
+  describe("Route lifecycle hooks", () => {
+    it("should create a RouteContext with request and lifecycle methods", () => {
+      router.add({ path: "/test" });
+      window.history.pushState({}, "", "/test");
+      const req = router.match("/test");
+
+      const ctx = router.createRouteContext(req);
+
+      expect(ctx.request).toBe(req);
+      expect(ctx.request.match).toBe(true);
+      expect(typeof ctx.onBeforeUnmount).toBe("function");
+      expect(typeof ctx.onUnmount).toBe("function");
     });
 
-    afterEach(() => {
-        if (router.destroy) router.destroy();
-        // Reset URL to clean state
-        window.history.pushState({}, "", "/");
+    it("should allow navigation when no beforeUnmount hooks are registered", async () => {
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(true);
     });
 
-    it("should match dynamic parameters in real browser environment", async () => {
-        router.add({ path: "/components/:name" });
+    it("should allow navigation when beforeUnmount returns true", async () => {
+      router.add({ path: "/page" });
+      window.history.pushState({}, "", "/page");
+      const req = router.match("/page");
+      const ctx = router.createRouteContext(req);
 
-        // Navigate
-        router.navigate("/components/lala");
+      ctx.onBeforeUnmount(() => true);
 
-        // Wait for microtask (router uses queueMicrotask/setTimeout for async updates)
-        await new Promise(resolve => setTimeout(resolve, 10));
-
-        // Check match - now always returns object
-        const req = router.getRequest();
-
-        expect(req.match).toBe(true);
-        expect(req.matchedRoute).toBe("/components/:name");
-        expect(req.path).toBe("/components/lala");
-        expect(req.params).toEqual({ name: "lala" });
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(true);
     });
 
-    it("should extract query and hash params", async () => {
-        router.add({ path: "/search" });
+    it("should block navigation when beforeUnmount returns false", async () => {
+      router.add({ path: "/page" });
+      window.history.pushState({}, "", "/page");
+      const req = router.match("/page");
+      const ctx = router.createRouteContext(req);
 
-        // Navigate with query and hash
-        router.navigate("/search?q=test&page=1#sort=desc");
+      ctx.onBeforeUnmount(() => false);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
-
-        const req = router.getRequest();
-
-        expect(req.match).toBe(true);
-        expect(req.queryParams).toEqual({ q: "test", page: "1" });
-        expect(req.hashParams).toEqual({ sort: "desc" });
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(false);
     });
 
-    it("should populate URL fields correctly", async () => {
-        router.add({ path: "/" });
-        router.navigate("/");
+    it("should block navigation when async beforeUnmount resolves to false", async () => {
+      router.add({ path: "/page" });
+      window.history.pushState({}, "", "/page");
+      const req = router.match("/page");
+      const ctx = router.createRouteContext(req);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+      ctx.onBeforeUnmount(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return false;
+      });
 
-        const req = router.getRequest();
-
-        // Protocol should be http or https
-        expect(["http", "https"]).toContain(req.protocol);
-        expect(req.domain).toBe("localhost");
-        expect(req.port).toBeTruthy(); // Should have a port in dev
-        expect(req.baseUrl).toMatch(/^https?:\/\/localhost:\d+$/);
-        expect(req.path).toBe("/");
-        expect(req.url).toMatch(/^https?:\/\/localhost:\d+\/$/);
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(false);
     });
 
-    it("should match deep paths with wildcards", async () => {
-        router.add({ path: "/files/*" });
+    it("should short-circuit on first blocking hook", async () => {
+      router.add({ path: "/page" });
+      window.history.pushState({}, "", "/page");
+      const req = router.match("/page");
+      const ctx = router.createRouteContext(req);
 
-        router.navigate("/files/images/logo.png");
-        await new Promise(resolve => setTimeout(resolve, 10));
+      let secondCalled = false;
+      ctx.onBeforeUnmount(() => false);
+      ctx.onBeforeUnmount(() => {
+        secondCalled = true;
+        return true;
+      });
 
-        const req = router.getRequest();
-
-        expect(req.match).toBe(true);
-        expect(req.params["wildcard"]).toBe("images/logo.png");
+      const allowed = await router.runBeforeUnmountHooks();
+      expect(allowed).toBe(false);
+      expect(secondCalled).toBe(false);
     });
 
-    it("should handle mixed parameters and wildcards", async () => {
-        router.add({ path: "/api/v:version/endpoints/*" });
+    it("should fire unmount hooks", () => {
+      router.add({ path: "/page" });
+      window.history.pushState({}, "", "/page");
+      const req = router.match("/page");
+      const ctx = router.createRouteContext(req);
 
-        router.navigate("/api/v2/endpoints/users/123/profile");
-        await new Promise(resolve => setTimeout(resolve, 10));
+      let unmounted = false;
+      ctx.onUnmount(() => {
+        unmounted = true;
+      });
 
-        const req = router.getRequest();
-
-        expect(req.match).toBe(true);
-        expect(req.params["version"]).toBe("2");
-        expect(req.params["wildcard"]).toBe("users/123/profile");
+      router.runUnmountHooks();
+      expect(unmounted).toBe(true);
     });
 
-    it("should handle optional trailing slashes", async () => {
-        router.add({ path: "/about/" });
+    it("should clear lifecycle hooks and return old unmount hooks", () => {
+      // Clear any leaked state from previous tests
+      router.clearRouteLifecycle();
 
-        router.navigate("/about");
-        await new Promise(resolve => setTimeout(resolve, 10));
+      router.add({ path: "/page" });
+      window.history.pushState({}, "", "/page");
+      const req = router.match("/page");
+      const ctx = router.createRouteContext(req);
 
-        const reqWithNoSlash = router.getRequest();
-        expect(reqWithNoSlash.match).toBe(true); // Should match despite missing slash
+      let unmounted = false;
+      ctx.onBeforeUnmount(() => false);
+      ctx.onUnmount(() => {
+        unmounted = true;
+      });
 
-        router.navigate("/about/");
-        await new Promise(resolve => setTimeout(resolve, 10));
+      const { unmountHooks } = router.clearRouteLifecycle();
 
-        const reqWithSlash = router.getRequest();
-        expect(reqWithSlash.match).toBe(true);
+      // Old unmount hooks are returned
+      expect(unmountHooks).toHaveLength(1);
+      unmountHooks[0]();
+      expect(unmounted).toBe(true);
+
+      // After clearing, no hooks block
+      router.runBeforeUnmountHooks().then((allowed) => {
+        expect(allowed).toBe(true);
+      });
     });
 
-    it("should return match: false when no route matches but still have URL info", async () => {
-        router.add({ path: "/other" });
+    it("should pass correct route params in context", async () => {
+      router.add({ path: "/user/:userId" });
 
-        router.navigate("/unknown-path");
-        await new Promise(resolve => setTimeout(resolve, 10));
+      router.navigate("/user/42");
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
-        const req = router.getRequest();
+      const req = router.getRequest();
+      const ctx = router.createRouteContext(req);
 
-        expect(req.match).toBe(false);
-        expect(req.matchedRoute).toBeNull();
-        expect(req.path).toBe("/unknown-path");
-        // URL info should still be populated
-        expect(req.protocol).toBeTruthy();
-        expect(req.domain).toBe("localhost");
+      expect(ctx.request.match).toBe(true);
+      expect(ctx.request.params.userId).toBe("42");
+      expect(ctx.request.path).toBe("/user/42");
     });
+  });
 });

@@ -654,40 +654,160 @@ i18n JSON format:
 
 ## Client-Side Routing
 
+defuss includes a built-in client-side router with dynamic params, redirects, and history-based navigation.
+
+```tsx
+import { Route, Router, RouterSlot, Redirect } from "defuss";
+```
+
+### Basic Setup
+
+Every routed app needs a `RouterOutlet` (defines routes) and a `RouterSlot` (renders the matched route).
+
 ```tsx
 import { Route, RouterSlot, Redirect } from "defuss";
+import { HomeScreen } from "./screens/home";
+import { DashboardScreen } from "./screens/dashboard";
+import { ProjectDetailsScreen } from "./screens/project-details";
 
+function RouterOutlet() {
+  return (
+    <>
+      <Route path="/" component={HomeScreen} />
+      <Route path="/dashboard" component={DashboardScreen} />
+      <Route path="/project/:projectName" component={ProjectDetailsScreen} />
+    </>
+  );
+}
+
+function App() {
+  return <RouterSlot tag="div" RouterOutlet={RouterOutlet} />;
+}
+```
+
+### ⚠️ Always Use the `component` Prop (Not Children)
+
+**Use the `component` prop** to pass screen components to `<Route />`. This is the only pattern that works reliably in **all** scenarios — initial page load (hard reload / SSR), client-side navigation, and browser back/forward.
+
+```tsx
+// ✅ CORRECT — always works (hard reload + client navigation)
+<Route path="/project/:projectName" component={ProjectDetailsScreen} />
+
+// ❌ WRONG — params are broken on hard reload / SSR!
+<Route path="/project/:projectName">
+  <ProjectDetailsScreen />
+</Route>
+```
+
+**Why:** defuss eagerly evaluates JSX arguments. With children, `<ProjectDetailsScreen />` executes **before** `Route` registers the path — so `Router.getRequest()` inside `ProjectDetailsScreen` finds no match and returns empty params. The `component` prop defers evaluation until **after** route registration and matching.
+
+### Reading Route Params
+
+Inside a routed component, use the `route` prop (provided automatically by `<Route component={...} />`) to access params, query params, and other URL info:
+
+```tsx
+import { Router, type Props, type RouteProps } from "defuss";
+
+export interface ProjectDetailsProps extends Props, RouteProps {
+}
+
+export function ProjectDetailsScreen({ route }: ProjectDetailsProps) {
+  const { projectName } = route.request.params;
+
+  return <h1>Project: {projectName}</h1>;
+}
+```
+
+The `RouteRequest` object available via `route.request` contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `match` | `boolean` | Whether a registered route matched |
+| `matchedRoute` | `string \| null` | The matched pattern, e.g. `"/project/:projectName"` |
+| `path` | `string` | Current URL path, e.g. `"/project/my-app"` |
+| `params` | `RouteParams` | Extracted dynamic segments, e.g. `{ projectName: "my-app" }` |
+| `queryParams` | `RouteParams` | Parsed `?key=value` pairs |
+| `hashParams` | `RouteParams` | Parsed `#key=value` pairs |
+| `baseUrl` | `string` | Protocol + domain + port, e.g. `"http://localhost:5173"` |
+| `url` | `string` | Full URL including path, query, and hash |
+| `protocol` | `string` | `"http"` or `"https"` |
+| `domain` | `string` | Hostname, e.g. `"localhost"` |
+| `port` | `string` | Port number as string |
+
+### Programmatic Navigation
+
+```tsx
+import { Router } from "defuss";
+
+// Navigate to a new route (updates URL + re-renders RouterSlot)
+Router.navigate("/project/my-app");
+
+// With query params
+Router.navigate("/search?q=defuss&page=1");
+```
+
+### Redirects
+
+```tsx
 function RouterOutlet() {
   const isLoggedIn = !!window.user;
 
   return (
     <>
-      {/* Redirect */}
+      {/* Redirect logged-in users from / to /dashboard */}
       {isLoggedIn && <Redirect path="/" exact={true} to="/dashboard" />}
 
-      {/* Routes */}
-      <Route path="/">
-        <LoginScreen />
-      </Route>
+      <Route path="/" component={LoginScreen} />
+      <Route path="/dashboard" component={DashboardScreen} />
 
-      <Route path="/dashboard">
-        <DashboardScreen />
-      </Route>
-
-      <Route path="/users">
-        <UsersScreen />
-      </Route>
-
-      {/* Protected route redirect */}
+      {/* Redirect unauthenticated users away from /dashboard */}
       {!isLoggedIn && <Redirect path="/dashboard" to="/" />}
     </>
   );
 }
+```
 
-// Mount router
-function Router() {
+### Route Features
+
+- **Dynamic params:** `<Route path="/user/:userId" component={UserScreen} />` → `params.userId`
+- **Wildcards:** `<Route path="/files/*" component={FileBrowser} />` → `params.wildcard`
+- **Exact match:** `<Route path="/" exact={true} component={HomeScreen} />` — only matches `/`, not `/about`
+- **Optional trailing slash:** `/about` and `/about/` both match `<Route path="/about" ... />`
+- **Combined:** `<Route path="/api/v:version/endpoints/*" ... />` → `params.version`, `params.wildcard`
+
+### Full Example
+
+```tsx
+import { render, $, Route, Router, RouterSlot, Redirect } from "defuss";
+
+function HomeScreen() {
+  return (
+    <div>
+      <h1>Home</h1>
+      <button onClick={() => Router.navigate("/user/42")}>View User 42</button>
+    </div>
+  );
+}
+
+function UserScreen() {
+  const { userId } = Router.getRequest().params;
+  return <h1>User #{userId}</h1>;
+}
+
+function RouterOutlet() {
+  return (
+    <>
+      <Route path="/" component={HomeScreen} />
+      <Route path="/user/:userId" component={UserScreen} />
+    </>
+  );
+}
+
+function App() {
   return <RouterSlot tag="div" RouterOutlet={RouterOutlet} />;
 }
+
+render(<App />, $("#app").current);
 ```
 
 ---
@@ -1315,7 +1435,7 @@ await chain;
 
 ## RPC Client
 
-Use `createRpcClient` (preferred name) to get a type-safe proxy client for calling server-side RPC APIs. It is an alias for `getRpcClient` - both are exported from `defuss-rpc/client`, but `createRpcClient` is the default going forward.
+Use `createRpcClient` (preferred name) to get a type-safe proxy client for calling server-side RPC APIs. It is an alias for `getRpcClient` — both are exported from `defuss-rpc/client`, but `createRpcClient` is the default going forward.
 
 ```ts
 import { createRpcClient } from "defuss-rpc/client";

@@ -29,7 +29,8 @@
         "noFallthroughSwitchClause": "off",
         "noConfusingVoidType": "off",
         "noEmptyInterface": "off",
-        "useIterableCallbackReturn": "off"
+        "useIterableCallbackReturn": "off",
+        "noAssignInExpressions": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"

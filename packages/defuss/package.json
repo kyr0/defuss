@@ -1,6 +1,6 @@
 {
   "name": "defuss",
-  "version": "3.4.1",
+  "version": "3.4.3",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -48,7 +48,8 @@
     "bench": "vitest bench --config vitest.bench.config.ts",
     "bench:browser": "vitest run --config vitest.browser.config.ts src/__benchmarks__/dom-benchmark.browser.test.tsx",
     "prebuild": "bun run clean",
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "prepublishOnly": "bun run build"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
