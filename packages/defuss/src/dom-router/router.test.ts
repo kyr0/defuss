@@ -378,8 +378,8 @@ describe("DOM Router", () => {
       const ctx = router.createRouteContext(req);
 
       expect(ctx.request).toBe(req);
-      expect(typeof ctx.onBeforeUnmount).toBe("function");
-      expect(typeof ctx.onUnmount).toBe("function");
+      expect(typeof ctx.onBeforeLeave).toBe("function");
+      expect(typeof ctx.onLeave).toBe("function");
     });
 
     it("should register and run beforeUnmount hooks", async () => {
@@ -387,7 +387,7 @@ describe("DOM Router", () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
-      ctx.onBeforeUnmount(hook);
+      ctx.onBeforeLeave(hook);
 
       const allowed = await router.runBeforeUnmountHooks();
       expect(allowed).toBe(true);
@@ -398,7 +398,7 @@ describe("DOM Router", () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
-      ctx.onBeforeUnmount(() => false);
+      ctx.onBeforeLeave(() => false);
 
       const allowed = await router.runBeforeUnmountHooks();
       expect(allowed).toBe(false);
@@ -408,7 +408,7 @@ describe("DOM Router", () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
-      ctx.onBeforeUnmount(async () => false);
+      ctx.onBeforeLeave(async () => false);
 
       const allowed = await router.runBeforeUnmountHooks();
       expect(allowed).toBe(false);
@@ -418,7 +418,7 @@ describe("DOM Router", () => {
       router.add({ path: "/initial" });
       const req = router.match("/initial");
       const ctx = router.createRouteContext(req);
-      ctx.onBeforeUnmount(() => {});
+      ctx.onBeforeLeave(() => {});
 
       const allowed = await router.runBeforeUnmountHooks();
       expect(allowed).toBe(true);
@@ -431,8 +431,8 @@ describe("DOM Router", () => {
 
       const hook1 = vi.fn(() => false);
       const hook2 = vi.fn(() => true);
-      ctx.onBeforeUnmount(hook1);
-      ctx.onBeforeUnmount(hook2);
+      ctx.onBeforeLeave(hook1);
+      ctx.onBeforeLeave(hook2);
 
       const allowed = await router.runBeforeUnmountHooks();
       expect(allowed).toBe(false);
@@ -446,7 +446,7 @@ describe("DOM Router", () => {
       const ctx = router.createRouteContext(req);
 
       const hook = vi.fn();
-      ctx.onUnmount(hook);
+      ctx.onLeave(hook);
 
       router.runUnmountHooks();
       expect(hook).toHaveBeenCalledOnce();
@@ -458,8 +458,8 @@ describe("DOM Router", () => {
       const ctx = router.createRouteContext(req);
 
       const order: number[] = [];
-      ctx.onUnmount(() => order.push(1));
-      ctx.onUnmount(() => order.push(2));
+      ctx.onLeave(() => order.push(1));
+      ctx.onLeave(() => order.push(2));
 
       router.runUnmountHooks();
       expect(order).toEqual([1, 2]);
@@ -472,8 +472,8 @@ describe("DOM Router", () => {
 
       const beforeHook = vi.fn();
       const unmountHook = vi.fn();
-      ctx.onBeforeUnmount(beforeHook);
-      ctx.onUnmount(unmountHook);
+      ctx.onBeforeLeave(beforeHook);
+      ctx.onLeave(unmountHook);
 
       const { unmountHooks } = router.clearRouteLifecycle();
       expect(unmountHooks).toHaveLength(1);

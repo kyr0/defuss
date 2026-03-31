@@ -136,8 +136,8 @@ describe("DOM Router Browser Integration", () => {
 
       expect(ctx.request).toBe(req);
       expect(ctx.request.match).toBe(true);
-      expect(typeof ctx.onBeforeUnmount).toBe("function");
-      expect(typeof ctx.onUnmount).toBe("function");
+      expect(typeof ctx.onBeforeLeave).toBe("function");
+      expect(typeof ctx.onLeave).toBe("function");
     });
 
     it("should allow navigation when no beforeUnmount hooks are registered", async () => {
@@ -151,7 +151,7 @@ describe("DOM Router Browser Integration", () => {
       const req = router.match("/page");
       const ctx = router.createRouteContext(req);
 
-      ctx.onBeforeUnmount(() => true);
+      ctx.onBeforeLeave(() => true);
 
       const allowed = await router.runBeforeUnmountHooks();
       expect(allowed).toBe(true);
@@ -163,7 +163,7 @@ describe("DOM Router Browser Integration", () => {
       const req = router.match("/page");
       const ctx = router.createRouteContext(req);
 
-      ctx.onBeforeUnmount(() => false);
+      ctx.onBeforeLeave(() => false);
 
       const allowed = await router.runBeforeUnmountHooks();
       expect(allowed).toBe(false);
@@ -175,7 +175,7 @@ describe("DOM Router Browser Integration", () => {
       const req = router.match("/page");
       const ctx = router.createRouteContext(req);
 
-      ctx.onBeforeUnmount(async () => {
+      ctx.onBeforeLeave(async () => {
         await new Promise((resolve) => setTimeout(resolve, 5));
         return false;
       });
@@ -191,8 +191,8 @@ describe("DOM Router Browser Integration", () => {
       const ctx = router.createRouteContext(req);
 
       let secondCalled = false;
-      ctx.onBeforeUnmount(() => false);
-      ctx.onBeforeUnmount(() => {
+      ctx.onBeforeLeave(() => false);
+      ctx.onBeforeLeave(() => {
         secondCalled = true;
         return true;
       });
@@ -209,7 +209,7 @@ describe("DOM Router Browser Integration", () => {
       const ctx = router.createRouteContext(req);
 
       let unmounted = false;
-      ctx.onUnmount(() => {
+      ctx.onLeave(() => {
         unmounted = true;
       });
 
@@ -227,8 +227,8 @@ describe("DOM Router Browser Integration", () => {
       const ctx = router.createRouteContext(req);
 
       let unmounted = false;
-      ctx.onBeforeUnmount(() => false);
-      ctx.onUnmount(() => {
+      ctx.onBeforeLeave(() => false);
+      ctx.onLeave(() => {
         unmounted = true;
       });
 

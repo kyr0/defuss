@@ -778,7 +778,7 @@ function RouterOutlet() {
 ### Full Example
 
 ```tsx
-import { render, $, Route, Router, RouterSlot, Redirect } from "defuss";
+import { render, $, Route, Router, RouterSlot, Redirect, type Props, type RouteProps } from "defuss";
 
 function HomeScreen() {
   return (
@@ -789,8 +789,14 @@ function HomeScreen() {
   );
 }
 
-function UserScreen() {
-  const { userId } = Router.getRequest().params;
+interface UserScreenProps extends Props, RouteProps {}
+
+function UserScreen({ route }: UserScreenProps) {
+  const { userId } = route.request.params;
+
+  route.onBeforeLeave(() => confirm("Leave this page?"));
+  route.onLeave(() => console.log("Left the route"));
+
   return <h1>User #{userId}</h1>;
 }
 

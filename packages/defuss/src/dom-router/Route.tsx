@@ -15,8 +15,8 @@ export interface RouteComponentProps extends Props {
 	 *
 	 * The component receives a `route` prop (RouteContext) with:
 	 * - `route.request` — the matched RouteRequest with params, query, etc.
-	 * - `route.onBeforeUnmount(fn)` — register a hook before route leaves; return `false` to block
-	 * - `route.onUnmount(fn)` — register a hook after route has been left
+	 * - `route.onBeforeLeave(fn)` — register a hook before route leaves; return `false` to block
+	 * - `route.onLeave(fn)` — register a hook after route has been left
 	 *
 	 * When the component is async and Route has children, the children are
 	 * shown as a loading fallback until the async component resolves.

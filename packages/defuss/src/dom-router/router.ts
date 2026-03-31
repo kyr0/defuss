@@ -20,11 +20,11 @@ export type UnmountHookFn = () => void;
  * @example
  * ```tsx
  * const MyScreen = ({ route }: { route: RouteContext }) => {
- *   route.onBeforeUnmount(() => {
+ *   route.onBeforeLeave(() => {
  *     // Return false to block navigation (e.g. unsaved changes)
  *     return confirm("Leave page?");
  *   });
- *   route.onUnmount(() => {
+ *   route.onLeave(() => {
  *     console.log("Route was left");
  *   });
  *   return <div>Current path: {route.request.path}</div>;
@@ -36,17 +36,17 @@ export interface RouteContext {
   request: RouteRequest;
 
   /**
-   * Register a hook that fires before the route is unmounted.
+   * Register a hook that fires before leaving the current route.
    * Returning `false` (or a Promise resolving to `false`) blocks navigation,
    * allowing implementation of confirmation dialogs.
    */
-  onBeforeUnmount(fn: BeforeUnmountHookFn): void;
+  onBeforeLeave(fn: BeforeUnmountHookFn): void;
 
   /**
-   * Register a hook that fires after the route has been unmounted
+   * Register a hook that fires after the route has been left
    * (navigation completed, new route is rendered).
    */
-  onUnmount(fn: UnmountHookFn): void;
+  onLeave(fn: UnmountHookFn): void;
 }
 
 /**
@@ -106,7 +106,7 @@ export interface Router {
 
   /**
    * Create a RouteContext object for a matched route request.
-   * The context provides lifecycle hooks (onBeforeUnmount, onUnmount)
+   * The context provides lifecycle hooks (onBeforeLeave, onLeave)
    * and is passed to components rendered via Route's `component` prop.
    */
   createRouteContext(request: RouteRequest): RouteContext;
@@ -628,10 +628,13 @@ export const setupRouter = (
     createRouteContext(request: RouteRequest): RouteContext {
       return {
         request,
-        onBeforeUnmount(fn: BeforeUnmountHookFn) {
+        onBeforeLeave(fn: BeforeUnmountHookFn) {
+					// for the developer, it seem more intuitive to call this
+					// "onBeforeLeave" (you "leave" a route), but internally it's really a "beforeUnmount" hook 
+					// since it runs before the old route is unmounted.
           state.lifecycleHooks.beforeUnmount.push(fn);
         },
-        onUnmount(fn: UnmountHookFn) {
+        onLeave(fn: UnmountHookFn) {
           state.lifecycleHooks.unmount.push(fn);
         },
       };
