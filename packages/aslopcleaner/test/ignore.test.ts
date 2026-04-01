@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import os from 'node:os';
 import path from 'node:path';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 
-import { FAST_GLOB_IGNORE_PATTERNS, MAX_FILE_SIZE_BYTES, shouldSkipSensitivePath, normalizeGlobPath } from '../src/ignore.js';
+import { FAST_GLOB_IGNORE_PATTERNS, MAX_FILE_SIZE_BYTES, shouldSkipSensitivePath, normalizeGlobPath, loadAgentsIgnore } from '../src/ignore.js';
 
 describe('shouldSkipSensitivePath', () => {
   it('excludes all dot files', () => {
@@ -82,5 +84,33 @@ describe('normalizeGlobPath', () => {
 
   it('handles single segment', () => {
     expect(normalizeGlobPath('file.ts')).toBe('file.ts');
+  });
+});
+
+describe('loadAgentsIgnore', () => {
+  it('returns patterns from .agentsignore file', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'aslop-ignore-'));
+    await writeFile(path.join(dir, '.agentsignore'), '**/*.md\ngenerated/**\n', 'utf8');
+
+    const patterns = await loadAgentsIgnore(dir);
+
+    expect(patterns).toEqual(['**/*.md', 'generated/**']);
+  });
+
+  it('ignores blank lines and comments', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'aslop-ignore-'));
+    await writeFile(path.join(dir, '.agentsignore'), '# comment\n\n**/*.log\n  \n# another comment\ndist/**\n', 'utf8');
+
+    const patterns = await loadAgentsIgnore(dir);
+
+    expect(patterns).toEqual(['**/*.log', 'dist/**']);
+  });
+
+  it('returns empty array when file does not exist', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'aslop-ignore-'));
+
+    const patterns = await loadAgentsIgnore(dir);
+
+    expect(patterns).toEqual([]);
   });
 });

@@ -6,6 +6,7 @@ import { isProbablyBinary } from "./binary.js";
 import {
   FAST_GLOB_IGNORE_PATTERNS,
   MAX_FILE_SIZE_BYTES,
+  loadAgentsIgnore,
   normalizeGlobPath,
   shouldSkipSensitivePath,
 } from "./ignore.js";
@@ -59,13 +60,15 @@ export async function scanDirectory(cwd: string): Promise<ScanResult> {
   let skippedBySize = 0;
   let skippedByBinary = 0;
 
+  const agentsIgnorePatterns = await loadAgentsIgnore(cwd);
+
   const stream = fg.stream("**/*", {
     cwd,
     onlyFiles: true,
     dot: true,
     followSymbolicLinks: false,
     unique: true,
-    ignore: [...FAST_GLOB_IGNORE_PATTERNS],
+    ignore: [...FAST_GLOB_IGNORE_PATTERNS, ...agentsIgnorePatterns],
   });
 
   const inFlight = new Set<Promise<void>>();

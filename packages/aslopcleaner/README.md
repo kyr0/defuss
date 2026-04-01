@@ -6,6 +6,7 @@ High-performance CLI to normalize common LLM/AI Unicode punctuation and symbols 
 
 - Recursively scans the current directory.
 - Uses `fast-glob` to skip expensive third-party/build/cache directories early.
+- Reads `.agentsignore` (if present) for additional glob patterns to skip.
 - Never opens `.env*`, SSH keys, certificate/key material, or password database files.
 - Skips files larger than **125 KiB**.
 - Uses a jump-sampled binary heuristic before reading as UTF-8.
@@ -19,6 +20,18 @@ bunx aslopcleaner    # Bun
 npx aslopcleaner     # npm
 pnpx aslopcleaner    # pnpm
 yarn dlx aslopcleaner # Yarn
+```
+
+## `.agentsignore`
+
+Create a `.agentsignore` file in the directory you run `aslopcleaner` from. Each line is a glob pattern (same syntax as `.gitignore`). Blank lines and lines starting with `#` are comments.
+
+```gitignore
+# skip all markdown files
+**/*.md
+
+# skip a specific directory
+generated/**
 ```
 
 ## Default replacements
@@ -368,6 +381,7 @@ import {
   scanDirectory,
   isProbablyBinary,
   shouldSkipSensitivePath,
+  loadAgentsIgnore,
   REPLACEMENT_RULES,
   REPLACEMENT_RULE_MAP,
 } from "aslopcleaner";

@@ -48,7 +48,7 @@ describe('applyOccurrences', () => {
     const content = '\u2714\u2714';
     const matches = findOccurrences(content, REPLACEMENT_RULES);
     const updated = applyOccurrences(content, matches, REPLACEMENT_RULE_MAP);
-    expect(updated).toBe('--');
+    expect(updated).toBe('[OK][OK]');
   });
 
   it('skips occurrences with unknown replacement', () => {

@@ -1,0 +1,5 @@
+# Skip all markdown files
+**/*.md
+
+# Skip the generated folder
+generated/**

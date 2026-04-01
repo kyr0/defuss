@@ -2,6 +2,7 @@ export { isProbablyBinary } from "./binary.js";
 export {
   shouldSkipSensitivePath,
   normalizeGlobPath,
+  loadAgentsIgnore,
   FAST_GLOB_IGNORE_PATTERNS,
   MAX_FILE_SIZE_BYTES,
 } from "./ignore.js";

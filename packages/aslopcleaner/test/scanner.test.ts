@@ -67,4 +67,22 @@ describe('scanDirectory', () => {
 
     expect(result.matchesByFile.size).toBe(2);
   });
+
+  it('e2e: respects pre-existing .agentsignore file', async () => {
+    const fixtureDir = path.resolve(__dirname, 'fixtures/agentsignore-e2e');
+
+    const result = await scanDirectory(fixtureDir);
+
+    // keep.txt and sub/nested.txt have unicode and are NOT ignored
+    expect(result.matchesByFile.has('keep.txt')).toBe(true);
+    expect(result.matchesByFile.has('sub/nested.txt')).toBe(true);
+
+    // skip.md is excluded by **/*.md pattern
+    expect(result.matchesByFile.has('skip.md')).toBe(false);
+
+    // generated/output.txt is excluded by generated/** pattern
+    expect(result.matchesByFile.has('generated/output.txt')).toBe(false);
+
+    expect(result.matchesByFile.size).toBe(2);
+  });
 });

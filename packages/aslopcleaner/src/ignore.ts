@@ -1,4 +1,5 @@
 import path from "node:path";
+import { readFile } from "node:fs/promises";
 
 const SKIPPED_DIRECTORIES = [
   ".git",
@@ -128,4 +129,21 @@ export function shouldSkipSensitivePath(filePath: string): boolean {
 
 export function normalizeGlobPath(filePath: string): string {
   return filePath.split(path.sep).join("/");
+}
+
+/**
+ * Reads a .agentsignore file from the given directory and returns
+ * the glob patterns listed in it (one per line).
+ * Blank lines and lines starting with # are ignored.
+ */
+export async function loadAgentsIgnore(cwd: string): Promise<string[]> {
+  try {
+    const content = await readFile(path.join(cwd, ".agentsignore"), "utf8");
+    return content
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("#"));
+  } catch {
+    return [];
+  }
 }
