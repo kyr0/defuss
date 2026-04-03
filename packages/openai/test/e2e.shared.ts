@@ -87,7 +87,7 @@ function chat(
 // ---------------------------------------------------------------------------
 
 export function registerTests() {
-  // ── Chat completions ─────────────────────────────────────────────────────
+  // -- Chat completions -----------------------------------------------------
 
   describe("chat completions", () => {
     it("returns a response for a simple prompt", async () => {
@@ -137,7 +137,7 @@ export function registerTests() {
     });
   });
 
-  // ── Streaming ────────────────────────────────────────────────────────────
+  // -- Streaming ------------------------------------------------------------
 
   describe("streaming chat completions", () => {
     it("streams chunks with delta content", async () => {
@@ -166,7 +166,7 @@ export function registerTests() {
     });
   });
 
-  // ── Sampling parameters ──────────────────────────────────────────────────
+  // -- Sampling parameters --------------------------------------------------
 
   describe("sampling parameters", () => {
     it("temp=0 (greedy)", async () => {
@@ -213,7 +213,7 @@ export function registerTests() {
     });
   });
 
-  // ── Seed reproducibility ─────────────────────────────────────────────────
+  // -- Seed reproducibility -------------------------------------------------
 
   describe("seed reproducibility", () => {
     it("produces identical output with same seed", async () => {
@@ -257,7 +257,7 @@ export function registerTests() {
     });
   });
 
-  // ── finish_reason: length ────────────────────────────────────────────────
+  // -- finish_reason: length ------------------------------------------------
 
   describe("finish_reason", () => {
     it("returns length when truncated by max_tokens", async () => {
@@ -270,7 +270,7 @@ export function registerTests() {
     });
   });
 
-  // ── Tool calling ─────────────────────────────────────────────────────────
+  // -- Tool calling ---------------------------------------------------------
 
   describe("tool calling", () => {
     it("calls get_weather tool", async () => {
@@ -329,7 +329,7 @@ export function registerTests() {
       const msg = res.choices[0]!.message;
       const toolCalls = msg.tool_calls ?? [];
 
-      // Model may answer directly or call a tool — both are valid
+      // Model may answer directly or call a tool - both are valid
       if (toolCalls.length === 0) {
         expect(msg.content).toBeTruthy();
         return;

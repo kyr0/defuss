@@ -1,3 +1,9 @@
+/**
+ * defuss-openai - tiny, fetch-first OpenAI client.
+ *
+ * Re-exports everything needed for consumers: client factory, SSE stream
+ * helper, error constructors, and all request/response types.
+ */
 export {
   castToError,
   createAPIError,

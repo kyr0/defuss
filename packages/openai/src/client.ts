@@ -15,6 +15,7 @@ import type {
   SpeechParams,
 } from './types.js';
 
+/** Maps TTS output format names to their MIME types for the `Accept` header. */
 const AUDIO_MIME_BY_FORMAT: Record<string, string> = {
   mp3: 'audio/mpeg',
   opus: 'audio/opus',
@@ -24,9 +25,20 @@ const AUDIO_MIME_BY_FORMAT: Record<string, string> = {
   pcm: 'application/octet-stream',
 };
 
+/**
+ * Creates a frozen, stateless OpenAI client backed by standard `fetch`.
+ *
+ * All methods are thin wrappers around `postJSON` / `postSSE` / `postResponse`
+ * that map endpoint paths and types. The client carries resolved config (base URL,
+ * auth, timeouts) so individual calls only need endpoint-specific params.
+ *
+ * Works with any OpenAI-compatible server - API key is optional for local
+ * inference servers (e.g. bonsai, llama.cpp, vLLM).
+ */
 export const createClient = (config: ClientConfig = {}): OpenAIClient => {
   const client = resolveClientConfig(config);
 
+  /** Sends a non-streaming chat completion request. */
   const createChatCompletion = (
     params: ChatParams,
     options?: RequestOptions
@@ -38,6 +50,7 @@ export const createClient = (config: ClientConfig = {}): OpenAIClient => {
       options,
     });
 
+  /** Opens an SSE stream for incremental chat completion tokens. Adds `stream: true` automatically. */
   const streamChatCompletion = (
     params: ChatStreamParams,
     options?: RequestOptions
@@ -49,6 +62,7 @@ export const createClient = (config: ClientConfig = {}): OpenAIClient => {
       options,
     });
 
+  /** Generates vector embeddings for the given input text(s). */
   const createEmbeddings = (
     params: EmbeddingParams,
     options?: RequestOptions
@@ -60,6 +74,7 @@ export const createClient = (config: ClientConfig = {}): OpenAIClient => {
       options,
     });
 
+  /** Classifies input text against OpenAI's content policy categories. */
   const createModeration = (
     params: ModerationParams,
     options?: RequestOptions
@@ -71,6 +86,7 @@ export const createClient = (config: ClientConfig = {}): OpenAIClient => {
       options,
     });
 
+  /** Generates audio from text. Returns the raw `Response` for flexible consumption. */
   const createSpeech = (params: SpeechParams, options?: RequestOptions) =>
     postResponse({
       client,
@@ -82,11 +98,13 @@ export const createClient = (config: ClientConfig = {}): OpenAIClient => {
       options,
     });
 
+  /** Convenience wrapper: generates speech and returns the full audio as an `ArrayBuffer`. */
   const createSpeechBuffer = async (
     params: SpeechParams,
     options?: RequestOptions
   ) => (await createSpeech(params, options)).arrayBuffer();
 
+  /** Returns the raw byte stream from a TTS response for progressive playback. */
   const createSpeechStream = async (
     params: SpeechParams,
     options?: RequestOptions
@@ -109,8 +127,10 @@ export const createClient = (config: ClientConfig = {}): OpenAIClient => {
   });
 };
 
+/** @deprecated Alias for `createClient`. Kept for backward compatibility. */
 export const createOpenAI = createClient;
 
+/** Namespace object for tree-shakeable named imports. */
 export const OpenAI = {
   createClient,
   createOpenAI,

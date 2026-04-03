@@ -1,3 +1,19 @@
+/**
+ * Transforms a raw byte stream into a typed `ReadableStream` of parsed SSE events.
+ *
+ * SSE delivers newline-delimited text frames over a single HTTP response. This
+ * function incrementally decodes bytes, splits on the SSE double-newline boundary,
+ * extracts `data:` fields per the W3C spec, and JSON-parses each payload into `T`.
+ * The stream closes automatically when the OpenAI `[DONE]` sentinel is received.
+ *
+ * Buffering: incoming bytes accumulate until a `\n\n` boundary appears. The last
+ * incomplete fragment is retained across reads so partial frames are never lost.
+ * On source EOF a final flush processes any trailing unterminated data.
+ *
+ * @param source - Raw byte stream from `Response.body`.
+ * @param map - Optional transform for each parsed JSON object before enqueueing.
+ *   Defaults to identity cast.
+ */
 export const createSSEStream = <T>(
   source: ReadableStream<Uint8Array>,
   map: (event: unknown) => T = (event) => event as T
@@ -6,6 +22,13 @@ export const createSSEStream = <T>(
   const decoder = new TextDecoder();
   let buffer = '';
 
+  /**
+   * Scans the buffer for complete SSE events (separated by `\n\n`).
+   *
+   * Normal mode (`flushTail=false`): retains the last segment as it may be
+   * incomplete. EOF mode (`flushTail=true`): consumes everything including
+   * any trailing partial event. Returns `true` when `[DONE]` closes the stream.
+   */
   const flushEvents = (
     controller: ReadableStreamDefaultController<T>,
     flushTail = false
@@ -71,6 +94,14 @@ export const createSSEStream = <T>(
   });
 };
 
+/**
+ * Extracts the concatenated `data:` field from a single SSE event block.
+ *
+ * Per the SSE spec, multiple `data:` lines within one event are joined with
+ * `\n`. Comment lines (`:`) and unknown fields are silently ignored.
+ *
+ * @returns The joined data string, or `undefined` if no data lines exist.
+ */
 const parseSSEEvent = (rawEvent: string): string | undefined => {
   const lines = rawEvent.split('\n');
   const data: string[] = [];

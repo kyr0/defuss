@@ -1,5 +1,5 @@
 /**
- * e2e tests — Browser (vitest + playwright)
+ * e2e tests - Browser (vitest + playwright)
  *
  * Run: vitest run --config vitest.browser.config.ts
  */

@@ -1,5 +1,7 @@
+/** Header map extracted from an error response for debugging. */
 export type ErrorHeaders = Record<string, string>;
 
+/** Extended `Error` with HTTP status, parsed API error fields, and request ID. */
 export type OpenAIError = Error & {
   status?: number;
   headers?: ErrorHeaders;
@@ -11,6 +13,7 @@ export type OpenAIError = Error & {
   cause?: unknown;
 };
 
+/** Coerces any thrown value into a proper `Error` instance (JSON-stringifies objects). */
 export const castToError = (value: unknown): Error => {
   if (value instanceof Error) return value;
   try {
@@ -20,6 +23,7 @@ export const castToError = (value: unknown): Error => {
   }
 };
 
+/** Base factory for all client errors. Stamps `name: 'OpenAIError'` and merges extra fields. */
 export const createOpenAIError = (
   message: string,
   extra: Partial<OpenAIError> = {}
@@ -30,6 +34,11 @@ export const createOpenAIError = (
   return error;
 };
 
+/**
+ * Builds a structured error from an HTTP response. Extracts `code`, `param`,
+ * `type`, and `x-request-id` from the API's JSON error body when present,
+ * prefixes the message with the status code for quick triage.
+ */
 export const createAPIError = (args: {
   status?: number;
   headers?: ErrorHeaders;
@@ -58,32 +67,39 @@ export const createAPIError = (args: {
   );
 };
 
+/** Network-level failure (DNS, refused, reset) - no HTTP status available. */
 export const createConnectionError = (
   cause?: unknown,
   message = 'Connection error.'
 ): OpenAIError => createOpenAIError(message, { cause });
 
+/** Fired when the per-request timeout (`AbortController`) triggers before a response. */
 export const createConnectionTimeoutError = (
   cause?: unknown,
   message = 'Request timed out.'
 ): OpenAIError => createOpenAIError(message, { cause });
 
+/** Caller cancelled the request via the `signal` option. */
 export const createUserAbortError = (
   cause?: unknown,
   message = 'Request was aborted.'
 ): OpenAIError => createOpenAIError(message, { cause });
 
+/** Detects the browser/Node `AbortError` by name - works across realms. */
 export const isAbortError = (value: unknown): boolean => {
   if (!value || typeof value !== 'object') return false;
   return 'name' in value && value.name === 'AbortError';
 };
 
+/** Narrow `unknown` to a plain object for safe property access. */
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+/** Returns the value as-is if it's a string, `null` otherwise. */
 const readString = (value: unknown): string | null =>
   typeof value === 'string' ? value : null;
 
+/** Safely pulls `.message` from an API error body, stringifying non-string values. */
 const readErrorMessage = (error: Record<string, unknown> | undefined) => {
   const message = error?.message;
   if (typeof message === 'string') return message;

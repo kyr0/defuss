@@ -1,3 +1,4 @@
+/** Recursive JSON-safe value type used for function parameters and metadata. */
 export type JSONValue =
   | string
   | number
@@ -6,8 +7,13 @@ export type JSONValue =
   | { [key: string]: JSONValue }
   | JSONValue[];
 
+/** Alias for `HeadersInit` - accepted in both client config and per-request options. */
 export type RequestHeaders = HeadersInit;
 
+/**
+ * Configuration for `createClient`. All fields optional - falls back to env
+ * vars and sensible defaults. `baseUrl` enables local/custom inference servers.
+ */
 export type ClientConfig = {
   apiKey?: string;
   organization?: string;
@@ -19,6 +25,7 @@ export type ClientConfig = {
   maxRetries?: number;
 };
 
+/** Per-request overrides: custom headers, abort signal, timeout, retries, or fetch impl. */
 export type RequestOptions = {
   headers?: RequestHeaders;
   signal?: AbortSignal;
@@ -27,6 +34,7 @@ export type RequestOptions = {
   maxRetries?: number;
 };
 
+/** All message roles recognized by the chat completions API. */
 export type Role =
   | 'system'
   | 'developer'
@@ -35,17 +43,20 @@ export type Role =
   | 'function'
   | 'tool';
 
+/** A function invocation returned by the model - `arguments` is a JSON string. */
 export type FunctionCall = {
   name: string;
   arguments: string;
 };
 
+/** Tool call emitted by the model. The `id` is referenced when returning results. */
 export type ToolCall = {
   id: string;
   type: 'function';
   function: FunctionCall;
 };
 
+/** Schema for a callable function exposed to the model via the `tools` parameter. */
 export type FunctionDefinition = {
   name: string;
   description?: string;
@@ -53,16 +64,19 @@ export type FunctionDefinition = {
   strict?: boolean;
 };
 
+/** A tool definition passed in `ChatParams.tools`. Currently only `function` type. */
 export type ChatTool = {
   type: 'function';
   function: FunctionDefinition;
 };
 
+/** Text segment in a multimodal content array. */
 export type ChatContentPartText = {
   type: 'text';
   text: string;
 };
 
+/** Image segment in a multimodal content array - URL or base64, with detail level. */
 export type ChatContentPartImage = {
   type: 'image_url';
   image_url: {
@@ -71,6 +85,7 @@ export type ChatContentPartImage = {
   };
 };
 
+/** Audio segment in a multimodal content array - base64-encoded wav/mp3. */
 export type ChatContentPartInputAudio = {
   type: 'input_audio';
   input_audio: {
@@ -79,11 +94,13 @@ export type ChatContentPartInputAudio = {
   };
 };
 
+/** Union of all multimodal content part types for chat messages. */
 export type ChatContentPart =
   | ChatContentPartText
   | ChatContentPartImage
   | ChatContentPartInputAudio;
 
+/** A single message in the conversation. Supports text, multimodal, and tool results. */
 export type ChatMessage = {
   role: Role;
   content?: string | ChatContentPart[] | null;
@@ -94,6 +111,7 @@ export type ChatMessage = {
   tool_call_id?: string;
 };
 
+/** Per-token log probability with optional byte-level breakdown. */
 export type TokenLogprob = {
   token: string;
   bytes?: number[] | null;
@@ -105,6 +123,7 @@ export type TokenLogprob = {
   }>;
 };
 
+/** Token usage counters returned with completions and embeddings. */
 export type Usage = {
   prompt_tokens: number;
   completion_tokens?: number;
@@ -112,6 +131,7 @@ export type Usage = {
   [key: string]: unknown;
 };
 
+/** `POST /v1/chat/completions` request body. Index signature allows vendor extensions. */
 export type ChatParams = {
   model: string;
   messages: ChatMessage[];
@@ -149,10 +169,12 @@ export type ChatParams = {
   [key: string]: unknown;
 };
 
+/** The assistant's message in a non-streaming response - content may be `null` for tool calls. */
 export type ChatCompletionMessage = ChatMessage & {
   content?: string | null;
 };
 
+/** One completion choice. `finish_reason` indicates why generation stopped. */
 export type ChatChoice = {
   index: number;
   finish_reason?: string | null;
@@ -163,6 +185,7 @@ export type ChatChoice = {
   } | null;
 };
 
+/** Full non-streaming chat completion response. */
 export type ChatResponse = {
   id: string;
   object: string;
@@ -175,6 +198,7 @@ export type ChatResponse = {
   [key: string]: unknown;
 };
 
+/** Streaming choice - carries a partial `delta` instead of a full `message`. */
 export type ChatChunkChoice = {
   index: number;
   finish_reason?: string | null;
@@ -185,6 +209,7 @@ export type ChatChunkChoice = {
   } | null;
 };
 
+/** A single SSE frame from a streaming chat completion. Each chunk carries a `delta`. */
 export type ChatStreamChunk = {
   id: string;
   object: string;
@@ -196,9 +221,12 @@ export type ChatStreamChunk = {
   [key: string]: unknown;
 };
 
+/** Streaming request params - identical to `ChatParams`; `stream: true` is added automatically. */
 export type ChatStreamParams = ChatParams;
+/** Typed `ReadableStream` of SSE chunks for streaming chat completions. */
 export type ChatStreamResponse = ReadableStream<ChatStreamChunk>;
 
+/** `POST /v1/embeddings` request body. */
 export type EmbeddingParams = {
   model: string;
   input: string | string[] | number[] | number[][];
@@ -208,12 +236,14 @@ export type EmbeddingParams = {
   [key: string]: unknown;
 };
 
+/** A single embedding vector returned by the API. */
 export type EmbeddingVector = {
   object: 'embedding' | string;
   embedding: number[] | string;
   index: number;
 };
 
+/** Full embeddings response containing one vector per input. */
 export type EmbeddingResponse = {
   object: string;
   model: string;
@@ -222,15 +252,19 @@ export type EmbeddingResponse = {
   [key: string]: unknown;
 };
 
+/** `POST /v1/moderations` request body. */
 export type ModerationParams = {
   input: string | string[] | Array<Record<string, unknown>>;
   model?: string;
   [key: string]: unknown;
 };
 
+/** Per-category confidence scores from the moderation classifier. */
 export type ModerationCategoryScores = Record<string, number>;
+/** Per-category boolean flags from the moderation classifier. */
 export type ModerationCategories = Record<string, boolean>;
 
+/** Moderation result for a single input - `flagged` is `true` if any category triggers. */
 export type ModerationResult = {
   flagged: boolean;
   categories: ModerationCategories;
@@ -238,6 +272,7 @@ export type ModerationResult = {
   [key: string]: unknown;
 };
 
+/** Full moderation response containing one result per input. */
 export type ModerationResponse = {
   id: string;
   model: string;
@@ -245,6 +280,7 @@ export type ModerationResponse = {
   [key: string]: unknown;
 };
 
+/** Supported TTS output formats. The string union allows vendor-specific values. */
 export type SpeechFormat =
   | 'mp3'
   | 'opus'
@@ -254,8 +290,10 @@ export type SpeechFormat =
   | 'pcm'
   | string;
 
+/** TTS voice identifier - string to allow custom/vendor voices. */
 export type SpeechVoice = string;
 
+/** `POST /v1/audio/speech` request body for text-to-speech generation. */
 export type SpeechParams = {
   model: string;
   input: string;
@@ -266,6 +304,7 @@ export type SpeechParams = {
   [key: string]: unknown;
 };
 
+/** Public API surface returned by `createClient`. Frozen object - no mutable state. */
 export type OpenAIClient = {
   createChatCompletion: (
     params: ChatParams,

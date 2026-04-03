@@ -13,6 +13,7 @@ const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
 const DEFAULT_TIMEOUT = 10 * 60 * 1000;
 const DEFAULT_MAX_RETRIES = 2;
 
+/** Fully resolved config after merging user input, env vars, and defaults. */
 export type ResolvedClientConfig = {
   apiKey: string;
   organization?: string;
@@ -24,6 +25,11 @@ export type ResolvedClientConfig = {
   maxRetries: number;
 };
 
+/**
+ * Merges user-supplied config with env vars and defaults into a resolved config.
+ * API key is optional - empty string allows keyless local inference servers.
+ * Falls back to `OPENAI_API_KEY`, `OPENAI_ORG_ID`, `OPENAI_PROJECT_ID` env vars.
+ */
 export const resolveClientConfig = (
   config: ClientConfig = {}
 ): ResolvedClientConfig => {
@@ -46,6 +52,7 @@ export const resolveClientConfig = (
   };
 };
 
+/** POST with JSON body, parse response as JSON. Used by all non-streaming endpoints. */
 export const postJSON = async <T>(args: {
   client: ResolvedClientConfig;
   path: string;
@@ -62,6 +69,10 @@ export const postJSON = async <T>(args: {
   return (await response.json()) as T;
 };
 
+/**
+ * POST with JSON body, consume response as an SSE stream. Sets `Accept: text/event-stream`
+ * and pipes `Response.body` through `createSSEStream` for incremental chunk parsing.
+ */
 export const postSSE = async <T>(args: {
   client: ResolvedClientConfig;
   path: string;
@@ -86,6 +97,7 @@ export const postSSE = async <T>(args: {
   return createSSEStream<T>(response.body);
 };
 
+/** POST returning the raw `Response` - used for binary endpoints like TTS/speech. */
 export const postResponse = (args: {
   client: ResolvedClientConfig;
   path: string;
@@ -102,6 +114,13 @@ export const postResponse = (args: {
     options: args.options,
   });
 
+/**
+ * Core fetch loop with retry, timeout, and abort support.
+ *
+ * Uses an internal `AbortController` that merges the caller's signal with a
+ * timeout timer. Retries on 408/409/429/5xx and transient network errors using
+ * exponential backoff with jitter. Respects `Retry-After` headers when present.
+ */
 const request = async (args: {
   client: ResolvedClientConfig;
   path: string;
@@ -183,6 +202,7 @@ const request = async (args: {
   }
 };
 
+/** Converts a non-OK `Response` into a structured `OpenAIError` by parsing the body. */
 const responseToError = async (response: Response) => {
   const headers = headersToObject(response.headers);
   const text = await response.text().catch(() => '');
@@ -197,6 +217,10 @@ const responseToError = async (response: Response) => {
   });
 };
 
+/**
+ * Creates an abort controller that fires on either caller abort or timeout,
+ * whichever comes first. The `cleanup` function removes all listeners/timers.
+ */
 const createRequestState = (signal: AbortSignal | undefined, timeout: number) => {
   const controller = new AbortController();
   let timedOut = false;
@@ -229,10 +253,13 @@ const createRequestState = (signal: AbortSignal | undefined, timeout: number) =>
   };
 };
 
+/** Strips trailing slashes so URL concatenation doesn't produce `//`. */
 const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '');
 
+/** Strips leading slashes from a path segment before joining with the base URL. */
 const stripLeadingSlash = (value: string) => value.replace(/^\/+/, '');
 
+/** Flattens multiple `HeadersInit` sources into a single `Headers`. Later values override earlier ones. */
 const mergeHeaders = (...values: Array<HeadersInit | undefined>) => {
   const headers = new Headers();
 
@@ -247,6 +274,7 @@ const mergeHeaders = (...values: Array<HeadersInit | undefined>) => {
   return headers;
 };
 
+/** Converts a `Headers` instance to a plain object with lowercased keys. */
 const headersToObject = (headers: Headers) => {
   const result: Record<string, string> = {};
   headers.forEach((value, key) => {
@@ -255,6 +283,7 @@ const headersToObject = (headers: Headers) => {
   return result;
 };
 
+/** Parses JSON without throwing - returns `undefined` on failure. */
 const safeParseJSON = (value: string): unknown => {
   try {
     return JSON.parse(value);
@@ -263,6 +292,7 @@ const safeParseJSON = (value: string): unknown => {
   }
 };
 
+/** Exponential backoff (250ms base, 2s cap) with jitter; respects `Retry-After` header. */
 const getRetryDelay = (attempt: number, response?: Response) => {
   const retryAfter = response?.headers.get('retry-after');
   const retryAfterSeconds = retryAfter ? Number(retryAfter) : NaN;
@@ -275,18 +305,22 @@ const getRetryDelay = (attempt: number, response?: Response) => {
   return baseDelay + jitter;
 };
 
+/** Retryable HTTP statuses: 408 timeout, 409 conflict, 429 rate-limit, 5xx server error. */
 const shouldRetryResponse = (status: number) =>
   status === 408 || status === 409 || status === 429 || status >= 500;
 
+/** Retries all errors except explicit aborts (those are intentional cancellations). */
 const shouldRetryError = (error: unknown) => {
   if (isAbortError(error)) return false;
   return true;
 };
 
+/** Promise-based delay for retry backoff. */
 const sleep = async (ms: number) => {
   await new Promise((resolve) => setTimeout(resolve, ms));
 };
 
+/** Reads an env var without crashing in browsers where `process` doesn't exist. */
 const readEnv = (name: string) => {
   const processLike = globalThis as typeof globalThis & {
     process?: {
@@ -296,8 +330,10 @@ const readEnv = (name: string) => {
   return processLike.process?.env?.[name];
 };
 
+/** Narrow `unknown` to a plain object for safe property access. */
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+/** Type guard for errors produced by `createApiError`. */
 const isOpenAIError = (value: unknown): value is Error =>
   value instanceof Error && value.name === 'OpenAIError';

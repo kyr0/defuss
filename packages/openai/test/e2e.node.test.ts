@@ -1,5 +1,5 @@
 /**
- * e2e tests — Node.js (vitest)
+ * e2e tests - Node.js (vitest)
  *
  * Run: vitest run --config vitest.config.ts
  */
