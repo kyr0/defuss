@@ -1,0 +1,51 @@
+export {
+  castToError,
+  createAPIError,
+  createConnectionError,
+  createConnectionTimeoutError,
+  createOpenAIError,
+  createUserAbortError,
+  isAbortError,
+} from './errors.js';
+export { createClient, createOpenAI, OpenAI } from './client.js';
+export { createSSEStream } from './sse.js';
+export type {
+  ChatChunkChoice,
+  ChatChoice,
+  ChatContentPart,
+  ChatContentPartImage,
+  ChatContentPartInputAudio,
+  ChatContentPartText,
+  ChatMessage,
+  ChatParams,
+  ChatResponse,
+  ChatStreamChunk,
+  ChatStreamParams,
+  ChatStreamResponse,
+  ChatTool,
+  ClientConfig,
+  EmbeddingParams,
+  EmbeddingResponse,
+  EmbeddingVector,
+  FunctionCall,
+  FunctionDefinition,
+  JSONValue,
+  ModerationCategories,
+  ModerationCategoryScores,
+  ModerationParams,
+  ModerationResponse,
+  ModerationResult,
+  OpenAIClient,
+  RequestHeaders,
+  RequestOptions,
+  Role,
+  SpeechFormat,
+  SpeechParams,
+  SpeechVoice,
+  ToolCall,
+  TokenLogprob,
+  Usage,
+} from './types.js';
+
+import { OpenAI as DefaultOpenAI } from './client.js';
+export default DefaultOpenAI;
