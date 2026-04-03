@@ -1,6 +1,6 @@
 import {mkdir, writeFile, stat} from 'node:fs/promises';
 import {join} from 'node:path';
-import {optimize, Config} from 'svgo';
+import {optimize, Config, PluginConfig} from 'svgo';
 import {FileCache} from "./FileCache";
 
 /**
@@ -59,21 +59,12 @@ export const chunkArray = <T>(array: T[], size: number): T[][] => {
 /**
  * Optimizes an SVG string and optionally modifies it.
  */
-export const optimizeSvg = (svgString: string, isColor = false): string => {
+export const optimizeSvg = (svgString: string, plugins: PluginConfig[]): string => {
 	const result = optimize(svgString, {
 		multipass: true, // optimize multiple times for smallest size
 		plugins: [
 			'preset-default',
-			{
-				name: 'removeAttrs',
-				params: {attrs: ['id', 'fill', 'width', 'height'].filter( attr => isColor && attr !== 'fill' && attr !== 'id')}
-			},
-			{
-				name: 'addAttributesToSVGElement',
-				params: {
-					attributes: [{fill: 'currentColor'}].filter( () => !isColor)
-				}
-			}
+			...plugins
 		]
 	});
 
@@ -130,3 +121,28 @@ export const pushUnique = <T>(array: T[], item: T): boolean => {
 export const findMaxSafe = (numbers: number[]): number => {
 	return numbers.reduce((max, current) => (current > max ? current : max), -Infinity);
 };
+
+
+export const batchProcessing = async <T>(batchSize: number = 500, elements: Array<T>, transform: (element: T) => Promise<void>): Promise<number> => {
+
+	const chunkElements = chunkArray(elements as Array<T>, batchSize);
+	console.log(`📂 Processing ${chunkElements.length} batches of ${batchSize}...`);
+	let processedCount = 0;
+	const totalStartTime = performance.now();
+
+	for await (const [index, elementChunk] of chunkElements.entries()) {
+		process.stdout.write(`\r⏳ Batch ${index + 1}/${chunkElements.length} Total: ${processedCount}`);
+		try {
+			await Promise.all(elementChunk.map(async (element) => {
+				await transform(element)
+				processedCount++;
+			}))
+		} catch (error) {
+			console.error(`❌ Error in Batch ${index + 1}:`, error instanceof Error ? error.message : error);
+			// We don't 'throw' here if you want the other batches to continue
+		}
+	}
+	console.log(`\n✨ Finished! ${processedCount} in ${((performance.now() - totalStartTime) / 1000).toFixed(2)}s`)
+
+	return processedCount
+}

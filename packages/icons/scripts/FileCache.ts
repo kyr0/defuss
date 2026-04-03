@@ -31,7 +31,6 @@ export class FileCache<T> {
 
 	async set(key: string, value: T): Promise<T> {
 		this.cache[key] = value
-		console.log('set cache', key, value)
 		await writeFile(this.cacheFileName, JSON.stringify(this.cache, null, 2));
 		return value
 	}
