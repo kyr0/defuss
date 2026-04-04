@@ -17,7 +17,7 @@ import { loadVADModule } from "./loader.js";
  */
 export async function createVAD(options?: VADOptions): Promise<VAD> {
   const hopSize = options?.hopSize ?? 256;
-  const threshold = options?.threshold ?? 0.5;
+  const threshold = options?.threshold ?? 0.7;
 
   const module: TenVADModule = await loadVADModule({
     wasmBinary: options?.wasmBinary,
