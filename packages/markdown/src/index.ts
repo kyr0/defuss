@@ -67,10 +67,12 @@ export interface UpdateWithMarkdownOptions {
 
 export const FALL_THROUGH = Symbol("defuss-markdown:fallback-renderer");
 
-interface RenderContext {
+export interface RenderContext {
   allowDangerousHtml: boolean;
   nodeRenderer?: UpdateWithMarkdownOptions["nodeRenderer"];
   cellTag?: "td" | "th";
+  renderNode: (node: MarkdownAstNode, context: RenderContext) => VNodeChild;
+  renderChildren: (children: MarkdownAstNode[] | undefined, context: RenderContext) => VNodeChild[];
 }
 
 interface BlockState {
@@ -218,6 +220,8 @@ function renderBlocks(
   const context: RenderContext = {
     allowDangerousHtml: Boolean(options.allowDangerousHtml),
     nodeRenderer: options.nodeRenderer,
+    renderNode,
+    renderChildren,
   };
 
   return blocks.map((block) => {

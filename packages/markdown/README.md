@@ -1,6 +1,6 @@
 # defuss-markdown
 
-Incremental Markdown rendering for Defuss, using Incremark as the parser core.
+Incremental Markdown rendering for Defuss, using Incremark as the parser core. It also supports custom JSX / component rendering.
 
 ## Install
 
@@ -61,16 +61,18 @@ async function updateWithMarkdown(
 
 ### `FALL_THROUGH`
 
-A sentinel symbol exported alongside `updateWithMarkdown`. Return it from a custom `nodeRenderer` to fall back to the built-in renderer for that node:
+A sentinel symbol exported alongside `updateWithMarkdown`. Return it from a custom `nodeRenderer` to fall back to the built-in renderer for that node.
 
-```ts
+The second argument `context` exposes `renderChildren(node.children, context)` and `renderNode(node, context)` so you can recursively render a node's children inside your custom wrapper:
+
+```tsx
 import { updateWithMarkdown, FALL_THROUGH } from "defuss-markdown";
 
 await updateWithMarkdown(target, markdown, {
-  nodeRenderer: (node) => {
+  nodeRenderer: (node, context) => {
     if (node.type === "paragraph") {
-      // Custom paragraph rendering
-      return { type: "div", attributes: { class: "custom-p" }, children: [] };
+      // Wrap paragraphs in a custom <div>, but still render their children
+      return <div class="custom-p">{...context.renderChildren(node.children, context)}</div>;
     }
     return FALL_THROUGH; // default rendering for everything else
   },

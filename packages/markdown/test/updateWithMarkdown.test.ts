@@ -531,7 +531,49 @@ describe("updateWithMarkdown", () => {
 
   // ---- nodeRenderer + FALL_THROUGH ----
 
-  it("uses custom nodeRenderer to override specific node types", async () => {
+  it("uses custom nodeRenderer with context.renderChildren to wrap paragraphs", async () => {
+    // Paragraph with mixed inline content: "Hello bold world"
+    const parser = new FakeParser([
+      {
+        blocks: [
+          block(
+            "b1",
+            paragraph(text("Hello "), strong(text("bold")), text(" world")),
+            "completed",
+          ),
+        ],
+      },
+    ]);
+
+    const render = vi.fn();
+    const target = new FakeElement() as unknown as Element;
+
+    await updateWithMarkdown(target, "Hello **bold** world", {
+      parser,
+      render,
+      nodeRenderer: (node, context) => {
+        if (node.type === "paragraph") {
+          // Wrap paragraphs in a <div class="custom-p"> while preserving children
+          return {
+            type: "div",
+            attributes: { class: "custom-p" },
+            children: context.renderChildren(node.children, context),
+          };
+        }
+        return FALL_THROUGH;
+      },
+    });
+
+    const output = simplify(render.mock.calls[0]?.[0]) as any[];
+    expect(output[0].type).toBe("div");
+    expect(output[0].attrs.class).toBe("custom-p");
+    // Children should be: "Hello ", <strong>"bold"</strong>, " world"
+    expect(output[0].children[0]).toBe("Hello ");
+    expect(output[0].children[1]).toEqual({ type: "strong", attrs: {}, children: ["bold"] });
+    expect(output[0].children[2]).toBe(" world");
+  });
+
+  it("uses custom nodeRenderer to override specific node types (manual children)", async () => {
     const parser = new FakeParser([
       { blocks: [block("b1", paragraph(text("Custom")), "completed")] },
     ]);
@@ -553,6 +595,44 @@ describe("updateWithMarkdown", () => {
     const output = simplify(render.mock.calls[0]?.[0]) as any[];
     expect(output[0].type).toBe("div");
     expect(output[0].attrs.class).toBe("custom-p");
+  });
+
+  it("context.renderNode renders a single child node correctly", async () => {
+    const parser = new FakeParser([
+      {
+        blocks: [
+          block(
+            "b1",
+            paragraph(emphasis(text("italic"))),
+            "completed",
+          ),
+        ],
+      },
+    ]);
+
+    const render = vi.fn();
+    const target = new FakeElement() as unknown as Element;
+
+    await updateWithMarkdown(target, "*italic*", {
+      parser,
+      render,
+      nodeRenderer: (node, context) => {
+        if (node.type === "paragraph") {
+          // Use renderNode on each child individually
+          return {
+            type: "section",
+            attributes: { class: "prose" },
+            children: (node.children ?? []).map((child) => context.renderNode(child, context)),
+          };
+        }
+        return FALL_THROUGH;
+      },
+    });
+
+    const output = simplify(render.mock.calls[0]?.[0]) as any[];
+    expect(output[0].type).toBe("section");
+    expect(output[0].attrs.class).toBe("prose");
+    expect(output[0].children[0]).toEqual({ type: "em", attrs: {}, children: ["italic"] });
   });
 
   it("FALL_THROUGH causes default rendering", async () => {
