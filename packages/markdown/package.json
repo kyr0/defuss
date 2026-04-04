@@ -1,0 +1,57 @@
+{
+  "name": "defuss-markdown",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Incremental Markdown -> Defuss JSX bridge built on Incremark core.",
+  "keywords": [
+    "markdown",
+    "defuss",
+    "incremark",
+    "streaming",
+    "jsx"
+  ],
+  "repository": {
+    "url": "git+https://github.com/kyr0/defuss.git",
+    "type": "git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Aron Homberg",
+    "email": "info@aron-homberg.de",
+    "url": "https://aron-homberg.de"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "@incremark/core": "^1.0.2",
+    "defuss": "^3.4.5"
+  },
+  "scripts": {
+    "clean": "rm -rf dist coverage",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "build": "npm run test && pkgroll",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "pkgroll": "^2.27.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
+  }
+}
