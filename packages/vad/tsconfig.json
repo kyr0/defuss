@@ -1,0 +1,30 @@
+{
+  "include": ["src"],
+  "exclude": ["**/node_modules", "**/.*/"],
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "moduleDetection": "force",
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "types": ["node"],
+    "resolveJsonModule": false,
+    "declaration": true,
+    "sourceMap": true,
+    "inlineSources": true,
+    "pretty": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmitOnError": true,
+    "useDefineForClassFields": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  }
+}
