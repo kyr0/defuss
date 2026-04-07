@@ -1,69 +1,5 @@
-import {execSync} from "node:child_process";
-import {existsSync, mkdirSync, rmSync} from "node:fs";
 import {FileCache} from "./FileCache";
-import {fetchAsText, saveFile} from "./utils";
-
-
-/**
- * Downloads a specific folder from a Git repository using Node.js APIs.
- * @param repoUrl - The URL of the repository (e.g., https://github.com/microsoft/fluentui-system-icons.git)
- * @param folderPath - The folder inside the repo to checkout (e.g., "assets")
- * @param targetDir - Local directory to save the content
- * @param branch - The branch to pull from (default: "main")
- */
-export const checkoutGitPath = (
-	repoUrl: string,
-	folderPath: string,
-	targetDir: string,
-	branch: string = 'main'
-): void => {
-	// 1. Create target directory if it doesn't exist
-	if (existsSync(targetDir)) {
-		rmSync(targetDir,{ recursive: true});
-	}
-	mkdirSync(targetDir, {recursive: true});
-	// Helper to run commands in the target directory
-	const run = (cmd: string) => {
-		console.log(`Running: ${cmd}`);
-		return execSync(cmd, {cwd: targetDir, stdio: 'inherit'});
-	};
-
-	try {
-		// 2. Initialize a new git repo locally
-		run('git init');
-
-		// 3. Add the remote
-		run(`git remote add -f origin ${repoUrl}`);
-
-		// 4. Enable sparse checkout feature
-		run('git config core.sparseCheckout true');
-
-		// 5. Define which folder to pull
-		// On Windows, use double quotes or specific escape sequences if needed
-		run(`echo "${folderPath}/*" >> .git/info/sparse-checkout`);
-
-		// 6. Pull the specific branch
-		run(`git pull origin ${branch}`);
-
-		console.log(`✅ Successfully checked out ${folderPath} to ${targetDir}`);
-	} catch (error) {
-		throw new Error(`Git checkout failed: ${error instanceof Error ? error.message : String(error)}`);
-	}
-};
-
-export const downloadGithubFolder = async (repo: string, path: string, targetDir: string): Promise<void> => {
-	const files = await getGithubDirectoryInfo(repo, path)
-
-	// 2. Filter for files only (ignore subfolders) and download
-	for (const file of files) {
-		if (file.type === 'file') {
-			console.log(`Downloading ${file.name}...`);
-			const content = await fetchAsText(file.download_url);
-			await saveFile(targetDir, file.name, content);
-		}
-	}
-}
-
+import { fetchAsJSON, } from "./utils";
 
 export interface GHDirectoryInfo {
 	name: string
@@ -84,36 +20,11 @@ export interface Links {
 	html: string
 }
 
-
-const ghInfoCache = new FileCache<GHDirectoryInfo[]>('gh_api_contents');
-
-
-/**
- * Fetches the list of icon names by reading the 'assets' directory names
- */
-export const getGithubDirectoryInfo = async (repo: string, path: string): Promise<Array<GHDirectoryInfo>> => {
-	const githubApiUrl = `https://api.github.com/repos/${repo}/contents/${path}`;
-
-	const fromCache = await ghInfoCache.get(githubApiUrl);
-	if(fromCache){
-		return fromCache;
-	}
-	// Note: You might need a GITHUB_TOKEN if you run this often (Rate Limits)
-	const response = await fetch(githubApiUrl);
-
-	if (!response.ok) {
-		throw new Error(`Failed to fetch github contents: ${githubApiUrl} ${response.status} ${response.statusText}`);
-	}
-
-	return await ghInfoCache.set(githubApiUrl, await response.json() as GHDirectoryInfo[]);
-}
-
-const ghTreeCache = new FileCache<TreeRoot>('gh_api_tree');
-
 export interface TreeRoot {
 	sha: string
 	url: string
 	tree: TreeNode[]
+	truncated?: true
 }
 
 export interface TreeNode {
@@ -125,30 +36,246 @@ export interface TreeNode {
 	size?: number
 }
 
-/**
- * 1. GET /repos/microsoft/fluentui-system-icons/contents/
- * 2. Find the object where name === 'assets'
- * 3. Grab that 'sha' (e.g., "a1b2c3d4...")
- * 4. GET /repos/microsoft/fluentui-system-icons/git/trees/a1b2c3d4...?recursive=1
- */
-export const getFolderTreeDirectly= async (repo: string, folderName: string): Promise<Array<TreeNode>> => {
-	// Get top-level contents to find the folder's SHA
-	const root = await getGithubDirectoryInfo(repo, '');
-	const folder = root.find((item) => item.name === folderName);
 
-	if (!folder || !folder.sha) throw new Error("Folder SHA not found");
+export interface GithubRepositoryInfo {
+	id: number
+	node_id: string
+	name: string
+	full_name: string
+	private: boolean
+	owner: Owner
+	html_url: string
+	description: string
+	fork: boolean
+	url: string
+	forks_url: string
+	keys_url: string
+	collaborators_url: string
+	teams_url: string
+	hooks_url: string
+	issue_events_url: string
+	events_url: string
+	assignees_url: string
+	branches_url: string
+	tags_url: string
+	blobs_url: string
+	git_tags_url: string
+	git_refs_url: string
+	trees_url: string
+	statuses_url: string
+	languages_url: string
+	stargazers_url: string
+	contributors_url: string
+	subscribers_url: string
+	subscription_url: string
+	commits_url: string
+	git_commits_url: string
+	comments_url: string
+	issue_comment_url: string
+	contents_url: string
+	compare_url: string
+	merges_url: string
+	archive_url: string
+	downloads_url: string
+	issues_url: string
+	pulls_url: string
+	milestones_url: string
+	notifications_url: string
+	labels_url: string
+	releases_url: string
+	deployments_url: string
+	created_at: string
+	updated_at: string
+	pushed_at: string
+	git_url: string
+	ssh_url: string
+	clone_url: string
+	svn_url: string
+	homepage: string
+	size: number
+	stargazers_count: number
+	watchers_count: number
+	language: string
+	has_issues: boolean
+	has_projects: boolean
+	has_downloads: boolean
+	has_wiki: boolean
+	has_pages: boolean
+	has_discussions: boolean
+	forks_count: number
+	mirror_url: any
+	archived: boolean
+	disabled: boolean
+	open_issues_count: number
+	license: License
+	allow_forking: boolean
+	is_template: boolean
+	web_commit_signoff_required: boolean
+	has_pull_requests: boolean
+	pull_request_creation_policy: string
+	topics: string[]
+	visibility: string
+	forks: number
+	open_issues: number
+	watchers: number
+	default_branch: string
+	temp_clone_token: any
+	custom_properties: CustomProperties
+	organization: Organization
+	network_count: number
+	subscribers_count: number
+}
 
-	// Get the recursive tree for THAT specific SHA
-	const githubApiUrl = `https://api.github.com/repos/${repo}/git/trees/${folder.sha}?recursive=1`;
-	const fromCache = await ghTreeCache.get(githubApiUrl);
-	if(fromCache){
-		return fromCache.tree;
+export interface Owner {
+	login: string
+	id: number
+	node_id: string
+	avatar_url: string
+	gravatar_id: string
+	url: string
+	html_url: string
+	followers_url: string
+	following_url: string
+	gists_url: string
+	starred_url: string
+	subscriptions_url: string
+	organizations_url: string
+	repos_url: string
+	events_url: string
+	received_events_url: string
+	type: string
+	user_view_type: string
+	site_admin: boolean
+}
+
+export interface License {
+	key: string
+	name: string
+	spdx_id: string
+	url: string
+	node_id: string
+}
+
+export interface CustomProperties {
+	activeRepoStatus: string
+	durableOwnershipDisable: string
+	durableOwnershipNextCheckDate: string
+	durableOwnershipWarn: string
+	"global-rulesets-opt-out": string
+}
+
+export interface Organization {
+	login: string
+	id: number
+	node_id: string
+	avatar_url: string
+	gravatar_id: string
+	url: string
+	html_url: string
+	followers_url: string
+	following_url: string
+	gists_url: string
+	starred_url: string
+	subscriptions_url: string
+	organizations_url: string
+	repos_url: string
+	events_url: string
+	received_events_url: string
+	type: string
+	user_view_type: string
+	site_admin: boolean
+}
+
+const ghInfoCache = new FileCache<GHDirectoryInfo[]>('gh_api_contents');
+const ghTreeCache = new FileCache<TreeRoot>('gh_api_tree');
+
+export class GithubCli {
+
+	private constructor(public readonly owner: string,
+	                    public readonly repo: string,
+	                    public readonly info: GithubRepositoryInfo) {
 	}
 
-	const response = await fetch(githubApiUrl);
-	if (!response.ok) {
-		throw new Error(`Failed to fetch github tree: ${githubApiUrl} ${response.status} ${response.statusText}`);
+	public static async create(owner: string, repo: string): Promise<GithubCli> {
+		const info = await GithubCli.getRepositoryInfo(owner, repo);
+		return new GithubCli(owner, repo, info);
 	}
-	return (await ghTreeCache.set(githubApiUrl, await response.json() as TreeRoot)).tree;
+
+	private static async getRepositoryInfo(owner: string, repo: string): Promise<GithubRepositoryInfo> {
+		return await fetchAsJSON<GithubRepositoryInfo>(`https://api.github.com/repos/${owner}/${repo}`, {
+			headers: {
+				"Accept": "application/vnd.github+json",
+			}
+		});
+	}
+
+	getRepoWithOwner = () => {
+		return [this.owner, this.repo].join('/')
+	}
+
+	async getDirectoryInfo(directoryPath: string): Promise<Array<GHDirectoryInfo>> {
+		const repoWithOwner = this.getRepoWithOwner()
+
+		const githubApiUrl = `https://api.github.com/repos/${repoWithOwner}/contents/${directoryPath}`;
+
+		const fromCache = await ghInfoCache.get(githubApiUrl);
+		if (fromCache) {
+			return fromCache;
+		}
+		// Note: You might need a GITHUB_TOKEN if you run this often (Rate Limits)
+		const response = await fetch(githubApiUrl);
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch github contents: ${githubApiUrl} ${response.status} ${response.statusText}`);
+		}
+
+		return await ghInfoCache.set(githubApiUrl, await response.json() as GHDirectoryInfo[]);
+	}
+
+	async getFolderNodes(folderPath: string, recursive = true): Promise<Array<TreeNode>> {
+		// Get top-level contents to find the folder's SHA
+		const folderPathParts = folderPath.split('/')
+		const folderName = folderPathParts.pop();
+		const subPath = folderPathParts.join('/')
+		const repoWithOwner = this.getRepoWithOwner()
+		const root = await this.getDirectoryInfo(subPath);
+		const folder = root.find((item) => item.name === folderName);
+
+		const logIfTruncated = (treeRoot: TreeRoot) => {
+			if (treeRoot.truncated) {
+				// This means you only have a partial list of the assets!
+				console.error(`⚠️ The assets ${folderPath} is too large for a single recursive call.`);
+				console.log("Tip: Fetch sub-folders (A-M, N-Z) by their individual SHAs instead.");
+			}
+		}
+
+		if (!folder || !folder.sha) throw new Error("Folder SHA not found");
+
+		// Get the recursive tree for THAT specific SHA
+		const githubApiUrl = `https://api.github.com/repos/${repoWithOwner}/git/trees/${folder.sha}${recursive?'?recursive=1': ''}`;
+		const fromCache = await ghTreeCache.get(githubApiUrl);
+		if (fromCache) {
+			logIfTruncated(fromCache)
+			return fromCache.tree;
+		}
+
+		const response = await fetch(githubApiUrl);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch github tree: ${githubApiUrl} ${response.status} ${response.statusText}`);
+		}
+		const data = await response.json() as TreeRoot
+		logIfTruncated(data)
+
+		return (await ghTreeCache.set(githubApiUrl, data)).tree;
+	}
+
+	getDownloadUrl(filePath: string): string {
+		return [
+			'https://raw.githubusercontent.com',
+			this.owner,this.repo,
+			this.info.default_branch,
+			filePath
+		].join('/')
+	}
 }
 

@@ -581,6 +581,9 @@
     "packages/icons": {
       "name": "defuss-icons",
       "version": "0.1.0",
+      "dependencies": {
+        "sharp": "^0.34.5",
+      },
       "devDependencies": {
         "@types/node": "^25.4.0",
         "@vitest/browser": "^4.0.18",

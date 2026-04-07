@@ -1,14 +1,13 @@
 import {mkdir, writeFile, stat} from 'node:fs/promises';
 import {join} from 'node:path';
-import {optimize, Config, PluginConfig} from 'svgo';
-import {FileCache} from "./FileCache";
-
+import {optimize, PluginConfig} from 'svgo';
+import sharp from 'sharp';
 /**
- * Fetches content from a URL and returns it as a string.
+ * Fetches content from a URL and returns it as a Arraybuffer.
  * Throws an exception if the HTTP request fails.
  */
-export const fetchAsText = async (input: string | URL | Request,
-                                  init?: RequestInit): Promise<string> => {
+export const fetchAsArrayBuffer = async (input: string | URL | Request,
+                                  init?: RequestInit): Promise<ArrayBuffer> => {
 	const response = await fetch(input, init);
 
 	if (!response.ok) {
@@ -16,7 +15,16 @@ export const fetchAsText = async (input: string | URL | Request,
 		throw new Error(`Failed to fetch ${response.url}: ${response.status} ${response.statusText}`);
 	}
 
-	return await response.text();
+	return await response.arrayBuffer();
+}
+/**
+ * Fetches content from a URL and returns it as a string.
+ * Throws an exception if the HTTP request fails.
+ */
+export const fetchAsText = async (input: string | URL | Request,
+                                  init?: RequestInit): Promise<string> => {
+	
+	return Buffer.from(await fetchAsArrayBuffer(input, init)).toString("utf8");
 }
 
 /**
@@ -138,11 +146,24 @@ export const batchProcessing = async <T>(batchSize: number = 500, elements: Arra
 				processedCount++;
 			}))
 		} catch (error) {
-			console.error(`❌ Error in Batch ${index + 1}:`, error instanceof Error ? error.message : error);
+			console.error(`\n❌ Error in Batch ${index + 1}:`, error instanceof Error ? error.message : error);
 			// We don't 'throw' here if you want the other batches to continue
 		}
 	}
 	console.log(`\n✨ Finished! ${processedCount} in ${((performance.now() - totalStartTime) / 1000).toFixed(2)}s`)
 
 	return processedCount
+}
+
+export async function svgBufferToPng(svgString: string, outputPath: string, size: number) {
+	const buffer = Buffer.from(svgString);
+	const outputPathParts = outputPath.split('/');
+	outputPathParts.pop();
+	const subPath = outputPathParts.join('/')
+	await ensureDir(subPath);
+
+	await sharp(buffer)
+		.resize(size, size)
+		.png()
+		.toFile(outputPath);
 }

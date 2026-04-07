@@ -1,6 +1,6 @@
 import {join} from "node:path";
 import {PluginConfig} from "svgo";
-import {downloadGithubFolder} from "../github";
+import {GithubCli} from "../github";
 import {batchProcessing, fetchAsText, fileExists, optimizeSvg, saveFile} from "../utils";
 
 const OPTIMIZE_SVG_PLUGIN: PluginConfig[] = [{
@@ -17,17 +17,27 @@ const OPTIMIZE_SVG_PLUGIN: PluginConfig[] = [{
 	}
 ]
 
-const downloadPhosphorFiles = async (assetPath: string, batchSize: number) => {
+const downloadPhosphorFiles = async (basePath: string, batchSize: number) => {
 
-	const phosphorAssetPath = join(assetPath, 'phosphor')
+	const phosphorAssetPath = join(basePath, 'phosphor')
 	const startTime = performance.now();
 
 	const ICON_TYPES = ["regular", "thin", "light", "bold", "fill", "duotone",];
 	console.log('🚀 Starting Phosphor Icons download...');
+	const githubCli = await GithubCli.create('phosphor-icons', 'core')
+
 	console.log('📦 Creating meta.json...');
 	const gitHubRepoSourceCodePath = join(phosphorAssetPath, 'source-code');
 
-	await downloadGithubFolder('phosphor-icons/core', 'src', gitHubRepoSourceCodePath);
+	await githubCli.getDirectoryInfo('src').then((response) => {
+		return Promise.all(response.map(async (file) => {
+			if (file.type === 'file') {
+				console.log(`Downloading ${file.name}...`);
+				const content = await fetchAsText(file.download_url);
+				await saveFile(gitHubRepoSourceCodePath, file.name, content)
+			}
+		}))
+	});
 
 	const {icons: phosphorIcons} = await import(join(gitHubRepoSourceCodePath, 'index.ts'))
 	await saveFile(phosphorAssetPath, 'meta.json', JSON.stringify(phosphorIcons, null, 2))
@@ -49,8 +59,7 @@ const downloadPhosphorFiles = async (assetPath: string, batchSize: number) => {
 			const svgSavePath = join(phosphorSvgPath, iconMetaData.type, iconName)
 			if (!(await fileExists(svgSavePath))) {
 				try {
-
-					const iconSvgData = await fetchAsText(`https://raw.githubusercontent.com/phosphor-icons/core/refs/heads/main/assets/${iconMetaData.type}/${iconName}`)
+					const iconSvgData = await fetchAsText(githubCli.getDownloadUrl(`assets/${iconMetaData.type}/${iconName}`))
 					const optimizedSvg = optimizeSvg(iconSvgData, OPTIMIZE_SVG_PLUGIN)
 					await saveFile(join(phosphorSvgPath, iconMetaData.type), iconName, optimizedSvg)
 				} catch (e) {

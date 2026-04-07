@@ -1,7 +1,7 @@
 import {readFile} from "node:fs/promises";
 import {join} from "node:path";
 import {PluginConfig} from "svgo";
-import {getFolderTreeDirectly} from "../github";
+import {GithubCli} from "../github";
 import {
 	batchProcessing,
 	capitalize, fetchAsJSON,
@@ -10,17 +10,18 @@ import {
 	findMaxSafe,
 	optimizeSvg,
 	pushUnique, removePrefix, removeSuffix,
-	saveFile
+	saveFile,
 } from "../utils";
+
+type File = { downloadPath: string, size: number, fileName: string, style: string, hash: string }
 
 type MetaData = {
 	name: string
 	size: number[]
 	style: string[]
-	files: Array<{ downloadPath: string, size: number, fileName: string, style: string }>
+	files: Array<File>
 	fromFile: false
 }
-
 type FileMetaData = {
 	name: string
 	size: number[]
@@ -28,7 +29,7 @@ type FileMetaData = {
 	keyword: string
 	description: string
 	metaphor: string[]
-	files: Array<{ downloadPath: string, size: number, fileName: string, style: string }>
+	files: Array<File>
 	fromFile: true
 }
 
@@ -53,12 +54,13 @@ const OPTIMIZE_SVG_PLUGIN_COLOR: PluginConfig[] = [{
 	}
 }]
 
-const downloadFluentuiSystemFiles = async (assetPath: string, batchSize: number) => {
+const downloadFluentuiSystemFiles = async (basePath: string, batchSize: number) => {
 
-	const fluentuiAssetPath = join(assetPath, 'fluentui')
+	const fluentuiAssetPath = join(basePath, 'fluentui')
 	const startTime = performance.now();
 
 	console.log('🚀 Starting Microsofts Fluentui System Icons download...');
+	const githubCli = await GithubCli.create('microsoft', 'fluentui-system-icons')
 	console.log('📦 Creating register.json...');
 
 
@@ -68,7 +70,7 @@ const downloadFluentuiSystemFiles = async (assetPath: string, batchSize: number)
 		console.log('Getting registry.json from file system ')
 		registry = JSON.parse((await readFile(join(fluentuiAssetPath, registryFileName))).toString())
 	} else {
-		const nodes = (await getFolderTreeDirectly('microsoft/fluentui-system-icons', 'assets'));
+		const nodes = (await githubCli.getFolderNodes('assets'));
 		await batchProcessing(batchSize, nodes, async (node) => {
 			if (node.type !== 'blob') {
 				return;
@@ -82,7 +84,7 @@ const downloadFluentuiSystemFiles = async (assetPath: string, batchSize: number)
 				const size = registry[name]?.['size'] ?? []
 				const style = registry[name]?.['style'] ?? []
 				if (isMetadata) {
-					const metaData = await fetchAsJSON<FileMetaData>(`https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/${join('assets', node.path)}`);
+					const metaData = await fetchAsJSON<FileMetaData>(githubCli.getDownloadUrl(['assets', node.path].join('/')));
 					registry[name] = {...(registry[name] ?? {}), ...metaData, files}
 				} else {
 					const fileNameParts = removeSuffix('.svg', removePrefix('ic_fluent_', rawFileName)).split('_');
@@ -98,6 +100,7 @@ const downloadFluentuiSystemFiles = async (assetPath: string, batchSize: number)
 						fileName,
 						downloadPath: join('assets', node.path),
 						size: parseInt(rawSize),
+						hash: node.sha,
 						style: rawStyle
 					})
 
@@ -106,6 +109,7 @@ const downloadFluentuiSystemFiles = async (assetPath: string, batchSize: number)
 							name,
 							size,
 							style,
+							hash: node.sha,
 							fromFile: false
 						}), files
 					}
@@ -115,7 +119,8 @@ const downloadFluentuiSystemFiles = async (assetPath: string, batchSize: number)
 		await saveFile(fluentuiAssetPath, registryFileName, JSON.stringify(registry, null, 2));
 		console.log(`Finished building registry with ${Object.keys(registry).length}`)
 	}
-	const svgsToDownload: Array<{ downloadPath: string, size: number, fileName: string, style: string }> = []
+
+	const svgsToDownload: Array<File> = []
 	for (const [index, entry] of Object.entries(registry)) {
 		const maxSize = findMaxSafe(entry.size)
 		for (const file of entry.files) {
@@ -130,7 +135,7 @@ const downloadFluentuiSystemFiles = async (assetPath: string, batchSize: number)
 	const processedCount = await batchProcessing(batchSize, svgsToDownload, async (file) => {
 		const filePath = join(fluentuiSvgPath, file.style);
 		if (!await fileExists(join(filePath, file.fileName))) {
-			const iconSvgData = await fetchAsText(`https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main/${file.downloadPath}`)
+			const iconSvgData = await fetchAsText(githubCli.getDownloadUrl(file.downloadPath));
 			const optimizedSvg = optimizeSvg(iconSvgData, file.style === 'color' ? OPTIMIZE_SVG_PLUGIN_COLOR : OPTIMIZE_SVG_PLUGIN)
 			await saveFile(filePath, file.fileName, optimizedSvg)
 		}
