@@ -6,6 +6,7 @@ Isomorphic text embeddings for **Node.js** and **Chrome/Web** using:
 - `@huggingface/transformers`
 - stock **int8 ONNX weights** for inference
 - exact SIMD-friendly vector search utilities
+- optional multicore worker-backed brute-force exact search
 - a pure TypeScript **TurboQuant-style** vector search path for normalized embeddings
 
 ## What this package does
@@ -13,7 +14,7 @@ Isomorphic text embeddings for **Node.js** and **Chrome/Web** using:
 - **Plan A encoder**: use the existing ONNX Harrier int8 export with the default `model.onnx` runtime path
 - **Client runtime**: browser-first entry point with remote model loading + browser cache
 - **Server runtime**: Node-first entry point with optional filesystem cache/local model loading
-- **Vector search**: exact dot-product top-k and a separate TurboQuant-style compressed index
+- **Vector search**: single-thread exact top-k, multicore exact top-k, and a separate TurboQuant-style compressed index
 
 ## Package layout
 
@@ -81,7 +82,11 @@ console.log(rerankedTopK);
 
 ```ts
 import { createEmbeddingServer } from "defuss-embeddings/server.js";
-import { attachRecords, searchTopK } from "defuss-embeddings/vector-search.js";
+import {
+  attachRecords,
+  searchTopK,
+  searchTopKMulticore,
+} from "defuss-embeddings/vector-search.js";
 import { buildTurboQuantIndex, searchTurboQuantIndexRerank } from "defuss-embeddings/turboquant.js";
 
 const embedder = createEmbeddingServer({
@@ -96,13 +101,26 @@ const docs = ["alpha", "beta", "gamma"];
 const docVectors = await embedder.embedDocuments(docs);
 const query = await embedder.embedQuery("beta");
 const exactHits = attachRecords(searchTopK(docVectors, query, 2), docs);
+const exactHitsMulticore = attachRecords(
+  await searchTopKMulticore(docVectors, query, 2, { threshold: 4096 }),
+  docs,
+);
 
 const turboIndex = buildTurboQuantIndex(docVectors, { seed: 99 });
 const { rerankedTopK } = searchTurboQuantIndexRerank(turboIndex, docVectors, query, 100, 10);
 
 console.log(exactHits);
+console.log(exactHitsMulticore);
 console.log(attachRecords(rerankedTopK, docs));
 ```
+
+## Exact search strategies
+
+- `searchTopK(...)` is the synchronous exact-search baseline.
+- `searchTopKMulticore(...)` is the async exact-search variant that uses `defuss-multicore` workers in both Node.js and browsers.
+- For small corpora, `searchTopKMulticore(...)` falls back to the single-thread path automatically.
+- For large corpora, worker overhead is measurable, so benchmark on your target hardware instead of assuming multicore is always faster.
+- On the current benchmark snapshot below, single-query brute-force search is still faster on one thread than via workers in both Node.js and Chromium because chunk cloning and worker dispatch dominate.
 
 ## OpenAI-Compatible endpoint usage
 
@@ -143,15 +161,37 @@ Command: `bun run test:needle`
 
 - Corpus: 25,000 vectors
 - Dimensions: 640
-- Pipeline: exact top-10 vs approximate top-100 plus rerank to top-10
-- Needle recall: 4/4 planted needles recovered by exact search, approximate top-100, and reranked top-10
-- TurboQuant index build: 247.292 ms
-- Exact search latency: avg 11.260 ms, median 11.716 ms
-- Approximate top-100 latency: avg 12.387 ms, median 11.728 ms
-- Rerank latency: avg 0.150 ms, median 0.140 ms
-- Approximate plus rerank total: avg 12.538 ms, median 11.868 ms
-- Exact throughput: avg 2,226,752 docs/s
-- Approximate throughput: avg 2,070,969 docs/s
+- Pipeline: single-thread exact top-10 vs multicore exact top-10 vs approximate top-100 plus rerank to top-10
+- Needle recall: 4/4 planted needles recovered by single-thread exact search, multicore exact search, approximate top-100, and reranked top-10
+- TurboQuant index build: 834.276 ms
+- Single-thread exact latency: avg 32.286 ms, median 35.194 ms
+- Multicore exact latency: avg 115.032 ms, median 132.950 ms
+- Approximate top-100 latency: avg 40.696 ms, median 39.141 ms
+- Rerank latency: avg 0.445 ms, median 0.412 ms
+- Approximate plus rerank total: avg 41.140 ms, median 39.553 ms
+- Single-thread exact throughput: avg 796,640 docs/s
+- Multicore exact throughput: avg 232,583 docs/s
+- Approximate throughput: avg 673,194 docs/s
+- Multicore speed relative to single-thread exact: avg 0.304x
+
+### Browser synthetic benchmark
+
+Command: `bun run test:needle:browser`
+
+- Corpus: 8,000 vectors in Chromium
+- Dimensions: 384
+- Pipeline: single-thread exact top-k vs multicore exact top-k vs approximate top-100 plus rerank
+- Outcome check: multicore exact results matched the single-thread exact baseline for all 3 planted needles before timings were reported
+- TurboQuant index build: 100.300 ms
+- Single-thread exact latency: avg 5.233 ms, median 5.300 ms
+- Multicore exact latency: avg 21.000 ms, median 16.100 ms
+- Approximate top-100 latency: avg 4.033 ms, median 4.100 ms
+- Approximate plus rerank total: avg 4.233 ms, median 4.400 ms
+- Single-thread exact throughput: avg 1,534,891 docs/s
+- Multicore exact throughput: avg 433,911 docs/s
+- Approximate throughput: avg 1,987,082 docs/s
+- Multicore speed relative to single-thread exact: avg 0.279x
+- Use this benchmark to validate whether worker overhead pays off on your browser target, because the crossover point varies noticeably by machine, runtime, and corpus layout
 
 ### Live Harrier benchmark
 
@@ -182,10 +222,12 @@ Command: `bun run test:needle:live`
 - Use `inspectModelCache(...)` and `clearModelCache(...)` if you want to inspect or purge cached assets explicitly.
 - The `turboquant` module here is **only for vector search**, not model-weight quantization.
 - Quick unit tests use injected mock extractors, while `bun run test:live` runs both a Node live suite and a browser live suite against the real Harrier model.
+- `searchTopKMulticore(...)` uses worker-backed brute-force search and returns the same ranked hits as `searchTopK(...)`, but asynchronously.
 - `openAICompatible` switches the runtime from local ONNX inference to an arbitrary OpenAI-compatible `/embeddings` HTTP endpoint.
 - When `openAICompatible` is active, `prefetchModel(...)`, `inspectModelCache(...)`, and `clearModelCache(...)` are not applicable and will throw.
 - `embedQuery()` still uses Harrier-style `Instruct: ...\nQuery: ...` formatting by default. For non-Harrier endpoint models, pass `{ instruction: "" }` or call `embedOne()` directly.
-- `bun run test:needle` runs a synthetic large-haystack benchmark that verifies planted needles stay retrievable while reporting exact-search, approximate-search, and rerank latency.
+- `bun run test:needle` runs a synthetic large-haystack benchmark that verifies planted needles stay retrievable while reporting single-thread exact, multicore exact, approximate-search, and rerank latency.
+- `bun run test:needle:browser` runs a Chromium benchmark for the same comparison on the browser worker runtime.
 - `bun run test:needle:live` runs the real Harrier model against a larger generated text corpus and reports query-embedding plus retrieval latency.
 
 ## Scripts
@@ -195,6 +237,7 @@ bun run build
 bun run test:node
 bun run test:browser
 bun run test:needle
+bun run test:needle:browser
 bun run test:needle:live
 bun run test:live:node
 bun run test:live:browser

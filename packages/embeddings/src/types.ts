@@ -161,6 +161,13 @@ export interface Embedder {
   ): Promise<ModelCacheClearResult>;
 }
 
+export interface ExactSearchMulticoreOptions {
+  cores?: number;
+  threshold?: number;
+  eager?: boolean;
+  transfer?: boolean;
+}
+
 export interface SearchHit {
   readonly index: number;
   readonly score: number;

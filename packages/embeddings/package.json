@@ -85,6 +85,7 @@
     "test:node": "vitest run --config vitest.config.ts",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "test:needle": "vitest run --config vitest.needle.config.ts",
+    "test:needle:browser": "vitest run --config vitest.needle.browser.config.ts",
     "test:needle:live": "vitest run --config vitest.needle.live.config.ts",
     "test:live:node": "vitest run --config vitest.live.config.ts",
     "test:live:browser": "vitest run --config vitest.live.browser.config.ts",
@@ -99,7 +100,8 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "defuss-db": "^1.1.4"
+    "defuss-db": "^1.1.4",
+    "defuss-multicore": "^0.0.2"
   },
   "devDependencies": {
     "@vitest/browser-playwright": "^4.0.18",

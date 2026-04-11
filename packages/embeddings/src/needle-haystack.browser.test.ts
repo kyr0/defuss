@@ -1,4 +1,3 @@
-import { performance } from "node:perf_hooks";
 import { describe, expect, it } from "vitest";
 import {
   buildTurboQuantIndex,
@@ -23,7 +22,6 @@ interface TimingSample {
   readonly exactSingleDocsPerSecond: number;
   readonly exactMulticoreDocsPerSecond: number;
   readonly approximateDocsPerSecond: number;
-  readonly rerankCandidatesPerSecond: number;
   readonly exactMulticoreSpeedup: number;
 }
 
@@ -90,17 +88,17 @@ const buildSyntheticNeedleHaystack = (
   readonly cases: SyntheticNeedleCase[];
 } => {
   const haystack = Array.from({ length: corpusSize }, (_, index) =>
-    makeSeededUnitVector(10_000 + index, dims),
+    makeSeededUnitVector(20_000 + index, dims),
   );
 
   const cases = Array.from({ length: queryCount }, (_, index) => {
-    const query = makeSeededUnitVector(1_000 + index, dims);
+    const query = makeSeededUnitVector(2_000 + index, dims);
     const expectedIndex = Math.floor(((index + 1) * corpusSize) / (queryCount + 1));
 
-    haystack[expectedIndex] = makeNeedleVector(query, 50_000 + index);
+    haystack[expectedIndex] = makeNeedleVector(query, 60_000 + index);
 
     return {
-      label: `needle-${index + 1}`,
+      label: `browser-needle-${index + 1}`,
       expectedIndex,
       query,
     };
@@ -109,19 +107,19 @@ const buildSyntheticNeedleHaystack = (
   return { haystack, cases };
 };
 
-describe("needle in haystack retrieval benchmark", () => {
+describe("needle in haystack browser benchmark", () => {
   it(
-    "retrieves planted needles and reports single-thread, multicore, and TurboQuant latency",
+    "compares single-thread exact, multicore exact, and TurboQuant search in chromium",
     async () => {
-      const corpusSize = 25_000;
-      const dims = 640;
+      const corpusSize = 8_000;
+      const dims = 384;
       const approximateK = 100;
       const rerankK = 10;
       const exactMulticoreOptions = {
         cores: 4,
-        threshold: 4_096,
+        threshold: 2_048,
       };
-      const { haystack, cases } = buildSyntheticNeedleHaystack(corpusSize, dims, 4);
+      const { haystack, cases } = buildSyntheticNeedleHaystack(corpusSize, dims, 3);
 
       const { result: turboIndex, ms: indexBuildMs } = measureSync(() =>
         buildTurboQuantIndex(haystack, { seed: 1337 }),
@@ -157,7 +155,6 @@ describe("needle in haystack retrieval benchmark", () => {
           exactSingleDocsPerSecond: (corpusSize / exactSingleMs) * 1000,
           exactMulticoreDocsPerSecond: (corpusSize / exactMulticoreMs) * 1000,
           approximateDocsPerSecond: (corpusSize / approximateMs) * 1000,
-          rerankCandidatesPerSecond: (approximateK / rerankMs) * 1000,
           exactMulticoreSpeedup: exactSingleMs / exactMulticoreMs,
         });
 
@@ -187,16 +184,17 @@ describe("needle in haystack retrieval benchmark", () => {
         approximateDocsPerSecond: summarizeMetric(
           timings.map((entry) => entry.approximateDocsPerSecond),
         ),
-        rerankCandidatesPerSecond: summarizeMetric(
-          timings.map((entry) => entry.rerankCandidatesPerSecond),
-        ),
         exactMulticoreSpeedup: summarizeMetric(
           timings.map((entry) => entry.exactMulticoreSpeedup),
         ),
       };
 
       console.info(
-        `[needle-haystack] synthetic benchmark\n${JSON.stringify({ summary, timings }, null, 2)}`,
+        `[needle-haystack-browser] synthetic benchmark\n${JSON.stringify(
+          { summary, timings },
+          null,
+          2,
+        )}`,
       );
 
       expect(summary.indexBuildMs).toBeGreaterThan(0);
@@ -208,7 +206,6 @@ describe("needle in haystack retrieval benchmark", () => {
       expect(summary.exactSingleDocsPerSecond.avg).toBeGreaterThan(0);
       expect(summary.exactMulticoreDocsPerSecond.avg).toBeGreaterThan(0);
       expect(summary.approximateDocsPerSecond.avg).toBeGreaterThan(0);
-      expect(summary.rerankCandidatesPerSecond.avg).toBeGreaterThan(0);
       expect(summary.exactMulticoreSpeedup.avg).toBeGreaterThan(0);
     },
     120_000,

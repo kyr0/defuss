@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { dotProduct, normalizeVector, searchTopK } from "./vector-search.js";
+import {
+  dotProduct,
+  normalizeVector,
+  searchTopK,
+  searchTopKMulticore,
+} from "./vector-search.js";
 
 describe("vector-search", () => {
   it("computes normalized dot products", () => {
@@ -25,5 +30,27 @@ describe("vector-search", () => {
     expect(hits[0]?.index).toBe(0);
     expect(hits[1]?.index).toBe(2);
     expect(hits[0]!.score).toBeGreaterThanOrEqual(hits[1]!.score);
+  });
+
+  it("matches single-thread results when multicore exact search is enabled", async () => {
+    const haystack = Array.from({ length: 256 }, (_, index) =>
+      normalizeVector(
+        Float32Array.of(
+          1,
+          index / 256,
+          ((index * 7) % 29) / 128,
+          ((index * 11) % 17) / 256,
+        ),
+      ),
+    );
+    const needle = normalizeVector(Float32Array.of(1, 0.18, 0.04, 0.01));
+
+    const singleThread = searchTopK(haystack, needle, 8);
+    const multicore = await searchTopKMulticore(haystack, needle, 8, {
+      cores: 4,
+      threshold: 32,
+    });
+
+    expect(multicore).toEqual(singleThread);
   });
 });

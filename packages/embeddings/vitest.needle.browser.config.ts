@@ -3,15 +3,15 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["src/**/*.browser.test.ts"],
-    exclude: ["src/**/*.live.browser.test.ts", "src/**/needle-haystack.browser.test.ts"],
+    include: ["src/**/needle-haystack.browser.test.ts"],
     clearMocks: true,
     globals: true,
+    testTimeout: 120_000,
     browser: {
       enabled: true,
       provider: playwright(),
       instances: [{ browser: "chromium" }],
-      headless: true
-    }
-  }
+      headless: true,
+    },
+  },
 });
