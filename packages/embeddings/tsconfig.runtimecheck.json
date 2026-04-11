@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "outDir": ".runtimecheck",
+    "rootDir": "src",
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "ambient-runtimecheck.d.ts",
+    "src/types.ts",
+    "src/vector-search.ts",
+    "src/turboquant.ts",
+    "src/core.ts",
+    "src/client.ts",
+    "src/server.ts",
+    "src/shared.ts",
+    "src/test-utils.ts"
+  ]
+}
