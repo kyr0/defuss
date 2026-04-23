@@ -8,23 +8,13 @@
 
 <sup align="center">
 
-Database Abstraction 2.0
+Database Abstraction
 
 </sup>
 
 </h1>
 
-> `defuss-db` 2.0 is a schema-driven database abstraction for `defuss`. You declare a table once, define the fields you want indexed, and then use one CRUD API across Dexie, LibSQL, MongoDB, and JSONL.
-
-## What Changed In 2.0
-
-- `id` is now the only public identity field.
-- `pk` is gone.
-- `_index` fields are gone.
-- Per-call `indexData` arguments are gone.
-- Tables now declare indexes once with `defineTable()`.
-- `upsert()` is now selector-first: `upsert(selector, value)`.
-- A new server-side JSONL provider is included.
+> `defuss-db` is a schema-driven database abstraction for `defuss`. You declare a table once, define the fields you want indexed, and then use one CRUD API across all supported providers.
 
 ## Supported Providers
 
@@ -186,6 +176,6 @@ All commands below are run from `packages/db`.
 | `bun run mongodb:stop` | Stop the MongoDB test container |
 | `bun run test` | Run the package test suite |
 
-## Notes
+## Architectural Decisions
 
 `defuss-db` intentionally stays small. There are still no joins, transactions, foreign keys, or provider-specific query DSLs. The package is designed around a portable subset: declared indexes, selectors over stored values, and predictable cross-provider behavior.
