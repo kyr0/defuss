@@ -1,6 +1,6 @@
 {
   "name": "defuss-db",
-  "version": "1.1.4",
+  "version": "2.0.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -13,7 +13,8 @@
     "abstraction",
     "dexie",
     "libsql",
-    "mongodb"
+    "mongodb",
+    "jsonl"
   ],
   "repository": {
     "url": "git+https://github.com/kyr0/defuss.git",
@@ -26,7 +27,8 @@
     "build": "pkgroll",
     "mongodb:start": "tsx scripts/mongo-start.ts",
     "mongodb:stop": "tsx scripts/mongo-stop.ts",
-    "test": "tsx ./scripts/readiness.ts && vitest --run --coverage"
+    "test": "tsx ./scripts/readiness.ts && vitest --run --coverage",
+    "prepublish": "bun run test"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -79,7 +81,7 @@
     "mongodb": "^6.16.0"
   },
   "devDependencies": {
-    "@types/node": "^25.1.0",
+    "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.0.17",
     "happy-dom": "^20.3.1",
     "pkgroll": "^2.21.5",

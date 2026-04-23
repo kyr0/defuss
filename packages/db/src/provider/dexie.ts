@@ -2,37 +2,38 @@ import type { Dexie, Table, DexieOptions, IndexableType } from "dexie";
 import type {
   DefussProvider,
   DefussRecord,
+  DefussSelector,
+  DefussTableDefinition,
   PrimaryKeyValue,
-  RecordValue,
 } from "../types.js";
+import {
+  fromStoredRecord,
+  mergeSelectorIntoValue,
+  normalizeTableDefinition,
+  resolveIndexedSelectorValue,
+  resolveUniqueSelector,
+  matchesSelector,
+  toStoredRecord,
+  type NormalizedDefussTableDefinition,
+} from "./runtime.js";
 
 export type DexieProviderOptions = DexieOptions;
 
-/**
- * DexieProvider implements DefussProvider for IndexedDB using Dexie.js.
- */
 export class DexieProvider implements DefussProvider<DexieOptions> {
   db!: Dexie;
   tables: Map<string, Table<any, IndexableType>> = new Map();
+  definitions: Map<string, NormalizedDefussTableDefinition<any>> = new Map();
   databaseName: string;
-  schema: Map<string, Record<string, string>> = new Map();
   schemaVersion = 1;
   isOpen = false;
 
   constructor(databaseName: string) {
-    if (!databaseName) {
-      databaseName = "DefussDB";
-    }
-    this.databaseName = databaseName;
+    this.databaseName = databaseName || "DefussDB";
   }
 
-  /**
-   * Connects to IndexedDB. Dexie.js manages connections internally.
-   * @param options - Dexie-specific configuration options.
-   */
   async connect(options: DexieOptions = {}): Promise<void> {
     if (this.db && this.isConnected()) {
-      return; // Already connected
+      return;
     }
 
     const isNode =
@@ -41,8 +42,6 @@ export class DexieProvider implements DefussProvider<DexieOptions> {
       typeof process.versions.node !== "undefined";
 
     if (isNode) {
-      // load shim for Node.js for SSR and test environments
-      // @ts-ignore: no types for fake-indexeddb
       await import("fake-indexeddb/auto");
     }
 
@@ -53,389 +52,391 @@ export class DexieProvider implements DefussProvider<DexieOptions> {
     this.isOpen = true;
   }
 
-  /**
-   * Disconnects from IndexedDB.
-   */
   async disconnect(): Promise<void> {
     if (this.db) {
       this.db.close();
       this.isOpen = false;
+      this.tables.clear();
     }
   }
 
-  /**
-   * Checks if the provider is currently connected to the database.
-   * @returns True if connected, false otherwise.
-   */
   isConnected(): boolean {
     return this.isOpen;
   }
 
-  /**
-   * Creates a table if it doesn't exist with dynamic schema support.
-   * @param table - The name of the table.
-   */
-  async createTable(table: string): Promise<void> {
-    // If table already exists in our cache, no need to recreate
-    if (this.tables.has(table)) return;
+  private buildSchemaString(
+    definition: NormalizedDefussTableDefinition<any>,
+  ): string {
+    const parts = ["++id"];
 
-    // Initialize schema for this table if it doesn't exist
-    if (!this.schema.has(table)) {
-      this.schema.set(table, { pk: "++" }); // Start with auto-incrementing primary key
+    for (const index of definition.indexes) {
+      if (index.selectorKey === "id") {
+        continue;
+      }
+
+      parts.push(index.unique ? `&${index.storageKey}` : index.storageKey);
     }
 
-    // Update the database version and schema
-    this.schemaVersion++;
+    return parts.join(", ");
+  }
 
-    // Close existing connection to apply schema changes
+  private async applySchema(): Promise<void> {
     if (this.isOpen) {
       this.db.close();
     }
 
-    // Define new schema with current columns
-    const tableSchema: Record<string, string> = {};
-    for (const [tableName, columns] of this.schema.entries()) {
-      // Convert column definition object to Dexie schema string
-      const schemaString = Object.entries(columns)
-        .map(([column, indexType]) => {
-          if (column === "pk") return "++pk"; // Primary key is special
-          return indexType ? `${indexType}${column}` : column;
-        })
-        .join(", ");
-
-      tableSchema[tableName] = schemaString;
+    const schema: Record<string, string> = {};
+    for (const definition of this.definitions.values()) {
+      schema[definition.name] = this.buildSchemaString(definition);
     }
 
-    // Apply the new schema
-    this.db.version(this.schemaVersion).stores(tableSchema);
-
-    // Reopen the database to apply changes
+    this.schemaVersion += 1;
+    this.db.version(this.schemaVersion).stores(schema);
     await this.db.open();
     this.isOpen = true;
 
-    // Cache the table reference
-    const tableDexie = this.db.table(table);
-    this.tables.set(table, tableDexie);
+    this.tables.clear();
+    for (const definition of this.definitions.values()) {
+      this.tables.set(definition.name, this.db.table(definition.name));
+    }
   }
 
-  /**
-   * Adds columns to the schema if they don't exist, with proper indexing.
-   * @param table - The name of the table.
-   * @param record - The record with properties to consider adding.
-   */
-  private async ensureColumnsForRecord(
-    table: string,
-    record: DefussRecord,
+  async ensureTable<T extends DefussRecord>(
+    definition: DefussTableDefinition<T>,
   ): Promise<void> {
-    // Get current schema or create new one
-    const tableSchema = this.schema.get(table) || { pk: "++" };
-    let schemaUpdated = false;
-
-    // Check each property in the record
-    for (const [prop, value] of Object.entries(record)) {
-      // Skip pk (it's already handled)
-      if (prop === "pk") continue;
-
-      // Skip properties that are already in the schema
-      if (prop in tableSchema) continue;
-
-      // Check if this property should be indexed (if it ends with _index)
-      if (prop.endsWith("_index")) {
-        const baseField = prop.slice(0, -6);
-        if (!(baseField in tableSchema)) {
-          // Add the index to the schema - determine the index type
-          if (Array.isArray(value)) {
-            tableSchema[prop] = "*"; // Multi-valued index
-          } else {
-            tableSchema[prop] = ""; // Regular index
-          }
-          schemaUpdated = true;
-        }
-      } else if (!(prop in tableSchema)) {
-        // Add the property as a non-indexed column
-        tableSchema[prop] = "";
-        schemaUpdated = true;
-      }
+    const normalized = normalizeTableDefinition(definition);
+    const existing = this.definitions.get(normalized.name);
+    if (existing) {
+      return;
     }
 
-    // If schema was updated, apply changes
-    if (schemaUpdated) {
-      this.schema.set(table, tableSchema);
-      await this.createTable(table); // This will reapply schema with new columns
-    }
+    this.definitions.set(normalized.name, normalized);
+    await this.applySchema();
   }
 
-  /**
-   * Inserts a record into a table.
-   * @param table - The name of the table.
-   * @param record - The record to insert.
-   * @returns The primary key of the inserted record.
-   */
-  async insert<T extends DefussRecord>(
-    table: string,
-    record: T,
-  ): Promise<PrimaryKeyValue> {
-    await this.createTable(table);
+  private getTable<T extends DefussRecord>(
+    definition: DefussTableDefinition<T>,
+  ): {
+    normalized: NormalizedDefussTableDefinition<T>;
+    tableDexie: Table<any, IndexableType>;
+  } {
+    const normalized = normalizeTableDefinition(definition);
+    const tableDexie = this.tables.get(normalized.name);
 
-    // First prepare data for insertion, handling any binary fields
-    const insertData: Record<string, any> = {};
-
-    // Process all fields in the record
-    for (const [key, value] of Object.entries(record)) {
-      // Skip primary key as it will be auto-generated if not provided
-      if (key === "pk") {
-        if (value !== undefined) {
-          insertData.pk = value;
-        }
-        continue;
-      }
-
-      // Store the value directly
-      insertData[key] = value;
+    if (!tableDexie) {
+      throw new Error(`defuss-db: table '${normalized.name}' is not initialized.`);
     }
 
-    // Ensure all needed columns exist in schema
-    await this.ensureColumnsForRecord(table, record);
-
-    // Get the table reference and insert the data
-    const tableDexie = this.tables.get(table)!;
-
-    // Insert the record and return the primary key
-    const id = await tableDexie.add(insertData);
-
-    // Convert the index to a PrimaryKeyValue
-    if (typeof id === "number") {
-      return id;
-    } else if (typeof id === "string") {
-      return id;
-    } else {
-      // Handle IndexableType -> PrimaryKeyValue conversion
-      return String(id);
-    }
+    return { normalized, tableDexie };
   }
 
-  /**
-   * Finds records in the table based on query.
-   * @param table - The name of the table.
-   * @param query - Query criteria.
-   * @returns An array of matching records.
-   */
-  async find<T extends DefussRecord>(
-    table: string,
-    query: Partial<Record<string, RecordValue>>,
+  private async queryRecords<T extends DefussRecord>(
+    definition: DefussTableDefinition<T>,
+    selector: DefussSelector,
   ): Promise<T[]> {
-    await this.createTable(table);
-    const tableDexie = this.tables.get(table)!;
+    const { normalized, tableDexie } = this.getTable(definition);
+    const selectorEntries = Object.entries(selector).filter(
+      (entry): entry is [string, Exclude<typeof entry[1], undefined>] =>
+        entry[1] !== undefined,
+    );
 
-    // Ensure all needed columns exist
-    await this.ensureColumnsForRecord(table, query as DefussRecord);
-
-    // Simple case: no filters, return all records
-    if (Object.keys(query).length === 0) {
+    if (selectorEntries.length === 0) {
       const results = await tableDexie.toArray();
-      return results.map((result) => this.normalizeRecord(result) as T);
+      return results.map((result) => fromStoredRecord<T>(result));
     }
 
-    // Apply filters based on query - using index fields where possible
-    let collection = tableDexie.toCollection();
+    const indexedEntry = selectorEntries.find(([key, value]) => {
+      return resolveIndexedSelectorValue(normalized, key, value) !== null;
+    });
 
-    if ("pk" in query) {
-      // Handle primary key query
-      try {
-        const record = await tableDexie.get(query.pk as IndexableType);
-        return record ? [this.normalizeRecord(record) as T] : [];
-      } catch (err) {
-        // Fall back to regular query if direct get fails
-        collection = collection.and((item) => item.pk === query.pk);
+    let results: any[];
+
+    if (indexedEntry) {
+      const indexedSelector = resolveIndexedSelectorValue(
+        normalized,
+        indexedEntry[0],
+        indexedEntry[1],
+      )!;
+
+      if (indexedSelector.storageKey === "id") {
+        const result = await tableDexie.get(indexedSelector.value as IndexableType);
+        results = result ? [result] : [];
+      } else {
+        results = await tableDexie
+          .where(indexedSelector.storageKey)
+          .equals(indexedSelector.value as IndexableType)
+          .toArray();
       }
     } else {
-      // Handle all other queries
-      for (const [key, value] of Object.entries(query)) {
-        if (key.endsWith("_index")) {
-          // Use indexed queries when possible
-          collection = collection.and((item) => item[key] === value);
-        } else {
-          collection = collection.and((item) => item[key] === value);
-        }
-      }
+      results = await tableDexie.toArray();
     }
 
-    // Execute the query and normalize the results
-    const results = await collection.toArray();
-    return results.map((result) => this.normalizeRecord(result) as T);
+    return results
+      .map((result) => fromDexieRecord<T>(result as Record<string, unknown>))
+      .filter((result) => matchesSelector(result, selector));
   }
 
-  /**
-   * Finds a single record in the table based on query.
-   * @param table - The name of the table.
-   * @param query - Query criteria.
-   * @returns The first matching record or null.
-   */
+  async insert<T extends DefussRecord>(
+    definition: DefussTableDefinition<T>,
+    value: T,
+  ): Promise<PrimaryKeyValue> {
+    await this.ensureTable(definition);
+    const { normalized, tableDexie } = this.getTable(definition);
+
+    if (value.id !== undefined && typeof value.id !== "number") {
+      throw new Error(
+        "defuss-db: DexieProvider currently requires numeric ids when id is provided.",
+      );
+    }
+
+    const storedRecord = await toDexieStoredRecord(normalized, value);
+    const insertedId = await tableDexie.add(storedRecord);
+
+    if (typeof insertedId === "bigint" || typeof insertedId === "number") {
+      return insertedId;
+    }
+
+    if (typeof insertedId === "string") {
+      return insertedId;
+    }
+
+    return String(insertedId);
+  }
+
+  async find<T extends DefussRecord>(
+    definition: DefussTableDefinition<T>,
+    selector: DefussSelector = {},
+  ): Promise<T[]> {
+    await this.ensureTable(definition);
+    return this.queryRecords(definition, selector);
+  }
+
   async findOne<T extends DefussRecord>(
-    table: string,
-    query: Partial<Record<string, RecordValue>>,
+    definition: DefussTableDefinition<T>,
+    selector: DefussSelector = {},
   ): Promise<T | null> {
-    // If query is by primary key, use get for efficiency
-    if (Object.keys(query).length === 1 && "pk" in query) {
-      await this.createTable(table);
-      const tableDexie = this.tables.get(table)!;
-
-      try {
-        const result = await tableDexie.get(query.pk as IndexableType);
-        return result ? (this.normalizeRecord(result) as T) : null;
-      } catch (err) {
-        // Fall back to regular find if get fails
-      }
-    }
-
-    // Otherwise use the find method
-    const results = await this.find<T>(table, query);
-    return results.length > 0 ? results[0] : null;
+    const results = await this.find(definition, selector);
+    return results[0] ?? null;
   }
 
-  /**
-   * Updates records in the table based on query.
-   * @param table - The name of the table.
-   * @param query - Query criteria.
-   * @param update - Fields to update.
-   */
   async update<T extends DefussRecord>(
-    table: string,
-    query: Partial<Record<string, RecordValue>>,
+    definition: DefussTableDefinition<T>,
+    selector: DefussSelector,
     update: Partial<T>,
   ): Promise<void> {
-    await this.createTable(table);
-    const tableDexie = this.tables.get(table)!;
+    await this.ensureTable(definition);
+    const { normalized, tableDexie } = this.getTable(definition);
 
-    // Ensure all needed columns exist
-    await this.ensureColumnsForRecord(table, query as DefussRecord);
-    await this.ensureColumnsForRecord(table, update as DefussRecord);
-
-    // Prepare update data - pk can't be updated
-    const updateData: Record<string, any> = {};
-    for (const [key, value] of Object.entries(update)) {
-      if (key === "pk") continue; // Skip primary key
-      updateData[key] = value;
+    if (Object.keys(selector).length === 0) {
+      throw new Error("defuss-db: update requires a non-empty selector.");
     }
 
-    // Handle primary key query for efficiency
-    if (Object.keys(query).length === 1 && "pk" in query) {
-      await tableDexie.update(query.pk as IndexableType, updateData);
-      return;
-    }
+    const records = await this.queryRecords(definition, selector);
 
-    // For other queries, find matching records and update them
-    const collection = tableDexie.toCollection().and((record) => {
-      for (const [key, value] of Object.entries(query)) {
-        if (record[key] !== value) return false;
+    for (const record of records) {
+      if (update.id !== undefined && update.id !== record.id) {
+        throw new Error("defuss-db: id cannot be updated.");
       }
-      return true;
-    });
 
-    const keys = await collection.primaryKeys();
-    for (const key of keys) {
-      await tableDexie.update(key, updateData);
+      const nextRecord = {
+        ...record,
+        ...update,
+        id: record.id,
+      } as T;
+
+      const storedRecord = await toDexieStoredRecord(normalized, nextRecord);
+      await tableDexie.put(storedRecord);
     }
   }
 
-  /**
-   * Deletes records from the table based on query.
-   * @param table - The name of the table.
-   * @param query - Query criteria.
-   */
-  async delete(table: string, query: Partial<DefussRecord>): Promise<void> {
-    await this.createTable(table);
-    const tableDexie = this.tables.get(table)!;
+  async delete<T extends DefussRecord>(
+    definition: DefussTableDefinition<T>,
+    selector: DefussSelector,
+  ): Promise<void> {
+    await this.ensureTable(definition);
+    const { tableDexie } = this.getTable(definition);
 
-    // Ensure all needed columns exist
-    await this.ensureColumnsForRecord(table, query);
-
-    // Handle primary key delete for efficiency
-    if (Object.keys(query).length === 1 && "pk" in query) {
-      await tableDexie.delete(query.pk as IndexableType);
-      return;
+    if (Object.keys(selector).length === 0) {
+      throw new Error("defuss-db: delete requires a non-empty selector.");
     }
 
-    // For other deletes, find matching records and delete them
-    const collection = tableDexie.toCollection().and((record) => {
-      for (const [key, value] of Object.entries(query)) {
-        if (record[key] !== value) return false;
-      }
-      return true;
-    });
+    const records = await this.queryRecords(definition, selector);
+    const ids = records
+      .map((record) => record.id)
+      .filter((id): id is PrimaryKeyValue => id !== undefined);
 
-    const keys = await collection.primaryKeys();
-    await tableDexie.bulkDelete(keys);
+    await tableDexie.bulkDelete(ids as IndexableType[]);
   }
 
-  /**
-   * Upserts a record into the table based on query.
-   * @param table - The name of the table.
-   * @param record - The record to upsert.
-   * @param query - Query criteria.
-   * @returns The primary key of the upserted record.
-   */
   async upsert<T extends DefussRecord>(
-    table: string,
-    record: T,
-    query: Partial<Record<string, RecordValue>>,
+    definition: DefussTableDefinition<T>,
+    selector: DefussSelector,
+    value: T,
   ): Promise<PrimaryKeyValue> {
-    await this.createTable(table);
+    await this.ensureTable(definition);
+    const normalized = normalizeTableDefinition(definition);
+    resolveUniqueSelector(normalized, selector);
 
-    // First, try to find an existing record
-    const existingRecord = await this.findOne(table, query);
+    const mergedValue = mergeSelectorIntoValue(normalized, selector, value);
+    const existing = await this.findOne(definition, selector);
 
-    if (existingRecord && existingRecord.pk !== undefined) {
-      // Update existing record
-      // Make a merged copy of the record with the query fields
-      const mergedRecord = { ...record };
+    if (existing?.id !== undefined) {
+      await this.update(definition, { id: existing.id }, mergedValue);
+      return existing.id;
+    }
 
-      // Update the record by its primary key
-      await this.update<T>(
-        table,
-        { pk: existingRecord.pk },
-        mergedRecord as Partial<T>,
-      );
-      return existingRecord.pk;
-    } else {
-      // Insert new record - include query fields
-      const mergedRecord = { ...record } as DefussRecord;
+    try {
+      return await this.insert(definition, mergedValue);
+    } catch (error) {
+      const constraintName =
+        error && typeof error === "object" && "name" in error
+          ? String((error as { name: unknown }).name)
+          : "";
 
-      // Include query fields in the insert if not already in the record
-      for (const [key, value] of Object.entries(query)) {
-        if (!(key in mergedRecord)) {
-          mergedRecord[key] = value;
-        }
+      if (constraintName !== "ConstraintError") {
+        throw error;
       }
 
-      // Insert and return the new primary key
-      return await this.insert<T>(table, mergedRecord as T);
+      const retried = await this.findOne(definition, selector);
+      if (!retried?.id) {
+        throw error;
+      }
+
+      await this.update(definition, { id: retried.id }, mergedValue);
+      return retried.id;
     }
   }
+}
 
-  /**
-   * Normalizes a database record to match DefussRecord structure.
-   * @param record - The record from the database.
-   * @returns A normalized DefussRecord.
-   */
-  private normalizeRecord(record: any): DefussRecord {
-    const result: DefussRecord = {};
+function bytesToBase64(bytes: Uint8Array): string {
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64");
+  }
 
-    // Handle each field
-    for (const [key, value] of Object.entries(record)) {
-      // Special handling for primary key
-      if (key === "pk") {
-        result.pk = value as PrimaryKeyValue;
-        continue;
-      }
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
 
-      // Skip internal fields if any
-      if (key.startsWith("_")) continue;
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  if (typeof Buffer !== "undefined") {
+    const bytes = Buffer.from(base64, "base64");
+    const result = new Uint8Array(new ArrayBuffer(bytes.byteLength));
+    result.set(bytes);
+    return result.buffer;
+  }
 
-      // Copy the field
-      result[key] = value as any;
+  const binary = atob(base64);
+  const result = new Uint8Array(new ArrayBuffer(binary.length));
+  for (let index = 0; index < binary.length; index += 1) {
+    result[index] = binary.charCodeAt(index);
+  }
+  return result.buffer;
+}
+
+function isBlobLike(value: unknown): value is Blob {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Blob).arrayBuffer === "function" &&
+    typeof (value as Blob).slice === "function" &&
+    typeof (value as Blob).type === "string"
+  );
+}
+
+function isEncodedDexieValue(
+  value: Record<string, unknown>,
+): value is {
+  __defussType: "blob";
+  value: string;
+  mimeType?: string;
+} {
+  return value.__defussType === "blob";
+}
+
+async function encodeDexieValue(value: unknown): Promise<unknown> {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint"
+  ) {
+    return value;
+  }
+
+  if (value instanceof Date || value instanceof ArrayBuffer) {
+    return value;
+  }
+
+  if (isBlobLike(value)) {
+    return {
+      __defussType: "blob",
+      value: bytesToBase64(new Uint8Array(await value.arrayBuffer())),
+      mimeType: value.type,
+    };
+  }
+
+  if (Array.isArray(value)) {
+    return Promise.all(value.map((item) => encodeDexieValue(item)));
+  }
+
+  if (typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+      result[key] = await encodeDexieValue(nestedValue);
     }
-
     return result;
   }
+
+  return value;
+}
+
+function decodeDexieValue(value: unknown): unknown {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint" ||
+    value instanceof Date ||
+    value instanceof ArrayBuffer
+  ) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => decodeDexieValue(item));
+  }
+
+  if (typeof value === "object" && value !== null && isEncodedDexieValue(value as Record<string, unknown>)) {
+    return new Blob([
+      base64ToArrayBuffer(String((value as { value: unknown }).value ?? "")),
+    ], {
+      type: String((value as { mimeType?: unknown }).mimeType ?? ""),
+    });
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const result: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+      result[key] = decodeDexieValue(nestedValue);
+    }
+    return result;
+  }
+
+  return value;
+}
+
+async function toDexieStoredRecord<T extends DefussRecord>(
+  definition: NormalizedDefussTableDefinition<T>,
+  value: T,
+): Promise<Record<string, unknown>> {
+  return encodeDexieValue(toStoredRecord(definition, value)) as Promise<Record<string, unknown>>;
+}
+
+function fromDexieRecord<T extends DefussRecord>(storedRecord: Record<string, unknown>): T {
+  return fromStoredRecord<T>(decodeDexieValue(storedRecord) as Record<string, unknown>);
 }

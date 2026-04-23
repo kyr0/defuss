@@ -1,96 +1,83 @@
 import type {
   DefussProvider,
+  DefussSelector,
   PrimaryKeyValue,
-  RecordValue,
   DefussRecord,
+  DefussTableDefinition,
 } from "./types.js";
 
 export class DefussTable<T extends DefussRecord, O> {
   provider: DefussProvider<O>;
-  tableName: string;
+  definition: DefussTableDefinition<T>;
 
   /**
-   * Initializes the DefussTable with the specified table name and provider.
+   * Initializes the DefussTable with the specified table definition and provider.
    * @param provider - The DefussProvider instance.
-   * @param tableName - The name of the table.
+   * @param definition - The table definition.
    */
-  constructor(provider: DefussProvider<O>, tableName: string) {
+  constructor(provider: DefussProvider<O>, definition: DefussTableDefinition<T>) {
     this.provider = provider;
-    this.tableName = tableName;
+    this.definition = definition;
   }
 
   /**
    * Creates the table if it doesn't exist.
    */
   async init(): Promise<void> {
-    await this.provider.createTable(this.tableName);
+    await this.provider.ensureTable(this.definition);
   }
 
   /**
-   * Inserts an item into the table with dynamic indices.
+   * Inserts an item into the table.
    * @param value - The item to insert.
-   * @param indexData - A JSON object representing dynamic indices.
    * @returns The primary key of the inserted row.
    */
-  async insert(
-    value: T,
-    indexData: Record<string, RecordValue>,
-  ): Promise<PrimaryKeyValue> {
-    return this.provider.insert<T>(this.tableName, value, indexData);
+  async insert(value: T): Promise<PrimaryKeyValue> {
+    return this.provider.insert<T>(this.definition, value);
   }
 
   /**
-   * Finds items based on provided index data.
-   * @param indexData - A JSON object representing dynamic indices. All fields are optional.
+   * Finds items based on the provided selector.
+   * @param selector - A selector over real value fields. All fields are optional.
    * @returns An array of matching items.
    */
-  async find(
-    indexData: Partial<Record<string, RecordValue>> = {},
-  ): Promise<T[]> {
-    return this.provider.find<T>(this.tableName, indexData);
+  async find(selector: DefussSelector = {}): Promise<T[]> {
+    return this.provider.find<T>(this.definition, selector);
   }
 
   /**
-   * Finds a single item based on provided index data.
-   * @param indexData - A JSON object representing dynamic indices. All fields are optional.
+   * Finds a single item based on the provided selector.
+   * @param selector - A selector over real value fields. All fields are optional.
    * @returns The first matching item or null if not found.
    */
-  async findOne(
-    indexData: Partial<Record<string, RecordValue>> = {},
-  ): Promise<T | null> {
-    return this.provider.findOne<T>(this.tableName, indexData);
+  async findOne(selector: DefussSelector = {}): Promise<T | null> {
+    return this.provider.findOne<T>(this.definition, selector);
   }
 
   /**
-   * Updates items based on provided index data.
-   * @param indexData - A JSON object representing dynamic indices. All fields are optional.
+   * Updates items based on the provided selector.
+   * @param selector - A selector over real value fields.
    * @param dataToUpdate - A JSON object representing fields to update.
    */
-  async update(
-    indexData: Partial<Record<string, RecordValue>>,
-    dataToUpdate: Partial<T>,
-  ): Promise<void> {
-    await this.provider.update<T>(this.tableName, indexData, dataToUpdate);
+  async update(selector: DefussSelector, dataToUpdate: Partial<T>): Promise<void> {
+    await this.provider.update<T>(this.definition, selector, dataToUpdate);
   }
 
   /**
-   * Deletes items based on provided index data.
-   * @param indexData - A JSON object representing dynamic indices. All fields are optional.
+   * Deletes items based on the provided selector.
+   * @param selector - A selector over real value fields.
    */
-  async delete(indexData: Partial<Record<string, RecordValue>>): Promise<void> {
-    await this.provider.delete(this.tableName, indexData);
+  async delete(selector: DefussSelector): Promise<void> {
+    await this.provider.delete(this.definition, selector);
   }
 
   /**
-   * Upserts an item into the table based on index data.
+   * Upserts an item into the table based on the provided selector.
+   * @param selector - A non-empty selector resolving to `id` or a declared unique index.
    * @param value - The item to insert or update.
-   * @param indexData - A JSON object representing dynamic indices used to identify the record.
    * @returns The primary key of the upserted row.
    */
-  async upsert(
-    value: T,
-    indexData: Record<string, RecordValue>,
-  ): Promise<PrimaryKeyValue> {
-    return this.provider.upsert<T>(this.tableName, value, indexData);
+  async upsert(selector: DefussSelector, value: T): Promise<PrimaryKeyValue> {
+    return this.provider.upsert<T>(this.definition, selector, value);
   }
 }

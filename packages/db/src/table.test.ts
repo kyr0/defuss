@@ -1,10 +1,21 @@
 import { DefussTable } from "./table.js";
 import { LibsqlProvider } from "./provider/libsql.js";
+import { defineTable } from "./types.js";
 
 describe("Test the API contract", () => {
   const provider = new LibsqlProvider();
-  beforeAll(() => {
-    provider.connect({
+  const testTable = defineTable({
+    name: "test_table",
+    indexes: [
+      {
+        name: "name",
+        source: "name",
+      },
+    ],
+  });
+
+  beforeAll(async () => {
+    await provider.connect({
       url: ":memory:",
     });
   });
@@ -14,7 +25,7 @@ describe("Test the API contract", () => {
   });
 
   it("should have the expected methods", () => {
-    const table = new DefussTable(provider, "test_table");
+    const table = new DefussTable(provider, testTable);
     expect(table).toBeDefined();
     expect(table).toHaveProperty("init");
     expect(table).toHaveProperty("insert");

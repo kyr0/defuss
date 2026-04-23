@@ -5,13 +5,38 @@ export type RecordValue =
   | boolean
   | null
   | ArrayBuffer
-  | Blob;
+  | Blob
+  | Date;
+
+export type DefussValue =
+  | RecordValue
+  | DefussValue[]
+  | { [key: string]: DefussValue | undefined };
 
 export type PrimaryKeyValue = bigint | number | string;
 
 export interface DefussRecord {
-  pk?: PrimaryKeyValue;
-  [key: string]: RecordValue | undefined;
+  id?: PrimaryKeyValue;
+  [key: string]: DefussValue | undefined;
+}
+
+export type DefussSelector = Partial<Record<string, RecordValue>>;
+
+export interface DefussIndexDefinition<T extends DefussRecord = DefussRecord> {
+  name: string;
+  source?: string | ((value: T) => RecordValue | undefined);
+  unique?: boolean;
+}
+
+export interface DefussTableDefinition<T extends DefussRecord = DefussRecord> {
+  name: string;
+  indexes?: Array<DefussIndexDefinition<T>>;
+}
+
+export function defineTable<T extends DefussRecord>(
+  definition: DefussTableDefinition<T>,
+): DefussTableDefinition<T> {
+  return definition;
 }
 
 /**
@@ -22,12 +47,12 @@ export interface DefussProvider<O> {
    * Connects to the database using the provided connection string.
    * @param connectionString - The database connection string.
    */
-  connect(options: O): void;
+  connect(options: O): Promise<void>;
 
   /**
    * Disconnects from the database.
    */
-  disconnect(): void;
+  disconnect(): Promise<void>;
 
   /**
    * Checks if the provider is currently connected to the database.
@@ -36,78 +61,78 @@ export interface DefussProvider<O> {
   isConnected(): boolean;
 
   /**
-   * Creates a table if it doesn't exist.
-   * @param table - The name of the table.
+   * Ensures a table exists using the provided table definition.
+   * @param definition - The normalized table definition.
    */
-  createTable(table: string): Promise<void>;
+  ensureTable<T extends DefussRecord>(
+    definition: DefussTableDefinition<T>,
+  ): Promise<void>;
 
   /**
-   * Inserts an item into the specified table with dynamic indices.
-   * @param table - The name of the table.
+   * Inserts an item into the specified table.
+   * @param definition - The table definition.
    * @param value - The item to insert.
-   * @param indexData - A JSON object representing dynamic indices.
    * @returns The primary key of the inserted row.
    */
   insert<T extends DefussRecord>(
-    table: string,
+    definition: DefussTableDefinition<T>,
     value: T,
-    indexData: Record<string, RecordValue>,
   ): Promise<PrimaryKeyValue>;
 
   /**
-   * Finds items based on provided index data.
-   * @param table - The name of the table.
-   * @param indexData - A JSON object representing dynamic indices. All fields are optional.
+   * Finds items based on the provided selector.
+   * @param definition - The table definition.
+   * @param selector - A selector over real value fields. All fields are optional.
    * @returns An array of matching items.
    */
   find<T extends DefussRecord>(
-    table: string,
-    indexData: Partial<Record<string, RecordValue>>,
+    definition: DefussTableDefinition<T>,
+    selector?: DefussSelector,
   ): Promise<T[]>;
 
   /**
-   * Finds a single item based on provided index data.
-   * @param table - The name of the table.
-   * @param indexData - A JSON object representing dynamic indices. All fields are optional.
+   * Finds a single item based on the provided selector.
+   * @param definition - The table definition.
+   * @param selector - A selector over real value fields. All fields are optional.
    * @returns The first matching item or null if not found.
    */
   findOne<T extends DefussRecord>(
-    table: string,
-    indexData: Partial<Record<string, RecordValue>>,
+    definition: DefussTableDefinition<T>,
+    selector?: DefussSelector,
   ): Promise<T | null>;
 
   /**
-   * Updates items based on provided index data.
-   * @param table - The name of the table.
-   * @param indexData - A JSON object representing dynamic indices. All fields are optional.
+   * Updates items based on the provided selector.
+   * @param definition - The table definition.
+   * @param selector - A selector over real value fields. All fields are optional.
    * @param dataToUpdate - A JSON object representing fields to update.
    */
   update<T extends DefussRecord>(
-    table: string,
-    indexData: Partial<Record<string, RecordValue>>,
+    definition: DefussTableDefinition<T>,
+    selector: DefussSelector,
     dataToUpdate: Partial<T>,
   ): Promise<void>;
 
   /**
-   * Deletes items based on provided index data.
-   * @param table - The name of the table.
-   * @param indexData - A JSON object representing dynamic indices. All fields are optional.
+   * Deletes items based on the provided selector.
+   * @param definition - The table definition.
+   * @param selector - A selector over real value fields. All fields are optional.
    */
-  delete(
-    table: string,
-    indexData: Partial<Record<string, RecordValue>>,
+  delete<T extends DefussRecord>(
+    definition: DefussTableDefinition<T>,
+    selector: DefussSelector,
   ): Promise<void>;
 
   /**
-   * Upserts an item into the specified table based on index data.
-   * @param table - The name of the table.
+   * Upserts an item into the specified table based on the provided selector.
+   * @param definition - The table definition.
+   * @param selector - A non-empty selector resolving to `id` or a declared unique index.
    * @param value - The item to insert or update.
-   * @param indexData - A JSON object representing dynamic indices used to identify the record.
    * @returns The primary key of the upserted row.
    */
   upsert<T extends DefussRecord>(
-    table: string,
+    definition: DefussTableDefinition<T>,
+    selector: DefussSelector,
     value: T,
-    indexData: Record<string, RecordValue>,
   ): Promise<PrimaryKeyValue>;
 }

@@ -3,150 +3,189 @@
 <img src="assets/defuss_mascott.png" width="100px" />
 
 <p align="center">
-  <code>defuss</code>
+  <code>defuss-db</code>
 </p>
 
 <sup align="center">
 
-Database Abstraction
+Database Abstraction 2.0
 
 </sup>
 
 </h1>
 
+> `defuss-db` 2.0 is a schema-driven database abstraction for `defuss`. You declare a table once, define the fields you want indexed, and then use one CRUD API across Dexie, LibSQL, MongoDB, and JSONL.
 
-> `defuss-db` abstracts interactions with databases, allowing you to focus on your application logic without worrying about the underlying database implementation, schema, or queries. It provides a consistent API for various databases, making it easier to switch between them or use multiple databases in a single application.
+## What Changed In 2.0
 
+- `id` is now the only public identity field.
+- `pk` is gone.
+- `_index` fields are gone.
+- Per-call `indexData` arguments are gone.
+- Tables now declare indexes once with `defineTable()`.
+- `upsert()` is now selector-first: `upsert(selector, value)`.
+- A new server-side JSONL provider is included.
 
-<h3 align="center">
+## Supported Providers
 
-Supported Databases
+- `DexieProvider` for browser IndexedDB.
+- `LibsqlProvider` for SQLite/libSQL.
+- `MongoProvider` for MongoDB.
+- `JsonlProvider` for simple file-backed server-side storage.
 
-</h3>
+## Core Idea
 
-- *Dexie*: A wrapper for IndexedDB that provides a simple and powerful API for working with client-side databases in web applications. It is designed to be easy to use and provides a consistent API across different browsers.
-
-- *MongoDB*: A NoSQL database that uses a flexible, JSON-like format for data storage. It is designed for scalability and performance, making it a popular choice for modern web applications.
-
-- *LibSQL*: A SQL database that is designed to be lightweight and easy to use. It is built on top of SQLite and provides a simple API for interacting with SQL databases.
-
-Providing an isomorphic API for all three databases, `defuss-db` allows you to use the same codebase for both client-side and server-side database interactions. This means you can write your database queries once and use them in both environments without worrying about compatibility issues.
-
-<h3 align="center">
-
-Integrating `defuss-db` in an existing defuss project
-
-</h3>
-
-**🚀 Looking for a template to start from?** `examples/notebooks` is an Astro project pre-configured to work with `defuss-db` out-of-the-box.
-
-#### 2. Integrate `defuss-db`:
-
-Just import `Table` from `defuss-db` and use it in your project:
+Declare a table once and then query real value fields.
 
 ```ts
-import { Table } from 'defuss-db';
-```
+import { DefussTable, defineTable, type DefussRecord } from "defuss-db";
+import { DexieProvider } from "defuss-db/client.js";
 
-A table needs a database storage provider:
-
-In-browser (client-side/frontend) use-case:
-
-```ts
-import { DexieProvider } from "defuss-db";
-```
-
-Using the database is as easy as wiring them up:
-
-```ts
-// define a model
-interface User {
+interface User extends DefussRecord {
   name: string;
-  age: number;
   email: string;
+  age: number;
+  profile: {
+    city: string;
+  };
 }
 
-const dexieProvider = new DexieProvider(TEST_DB_NAME);
-await dexieProvider.connect(); // connects to the database
+const userTable = defineTable<User>({
+  name: "users",
+  indexes: [
+    {
+      name: "email",
+      source: "email",
+      unique: true,
+    },
+    {
+      name: "city",
+      source: "profile.city",
+    },
+  ],
+});
 
-const myTable = new DefussTable<User>(provider, "my-table");
-await myTable.init(); // runs a schema update
+const provider = new DexieProvider("AppDatabase");
+await provider.connect();
+
+const users = new DefussTable(provider, userTable);
+await users.init();
 ```
 
-
-#### 3. Use the API of `defuss-db`:
-
-To interact with the table, create, read, update, and delete records:
+## CRUD API
 
 ```ts
-const user: User = {
+const id = await users.insert({
   name: "Alice",
-  age: 30,
   email: "alice@example.com",
-};
+  age: 30,
+  profile: {
+    city: "Berlin",
+  },
+});
 
-// in defuss-db, indices are added explicitly, this allows for indices to diverge from the underlying from the data stored. This separation solves a common issue with performance in speed and size dimensions.
-const indexData = { email: user.email }; // data to find the user by later-on
+const byEmail = await users.findOne({ email: "alice@example.com" });
+const byCity = await users.find({ "profile.city": "Berlin" });
 
-// returns the primary key of the inserted user
-const pk = await table.insert(/* data */ user, /* indices */ indexData);
+await users.update({ id }, { age: 31 });
+await users.delete({ id });
 
-// find a specific user
-const user = await table.findOne(/* indices */ { email: "alice@example.com" });
-
-// find many users of a specific TLD
-const users = await table.find(/* indices */ { email: "*@example.com" });
-
-// updates the user
-await table.update(/* update indices */ { email: user.email }, /* paertial data */ { age: 29 });
-
-// deletes the user
-await table.delete(/* indices */ { email: user.email });
+const upsertedId = await users.upsert(
+  { email: "alice@example.com" },
+  {
+    name: "Alice",
+    email: "alice@example.com",
+    age: 32,
+    profile: {
+      city: "Berlin",
+    },
+  },
+);
 ```
 
-Due to the nature of `defuss-db`, bridging the gap beween different database architectures and even between frontend and backend, the API cannot feature all the specific functionality of each underlaying provider. It is designed to simply provide the intersection feature-set. There are no foreign keys, no transactions, no joins, and no complex queries. You are supposed to design your data model in a semi-normalized way and use smart indices and data access patterns to get the most out of this.
+## Selector Rules
 
-<h3 align="center">
+- `find()`, `findOne()`, `update()`, and `delete()` accept selectors over real stored fields.
+- If a selector field is indexed, the provider uses that index.
+- If a selector field is not indexed, providers may fall back to a scan.
+- `upsert()` is stricter: the selector must be non-empty and must target `id` or a declared unique index.
 
-🚀 How does `defuss-db` work?
+## `id` Semantics
 
-</h3>
+- `id` is always the public primary key.
+- `id` is always implicitly indexed.
+- MongoDB maps `id` to `_id`.
+- LibSQL stores `id` as the primary key column.
+- JSONL stores `id` as the row identity in memory and on disk.
+- Dexie uses `id` as the table primary key field.
 
-Inside this package, you'll find the following relevant folders and files:
+## Nested And Derived Indexes
 
-```text
-/
-├── provider/dexie.ts
-├── provider/libsql.ts
-├── provider/mongodb.ts
-├── src/index.ts
-├── src/types.ts
-├── src/env.ts
-├── src/table.ts
-├── src/client.ts
-├── src/server.ts
-├── tsconfig.json
-├── LICENSE
-├── package.json
+Use a path for nested values:
+
+```ts
+const table = defineTable({
+  name: "profiles",
+  indexes: [
+    { name: "city", source: "profile.city" },
+  ],
+});
 ```
 
-The `src/index.ts` file is the "entry point" for general and type imports, while `server.ts` and `client.ts` are the respective imports to use whenever a specific runtime environment implement is desired to be used. The `defuss-db/client` and `defuss-db/server` imports will resolve to these files automatically.
+Use a mapping function for derived indexes:
 
-You'll find each specific provider implementation in the `provider` folder.
+```ts
+const table = defineTable({
+  name: "users",
+  indexes: [
+    {
+      name: "emailDomain",
+      source: (value) => value.email.split("@")[1] ?? null,
+    },
+  ],
+});
+```
 
-## 🧞 Commands
+## JSONL Provider
 
-All commands are run from the root of the project, from a terminal:
+The JSONL provider is exported from the server entry only.
 
-| Command       | Action                                                                                                                                                                                                                           |
-| :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm build`    | Build a new version of the integration. |
-| `npm mongodb:start`    | Start the MongoDB server (requires Docker). |
-| `npm mongodb:stop`    | Stop the MongoDB server (requires Docker). |
-| `npm test:integration`    | Run the integration tests for the `defuss-db` package. |
+```ts
+import { DefussTable, defineTable } from "defuss-db";
+import { JsonlProvider } from "defuss-db/server.js";
 
----
+const provider = new JsonlProvider();
+await provider.connect({
+  baseDir: "./.data",
+});
+```
 
-<img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/assets/defuss_comic.png" />
+Behavior:
 
-<caption><i><b>Come visit us on defuss island!</b></i></caption>
+- One `.jsonl` file per table.
+- Insert appends a new line.
+- Update and delete rewrite the table file.
+- All rows are loaded into memory on connect.
+
+This provider is intended for prototyping, debugging, fixtures, and small local datasets.
+
+## Runtime Entrypoints
+
+- `defuss-db` exports shared types, `defineTable()`, and `DefussTable`.
+- `defuss-db/client.js` exports `DexieProvider`.
+- `defuss-db/server.js` exports `LibsqlProvider`, `MongoProvider`, and `JsonlProvider`.
+
+## Commands
+
+All commands below are run from `packages/db`.
+
+| Command | Action |
+| :-- | :-- |
+| `bun run build` | Build the package |
+| `bun run mongodb:start` | Start the MongoDB test container |
+| `bun run mongodb:stop` | Stop the MongoDB test container |
+| `bun run test` | Run the package test suite |
+
+## Notes
+
+`defuss-db` intentionally stays small. There are still no joins, transactions, foreign keys, or provider-specific query DSLs. The package is designed around a portable subset: declared indexes, selectors over stored values, and predictable cross-provider behavior.
