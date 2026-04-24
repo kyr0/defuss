@@ -31,11 +31,11 @@ export interface VAD {
    * Process one frame of 16-bit PCM audio samples (16kHz, mono).
    * The length of `samples` must equal the configured `hopSize`.
    */
-  process(samples: Int16Array): VADResult;
+  process(samples: Int16Array): Promise<VADResult>;
   /** Get the underlying ten-vad library version string. */
-  getVersion(): string;
+  getVersion(): Promise<string>;
   /** Destroy the VAD instance and free WASM memory. */
-  destroy(): void;
+  destroy(): Promise<void>;
 }
 
 /** Metadata from a parsed WAV file. */
@@ -89,11 +89,11 @@ export interface VoiceDetector {
    * Process one frame of 16-bit PCM audio (16kHz, mono, `hopSize` samples).
    * Returns the raw VAD result plus debounced state and transition flags.
    */
-  process(samples: Int16Array): VoiceDetectorResult;
+  process(samples: Int16Array): Promise<VoiceDetectorResult>;
   /** Get the underlying ten-vad library version string. */
-  getVersion(): string;
+  getVersion(): Promise<string>;
   /** Reset the debounce state (e.g. when starting a new stream). */
-  reset(): void;
+  reset(): Promise<void>;
   /** Destroy the underlying VAD instance and free WASM memory. */
-  destroy(): void;
+  destroy(): Promise<void>;
 }

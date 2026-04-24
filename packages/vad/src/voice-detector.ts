@@ -1,9 +1,11 @@
 import type {
+  VAD,
   VoiceDetector,
   VoiceDetectorOptions,
   VoiceDetectorResult,
 } from "./types.js";
-import { createVAD } from "./vad.js";
+import type { ForcedVADRuntime } from "./loader.js";
+import { createTenVAD } from "./vad.js";
 
 /** Default values for voice detector tuning. */
 export const VOICE_DETECTOR_DEFAULTS = {
@@ -38,30 +40,31 @@ export function computeRMS(samples: Int16Array): number {
  *
  * ```ts
  * const detector = await createVoiceDetector();
- * const result = detector.process(frame);
+ * const result = await detector.process(frame);
  * if (result.onVoiceStart) console.log("speech started");
  * if (result.onVoiceEnd)   console.log("speech ended");
- * detector.destroy();
+ * await detector.destroy();
  * ```
  */
-export async function createVoiceDetector(
+export function createVoiceDetectorFromVAD(
+  vad: VAD,
   options?: VoiceDetectorOptions,
-): Promise<VoiceDetector> {
+): VoiceDetector {
+  const resettableVad = vad as VAD & {
+    reset?: () => Promise<void> | void;
+  };
   const rmsFloor = options?.rmsFloor ?? VOICE_DETECTOR_DEFAULTS.rmsFloor;
   const debounceOn = options?.debounceOn ?? VOICE_DETECTOR_DEFAULTS.debounceOn;
   const debounceOff =
     options?.debounceOff ?? VOICE_DETECTOR_DEFAULTS.debounceOff;
-
-  // Forward VADOptions (threshold default already 0.7 in createVAD)
-  const vad = await createVAD(options);
 
   let voiceStreak = 0;
   let silenceStreak = 0;
   let stableVoice = false;
 
   const detector: VoiceDetector = {
-    process(samples: Int16Array): VoiceDetectorResult {
-      const raw = vad.process(samples);
+    async process(samples: Int16Array): Promise<VoiceDetectorResult> {
+      const raw = await vad.process(samples);
       const rms = computeRMS(samples);
 
       // Gate: require both VAD voice AND sufficient energy
@@ -91,20 +94,32 @@ export async function createVoiceDetector(
       };
     },
 
-    getVersion(): string {
+    async getVersion(): Promise<string> {
       return vad.getVersion();
     },
 
-    reset(): void {
+    async reset(): Promise<void> {
+      if (typeof resettableVad.reset === "function") {
+        await resettableVad.reset();
+      }
+
       voiceStreak = 0;
       silenceStreak = 0;
       stableVoice = false;
     },
 
-    destroy(): void {
-      vad.destroy();
+    async destroy(): Promise<void> {
+      await vad.destroy();
     },
   };
 
   return Object.freeze(detector);
+}
+
+export async function createTenVoiceDetector(
+  options?: VoiceDetectorOptions,
+  runtime?: ForcedVADRuntime,
+): Promise<VoiceDetector> {
+  const vad = await createTenVAD(options, runtime);
+  return createVoiceDetectorFromVAD(vad, options);
 }

@@ -1,4 +1,7 @@
-import type { TenVADModule, TenVADModuleOptions } from "../wasm/ten_vad.d.ts";
+import type { TenVADModule, TenVADModuleOptions } from "../models/tenvad/ten_vad.d.ts";
+
+export type VADRuntime = "auto" | "node" | "web";
+export type ForcedVADRuntime = Exclude<VADRuntime, "auto">;
 
 /**
  * Add getValue / UTF8ToString polyfills that ten-vad's Emscripten build
@@ -39,6 +42,12 @@ function isNode(): boolean {
   );
 }
 
+function useNodeRuntime(runtime: VADRuntime): boolean {
+  if (runtime === "node") return true;
+  if (runtime === "web") return false;
+  return isNode();
+}
+
 /**
  * Load the ten-vad WASM module isomorphically.
  *
@@ -50,7 +59,9 @@ function isNode(): boolean {
 export async function loadVADModule(opts?: {
   wasmBinary?: ArrayBuffer | Uint8Array;
   locateFile?: (path: string, prefix: string) => string;
+  runtime?: ForcedVADRuntime;
 }): Promise<TenVADModule> {
+  const runtime = opts?.runtime ?? "auto";
   const moduleOpts: TenVADModuleOptions = {
     noInitialRun: false,
     noExitRuntime: true,
@@ -64,7 +75,7 @@ export async function loadVADModule(opts?: {
     moduleOpts.locateFile = opts.locateFile;
   }
 
-  if (isNode()) {
+  if (useNodeRuntime(runtime)) {
     // Node.js path: read .wasm from disk if no binary provided
     if (!moduleOpts.wasmBinary) {
       const { readFile } = await import("node:fs/promises");
@@ -72,8 +83,8 @@ export async function loadVADModule(opts?: {
       const { dirname, join } = await import("node:path");
 
       const thisDir = dirname(fileURLToPath(import.meta.url));
-      // Resolve relative to this file => ../wasm/ten_vad.wasm
-      const wasmPath = join(thisDir, "..", "wasm", "ten_vad.wasm");
+      // Resolve relative to this file => ../models/tenvad/ten_vad.wasm
+      const wasmPath = join(thisDir, "..", "models", "tenvad", "ten_vad.wasm");
       const buf = await readFile(wasmPath);
       moduleOpts.wasmBinary = buf.buffer.slice(
         buf.byteOffset,
@@ -81,24 +92,7 @@ export async function loadVADModule(opts?: {
       );
     }
 
-    // Dynamic import of the JS glue module
-    const { readFile: readFileStr } = await import("node:fs/promises");
-    const { fileURLToPath: fu2p } = await import("node:url");
-    const { dirname: dn, join: jn } = await import("node:path");
-
-    const dir = dn(fu2p(import.meta.url));
-    const jsPath = jn(dir, "..", "wasm", "ten_vad.js");
-
-    // The ten_vad.js uses import.meta.url internally. We need to patch it
-    // for Node.js consumption so it can resolve the .wasm path correctly.
-    const jsContent = await readFileStr(jsPath, "utf-8");
-    const { pathToFileURL } = await import("node:url");
-    const jsFileUrl = pathToFileURL(jsPath).href;
-    const patched = jsContent.replace(/import\.meta\.url/g, `"${jsFileUrl}"`);
-
-    // Write to a temp data URL and import it
-    const blob = `data:text/javascript;base64,${Buffer.from(patched).toString("base64")}`;
-    const mod = await import(/* @vite-ignore */ blob);
+    const mod = await import("../models/tenvad/ten_vad.js");
     const createVADModule = mod.default;
 
     const m: TenVADModule = await createVADModule(moduleOpts);
@@ -106,19 +100,15 @@ export async function loadVADModule(opts?: {
     return m;
   }
 
-  // Browser path: dynamic import of the vendored JS glue
-  // Use a URL relative to this module for the WASM file
-  const jsUrl = new URL("../wasm/ten_vad.js", import.meta.url).href;
-
   if (!moduleOpts.locateFile) {
-    const wasmUrl = new URL("../wasm/ten_vad.wasm", import.meta.url).href;
+    const wasmUrl = new URL("../models/tenvad/ten_vad.wasm", import.meta.url).href;
     moduleOpts.locateFile = (path: string, _prefix: string) => {
       if (path.endsWith(".wasm")) return wasmUrl;
       return path;
     };
   }
 
-  const mod = await import(/* @vite-ignore */ jsUrl);
+  const mod = await import("../models/tenvad/ten_vad.js");
   const createVADModule = mod.default;
 
   const m: TenVADModule = await createVADModule(moduleOpts);

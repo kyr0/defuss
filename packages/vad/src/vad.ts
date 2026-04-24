@@ -1,6 +1,6 @@
-import type { TenVADModule } from "../wasm/ten_vad.d.ts";
+import type { TenVADModule } from "../models/tenvad/ten_vad.d.ts";
 import type { VAD, VADOptions, VADResult } from "./types.js";
-import { loadVADModule } from "./loader.js";
+import { loadVADModule, type ForcedVADRuntime } from "./loader.js";
 
 /**
  * Create a VAD (Voice Activity Detection) instance.
@@ -10,18 +10,22 @@ import { loadVADModule } from "./loader.js";
  *
  * ```ts
  * const vad = await createVAD();
- * const result = vad.process(samples); // Int16Array of hopSize length
+ * const result = await vad.process(samples); // Int16Array of hopSize length
  * console.log(result.probability, result.isVoice);
- * vad.destroy();
+ * await vad.destroy();
  * ```
  */
-export async function createVAD(options?: VADOptions): Promise<VAD> {
+export async function createTenVAD(
+  options?: VADOptions,
+  runtime?: ForcedVADRuntime,
+): Promise<VAD> {
   const hopSize = options?.hopSize ?? 256;
   const threshold = options?.threshold ?? 0.7;
 
   const module: TenVADModule = await loadVADModule({
     wasmBinary: options?.wasmBinary,
     locateFile: options?.locateFile,
+    runtime,
   });
 
   // Allocate a pointer-sized slot for the handle
@@ -40,7 +44,7 @@ export async function createVAD(options?: VADOptions): Promise<VAD> {
   }
 
   const vad: VAD = {
-    process(samples: Int16Array): VADResult {
+    async process(samples: Int16Array): Promise<VADResult> {
       assertAlive();
       if (samples.length !== hopSize) {
         throw new Error(
@@ -80,13 +84,13 @@ export async function createVAD(options?: VADOptions): Promise<VAD> {
       }
     },
 
-    getVersion(): string {
+    async getVersion(): Promise<string> {
       assertAlive();
       const ptr = module._ten_vad_get_version();
       return module.UTF8ToString!(ptr);
     },
 
-    destroy(): void {
+    async destroy(): Promise<void> {
       if (destroyed) return;
       destroyed = true;
       module._ten_vad_destroy(handlePtr);

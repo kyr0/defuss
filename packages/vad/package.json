@@ -1,7 +1,7 @@
 {
   "name": "defuss-vad",
   "type": "module",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "keywords": [
     "vad",
     "voice-activity-detection",
@@ -23,22 +23,67 @@
     "node": ">=18"
   },
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+    "./firered-web": {
+      "types": "./dist/firered-web.d.ts",
+      "import": "./dist/firered-web.js"
+    },
+    "./firered-node": {
+      "types": "./dist/firered-node.d.ts",
+      "import": "./dist/firered-node.js"
+    },
+    "./firered-webgpu": {
+      "types": "./dist/firered-webgpu.d.ts",
+      "import": "./dist/firered-webgpu.js"
+    },
+    "./tenvad": {
+      "types": "./dist/tenvad-web.d.ts",
+      "node": "./dist/tenvad-node.js",
+      "default": "./dist/tenvad-web.js"
+    },
+    "./tenvad-web": {
+      "types": "./dist/tenvad-web.d.ts",
+      "import": "./dist/tenvad-web.js"
+    },
+    "./tenvad-node": {
+      "types": "./dist/tenvad-node.d.ts",
+      "import": "./dist/tenvad-node.js"
+    },
+    "./firered": {
+      "types": "./dist/firered-web.d.ts",
+      "node": "./dist/firered-node.js",
+      "default": "./dist/firered-web.js"
+    },
+    "./silero": {
+      "types": "./dist/silero-web.d.ts",
+      "node": "./dist/silero-node.js",
+      "default": "./dist/silero-web.js"
+    },
+    "./silero-web": {
+      "types": "./dist/silero-web.d.ts",
+      "import": "./dist/silero-web.js"
+    },
+    "./silero-node": {
+      "types": "./dist/silero-node.d.ts",
+      "import": "./dist/silero-node.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts"
+    },
+    "./wav": {
+      "types": "./dist/wav.d.ts",
+      "import": "./dist/wav.js"
     }
   },
-  "types": "./dist/index.d.ts",
-  "main": "./dist/index.js",
   "sideEffects": false,
   "files": [
     "dist",
-    "wasm",
+    "models",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "clean": "rm -rf dist",
+    "prebuild": "bun run clean",
     "test": "bun run test:e2e && bun run test:e2e:browser",
     "test:e2e": "bunx vitest run --config vitest.config.ts --coverage",
     "test:e2e:browser": "bunx vitest run --config vitest.browser.config.ts --coverage",
@@ -54,5 +99,9 @@
     "playwright": "^1.59.1",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
+  },
+  "dependencies": {
+    "defuss-db": "^1.1.4",
+    "onnxruntime-web": "1.22.0-dev.20250409-89f8206ba4"
   }
 }
