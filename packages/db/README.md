@@ -172,9 +172,14 @@ All commands below are run from `packages/db`.
 | Command | Action |
 | :-- | :-- |
 | `bun run build` | Build the package |
+| `bun run example:dexie` | Run the Dexie / IndexedDB walkthrough |
+| `bun run example:libsql` | Run the LibSQL walkthrough |
+| `bun run example:jsonl` | Run the JSONL walkthrough |
+| `bun run example:mongodb` | Run the MongoDB walkthrough |
+| `bun run example:all` | Run all provider walkthroughs sequentially |
 | `bun run mongodb:start` | Start the MongoDB test container |
 | `bun run mongodb:stop` | Stop the MongoDB test container |
-| `bun run test` | Run the package test suite |
+| `bun run test` | Runs the package test suite including all examples |
 
 ## Architectural Decisions
 
