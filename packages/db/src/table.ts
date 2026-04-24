@@ -5,6 +5,7 @@ import type {
 	DefussRecord,
 	DefussTableDefinition,
 } from "./types.js";
+import { createAggregation, type AggregationBuilder, type AggregationCreateOptions, type AggregationNamespacedRow } from "./aggregation/index.js";
 
 export class DefussTable<T extends DefussRecord, O> {
 	provider: DefussProvider<O>;
@@ -79,5 +80,11 @@ export class DefussTable<T extends DefussRecord, O> {
 	 */
 	async upsert(selector: DefussSelector, value: T): Promise<PrimaryKeyValue> {
 		return this.provider.upsert<T>(this.definition, selector, value);
+	}
+
+	aggregate<Alias extends string = "base">(
+		options?: AggregationCreateOptions<Alias>,
+	): AggregationBuilder<AggregationNamespacedRow<Alias, T>> {
+		return createAggregation(this, options);
 	}
 }

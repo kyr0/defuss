@@ -27,6 +27,7 @@ describe("Test the API contract", () => {
 	it("should have the expected methods", () => {
 		const table = new DefussTable(provider, testTable);
 		expect(table).toBeDefined();
+		expect(table).toHaveProperty("aggregate");
 		expect(table).toHaveProperty("init");
 		expect(table).toHaveProperty("insert");
 		expect(table).toHaveProperty("update");
