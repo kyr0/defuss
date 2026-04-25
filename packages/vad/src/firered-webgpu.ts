@@ -1,85 +1,78 @@
 import type {
-  FireRedVADOptions,
-  FireRedVoiceDetectorOptions,
+	FireRedVADOptions,
+	FireRedVoiceDetectorOptions,
 } from "./firered-types.js";
 import {
-  FIRERED_FRAME_LENGTH,
-  FIRERED_FRAME_SHIFT,
-  FIRERED_MEL_BANDS,
-  FIRERED_SAMPLE_RATE,
-} from "./firered-fbank.js";
-import {
-  FIRERED_AUDIO_REQUIREMENTS,
-  createFireRedVAD,
-  createFireRedVoiceDetector,
+	createFireRedVAD,
+	createFireRedVoiceDetector,
 } from "./firered-vad.js";
-import type { VAD, VADOptions, VADResult, WAVData, VoiceDetector, VoiceDetectorOptions, VoiceDetectorResult } from "./types.js";
+import type { VAD, VADOptions, VoiceDetector, VoiceDetectorOptions } from "./types.js";
 import {
-  computeRMS,
-  VOICE_DETECTOR_DEFAULTS,
+	computeRMS,
+	VOICE_DETECTOR_DEFAULTS,
 } from "./voice-detector.js";
 
 export { parseWAV, toMono, resampleLinear } from "./wav.js";
 export {
-  computeRMS,
-  VOICE_DETECTOR_DEFAULTS,
+	computeRMS,
+	VOICE_DETECTOR_DEFAULTS,
 } from "./voice-detector.js";
 export {
-  FIRERED_AUDIO_REQUIREMENTS,
-  createFireRedVAD,
-  createFireRedVoiceDetector,
+	FIRERED_AUDIO_REQUIREMENTS,
+	createFireRedVAD,
+	createFireRedVoiceDetector,
 } from "./firered-vad.js";
 export {
-  FIRERED_FRAME_LENGTH,
-  FIRERED_FRAME_SHIFT,
-  FIRERED_MEL_BANDS,
-  FIRERED_SAMPLE_RATE,
+	FIRERED_FRAME_LENGTH,
+	FIRERED_FRAME_SHIFT,
+	FIRERED_MEL_BANDS,
+	FIRERED_SAMPLE_RATE,
 } from "./firered-fbank.js";
 export type {
-  FireRedExecutionProvider,
-  FireRedRuntimeTarget,
-  FireRedVADOptions,
-  FireRedVoiceDetectorOptions,
+	FireRedExecutionProvider,
+	FireRedRuntimeTarget,
+	FireRedVADOptions,
+	FireRedVoiceDetectorOptions,
 } from "./firered-types.js";
 export type {
-  VAD,
-  VADOptions,
-  VADResult,
-  WAVData,
-  VoiceDetector,
-  VoiceDetectorOptions,
-  VoiceDetectorResult,
+	VAD,
+	VADOptions,
+	VADResult,
+	WAVData,
+	VoiceDetector,
+	VoiceDetectorOptions,
+	VoiceDetectorResult,
 } from "./types.js";
 
 export function createVAD(options?: VADOptions): Promise<VAD>;
 export function createVAD(options?: FireRedVADOptions): Promise<VAD>;
 export function createVAD(
-  options?: VADOptions | FireRedVADOptions,
+	options?: VADOptions | FireRedVADOptions,
 ): Promise<VAD> {
-  return createFireRedVAD(
-    options as FireRedVADOptions | undefined,
-    "web",
-    "webgpu",
-  );
+	return createFireRedVAD(
+		options as FireRedVADOptions | undefined,
+		"web",
+		"webgpu",
+	);
 }
 
 export function createVoiceDetector(
-  options?: VoiceDetectorOptions,
+	options?: VoiceDetectorOptions,
 ): Promise<VoiceDetector>;
 export function createVoiceDetector(
-  options?: FireRedVoiceDetectorOptions,
+	options?: FireRedVoiceDetectorOptions,
 ): Promise<VoiceDetector>;
 export function createVoiceDetector(
-  options?: VoiceDetectorOptions | FireRedVoiceDetectorOptions,
+	options?: VoiceDetectorOptions | FireRedVoiceDetectorOptions,
 ): Promise<VoiceDetector> {
-  return createFireRedVoiceDetector(
-    options as FireRedVoiceDetectorOptions | undefined,
-    "web",
-    "webgpu",
-  );
+	return createFireRedVoiceDetector(
+		options as FireRedVoiceDetectorOptions | undefined,
+		"web",
+		"webgpu",
+	);
 }
 
 export {
-  computeRMS as computeFireRedRMS,
-  VOICE_DETECTOR_DEFAULTS as FIRERED_DEFAULTS,
+	computeRMS as computeFireRedRMS,
+	VOICE_DETECTOR_DEFAULTS as FIRERED_DEFAULTS,
 };

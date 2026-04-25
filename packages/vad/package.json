@@ -1,7 +1,7 @@
 {
   "name": "defuss-vad",
   "type": "module",
-  "version": "1.2.0",
+  "version": "2.0.1",
   "keywords": [
     "vad",
     "voice-activity-detection",
@@ -91,7 +91,7 @@
     "prepublishOnly": "bun run build"
   },
   "devDependencies": {
-    "@types/node": "^25.5.2",
+    "@types/node": "^25.6.0",
     "@vitest/browser": "^4.1.2",
     "@vitest/coverage-v8": "^4.1.2",
     "@vitest/browser-playwright": "^4.1.2",
@@ -101,7 +101,7 @@
     "vitest": "^4.1.2"
   },
   "dependencies": {
-    "defuss-db": "^1.1.4",
+    "defuss-db": "^2.0.0",
     "onnxruntime-web": "1.22.0-dev.20250409-89f8206ba4"
   }
 }
