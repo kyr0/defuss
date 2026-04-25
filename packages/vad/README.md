@@ -32,6 +32,31 @@ Available entrypoints:
 
 For testing you might need to run `bunx playwright install chromium-headless-shell` to run the headless Chromium tests that cover all three VAD engines.
 
+#### ONNX Runtime Web bundling
+
+If you're using a bundler such as Vite (e.g. via Astro), make sure to exclude `onnxruntime-web` and its submodules from optimization to prevent bundling issues:
+
+```ts
+// astro.config.ts
+import { defineConfig } from "astro/config";
+
+export default defineConfig({
+  // ...
+  vite: {
+    optimizeDeps: {
+      exclude: [
+        "onnxruntime-web",
+        "onnxruntime-web/wasm",
+        "onnxruntime-web/webgpu",
+        "onnxruntime-common",
+      ],
+    },
+  },
+});
+```
+
+Otherwise, the default Vite optimization may cause the ONNX Runtime Web package to be bundled in a way that breaks its dynamic WASM loading. If you run into errors like "ORT WebAssembly backend failed to load" or "WebAssembly.instantiateStreaming is not a function", check your bundler's handling of `onnxruntime-web`.
+
 ## Quick Start
 
 
