@@ -8,7 +8,7 @@
 
 <sup align="center">
 
-Database Abstraction
+Isomorphic Multi-Backend Database Abstraction for Web and Node.js
 
 </sup>
 
@@ -93,6 +93,84 @@ const upsertedId = await users.upsert(
 );
 ```
 
+## Aggregation API
+
+For read-heavy flows that need joins, projections, grouping, or sorting, use the provider-agnostic aggregation builder. It sits above `find()` so providers stay small while higher-level read pipelines remain portable.
+
+You can start from a table:
+
+```ts
+const result = await users
+  .aggregate()
+  .project({
+    userId: "base.id",
+    email: "base.email",
+  })
+  .execute();
+```
+
+Or compose multiple sources directly:
+
+```ts
+import {
+  avgBy,
+  countRows,
+  createAggregation,
+  sumBy,
+} from "defuss-db";
+
+const summary = await createAggregation({ table: orders, as: "orders" })
+  .join(
+    { table: users, as: "users" },
+    { type: "left", left: "orders.customerId", right: "id" },
+  )
+  .alias({
+    customerName: "users.name",
+  })
+  .groupBy(
+    {
+      customerId: "orders.customerId",
+      customerName: "customerName",
+    },
+    {
+      orderCount: countRows(),
+      revenue: sumBy("orders.total"),
+      averageOrderValue: avgBy("orders.total"),
+    },
+  )
+  .sortBy({ field: "revenue", direction: "desc" })
+  .execute();
+```
+
+Available pipeline steps:
+
+- `join()` supports `left`, `right`, and `inner` joins over table-backed or array-backed sources.
+- `project()` reshapes rows into a new object.
+- `alias()` adds derived fields while keeping the existing row.
+- `compute()` and `computeMany()` append derived fields.
+- `mapRows()` applies a custom row mapper.
+- `removeFields()` removes one or more nested paths from each row.
+- `mergeConsecutive()` merges adjacent rows after an explicit sort.
+- `distinctBy()` keeps the first or last row for a computed key.
+- `groupBy()` returns one row per group key with reducer outputs.
+- `sortBy()` accepts field specs, resolver specs, or a custom comparator.
+
+Reducer helpers exported from `defuss-db`:
+
+- `countRows()`
+- `sumBy()`
+- `avgBy()`
+- `minBy()`
+- `maxBy()`
+- `firstBy()`
+- `lastBy()`
+
+Notes:
+
+- The base table alias defaults to `base`, or you can override it with `aggregate({ as: "users" })`.
+- Source-level `where` selectors run before aggregation, so joins and grouping operate on filtered provider results.
+- Join `left` paths are resolved against the current aggregated row, while `right` paths are resolved against the joined source row.
+
 ## Selector Rules
 
 - `find()`, `findOne()`, `update()`, and `delete()` accept selectors over real stored fields.
@@ -161,7 +239,7 @@ This provider is intended for prototyping, debugging, fixtures, and small local 
 
 ## Runtime Entrypoints
 
-- `defuss-db` exports shared types, `defineTable()`, and `DefussTable`.
+- `defuss-db` exports shared types, `defineTable()`, `DefussTable`, `createAggregation()`, and aggregation reducer helpers.
 - `defuss-db/client.js` exports `DexieProvider`.
 - `defuss-db/server.js` exports `LibsqlProvider`, `MongoProvider`, and `JsonlProvider`.
 
@@ -183,4 +261,4 @@ All commands below are run from `packages/db`.
 
 ## Architectural Decisions
 
-`defuss-db` intentionally stays small. There are still no joins, transactions, foreign keys, or provider-specific query DSLs. The package is designed around a portable subset: declared indexes, selectors over stored values, and predictable cross-provider behavior.
+`defuss-db` intentionally keeps the provider contract small. CRUD, declared indexes, selectors over stored values, and predictable cross-provider behavior remain the core. Transactions, foreign keys, and provider-specific query DSLs are out of scope. Portable joins, grouping, sorting, and reshaping live in the separate aggregation builder above `find()` instead of expanding provider complexity.

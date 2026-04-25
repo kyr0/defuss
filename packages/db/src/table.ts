@@ -82,6 +82,10 @@ export class DefussTable<T extends DefussRecord, O> {
 		return this.provider.upsert<T>(this.definition, selector, value);
 	}
 
+	/**
+	 * Starts a provider-agnostic aggregation pipeline rooted in this table.
+	 * Any `where` selector is applied before rows enter the aggregation layer.
+	 */
 	aggregate<Alias extends string = "base">(
 		options?: AggregationCreateOptions<Alias>,
 	): AggregationBuilder<AggregationNamespacedRow<Alias, T>> {

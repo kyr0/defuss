@@ -1,4 +1,10 @@
-import { DefussTable, createAggregation, defineTable } from "./index.js";
+import {
+	DefussTable,
+	countRows,
+	createAggregation,
+	defineTable,
+	sumBy,
+} from "./index.js";
 
 describe("Test the exports", () => {
 	it("should export DefussTable", () => {
@@ -11,5 +17,10 @@ describe("Test the exports", () => {
 
 	it("should export createAggregation", () => {
 		expect(createAggregation).toBeDefined();
+	});
+
+	it("should export aggregation reducer helpers", () => {
+		expect(countRows).toBeDefined();
+		expect(sumBy).toBeDefined();
 	});
 });

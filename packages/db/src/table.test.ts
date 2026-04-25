@@ -36,4 +36,14 @@ describe("Test the API contract", () => {
 		expect(table).toHaveProperty("findOne");
 		expect(table).toHaveProperty("upsert");
 	});
+
+	it("creates an aggregation builder from the table entrypoint", () => {
+		const table = new DefussTable(provider, testTable);
+		const aggregation = table.aggregate();
+
+		expect(aggregation).toBeDefined();
+		expect(aggregation).toHaveProperty("execute");
+		expect(aggregation).toHaveProperty("project");
+		expect(aggregation).toHaveProperty("groupBy");
+	});
 });

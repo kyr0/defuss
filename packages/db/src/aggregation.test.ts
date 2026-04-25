@@ -1,4 +1,15 @@
-import { createAggregation, DefussTable, defineTable } from "./index.js";
+import {
+	avgBy,
+	countRows,
+	createAggregation,
+	DefussTable,
+	defineTable,
+	firstBy,
+	lastBy,
+	maxBy,
+	minBy,
+	sumBy,
+} from "./index.js";
 import { LibsqlProvider } from "./provider/libsql.js";
 import type { DefussRecord } from "./types.js";
 
@@ -145,5 +156,146 @@ describe("aggregation builder", () => {
 		]);
 
 		await provider.disconnect();
+	});
+
+	it("supports removeFields, field sorting, and distinctBy keep-last semantics", async () => {
+		const rows = [
+			{
+				id: "o1",
+				customer: "Ada",
+				order: 1,
+				meta: { secret: "a", region: "eu" },
+			},
+			{
+				id: "o2",
+				customer: "Ada",
+				order: 2,
+				meta: { secret: "b", region: "eu" },
+			},
+			{
+				id: "o3",
+				customer: "Linus",
+				order: 3,
+				meta: { secret: "c", region: "us" },
+			},
+			{
+				id: "o4",
+				customer: "Linus",
+				order: 4,
+				meta: { secret: "d", region: "us" },
+			},
+		];
+
+		const result = await createAggregation({ rows, as: "orders" })
+			.sortBy([
+				{ field: "orders.customer", direction: "asc" },
+				{ field: "orders.order", direction: "asc" },
+			])
+			.distinctBy("orders.customer", { keep: "last" })
+			.removeFields(["orders.meta.secret"])
+			.project({
+				customer: "orders.customer",
+				order: "orders.order",
+				meta: "orders.meta",
+			})
+			.execute();
+
+		expect(result).toEqual([
+			{
+				customer: "Ada",
+				order: 2,
+				meta: { region: "eu" },
+			},
+			{
+				customer: "Linus",
+				order: 4,
+				meta: { region: "us" },
+			},
+		]);
+	});
+
+	it("supports mergeConsecutive after sorting rows into stable groups", async () => {
+		const rows = [
+			{ id: "o1", customer: "Linus", total: 4 },
+			{ id: "o2", customer: "Ada", total: 2 },
+			{ id: "o3", customer: "Ada", total: 3 },
+			{ id: "o4", customer: "Linus", total: 5 },
+		];
+
+		const result = await createAggregation({ rows, as: "orders" })
+			.project({
+				customer: "orders.customer",
+				total: "orders.total",
+			})
+			.sortBy({ field: "customer", direction: "asc" })
+			.mergeConsecutive((left, right) => {
+				if (left.customer !== right.customer) {
+					return undefined;
+				}
+
+				return {
+					customer: left.customer,
+					total: Number(left.total) + Number(right.total),
+				};
+			})
+			.execute();
+
+		expect(result).toEqual([
+			{ customer: "Ada", total: 5 },
+			{ customer: "Linus", total: 9 },
+		]);
+	});
+
+	it("supports groupBy reducers and comparator sorting", async () => {
+		const rows = [
+			{ id: "o1", customer: "Ada", city: "Berlin", total: 10 },
+			{ id: "o2", customer: "Ada", city: "Berlin", total: 25 },
+			{ id: "o3", customer: "Linus", city: "Helsinki", total: 5 },
+			{ id: "o4", customer: "Linus", city: "Helsinki", total: 15 },
+		];
+
+		const result = await createAggregation({ rows, as: "orders" })
+			.groupBy(
+				{
+					customer: "orders.customer",
+					city: "orders.city",
+				},
+				{
+					orderCount: countRows(),
+					totalAmount: sumBy("orders.total"),
+					averageAmount: avgBy("orders.total"),
+					minimumAmount: minBy("orders.total"),
+					maximumAmount: maxBy("orders.total"),
+					firstOrderId: firstBy("orders.id"),
+					lastOrderId: lastBy("orders.id"),
+				},
+			)
+			.sortBy((left, right) => Number(right.totalAmount) - Number(left.totalAmount))
+			.execute();
+
+		expect(result).toEqual([
+			{
+				customer: "Ada",
+				city: "Berlin",
+				orderCount: 2,
+				totalAmount: 35,
+				averageAmount: 17.5,
+				minimumAmount: 10,
+				maximumAmount: 25,
+				firstOrderId: "o1",
+				lastOrderId: "o2",
+			},
+			{
+				customer: "Linus",
+				city: "Helsinki",
+				orderCount: 2,
+				totalAmount: 20,
+				averageAmount: 10,
+				minimumAmount: 5,
+				maximumAmount: 15,
+				firstOrderId: "o3",
+				lastOrderId: "o4",
+			},
+		]);
 	});
 });

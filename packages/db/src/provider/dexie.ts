@@ -5,6 +5,7 @@ import type {
 	DefussSelector,
 	DefussTableDefinition,
 	PrimaryKeyValue,
+	RecordValue,
 } from "../types.js";
 import {
 	fromStoredRecord,
@@ -449,7 +450,7 @@ function prepareDexiePrimaryKey<T extends DefussRecord>(value: T): T {
 	return nextValue;
 }
 
-function normalizeDexieIndexableValue(value: PrimaryKeyValue): PrimaryKeyValue {
+function normalizeDexieIndexableValue(value: RecordValue): Exclude<RecordValue, bigint> | string {
 	if (typeof value === "bigint") {
 		return String(value);
 	}
