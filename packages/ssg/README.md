@@ -139,15 +139,15 @@ Create a project structure like this:
 
 ```typescript
 my-site/
-├── pages/
-│   ├── index.mdx
-│   └── blog/
-│       └── hello-world.mdx
-├── components/
-│   └── button.tsx
-├── assets/
-│   └── styles.css
-└── config.ts
+├-- pages/
+│   ├-- index.mdx
+│   └-- blog/
+│       └-- hello-world.mdx
+├-- components/
+│   └-- button.tsx
+├-- assets/
+│   └-- styles.css
+└-- config.ts
 ```
 Then run `defuss-ssg build ./my-site` and a `dist` folder will be created with the complete static build.
 

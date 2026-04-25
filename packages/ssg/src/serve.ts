@@ -59,6 +59,8 @@ export const serve = async ({
 
   // TODO: reuse code for path construction
   const outputDir = join(projectDir, config.output);
+
+	// TODO: unused pagesDir etc.
   const pagesDir = join(projectDir, config.pages);
   const componentsDir = join(projectDir, config.components);
   const assetsDir = join(projectDir, config.assets);
@@ -72,7 +74,7 @@ export const serve = async ({
   const baseWorkerPort = 3001;
   const isLinux = process.platform === "linux";
 
-  // ── Multicore primary: spawn workers + optional TCP LB ──
+  // -- Multicore primary: spawn workers + optional TCP LB --
   if (multicore && !isWorker) {
     const cpuCount =
       typeof (os as any).availableParallelism === "function"
@@ -87,7 +89,7 @@ export const serve = async ({
     const restartCounts: number[] = new Array(cpuCount).fill(0);
 
     if (isLinux) {
-      // ── Linux: all workers bind :3000 with reusePort (kernel LB) ──
+      // -- Linux: all workers bind :3000 with reusePort (kernel LB) --
       console.log(
         `[multicore] Primary ${process.pid} spawning ${cpuCount} workers on port ${port} (reusePort)`,
       );
@@ -122,7 +124,7 @@ export const serve = async ({
 
       for (let i = 0; i < cpuCount; i++) spawnWorker(i);
     } else {
-      // ── macOS/Windows: per-worker ports + HTTP+WS reverse proxy LB on :3000 ──
+      // -- macOS/Windows: per-worker ports + HTTP+WS reverse proxy LB on :3000 --
       const backends: { host: string; port: number }[] = [];
       for (let i = 0; i < cpuCount; i++)
         backends.push({ host: "127.0.0.1", port: baseWorkerPort + i });
@@ -183,7 +185,7 @@ export const serve = async ({
 
       await Promise.all(backends.map((b) => waitForHttp(b.host, b.port)));
 
-      // ── HTTP + WebSocket reverse proxy LB (uses Bun's stable HTTP stack) ──
+      // -- HTTP + WebSocket reverse proxy LB (uses Bun's stable HTTP stack) --
       let rr = 0;
       function pick() {
         const b = backends[rr % backends.length];
@@ -295,7 +297,7 @@ export const serve = async ({
       );
     }
 
-    // ── File watching + rebuild in multicore primary ──
+    // -- File watching + rebuild in multicore primary --
     let mcIsBuilding = false;
     let mcPendingBuild: string | null = null;
 
@@ -414,7 +416,7 @@ export const serve = async ({
   await registerEndpoints(app, projectDir, config, debug);
   console.timeEnd("[serve] register-endpoints");
 
-  // ── RPC integration ────────────────────────────────────────────────
+  // -- RPC integration ------------------------------------------------
   let rpcActive = false;
   console.time("[serve] rpc-init");
   try {

@@ -118,7 +118,7 @@ export const setup = async (projectDir: string): Promise<Status> => {
     };
   }
 
-  // ── Dependency resolution check ────────────────────────────────────
+  // -- Dependency resolution check ------------------------------------
   // If all required deps already exist in an ancestor node_modules
   // (e.g. workspace hoisting or a previous install), skip `install`
   // entirely - avoids workspace:* resolution errors in monorepos.

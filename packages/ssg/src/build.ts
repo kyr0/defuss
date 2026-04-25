@@ -95,7 +95,7 @@ export const build = async ({
     throw new Error(`Input pages directory does not exist: ${inputPagesDir}`);
   }
 
-  // ── Determine what to rebuild ──────────────────────────────────────
+  // -- Determine what to rebuild --------------------------------------
   // For incremental builds (serve mode with changedFile), figure out if
   // it's a page, component, or asset change so we can skip unneeded work.
   type ChangeKind = "page" | "component" | "asset" | "config" | "full";
@@ -143,7 +143,7 @@ export const build = async ({
   const isFullBuild = changeKind === "full" || changeKind === "config";
   const tempExists = existsSync(config.tmp);
 
-  // ── Pre plugins (full build only) ─────────────────────────────────
+  // -- Pre plugins (full build only) ---------------------------------
   if (isFullBuild) {
     console.time("[build] pre-plugins");
     for (const plugin of config.plugins || []) {
@@ -162,7 +162,7 @@ export const build = async ({
     console.timeEnd("[build] pre-plugins");
   }
 
-  // ── Prepare temp folder ────────────────────────────────────────────
+  // -- Prepare temp folder --------------------------------------------
   console.time("[build] prepare-temp");
   if (isFullBuild || !tempExists) {
     // Full rebuild: nuke & recreate temp
@@ -233,7 +233,7 @@ export const build = async ({
   );
   console.timeEnd("[build] copy-hydration");
 
-  // ── Clean stale component .js outputs ──────────────────────────────
+  // -- Clean stale component .js outputs ------------------------------
   // esbuild-pages bundles with bundle:true and jsxDev:true. When it
   // resolves component imports (e.g. '../components/button.js'), stale
   // .js files from a previous esbuild-components run would be picked up
@@ -246,7 +246,7 @@ export const build = async ({
     }
   }
 
-  // ── esbuild: compile pages ─────────────────────────────────────────
+  // -- esbuild: compile pages -----------------------------------------
   let pageBuildResult: esbuild.BuildResult | null = null;
   if (changeKind !== "asset") {
     console.time("[build] esbuild-pages");
@@ -278,7 +278,7 @@ export const build = async ({
     console.timeEnd("[build] esbuild-pages");
   }
 
-  // ── esbuild: compile components (client-side JS) ───────────────────
+  // -- esbuild: compile components (client-side JS) -------------------
   if (isFullBuild || changeKind === "component") {
     console.time("[build] esbuild-components");
     await esbuild.build({
@@ -296,7 +296,7 @@ export const build = async ({
     console.timeEnd("[build] esbuild-components");
   }
 
-  // ── Render pages to HTML ───────────────────────────────────────────
+  // -- Render pages to HTML -------------------------------------------
   if (changeKind !== "asset") {
     console.time("[build] render-pages");
     // Determine which JS output files to render
@@ -499,14 +499,14 @@ export const build = async ({
     console.timeEnd("[build] render-pages");
   }
 
-  // ── Build endpoints (.ts/.js files in pages) ───────────────────────
+  // -- Build endpoints (.ts/.js files in pages) -----------------------
   if (isFullBuild || changeKind === "page") {
     console.time("[build] build-endpoints");
     await buildEndpoints(projectDir, config, debug);
     console.timeEnd("[build] build-endpoints");
   }
 
-  // ── Copy outputs ───────────────────────────────────────────────────
+  // -- Copy outputs ---------------------------------------------------
   console.time("[build] copy-outputs");
   if (isFullBuild || changeKind === "component") {
     await cp(tmpComponentsDir, outputComponentsDir, { recursive: true });
@@ -517,7 +517,7 @@ export const build = async ({
   }
   console.timeEnd("[build] copy-outputs");
 
-  // ── Post plugins ───────────────────────────────────────────────────
+  // -- Post plugins ---------------------------------------------------
   // Run post plugins on full build, or when components change (may affect styles).
   // Skip for single-page edits to save time.
   if (isFullBuild || changeKind === "component") {

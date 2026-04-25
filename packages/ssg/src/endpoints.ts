@@ -7,7 +7,7 @@ import { writeFile, readFile } from "node:fs/promises";
 import type { Elysia } from "elysia";
 import type { SsgConfig } from "./types.js";
 
-// ── Types ────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------
 
 /** HTTP method names that endpoint files may export. */
 export const HTTP_METHODS = [
@@ -80,7 +80,7 @@ export interface ResolvedEndpoint {
   prerender: boolean;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────
+// -- Helpers ----------------------------------------------------------
 
 /**
  * Create a redirect `Response`.
@@ -132,7 +132,7 @@ const routeToExpressPattern = (route: string): string =>
 const extractParamNames = (route: string): string[] =>
   Array.from(route.matchAll(/\[([^\]]+)\]/g), (m) => m[1]);
 
-// ── Discovery ────────────────────────────────────────────────────────
+// -- Discovery --------------------------------------------------------
 
 /**
  * Find all endpoint source files (`*.ts` / `*.js`, excluding `*.mdx`)
@@ -148,7 +148,7 @@ export const discoverEndpointSourceFiles = async (
   });
 };
 
-// ── Compilation ──────────────────────────────────────────────────────
+// -- Compilation ------------------------------------------------------
 
 /**
  * Compile endpoint `.ts` / `.js` source files with esbuild into the
@@ -198,7 +198,7 @@ export const compileEndpoints = async (
   return mapping;
 };
 
-// ── Loading ──────────────────────────────────────────────────────────
+// -- Loading ----------------------------------------------------------
 
 /**
  * Dynamically import a compiled endpoint module.
@@ -223,7 +223,7 @@ const loadEndpointModule = async (
   }
 };
 
-// ── Resolve ──────────────────────────────────────────────────────────
+// -- Resolve ----------------------------------------------------------
 
 /**
  * Discover, compile, load and resolve all endpoint files.
@@ -285,7 +285,7 @@ export const resolveEndpoints = async (
   return endpoints;
 };
 
-// ── Build ────────────────────────────────────────────────────────────
+// -- Build ------------------------------------------------------------
 
 /**
  * Build all endpoints during the SSG build phase.
@@ -402,7 +402,7 @@ export const buildEndpoints = async (
   }
 };
 
-// ── Dynamic route handler ────────────────────────────────────────────
+// -- Dynamic route handler --------------------------------------------
 
 /**
  * Handle an incoming request for an endpoint route.
@@ -463,7 +463,7 @@ const handleEndpointRoute = async (
   }
 };
 
-// ── Serve / SSR ──────────────────────────────────────────────────────
+// -- Serve / SSR ------------------------------------------------------
 
 /**
  * Register dynamic endpoint routes on an Express-compatible app.

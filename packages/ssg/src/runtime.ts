@@ -50,7 +50,7 @@ export const setupLiveReload = () => {
   };
 };
 
-// ── Client-side navigation with prefetch ──────────────────────────────
+// -- Client-side navigation with prefetch ------------------------------
 
 /** Cache of prefetched HTML pages (url → html string) */
 const pageCache = new Map<string, string>();
@@ -319,7 +319,7 @@ const setupPrefetch = (): void => {
   const observed = new WeakSet<Element>();
   const hoverBound = new WeakSet<Element>();
 
-  // ── Hover / touch prefetch (fastest: ~200ms before click) ──────────
+  // -- Hover / touch prefetch (fastest: ~200ms before click) ----------
   const onHoverIn = (e: Event) => {
     const anchor = (e.target as Element)?.closest?.(
       "a",
@@ -330,7 +330,7 @@ const setupPrefetch = (): void => {
   document.addEventListener("mouseover", onHoverIn, { passive: true });
   document.addEventListener("touchstart", onHoverIn, { passive: true });
 
-  // ── IntersectionObserver prefetch (visible links, background) ──────
+  // -- IntersectionObserver prefetch (visible links, background) ------
   if (!("IntersectionObserver" in window)) return;
 
   const observer = new IntersectionObserver(
@@ -367,7 +367,7 @@ const setupPrefetch = (): void => {
   });
 };
 
-// ── Bootstrap ─────────────────────────────────────────────────────────
+// -- Bootstrap ---------------------------------------------------------
 
 // Guard: only initialise once, even when runtime.js is re-imported with a
 // different cache-busting query string (each ?v=... is a new ES module identity).
