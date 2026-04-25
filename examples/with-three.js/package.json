@@ -17,6 +17,7 @@
     "defuss": "^3.4.2",
     "defuss-astro": "^1.6.0",
     "defuss-shadcn": "^0.6.2",
+    "defuss-vad": "^2.0.1",
     "lightningcss": "^1.30.2",
     "sharp": "^0.34.5",
     "tailwindcss": "^4.1.18"

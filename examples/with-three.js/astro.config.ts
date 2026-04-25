@@ -10,6 +10,14 @@ export default defineConfig({
     }),
   ],
   vite: {
+    optimizeDeps: {
+      exclude: [
+        "onnxruntime-web",
+        "onnxruntime-web/wasm",
+        "onnxruntime-web/webgpu",
+        "onnxruntime-common",
+      ],
+    },
     ssr: {
       noExternal: ["astro"],
     },
