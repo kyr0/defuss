@@ -4,8 +4,12 @@ import { join, relative, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { writeFile, readFile } from "node:fs/promises";
-import type { Elysia } from "elysia";
-import type { SsgConfig } from "./types.js";
+import type {
+  EndpointRouteContext,
+  EndpointRouteMethod,
+  EndpointRouteRegistrar,
+  SsgConfig,
+} from "./types.js";
 
 // -- Types ------------------------------------------------------------
 
@@ -121,7 +125,7 @@ export const endpointFileToRoute = (
  *
  * `"/api/[id].json"` → `"/api/:id.json"`
  */
-const routeToExpressPattern = (route: string): string =>
+export const routeToExpressPattern = (route: string): string =>
   route.replace(/\[([^\]]+)\]/g, ":$1");
 
 /**
@@ -131,6 +135,38 @@ const routeToExpressPattern = (route: string): string =>
  */
 const extractParamNames = (route: string): string[] =>
   Array.from(route.matchAll(/\[([^\]]+)\]/g), (m) => m[1]);
+
+const escapeRouteSegment = (value: string): string =>
+  value.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&");
+
+export const matchRoutePattern = (
+  routePattern: string,
+  pathname: string,
+): Record<string, string | undefined> | null => {
+  const params: string[] = [];
+  let pattern = "";
+  let lastIndex = 0;
+
+  for (const match of routePattern.matchAll(/\[([^\]]+)\]/g)) {
+    const index = match.index ?? 0;
+    pattern += escapeRouteSegment(routePattern.slice(lastIndex, index));
+    pattern += "([^/]+)";
+    params.push(match[1]);
+    lastIndex = index + match[0].length;
+  }
+
+  pattern += escapeRouteSegment(routePattern.slice(lastIndex));
+
+  const matched = pathname.match(new RegExp(`^${pattern}$`));
+  if (!matched) return null;
+
+  const resolvedParams: Record<string, string | undefined> = {};
+  for (const [index, name] of params.entries()) {
+    resolvedParams[name] = decodeURIComponent(matched[index + 1] || "");
+  }
+
+  return resolvedParams;
+};
 
 // -- Discovery --------------------------------------------------------
 
@@ -205,7 +241,7 @@ export const compileEndpoints = async (
  * Uses a base-64 data-URL to bust Node's import cache so that edits are
  * picked up on the next request (important in serve / dev mode).
  */
-const loadEndpointModule = async (
+export const loadEndpointModule = async (
   filePath: string,
 ): Promise<EndpointModule> => {
   const code = await readFile(filePath, "utf-8");
@@ -409,11 +445,11 @@ export const buildEndpoints = async (
  *
  * Loads the compiled `.mjs` from `.endpoints/` (cache-busted so edits
  * are picked up immediately in dev mode), finds the matching HTTP method
- * handler (falling back to `ALL`), and streams the Web `Response` back
- * through Elysia.
+ * handler (falling back to `ALL`), and returns a Web `Response` for the
+ * active server adapter to stream back to the client.
  */
-const handleEndpointRoute = async (
-  ctx: { request: Request; params: Record<string, string | undefined> },
+export const handleEndpointRoute = async (
+  ctx: EndpointRouteContext,
   compiledFile: string,
   routePattern: string,
   method: HttpMethod,
@@ -466,7 +502,7 @@ const handleEndpointRoute = async (
 // -- Serve / SSR ------------------------------------------------------
 
 /**
- * Register dynamic endpoint routes on an Express-compatible app.
+ * Register dynamic endpoint routes on a generic server adapter.
  *
  * Loads the already-compiled `.mjs` files from the `.endpoints/`
  * folder and registers an Express route for each exported HTTP method.
@@ -480,9 +516,9 @@ const handleEndpointRoute = async (
  * (per the Astro spec).
  */
 export const registerEndpoints = async (
-  app: Elysia,
+  registrar: EndpointRouteRegistrar,
   projectDir: string,
-  config: SsgConfig,
+  _config: SsgConfig,
   debug = false,
 ): Promise<void> => {
   const endpointsDir = join(projectDir, ".endpoints");
@@ -531,14 +567,12 @@ export const registerEndpoints = async (
     // Register a handler for each exported HTTP method
     for (const method of HTTP_METHODS) {
       if (method in module && typeof module[method] === "function") {
-        const elysiaMethod =
-          method === "ALL" ? "all" : (method.toLowerCase() as any);
-        (app as any)[elysiaMethod](
+        const routeMethod: EndpointRouteMethod =
+          method === "ALL" ? "all" : (method.toLowerCase() as EndpointRouteMethod);
+        registrar.register(
+          routeMethod,
           expressRoute,
-          (ctx: {
-            request: Request;
-            params: Record<string, string | undefined>;
-          }) => handleEndpointRoute(ctx, compiledFile, route, method),
+          (ctx) => handleEndpointRoute(ctx, compiledFile, route, method),
         );
         if (debug) {
           console.log(`  ${method} ${expressRoute}`);
@@ -548,12 +582,10 @@ export const registerEndpoints = async (
 
     // Auto HEAD from GET when HEAD is not explicitly exported
     if (module.GET && !module.HEAD) {
-      app.head(
+      registrar.register(
+        "head",
         expressRoute,
-        (ctx: {
-          request: Request;
-          params: Record<string, string | undefined>;
-        }) => handleEndpointRoute(ctx, compiledFile, route, "GET"),
+        (ctx) => handleEndpointRoute(ctx, compiledFile, route, "GET"),
       );
       if (debug) {
         console.log(`  HEAD ${expressRoute} (auto from GET)`);

@@ -222,30 +222,20 @@ const getRpcRoute = async () => {
 };
 
 /**
- * Handle an RPC request by forwarding to defuss-rpc's rpcRoute handler.
- * Receives an Elysia context and returns a Web Response.
+ * Handle an RPC request by forwarding the original Fetch request to
+ * defuss-rpc's rpcRoute handler.
  *
- * Elysia consumes the request body during parsing, so we reconstruct a
- * fresh Request with the body re-serialised from Elysia's `body` property.
+ * The RPC wire format is DSON, not JSON, so the request body must reach
+ * rpcRoute untouched.
  *
- * @param ctx Elysia context containing the parsed body and original request
+ * @param ctx Context containing the original request
  */
 export const handleRpcRequest = async (ctx: {
   request: Request;
-  body: unknown;
 }): Promise<Response> => {
   try {
     const rpcRoute = await getRpcRoute();
-
-    // Reconstruct a fresh Request so rpcRoute can call request.json()
-    const bodyStr = JSON.stringify(ctx.body);
-    const freshRequest = new Request(ctx.request.url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: bodyStr,
-    });
-
-    return await rpcRoute({ request: freshRequest } as any);
+    return await rpcRoute({ request: ctx.request } as any);
   } catch (error) {
     console.error("[defuss-ssg] RPC request error:", error);
     return Response.json(

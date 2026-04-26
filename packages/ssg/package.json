@@ -26,14 +26,14 @@
     "pretest": "bun run build",
     "prebuild": "bun run clean",
     "build": "pkgroll",
-    "cli-build": "bun ./dist/cli.mjs build ../../example-ssg/",
-    "cli-serve": "bun ./dist/cli.mjs serve ../../example-ssg/",
-    "cli-serve:mc": "bun ./dist/cli.mjs serve ../../example-ssg/ --multicore",
+    "cli-dev": "node ./dist/cli.mjs dev ../../example-ssg/",
+    "cli-build": "node ./dist/cli.mjs build ../../example-ssg/",
+    "cli-serve": "node ./dist/cli.mjs serve ../../example-ssg/",
+    "cli-serve:mc": "node ./dist/cli.mjs serve ../../example-ssg/ --multicore",
     "bench:rpc": "npx autocannon -p 256 -w 8 -c 1024 -d 30 -m POST -H 'content-type: application/json' -b '{\"className\":\"mathApi\",\"methodName\":\"add\",\"args\":[1,2]}' http://127.0.0.1:3000/rpc",
     "test": "echo 'No tests available'",
     "bench": "npx autocannon -p 32 -w 8 -c 200 -d 20 -m POST -H \"content-type: application/json\" -b '{\"hello\":\"world\"}' http://127.0.0.1:3000/body",
-    "start": "tsx src/dynamic.ts",
-    "start:lb": "tsx scripts/lb.ts"
+    "start": "node ./dist/cli.mjs dev ../../example-ssg/"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -68,6 +68,16 @@
         "default": "./dist/runtime.mjs"
       }
     },
+    "./vite": {
+      "require": {
+        "types": "./dist/vite.d.cts",
+        "default": "./dist/vite.cjs"
+      },
+      "import": {
+        "types": "./dist/vite.d.mts",
+        "default": "./dist/vite.mjs"
+      }
+    },
     "./plugins": {
       "require": {
         "types": "./dist/plugins/index.d.cts",
@@ -86,7 +96,7 @@
     "dist"
   ],
   "engines": {
-    "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "peerDependencies": {
     "defuss-rpc": "*"
@@ -98,8 +108,9 @@
   },
   "dependencies": {
     "@mdx-js/esbuild": "^3.1.1",
-    "chokidar": "^5.0.0",
-    "defuss": "^3.4.0",
+    "defuss": "^3.4.5",
+    "defuss-express": "^0.2.1",
+    "defuss-vite": "^1.1.3",
     "esbuild": "^0.27.3",
     "fast-glob": "^3.3.3",
     "rehype-katex": "^7.0.1",
@@ -111,13 +122,11 @@
     "remark-mdx-frontmatter": "^5.2.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "elysia": "^1.2.25",
-    "@elysiajs/static": "^1.1.1",
-    "unist-util-visit": "^5.1.0"
+    "unist-util-visit": "^5.1.0",
+    "vite": "^8.0.0"
   },
   "devDependencies": {
     "@types/autocannon": "^7.12.7",
-    "@types/bun": "^1.3.9",
     "autocannon": "^8.0.0",
     "happy-dom": "^20.6.1",
     "pkgroll": "^2.25.2",

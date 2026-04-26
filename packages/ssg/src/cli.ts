@@ -1,4 +1,5 @@
 import { build } from "./build.js";
+import { dev } from "./dev.js";
 import { serve } from "./serve.js";
 import { resolve } from "node:path";
 import { setup } from "./setup.js";
@@ -10,7 +11,7 @@ import { setup } from "./setup.js";
   const positional = args.filter((a) => !a.startsWith("-"));
   const command = positional[0];
   const folder = positional[1];
-  const usage = "Usage: defuss-ssg <build|serve> <folder> [--debug] [--multicore]";
+  const usage = "Usage: defuss-ssg <dev|build|serve> <folder> [--debug] [--multicore]";
 
   if (!command || !folder) {
     console.error(usage);
@@ -22,7 +23,14 @@ import { setup } from "./setup.js";
   // initialize the project (if not already done)
   await setup(projectDir);
 
-  if (command === "build") {
+  if (command === "dev") {
+    console.log(`Starting Vite dev server for ${folder}...`);
+    await dev({
+      projectDir,
+      debug,
+      writeDevOutput: true,
+    });
+  } else if (command === "build") {
     console.log(`Building ${folder}...`);
     await build({
       projectDir,
@@ -30,12 +38,11 @@ import { setup } from "./setup.js";
       mode: "build",
     });
   } else if (command === "serve") {
-    console.log(`Serving ${folder}...`);
+    console.log(`Serving built output for ${folder}...`);
     await serve({
       projectDir,
       debug,
-      mode: "serve",
-      multicore,
+      workers: multicore ? "auto" : 1,
     });
   } else {
     console.error(usage);

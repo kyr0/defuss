@@ -127,7 +127,7 @@ const prefetch = async (url: string): Promise<void> => {
 };
 
 /** Execute <script> tags found in the new body (hydration scripts etc.) */
-const executeScripts = (container: Element): void => {
+const executeScripts = (container: Element, runId: string): void => {
   const scripts = container.querySelectorAll("script");
   console.log(
     `[executeScripts] Found ${scripts.length} script(s) to re-execute`,
@@ -136,11 +136,20 @@ const executeScripts = (container: Element): void => {
     const newScript = document.createElement("script");
     // Copy all attributes
     for (const attr of oldScript.attributes) {
+      if (attr.name === "src" && oldScript.type === "module") {
+        const separator = attr.value.includes("#") ? "&" : "#";
+        newScript.setAttribute(
+          attr.name,
+          `${attr.value}${separator}defuss-nav=${runId}`,
+        );
+        continue;
+      }
+
       newScript.setAttribute(attr.name, attr.value);
     }
     newScript.textContent = oldScript.textContent;
     console.log(
-      `[executeScripts] Replacing script id=${oldScript.id || "(none)"} type=${oldScript.type || "(none)"} len=${oldScript.textContent?.length}`,
+      `[executeScripts] Replacing script id=${oldScript.id || "(none)"} type=${oldScript.type || "(none)"} len=${oldScript.textContent?.length} runId=${runId}`,
     );
     oldScript.replaceWith(newScript);
   }
@@ -256,7 +265,7 @@ export const navigateTo = async (
       );
     });
 
-    executeScripts(document.body);
+    executeScripts(document.body, Date.now().toString(36));
 
     // Update history
     if (replace) {

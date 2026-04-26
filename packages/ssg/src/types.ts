@@ -8,12 +8,14 @@ export type StatusCode =
   | "OK"
   | "MISSING_PROJECT_DIR"
   | "MISSING_PACKAGE_JSON"
+  | "MISSING_BUILD_OUTPUT"
   | "INVALID_JSON"
   | "UNSUPPORTED_PM"
   | "INSTALL_FAILED"
   | "INVALID_CONFIG"
   | "INVALID_PROJECT_DIR"
-  | "PORT_IN_USE";
+  | "PORT_IN_USE"
+  | "SERVER_START_FAILED";
 
 export type Status = {
   code: StatusCode;
@@ -82,6 +84,114 @@ export interface BuildOptions {
    * Defaults to false (single process).
    */
   multicore?: boolean;
+}
+
+export interface DevOptions {
+  /**
+   * Enable debug logging during the dev server lifecycle.
+   */
+  debug?: boolean;
+
+  /**
+   * The project root containing pages, components, assets and config.ts.
+   */
+  projectDir: string;
+
+  /**
+   * Port passed through to the Vite dev server.
+   * Defaults to 3000.
+   */
+  port?: number;
+
+  /**
+   * Host passed through to the Vite dev server.
+   * Defaults to true (listen on all interfaces).
+   */
+  host?: string | boolean;
+
+  /**
+   * Temporary bridge flag while the Vite request-time renderer lands.
+   * When true, the current SSG build writes static dev output to dist.
+   * Defaults to true for the CLI-backed dev command.
+   */
+  writeDevOutput?: boolean;
+}
+
+export interface ServeOptions {
+  /**
+   * Enable debug logging during the production runtime startup.
+   */
+  debug?: boolean;
+
+  /**
+   * The already-built project root to serve.
+   */
+  projectDir: string;
+
+  /**
+   * Public port for the production HTTP runtime.
+   * Defaults to 3000.
+   */
+  port?: number;
+
+  /**
+   * Worker count for defuss-express.
+   * Defaults to 1.
+   */
+  workers?: number | "auto";
+}
+
+export type DevChangeKind =
+  | "page"
+  | "component"
+  | "asset"
+  | "config"
+  | "rpc"
+  | "other";
+
+export interface DefussSsgViteOptions {
+  /**
+   * The project root. Defaults to Vite's resolved root.
+   */
+  projectDir?: string;
+
+  /**
+   * Enable debug logging.
+   */
+  debug?: boolean;
+
+  /**
+   * Temporary bridge flag while request-time Vite rendering lands.
+   * When true, SSG output is written to dist and served from there.
+   */
+  writeDevOutput?: boolean;
+}
+
+export type EndpointRouteMethod =
+  | "get"
+  | "post"
+  | "put"
+  | "delete"
+  | "patch"
+  | "head"
+  | "options"
+  | "all";
+
+export interface EndpointRouteContext {
+  request: Request;
+  params: Record<string, string | undefined>;
+}
+
+export type EndpointRouteResponder = (
+  context: EndpointRouteContext,
+) => Promise<Response>;
+
+export interface EndpointRouteRegistrar {
+  register(
+    method: EndpointRouteMethod,
+    route: string,
+    handler: EndpointRouteResponder,
+  ): void;
 }
 
 export type PluginFn =

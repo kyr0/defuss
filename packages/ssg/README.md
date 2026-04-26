@@ -40,19 +40,29 @@ And then run (in an NPM script or globally):
 defuss-ssg build ./folder
 ```
 
-<h4>Serve-mode with automatic re-build on change</h4>
+<h4>Vite-powered development</h4>
 
 ```bash
-defuss-ssg serve ./folder
+defuss-ssg dev ./folder
 ```
 
-This starts a local server at http://localhost:3000 and watches for changes in:
+This starts a Vite dev server at http://localhost:3000 and watches for changes in:
 
 - `pages/` directory
 - `components/` directory
 - `assets/` directory
 
 Changes trigger automatic rebuilds, with the last change always taking priority to prevent build queueing issues.
+
+The current migration bridge still writes dev output to `dist/` while the request-time Vite renderer is being moved over.
+
+<h4>Production serving</h4>
+
+```bash
+defuss-ssg serve ./folder
+```
+
+This serves already-built output with `defuss-express`. Run `defuss-ssg build ./folder` first.
 
 <h4>Local development of SSG and running the example</h4>
 
@@ -68,7 +78,7 @@ cd defuss/packages/ssg
 bun i && bun build
 
 # for building and serving the example site with auto-rebuild:
-bun run cli-serve ./example
+bun run cli-dev ./example
 
 # for one-time build of the example site:
 bun run cli-build ./example
@@ -81,7 +91,7 @@ Please create a PR or issue if you find any bugs or have feature requests.
 Advanced users may want to use the library programmatically:
 
 ```typescript
-import { setup, build, serve } from "defuss-ssg";
+import { setup, build, dev, serve } from "defuss-ssg";
 
 (async () => {
 
@@ -98,10 +108,16 @@ import { setup, build, serve } from "defuss-ssg";
     debug: true,
   });
 
-  // Or serve with auto-rebuild
-  await serve({
+  // Or start the Vite-backed dev server
+  await dev({
     projectDir: "./my-site", 
     debug: true,
+  });
+
+  // Or serve an already-built production output
+  await serve({
+    projectDir: "./my-site",
+    workers: "auto",
   });
 })();
 ```
@@ -112,7 +128,7 @@ Overview
 
 > `defuss-ssg` is a CLI tool and library for building static websites using modern JavaScript/TypeScript and `defuss`. It reads content files (Markdown, MDX) from a specified directory, processes them with MDX plugins, compiles components with esbuild, and outputs fully static HTML sites ready for deployment.
 
-> It supports a plugin system for extending the build process at various phases (pre-build, post-build, page-level transformations), automatic file watching and rebuilding in serve mode, and seamless integration with defuss components for interactive features.
+> It supports a plugin system for extending the build process at various phases (pre-build, post-build, page-level transformations), Vite-backed development, and defuss-express production serving.
 
 <h3 align="center">
 
@@ -123,8 +139,9 @@ Features
 - **MDX Support**: Full Markdown + JSX support with frontmatter parsing
 - **Component Integration**: Use defuss components in your MDX files
 - **Plugin System**: Extend the build process with custom plugins at multiple phases
-- **Fast Compilation**: Powered by esbuild for quick builds and hot reloading
-- **Serve Mode**: Built-in development server with file watching and auto-rebuild
+- **Fast Compilation**: Powered by esbuild today, with Vite now orchestrating development
+- **Dev Mode**: Vite-backed development server with auto-rebuild and full reload
+- **Production Runtime**: `defuss-express` serves static output plus dynamic endpoints and RPC
 - **TypeScript Ready**: Full TypeScript support for components and configuration
 - **Asset Handling**: Automatic copying of static assets to output directory
 - **Flexible Configuration**: Configurable via TypeScript config file with sensible defaults

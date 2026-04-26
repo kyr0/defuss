@@ -2,6 +2,8 @@ export * from "./types.js";
 export * from "./mdx-plugins.js";
 export * from "./config.js";
 export * from "./build.js";
+export * from "./dev.js";
 export * from "./serve.js";
 export * from "./endpoints.js";
+export * from "./vite.js";
 export * from "./rpc.js";
