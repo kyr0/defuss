@@ -98,7 +98,11 @@ body {
   border: 1px solid hsl(var(--border));
   background:
     linear-gradient(180deg, hsl(var(--card) / 0.9), hsl(var(--muted) / 0.5)),
-    radial-gradient(circle at top right, hsl(var(--accent) / 0.1), transparent 38%);
+    radial-gradient(
+      circle at top right,
+      hsl(var(--accent) / 0.1),
+      transparent 38%
+    );
 }
 
 .meter-summary {
@@ -162,7 +166,11 @@ body {
 }
 
 .meter-input .meter-fill {
-  background: linear-gradient(90deg, hsl(var(--accent) / 0.55), hsl(var(--accent)));
+  background: linear-gradient(
+    90deg,
+    hsl(var(--accent) / 0.55),
+    hsl(var(--accent))
+  );
 }
 
 .meter-voice .meter-fill {
@@ -208,7 +216,8 @@ body {
   .avatar-stage {
     min-height: 560px;
   }
-}@import "tailwindcss";
+}
+@import "tailwindcss";
 @import "defuss-shadcn/css";
 @import "./theme.css";
 
