@@ -1,3 +1,4 @@
+import { $ } from "defuss";
 import { hydrate } from "defuss/client"; // CSR package with hydration support
 
 export const LiveReloadUrl = `${document.location.origin
@@ -247,11 +248,11 @@ export const navigateTo = async (
     // Update <head> (title, meta, styles)
     updateHead(doc);
 
-    // Morph <body> content: swap innerHTML and re-execute scripts
+    // Morph <body> content in place and re-execute scripts.
     console.log(
-      `[navigateTo] Swapping body innerHTML (new length=${newBody.innerHTML.length})`,
+      `[navigateTo] Morphing body content (new length=${newBody.innerHTML.length})`,
     );
-    document.body.innerHTML = newBody.innerHTML;
+    await $(document.body).update(newBody.innerHTML);
 
     // Log hydration wrappers found in new DOM
     const hydrateWrappers = document.querySelectorAll('[data-hydrate="true"]');
@@ -326,7 +327,6 @@ const setupClientNav = (): void => {
 /** Observe visible links and prefetch them; also prefetch on hover/touch */
 const setupPrefetch = (): void => {
   const observed = new WeakSet<Element>();
-  const hoverBound = new WeakSet<Element>();
 
   // -- Hover / touch prefetch (fastest: ~200ms before click) ----------
   const onHoverIn = (e: Event) => {

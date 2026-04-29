@@ -1,6 +1,7 @@
-import mdx from "@mdx-js/esbuild";
-import esbuild from "esbuild";
+import mdx from "@mdx-js/rollup";
 import glob from "fast-glob";
+import { build as viteBuild, createServer } from "vite";
+import defuss from "defuss-vite";
 
 import {
   renderToString,
@@ -10,16 +11,14 @@ import {
   type VNode,
 } from "defuss/server";
 
-import { resolve, join, dirname, sep } from "node:path";
-import { cp, readFile, writeFile } from "node:fs/promises";
+import { resolve, join, dirname, relative, sep } from "node:path";
+import { cp, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { tmpdir } from "node:os";
 import {
   existsSync,
   mkdirSync,
   rmSync,
   symlinkSync,
-  unlinkSync,
 } from "node:fs";
 import type {
   BuildOptions,
@@ -36,6 +35,18 @@ import { buildEndpoints } from "./endpoints.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const resolveLocalHelperFile = (
+  sourceRelativePath: string,
+  builtRelativePath: string,
+): string => {
+  const sourcePath = resolve(__dirname, sourceRelativePath);
+  if (existsSync(sourcePath)) {
+    return sourcePath;
+  }
+
+  return resolve(__dirname, builtRelativePath);
+};
 
 /**
  * A single, complete build process for a static site project.
@@ -224,21 +235,19 @@ export const build = async ({
   // (always needed; fast because they're single files)
   console.time("[build] copy-hydration");
   await cp(
-    resolve(join(__dirname, "components", "index.mjs")),
+    resolveLocalHelperFile(join("components", "hydrate.tsx"), join("components", "index.mjs")),
     join(tmpComponentsDir, "hydrate.tsx"),
   );
   await cp(
-    resolve(join(__dirname, "runtime.mjs")),
+    resolveLocalHelperFile("runtime.ts", "runtime.mjs"),
     join(tmpComponentsDir, "runtime.ts"),
   );
   console.timeEnd("[build] copy-hydration");
 
   // -- Clean stale component .js outputs ------------------------------
-  // esbuild-pages bundles with bundle:true and jsxDev:true. When it
-  // resolves component imports (e.g. '../components/button.js'), stale
-  // .js files from a previous esbuild-components run would be picked up
-  // instead of the fresh .tsx source. Removing them forces esbuild to
-  // resolve the .tsx files, preserving sourceInfo for auto-hydration.
+  // Page SSR loading should resolve source .tsx files so auto-hydration
+  // keeps sourceInfo. Removing old built .js files avoids those outputs
+  // shadowing the source modules during the page render step.
   if (changeKind === "component" || isFullBuild) {
     const staleJsFiles = await glob.async(join(tmpComponentsDir, "**/*.js"));
     for (const f of staleJsFiles) {
@@ -246,27 +255,30 @@ export const build = async ({
     }
   }
 
-  // -- esbuild: compile pages -----------------------------------------
-  let pageBuildResult: esbuild.BuildResult | null = null;
+  // -- Collect page source files for Vite SSR loading -----------------
+  let pageSourceFiles: string[] = [];
   if (changeKind !== "asset") {
-    console.time("[build] esbuild-pages");
-    // For a single-page change, only compile that one MDX file.
-    // For component/full, compile all pages (components may be inlined).
-    const pageEntryPoints =
+    console.time("[build] collect-pages");
+    pageSourceFiles =
       changeKind === "page"
         ? [join(config.tmp, changedRelative)]
-        : [join(tmpPagesDir, "**/*.mdx")];
+        : await glob.async(join(tmpPagesDir, "**/*.mdx"));
+    console.timeEnd("[build] collect-pages");
+  }
 
-    pageBuildResult = await esbuild.build({
-      entryPoints: pageEntryPoints,
-      format: "esm",
-      bundle: true,
-      sourcemap: true,
-      jsxDev: true,
-      target: ["esnext"],
-      outdir: tmpPagesDir,
-      metafile: true,
+  // -- Render pages to HTML -------------------------------------------
+  if (changeKind !== "asset") {
+    console.time("[build] render-pages");
+    const pageModuleServer = await createServer({
+      root: config.tmp,
+      configFile: false,
+      appType: "custom",
+      logLevel: debug ? "info" : "error",
+      server: {
+        middlewareMode: true,
+      },
       plugins: [
+        defuss({ enableJsxDevMode: true }),
         mdx({
           jsxImportSource: "defuss",
           development: true,
@@ -275,228 +287,193 @@ export const build = async ({
         }),
       ],
     });
-    console.timeEnd("[build] esbuild-pages");
-  }
 
-  // -- esbuild: compile components (client-side JS) -------------------
-  if (isFullBuild || changeKind === "component") {
-    console.time("[build] esbuild-components");
-    await esbuild.build({
-      entryPoints: [
-        join(tmpComponentsDir, "**/*.tsx"),
-        join(tmpComponentsDir, "**/*.ts"),
-      ],
-      format: "esm",
-      bundle: true,
-      splitting: true,
-      target: ["esnext"],
-      outdir: tmpComponentsDir,
-      allowOverwrite: true,
-    });
-    console.timeEnd("[build] esbuild-components");
-  }
+    try {
+      let inputFiles: string[];
 
-  // -- Render pages to HTML -------------------------------------------
-  if (changeKind !== "asset") {
-    console.time("[build] render-pages");
-    // Determine which JS output files to render
-    let outputFiles: string[];
-
-    if (changeKind === "page") {
-      // Only the changed page's compiled JS
-      const jsFile = join(config.tmp, changedRelative.replace(/\.mdx$/, ".js"));
-      outputFiles = existsSync(jsFile) ? [jsFile] : [];
-    } else if (changeKind === "component" && pageBuildResult?.metafile) {
-      // Only render pages that actually import the changed component
-      const changedBaseName = changedRelative.replace(/\.[^.]+$/, ""); // e.g. "components/button"
-      outputFiles = [];
-
-      console.log(
-        `[build] component-dep: looking for pages depending on "${changedBaseName}"`,
-      );
-
-      for (const [outputPath, meta] of Object.entries(
-        pageBuildResult.metafile.outputs,
-      )) {
-        // Skip sourcemap outputs
-        if (outputPath.endsWith(".map")) continue;
-
-        const inputPaths = Object.keys(meta.inputs);
-        const dependsOnChanged = inputPaths.some((input) => {
-          const inputNorm = input.replace(/\.[^.]+$/, ""); // strip extension
-          return inputNorm.endsWith(changedBaseName);
-        });
-
-        console.log(
-          `[build] component-dep: output="${outputPath}", inputs=${inputPaths.length}, dependsOnChanged=${dependsOnChanged}`,
-        );
-        if (dependsOnChanged) {
+      if (changeKind === "page") {
+        inputFiles = pageSourceFiles.filter((pageFile) => existsSync(pageFile));
+      } else {
+        if (changeKind === "component") {
           console.log(
-            `[build] component-dep:   matching inputs: ${inputPaths.filter((i) => i.replace(/\.[^.]+$/, "").endsWith(changedBaseName)).join(", ")}`,
+            "[build] component-dep: rendering all pages because Vite SSR loading has no esbuild metafile dependency graph",
           );
         }
+        inputFiles = pageSourceFiles;
+      }
 
-        if (dependsOnChanged) {
-          // esbuild metafile output paths are relative to CWD; resolve them
-          const resolved = resolve(outputPath);
-          if (resolved.endsWith(".js") && existsSync(resolved)) {
-            outputFiles.push(resolved);
+      if (!existsSync(outputProjectDir)) {
+        mkdirSync(outputProjectDir, { recursive: true });
+      }
+
+      for (const inputFile of inputFiles) {
+        const outputHtmlFilePath = inputFile.replace(/\.mdx$/, ".html");
+        const resolvedTmpPagesDir = resolve(tmpPagesDir);
+        const relativeOutputHtmlFilePath = outputHtmlFilePath
+          .replace(`${resolvedTmpPagesDir}${sep}`, "")
+          .replace(`${tmpPagesDir}${sep}`, "");
+
+        const pageLabel = relativeOutputHtmlFilePath;
+
+        if (debug) {
+          console.log("Processing page source file:", inputFile);
+          console.log("Relative output HTML path:", relativeOutputHtmlFilePath);
+        }
+
+        console.time(`[build] page:${pageLabel} ssrLoadModule`);
+        const modulePath = `/${relative(config.tmp, inputFile).split(sep).join("/")}`;
+        const exports = (await pageModuleServer.ssrLoadModule(modulePath)) as Record<
+          string,
+          any
+        >;
+        console.timeEnd(`[build] page:${pageLabel} ssrLoadModule`);
+
+        if (debug) {
+          console.log("exports", exports);
+        }
+
+        console.time(`[build] page:${pageLabel} vdom`);
+        let vdom = exports.default(exports) as VNode;
+        console.timeEnd(`[build] page:${pageLabel} vdom`);
+
+        // run any "page-vdom" plugins
+        for (const plugin of config.plugins || []) {
+          if (
+            plugin.phase === "page-vdom" &&
+            (plugin.mode === mode || plugin.mode === "both")
+          ) {
+            console.time(`[build] page:${pageLabel} plugin:${plugin.name}`);
+            if (debug) {
+              console.log(`Running page-vdom plugin: ${plugin.name}`);
+            }
+            vdom = await (plugin.fn as PluginFnPageVdom)(
+              vdom,
+              relativeOutputHtmlFilePath,
+              projectDir,
+              config,
+              exports,
+            );
+            console.timeEnd(`[build] page:${pageLabel} plugin:${plugin.name}`);
           }
         }
-      }
 
-      console.log(
-        `[build] component-dep: ${outputFiles.length} page(s) affected out of ${Object.keys(pageBuildResult.metafile.outputs).filter((p) => !p.endsWith(".map")).length} total`,
-      );
+        console.time(`[build] page:${pageLabel} renderSync`);
+        const browserGlobals = getBrowserGlobals();
+        const document = getDocument(false, browserGlobals);
+        browserGlobals.document = document;
 
-      // Fallback: if metafile analysis found nothing, render all pages
-      if (outputFiles.length === 0) {
-        console.log(`[build] component-dep: FALLBACK - rendering all pages`);
-        outputFiles = await glob.async(join(tmpPagesDir, "**/*.js"));
+        let el = renderSync(vdom, document.documentElement, {
+          browserGlobals,
+        }) as HTMLElement;
+        console.timeEnd(`[build] page:${pageLabel} renderSync`);
+
+        // run any "page-dom" plugins
+        for (const plugin of config.plugins || []) {
+          if (
+            plugin.phase === "page-dom" &&
+            (plugin.mode === mode || plugin.mode === "both")
+          ) {
+            console.time(`[build] page:${pageLabel} dom-plugin:${plugin.name}`);
+            if (debug) {
+              console.log(`Running page-dom plugin: ${plugin.name}`);
+            }
+            el = await (plugin.fn as PluginFnPageDom)(
+              el,
+              relativeOutputHtmlFilePath,
+              projectDir,
+              config,
+            );
+            console.timeEnd(
+              `[build] page:${pageLabel} dom-plugin:${plugin.name}`,
+            );
+          }
+        }
+
+        console.time(`[build] page:${pageLabel} renderToString`);
+        let html = renderToString(el);
+        console.timeEnd(`[build] page:${pageLabel} renderToString`);
+
+        // run any "page-html" plugins
+        for (const plugin of config.plugins || []) {
+          if (
+            plugin.phase === "page-html" &&
+            (plugin.mode === mode || plugin.mode === "both")
+          ) {
+            console.time(`[build] page:${pageLabel} html-plugin:${plugin.name}`);
+            if (debug) {
+              console.log(`Running page-html plugin: ${plugin.name}`);
+            }
+            html = await (plugin.fn as PluginFnPageHtml)(
+              html,
+              relativeOutputHtmlFilePath,
+              projectDir,
+              config,
+            );
+            console.timeEnd(
+              `[build] page:${pageLabel} html-plugin:${plugin.name}`,
+            );
+          }
+        }
+
+        const finalOutputFile = join(
+          projectDir,
+          config.output,
+          relativeOutputHtmlFilePath,
+        );
+
+        const finalOutputDir = dirname(finalOutputFile);
+        if (!existsSync(finalOutputDir)) {
+          mkdirSync(finalOutputDir, { recursive: true });
+        }
+
+        console.time(`[build] page:${pageLabel} writeFile`);
+        await writeFile(finalOutputFile, html);
+        console.timeEnd(`[build] page:${pageLabel} writeFile`);
       }
-    } else {
-      outputFiles = await glob.async(join(tmpPagesDir, "**/*.js"));
+    } finally {
+      await pageModuleServer.close();
+      console.timeEnd("[build] render-pages");
     }
+  }
 
-    if (!existsSync(outputProjectDir)) {
-      mkdirSync(outputProjectDir, { recursive: true });
-    }
+  // -- Vite: compile components (client-side JS) ----------------------
+  if (isFullBuild || changeKind === "component") {
+    console.time("[build] vite-components");
 
-    for (const outputFile of outputFiles) {
-      const outputHtmlFilePath = outputFile.replace(".js", ".html");
-      const resolvedTmpPagesDir = resolve(tmpPagesDir);
-      const relativeOutputHtmlFilePath = outputHtmlFilePath
-        .replace(`${resolvedTmpPagesDir}${sep}`, "")
-        .replace(`${tmpPagesDir}${sep}`, "");
+    const componentEntryFiles = await glob.async([
+      join(tmpComponentsDir, "**/*.tsx"),
+      join(tmpComponentsDir, "**/*.ts"),
+    ]);
+    const componentEntries = Object.fromEntries(
+      componentEntryFiles.map((entryFile) => [
+        relative(tmpComponentsDir, entryFile).replace(/\.[^.]+$/, ""),
+        resolve(entryFile),
+      ]),
+    );
 
-      const pageLabel = relativeOutputHtmlFilePath;
-
-      if (debug) {
-        console.log("Processing output file (JS):", outputFile);
-        console.log("Relative output HTML path:", relativeOutputHtmlFilePath);
-      }
-
-      // dynamically import the page module (bypass import cache via temp file)
-      console.time(`[build] page:${pageLabel} import`);
-      const code = await readFile(outputFile, "utf-8");
-      const tmpFile = join(
-        tmpdir(),
-        `defuss-page-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`,
-      );
-      await writeFile(tmpFile, code, "utf-8");
-      let exports: Record<string, any>;
-      try {
-        exports = await import(tmpFile);
-      } finally {
-        try {
-          unlinkSync(tmpFile);
-        } catch {}
-      }
-      console.timeEnd(`[build] page:${pageLabel} import`);
-
-      if (debug) {
-        console.log("exports", exports);
-      }
-
-      console.time(`[build] page:${pageLabel} vdom`);
-      let vdom = exports.default(exports) as VNode;
-      console.timeEnd(`[build] page:${pageLabel} vdom`);
-
-      // run any "page-vdom" plugins
-      for (const plugin of config.plugins || []) {
-        if (
-          plugin.phase === "page-vdom" &&
-          (plugin.mode === mode || plugin.mode === "both")
-        ) {
-          console.time(`[build] page:${pageLabel} plugin:${plugin.name}`);
-          if (debug) {
-            console.log(`Running page-vdom plugin: ${plugin.name}`);
-          }
-          vdom = await (plugin.fn as PluginFnPageVdom)(
-            vdom,
-            relativeOutputHtmlFilePath,
-            projectDir,
-            config,
-            exports,
-          );
-          console.timeEnd(`[build] page:${pageLabel} plugin:${plugin.name}`);
-        }
-      }
-
-      console.time(`[build] page:${pageLabel} renderSync`);
-      const browserGlobals = getBrowserGlobals();
-      const document = getDocument(false, browserGlobals);
-      browserGlobals.document = document;
-
-      let el = renderSync(vdom, document.documentElement, {
-        browserGlobals,
-      }) as HTMLElement;
-      console.timeEnd(`[build] page:${pageLabel} renderSync`);
-
-      // run any "page-dom" plugins
-      for (const plugin of config.plugins || []) {
-        if (
-          plugin.phase === "page-dom" &&
-          (plugin.mode === mode || plugin.mode === "both")
-        ) {
-          console.time(`[build] page:${pageLabel} dom-plugin:${plugin.name}`);
-          if (debug) {
-            console.log(`Running page-dom plugin: ${plugin.name}`);
-          }
-          el = await (plugin.fn as PluginFnPageDom)(
-            el,
-            relativeOutputHtmlFilePath,
-            projectDir,
-            config,
-          );
-          console.timeEnd(
-            `[build] page:${pageLabel} dom-plugin:${plugin.name}`,
-          );
-        }
-      }
-
-      console.time(`[build] page:${pageLabel} renderToString`);
-      let html = renderToString(el);
-      console.timeEnd(`[build] page:${pageLabel} renderToString`);
-
-      // run any "page-html" plugins
-      for (const plugin of config.plugins || []) {
-        if (
-          plugin.phase === "page-html" &&
-          (plugin.mode === mode || plugin.mode === "both")
-        ) {
-          console.time(`[build] page:${pageLabel} html-plugin:${plugin.name}`);
-          if (debug) {
-            console.log(`Running page-html plugin: ${plugin.name}`);
-          }
-          html = await (plugin.fn as PluginFnPageHtml)(
-            html,
-            relativeOutputHtmlFilePath,
-            projectDir,
-            config,
-          );
-          console.timeEnd(
-            `[build] page:${pageLabel} html-plugin:${plugin.name}`,
-          );
-        }
-      }
-
-      const finalOutputFile = join(
-        projectDir,
-        config.output,
-        relativeOutputHtmlFilePath,
-      );
-
-      const finalOutputDir = dirname(finalOutputFile);
-      if (!existsSync(finalOutputDir)) {
-        mkdirSync(finalOutputDir, { recursive: true });
-      }
-
-      console.time(`[build] page:${pageLabel} writeFile`);
-      await writeFile(finalOutputFile, html);
-      console.timeEnd(`[build] page:${pageLabel} writeFile`);
-    }
-    console.timeEnd("[build] render-pages");
+    await viteBuild({
+      root: resolve(tmpComponentsDir),
+      configFile: false,
+      publicDir: false,
+      plugins: [defuss()],
+      build: {
+        lib: {
+          entry: componentEntries,
+          formats: ["es"],
+          fileName: (_format, entryName) => `${entryName}.js`,
+        },
+        target: "esnext",
+        outDir: resolve(tmpComponentsDir),
+        emptyOutDir: false,
+        minify: false,
+        rollupOptions: {
+          output: {
+            chunkFileNames: "chunks/[name]-[hash].js",
+          },
+        },
+      },
+    });
+    console.timeEnd("[build] vite-components");
   }
 
   // -- Build endpoints (.ts/.js files in pages) -----------------------

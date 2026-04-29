@@ -1,6 +1,6 @@
 {
   "name": "defuss-ssg",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -107,7 +107,7 @@
     }
   },
   "dependencies": {
-    "@mdx-js/esbuild": "^3.1.1",
+    "@mdx-js/rollup": "^3.1.0",
     "defuss": "^3.4.5",
     "defuss-express": "^0.2.1",
     "defuss-vite": "^1.1.3",

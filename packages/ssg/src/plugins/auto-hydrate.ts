@@ -4,7 +4,7 @@
 import type { PluginFnPageVdom, SsgConfig, SsgPlugin } from "../types.js";
 import type { RenderInput, VNode, VNodeAttributes } from "defuss/jsx-runtime";
 import { createHash } from "node:crypto";
-import { join, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 
 const toStableHydrateId = (seed: string): string => {
   const digest = createHash("sha1").update(seed).digest("hex").slice(0, 12);
@@ -20,15 +20,15 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
     relativeOutputHtmlFilePath: string,
     _projectDir: string,
     config: SsgConfig,
-    props: Record<string, any>,
+    _props: Record<string, any>,
   ) => {
     console.log("Auto Hydrate plugin running... VDOM:");
 
     const tmp = config.tmp || ".ssg-tmp";
     const components = config.components || "components";
     const tmpComponents = join(tmp, components);
+    const tmpComponentsRoot = resolve(tmpComponents);
 
-    let foundDefussComponent = false;
   let hydrateIndex = 0;
     // VDOM is an object that has nested children arrays, so we need to recursively search it
     // once we find an object that has a sourceInfo object with a property fileName that includes tmpComponents somewhere in the path,
@@ -57,11 +57,21 @@ export const autoHydratePlugin: SsgPlugin<PluginFnPageVdom> = {
           vnode.type !== "meta" && // skip head elements
           vnode.type !== "title" // skip head elements
         ) {
-          foundDefussComponent = true;
-          clientSrcFile = vnode.sourceInfo.fileName
-            .replaceAll(tmp, "")
+          const sourceFile = resolve(vnode.sourceInfo.fileName);
+          const relativeComponentPath = relative(tmpComponentsRoot, sourceFile);
+
+          if (
+            relativeComponentPath.startsWith("..") ||
+            relativeComponentPath.length === 0
+          ) {
+            throw new Error(
+              `[auto-hydrate] Component source file is outside the temp components directory: ${sourceFile}`,
+            );
+          }
+
+          clientSrcFile = `/${join(components, relativeComponentPath)
             .replaceAll(sep, "/")
-            .replace(/\.t?sx?$/, ".js");
+            .replace(/\.t?sx?$/, ".js")}`;
 
           console.log(
             `[auto-hydrate] Found component node. type="${vnode.type}", sourceInfo.fileName="${vnode.sourceInfo?.fileName}", hasComponentProps=${!!vnode.componentProps}, componentProps=`,

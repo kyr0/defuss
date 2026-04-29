@@ -29,7 +29,7 @@ bunx defuss-ssg build ./folder
 Or install globally or locally in a project:
 
 ```bash 
-npm install -g defuss-ssg
+bun add -g defuss-ssg
 ```
 
 And then run (in an NPM script or globally):
@@ -71,7 +71,7 @@ Unlike other SSG systems, this package is **not** meant to be installed in a pro
 Developing this means to clone the repo, install dependencies and run the example site:
 
 ```bash
-git clone
+git clone https://github.com/kyr0/defuss.git
 
 cd defuss/packages/ssg
 
