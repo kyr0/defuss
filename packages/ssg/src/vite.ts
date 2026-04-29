@@ -1,9 +1,19 @@
 import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
-import { extname, join, resolve } from "node:path";
+import { dirname, extname, join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { PluginOption, ResolvedConfig, ViteDevServer } from "vite";
 
+import {
+	getBrowserGlobals,
+	getDocument,
+	renderToString,
+	renderSync,
+	type VNode,
+} from "defuss/server";
+
+import { applyAutoHydrate } from "./plugins/auto-hydrate.js";
 import { build } from "./build.js";
 import { readConfig } from "./config.js";
 import {
@@ -25,6 +35,9 @@ import type {
 	DevChangeKind,
 	SsgConfig,
 } from "./types.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const MIME_TYPES: Record<string, string> = {
 	".css": "text/css; charset=utf-8",
@@ -236,6 +249,149 @@ export function defussSsg(
 		return false;
 	};
 
+	const resolveSourceFileForPath = async (
+		pathname: string,
+	): Promise<string | null> => {
+		const candidates = getOutputCandidates(pathname);
+		const pagesDir = join(projectDir, config.pages);
+
+		for (const candidate of candidates) {
+			// Try .mdx, .md, .html extensions
+			for (const ext of [".mdx", ".md", ".html"]) {
+				const withoutExt = candidate.replace(/\.html$/, "");
+				const sourceFile = join(pagesDir, withoutExt + ext);
+				if (existsSync(sourceFile)) {
+					return sourceFile;
+				}
+			}
+		}
+		return null;
+	};
+
+	const maybeServeSSRPage = async (
+		server: ViteDevServer,
+		req: any,
+		res: any,
+	): Promise<boolean> => {
+		const method = String(req.method || "GET").toUpperCase();
+		if (method !== "GET" && method !== "HEAD") {
+			return false;
+		}
+
+		const requestUrl = new URL(req.url || "/", "http://localhost");
+		if (shouldBypassSsgMiddleware(requestUrl.pathname)) {
+			return false;
+		}
+
+		// Try to find a source file for this path
+		const sourceFile = await resolveSourceFileForPath(requestUrl.pathname);
+		if (!sourceFile) {
+			return false;
+		}
+
+		// Only handle MDX/MD files through SSR (let Vite handle other assets)
+		const ext = extname(sourceFile);
+		if (ext !== ".mdx" && ext !== ".md") {
+			return false;
+		}
+
+		try {
+			// Use Vite's ssrLoadModule to load the transformed MDX module
+			const modulePath = `/${relative(server.config.root, sourceFile)}`;
+			const moduleExports = await server.ssrLoadModule(modulePath);
+			const PageComponent = moduleExports.default;
+
+			if (!PageComponent) {
+				return false;
+			}
+
+			// Render the component to HTML using defuss SSR
+			const browserGlobals = getBrowserGlobals();
+			const document = getDocument(false, browserGlobals);
+			let vdom = PageComponent() as VNode;
+
+			// Apply auto-hydration: wrap defuss components with hydration wrappers + scripts
+			const componentsDir = join(projectDir, config.components);
+			vdom = applyAutoHydrate(vdom, componentsDir, config.components, requestUrl.pathname);
+
+			const el = renderSync(vdom, document.documentElement, { browserGlobals }) as any;
+			let html = renderToString(el);
+
+			// Inject Vite HMR client
+			html = await server.transformIndexHtml(requestUrl.pathname, html);
+
+			res.setHeader("Cache-Control", "no-store");
+			res.setHeader("Content-Type", "text/html; charset=utf-8");
+			res.statusCode = 200;
+			res.end(method === "HEAD" ? undefined : html);
+			return true;
+		} catch {
+			// If SSR fails, fall through to Vite dev server
+			return false;
+		}
+	};
+
+	// Serve /components/runtime.js and /components/*.js during dev
+	const maybeServeComponent = async (
+		server: ViteDevServer,
+		req: any,
+		res: any,
+	): Promise<boolean> => {
+		const requestUrl = new URL(req.url || "/", "http://localhost");
+		const pathname = requestUrl.pathname;
+
+		if (!pathname.startsWith(`/${config.components}/`)) {
+			return false;
+		}
+
+		// Handle runtime.js - served from the package
+		if (pathname === `/${config.components}/runtime.js`) {
+			const runtimePath = join(__dirname, "runtime.ts");
+			if (!existsSync(runtimePath)) {
+				return false;
+			}
+			const transformed = await server.transformRequest(runtimePath);
+			if (transformed) {
+				res.setHeader("Cache-Control", "no-store");
+				res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+				res.statusCode = 200;
+				res.end(transformed.code);
+				return true;
+			}
+			return false;
+		}
+
+		// Handle component files: /components/foo.js -> projectDir/components/foo.tsx
+		const relativePath = pathname.slice(1);
+		const componentBase = relativePath.replace(extname(relativePath), "");
+		const componentsDir = join(projectDir, config.components);
+		const extensions = [".tsx", ".ts", ".jsx", ".js"];
+		let sourceFile: string | null = null;
+
+		for (const ext of extensions) {
+			const candidate = join(componentsDir, `${componentBase}${ext}`);
+			if (existsSync(candidate)) {
+				sourceFile = candidate;
+				break;
+			}
+		}
+
+		if (!sourceFile) {
+			return false;
+		}
+
+		const transformed = await server.transformRequest(sourceFile);
+		if (transformed) {
+			res.setHeader("Cache-Control", "no-store");
+			res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+			res.statusCode = 200;
+			res.end(transformed.code);
+			return true;
+		}
+
+		return false;
+	};
+
 	const maybeServeBuiltOutput = async (
 		server: ViteDevServer,
 		req: any,
@@ -349,9 +505,6 @@ export function defussSsg(
 					return;
 				}
 
-				await enqueue(async () => {
-					await rebuildOutput();
-				});
 				server.ws.send({ type: "full-reload" });
 			};
 
@@ -370,6 +523,15 @@ export function defussSsg(
 					if (await maybeHandleDynamicEndpoint(req, res)) {
 						return;
 					}
+					// Serve hydration runtime + components
+					if (await maybeServeComponent(server, req, res)) {
+						return;
+					}
+					// Try SSR rendering first for MDX files
+					if (await maybeServeSSRPage(server, req, res)) {
+						return;
+					}
+					// Fall back to pre-built output if available
 					if (await maybeServeBuiltOutput(server, req, res)) {
 						return;
 					}
@@ -402,10 +564,6 @@ export function defussSsg(
 				ctx.server.ws.send({ type: "custom", event: "defuss:rpc-reloaded" });
 				return [];
 			}
-
-			await enqueue(async () => {
-				await rebuildOutput(ctx.file);
-			});
 
 			const reloadPath =
 				kind === "page" && isHtmlLikeFile(ctx.file)

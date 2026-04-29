@@ -127,33 +127,95 @@ const prefetch = async (url: string): Promise<void> => {
 	}
 };
 
-/** Execute <script> tags found in the new body (hydration scripts etc.) */
-const executeScripts = (container: Element, runId: string): void => {
-	const scripts = container.querySelectorAll("script");
+/**
+ * Trigger hydration for all wrappers in the given container.
+ * Reads hydration metadata from data-* attributes and performs hydration programmatically.
+ */
+const triggerHydration = async (container: Element): Promise<void> => {
+	const wrappers = container.querySelectorAll('[data-hydrate="true"]');
 	console.log(
-		`[executeScripts] Found ${scripts.length} script(s) to re-execute`,
+		`[triggerHydration] Found ${wrappers.length} hydration wrapper(s)`,
 	);
-	for (const oldScript of scripts) {
-		const newScript = document.createElement("script");
-		// Copy all attributes
-		for (const attr of oldScript.attributes) {
-			if (attr.name === "src" && oldScript.type === "module") {
-				const separator = attr.value.includes("#") ? "&" : "#";
-				newScript.setAttribute(
-					attr.name,
-					`${attr.value}${separator}defuss-nav=${runId}`,
-				);
-				continue;
-			}
 
-			newScript.setAttribute(attr.name, attr.value);
+	const promises: Promise<void>[] = [];
+
+	for (const wrapper of wrappers) {
+		const id = wrapper.getAttribute("data-hydrate-id");
+		const src = wrapper.getAttribute("data-hydrate-src");
+		const propsStr = wrapper.getAttribute("data-hydrate-props");
+		const runtimeUrl = wrapper.getAttribute("data-hydrate-runtime");
+
+		if (!id || !src || !propsStr || !runtimeUrl) {
+			console.warn(
+				`[triggerHydration] Wrapper missing metadata: id=${id} src=${src}`,
+			);
+			continue;
 		}
-		newScript.textContent = oldScript.textContent;
-		console.log(
-			`[executeScripts] Replacing script id=${oldScript.id || "(none)"} type=${oldScript.type || "(none)"} len=${oldScript.textContent?.length} runId=${runId}`,
-		);
-		oldScript.replaceWith(newScript);
+
+		const promise = (async () => {
+			try {
+				const cacheBust = `?v=${Date.now()}`;
+				console.log(
+					`[hydrate:${id}] Starting hydration for ${src}${cacheBust}`,
+				);
+
+				const { hydrate: doHydrate } = await import(
+					/* @vite-ignore */ `${runtimeUrl}${cacheBust}`
+				);
+				const exports = await import(
+					/* @vite-ignore */ `${src}${cacheBust}`
+				);
+
+				if (!exports || typeof exports.default !== "function") {
+					console.error(
+						`[hydrate:${id}] No default export in ${src}`,
+					);
+					return;
+				}
+
+				const Component = exports.default;
+				const props = JSON.parse(propsStr);
+
+				console.log(
+					`[hydrate:${id}] Rendering component ${Component.name || "(anon)"} with props:`,
+					props,
+				);
+
+				let roots = Component(props);
+				if (!Array.isArray(roots)) {
+					roots = [roots];
+				}
+
+				// Filter out script nodes and comments
+				const hydratableNodes = Array.from(wrapper.childNodes).filter(
+					(node) => {
+						if (node instanceof HTMLScriptElement) return false;
+						if (node.nodeType === Node.COMMENT_NODE) return false;
+						if (node.nodeType === Node.TEXT_NODE) {
+							return (node.textContent ?? "").trim().length !== 0;
+						}
+						return true;
+					},
+				);
+
+				console.log(
+					`[hydrate:${id}] Hydrating ${hydratableNodes.length} node(s)`,
+				);
+
+				doHydrate(roots, hydratableNodes);
+
+				// Unwrap - replace wrapper with its hydrated children
+				wrapper.replaceWith(...hydratableNodes);
+				console.log(`[hydrate:${id}] Hydration complete`);
+			} catch (e) {
+				console.error(`[hydrate:${id}] Error:`, e);
+			}
+		})();
+
+		promises.push(promise);
 	}
+
+	await Promise.all(promises);
 };
 
 /** Extract <head> metadata (title, meta tags, stylesheets) from HTML string */
@@ -248,25 +310,15 @@ export const navigateTo = async (
 		// Update <head> (title, meta, styles)
 		updateHead(doc);
 
-		// Morph <body> content in place and re-execute scripts.
+		// Morph <body> content in place
+		const bodyHtml = newBody.innerHTML;
 		console.log(
-			`[navigateTo] Morphing body content (new length=${newBody.innerHTML.length})`,
+			`[navigateTo] Morphing body content (new length=${bodyHtml.length})`,
 		);
-		await $(document.body).update(newBody.innerHTML);
+		await $(document.body).update(bodyHtml);
 
-		// Log hydration wrappers found in new DOM
-		const hydrateWrappers = document.querySelectorAll('[data-hydrate="true"]');
-		console.log(
-			`[navigateTo] Found ${hydrateWrappers.length} hydration wrapper(s) in new DOM`,
-		);
-		hydrateWrappers.forEach((w, i) => {
-			const scripts = w.querySelectorAll('script[type="module"]');
-			console.log(
-				`[navigateTo]   wrapper[${i}] id=${w.getAttribute("data-hydrate-id")} scripts=${scripts.length}`,
-			);
-		});
-
-		executeScripts(document.body, Date.now().toString(36));
+		// Trigger hydration for all wrappers in the new body
+		await triggerHydration(document.body);
 
 		// Update history
 		if (replace) {

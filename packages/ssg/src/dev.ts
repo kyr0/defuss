@@ -1,12 +1,16 @@
+import mdx from "@mdx-js/rollup";
 import { createServer } from "vite";
 import defuss from "defuss-vite";
 
 import type { DevOptions, Status } from "./types.js";
+import { readConfig } from "./config.js";
 import { validateProjectDir } from "./validation.js";
 import { defussSsg } from "./vite.js";
 
 /**
  * Start the Vite-backed development server for defuss-ssg.
+ * Uses Vite's transform pipeline for true HMR — MDX files are
+ * transformed on-the-fly via ssrLoadModule, no temp servers needed.
  */
 export const dev = async ({
 	projectDir,
@@ -17,6 +21,9 @@ export const dev = async ({
 }: DevOptions): Promise<Status> => {
 	const projectDirStatus = validateProjectDir(projectDir);
 	if (projectDirStatus.code !== "OK") return projectDirStatus;
+
+	// Read config early to pass MDX plugins to the main Vite server
+	const config = await readConfig(projectDir, debug);
 
 	const server = await createServer({
 		root: projectDir,
@@ -37,6 +44,12 @@ export const dev = async ({
 		},
 		plugins: [
 			defuss({ enableJsxDevMode: true }),
+			mdx({
+				jsxImportSource: "defuss",
+				development: true,
+				remarkPlugins: config.remarkPlugins,
+				rehypePlugins: config.rehypePlugins,
+			}),
 			...defussSsg({
 				projectDir,
 				debug,
