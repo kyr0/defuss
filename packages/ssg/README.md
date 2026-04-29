@@ -327,6 +327,38 @@ Commands:
   serve <folder>    Serve with auto-rebuild on changes
 ```
 
+<h3 align="center">
+Benchmark
+</h3>
+
+The following benchmark was performed on the RPC endpoint of the example site, which calls a simple server-side function that adds two numbers. The test was run with 1024 concurrent connections, a pipelining factor of 256, and 8 workers for 30 seconds on a Macbook Air M4, 24 GB RAM under medium load (IDE, browser, docker, Spotify, Mail and terminal running while the benchmark was conducted).
+
+```bash
+$ bun x autocannon -p 256 -w 8 -c 1024 -d 30 -m POST -H 'content-type: application/json' -b '{"className":"mathApi","methodName":"add","args":[1,2]}' http://127.0.0.1:3000/rpc
+Running 30s test @ http://127.0.0.1:3000/rpc
+1024 connections with 256 pipelining factor
+8 workers
+
+/
+┌─────────┬────────┬─────────┬─────────┬─────────┬────────────┬────────────┬─────────┐
+│ Stat    │ 2.5%   │ 50%     │ 97.5%   │ 99%     │ Avg        │ Stdev      │ Max     │
+├─────────┼────────┼─────────┼─────────┼─────────┼────────────┼────────────┼─────────┤
+│ Latency │ 617 ms │ 4708 ms │ 5629 ms │ 6230 ms │ 4367.37 ms │ 1263.71 ms │ 7115 ms │
+└─────────┴────────┴─────────┴─────────┴─────────┴────────────┴────────────┴─────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬──────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg      │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┼─────────┤
+│ Req/Sec   │ 41,215  │ 41,215  │ 54,559  │ 66,751  │ 55,371.2 │ 5,492.3 │ 41,210  │
+├───────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┼─────────┤
+│ Bytes/Sec │ 8.37 MB │ 8.37 MB │ 11.1 MB │ 13.5 MB │ 11.2 MB  │ 1.11 MB │ 8.37 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴──────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 240
+
+1923k requests in 30.08s, 337 MB read
+```
+
 <p align="center">
 
   <img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/assets/defuss_comic.png" width="400px" />

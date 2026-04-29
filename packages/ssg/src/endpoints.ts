@@ -2,27 +2,27 @@ import esbuild from "esbuild";
 import glob from "fast-glob";
 import { join, relative, dirname } from "node:path";
 import { tmpdir } from "node:os";
-import { existsSync, mkdirSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { writeFile, readFile } from "node:fs/promises";
 import type {
-  EndpointRouteContext,
-  EndpointRouteMethod,
-  EndpointRouteRegistrar,
-  SsgConfig,
+	EndpointRouteContext,
+	EndpointRouteMethod,
+	EndpointRouteRegistrar,
+	SsgConfig,
 } from "./types.js";
 
 // -- Types ------------------------------------------------------------
 
 /** HTTP method names that endpoint files may export. */
 export const HTTP_METHODS = [
-  "GET",
-  "POST",
-  "PUT",
-  "DELETE",
-  "PATCH",
-  "HEAD",
-  "OPTIONS",
-  "ALL",
+	"GET",
+	"POST",
+	"PUT",
+	"DELETE",
+	"PATCH",
+	"HEAD",
+	"OPTIONS",
+	"ALL",
 ] as const;
 
 export type HttpMethod = (typeof HTTP_METHODS)[number];
@@ -32,17 +32,17 @@ export type HttpMethod = (typeof HTTP_METHODS)[number];
  * Mirrors Astro's `APIContext`.
  */
 export interface EndpointContext {
-  /** Dynamic route parameters (e.g. `{ id: "42" }`) */
-  params: Record<string, string | undefined>;
-  /** Standard Web `Request` representing the incoming request */
-  request: Request;
-  /** Helper to create a redirect `Response` */
-  redirect: (url: string, status?: number) => Response;
+	/** Dynamic route parameters (e.g. `{ id: "42" }`) */
+	params: Record<string, string | undefined>;
+	/** Standard Web `Request` representing the incoming request */
+	request: Request;
+	/** Helper to create a redirect `Response` */
+	redirect: (url: string, status?: number) => Response;
 }
 
 /** Signature of an endpoint handler function (`APIRoute` in Astro). */
 export type EndpointHandler = (
-  context: EndpointContext,
+	context: EndpointContext,
 ) => Response | Promise<Response>;
 
 /** Convenience alias matching Astro's `APIRoute` type. */
@@ -50,38 +50,38 @@ export type APIRoute = EndpointHandler;
 
 /** Shape of a dynamically-imported endpoint module. */
 export interface EndpointModule {
-  GET?: EndpointHandler;
-  POST?: EndpointHandler;
-  PUT?: EndpointHandler;
-  DELETE?: EndpointHandler;
-  PATCH?: EndpointHandler;
-  HEAD?: EndpointHandler;
-  OPTIONS?: EndpointHandler;
-  ALL?: EndpointHandler;
-  /** When `true`, the endpoint is pre-rendered at build time and NOT served dynamically. */
-  prerender?: boolean;
-  getStaticPaths?: () =>
-    | Array<{ params: Record<string, string> }>
-    | Promise<Array<{ params: Record<string, string> }>>;
-  [key: string]: unknown;
+	GET?: EndpointHandler;
+	POST?: EndpointHandler;
+	PUT?: EndpointHandler;
+	DELETE?: EndpointHandler;
+	PATCH?: EndpointHandler;
+	HEAD?: EndpointHandler;
+	OPTIONS?: EndpointHandler;
+	ALL?: EndpointHandler;
+	/** When `true`, the endpoint is pre-rendered at build time and NOT served dynamically. */
+	prerender?: boolean;
+	getStaticPaths?: () =>
+		| Array<{ params: Record<string, string> }>
+		| Promise<Array<{ params: Record<string, string> }>>;
+	[key: string]: unknown;
 }
 
 /** A fully resolved endpoint ready for building or registration. */
 export interface ResolvedEndpoint {
-  /** Absolute path to the source `.ts` file */
-  sourceFile: string;
-  /** Absolute path to the compiled `.mjs` file in `.endpoints/` */
-  compiledFile: string;
-  /** Route pattern derived from the file path (e.g. `/api/data.json`) */
-  routePattern: string;
-  /** The loaded module exports */
-  module: EndpointModule;
-  /** Whether the route contains dynamic `[param]` segments */
-  isDynamic: boolean;
-  /** Names of the dynamic parameters */
-  paramNames: string[];
-  /** Whether this endpoint is pre-rendered only (not served dynamically) */
-  prerender: boolean;
+	/** Absolute path to the source `.ts` file */
+	sourceFile: string;
+	/** Absolute path to the compiled `.mjs` file in `.endpoints/` */
+	compiledFile: string;
+	/** Route pattern derived from the file path (e.g. `/api/data.json`) */
+	routePattern: string;
+	/** The loaded module exports */
+	module: EndpointModule;
+	/** Whether the route contains dynamic `[param]` segments */
+	isDynamic: boolean;
+	/** Names of the dynamic parameters */
+	paramNames: string[];
+	/** Whether this endpoint is pre-rendered only (not served dynamically) */
+	prerender: boolean;
 }
 
 // -- Helpers ----------------------------------------------------------
@@ -90,10 +90,10 @@ export interface ResolvedEndpoint {
  * Create a redirect `Response`.
  */
 const createRedirect = (url: string, status = 302): Response =>
-  new Response(null, {
-    status,
-    headers: { Location: url },
-  });
+	new Response(null, {
+		status,
+		headers: { Location: url },
+	});
 
 /**
  * Derive a route pattern from an endpoint **source** file path.
@@ -107,17 +107,17 @@ const createRedirect = (url: string, status = 302): Response =>
  * - `pages/feed.xml.ts`            → `/feed.xml`
  */
 export const endpointFileToRoute = (
-  filePath: string,
-  pagesDir: string,
+	filePath: string,
+	pagesDir: string,
 ): string => {
-  let route = relative(pagesDir, filePath)
-    .replace(/\\/g, "/") // normalise to forward slashes
-    .replace(/\.(ts|js)$/, ""); // strip the .ts / .js extension
+	let route = relative(pagesDir, filePath)
+		.replace(/\\/g, "/") // normalise to forward slashes
+		.replace(/\.(ts|js)$/, ""); // strip the .ts / .js extension
 
-  if (!route.startsWith("/")) {
-    route = `/${route}`;
-  }
-  return route;
+	if (!route.startsWith("/")) {
+		route = `/${route}`;
+	}
+	return route;
 };
 
 /**
@@ -126,7 +126,7 @@ export const endpointFileToRoute = (
  * `"/api/[id].json"` → `"/api/:id.json"`
  */
 export const routeToExpressPattern = (route: string): string =>
-  route.replace(/\[([^\]]+)\]/g, ":$1");
+	route.replace(/\[([^\]]+)\]/g, ":$1");
 
 /**
  * Extract dynamic parameter names from a route pattern.
@@ -134,38 +134,38 @@ export const routeToExpressPattern = (route: string): string =>
  * `"/api/[category]/[id].json"` → `["category", "id"]`
  */
 const extractParamNames = (route: string): string[] =>
-  Array.from(route.matchAll(/\[([^\]]+)\]/g), (m) => m[1]);
+	Array.from(route.matchAll(/\[([^\]]+)\]/g), (m) => m[1]);
 
 const escapeRouteSegment = (value: string): string =>
-  value.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&");
+	value.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&");
 
 export const matchRoutePattern = (
-  routePattern: string,
-  pathname: string,
+	routePattern: string,
+	pathname: string,
 ): Record<string, string | undefined> | null => {
-  const params: string[] = [];
-  let pattern = "";
-  let lastIndex = 0;
+	const params: string[] = [];
+	let pattern = "";
+	let lastIndex = 0;
 
-  for (const match of routePattern.matchAll(/\[([^\]]+)\]/g)) {
-    const index = match.index ?? 0;
-    pattern += escapeRouteSegment(routePattern.slice(lastIndex, index));
-    pattern += "([^/]+)";
-    params.push(match[1]);
-    lastIndex = index + match[0].length;
-  }
+	for (const match of routePattern.matchAll(/\[([^\]]+)\]/g)) {
+		const index = match.index ?? 0;
+		pattern += escapeRouteSegment(routePattern.slice(lastIndex, index));
+		pattern += "([^/]+)";
+		params.push(match[1]);
+		lastIndex = index + match[0].length;
+	}
 
-  pattern += escapeRouteSegment(routePattern.slice(lastIndex));
+	pattern += escapeRouteSegment(routePattern.slice(lastIndex));
 
-  const matched = pathname.match(new RegExp(`^${pattern}$`));
-  if (!matched) return null;
+	const matched = pathname.match(new RegExp(`^${pattern}$`));
+	if (!matched) return null;
 
-  const resolvedParams: Record<string, string | undefined> = {};
-  for (const [index, name] of params.entries()) {
-    resolvedParams[name] = decodeURIComponent(matched[index + 1] || "");
-  }
+	const resolvedParams: Record<string, string | undefined> = {};
+	for (const [index, name] of params.entries()) {
+		resolvedParams[name] = decodeURIComponent(matched[index + 1] || "");
+	}
 
-  return resolvedParams;
+	return resolvedParams;
 };
 
 // -- Discovery --------------------------------------------------------
@@ -175,13 +175,13 @@ export const matchRoutePattern = (
  * inside the given pages directory.
  */
 export const discoverEndpointSourceFiles = async (
-  pagesDir: string,
+	pagesDir: string,
 ): Promise<string[]> => {
-  if (!existsSync(pagesDir)) return [];
-  // Match .ts and .js but NOT .mdx (page files)
-  return glob.async(join(pagesDir, "**/*.{ts,js}"), {
-    ignore: ["**/*.d.ts"],
-  });
+	if (!existsSync(pagesDir)) return [];
+	// Match .ts and .js but NOT .mdx (page files)
+	return glob.async(join(pagesDir, "**/*.{ts,js}"), {
+		ignore: ["**/*.d.ts"],
+	});
 };
 
 // -- Compilation ------------------------------------------------------
@@ -201,37 +201,37 @@ export const discoverEndpointSourceFiles = async (
  * @returns Map from source file path → compiled `.mjs` file path
  */
 export const compileEndpoints = async (
-  sourceFiles: string[],
-  pagesDir: string,
-  outDir: string,
-  debug = false,
+	sourceFiles: string[],
+	pagesDir: string,
+	outDir: string,
+	debug = false,
 ): Promise<Map<string, string>> => {
-  if (sourceFiles.length === 0) return new Map();
+	if (sourceFiles.length === 0) return new Map();
 
-  if (debug) {
-    console.log(`Compiling ${sourceFiles.length} endpoint source file(s)…`);
-  }
+	if (debug) {
+		console.log(`Compiling ${sourceFiles.length} endpoint source file(s)…`);
+	}
 
-  console.time("[endpoints] esbuild-compile");
-  await esbuild.build({
-    entryPoints: sourceFiles,
-    format: "esm",
-    bundle: true,
-    platform: "node",
-    target: ["esnext"],
-    outdir: outDir,
-    outbase: pagesDir,
-    outExtension: { ".js": ".mjs" },
-  });
-  console.timeEnd("[endpoints] esbuild-compile");
+	console.time("[endpoints] esbuild-compile");
+	await esbuild.build({
+		entryPoints: sourceFiles,
+		format: "esm",
+		bundle: true,
+		platform: "node",
+		target: ["esnext"],
+		outdir: outDir,
+		outbase: pagesDir,
+		outExtension: { ".js": ".mjs" },
+	});
+	console.timeEnd("[endpoints] esbuild-compile");
 
-  // Build the source→compiled mapping
-  const mapping = new Map<string, string>();
-  for (const src of sourceFiles) {
-    const rel = relative(pagesDir, src).replace(/\.(ts|js)$/, ".mjs");
-    mapping.set(src, join(outDir, rel));
-  }
-  return mapping;
+	// Build the source→compiled mapping
+	const mapping = new Map<string, string>();
+	for (const src of sourceFiles) {
+		const rel = relative(pagesDir, src).replace(/\.(ts|js)$/, ".mjs");
+		mapping.set(src, join(outDir, rel));
+	}
+	return mapping;
 };
 
 // -- Loading ----------------------------------------------------------
@@ -242,21 +242,15 @@ export const compileEndpoints = async (
  * picked up on the next request (important in serve / dev mode).
  */
 export const loadEndpointModule = async (
-  filePath: string,
+	filePath: string,
 ): Promise<EndpointModule> => {
-  const code = await readFile(filePath, "utf-8");
-  const tmpFile = join(
-    tmpdir(),
-    `defuss-ep-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`,
-  );
-  await writeFile(tmpFile, code, "utf-8");
-  try {
-    return await import(tmpFile);
-  } finally {
-    try {
-      unlinkSync(tmpFile);
-    } catch {}
-  }
+	const code = await readFile(filePath, "utf-8");
+	const tmpFile = join(
+		tmpdir(),
+		`defuss-ep-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`,
+	);
+	await writeFile(tmpFile, code, "utf-8");
+	return await import(tmpFile);
 };
 
 // -- Resolve ----------------------------------------------------------
@@ -273,52 +267,52 @@ export const loadEndpointModule = async (
  * @param debug         Enable verbose logging
  */
 export const resolveEndpoints = async (
-  pagesDir: string,
-  endpointsDir: string,
-  debug = false,
+	pagesDir: string,
+	endpointsDir: string,
+	debug = false,
 ): Promise<ResolvedEndpoint[]> => {
-  const sourceFiles = await discoverEndpointSourceFiles(pagesDir);
-  if (sourceFiles.length === 0) return [];
+	const sourceFiles = await discoverEndpointSourceFiles(pagesDir);
+	if (sourceFiles.length === 0) return [];
 
-  console.time("[endpoints] compile-all");
-  const mapping = await compileEndpoints(
-    sourceFiles,
-    pagesDir,
-    endpointsDir,
-    debug,
-  );
-  console.timeEnd("[endpoints] compile-all");
-  const endpoints: ResolvedEndpoint[] = [];
+	console.time("[endpoints] compile-all");
+	const mapping = await compileEndpoints(
+		sourceFiles,
+		pagesDir,
+		endpointsDir,
+		debug,
+	);
+	console.timeEnd("[endpoints] compile-all");
+	const endpoints: ResolvedEndpoint[] = [];
 
-  console.time("[endpoints] load-modules");
-  for (const [sourceFile, compiledFile] of mapping) {
-    const routePattern = endpointFileToRoute(sourceFile, pagesDir);
-    const paramNames = extractParamNames(routePattern);
-    const isDynamic = paramNames.length > 0;
+	console.time("[endpoints] load-modules");
+	for (const [sourceFile, compiledFile] of mapping) {
+		const routePattern = endpointFileToRoute(sourceFile, pagesDir);
+		const paramNames = extractParamNames(routePattern);
+		const isDynamic = paramNames.length > 0;
 
-    if (debug) {
-      console.log(
-        `Endpoint: ${sourceFile} → ${compiledFile} → ${routePattern}` +
-          (isDynamic ? ` (params: ${paramNames.join(", ")})` : ""),
-      );
-    }
+		if (debug) {
+			console.log(
+				`Endpoint: ${sourceFile} → ${compiledFile} → ${routePattern}` +
+				(isDynamic ? ` (params: ${paramNames.join(", ")})` : ""),
+			);
+		}
 
-    const module = await loadEndpointModule(compiledFile);
-    const prerender = module.prerender === true;
+		const module = await loadEndpointModule(compiledFile);
+		const prerender = module.prerender === true;
 
-    endpoints.push({
-      sourceFile,
-      compiledFile,
-      routePattern,
-      module,
-      isDynamic,
-      paramNames,
-      prerender,
-    });
-  }
-  console.timeEnd("[endpoints] load-modules");
+		endpoints.push({
+			sourceFile,
+			compiledFile,
+			routePattern,
+			module,
+			isDynamic,
+			paramNames,
+			prerender,
+		});
+	}
+	console.timeEnd("[endpoints] load-modules");
 
-  return endpoints;
+	return endpoints;
 };
 
 // -- Build ------------------------------------------------------------
@@ -338,104 +332,104 @@ export const resolveEndpoints = async (
  * from `.endpoints/`.
  */
 export const buildEndpoints = async (
-  projectDir: string,
-  config: SsgConfig,
-  debug = false,
+	projectDir: string,
+	config: SsgConfig,
+	debug = false,
 ): Promise<void> => {
-  const pagesDir = join(projectDir, config.pages);
-  const outputDir = join(projectDir, config.output);
-  const endpointsDir = join(projectDir, ".endpoints");
-  const endpoints = await resolveEndpoints(pagesDir, endpointsDir, debug);
+	const pagesDir = join(projectDir, config.pages);
+	const outputDir = join(projectDir, config.output);
+	const endpointsDir = join(projectDir, ".endpoints");
+	const endpoints = await resolveEndpoints(pagesDir, endpointsDir, debug);
 
-  if (endpoints.length === 0) return;
+	if (endpoints.length === 0) return;
 
-  const prerenderEndpoints = endpoints.filter((e) => e.prerender);
-  const dynamicEndpoints = endpoints.filter((e) => !e.prerender);
+	const prerenderEndpoints = endpoints.filter((e) => e.prerender);
+	const dynamicEndpoints = endpoints.filter((e) => !e.prerender);
 
-  console.log(
-    `Endpoints: ${endpoints.length} compiled` +
-      (prerenderEndpoints.length
-        ? `, ${prerenderEndpoints.length} pre-rendered`
-        : "") +
-      (dynamicEndpoints.length ? `, ${dynamicEndpoints.length} dynamic` : ""),
-  );
+	console.log(
+		`Endpoints: ${endpoints.length} compiled` +
+		(prerenderEndpoints.length
+			? `, ${prerenderEndpoints.length} pre-rendered`
+			: "") +
+		(dynamicEndpoints.length ? `, ${dynamicEndpoints.length} dynamic` : ""),
+	);
 
-  // Only pre-render endpoints that opt in with `export const prerender = true`
-  for (const endpoint of prerenderEndpoints) {
-    const { module, routePattern, isDynamic } = endpoint;
-    const handler = module.GET;
+	// Only pre-render endpoints that opt in with `export const prerender = true`
+	for (const endpoint of prerenderEndpoints) {
+		const { module, routePattern, isDynamic } = endpoint;
+		const handler = module.GET;
 
-    if (!handler) {
-      if (debug) {
-        console.log(
-          `Endpoint ${routePattern}: prerender=true but no GET export – skipping`,
-        );
-      }
-      continue;
-    }
+		if (!handler) {
+			if (debug) {
+				console.log(
+					`Endpoint ${routePattern}: prerender=true but no GET export – skipping`,
+				);
+			}
+			continue;
+		}
 
-    // Collect the set of param combinations to generate
-    let paramSets: Array<Record<string, string>> = [{}];
+		// Collect the set of param combinations to generate
+		let paramSets: Array<Record<string, string>> = [{}];
 
-    if (isDynamic) {
-      if (!module.getStaticPaths) {
-        console.warn(
-          `Dynamic endpoint ${routePattern} has no getStaticPaths() – skipping`,
-        );
-        continue;
-      }
-      const paths = await module.getStaticPaths();
-      paramSets = paths.map((p) => p.params);
-    }
+		if (isDynamic) {
+			if (!module.getStaticPaths) {
+				console.warn(
+					`Dynamic endpoint ${routePattern} has no getStaticPaths() – skipping`,
+				);
+				continue;
+			}
+			const paths = await module.getStaticPaths();
+			paramSets = paths.map((p) => p.params);
+		}
 
-    for (const params of paramSets) {
-      // Replace [param] placeholders with concrete values
-      let resolvedRoute = routePattern;
-      for (const [key, value] of Object.entries(params)) {
-        resolvedRoute = resolvedRoute.replace(`[${key}]`, value);
-      }
+		for (const params of paramSets) {
+			// Replace [param] placeholders with concrete values
+			let resolvedRoute = routePattern;
+			for (const [key, value] of Object.entries(params)) {
+				resolvedRoute = resolvedRoute.replace(`[${key}]`, value);
+			}
 
-      const requestUrl = `http://localhost${resolvedRoute}`;
-      const context: EndpointContext = {
-        params,
-        request: new Request(requestUrl),
-        redirect: createRedirect,
-      };
+			const requestUrl = `http://localhost${resolvedRoute}`;
+			const context: EndpointContext = {
+				params,
+				request: new Request(requestUrl),
+				redirect: createRedirect,
+			};
 
-      if (debug) {
-        console.log(`Pre-rendering endpoint: ${resolvedRoute}`);
-      }
+			if (debug) {
+				console.log(`Pre-rendering endpoint: ${resolvedRoute}`);
+			}
 
-      try {
-        const response = await handler(context);
+			try {
+				const response = await handler(context);
 
-        const outputFile = join(outputDir, resolvedRoute);
-        const outputFileDir = dirname(outputFile);
-        if (!existsSync(outputFileDir)) {
-          mkdirSync(outputFileDir, { recursive: true });
-        }
+				const outputFile = join(outputDir, resolvedRoute);
+				const outputFileDir = dirname(outputFile);
+				if (!existsSync(outputFileDir)) {
+					mkdirSync(outputFileDir, { recursive: true });
+				}
 
-        // Redirect responses → small meta-refresh HTML page
-        if (response.status >= 300 && response.status < 400) {
-          const location = response.headers.get("Location") || "/";
-          await writeFile(
-            outputFile,
-            `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${location}"><link rel="canonical" href="${location}"></head><body>Redirecting to <a href="${location}">${location}</a></body></html>`,
-          );
-        } else {
-          // Write the response body (works for both text and binary)
-          const buffer = Buffer.from(await response.arrayBuffer());
-          await writeFile(outputFile, buffer);
-        }
+				// Redirect responses → small meta-refresh HTML page
+				if (response.status >= 300 && response.status < 400) {
+					const location = response.headers.get("Location") || "/";
+					await writeFile(
+						outputFile,
+						`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${location}"><link rel="canonical" href="${location}"></head><body>Redirecting to <a href="${location}">${location}</a></body></html>`,
+					);
+				} else {
+					// Write the response body (works for both text and binary)
+					const buffer = Buffer.from(await response.arrayBuffer());
+					await writeFile(outputFile, buffer);
+				}
 
-        if (debug) {
-          console.log(`  → ${outputFile}`);
-        }
-      } catch (error) {
-        console.error(`Error pre-rendering endpoint ${resolvedRoute}:`, error);
-      }
-    }
-  }
+				if (debug) {
+					console.log(`  → ${outputFile}`);
+				}
+			} catch (error) {
+				console.error(`Error pre-rendering endpoint ${resolvedRoute}:`, error);
+			}
+		}
+	}
 };
 
 // -- Dynamic route handler --------------------------------------------
@@ -449,54 +443,54 @@ export const buildEndpoints = async (
  * active server adapter to stream back to the client.
  */
 export const handleEndpointRoute = async (
-  ctx: EndpointRouteContext,
-  compiledFile: string,
-  routePattern: string,
-  method: HttpMethod,
+	ctx: EndpointRouteContext,
+	compiledFile: string,
+	routePattern: string,
+	method: HttpMethod,
 ): Promise<Response> => {
-  // Load the module fresh on every request (cache-busted for dev)
-  let currentModule: EndpointModule;
-  try {
-    currentModule = await loadEndpointModule(compiledFile);
-  } catch (err) {
-    console.error(`Failed to load endpoint: ${compiledFile}`, err);
-    return new Response("Internal Server Error", { status: 500 });
-  }
+	// Load the module fresh on every request (cache-busted for dev)
+	let currentModule: EndpointModule;
+	try {
+		currentModule = await loadEndpointModule(compiledFile);
+	} catch (err) {
+		console.error(`Failed to load endpoint: ${compiledFile}`, err);
+		return new Response("Internal Server Error", { status: 500 });
+	}
 
-  // Pick the matching handler; fall back to ALL
-  const handlerFn =
-    (currentModule[method] as EndpointHandler | undefined) ??
-    (currentModule.ALL as EndpointHandler | undefined);
+	// Pick the matching handler; fall back to ALL
+	const handlerFn =
+		(currentModule[method] as EndpointHandler | undefined) ??
+		(currentModule.ALL as EndpointHandler | undefined);
 
-  if (!handlerFn) {
-    return new Response("Method Not Allowed", { status: 405 });
-  }
+	if (!handlerFn) {
+		return new Response("Method Not Allowed", { status: 405 });
+	}
 
-  const endpointContext: EndpointContext = {
-    params: ctx.params as Record<string, string | undefined>,
-    request: ctx.request,
-    redirect: createRedirect,
-  };
+	const endpointContext: EndpointContext = {
+		params: ctx.params as Record<string, string | undefined>,
+		request: ctx.request,
+		redirect: createRedirect,
+	};
 
-  try {
-    const response = await handlerFn(endpointContext);
+	try {
+		const response = await handlerFn(endpointContext);
 
-    // HEAD → return response with body stripped
-    if (ctx.request.method === "HEAD") {
-      return new Response(null, {
-        status: response.status,
-        headers: response.headers,
-      });
-    }
+		// HEAD → return response with body stripped
+		if (ctx.request.method === "HEAD") {
+			return new Response(null, {
+				status: response.status,
+				headers: response.headers,
+			});
+		}
 
-    return response;
-  } catch (error) {
-    console.error(
-      `Endpoint error ${ctx.request.method} ${routePattern}:`,
-      error,
-    );
-    return new Response("Internal Server Error", { status: 500 });
-  }
+		return response;
+	} catch (error) {
+		console.error(
+			`Endpoint error ${ctx.request.method} ${routePattern}:`,
+			error,
+		);
+		return new Response("Internal Server Error", { status: 500 });
+	}
 };
 
 // -- Serve / SSR ------------------------------------------------------
@@ -516,86 +510,86 @@ export const handleEndpointRoute = async (
  * (per the Astro spec).
  */
 export const registerEndpoints = async (
-  registrar: EndpointRouteRegistrar,
-  projectDir: string,
-  _config: SsgConfig,
-  debug = false,
+	registrar: EndpointRouteRegistrar,
+	projectDir: string,
+	_config: SsgConfig,
+	debug = false,
 ): Promise<void> => {
-  const endpointsDir = join(projectDir, ".endpoints");
+	const endpointsDir = join(projectDir, ".endpoints");
 
-  // Discover compiled .mjs endpoint files from .endpoints/
-  const mjsFiles = await glob.async(join(endpointsDir, "**/*.mjs"));
-  if (mjsFiles.length === 0) return;
+	// Discover compiled .mjs endpoint files from .endpoints/
+	const mjsFiles = await glob.async(join(endpointsDir, "**/*.mjs"));
+	if (mjsFiles.length === 0) return;
 
-  let registered = 0;
+	let registered = 0;
 
-  for (const compiledFile of mjsFiles) {
-    // Derive the route pattern from the compiled file path
-    let route = relative(endpointsDir, compiledFile)
-      .replace(/\\/g, "/")
-      .replace(/\.mjs$/, "");
-    if (!route.startsWith("/")) route = `/${route}`;
+	for (const compiledFile of mjsFiles) {
+		// Derive the route pattern from the compiled file path
+		let route = relative(endpointsDir, compiledFile)
+			.replace(/\\/g, "/")
+			.replace(/\.mjs$/, "");
+		if (!route.startsWith("/")) route = `/${route}`;
 
-    // Load the module to inspect exports
-    let module: EndpointModule;
-    try {
-      module = await loadEndpointModule(compiledFile);
-    } catch (err) {
-      console.error(`Failed to load endpoint: ${compiledFile}`, err);
-      continue;
-    }
+		// Load the module to inspect exports
+		let module: EndpointModule;
+		try {
+			module = await loadEndpointModule(compiledFile);
+		} catch (err) {
+			console.error(`Failed to load endpoint: ${compiledFile}`, err);
+			continue;
+		}
 
-    // Skip pre-rendered endpoints - they are served as static files
-    if (module.prerender === true) {
-      if (debug) {
-        console.log(`Skipping prerender endpoint: ${route}`);
-      }
-      continue;
-    }
+		// Skip pre-rendered endpoints - they are served as static files
+		if (module.prerender === true) {
+			if (debug) {
+				console.log(`Skipping prerender endpoint: ${route}`);
+			}
+			continue;
+		}
 
-    const expressRoute = routeToExpressPattern(route);
-    const hasExportedMethods = HTTP_METHODS.some(
-      (m) => m in module && typeof module[m] === "function",
-    );
+		const expressRoute = routeToExpressPattern(route);
+		const hasExportedMethods = HTTP_METHODS.some(
+			(m) => m in module && typeof module[m] === "function",
+		);
 
-    if (!hasExportedMethods) continue;
+		if (!hasExportedMethods) continue;
 
-    if (debug) {
-      console.log(`Registering dynamic endpoint: ${expressRoute}`);
-    }
+		if (debug) {
+			console.log(`Registering dynamic endpoint: ${expressRoute}`);
+		}
 
-    // Register a handler for each exported HTTP method
-    for (const method of HTTP_METHODS) {
-      if (method in module && typeof module[method] === "function") {
-        const routeMethod: EndpointRouteMethod =
-          method === "ALL" ? "all" : (method.toLowerCase() as EndpointRouteMethod);
-        registrar.register(
-          routeMethod,
-          expressRoute,
-          (ctx) => handleEndpointRoute(ctx, compiledFile, route, method),
-        );
-        if (debug) {
-          console.log(`  ${method} ${expressRoute}`);
-        }
-      }
-    }
+		// Register a handler for each exported HTTP method
+		for (const method of HTTP_METHODS) {
+			if (method in module && typeof module[method] === "function") {
+				const routeMethod: EndpointRouteMethod =
+					method === "ALL" ? "all" : (method.toLowerCase() as EndpointRouteMethod);
+				registrar.register(
+					routeMethod,
+					expressRoute,
+					(ctx) => handleEndpointRoute(ctx, compiledFile, route, method),
+				);
+				if (debug) {
+					console.log(`  ${method} ${expressRoute}`);
+				}
+			}
+		}
 
-    // Auto HEAD from GET when HEAD is not explicitly exported
-    if (module.GET && !module.HEAD) {
-      registrar.register(
-        "head",
-        expressRoute,
-        (ctx) => handleEndpointRoute(ctx, compiledFile, route, "GET"),
-      );
-      if (debug) {
-        console.log(`  HEAD ${expressRoute} (auto from GET)`);
-      }
-    }
+		// Auto HEAD from GET when HEAD is not explicitly exported
+		if (module.GET && !module.HEAD) {
+			registrar.register(
+				"head",
+				expressRoute,
+				(ctx) => handleEndpointRoute(ctx, compiledFile, route, "GET"),
+			);
+			if (debug) {
+				console.log(`  HEAD ${expressRoute} (auto from GET)`);
+			}
+		}
 
-    registered++;
-  }
+		registered++;
+	}
 
-  if (registered > 0) {
-    console.log(`Registered ${registered} dynamic endpoint(s)`);
-  }
+	if (registered > 0) {
+		console.log(`Registered ${registered} dynamic endpoint(s)`);
+	}
 };
