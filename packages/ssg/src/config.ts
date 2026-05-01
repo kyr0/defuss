@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { SsgConfig } from "./types.js";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import esbuild from "esbuild";

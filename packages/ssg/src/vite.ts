@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
-import { dirname, extname, join, relative, resolve, sep } from "node:path";
+import { dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { PluginOption, ResolvedConfig, ViteDevServer } from "vite";
+import type { PluginOption, ViteDevServer } from "vite";
 
 import {
 	getBrowserGlobals,
@@ -57,6 +57,48 @@ const MIME_TYPES: Record<string, string> = {
 	".xml": "application/xml; charset=utf-8",
 };
 
+const HMR_CLIENT_MODULE_ID = "virtual:defuss-ssg/hmr-client";
+const HMR_CLIENT_RESOLVED_ID = "\0virtual:defuss-ssg/hmr-client";
+const HMR_CLIENT_CODE = `
+if (import.meta.hot) {
+	import.meta.hot.on("defuss:ssg-reload", (data) => {
+		const path = data?.path || window.location.pathname;
+		const currentNorm = window.location.pathname.replace(/\\/$/, "") || "/";
+		const eventNorm = (path || "/").replace(/\\/$/, "") || "/";
+		const pathMatch = currentNorm === eventNorm;
+
+		if (!data?.path || pathMatch) {
+			const runtime = window.__defuss_ssg_runtime;
+			if (runtime?.navigateTo) {
+				runtime.pageCache?.clear();
+				runtime.bustCache = true;
+				runtime.navigateTo(window.location.pathname, true, {
+					preserveHydratedState: true,
+					kind: data?.kind,
+					componentSrc: data?.componentSrc,
+				});
+			}
+		}
+	});
+}
+`.trim();
+
+const resolveRuntimeHelperFile = (): string | null => {
+	const candidates = [
+		join(__dirname, "runtime.ts"),
+		join(__dirname, "..", "src", "runtime.ts"),
+		join(__dirname, "runtime.mjs"),
+	];
+
+	for (const candidate of candidates) {
+		if (existsSync(candidate)) {
+			return candidate;
+		}
+	}
+
+	return null;
+};
+
 const isHtmlLikeFile = (filePath: string): boolean => {
 	const extension = extname(filePath);
 	return extension === "" || extension === ".md" || extension === ".mdx" || extension === ".html";
@@ -85,9 +127,13 @@ const classifyChangedFile = (
 	config: SsgConfig,
 	rpcFile: string | null,
 ): DevChangeKind => {
-	const relativeFile = file.startsWith(projectDir)
-		? file.slice(projectDir.length).replace(/^[\\/]+/, "").replace(/\\/g, "/")
-		: file.replace(/\\/g, "/");
+	const relativeFile = relative(projectDir, file)
+		.replace(/^[\\/]+/, "")
+		.replace(/\\/g, "/");
+
+	if (relativeFile.startsWith("..")) {
+		return "other";
+	}
 
 	if (relativeFile === "config.ts" || relativeFile === "config.js") {
 		return "config";
@@ -109,7 +155,27 @@ const classifyChangedFile = (
 		return "asset";
 	}
 
-	return "other";
+	return "dependency";
+};
+
+const filePathToComponentPublicPath = (
+	file: string,
+	projectDir: string,
+	componentsDir: string,
+): string | undefined => {
+	const componentsRoot = join(projectDir, componentsDir);
+	const relativeComponentPath = relative(componentsRoot, file).replace(/\\/g, "/");
+
+	if (
+		relativeComponentPath.startsWith("..") ||
+		relativeComponentPath.length === 0
+	) {
+		return undefined;
+	}
+
+	return `/${join(componentsDir, relativeComponentPath)
+		.replace(/\\/g, "/")
+		.replace(/\.t?sx?$/, ".js")}`;
 };
 
 const refreshDynamicEndpoints = async (
@@ -146,17 +212,51 @@ const resolveOutputFile = async (
 const shouldBypassSsgMiddleware = (pathname: string): boolean =>
 	pathname.startsWith("/@") || pathname.startsWith("/__vite");
 
+const sendCustomEvent = (
+	server: ViteDevServer,
+	event: string,
+	data: Record<string, unknown> = {},
+): void => {
+	server.ws.send({
+		type: "custom",
+		event,
+		data,
+	});
+};
+
 export function defussSsg(
 	options: DefussSsgViteOptions = {},
 ): PluginOption[] {
-	let viteConfig: ResolvedConfig;
 	let projectDir = "";
 	let config: SsgConfig;
 	let dynamicEndpoints: ResolvedEndpoint[] = [];
 	let rpcFile: string | null = null;
 	let rebuildQueue: Promise<void> = Promise.resolve();
+	let lastHotUpdateKey = "";
 	const debug = options.debug ?? false;
 	const writeDevOutput = options.writeDevOutput ?? true;
+
+	const invalidateChangedFile = (
+		server: ViteDevServer,
+		file: string,
+		timestamp: number,
+	) => {
+		for (const environment of Object.values(server.environments)) {
+			const modules = environment.moduleGraph.getModulesByFile(file);
+			if (!modules) {
+				continue;
+			}
+
+			for (const module of modules) {
+				environment.moduleGraph.invalidateModule(
+					module,
+					new Set(),
+					timestamp,
+					true,
+				);
+			}
+		}
+	};
 
 	const refreshConfig = async () => {
 		config = await readConfig(projectDir, debug);
@@ -309,13 +409,31 @@ export function defussSsg(
 			const browserGlobals = getBrowserGlobals();
 			const document = getDocument(false, browserGlobals);
 			let vdom = PageComponent() as VNode;
+			const relativePagePath = relative(join(projectDir, config.pages), sourceFile)
+				.replace(/\\/g, "/");
+			const relativeOutputHtmlFilePath = relativePagePath.replace(
+				/\.(mdx|md|html)$/,
+				".html",
+			);
 
 			// Apply auto-hydration: wrap defuss components with hydration wrappers + scripts
 			const componentsDir = join(projectDir, config.components);
-			vdom = applyAutoHydrate(vdom, componentsDir, config.components, requestUrl.pathname);
+			vdom = applyAutoHydrate(
+				vdom,
+				componentsDir,
+				config.components,
+				relativeOutputHtmlFilePath,
+			);
 
 			const el = renderSync(vdom, document.documentElement, { browserGlobals }) as any;
 			let html = renderToString(el);
+
+			// Inject our HMR client before Vite transforms the HTML so the
+			// virtual module import is rewritten into a browser-loadable URL.
+			html = html.replace(
+				"</head>",
+				`<script type="module">import "${HMR_CLIENT_MODULE_ID}";</script></head>`,
+			);
 
 			// Inject Vite HMR client
 			html = await server.transformIndexHtml(requestUrl.pathname, html);
@@ -344,10 +462,12 @@ export function defussSsg(
 			return false;
 		}
 
+		const componentRoutePrefix = `/${config.components}/`;
+
 		// Handle runtime.js - served from the package
 		if (pathname === `/${config.components}/runtime.js`) {
-			const runtimePath = join(__dirname, "runtime.ts");
-			if (!existsSync(runtimePath)) {
+			const runtimePath = resolveRuntimeHelperFile();
+			if (!runtimePath) {
 				return false;
 			}
 			const transformed = await server.transformRequest(runtimePath);
@@ -362,8 +482,19 @@ export function defussSsg(
 		}
 
 		// Handle component files: /components/foo.js -> projectDir/components/foo.tsx
-		const relativePath = pathname.slice(1);
-		const componentBase = relativePath.replace(extname(relativePath), "");
+		const relativeComponentPath = pathname.slice(componentRoutePrefix.length);
+		const isBuiltComponentAsset =
+			relativeComponentPath.startsWith("chunks/") ||
+			/^chunk-|^client-/.test(relativeComponentPath);
+
+		if (isBuiltComponentAsset) {
+			return false;
+		}
+
+		const componentBase = relativeComponentPath.replace(
+			extname(relativeComponentPath),
+			"",
+		);
 		const componentsDir = join(projectDir, config.components);
 		const extensions = [".tsx", ".ts", ".jsx", ".js"];
 		let sourceFile: string | null = null;
@@ -377,7 +508,10 @@ export function defussSsg(
 		}
 
 		if (!sourceFile) {
-			return false;
+			res.setHeader("Cache-Control", "no-store");
+			res.statusCode = 404;
+			res.end();
+			return true;
 		}
 
 		const transformed = await server.transformRequest(sourceFile);
@@ -444,6 +578,20 @@ export function defussSsg(
 	const plugin: PluginOption = {
 		name: "vite:defuss-ssg",
 		apply: "serve",
+		resolveId(id) {
+			if (id === HMR_CLIENT_MODULE_ID) {
+				return HMR_CLIENT_RESOLVED_ID;
+			}
+
+			return null;
+		},
+		async load(id) {
+			if (id !== HMR_CLIENT_RESOLVED_ID) {
+				return null;
+			}
+
+			return HMR_CLIENT_CODE;
+		},
 		config() {
 			return {
 				server: {
@@ -460,11 +608,11 @@ export function defussSsg(
 			};
 		},
 		async configResolved(resolvedConfig) {
-			viteConfig = resolvedConfig;
 			projectDir = resolve(options.projectDir ?? resolvedConfig.root);
 			await refreshConfig();
 		},
 		async configureServer(server) {
+
 			const watchedPaths = [
 				join(projectDir, config.pages),
 				join(projectDir, config.components),
@@ -501,11 +649,21 @@ export function defussSsg(
 							await initializeRpc(projectDir, config, debug);
 						}
 					});
-					server.ws.send({ type: "custom", event: "defuss:rpc-reloaded" });
+					sendCustomEvent(server, "defuss:rpc-reloaded");
 					return;
 				}
 
-				server.ws.send({ type: "full-reload" });
+				sendCustomEvent(server, "defuss:ssg-reload", {
+					kind,
+					componentSrc:
+						kind === "component"
+							? filePathToComponentPublicPath(
+								file,
+								projectDir,
+								config.components,
+							)
+							: undefined,
+				});
 			};
 
 			server.watcher.on("add", (file) => {
@@ -543,7 +701,7 @@ export function defussSsg(
 				next();
 			});
 		},
-		async handleHotUpdate(ctx) {
+		async hotUpdate(ctx) {
 			const kind = classifyChangedFile(ctx.file, projectDir, config, rpcFile);
 			if (kind === "other") {
 				return;
@@ -561,19 +719,42 @@ export function defussSsg(
 						await initializeRpc(projectDir, config, debug);
 					}
 				});
-				ctx.server.ws.send({ type: "custom", event: "defuss:rpc-reloaded" });
+				const hotUpdateKey = `${ctx.file}:${ctx.timestamp}:rpc`;
+				if (lastHotUpdateKey !== hotUpdateKey) {
+					lastHotUpdateKey = hotUpdateKey;
+					sendCustomEvent(ctx.server, "defuss:rpc-reloaded");
+				}
 				return [];
 			}
+
+			if (ctx.type === "update") {
+				await ctx.read();
+			}
+
+			invalidateChangedFile(ctx.server, ctx.file, ctx.timestamp);
 
 			const reloadPath =
 				kind === "page" && isHtmlLikeFile(ctx.file)
 					? filePathToRoute(ctx.file, config, projectDir)
 					: undefined;
+			const componentSrc =
+				kind === "component"
+					? filePathToComponentPublicPath(
+						ctx.file,
+						projectDir,
+						config.components,
+					)
+					: undefined;
 
-			ctx.server.ws.send({
-				type: "full-reload",
-				...(reloadPath ? { path: reloadPath } : {}),
-			});
+			const hotUpdateKey = `${ctx.file}:${ctx.timestamp}:reload`;
+			if (lastHotUpdateKey !== hotUpdateKey) {
+				lastHotUpdateKey = hotUpdateKey;
+				sendCustomEvent(ctx.server, "defuss:ssg-reload", {
+					path: reloadPath,
+					kind,
+					componentSrc,
+				});
+			}
 
 			return [];
 		},

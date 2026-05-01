@@ -145,6 +145,7 @@ export type DevChangeKind =
 	| "page"
 	| "component"
 	| "asset"
+	| "dependency"
 	| "config"
 	| "rpc"
 	| "other";

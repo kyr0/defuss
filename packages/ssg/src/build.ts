@@ -40,9 +40,16 @@ const resolveLocalHelperFile = (
 	sourceRelativePath: string,
 	builtRelativePath: string,
 ): string => {
-	const sourcePath = resolve(__dirname, sourceRelativePath);
-	if (existsSync(sourcePath)) {
-		return sourcePath;
+	const candidates = [
+		resolve(__dirname, sourceRelativePath),
+		resolve(__dirname, "..", "src", sourceRelativePath),
+		resolve(__dirname, builtRelativePath),
+	];
+
+	for (const candidate of candidates) {
+		if (existsSync(candidate)) {
+			return candidate;
+		}
 	}
 
 	return resolve(__dirname, builtRelativePath);

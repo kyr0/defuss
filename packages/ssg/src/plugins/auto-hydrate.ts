@@ -122,73 +122,17 @@ export function applyAutoHydrate(
 								`
                   ;(async function(){
 
-                    const props = ${JSON.stringify(componentProps)};
                     const cacheBust = "?v=" + Date.now();
                     console.log("[hydrate:${id}] Starting hydration, cacheBust=" + cacheBust);
                     console.log("[hydrate:${id}] Importing runtime from /${componentsPublicPrefix}/runtime.js" + cacheBust);
-                    const { hydrate } = await import(/* @vite-ignore */ "/${componentsPublicPrefix}/runtime.js" + cacheBust);
-                    console.log("[hydrate:${id}] Importing component from ${clientSrcFile}" + cacheBust);
-                    const expports = (await import(/* @vite-ignore */ "${clientSrcFile}" + cacheBust));
+										const { hydrateBoundary } = await import(/* @vite-ignore */ "/${componentsPublicPrefix}/runtime.js" + cacheBust);
+										const boundary = document.querySelector('[data-hydrate-id="${id}"]');
 
-                    console.log("[hydrate:${id}] Module keys:", Object.keys(expports));
-
-                    if (!expports || typeof expports.default !== "function") {
-                      console.error("Hydration error: No default export function found in", "${clientSrcFile}");
-                      return;
-                    }
-                    const Component = expports.default;
-                    console.log("[hydrate:${id}] Component:", Component.name || "(anonymous)");
-
-                    let roots = null;
-                    try {
-                      roots = Component(props);
-                    } catch(e) {
-                     console.error("Error rendering component for hydration:", e);
-                     return;
-                    }
-
-                    if (!Array.isArray(roots)) {
-                      roots = [roots];
-                    } else {
-                      console.error("Hydration error: Component MUST return a single root element, not an array of elements! (no fragments allowed)");
-                    }
-
-                    console.log("[hydrate:${id}] Rendered VDOM roots:", roots.length, JSON.stringify(roots).slice(0, 200));
-
-                    const wrapper = document.querySelector('div[data-hydrate-id="${id}"]');
-                    console.log("[hydrate:${id}] Wrapper found:", !!wrapper, wrapper?.childNodes?.length, "children");
-
-                    if (wrapper) {
-                      const hydratableNodes = Array.from(wrapper.childNodes).filter(function(node) {
-                        if (node instanceof HTMLScriptElement) {
-                          return false;
-                        }
-
-                        if (node.nodeType === Node.COMMENT_NODE) {
-                          return false;
-                        }
-
-                        if (node.nodeType === Node.TEXT_NODE) {
-                          return (node.textContent ?? "").trim().length !== 0;
-                        }
-
-                        return true;
-                      });
-
-                      console.log("[hydrate:${id}] Hydratable DOM nodes:", hydratableNodes.length);
-
-                      try {
-                        hydrate(roots, hydratableNodes);
-                      } catch(e) {
-                        console.error("Error during hydration:", e);
-                        return;
-                      }
-                      // unwrap children
-                      wrapper.replaceWith(...hydratableNodes);
-                      console.log("[hydrate:${id}] Hydration complete, wrapper unwrapped");
-                    } else {
-                      console.warn("No wrapper found for hydration id ${id}");
-                    }
+										if (boundary instanceof Element) {
+											await hydrateBoundary(boundary, { fromWrapper: true });
+										} else {
+											console.warn("No hydration boundary found for ${id}");
+										}
                   })();
                   `,
 							],

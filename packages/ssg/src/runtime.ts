@@ -1,54 +1,13 @@
 import { $ } from "defuss";
 import { hydrate } from "defuss/client"; // CSR package with hydration support
 
-export const LiveReloadUrl = `${document.location.origin
-	.replace(/https/, "wss")
-	.replace(/http/, "ws")}/livereload`;
-
+/**
+ * Expose runtime functions on window for HMR client to call.
+ * The HMR client module (injected by Vite) listens for custom
+ * WebSocket events and triggers soft reload through these functions.
+ */
 export const setupLiveReload = () => {
-	// Close any previous WebSocket (e.g. from a prior cache-busted import)
-	const prev = (window as any).__defuss_lr_ws as WebSocket | undefined;
-	if (prev) {
-		prev.onclose = null; // prevent auto-reconnect of the old socket
-		prev.close();
-	}
-
-	console.log(`[live-reload] trying to (re-)connect to: ${LiveReloadUrl}...`);
-	const liveReloadSocket = new WebSocket(LiveReloadUrl);
-	(window as any).__defuss_lr_ws = liveReloadSocket;
-
-	liveReloadSocket.onmessage = (event) => {
-		console.log("[live-reload] message received", event);
-		const eventData = JSON.parse(event.data);
-		if (eventData.command === "reload") {
-			const path = eventData.path || "/";
-
-			const currentNorm = normalisePath(location.pathname);
-			const eventNorm = normalisePath(path);
-			const pathMatch = currentNorm === eventNorm;
-			console.log(
-				`[live-reload] path=${path}, currentNorm=${currentNorm}, eventNorm=${eventNorm}, pathMatch=${pathMatch}`,
-			);
-			if (!eventData.path || pathMatch) {
-				// Clear prefetch cache and bust browser HTTP cache so we get
-				// fresh rebuilt content after the server-side rebuild.
-				console.log(
-					"[live-reload] Clearing pageCache and triggering navigateTo with cache bust",
-				);
-				pageCache.clear();
-				bustCache = true;
-				navigateTo(location.pathname, true);
-			} else {
-				console.log("[live-reload] Path mismatch, skipping reload");
-			}
-		}
-	};
-	liveReloadSocket.onclose = () => {
-		// Only reconnect if this is still the active socket
-		if ((window as any).__defuss_lr_ws === liveReloadSocket) {
-			setTimeout(setupLiveReload, 5000);
-		}
-	};
+	// No-op: HMR is now handled by the Vite HMR client module
 };
 
 // -- Client-side navigation with prefetch ------------------------------
@@ -56,11 +15,38 @@ export const setupLiveReload = () => {
 /** Cache of prefetched HTML pages (url → html string) */
 const pageCache = new Map<string, string>();
 
+type LiveReloadKind =
+	| "page"
+	| "component"
+	| "asset"
+	| "dependency"
+	| "config"
+	| "rpc"
+	| "other";
+
+type NavigateOptions = {
+	preserveHydratedState?: boolean;
+	kind?: LiveReloadKind;
+	componentSrc?: string;
+};
+
+type HydrateBoundaryOptions = {
+	fromWrapper?: boolean;
+};
+
+const HYDRATION_ATTRIBUTE_NAMES = [
+	"data-hydrate-id",
+	"data-hydrate",
+	"data-hydrate-src",
+	"data-hydrate-props",
+	"data-hydrate-runtime",
+] as const;
+
 /** Set of URLs currently being fetched (dedup in-flight requests) */
 const fetching = new Set<string>();
 
-/** When true, the next prefetch bypasses the browser HTTP cache (set by live-reload) */
-let bustCache = false;
+/** When true, the next prefetch bypasses the browser HTTP cache (set by HMR client) */
+// Accessed via window.__defuss_bustCache so HMR client can modify it
 
 /** Normalise a pathname so /foo and /foo/ and /index.html all compare equally */
 const normalisePath = (path: string): string => {
@@ -103,9 +89,9 @@ const prefetch = async (url: string): Promise<void> => {
 	fetching.add(key);
 	try {
 		const fetchOpts: RequestInit = { credentials: "same-origin" };
-		if (bustCache) {
+		if ((window as any).__defuss_bustCache) {
 			fetchOpts.cache = "reload";
-			bustCache = false;
+			(window as any).__defuss_bustCache = false;
 		}
 		console.log(
 			`[prefetch] fetching url=${key} cache=${fetchOpts.cache || "default"}`,
@@ -131,6 +117,231 @@ const prefetch = async (url: string): Promise<void> => {
  * Trigger hydration for all wrappers in the given container.
  * Reads hydration metadata from data-* attributes and performs hydration programmatically.
  */
+const copyHydrationAttributes = (
+	from: Element,
+	to: Element,
+	markHydrated: boolean,
+): void => {
+	for (const attributeName of HYDRATION_ATTRIBUTE_NAMES) {
+		const value = from.getAttribute(attributeName);
+		if (value == null) {
+			to.removeAttribute(attributeName);
+			continue;
+		}
+		to.setAttribute(attributeName, value);
+	}
+
+	if (markHydrated) {
+		to.setAttribute("data-hydrated", "true");
+	} else {
+		to.removeAttribute("data-hydrated");
+	}
+};
+
+const isHydrationScript = (
+	node: Node,
+	id: string,
+): node is HTMLScriptElement => {
+	if (!(node instanceof HTMLScriptElement)) {
+		return false;
+	}
+
+	if (node.id === id) {
+		return true;
+	}
+
+	const src = node.getAttribute("src") ?? "";
+	return node.type === "module" && src.includes("html-proxy");
+};
+
+const getHydratableNodes = (boundary: Element, id: string): Node[] => {
+	const nodes = Array.from(boundary.childNodes).filter((node) => {
+		if (node.nodeType === Node.COMMENT_NODE) return false;
+		if (node.nodeType === Node.TEXT_NODE) {
+			return (node.textContent ?? "").trim().length !== 0;
+		}
+		return true;
+	});
+
+	while (nodes.length > 0 && isHydrationScript(nodes[nodes.length - 1], id)) {
+		nodes.pop();
+	}
+
+	return nodes;
+};
+
+const getHydrationRootElement = (nodes: Node[]): Element | null => {
+	for (const node of nodes) {
+		if (node instanceof Element) {
+			return node;
+		}
+	}
+
+	return null;
+};
+
+const normaliseHydrationMarkup = (container: ParentNode): void => {
+	const boundaries = Array.from(
+		container.querySelectorAll('[data-hydrate="true"]'),
+	);
+
+	for (const boundary of boundaries) {
+		const id = boundary.getAttribute("data-hydrate-id");
+		if (!id) {
+			continue;
+		}
+
+		const hydratableNodes = getHydratableNodes(boundary, id);
+		const rootElement = getHydrationRootElement(hydratableNodes);
+		if (!rootElement || rootElement === boundary) {
+			continue;
+		}
+
+		copyHydrationAttributes(boundary, rootElement, false);
+		boundary.replaceWith(...hydratableNodes);
+	}
+};
+
+const shouldPreserveHydratedBoundary = (
+	boundary: Element,
+	options: NavigateOptions,
+): boolean => {
+	if (!options.preserveHydratedState) {
+		return false;
+	}
+
+	if (options.kind === "component" && options.componentSrc) {
+		return boundary.getAttribute("data-hydrate-src") !== options.componentSrc;
+	}
+
+	return true;
+};
+
+const preserveHydratedBoundaries = (
+	container: ParentNode,
+	options: NavigateOptions,
+): void => {
+	const currentBoundaries = new Map<string, Element>();
+	for (const boundary of document.querySelectorAll('[data-hydrate="true"][data-hydrated="true"]')) {
+		const id = boundary.getAttribute("data-hydrate-id");
+		if (!id) {
+			continue;
+		}
+		currentBoundaries.set(id, boundary);
+	}
+
+	for (const nextBoundary of container.querySelectorAll('[data-hydrate="true"]')) {
+		const id = nextBoundary.getAttribute("data-hydrate-id");
+		if (!id) {
+			continue;
+		}
+
+		const currentBoundary = currentBoundaries.get(id);
+		if (!currentBoundary) {
+			continue;
+		}
+
+		if (!shouldPreserveHydratedBoundary(nextBoundary, options)) {
+			continue;
+		}
+
+		nextBoundary.outerHTML = currentBoundary.outerHTML;
+	}
+};
+
+export const hydrateBoundary = async (
+	boundary: Element,
+	options: HydrateBoundaryOptions = {},
+): Promise<void> => {
+	if (boundary.getAttribute("data-hydrate") !== "true") {
+		return;
+	}
+
+	if (boundary.getAttribute("data-hydrated") === "true") {
+		return;
+	}
+
+	const id = boundary.getAttribute("data-hydrate-id");
+	const src = boundary.getAttribute("data-hydrate-src");
+	const propsStr = boundary.getAttribute("data-hydrate-props");
+	const runtimeUrl = boundary.getAttribute("data-hydrate-runtime");
+
+	if (!id || !src || !propsStr || !runtimeUrl) {
+		console.warn(
+			`[triggerHydration] Boundary missing metadata: id=${id} src=${src}`,
+		);
+		return;
+	}
+
+	try {
+		const cacheBust = `?v=${Date.now()}`;
+		console.log(`[hydrate:${id}] Starting hydration for ${src}${cacheBust}`);
+
+		const { hydrate: doHydrate } = await import(
+			/* @vite-ignore */ `${runtimeUrl}${cacheBust}`
+		);
+		const exports = await import(
+			/* @vite-ignore */ `${src}${cacheBust}`
+		);
+
+		if (!exports || typeof exports.default !== "function") {
+			console.error(`[hydrate:${id}] No default export in ${src}`);
+			return;
+		}
+
+		const Component = exports.default;
+		const props = JSON.parse(propsStr);
+
+		console.log(
+			`[hydrate:${id}] Rendering component ${Component.name || "(anon)"} with props:`,
+			props,
+		);
+
+		let roots = Component(props);
+		if (!Array.isArray(roots)) {
+			roots = [roots];
+		}
+
+		const hydratableNodes = options.fromWrapper
+			? getHydratableNodes(boundary, id)
+			: Array.from(
+					boundary.querySelector(`script#${id}`)
+						? getHydratableNodes(boundary, id)
+						: [boundary],
+				);
+
+		for (const node of hydratableNodes) {
+			if (node instanceof Element) {
+				node.normalize();
+			}
+		}
+
+		console.log(
+			`[hydrate:${id}] Hydrating ${hydratableNodes.length} node(s)`,
+		);
+
+		doHydrate(roots, hydratableNodes);
+
+		const rootBoundary = getHydrationRootElement(hydratableNodes);
+		if (rootBoundary && rootBoundary !== boundary) {
+			copyHydrationAttributes(boundary, rootBoundary, true);
+			boundary.replaceWith(...hydratableNodes);
+			console.log(`[hydrate:${id}] Hydration complete`);
+			return;
+		}
+
+		boundary.setAttribute("data-hydrated", "true");
+		for (const node of Array.from(boundary.childNodes)) {
+			if (isHydrationScript(node, id)) {
+				node.remove();
+			}
+		}
+		console.log(`[hydrate:${id}] Hydration complete`);
+	} catch (e) {
+		console.error(`[hydrate:${id}] Error:`, e);
+	}
+};
+
 const triggerHydration = async (container: Element): Promise<void> => {
 	const wrappers = container.querySelectorAll('[data-hydrate="true"]');
 	console.log(
@@ -140,77 +351,7 @@ const triggerHydration = async (container: Element): Promise<void> => {
 	const promises: Promise<void>[] = [];
 
 	for (const wrapper of wrappers) {
-		const id = wrapper.getAttribute("data-hydrate-id");
-		const src = wrapper.getAttribute("data-hydrate-src");
-		const propsStr = wrapper.getAttribute("data-hydrate-props");
-		const runtimeUrl = wrapper.getAttribute("data-hydrate-runtime");
-
-		if (!id || !src || !propsStr || !runtimeUrl) {
-			console.warn(
-				`[triggerHydration] Wrapper missing metadata: id=${id} src=${src}`,
-			);
-			continue;
-		}
-
-		const promise = (async () => {
-			try {
-				const cacheBust = `?v=${Date.now()}`;
-				console.log(
-					`[hydrate:${id}] Starting hydration for ${src}${cacheBust}`,
-				);
-
-				const { hydrate: doHydrate } = await import(
-					/* @vite-ignore */ `${runtimeUrl}${cacheBust}`
-				);
-				const exports = await import(
-					/* @vite-ignore */ `${src}${cacheBust}`
-				);
-
-				if (!exports || typeof exports.default !== "function") {
-					console.error(
-						`[hydrate:${id}] No default export in ${src}`,
-					);
-					return;
-				}
-
-				const Component = exports.default;
-				const props = JSON.parse(propsStr);
-
-				console.log(
-					`[hydrate:${id}] Rendering component ${Component.name || "(anon)"} with props:`,
-					props,
-				);
-
-				let roots = Component(props);
-				if (!Array.isArray(roots)) {
-					roots = [roots];
-				}
-
-				// Filter out script nodes and comments
-				const hydratableNodes = Array.from(wrapper.childNodes).filter(
-					(node) => {
-						if (node instanceof HTMLScriptElement) return false;
-						if (node.nodeType === Node.COMMENT_NODE) return false;
-						if (node.nodeType === Node.TEXT_NODE) {
-							return (node.textContent ?? "").trim().length !== 0;
-						}
-						return true;
-					},
-				);
-
-				console.log(
-					`[hydrate:${id}] Hydrating ${hydratableNodes.length} node(s)`,
-				);
-
-				doHydrate(roots, hydratableNodes);
-
-				// Unwrap - replace wrapper with its hydrated children
-				wrapper.replaceWith(...hydratableNodes);
-				console.log(`[hydrate:${id}] Hydration complete`);
-			} catch (e) {
-				console.error(`[hydrate:${id}] Error:`, e);
-			}
-		})();
+		const promise = hydrateBoundary(wrapper);
 
 		promises.push(promise);
 	}
@@ -260,6 +401,7 @@ let navigating = false;
 export const navigateTo = async (
 	url: string,
 	replace = false,
+	options: NavigateOptions = {},
 ): Promise<void> => {
 	// Prevent concurrent navigations (e.g. multiple WebSocket messages)
 	if (navigating) return;
@@ -302,6 +444,9 @@ export const navigateTo = async (
 			location.href = url;
 			return;
 		}
+
+		normaliseHydrationMarkup(newBody);
+		preserveHydratedBoundaries(newBody, options);
 
 		// Save scroll position for current page (for back/forward)
 		const scrollY = window.scrollY;
@@ -443,5 +588,26 @@ if (!(window as any).__defuss_runtime_init) {
 // Live-reload WebSocket is always (re-)initialised so the newest module
 // closure is used - but setupLiveReload itself deduplicates the connection.
 setupLiveReload();
+
+// Expose runtime functions for HMR client to trigger soft reload
+(window as any).__defuss_ssg_runtime = {
+	navigateTo,
+	get pageCache() {
+		// pageCache is module-scoped, expose via closure
+		return (window as any).__defuss_pageCache;
+	},
+	set bustCache(value: boolean) {
+		(window as any).__defuss_bustCache = value;
+	},
+};
+
+// Expose module-scoped state for HMR client access (guard against redefinition on re-import)
+if (!(window as any).__defuss_pageCache) {
+	Object.defineProperty(window, "__defuss_pageCache", {
+		value: pageCache,
+		writable: false,
+		configurable: false,
+	});
+}
 
 export { hydrate };
