@@ -12,8 +12,22 @@ export const setupLiveReload = () => {
 
 // -- Client-side navigation with prefetch ------------------------------
 
+type RuntimeWindow = Window & {
+	__defuss_pageCache?: Map<string, string>;
+	__defuss_fetching?: Set<string>;
+	__defuss_bustCache?: boolean;
+	__defuss_runtime_init?: boolean;
+	__defuss_ssg_runtime?: {
+		navigateTo?: typeof navigateTo;
+		pageCache?: Map<string, string>;
+		bustCache?: boolean;
+	};
+};
+
+const runtimeWindow = window as RuntimeWindow;
+
 /** Cache of prefetched HTML pages (url → html string) */
-const pageCache = new Map<string, string>();
+const pageCache = runtimeWindow.__defuss_pageCache ?? new Map<string, string>();
 
 type LiveReloadKind =
 	| "page"
@@ -43,7 +57,7 @@ const HYDRATION_ATTRIBUTE_NAMES = [
 ] as const;
 
 /** Set of URLs currently being fetched (dedup in-flight requests) */
-const fetching = new Set<string>();
+const fetching = runtimeWindow.__defuss_fetching ?? new Set<string>();
 
 /** When true, the next prefetch bypasses the browser HTTP cache (set by HMR client) */
 // Accessed via window.__defuss_bustCache so HMR client can modify it
@@ -577,8 +591,8 @@ const setupPrefetch = (): void => {
 
 // Guard: only initialise once, even when runtime.js is re-imported with a
 // different cache-busting query string (each ?v=... is a new ES module identity).
-if (!(window as any).__defuss_runtime_init) {
-	(window as any).__defuss_runtime_init = true;
+if (!runtimeWindow.__defuss_runtime_init) {
+	runtimeWindow.__defuss_runtime_init = true;
 
 	// Set up client-side navigation and prefetch
 	setupClientNav();
@@ -589,25 +603,32 @@ if (!(window as any).__defuss_runtime_init) {
 // closure is used - but setupLiveReload itself deduplicates the connection.
 setupLiveReload();
 
-// Expose runtime functions for HMR client to trigger soft reload
-(window as any).__defuss_ssg_runtime = {
-	navigateTo,
-	get pageCache() {
-		// pageCache is module-scoped, expose via closure
-		return (window as any).__defuss_pageCache;
-	},
-	set bustCache(value: boolean) {
-		(window as any).__defuss_bustCache = value;
-	},
-};
-
 // Expose module-scoped state for HMR client access (guard against redefinition on re-import)
-if (!(window as any).__defuss_pageCache) {
+if (!runtimeWindow.__defuss_pageCache) {
 	Object.defineProperty(window, "__defuss_pageCache", {
 		value: pageCache,
 		writable: false,
 		configurable: false,
 	});
 }
+
+if (!runtimeWindow.__defuss_fetching) {
+	Object.defineProperty(window, "__defuss_fetching", {
+		value: fetching,
+		writable: false,
+		configurable: false,
+	});
+}
+
+// Expose runtime functions for HMR client to trigger soft reload
+runtimeWindow.__defuss_ssg_runtime = {
+	navigateTo,
+	get pageCache() {
+		return pageCache;
+	},
+	set bustCache(value: boolean) {
+		runtimeWindow.__defuss_bustCache = value;
+	},
+};
 
 export { hydrate };
