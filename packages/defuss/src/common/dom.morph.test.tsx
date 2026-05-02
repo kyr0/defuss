@@ -90,4 +90,5 @@ describe("updateDomWithVdom (state-preserving morph)", () => {
         expect(document.activeElement).toBe(inputAfter); // focus preserved
         expect(tr.className).toBe("danger"); // class was updated
     });
+
 });

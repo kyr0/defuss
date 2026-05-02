@@ -91,6 +91,37 @@ function isVNode(value: unknown): value is VNode<VNodeAttributes> {
   );
 }
 
+const HTML_BOOLEAN_ATTRIBUTES = new Set([
+  "allowfullscreen",
+  "async",
+  "autofocus",
+  "autoplay",
+  "checked",
+  "controls",
+  "default",
+  "defer",
+  "disabled",
+  "formnovalidate",
+  "hidden",
+  "inert",
+  "ismap",
+  "itemscope",
+  "loop",
+  "multiple",
+  "muted",
+  "nomodule",
+  "novalidate",
+  "open",
+  "playsinline",
+  "readonly",
+  "required",
+  "reversed",
+  "selected",
+]);
+
+const domAttributeToVNodeValue = (attr: Attr): string | boolean =>
+  HTML_BOOLEAN_ATTRIBUTES.has(attr.name.toLowerCase()) ? true : attr.value;
+
 function toValidChild(child: VNodeChild): ValidChild | undefined {
   if (child == null) return child; // null or undefined
   if (isTextLike(child)) return child;
@@ -264,10 +295,7 @@ function shouldPreserveFormStateAttribute(
   vnode: VNode<VNodeAttributes>,
 ): boolean {
   const tag = el.tagName.toLowerCase();
-  const hasExplicit = Object.prototype.hasOwnProperty.call(
-    vnode.attributes ?? {},
-    attrName,
-  );
+  const hasExplicit = Object.hasOwn(vnode.attributes ?? {}, attrName);
 
   if (hasExplicit) return false;
 
@@ -301,13 +329,13 @@ function patchElementInPlace(
     // treat class/className as equivalent
     if (
       name === "class" &&
-      (Object.prototype.hasOwnProperty.call(nextAttrs, "class") ||
-        Object.prototype.hasOwnProperty.call(nextAttrs, "className"))
+      (Object.hasOwn(nextAttrs, "class") ||
+        Object.hasOwn(nextAttrs, "className"))
     ) {
       continue;
     }
 
-    if (!Object.prototype.hasOwnProperty.call(nextAttrs, name)) {
+    if (!Object.hasOwn(nextAttrs, name)) {
       if (shouldPreserveFormStateAttribute(el, name, vnode)) continue;
       el.removeAttribute(name);
     }
@@ -354,10 +382,7 @@ function patchElementInPlace(
 
   // preserve textarea live value unless explicitly controlled
   if (tag === "textarea") {
-    const isControlled = Object.prototype.hasOwnProperty.call(
-      nextAttrs,
-      "value",
-    );
+    const isControlled = Object.hasOwn(nextAttrs, "value");
     const isActive = el.ownerDocument?.activeElement === el;
     if (isActive && !isControlled) return;
   }
@@ -869,7 +894,7 @@ export function domNodeToVNode(node: Node): VNode<VNodeAttributes> | string {
     // Convert DOM attributes to VNode attributes
     for (let i = 0; i < element.attributes.length; i++) {
       const attr = element.attributes[i];
-      attributes[attr.name] = attr.value;
+      attributes[attr.name] = domAttributeToVNodeValue(attr);
     }
 
     // Convert child nodes recursively

@@ -326,6 +326,29 @@ describe("General DOM manipulation", async () => {
     );
   });
 
+  it("can update checkbox boolean attributes from html markup", async () => {
+    renderIsomorphicSync(
+      <div id="update-checkbox">
+        <input id="task-check" type="checkbox" disabled />
+      </div>,
+      globals.document.body,
+      globals,
+    ) as Element;
+
+    await $("#update-checkbox", { globals }).update(
+      '<input id="task-check" type="checkbox" checked="" disabled="" />',
+    );
+
+    const checkbox = globals.document.body.querySelector(
+      "#task-check",
+    ) as HTMLInputElement;
+
+    expect(checkbox.checked).toBe(true);
+    expect(checkbox.disabled).toBe(true);
+    expect(checkbox.hasAttribute("checked")).toBe(true);
+    expect(checkbox.hasAttribute("disabled")).toBe(true);
+  });
+
   it("can update content with JSX", async () => {
     renderIsomorphicSync(
       <div id="update-jsx">Old</div>,
