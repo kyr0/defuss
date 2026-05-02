@@ -270,15 +270,11 @@ export interface SsgConfig {
 
 	/**
 	 * Remark plugins to use for MDX processing
-	 * You can import the default set from "defuss-ssg" and extend it
-	 * like this: import { remarkPlugins as defaultRemarkPlugins } from "defuss-ssg"
 	 */
 	remarkPlugins: Options["remarkPlugins"];
 
 	/**
 	 * Rehype plugins to use for MDX processing
-	 * You can import the default set from "defuss-ssg" and extend it
-	 * like this: import { rehypePlugins as defaultRehypePlugins } from "defuss-ssg"
 	 */
 	rehypePlugins: Options["rehypePlugins"];
 

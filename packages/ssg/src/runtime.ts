@@ -319,10 +319,10 @@ export const hydrateBoundary = async (
 		const hydratableNodes = options.fromWrapper
 			? getHydratableNodes(boundary, id)
 			: Array.from(
-					boundary.querySelector(`script#${id}`)
-						? getHydratableNodes(boundary, id)
-						: [boundary],
-				);
+				boundary.querySelector(`script#${id}`)
+					? getHydratableNodes(boundary, id)
+					: [boundary],
+			);
 
 		for (const node of hydratableNodes) {
 			if (node instanceof Element) {

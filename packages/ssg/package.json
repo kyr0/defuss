@@ -1,6 +1,6 @@
 {
   "name": "defuss-ssg",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -9,7 +9,7 @@
     "defuss-ssg": "dist/cli.mjs"
   },
   "license": "MIT",
-  "description": "A simple static site generator (SSG) built with defuss.",
+  "description": "A simple static site generator (SSG) built with and for defuss.",
   "keywords": [
     "ssg",
     "static",
@@ -48,16 +48,6 @@
         "default": "./dist/index.mjs"
       }
     },
-    "./components": {
-      "require": {
-        "types": "./dist/components/index.d.cts",
-        "default": "./dist/components/index.cjs"
-      },
-      "import": {
-        "types": "./dist/components/index.d.mts",
-        "default": "./dist/components/index.mjs"
-      }
-    },
     "./runtime": {
       "require": {
         "types": "./dist/runtime.d.cts",
@@ -76,16 +66,6 @@
       "import": {
         "types": "./dist/vite.d.mts",
         "default": "./dist/vite.mjs"
-      }
-    },
-    "./plugins": {
-      "require": {
-        "types": "./dist/plugins/index.d.cts",
-        "default": "./dist/plugins/index.cjs"
-      },
-      "import": {
-        "types": "./dist/plugins/index.d.mts",
-        "default": "./dist/plugins/index.mjs"
       }
     }
   },
@@ -114,7 +94,6 @@
     "esbuild": "^0.27.3",
     "fast-glob": "^3.3.3",
     "rehype-katex": "^7.0.1",
-    "rehype-mdx-title": "^3.2.0",
     "rehype-stringify": "^10.0.1",
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
@@ -122,7 +101,6 @@
     "remark-mdx-frontmatter": "^5.2.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "unist-util-visit": "^5.1.0",
     "vite": "^8.0.0",
     "ws": "^8.20.0"
   },

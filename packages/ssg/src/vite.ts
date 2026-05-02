@@ -13,7 +13,7 @@ import {
 	type VNode,
 } from "defuss/server";
 
-import { applyAutoHydrate } from "./plugins/auto-hydrate.js";
+import { applyAutoHydrate } from "./hydration.js";
 import { build } from "./build.js";
 import { readConfig } from "./config.js";
 import {

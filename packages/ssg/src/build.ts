@@ -30,6 +30,7 @@ import type {
 	Status,
 } from "./types.js";
 import { readConfig } from "./config.js";
+import { applyAutoHydrate } from "./hydration.js";
 import { validateProjectDir } from "./validation.js";
 import { buildEndpoints } from "./endpoints.js";
 
@@ -238,13 +239,8 @@ export const build = async ({
 	}
 	console.timeEnd("[build] prepare-temp");
 
-	// Copy hydration component and runtime into temp components
-	// (always needed; fast because they're single files)
+	// Copy runtime helper into temp components.
 	console.time("[build] copy-hydration");
-	await cp(
-		resolveLocalHelperFile(join("components", "hydrate.tsx"), join("components", "index.mjs")),
-		join(tmpComponentsDir, "hydrate.tsx"),
-	);
 	await cp(
 		resolveLocalHelperFile("runtime.ts", "runtime.mjs"),
 		join(tmpComponentsDir, "runtime.ts"),
@@ -342,6 +338,12 @@ export const build = async ({
 				console.time(`[build] page:${pageLabel} vdom`);
 				let vdom = exports.default(exports) as VNode;
 				console.timeEnd(`[build] page:${pageLabel} vdom`);
+				vdom = applyAutoHydrate(
+					vdom,
+					tmpComponentsDir,
+					config.components,
+					relativeOutputHtmlFilePath,
+				);
 
 				// run any "page-vdom" plugins
 				for (const plugin of config.plugins || []) {

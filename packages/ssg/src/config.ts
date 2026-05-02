@@ -4,9 +4,26 @@ import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import esbuild from "esbuild";
-import { rehypePlugins, remarkPlugins } from "./mdx-plugins.js";
-import { tailwindPlugin } from "./plugins/tailwind.js";
-import { autoHydratePlugin } from "./plugins/auto-hydrate.js";
+import rehypeKatex from "rehype-katex";
+import rehypeStringify from "rehype-stringify";
+import remarkFrontmatter from "remark-frontmatter";
+import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import remarkMdxFrontmatter from "remark-mdx-frontmatter";
+import type { RehypePlugins, RemarkPlugins } from "./types.js";
+
+const defaultRemarkPlugins: RemarkPlugins = [
+	remarkParse,
+	[remarkFrontmatter, ["yaml", "toml"]],
+	[remarkMdxFrontmatter, { name: "meta" }],
+	remarkGfm,
+	remarkRehype,
+	remarkMath,
+];
+
+const defaultRehypePlugins: RehypePlugins = [rehypeKatex, rehypeStringify];
 
 /**
  * Reads the SSG configuration from the project directory.
@@ -62,8 +79,8 @@ export const configDefaults: SsgConfig = {
 	components: "components",
 	assets: "assets",
 	tmp: ".ssg-temp",
-	plugins: [tailwindPlugin, autoHydratePlugin],
-	remarkPlugins,
-	rehypePlugins,
+	plugins: [],
+	remarkPlugins: defaultRemarkPlugins,
+	rehypePlugins: defaultRehypePlugins,
 	rpc: true,
 };
