@@ -1,6 +1,6 @@
 {
   "name": "defuss-ssg",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "publishConfig": {
     "access": "public"
