@@ -12,14 +12,15 @@ Use Bun for package management. The published package targets Node `^20.19.0 || 
 
 ## What It Supports
 
-- Markdown and MDX pages from `pages/`
+- Markdown and MDX pages from `pages/` or `src/pages/`
 - YAML or TOML frontmatter exposed as `meta`
 - GitHub Flavored Markdown via `remark-gfm`
 - KaTeX math via `$...$` and `$$...$$`
 - defuss components imported into MDX and HTML-like pages
-- Automatic hydration boundaries for components rendered from `components/`
-- Static assets copied from `assets/`
+- Automatic hydration boundaries for components rendered from `components/`, `src/components/`, `csr/`, or `src/csr/`
+- Static assets copied from `assets/` or `src/assets/`
 - File-based API routes from `pages/**/*.ts` and `pages/**/*.js`
+- Root `index.mdx`, `index.md`, or `index.html` fallback when no pages directory exists
 - Pre-rendered endpoints via `prerender = true` and `getStaticPaths()`
 - RPC auto-discovery from `rpc.ts` or `rpc.js` when `defuss-rpc` is installed
 - Plugin hooks for `pre`, `page-vdom`, `page-dom`, `page-html`, and `post`
@@ -275,11 +276,13 @@ Most projects only need the main package export.
 ```bash
 defuss-ssg [dev|build|serve] [folder] [--debug] [--multicore]
 
-No args           -> serve .
-Single path       -> serve <path>
+No args           -> dev .
+Single path       -> dev <path>
 Single command    -> <command> .
 Command + folder  -> <command> <folder>
 ```
+
+When `pages`, `components`, or `assets` are not configured explicitly, `defuss-ssg` prefers `src/pages`, `src/components`, `src/csr`, and `src/assets` before falling back to their project-root equivalents. If no pages directory exists, it falls back to root `index.mdx`, then `index.md`, then `index.html`.
 
 Commands:
 

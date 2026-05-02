@@ -28,7 +28,13 @@ import {
 	readIncomingBody,
 	sendWebResponse,
 } from "./http-adapter.js";
-import { filePathToRoute } from "./path.js";
+import {
+	filePathToRoute,
+	getPageSourceRootDir,
+	pageSourceFileToOutputPath,
+	resolvePageSourceFileForPath,
+	resolveSsgPaths,
+} from "./path.js";
 import { discoverRpcFile, handleRpcRequest, initializeRpc } from "./rpc.js";
 import type {
 	DefussSsgViteOptions,
@@ -61,7 +67,337 @@ const HMR_CLIENT_MODULE_ID = "virtual:defuss-ssg/hmr-client";
 const HMR_CLIENT_RESOLVED_ID = "\0virtual:defuss-ssg/hmr-client";
 const HMR_CLIENT_CODE = `
 if (import.meta.hot) {
-	import.meta.hot.on("defuss:ssg-reload", (data) => {
+	const noticeId = "__defuss-ssg-dev-connection-notice";
+	const noticeStyleId = "__defuss-ssg-dev-connection-notice-style";
+	const noticeText = "Dev server connection lost. Reconnecting...";
+
+	const ensureNoticeStyles = () => {
+		if (document.getElementById(noticeStyleId)) {
+			return;
+		}
+
+		const style = document.createElement("style");
+		style.id = noticeStyleId;
+		style.textContent = [
+			"#" + noticeId + " {",
+			"\tposition: fixed;",
+			"\ttop: 1rem;",
+			"\tright: 1rem;",
+			"\tz-index: 2147483647;",
+			"\tmax-width: min(24rem, calc(100vw - 2rem));",
+			"\tpadding: 0.75rem 1rem;",
+			"\tborder-radius: 0.75rem;",
+			"\tbackground: #b91c1c;",
+			"\tcolor: #ffffff;",
+			"\tfont: 600 0.875rem/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;",
+			"\tbox-shadow: 0 12px 32px rgba(127, 29, 29, 0.35);",
+			"\tpointer-events: none;",
+			"\topacity: 0;",
+			"\ttransform: translateY(-0.5rem);",
+			"\ttransition: opacity 140ms ease, transform 140ms ease;",
+			"}",
+			"#" + noticeId + "[data-visible='true'] {",
+			"\topacity: 1;",
+			"\ttransform: translateY(0);",
+			"}",
+		].join("\\n");
+		(document.head || document.documentElement).append(style);
+	};
+
+	const getNotice = () => {
+		let notice = document.getElementById(noticeId);
+		if (notice) {
+			return notice;
+		}
+
+		ensureNoticeStyles();
+
+		notice = document.createElement("div");
+		notice.id = noticeId;
+		notice.setAttribute("role", "status");
+		notice.setAttribute("aria-live", "polite");
+		notice.textContent = noticeText;
+		(document.body || document.documentElement).append(notice);
+		return notice;
+	};
+
+	const showDisconnectNotice = () => {
+		const notice = getNotice();
+		notice.textContent = noticeText;
+		notice.setAttribute("data-visible", "true");
+	};
+
+	const hideDisconnectNotice = () => {
+		const notice = document.getElementById(noticeId);
+		if (!notice) {
+			return;
+		}
+
+		notice.remove();
+	};
+
+	const getConnectionState = () => {
+		if (window.__defuss_ssg_dev_connection_state) {
+			return window.__defuss_ssg_dev_connection_state;
+		}
+
+		window.__defuss_ssg_dev_connection_state = {
+			fallbackSocket: null,
+			fallbackSocketPingId: 0,
+			reconnectPromise: null,
+			reconnectUrl: "",
+		};
+
+		return window.__defuss_ssg_dev_connection_state;
+	};
+
+	const wait = (ms) => new Promise((resolve) => {
+		window.setTimeout(resolve, ms);
+	});
+
+	const closeFallbackSocket = () => {
+		const state = getConnectionState();
+
+		if (state.fallbackSocketPingId) {
+			window.clearInterval(state.fallbackSocketPingId);
+			state.fallbackSocketPingId = 0;
+		}
+
+		if (!state.fallbackSocket) {
+			return;
+		}
+
+		const socket = state.fallbackSocket;
+		state.fallbackSocket = null;
+
+		try {
+			socket.close();
+		} catch {
+			// Ignore close races during reconnect.
+		}
+	};
+
+	const softRefreshCurrentPage = async (kind = "other") => {
+		const runtime = window.__defuss_ssg_runtime;
+
+		if (!runtime?.navigateTo) {
+			return;
+		}
+
+		runtime.pageCache?.clear();
+		runtime.bustCache = true;
+		await runtime.navigateTo(window.location.pathname, true, {
+			preserveHydratedState: true,
+			kind,
+		});
+	};
+
+	const handleFallbackPayload = async (payload) => {
+		switch (payload?.type) {
+			case "custom":
+				if (payload.event === "defuss:ssg-reload") {
+					await onReload(payload.data);
+				}
+				return;
+			case "full-reload":
+				await softRefreshCurrentPage("other");
+				return;
+			case "error":
+				console.error("[vite]", payload.err);
+				return;
+			default:
+				return;
+		}
+	};
+
+	const openFallbackSocket = async (socketUrl) => {
+		while (true) {
+			try {
+				const socket = await new Promise((resolve, reject) => {
+					const nextSocket = new WebSocket(socketUrl, "vite-hmr");
+					let settled = false;
+
+					const cleanup = () => {
+						nextSocket.removeEventListener("open", onOpen);
+						nextSocket.removeEventListener("error", onError);
+						nextSocket.removeEventListener("close", onCloseBeforeOpen);
+					};
+
+					const onOpen = () => {
+						if (settled) {
+							return;
+						}
+
+						settled = true;
+						cleanup();
+						resolve(nextSocket);
+					};
+
+					const onError = () => {
+						if (settled) {
+							return;
+						}
+
+						settled = true;
+						cleanup();
+
+						try {
+							nextSocket.close();
+						} catch {
+							// Ignore socket teardown races while probing for restart.
+						}
+
+						reject(new Error("fallback socket connection failed"));
+					};
+
+					const onCloseBeforeOpen = () => {
+						if (settled) {
+							return;
+						}
+
+						settled = true;
+						cleanup();
+						reject(new Error("fallback socket closed before opening"));
+					};
+
+					nextSocket.addEventListener("open", onOpen, { once: true });
+					nextSocket.addEventListener("error", onError, { once: true });
+					nextSocket.addEventListener("close", onCloseBeforeOpen, {
+						once: true,
+					});
+				});
+
+				const state = getConnectionState();
+				state.fallbackSocket = socket;
+				state.fallbackSocketPingId = window.setInterval(() => {
+					if (socket.readyState === socket.OPEN) {
+						socket.send(JSON.stringify({ type: "ping" }));
+					}
+				}, 30000);
+
+				socket.addEventListener("message", (event) => {
+					void (async () => {
+						try {
+							await handleFallbackPayload(JSON.parse(event.data));
+						} catch (error) {
+							console.error(
+								"[defuss-ssg] failed to process fallback HMR payload",
+								error,
+							);
+						}
+					})();
+				});
+
+				socket.addEventListener("error", () => {
+					try {
+						socket.close();
+					} catch {
+						// Ignore socket teardown races during reconnect.
+					}
+				});
+
+				socket.addEventListener(
+					"close",
+					() => {
+						const state = getConnectionState();
+
+						if (state.fallbackSocket !== socket) {
+							return;
+						}
+
+						if (state.fallbackSocketPingId) {
+							window.clearInterval(state.fallbackSocketPingId);
+							state.fallbackSocketPingId = 0;
+						}
+
+						state.fallbackSocket = null;
+						showDisconnectNotice();
+
+						if (state.reconnectUrl) {
+							void startReconnect(state.reconnectUrl);
+						}
+					},
+					{ once: true },
+				);
+
+				return socket;
+			} catch {
+				await wait(1000);
+			}
+		}
+	};
+
+	const startReconnect = (socketUrl) => {
+		const state = getConnectionState();
+
+		if (!socketUrl) {
+			return Promise.resolve();
+		}
+
+		state.reconnectUrl = socketUrl;
+
+		if (state.reconnectPromise) {
+			return state.reconnectPromise;
+		}
+
+		state.reconnectPromise = (async () => {
+			closeFallbackSocket();
+			await openFallbackSocket(socketUrl);
+			hideDisconnectNotice();
+
+			try {
+				await softRefreshCurrentPage("other");
+			} catch (error) {
+				console.error(
+					"[defuss-ssg] failed to soft refresh after reconnect",
+					error,
+				);
+			}
+		})().finally(() => {
+			state.reconnectPromise = null;
+		});
+
+		return state.reconnectPromise;
+	};
+
+	const suppressViteDisconnectReload = () => {
+		window.dispatchEvent(new Event("beforeunload"));
+	};
+
+	const existingHandlers = import.meta.hot.data.defussSsgConnectionHandlers;
+	if (existingHandlers) {
+		import.meta.hot.off("vite:ws:disconnect", existingHandlers.onDisconnect);
+		import.meta.hot.off("vite:ws:connect", existingHandlers.onConnect);
+		import.meta.hot.off("defuss:ssg-reload", existingHandlers.onReload);
+	}
+
+	const onDisconnect = (data) => {
+		showDisconnectNotice();
+
+		const state = getConnectionState();
+		const socketUrl = data?.webSocket?.url || state.reconnectUrl;
+		if (!socketUrl) {
+			return;
+		}
+
+		state.reconnectUrl = socketUrl;
+		suppressViteDisconnectReload();
+		void startReconnect(socketUrl);
+	};
+
+	const onConnect = (data) => {
+		const state = getConnectionState();
+
+		if (data?.webSocket?.url) {
+			state.reconnectUrl = data.webSocket.url;
+		}
+
+		if (!state.reconnectPromise) {
+			hideDisconnectNotice();
+		}
+	};
+
+	const onReload = (data) => {
 		const runtime = window.__defuss_ssg_runtime;
 
 		if (data?.kind === "asset" && data?.assetExt === ".css") {
@@ -86,9 +422,32 @@ if (import.meta.hot) {
 				});
 			}
 		}
-	});
+	};
+
+	import.meta.hot.on("vite:ws:disconnect", onDisconnect);
+	import.meta.hot.on("vite:ws:connect", onConnect);
+	import.meta.hot.on("defuss:ssg-reload", onReload);
+	import.meta.hot.data.defussSsgConnectionHandlers = {
+		onConnect,
+		onDisconnect,
+		onReload,
+	};
 }
 `.trim();
+
+const injectHmrClientModule = (html: string): string => {
+	if (html.includes(HMR_CLIENT_MODULE_ID)) {
+		return html;
+	}
+
+	const importTag = `<script type="module">import "${HMR_CLIENT_MODULE_ID}";</script>`;
+
+	if (html.includes("</head>")) {
+		return html.replace("</head>", `${importTag}</head>`);
+	}
+
+	return `${importTag}${html}`;
+};
 
 const resolveRuntimeHelperFile = (): string | null => {
 	const candidates = [
@@ -110,6 +469,21 @@ const isHtmlLikeFile = (filePath: string): boolean => {
 	const extension = extname(filePath);
 	return extension === "" || extension === ".md" || extension === ".mdx" || extension === ".html";
 };
+
+const normalizePath = (filePath: string): string => filePath.replace(/\\/g, "/");
+
+const isPathInOrUnder = (filePath: string, dirPath: string): boolean => {
+	const normalizedFilePath = normalizePath(filePath).replace(/\/+$/, "");
+	const normalizedDirPath = normalizePath(dirPath).replace(/\/+$/, "");
+
+	return (
+		normalizedFilePath === normalizedDirPath ||
+		normalizedFilePath.startsWith(`${normalizedDirPath}/`)
+	);
+};
+
+const isRootIndexPageSource = (filePath: string): boolean =>
+	/^index(?:\.mdx?|\.html)?$/i.test(normalizePath(filePath));
 
 const getOutputCandidates = (pathname: string): string[] => {
 	if (pathname === "/") {
@@ -134,6 +508,7 @@ const classifyChangedFile = (
 	config: SsgConfig,
 	rpcFile: string | null,
 ): DevChangeKind => {
+	const paths = resolveSsgPaths(projectDir, config);
 	const relativeFile = relative(projectDir, file)
 		.replace(/^[\\/]+/, "")
 		.replace(/\\/g, "/");
@@ -150,15 +525,19 @@ const classifyChangedFile = (
 		return "rpc";
 	}
 
-	if (relativeFile.startsWith(`${config.pages}/`)) {
+	if (isPathInOrUnder(relativeFile, paths.pagesSourceDir)) {
 		return isHtmlLikeFile(relativeFile) ? "page" : "endpoint";
 	}
 
-	if (relativeFile.startsWith(`${config.components}/`)) {
+	if (!paths.hasPagesSourceDir && isRootIndexPageSource(relativeFile)) {
+		return "page";
+	}
+
+	if (isPathInOrUnder(relativeFile, paths.componentsSourceDir)) {
 		return "component";
 	}
 
-	if (relativeFile.startsWith(`${config.assets}/`)) {
+	if (isPathInOrUnder(relativeFile, paths.assetsSourceDir)) {
 		return "asset";
 	}
 
@@ -167,11 +546,13 @@ const classifyChangedFile = (
 
 const filePathToComponentPublicPath = (
 	file: string,
-	projectDir: string,
-	componentsDir: string,
+	componentsSourceDir: string,
+	componentsPublicDir: string,
 ): string | undefined => {
-	const componentsRoot = join(projectDir, componentsDir);
-	const relativeComponentPath = relative(componentsRoot, file).replace(/\\/g, "/");
+	const relativeComponentPath = relative(componentsSourceDir, file).replace(
+		/\\/g,
+		"/",
+	);
 
 	if (
 		relativeComponentPath.startsWith("..") ||
@@ -180,7 +561,7 @@ const filePathToComponentPublicPath = (
 		return undefined;
 	}
 
-	return `/${join(componentsDir, relativeComponentPath)
+	return `/${join(componentsPublicDir, relativeComponentPath)
 		.replace(/\\/g, "/")
 		.replace(/\.t?sx?$/, ".js")}`;
 };
@@ -190,7 +571,7 @@ const refreshDynamicEndpoints = async (
 	config: SsgConfig,
 	debug: boolean,
 ): Promise<ResolvedEndpoint[]> => {
-	const pagesDir = join(projectDir, config.pages);
+	const pagesDir = resolveSsgPaths(projectDir, config).pagesSourceDirAbsolute;
 	const endpointsDir = join(projectDir, ".endpoints");
 	return (await resolveEndpoints(pagesDir, endpointsDir, debug)).filter(
 		(endpoint) => !endpoint.prerender,
@@ -236,6 +617,7 @@ export function defussSsg(
 ): PluginOption[] {
 	let projectDir = "";
 	let config: SsgConfig;
+	let paths: ReturnType<typeof resolveSsgPaths>;
 	let dynamicEndpoints: ResolvedEndpoint[] = [];
 	let rpcFile: string | null = null;
 	let rebuildQueue: Promise<void> = Promise.resolve();
@@ -266,6 +648,7 @@ export function defussSsg(
 
 	const refreshConfig = async () => {
 		config = await readConfig(projectDir, debug);
+		paths = resolveSsgPaths(projectDir, config);
 		rpcFile =
 			typeof config.rpc === "string"
 				? resolve(projectDir, config.rpc)
@@ -430,6 +813,7 @@ export function defussSsg(
 					lastSsgReloadSignatures.set(reloadKey, reloadSignature);
 				})
 					.then(() => {
+						const currentPaths = resolveSsgPaths(projectDir, config);
 						sendCustomEvent(server, "defuss:ssg-reload", {
 							path:
 								kind === "page" && isHtmlLikeFile(absoluteFile)
@@ -440,8 +824,8 @@ export function defussSsg(
 								kind === "component"
 									? filePathToComponentPublicPath(
 										absoluteFile,
-										projectDir,
-										config.components,
+										currentPaths.componentsSourceDirAbsolute,
+										currentPaths.componentsPublicDir,
 									)
 									: undefined,
 						});
@@ -664,20 +1048,12 @@ export function defussSsg(
 	const resolveSourceFileForPath = async (
 		pathname: string,
 	): Promise<string | null> => {
-		const candidates = getOutputCandidates(pathname);
-		const pagesDir = join(projectDir, config.pages);
-
-		for (const candidate of candidates) {
-			// Try .mdx, .md, .html extensions
-			for (const ext of [".mdx", ".md", ".html"]) {
-				const withoutExt = candidate.replace(/\.html$/, "");
-				const sourceFile = join(pagesDir, withoutExt + ext);
-				if (existsSync(sourceFile)) {
-					return sourceFile;
-				}
-			}
-		}
-		return null;
+		const currentPaths = resolveSsgPaths(projectDir, config);
+		return resolvePageSourceFileForPath(
+			pathname,
+			getPageSourceRootDir(projectDir, currentPaths),
+			currentPaths.hasPagesSourceDir,
+		);
 	};
 
 	const maybeServeSSRPage = async (
@@ -721,19 +1097,17 @@ export function defussSsg(
 			const browserGlobals = getBrowserGlobals();
 			const document = getDocument(false, browserGlobals);
 			let vdom = PageComponent() as VNode;
-			const relativePagePath = relative(join(projectDir, config.pages), sourceFile)
-				.replace(/\\/g, "/");
-			const relativeOutputHtmlFilePath = relativePagePath.replace(
-				/\.(mdx|md|html)$/,
-				".html",
+			const currentPaths = resolveSsgPaths(projectDir, config);
+			const relativeOutputHtmlFilePath = pageSourceFileToOutputPath(
+				sourceFile,
+				getPageSourceRootDir(projectDir, currentPaths),
 			);
 
 			// Apply auto-hydration: wrap defuss components with hydration wrappers + scripts
-			const componentsDir = join(projectDir, config.components);
 			vdom = applyAutoHydrate(
 				vdom,
-				componentsDir,
-				config.components,
+				currentPaths.componentsSourceDirAbsolute,
+				currentPaths.componentsPublicDir,
 				relativeOutputHtmlFilePath,
 			);
 
@@ -742,10 +1116,7 @@ export function defussSsg(
 
 			// Inject our HMR client before Vite transforms the HTML so the
 			// virtual module import is rewritten into a browser-loadable URL.
-			html = html.replace(
-				"</head>",
-				`<script type="module">import "${HMR_CLIENT_MODULE_ID}";</script></head>`,
-			);
+			html = injectHmrClientModule(html);
 
 			// Inject Vite HMR client
 			html = await server.transformIndexHtml(requestUrl.pathname, html);
@@ -807,12 +1178,15 @@ export function defussSsg(
 			extname(relativeComponentPath),
 			"",
 		);
-		const componentsDir = join(projectDir, config.components);
+		const currentPaths = resolveSsgPaths(projectDir, config);
 		const extensions = [".tsx", ".ts", ".jsx", ".js"];
 		let sourceFile: string | null = null;
 
 		for (const ext of extensions) {
-			const candidate = join(componentsDir, `${componentBase}${ext}`);
+			const candidate = join(
+				currentPaths.componentsSourceDirAbsolute,
+				`${componentBase}${ext}`,
+			);
 			if (existsSync(candidate)) {
 				sourceFile = candidate;
 				break;
@@ -875,7 +1249,7 @@ export function defussSsg(
 		if (outputFile.endsWith(".html")) {
 			const html = await server.transformIndexHtml(
 				requestUrl.pathname,
-				body.toString("utf8"),
+				injectHmrClientModule(body.toString("utf8")),
 			);
 			res.statusCode = 200;
 			res.end(method === "HEAD" ? undefined : html);
@@ -926,15 +1300,29 @@ export function defussSsg(
 		async configureServer(server) {
 
 			const watchedPaths = [
-				join(projectDir, config.pages),
-				join(projectDir, config.components),
-				join(projectDir, config.assets),
+				...paths.pagesSourceDirCandidates.map((candidateDir) =>
+					join(projectDir, candidateDir),
+				),
+				...paths.componentsSourceDirCandidates.map((candidateDir) =>
+					join(projectDir, candidateDir),
+				),
+				...paths.assetsSourceDirCandidates.map((candidateDir) =>
+					join(projectDir, candidateDir),
+				),
 				join(projectDir, "config.ts"),
+				join(projectDir, "config.js"),
 			];
+			if (!paths.hasPagesSourceDir) {
+				watchedPaths.push(
+					join(projectDir, "index.mdx"),
+					join(projectDir, "index.md"),
+					join(projectDir, "index.html"),
+				);
+			}
 			if (rpcFile) {
 				watchedPaths.push(rpcFile);
 			}
-			server.watcher.add(watchedPaths);
+			server.watcher.add([...new Set(watchedPaths)]);
 
 			await enqueue(async () => {
 				await rebuildOutput();

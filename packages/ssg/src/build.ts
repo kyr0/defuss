@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import {
 	existsSync,
 	mkdirSync,
+	readdirSync,
 	rmSync,
 	symlinkSync,
 } from "node:fs";
@@ -31,6 +32,13 @@ import type {
 } from "./types.js";
 import { readConfig } from "./config.js";
 import { applyAutoHydrate } from "./hydration.js";
+import {
+	getPageSourceRootDir,
+	pageSourceFileToOutputPath,
+	resolvePreferredPageSourceForOutputPath,
+	resolveSsgPaths,
+	selectPreferredPageSourceFiles,
+} from "./path.js";
 import { validateProjectDir } from "./validation.js";
 import { buildEndpoints } from "./endpoints.js";
 
@@ -41,6 +49,21 @@ const isHtmlLikePageSource = (filePath: string): boolean => {
 	const extension = extname(filePath).toLowerCase();
 	return extension === "" || extension === ".md" || extension === ".mdx" || extension === ".html";
 };
+
+const normalizePath = (filePath: string): string => filePath.replace(/\\/g, "/");
+
+const isPathInOrUnder = (filePath: string, dirPath: string): boolean => {
+	const normalizedFilePath = normalizePath(filePath).replace(/\/+$/, "");
+	const normalizedDirPath = normalizePath(dirPath).replace(/\/+$/, "");
+
+	return (
+		normalizedFilePath === normalizedDirPath ||
+		normalizedFilePath.startsWith(`${normalizedDirPath}/`)
+	);
+};
+
+const isRootIndexPageSource = (filePath: string): boolean =>
+	/^index(?:\.mdx?|\.html)?$/i.test(normalizePath(filePath));
 
 const resolveLocalHelperFile = (
 	sourceRelativePath: string,
@@ -96,27 +119,35 @@ export const build = async ({
 	timeDebug("[build] readConfig");
 	const config = (await readConfig(projectDir, debug)) as SsgConfig;
 	timeEndDebug("[build] readConfig");
+	const projectPaths = resolveSsgPaths(projectDir, config);
 
 	if (debug) {
 		console.log("Using config:", config);
 	}
 
 	// construct relative paths
-	const inputPagesDir = join(projectDir, config.pages);
-	const inputComponentsDir = join(projectDir, config.components);
-	const inputAssetsDir = join(projectDir, config.assets);
-
-	const tmpPagesDir = join(config.tmp, config.pages);
-	const tmpComponentsDir = join(config.tmp, config.components);
+	const inputPagesDir = projectPaths.pagesSourceDirAbsolute;
+	const inputComponentsDir = projectPaths.componentsSourceDirAbsolute;
+	const inputAssetsDir = projectPaths.assetsSourceDirAbsolute;
+	const hasInputPagesDir = projectPaths.hasPagesSourceDir;
+	const tmpPagesDir = join(config.tmp, projectPaths.pagesSourceDir);
+	const tmpComponentsDir = join(config.tmp, projectPaths.componentsSourceDir);
+	const tmpPageSourceRootDir = hasInputPagesDir
+		? tmpPagesDir
+		: getPageSourceRootDir(config.tmp, resolveSsgPaths(config.tmp, config));
 
 	const outputProjectDir = join(projectDir, config.output);
-	const outputPagesDir = join(projectDir, config.output, config.pages);
+	const outputPagesDir = outputProjectDir;
 	const outputComponentsDir = join(
 		projectDir,
 		config.output,
-		config.components,
+		projectPaths.componentsPublicDir,
 	);
-	const outputAssetsDir = join(projectDir, config.output, config.assets);
+	const outputAssetsDir = join(
+		projectDir,
+		config.output,
+		projectPaths.assetsPublicDir,
+	);
 
 	if (debug) {
 		console.log("Input pages dir:", inputPagesDir);
@@ -127,11 +158,6 @@ export const build = async ({
 		console.log("Output pages dir:", outputPagesDir);
 		console.log("Output components dir:", outputComponentsDir);
 		console.log("Output assets dir:", outputAssetsDir);
-	}
-
-	// validate that the input directories exist
-	if (!existsSync(inputPagesDir)) {
-		throw new Error(`Input pages directory does not exist: ${inputPagesDir}`);
 	}
 
 	// -- Determine what to rebuild --------------------------------------
@@ -150,31 +176,24 @@ export const build = async ({
 	if (changedFile) {
 		// Normalise to a path relative to the project directory
 		changedRelative = changedFile.startsWith(projectDir)
-			? changedFile.slice(projectDir.length).replace(/^\//, "")
+			? normalizePath(changedFile.slice(projectDir.length).replace(/^\//, ""))
 			: changedFile;
 
-		if (
-			changedRelative.startsWith(config.pages + sep) ||
-			changedRelative.startsWith(config.pages + "/")
-		) {
+		if (isPathInOrUnder(changedRelative, projectPaths.pagesSourceDir)) {
 			changeKind = isHtmlLikePageSource(changedRelative)
 				? "page"
 				: "endpoint";
-		} else if (
-			changedRelative.startsWith(config.components + sep) ||
-			changedRelative.startsWith(config.components + "/")
-		) {
+		} else if (!hasInputPagesDir && isRootIndexPageSource(changedRelative)) {
+			changeKind = "page";
+		} else if (isPathInOrUnder(changedRelative, projectPaths.componentsSourceDir)) {
 			changeKind = "component";
-		} else if (
-			changedRelative.startsWith(config.assets + sep) ||
-			changedRelative.startsWith(config.assets + "/")
-		) {
+		} else if (isPathInOrUnder(changedRelative, projectPaths.assetsSourceDir)) {
 			changeKind = "asset";
 		} else if (
 			changedRelative === "config.ts" ||
 			changedRelative === "config.js"
 		) {
-			changeKind = "config"; // treat as full rebuild
+			changeKind = "config";
 		}
 
 		if (debug) {
@@ -189,6 +208,23 @@ export const build = async ({
 
 	const isFullBuild = changeKind === "full" || changeKind === "config";
 	const tempExists = existsSync(config.tmp);
+	const shouldCopyToTemp = (src: string): boolean => {
+		const relative = src.startsWith(projectDir)
+			? normalizePath(src.slice(projectDir.length).replace(/^[\\/]+/, ""))
+			: src;
+		const firstSegment = relative.split(/[\\/]/)[0];
+
+		return !(
+			firstSegment === "node_modules" ||
+			firstSegment === config.output ||
+			firstSegment === ".endpoints" ||
+			firstSegment === ".ssg-temp" ||
+			firstSegment === ".git" ||
+			projectPaths.assetsSourceDirCandidates.some((candidateDir) =>
+				isPathInOrUnder(relative, candidateDir),
+			)
+		);
+	};
 
 	// -- Pre plugins (full build only) ---------------------------------
 	if (isFullBuild) {
@@ -220,28 +256,19 @@ export const build = async ({
 		}
 
 		timeDebug("[build] prepare-temp:cp");
-		await cp(projectDir, config.tmp, {
-			recursive: true,
-			filter: (src: string) => {
-				// Get the path relative to projectDir (strip projectDir + separator)
-				const relative = src.startsWith(projectDir)
-					? src.slice(projectDir.length).replace(/^\//, "")
-					: src;
-				// Skip directories/files that don't belong in the temp build folder
-				const firstSegment = relative.split("/")[0];
-				if (
-					firstSegment === "node_modules" ||
-					firstSegment === config.output ||
-					firstSegment === ".endpoints" ||
-					firstSegment === ".ssg-temp" ||
-					firstSegment === ".git" ||
-					firstSegment === "assets"
-				) {
-					return false;
-				}
-				return true;
-			},
-		});
+		mkdirSync(config.tmp, { recursive: true });
+		for (const sourceEntryName of readdirSync(projectDir)) {
+			const sourceEntry = join(projectDir, sourceEntryName);
+			const tempEntry = join(config.tmp, sourceEntryName);
+			if (!shouldCopyToTemp(sourceEntry)) {
+				continue;
+			}
+
+			await cp(sourceEntry, tempEntry, {
+				recursive: true,
+				filter: shouldCopyToTemp,
+			});
+		}
 		timeEndDebug("[build] prepare-temp:cp");
 
 		// Symlink node_modules into temp so esbuild can resolve packages
@@ -268,6 +295,7 @@ export const build = async ({
 	timeEndDebug("[build] prepare-temp");
 
 	// Copy runtime helper into temp components.
+	mkdirSync(tmpComponentsDir, { recursive: true });
 	timeDebug("[build] copy-hydration");
 	await cp(
 		resolveLocalHelperFile("runtime.ts", "runtime.mjs"),
@@ -290,10 +318,33 @@ export const build = async ({
 	let pageSourceFiles: string[] = [];
 	if (changeKind !== "asset" && changeKind !== "endpoint") {
 		timeDebug("[build] collect-pages");
-		pageSourceFiles =
-			changeKind === "page"
-				? [join(config.tmp, changedRelative)]
-				: await glob.async(join(tmpPagesDir, "**/*.mdx"));
+		if (changeKind === "page") {
+			const changedPageSourceFile = join(config.tmp, changedRelative);
+			const changedOutputPath = pageSourceFileToOutputPath(
+				changedPageSourceFile,
+				tmpPageSourceRootDir,
+			);
+			const preferredPageSourceFile = resolvePreferredPageSourceForOutputPath(
+				changedOutputPath,
+				tmpPageSourceRootDir,
+			);
+			pageSourceFiles = preferredPageSourceFile ? [preferredPageSourceFile] : [];
+		} else if (hasInputPagesDir) {
+			pageSourceFiles = selectPreferredPageSourceFiles(
+				await glob.async([
+					join(tmpPagesDir, "**/*.md"),
+					join(tmpPagesDir, "**/*.mdx"),
+					join(tmpPagesDir, "**/*.html"),
+				]),
+				tmpPageSourceRootDir,
+			);
+		} else {
+			const preferredRootIndexFile = resolvePreferredPageSourceForOutputPath(
+				"index.html",
+				tmpPageSourceRootDir,
+			);
+			pageSourceFiles = preferredRootIndexFile ? [preferredRootIndexFile] : [];
+		}
 		timeEndDebug("[build] collect-pages");
 	}
 
@@ -338,17 +389,32 @@ export const build = async ({
 			}
 
 			for (const inputFile of inputFiles) {
-				const outputHtmlFilePath = inputFile.replace(/\.mdx$/, ".html");
-				const resolvedTmpPagesDir = resolve(tmpPagesDir);
-				const relativeOutputHtmlFilePath = outputHtmlFilePath
-					.replace(`${resolvedTmpPagesDir}${sep}`, "")
-					.replace(`${tmpPagesDir}${sep}`, "");
+				const relativeOutputHtmlFilePath = pageSourceFileToOutputPath(
+					inputFile,
+					tmpPageSourceRootDir,
+				);
 
 				const pageLabel = relativeOutputHtmlFilePath;
+				const finalOutputFile = join(
+					projectDir,
+					config.output,
+					relativeOutputHtmlFilePath,
+				);
+				const finalOutputDir = dirname(finalOutputFile);
+				if (!existsSync(finalOutputDir)) {
+					mkdirSync(finalOutputDir, { recursive: true });
+				}
 
 				if (debug) {
 					console.log("Processing page source file:", inputFile);
 					console.log("Relative output HTML path:", relativeOutputHtmlFilePath);
+				}
+
+				if (extname(inputFile).toLowerCase() === ".html") {
+					timeDebug(`[build] page:${pageLabel} copyHtml`);
+					await cp(inputFile, finalOutputFile);
+					timeEndDebug(`[build] page:${pageLabel} copyHtml`);
+					continue;
 				}
 
 				timeDebug(`[build] page:${pageLabel} ssrLoadModule`);
@@ -365,7 +431,7 @@ export const build = async ({
 				vdom = applyAutoHydrate(
 					vdom,
 					tmpComponentsDir,
-					config.components,
+					projectPaths.componentsPublicDir,
 					relativeOutputHtmlFilePath,
 				);
 
@@ -448,17 +514,6 @@ export const build = async ({
 					}
 				}
 
-				const finalOutputFile = join(
-					projectDir,
-					config.output,
-					relativeOutputHtmlFilePath,
-				);
-
-				const finalOutputDir = dirname(finalOutputFile);
-				if (!existsSync(finalOutputDir)) {
-					mkdirSync(finalOutputDir, { recursive: true });
-				}
-
 				timeDebug(`[build] page:${pageLabel} writeFile`);
 				await writeFile(finalOutputFile, html);
 				timeEndDebug(`[build] page:${pageLabel} writeFile`);
@@ -527,7 +582,9 @@ export const build = async ({
 	}
 
 	if (isFullBuild || changeKind === "asset") {
-		await cp(inputAssetsDir, outputAssetsDir, { recursive: true });
+		if (existsSync(inputAssetsDir)) {
+			await cp(inputAssetsDir, outputAssetsDir, { recursive: true });
+		}
 	}
 	timeEndDebug("[build] copy-outputs");
 

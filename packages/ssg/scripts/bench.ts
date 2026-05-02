@@ -17,7 +17,7 @@ const BENCH_WORKERS = Number(process.env.BENCH_WORKERS ?? 2);
 
 // Start low to avoid FD/ephemeral-port pain on laptops
 const CONNECTIONS = (process.env.CONNECTIONS ??
-    "10,25,50,75,100,150,200,300,400").split(",").map((x) => Number(x.trim()));
+	"10,25,50,75,100,150,200,300,400").split(",").map((x) => Number(x.trim()));
 
 const METHOD = (process.env.METHOD ?? "GET").toUpperCase();
 const PATH = process.env.PATH ?? "";
@@ -25,89 +25,89 @@ const BODY = process.env.BODY ?? "";
 const RESULTS_FILE = process.env.RESULTS_FILE ?? ".tmp/bench-results.json";
 
 function titleFor(connections: number) {
-    return `${connections}c p${PIPELINING} w${BENCH_WORKERS}`;
+	return `${connections}c p${PIPELINING} w${BENCH_WORKERS}`;
 }
 
 function runOnce({ connections, warmup = false }: { connections: number; warmup?: boolean }) {
-    return new Promise((resolve, reject) => {
-        const opts = {
-            url: URL + PATH,
-            connections,
-            duration: warmup ? WARMUP : DURATION,
-            pipelining: PIPELINING,
-            workers: BENCH_WORKERS,
-            method: METHOD,
-            headers: {
-                Connection: "keep-alive",
-                ...(METHOD !== "GET" && METHOD !== "HEAD"
-                    ? { "content-type": "application/json" }
-                    : {}),
-            },
-            body: BODY || (METHOD === "POST" ? JSON.stringify({ hello: "world" }) : undefined),
+	return new Promise((resolve, reject) => {
+		const opts = {
+			url: URL + PATH,
+			connections,
+			duration: warmup ? WARMUP : DURATION,
+			pipelining: PIPELINING,
+			workers: BENCH_WORKERS,
+			method: METHOD,
+			headers: {
+				Connection: "keep-alive",
+				...(METHOD !== "GET" && METHOD !== "HEAD"
+					? { "content-type": "application/json" }
+					: {}),
+			},
+			body: BODY || (METHOD === "POST" ? JSON.stringify({ hello: "world" }) : undefined),
 
-        };
+		};
 
-        autocannon(opts as any, (err, res) => {
-            if (err) return reject(err);
-            return resolve(res);
-        });
+		autocannon(opts as any, (err, res) => {
+			if (err) return reject(err);
+			return resolve(res);
+		});
 
-        //autocannon.track(inst, { renderProgressBar: true });
-    });
+		//autocannon.track(inst, { renderProgressBar: true });
+	});
 }
 
 function pick(res: any, connections: number) {
-    const non2xx = res.non2xx ?? 0;
-    const errors =
-        (res.errors ?? 0) +
-        (res.timeouts ?? 0) +
-        (res.resets ?? 0) +
-        (res["1xx"] ?? 0); // harmless but keep it visible
+	const non2xx = res.non2xx ?? 0;
+	const errors =
+		(res.errors ?? 0) +
+		(res.timeouts ?? 0) +
+		(res.resets ?? 0) +
+		(res["1xx"] ?? 0); // harmless but keep it visible
 
-    return {
-        connections,
-        rps_avg: Math.round(res.requests.average),
-        rps_max: Math.round(res.requests.max),
-        p50_ms: Math.round(res.latency.p50),
-        p99_ms: Math.round(res.latency.p99),
-        throughput_mb_s: Number((res.throughput.average / (1024 * 1024)).toFixed(2)),
-        non2xx,
-        errors,
-    };
+	return {
+		connections,
+		rps_avg: Math.round(res.requests.average),
+		rps_max: Math.round(res.requests.max),
+		p50_ms: Math.round(res.latency.p50),
+		p99_ms: Math.round(res.latency.p99),
+		throughput_mb_s: Number((res.throughput.average / (1024 * 1024)).toFixed(2)),
+		non2xx,
+		errors,
+	};
 }
 
 async function main() {
-    console.log(`\nTarget: ${URL + PATH}`);
-    console.log(
-        `Config: duration=${DURATION}s warmup=${WARMUP}s pipelining=${PIPELINING} bench_workers=${BENCH_WORKERS} method=${METHOD}`
-    );
+	console.log(`\nTarget: ${URL + PATH}`);
+	console.log(
+		`Config: duration=${DURATION}s warmup=${WARMUP}s pipelining=${PIPELINING} bench_workers=${BENCH_WORKERS} method=${METHOD}`
+	);
 
-    console.log("\nWarmup...");
-    await runOnce({ connections: Math.max(10, Math.floor(CONNECTIONS[0] / 5)), warmup: true });
+	console.log("\nWarmup...");
+	await runOnce({ connections: Math.max(10, Math.floor(CONNECTIONS[0] / 5)), warmup: true });
 
-    const rows = [];
-    for (const c of CONNECTIONS) {
-        console.log(`\n=== Step: ${titleFor(c)} ===`);
-        const res = await runOnce({ connections: c, warmup: false });
-        rows.push(pick(res, c));
-    }
+	const rows = [];
+	for (const c of CONNECTIONS) {
+		console.log(`\n=== Step: ${titleFor(c)} ===`);
+		const res = await runOnce({ connections: c, warmup: false });
+		rows.push(pick(res, c));
+	}
 
-    console.log("\nSummary:");
-    console.table(rows);
+	console.log("\nSummary:");
+	console.table(rows);
 
-    const out = {
-        ts: new Date().toISOString(),
-        url: URL + PATH,
-        config: { DURATION, WARMUP, PIPELINING, BENCH_WORKERS, METHOD, CONNECTIONS },
-        rows,
-    };
+	const out = {
+		ts: new Date().toISOString(),
+		url: URL + PATH,
+		config: { DURATION, WARMUP, PIPELINING, BENCH_WORKERS, METHOD, CONNECTIONS },
+		rows,
+	};
 
-    await fs.mkdir(dirname(RESULTS_FILE), { recursive: true });
-    await fs.writeFile(RESULTS_FILE, JSON.stringify(out, null, 2));
-    console.log(`\nWrote ${RESULTS_FILE}`);
+	await fs.mkdir(dirname(RESULTS_FILE), { recursive: true });
+	await fs.writeFile(RESULTS_FILE, JSON.stringify(out, null, 2));
+	console.log(`\nWrote ${RESULTS_FILE}`);
 }
 
 main().catch((e) => {
-    console.error(e);
-    process.exit(1);
+	console.error(e);
+	process.exit(1);
 });

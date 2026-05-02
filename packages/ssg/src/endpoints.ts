@@ -10,6 +10,7 @@ import type {
 	EndpointRouteRegistrar,
 	SsgConfig,
 } from "./types.js";
+import { resolveSsgPaths } from "./path.js";
 
 // -- Types ------------------------------------------------------------
 
@@ -336,7 +337,7 @@ export const buildEndpoints = async (
 	config: SsgConfig,
 	debug = false,
 ): Promise<void> => {
-	const pagesDir = join(projectDir, config.pages);
+	const pagesDir = resolveSsgPaths(projectDir, config).pagesSourceDirAbsolute;
 	const outputDir = join(projectDir, config.output);
 	const endpointsDir = join(projectDir, ".endpoints");
 	const endpoints = await resolveEndpoints(pagesDir, endpointsDir, debug);

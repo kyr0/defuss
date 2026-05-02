@@ -9,33 +9,38 @@ import { setup } from "./setup.js";
 	const debug = args.includes("--debug") || args.includes("-d");
 	const multicore = args.includes("--multicore");
 	const positional = args.filter((a) => !a.startsWith("-"));
-	const usage = "Usage: defuss-ssg [dev|build|serve] [folder]\n  No args           => serve .\n  Single path       => serve <path>\n  Single command    => <command> .\n  Command + folder  => <command> <folder>\n  Flags: [--debug] [--multicore]";
+	const commands = new Set(["dev", "build", "serve"]);
+	const usage = "Usage: defuss-ssg [dev|build|serve] [folder]\n  No args           => dev .\n  Single path       => dev <path>\n  Single command    => <command> .\n  Command + folder  => <command> <folder>\n  Flags: [--debug] [--multicore]";
 
 	let command: string;
 	let folder: string;
 
 	if (positional.length === 0) {
-		// No args => serve .
-		command = "serve";
+		// No args => dev .
+		command = "dev";
 		folder = ".";
 	} else if (positional.length === 1) {
 		const arg = positional[0];
-		if (arg === "dev" || arg === "build" || arg === "serve") {
+		if (commands.has(arg)) {
 			// Single command => that command on .
 			command = arg;
 			folder = ".";
-		} else if (arg.startsWith(".") || arg.startsWith("/")) {
-			// Single path => serve that path
-			command = "serve";
-			folder = arg;
 		} else {
+			// Single path => dev that path
+			command = "dev";
+			folder = arg;
+		}
+	} else if (positional.length === 2) {
+		// Two args => command + folder
+		if (!commands.has(positional[0])) {
 			console.error(usage);
 			process.exit(1);
 		}
-	} else {
-		// Two args => command + folder
 		command = positional[0];
 		folder = positional[1];
+	} else {
+		console.error(usage);
+		process.exit(1);
 	}
 
 	const projectDir = resolve(folder);
