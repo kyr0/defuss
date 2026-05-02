@@ -11,7 +11,7 @@ import {
 	type VNode,
 } from "defuss/server";
 
-import { resolve, join, dirname, relative, sep } from "node:path";
+import { resolve, join, dirname, relative, sep, extname } from "node:path";
 import { cp, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
@@ -36,6 +36,11 @@ import { buildEndpoints } from "./endpoints.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const isHtmlLikePageSource = (filePath: string): boolean => {
+	const extension = extname(filePath).toLowerCase();
+	return extension === "" || extension === ".md" || extension === ".mdx" || extension === ".html";
+};
 
 const resolveLocalHelperFile = (
 	sourceRelativePath: string,
@@ -117,7 +122,13 @@ export const build = async ({
 	// -- Determine what to rebuild --------------------------------------
 	// For incremental builds (serve mode with changedFile), figure out if
 	// it's a page, component, or asset change so we can skip unneeded work.
-	type ChangeKind = "page" | "component" | "asset" | "config" | "full";
+	type ChangeKind =
+		| "page"
+		| "endpoint"
+		| "component"
+		| "asset"
+		| "config"
+		| "full";
 	let changeKind: ChangeKind = "full";
 	let changedRelative = ""; // path relative to projectDir
 
@@ -131,7 +142,9 @@ export const build = async ({
 			changedRelative.startsWith(config.pages + sep) ||
 			changedRelative.startsWith(config.pages + "/")
 		) {
-			changeKind = "page";
+			changeKind = isHtmlLikePageSource(changedRelative)
+				? "page"
+				: "endpoint";
 		} else if (
 			changedRelative.startsWith(config.components + sep) ||
 			changedRelative.startsWith(config.components + "/")
@@ -260,7 +273,7 @@ export const build = async ({
 
 	// -- Collect page source files for Vite SSR loading -----------------
 	let pageSourceFiles: string[] = [];
-	if (changeKind !== "asset") {
+	if (changeKind !== "asset" && changeKind !== "endpoint") {
 		console.time("[build] collect-pages");
 		pageSourceFiles =
 			changeKind === "page"
@@ -270,7 +283,7 @@ export const build = async ({
 	}
 
 	// -- Render pages to HTML -------------------------------------------
-	if (changeKind !== "asset") {
+	if (changeKind !== "asset" && changeKind !== "endpoint") {
 		console.time("[build] render-pages");
 		const pageModuleServer = await createServer({
 			root: config.tmp,
@@ -490,7 +503,7 @@ export const build = async ({
 	}
 
 	// -- Build endpoints (.ts/.js files in pages) -----------------------
-	if (isFullBuild || changeKind === "page") {
+	if (isFullBuild || changeKind === "page" || changeKind === "endpoint") {
 		console.time("[build] build-endpoints");
 		await buildEndpoints(projectDir, config, debug);
 		console.timeEnd("[build] build-endpoints");

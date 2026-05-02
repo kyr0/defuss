@@ -143,6 +143,7 @@ export interface ServeOptions {
 
 export type DevChangeKind =
 	| "page"
+	| "endpoint"
 	| "component"
 	| "asset"
 	| "dependency"

@@ -151,7 +151,7 @@ const classifyChangedFile = (
 	}
 
 	if (relativeFile.startsWith(`${config.pages}/`)) {
-		return "page";
+		return isHtmlLikeFile(relativeFile) ? "page" : "endpoint";
 	}
 
 	if (relativeFile.startsWith(`${config.components}/`)) {
@@ -289,6 +289,16 @@ export function defussSsg(
 	let rpcReloadTimer: ReturnType<typeof setTimeout> | null = null;
 	let lastRpcReloadSignature: string | null = null;
 	let lastRpcReloadResult = false;
+	const pendingEndpointReloads = new Map<
+		string,
+		{
+			promise: Promise<void>;
+			resolve: () => void;
+			reject: (error: unknown) => void;
+		}
+	>();
+	const endpointReloadTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	const lastEndpointReloadSignatures = new Map<string, string>();
 	const pendingAssetReloads = new Map<
 		string,
 		{
@@ -358,6 +368,71 @@ export function defussSsg(
 		}, 40);
 
 		return pendingRpcReload.promise;
+	};
+
+	const scheduleEndpointReload = (
+		server: ViteDevServer,
+		file: string,
+	): Promise<void> => {
+		const absoluteFile = resolve(file);
+		const existingTimer = endpointReloadTimers.get(absoluteFile);
+		if (existingTimer) {
+			clearTimeout(existingTimer);
+		}
+
+		let pendingReload = pendingEndpointReloads.get(absoluteFile);
+		if (!pendingReload) {
+			let resolvePending!: () => void;
+			let rejectPending!: (error: unknown) => void;
+			const promise = new Promise<void>((resolve, reject) => {
+				resolvePending = resolve;
+				rejectPending = reject;
+			});
+
+			pendingReload = {
+				promise,
+				resolve: resolvePending,
+				reject: rejectPending,
+			};
+			pendingEndpointReloads.set(absoluteFile, pendingReload);
+		}
+
+		endpointReloadTimers.set(
+			absoluteFile,
+			setTimeout(() => {
+				endpointReloadTimers.delete(absoluteFile);
+				const currentReload = pendingEndpointReloads.get(absoluteFile);
+				pendingEndpointReloads.delete(absoluteFile);
+
+				void enqueue(async () => {
+					const endpointSignature = existsSync(absoluteFile)
+						? `${absoluteFile}:${(await stat(absoluteFile)).mtimeMs}:${(await stat(absoluteFile)).size}`
+						: `${absoluteFile}:missing`;
+
+					if (
+						lastEndpointReloadSignatures.get(absoluteFile) === endpointSignature
+					) {
+						currentReload?.resolve();
+						return;
+					}
+
+					lastEndpointReloadSignatures.set(absoluteFile, endpointSignature);
+					await refreshConfig();
+					await rebuildOutput(existsSync(absoluteFile) ? absoluteFile : undefined);
+				})
+					.then(() => {
+						sendCustomEvent(server, "defuss:ssg-reload", {
+							kind: "endpoint",
+						});
+						currentReload?.resolve();
+					})
+					.catch((error) => {
+						currentReload?.reject(error);
+					});
+			}, 40),
+		);
+
+		return pendingReload.promise;
 	};
 
 	const scheduleAssetReload = (
@@ -798,6 +873,11 @@ export function defussSsg(
 					return;
 				}
 
+				if (kind === "endpoint") {
+					await scheduleEndpointReload(server, file);
+					return;
+				}
+
 				if (kind === "asset") {
 					await scheduleAssetReload(server, file);
 					return;
@@ -864,6 +944,11 @@ export function defussSsg(
 
 			if (kind === "rpc") {
 				await scheduleRpcReload(ctx.server);
+				return [];
+			}
+
+			if (kind === "endpoint") {
+				await scheduleEndpointReload(ctx.server, ctx.file);
 				return [];
 			}
 

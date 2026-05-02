@@ -32,6 +32,7 @@ const pageCache = runtimeWindow.__defuss_pageCache ?? new Map<string, string>();
 
 type LiveReloadKind =
 	| "page"
+	| "endpoint"
 	| "component"
 	| "asset"
 	| "dependency"
