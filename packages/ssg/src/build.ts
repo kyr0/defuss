@@ -1,6 +1,6 @@
 import mdx from "@mdx-js/rollup";
 import glob from "fast-glob";
-import { build as viteBuild, createServer } from "vite";
+import { build as viteBuild, createServer, type PluginOption } from "vite";
 import defuss from "defuss-vite";
 
 import {
@@ -11,9 +11,10 @@ import {
 	type VNode,
 } from "defuss/server";
 
+import { createRequire } from "node:module";
 import { resolve, join, dirname, relative, sep, extname } from "node:path";
 import { cp, readFile, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
 	existsSync,
 	mkdirSync,
@@ -84,6 +85,44 @@ const resolveLocalHelperFile = (
 	return resolve(__dirname, builtRelativePath);
 };
 
+const loadProjectTailwindVitePlugins = async (
+	projectDir: string,
+	debug: boolean,
+): Promise<PluginOption[]> => {
+	const requireFromBuild = createRequire(import.meta.url);
+
+	try {
+		const resolvedPluginPath = requireFromBuild.resolve("@tailwindcss/vite", {
+			paths: [projectDir],
+		});
+		const tailwindModule = await import(
+			pathToFileURL(resolvedPluginPath).href
+		);
+
+		if (typeof tailwindModule.default !== "function") {
+			return [];
+		}
+
+		const plugin = tailwindModule.default();
+		if (!plugin) {
+			return [];
+		}
+
+		return Array.isArray(plugin)
+			? (plugin as PluginOption[])
+			: [plugin as PluginOption];
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const isMissingPlugin = message.includes("@tailwindcss/vite");
+
+		if (!isMissingPlugin && debug) {
+			console.warn("[build] Failed to load @tailwindcss/vite from project:", error);
+		}
+
+		return [];
+	}
+};
+
 const injectStylesheetLinks = (html: string, hrefs: string[]): string => {
 	const missingHrefs = hrefs.filter((href) => !html.includes(`href="${href}"`));
 	if (missingHrefs.length === 0) {
@@ -99,6 +138,41 @@ const injectStylesheetLinks = (html: string, hrefs: string[]): string => {
 	}
 
 	return `${linkTags}${html}`;
+};
+
+const normalizeComponentStylesheet = (css: string): string => {
+	const compiledTailwindBanner = "/*! tailwindcss";
+	const compiledTailwindIndex = css.indexOf(compiledTailwindBanner);
+
+	if (compiledTailwindIndex <= 0) {
+		return css;
+	}
+
+	const prefix = css.slice(0, compiledTailwindIndex).trimStart();
+	const hasRawTailwindPrelude =
+		prefix.startsWith("@layer theme, base, components, utilities;") &&
+		prefix.includes("@theme default");
+
+	if (!hasRawTailwindPrelude) {
+		return css;
+	}
+
+	return css.slice(compiledTailwindIndex);
+};
+
+const normalizeComponentStylesheets = async (
+	componentsOutputDir: string,
+): Promise<void> => {
+	const cssFiles = await glob.async(join(componentsOutputDir, "**/*.css"));
+
+	for (const cssFile of cssFiles) {
+		const currentCss = await readFile(cssFile, "utf-8");
+		const normalizedCss = normalizeComponentStylesheet(currentCss);
+
+		if (normalizedCss !== currentCss) {
+			await writeFile(cssFile, normalizedCss);
+		}
+	}
 };
 
 const getComponentStylesheetHrefs = async (
@@ -607,12 +681,16 @@ export const build = async ({
 				resolve(entryFile),
 			]),
 		);
+		const componentBuildPlugins = [
+			defuss(),
+			...(await loadProjectTailwindVitePlugins(projectDir, debug)),
+		];
 
 		await viteBuild({
 			root: resolve(tmpComponentsDir),
 			configFile: false,
 			publicDir: false,
-			plugins: [defuss()],
+			plugins: componentBuildPlugins,
 			build: {
 				lib: {
 					entry: componentEntries,
@@ -630,6 +708,7 @@ export const build = async ({
 				},
 			},
 		});
+		await normalizeComponentStylesheets(tmpComponentOutDir);
 		timeEndDebug("[build] vite-components");
 	}
 

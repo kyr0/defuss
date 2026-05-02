@@ -50,6 +50,38 @@ type HydrateBoundaryOptions = {
 	fromWrapper?: boolean;
 };
 
+type HydratableComponent = (props: Record<string, any>) => any;
+
+const isHydratableComponent = (
+	value: unknown,
+): value is HydratableComponent => typeof value === "function";
+
+const pickHydrationComponent = (
+	moduleExports: Record<string, unknown>,
+	preferredExportName: string | null,
+): HydratableComponent | null => {
+	if (isHydratableComponent(moduleExports.default)) {
+		return moduleExports.default;
+	}
+
+	if (
+		preferredExportName &&
+		isHydratableComponent(moduleExports[preferredExportName])
+	) {
+		return moduleExports[preferredExportName];
+	}
+
+	const functionExports = Object.entries(moduleExports).filter(
+		([key, value]) => key !== "default" && isHydratableComponent(value),
+	);
+
+	if (functionExports.length === 1) {
+		return functionExports[0][1] as HydratableComponent;
+	}
+
+	return null;
+};
+
 type RestorableFormControl =
 	| HTMLInputElement
 	| HTMLTextAreaElement
@@ -789,6 +821,7 @@ export const hydrateBoundary = async (
 	}
 
 	const id = boundary.getAttribute("data-hydrate-id");
+	const exportName = boundary.getAttribute("data-hydrate-export");
 	const src = boundary.getAttribute("data-hydrate-src");
 	const propsStr = boundary.getAttribute("data-hydrate-props");
 	const runtimeUrl = boundary.getAttribute("data-hydrate-runtime");
@@ -807,16 +840,21 @@ export const hydrateBoundary = async (
 		const { hydrate: doHydrate } = await import(
 			/* @vite-ignore */ `${runtimeUrl}${cacheBust}`
 		);
-		const exports = await import(
+		const moduleExports = await import(
 			/* @vite-ignore */ `${src}${cacheBust}`
 		);
 
-		if (!exports || typeof exports.default !== "function") {
-			console.error(`[hydrate:${id}] No default export in ${src}`);
+		const Component = pickHydrationComponent(
+			moduleExports as Record<string, unknown>,
+			exportName,
+		);
+
+		if (!Component) {
+			console.error(
+				`[hydrate:${id}] No hydratable export in ${src}${exportName ? ` (expected ${exportName})` : ""}`,
+			);
 			return;
 		}
-
-		const Component = exports.default;
 		const props = JSON.parse(propsStr);
 
 		console.log(

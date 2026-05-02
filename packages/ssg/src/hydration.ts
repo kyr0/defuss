@@ -1,11 +1,29 @@
 import { createHash } from "node:crypto";
-import { join, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 
 import type { RenderInput, VNode, VNodeAttributes } from "defuss/jsx-runtime";
 
 const toStableHydrateId = (seed: string): string => {
 	const digest = createHash("sha1").update(seed).digest("hex").slice(0, 12);
 	return `dh_${digest}`;
+};
+
+const toPascalCase = (value: string): string =>
+	value
+		.split(/[^A-Za-z0-9]+/)
+		.filter(Boolean)
+		.map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+		.join("");
+
+const toComponentExportName = (componentFilePath: string): string => {
+	const extension = extname(componentFilePath);
+	const fileStem = basename(componentFilePath, extension);
+	const exportBaseName =
+		fileStem.toLowerCase() === "index"
+			? basename(dirname(componentFilePath))
+			: fileStem;
+
+	return toPascalCase(exportBaseName);
 };
 
 export function applyAutoHydrate(
@@ -42,6 +60,9 @@ export function applyAutoHydrate(
 			) {
 				const sourceFile = resolve(vnode.sourceInfo.fileName);
 				const relativeComponentPath = relative(componentsRoot, sourceFile);
+				const componentExportName = toComponentExportName(
+					relativeComponentPath,
+				);
 
 				if (
 					relativeComponentPath.startsWith("..") ||
@@ -86,6 +107,7 @@ export function applyAutoHydrate(
 					attributes: {
 						"data-hydrate-id": id,
 						"data-hydrate": "true",
+						"data-hydrate-export": componentExportName,
 						"data-hydrate-src": clientSrcFile,
 						"data-hydrate-props": JSON.stringify(componentProps),
 						"data-hydrate-runtime": `/${componentsPublicPrefix}/runtime.js`,
