@@ -239,7 +239,6 @@ export function defussSsg(
 	let dynamicEndpoints: ResolvedEndpoint[] = [];
 	let rpcFile: string | null = null;
 	let rebuildQueue: Promise<void> = Promise.resolve();
-	let lastHotUpdateKey = "";
 	const debug = options.debug ?? false;
 	const writeDevOutput = options.writeDevOutput ?? true;
 
@@ -289,6 +288,16 @@ export function defussSsg(
 	let rpcReloadTimer: ReturnType<typeof setTimeout> | null = null;
 	let lastRpcReloadSignature: string | null = null;
 	let lastRpcReloadResult = false;
+	const pendingSsgReloads = new Map<
+		string,
+		{
+			promise: Promise<void>;
+			resolve: () => void;
+			reject: (error: unknown) => void;
+		}
+	>();
+	const ssgReloadTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	const lastSsgReloadSignatures = new Map<string, string>();
 	const pendingEndpointReloads = new Map<
 		string,
 		{
@@ -368,6 +377,83 @@ export function defussSsg(
 		}, 40);
 
 		return pendingRpcReload.promise;
+	};
+
+	const scheduleSsgReload = (
+		server: ViteDevServer,
+		file: string,
+		kind: Extract<DevChangeKind, "page" | "component" | "dependency">,
+	): Promise<void> => {
+		const absoluteFile = resolve(file);
+		const reloadKey = `${kind}:${absoluteFile}`;
+		const existingTimer = ssgReloadTimers.get(reloadKey);
+		if (existingTimer) {
+			clearTimeout(existingTimer);
+		}
+
+		let pendingReload = pendingSsgReloads.get(reloadKey);
+		if (!pendingReload) {
+			let resolvePending!: () => void;
+			let rejectPending!: (error: unknown) => void;
+			const promise = new Promise<void>((resolve, reject) => {
+				resolvePending = resolve;
+				rejectPending = reject;
+			});
+
+			pendingReload = {
+				promise,
+				resolve: resolvePending,
+				reject: rejectPending,
+			};
+			pendingSsgReloads.set(reloadKey, pendingReload);
+		}
+
+		ssgReloadTimers.set(
+			reloadKey,
+			setTimeout(() => {
+				ssgReloadTimers.delete(reloadKey);
+				const currentReload = pendingSsgReloads.get(reloadKey);
+				pendingSsgReloads.delete(reloadKey);
+
+				void enqueue(async () => {
+					const reloadSignature = existsSync(absoluteFile)
+						? `${absoluteFile}:${(await stat(absoluteFile)).mtimeMs}:${(await stat(absoluteFile)).size}`
+						: `${absoluteFile}:missing`;
+
+					if (
+						lastSsgReloadSignatures.get(reloadKey) === reloadSignature
+					) {
+						currentReload?.resolve();
+						return;
+					}
+
+					lastSsgReloadSignatures.set(reloadKey, reloadSignature);
+				})
+					.then(() => {
+						sendCustomEvent(server, "defuss:ssg-reload", {
+							path:
+								kind === "page" && isHtmlLikeFile(absoluteFile)
+									? filePathToRoute(absoluteFile, config, projectDir)
+									: undefined,
+							kind,
+							componentSrc:
+								kind === "component"
+									? filePathToComponentPublicPath(
+										absoluteFile,
+										projectDir,
+										config.components,
+									)
+									: undefined,
+						});
+						currentReload?.resolve();
+					})
+					.catch((error) => {
+						currentReload?.reject(error);
+					});
+			}, 40),
+		);
+
+		return pendingReload.promise;
 	};
 
 	const scheduleEndpointReload = (
@@ -878,22 +964,19 @@ export function defussSsg(
 					return;
 				}
 
+				if (
+					kind === "page" ||
+					kind === "component" ||
+					kind === "dependency"
+				) {
+					await scheduleSsgReload(server, file, kind);
+					return;
+				}
+
 				if (kind === "asset") {
 					await scheduleAssetReload(server, file);
 					return;
 				}
-
-				sendCustomEvent(server, "defuss:ssg-reload", {
-					kind,
-					componentSrc:
-						kind === "component"
-							? filePathToComponentPublicPath(
-								file,
-								projectDir,
-								config.components,
-							)
-							: undefined,
-				});
 			};
 
 			server.watcher.on("add", (file) => {
@@ -952,6 +1035,20 @@ export function defussSsg(
 				return [];
 			}
 
+			if (
+				kind === "page" ||
+				kind === "component" ||
+				kind === "dependency"
+			) {
+				if (ctx.type === "update") {
+					await ctx.read();
+				}
+
+				invalidateChangedFile(ctx.server, ctx.file, ctx.timestamp);
+				await scheduleSsgReload(ctx.server, ctx.file, kind);
+				return [];
+			}
+
 			if (kind === "asset") {
 				await scheduleAssetReload(ctx.server, ctx.file);
 				return [];
@@ -962,29 +1059,6 @@ export function defussSsg(
 			}
 
 			invalidateChangedFile(ctx.server, ctx.file, ctx.timestamp);
-
-			const reloadPath =
-				kind === "page" && isHtmlLikeFile(ctx.file)
-					? filePathToRoute(ctx.file, config, projectDir)
-					: undefined;
-			const componentSrc =
-				kind === "component"
-					? filePathToComponentPublicPath(
-						ctx.file,
-						projectDir,
-						config.components,
-					)
-					: undefined;
-
-			const hotUpdateKey = `${ctx.file}:${ctx.timestamp}:reload`;
-			if (lastHotUpdateKey !== hotUpdateKey) {
-				lastHotUpdateKey = hotUpdateKey;
-				sendCustomEvent(ctx.server, "defuss:ssg-reload", {
-					path: reloadPath,
-					kind,
-					componentSrc,
-				});
-			}
 
 			return [];
 		},
