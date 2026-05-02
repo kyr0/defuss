@@ -19,6 +19,7 @@ type RuntimeWindow = Window & {
 	__defuss_runtime_init?: boolean;
 	__defuss_ssg_runtime?: {
 		navigateTo?: typeof navigateTo;
+		refreshLocalStylesheets?: typeof refreshLocalStylesheets;
 		pageCache?: Map<string, string>;
 		bustCache?: boolean;
 	};
@@ -404,6 +405,53 @@ const updateHead = (doc: Document): void => {
 	}
 };
 
+const refreshLocalStylesheets = (): boolean => {
+	const stylesheetLinks = Array.from(
+		document.querySelectorAll('link[rel="stylesheet"]'),
+	).filter((link): link is HTMLLinkElement => {
+		if (!(link instanceof HTMLLinkElement)) {
+			return false;
+		}
+
+		try {
+			return new URL(link.href, window.location.href).origin === window.location.origin;
+		} catch {
+			return false;
+		}
+	});
+
+	if (stylesheetLinks.length === 0) {
+		return false;
+	}
+
+	const cacheBust = String(Date.now());
+	for (const link of stylesheetLinks) {
+		const nextUrl = new URL(link.href, window.location.href);
+		nextUrl.searchParams.set("v", cacheBust);
+
+		const replacement = link.cloneNode(true) as HTMLLinkElement;
+		replacement.href = nextUrl.toString();
+		replacement.addEventListener(
+			"load",
+			() => {
+				link.remove();
+			},
+			{ once: true },
+		);
+		replacement.addEventListener(
+			"error",
+			() => {
+				replacement.remove();
+			},
+			{ once: true },
+		);
+
+		link.after(replacement);
+	}
+
+	return true;
+};
+
 /**
  * Navigate to a URL using client-side DOM patching.
  * Fetches the target page HTML, swaps <body> content, re-runs hydration scripts,
@@ -623,6 +671,7 @@ if (!runtimeWindow.__defuss_fetching) {
 // Expose runtime functions for HMR client to trigger soft reload
 runtimeWindow.__defuss_ssg_runtime = {
 	navigateTo,
+	refreshLocalStylesheets,
 	get pageCache() {
 		return pageCache;
 	},

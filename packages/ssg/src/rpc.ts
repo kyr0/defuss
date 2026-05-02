@@ -45,19 +45,23 @@ export const compileRpcModule = async (
 		console.log(`Compiling RPC module: ${rpcFilePath}`);
 	}
 
-	console.time("[rpc] esbuild-compile");
-	await esbuild.build({
-		entryPoints: [rpcFilePath],
-		format: "esm",
-		bundle: true,
-		platform: "node",
-		target: ["esnext"],
-		outdir: outDir,
-		outExtension: { ".js": ".mjs" },
-		// Mark defuss-rpc as external so it uses the installed version
-		external: ["defuss-rpc", "defuss-rpc/*"],
-	});
-	console.timeEnd("[rpc] esbuild-compile");
+	const compileLabel = "[rpc] esbuild-compile";
+	console.time(compileLabel);
+	try {
+		await esbuild.build({
+			entryPoints: [rpcFilePath],
+			format: "esm",
+			bundle: true,
+			platform: "node",
+			target: ["esnext"],
+			outdir: outDir,
+			outExtension: { ".js": ".mjs" },
+			// Mark defuss-rpc as external so it uses the installed version
+			external: ["defuss-rpc", "defuss-rpc/*"],
+		});
+	} finally {
+		console.timeEnd(compileLabel);
+	}
 
 	const compiledPath = join(outDir, "rpc.mjs");
 	if (debug) {

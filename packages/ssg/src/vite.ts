@@ -62,13 +62,20 @@ const HMR_CLIENT_RESOLVED_ID = "\0virtual:defuss-ssg/hmr-client";
 const HMR_CLIENT_CODE = `
 if (import.meta.hot) {
 	import.meta.hot.on("defuss:ssg-reload", (data) => {
+		const runtime = window.__defuss_ssg_runtime;
+
+		if (data?.kind === "asset" && data?.assetExt === ".css") {
+			if (runtime?.refreshLocalStylesheets?.()) {
+				return;
+			}
+		}
+
 		const path = data?.path || window.location.pathname;
 		const currentNorm = window.location.pathname.replace(/\\/$/, "") || "/";
 		const eventNorm = (path || "/").replace(/\\/$/, "") || "/";
 		const pathMatch = currentNorm === eventNorm;
 
 		if (!data?.path || pathMatch) {
-			const runtime = window.__defuss_ssg_runtime;
 			if (runtime?.navigateTo) {
 				runtime.pageCache?.clear();
 				runtime.bustCache = true;
@@ -270,6 +277,150 @@ export function defussSsg(
 		const next = rebuildQueue.then(task, task);
 		rebuildQueue = next.catch(() => undefined);
 		return next;
+	};
+
+	let pendingRpcReload:
+		| {
+			promise: Promise<boolean>;
+			resolve: (value: boolean) => void;
+			reject: (error: unknown) => void;
+		}
+		| null = null;
+	let rpcReloadTimer: ReturnType<typeof setTimeout> | null = null;
+	let lastRpcReloadSignature: string | null = null;
+	let lastRpcReloadResult = false;
+	const pendingAssetReloads = new Map<
+		string,
+		{
+			promise: Promise<void>;
+			resolve: () => void;
+			reject: (error: unknown) => void;
+		}
+	>();
+	const assetReloadTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	const lastAssetReloadSignatures = new Map<string, string>();
+
+	const scheduleRpcReload = (server: ViteDevServer): Promise<boolean> => {
+		if (rpcReloadTimer) {
+			clearTimeout(rpcReloadTimer);
+		}
+
+		if (!pendingRpcReload) {
+			let resolvePending!: (value: boolean) => void;
+			let rejectPending!: (error: unknown) => void;
+			const promise = new Promise<boolean>((resolve, reject) => {
+				resolvePending = resolve;
+				rejectPending = reject;
+			});
+
+			pendingRpcReload = {
+				promise,
+				resolve: resolvePending,
+				reject: rejectPending,
+			};
+		}
+
+		rpcReloadTimer = setTimeout(() => {
+			const currentReload = pendingRpcReload;
+			pendingRpcReload = null;
+			rpcReloadTimer = null;
+
+			void enqueue(async () => {
+				await refreshConfig();
+				const currentRpcFile = rpcFile && existsSync(rpcFile) ? rpcFile : null;
+				const rpcReloadSignature =
+					config.rpc === false
+						? "rpc:disabled"
+						: currentRpcFile
+							? `${resolve(currentRpcFile)}:${(await stat(currentRpcFile)).mtimeMs}:${(await stat(currentRpcFile)).size}`
+							: "rpc:missing";
+
+				if (lastRpcReloadSignature === rpcReloadSignature) {
+					currentReload?.resolve(lastRpcReloadResult);
+					return;
+				}
+
+				lastRpcReloadSignature = rpcReloadSignature;
+				const ok =
+					config.rpc === false
+						? false
+						: await initializeRpc(projectDir, config, debug);
+				lastRpcReloadResult = ok;
+
+					if (ok) {
+						sendCustomEvent(server, "defuss:rpc-reloaded");
+					}
+					currentReload?.resolve(ok);
+				})
+				.catch((error) => {
+					currentReload?.reject(error);
+				});
+		}, 40);
+
+		return pendingRpcReload.promise;
+	};
+
+	const scheduleAssetReload = (
+		server: ViteDevServer,
+		file: string,
+	): Promise<void> => {
+		const absoluteFile = resolve(file);
+		const existingTimer = assetReloadTimers.get(absoluteFile);
+		if (existingTimer) {
+			clearTimeout(existingTimer);
+		}
+
+		let pendingReload = pendingAssetReloads.get(absoluteFile);
+		if (!pendingReload) {
+			let resolvePending!: () => void;
+			let rejectPending!: (error: unknown) => void;
+			const promise = new Promise<void>((resolve, reject) => {
+				resolvePending = resolve;
+				rejectPending = reject;
+			});
+
+			pendingReload = {
+				promise,
+				resolve: resolvePending,
+				reject: rejectPending,
+			};
+			pendingAssetReloads.set(absoluteFile, pendingReload);
+		}
+
+		assetReloadTimers.set(
+			absoluteFile,
+			setTimeout(() => {
+				assetReloadTimers.delete(absoluteFile);
+				const currentReload = pendingAssetReloads.get(absoluteFile);
+				pendingAssetReloads.delete(absoluteFile);
+
+				void enqueue(async () => {
+					const assetSignature = existsSync(absoluteFile)
+						? `${absoluteFile}:${(await stat(absoluteFile)).mtimeMs}:${(await stat(absoluteFile)).size}`
+						: `${absoluteFile}:missing`;
+
+					if (lastAssetReloadSignatures.get(absoluteFile) === assetSignature) {
+						currentReload?.resolve();
+						return;
+					}
+
+					lastAssetReloadSignatures.set(absoluteFile, assetSignature);
+					await rebuildOutput(absoluteFile);
+				})
+					.then(() => {
+						sendCustomEvent(server, "defuss:ssg-reload", {
+							kind: "asset",
+							assetExt: extname(absoluteFile).toLowerCase() || undefined,
+						});
+						currentReload?.resolve();
+					})
+					.catch((error) => {
+						currentReload?.reject(error);
+					});
+			}, 40),
+		);
+
+		return pendingReload.promise;
 	};
 
 	const rebuildOutput = async (changedFile?: string) => {
@@ -643,13 +794,12 @@ export function defussSsg(
 				}
 
 				if (kind === "rpc") {
-					await enqueue(async () => {
-						await refreshConfig();
-						if (config.rpc !== false) {
-							await initializeRpc(projectDir, config, debug);
-						}
-					});
-					sendCustomEvent(server, "defuss:rpc-reloaded");
+					await scheduleRpcReload(server);
+					return;
+				}
+
+				if (kind === "asset") {
+					await scheduleAssetReload(server, file);
 					return;
 				}
 
@@ -713,17 +863,12 @@ export function defussSsg(
 			}
 
 			if (kind === "rpc") {
-				await enqueue(async () => {
-					await refreshConfig();
-					if (config.rpc !== false) {
-						await initializeRpc(projectDir, config, debug);
-					}
-				});
-				const hotUpdateKey = `${ctx.file}:${ctx.timestamp}:rpc`;
-				if (lastHotUpdateKey !== hotUpdateKey) {
-					lastHotUpdateKey = hotUpdateKey;
-					sendCustomEvent(ctx.server, "defuss:rpc-reloaded");
-				}
+				await scheduleRpcReload(ctx.server);
+				return [];
+			}
+
+			if (kind === "asset") {
+				await scheduleAssetReload(ctx.server, ctx.file);
 				return [];
 			}
 
