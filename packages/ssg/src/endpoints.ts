@@ -102,9 +102,9 @@ const createRedirect = (url: string, status = 302): Response =>
  * as-is so that compound extensions like `.json.ts` become `.json`.
  *
  * Examples:
- * - `pages/api/data.json.ts`       → `/api/data.json`
- * - `pages/api/[id].json.ts`       → `/api/[id].json`
- * - `pages/feed.xml.ts`            → `/feed.xml`
+ * - `pages/api/data.json.ts`       => `/api/data.json`
+ * - `pages/api/[id].json.ts`       => `/api/[id].json`
+ * - `pages/feed.xml.ts`            => `/feed.xml`
  */
 export const endpointFileToRoute = (
 	filePath: string,
@@ -123,7 +123,7 @@ export const endpointFileToRoute = (
 /**
  * Convert bracket-style dynamic segments to Express `:param` style.
  *
- * `"/api/[id].json"` → `"/api/:id.json"`
+ * `"/api/[id].json"` => `"/api/:id.json"`
  */
 export const routeToExpressPattern = (route: string): string =>
 	route.replace(/\[([^\]]+)\]/g, ":$1");
@@ -131,7 +131,7 @@ export const routeToExpressPattern = (route: string): string =>
 /**
  * Extract dynamic parameter names from a route pattern.
  *
- * `"/api/[category]/[id].json"` → `["category", "id"]`
+ * `"/api/[category]/[id].json"` => `["category", "id"]`
  */
 const extractParamNames = (route: string): string[] =>
 	Array.from(route.matchAll(/\[([^\]]+)\]/g), (m) => m[1]);
@@ -198,7 +198,7 @@ export const discoverEndpointSourceFiles = async (
  * @param pagesDir     Absolute path to the source pages directory
  * @param outDir       Absolute path to the `.endpoints/` directory
  * @param debug        Enable verbose logging
- * @returns Map from source file path → compiled `.mjs` file path
+ * @returns Map from source file path => compiled `.mjs` file path
  */
 export const compileEndpoints = async (
 	sourceFiles: string[],
@@ -209,7 +209,7 @@ export const compileEndpoints = async (
 	if (sourceFiles.length === 0) return new Map();
 
 	if (debug) {
-		console.log(`Compiling ${sourceFiles.length} endpoint source file(s)…`);
+		console.log(`Compiling ${sourceFiles.length} endpoint source file(s)...`);
 	}
 
 	console.time("[endpoints] esbuild-compile");
@@ -225,7 +225,7 @@ export const compileEndpoints = async (
 	});
 	console.timeEnd("[endpoints] esbuild-compile");
 
-	// Build the source→compiled mapping
+	// Build the source=>compiled mapping
 	const mapping = new Map<string, string>();
 	for (const src of sourceFiles) {
 		const rel = relative(pagesDir, src).replace(/\.(ts|js)$/, ".mjs");
@@ -292,7 +292,7 @@ export const resolveEndpoints = async (
 
 		if (debug) {
 			console.log(
-				`Endpoint: ${sourceFile} → ${compiledFile} → ${routePattern}` +
+				`Endpoint: ${sourceFile} => ${compiledFile} => ${routePattern}` +
 				(isDynamic ? ` (params: ${paramNames.join(", ")})` : ""),
 			);
 		}
@@ -362,7 +362,7 @@ export const buildEndpoints = async (
 		if (!handler) {
 			if (debug) {
 				console.log(
-					`Endpoint ${routePattern}: prerender=true but no GET export – skipping`,
+					`Endpoint ${routePattern}: prerender=true but no GET export - skipping`,
 				);
 			}
 			continue;
@@ -374,7 +374,7 @@ export const buildEndpoints = async (
 		if (isDynamic) {
 			if (!module.getStaticPaths) {
 				console.warn(
-					`Dynamic endpoint ${routePattern} has no getStaticPaths() – skipping`,
+					`Dynamic endpoint ${routePattern} has no getStaticPaths() - skipping`,
 				);
 				continue;
 			}
@@ -409,7 +409,7 @@ export const buildEndpoints = async (
 					mkdirSync(outputFileDir, { recursive: true });
 				}
 
-				// Redirect responses → small meta-refresh HTML page
+				// Redirect responses => small meta-refresh HTML page
 				if (response.status >= 300 && response.status < 400) {
 					const location = response.headers.get("Location") || "/";
 					await writeFile(
@@ -423,7 +423,7 @@ export const buildEndpoints = async (
 				}
 
 				if (debug) {
-					console.log(`  → ${outputFile}`);
+					console.log(`  => ${outputFile}`);
 				}
 			} catch (error) {
 				console.error(`Error pre-rendering endpoint ${resolvedRoute}:`, error);
@@ -475,7 +475,7 @@ export const handleEndpointRoute = async (
 	try {
 		const response = await handlerFn(endpointContext);
 
-		// HEAD → return response with body stripped
+		// HEAD => return response with body stripped
 		if (ctx.request.method === "HEAD") {
 			return new Response(null, {
 				status: response.status,

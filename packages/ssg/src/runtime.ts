@@ -27,7 +27,7 @@ type RuntimeWindow = Window & {
 
 const runtimeWindow = window as RuntimeWindow;
 
-/** Cache of prefetched HTML pages (url → html string) */
+/** Cache of prefetched HTML pages (url => html string) */
 const pageCache = runtimeWindow.__defuss_pageCache ?? new Map<string, string>();
 
 type LiveReloadKind =
@@ -105,7 +105,7 @@ const fetching = runtimeWindow.__defuss_fetching ?? new Set<string>();
 const normalisePath = (path: string): string => {
 	let p = path.split("#")[0].split("?")[0]; // strip hash & query
 	if (p.endsWith("/")) p += "index.html";
-	if (!p.includes(".")) p += ".html"; // /tos → /tos.html
+	if (!p.includes(".")) p += ".html"; // /tos => /tos.html
 	return p;
 };
 

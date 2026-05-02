@@ -43,16 +43,16 @@ bun add -D defuss-ssg
 
 ```text
 my-site/
-├── pages/
-│   ├── index.mdx
-│   └── api/
-│       └── ping.json.ts
-├── components/
-│   └── button.tsx
-├── assets/
-│   └── styles.css
-├── config.ts
-└── rpc.ts
+├-- pages/
+|   ├-- index.mdx
+|   └-- api/
+|       └-- ping.json.ts
+├-- components/
+|   └-- button.tsx
+├-- assets/
+|   └-- styles.css
+├-- config.ts
+└-- rpc.ts
 ```
 
 Minimal config:

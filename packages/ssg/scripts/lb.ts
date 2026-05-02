@@ -1,8 +1,8 @@
 // lb.ts - tiny L4 (TCP) round-robin load balancer for HTTP/WebSockets/etc.
-// ✅ One port in → N backends out
-// ✅ Round-robin (default) or IP-hash stickiness
-// ✅ Backend eject/backoff on failure (avoids “Caddy ducks around” vibes)
-// ✅ Works great with keep-alive + autocannon pipelining
+// [OK] One port in => N backends out
+// [OK] Round-robin (default) or IP-hash stickiness
+// [OK] Backend eject/backoff on failure (avoids "Caddy ducks around" vibes)
+// [OK] Works great with keep-alive + autocannon pipelining
 //
 // Run:
 //   tsx lb.ts
@@ -212,7 +212,7 @@ function connectToBackend(
 function handleClient(client: net.Socket) {
   socketTune(client);
 
-  // Don’t accept data until upstream is ready (keeps buffering sane)
+  // Don't accept data until upstream is ready (keeps buffering sane)
   client.pause();
 
   const startIdx = chooseBackendIndex(client);
@@ -268,7 +268,7 @@ server.on("error", (e) => {
   process.exit(1);
 });
 
-// On some OSes this helps bursts; if unsupported it’s harmless.
+// On some OSes this helps bursts; if unsupported it's harmless.
 try {
   // @ts-ignore
   server.maxConnections = 100_000;

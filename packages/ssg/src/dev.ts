@@ -9,7 +9,7 @@ import { defussSsg } from "./vite.js";
 
 /**
  * Start the Vite-backed development server for defuss-ssg.
- * Uses Vite's transform pipeline for true HMR — MDX files are
+ * Uses Vite's transform pipeline for true HMR - MDX files are
  * transformed on-the-fly via ssrLoadModule, no temp servers needed.
  * Soft-reload uses Vite's built-in HMR WebSocket channel.
  */
