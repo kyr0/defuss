@@ -262,6 +262,14 @@ const isRestorableFormControl = (
 	element instanceof HTMLTextAreaElement ||
 	element instanceof HTMLSelectElement;
 
+const isInsideNestedHydratedBoundary = (
+	root: Element,
+	element: Element,
+): boolean => {
+	const boundary = element.closest('[data-hydrate="true"]');
+	return boundary instanceof Element && boundary !== root;
+};
+
 const getElementPathWithinRoot = (root: Element, element: Element): number[] => {
 	if (root === element) {
 		return [];
@@ -430,16 +438,30 @@ const resolveElementWithinRoot = (
 	return null;
 };
 
-const getRestorableFormControls = (root: Element): RestorableFormControl[] => {
+const getRestorableFormControls = (
+	root: Element,
+	excludeHydratedDescendants = false,
+): RestorableFormControl[] => {
 	const controls: RestorableFormControl[] = [];
+	const candidates: RestorableFormControl[] = [];
 	if (isRestorableFormControl(root)) {
-		controls.push(root);
+		candidates.push(root);
 	}
 
 	for (const candidate of root.querySelectorAll("input, textarea, select")) {
 		if (candidate instanceof Element && isRestorableFormControl(candidate)) {
-			controls.push(candidate);
+			candidates.push(candidate);
 		}
+	}
+
+	for (const candidate of candidates) {
+		if (
+			excludeHydratedDescendants &&
+			isInsideNestedHydratedBoundary(root, candidate)
+		) {
+			continue;
+		}
+		controls.push(candidate);
 	}
 
 	return controls;
@@ -494,31 +516,59 @@ const snapshotControlState = (
 	return snapshot;
 };
 
-const restoreControlState = (
+const applyControlStateSnapshot = (
 	root: Element,
 	snapshot: ControlStateSnapshot,
-): void => {
+): RestorableFormControl | null => {
 	const target = resolveElementWithinRoot(root, snapshot.locator);
 	if (!target || !isRestorableFormControl(target)) {
-		return;
+		return null;
 	}
 
 	if (target instanceof HTMLInputElement) {
 		if (typeof snapshot.checked === "boolean") {
 			target.checked = snapshot.checked;
+			target.defaultChecked = snapshot.checked;
+			if (snapshot.checked) {
+				target.setAttribute("checked", "");
+			} else {
+				target.removeAttribute("checked");
+			}
 		}
 		if (typeof snapshot.value === "string" && target.type !== "file") {
 			target.value = snapshot.value;
+			target.defaultValue = snapshot.value;
+			target.setAttribute("value", snapshot.value);
 		}
 	} else if (target instanceof HTMLTextAreaElement) {
 		if (typeof snapshot.value === "string") {
 			target.value = snapshot.value;
+			target.defaultValue = snapshot.value;
+			target.textContent = snapshot.value;
 		}
 	} else if (snapshot.selectedValues) {
 		const selectedValues = new Set(snapshot.selectedValues);
 		for (const option of Array.from(target.options)) {
-			option.selected = selectedValues.has(option.value);
+			const isSelected = selectedValues.has(option.value);
+			option.selected = isSelected;
+			if (isSelected) {
+				option.setAttribute("selected", "");
+			} else {
+				option.removeAttribute("selected");
+			}
 		}
+	}
+
+	return target;
+};
+
+const restoreControlState = (
+	root: Element,
+	snapshot: ControlStateSnapshot,
+): void => {
+	const target = applyControlStateSnapshot(root, snapshot);
+	if (!target) {
+		return;
 	}
 
 	if (snapshot.active) {
@@ -546,7 +596,10 @@ const restoreControlState = (
 	}
 };
 
-const getScrollableElements = (root: Element): Element[] => {
+const getScrollableElements = (
+	root: Element,
+	excludeHydratedDescendants = false,
+): Element[] => {
 	const elements: Element[] = [];
 	const candidates: Element[] = [root];
 	for (const candidate of root.querySelectorAll("*")) {
@@ -556,6 +609,12 @@ const getScrollableElements = (root: Element): Element[] => {
 	}
 
 	for (const candidate of candidates) {
+		if (
+			excludeHydratedDescendants &&
+			isInsideNestedHydratedBoundary(root, candidate)
+		) {
+			continue;
+		}
 		if (candidate.scrollTop !== 0 || candidate.scrollLeft !== 0) {
 			elements.push(candidate);
 		}
@@ -570,17 +629,40 @@ const snapshotBoundaryState = (boundary: Element): BoundaryStateSnapshot | null 
 		return null;
 	}
 
+	const controlStates = getRestorableFormControls(boundary).map((control) =>
+		snapshotControlState(boundary, control),
+	);
+
 	return {
 		id,
-		controlStates: getRestorableFormControls(boundary).map((control) =>
-			snapshotControlState(boundary, control),
-		),
+		controlStates,
 		scrollStates: getScrollableElements(boundary).map((element) => ({
 			locator: createElementLocator(boundary, element),
 			scrollTop: element.scrollTop,
 			scrollLeft: element.scrollLeft,
 		})),
 	};
+};
+
+const collectPageControlStateSnapshots = (
+	options: NavigateOptions,
+): ControlStateSnapshot[] => {
+	if (!options.preserveHydratedState) {
+		return [];
+	}
+
+	return getRestorableFormControls(document.body, true).map((control) =>
+		snapshotControlState(document.body, control),
+	);
+};
+
+const syncPageControlStateSnapshots = (
+	container: Element,
+	snapshots: ControlStateSnapshot[],
+): void => {
+	for (const snapshot of snapshots) {
+		applyControlStateSnapshot(container, snapshot);
+	}
 };
 
 const shouldPreserveHydratedBoundary = (
@@ -942,6 +1024,8 @@ export const navigateTo = async (
 			: null;
 
 		normaliseHydrationMarkup(newBody);
+		const pageControlStateSnapshots = collectPageControlStateSnapshots(options);
+		syncPageControlStateSnapshots(newBody, pageControlStateSnapshots);
 		const boundaryStateSnapshots = collectBoundaryStateSnapshots(
 			newBody,
 			options,
