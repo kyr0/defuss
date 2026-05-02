@@ -1,8 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-
 import { express, startServer } from "defuss-express";
-
 import { readConfig } from "./config.js";
 import { registerEndpoints } from "./endpoints.js";
 import {

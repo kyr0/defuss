@@ -49,6 +49,43 @@ type HydrateBoundaryOptions = {
 	fromWrapper?: boolean;
 };
 
+type RestorableFormControl =
+	| HTMLInputElement
+	| HTMLTextAreaElement
+	| HTMLSelectElement;
+
+type ElementLocator = {
+	id?: string;
+	name?: string;
+	nameIndex?: number;
+	path: number[];
+	tagName: string;
+	inputType?: string;
+};
+
+type ControlStateSnapshot = {
+	locator: ElementLocator;
+	value?: string;
+	checked?: boolean;
+	selectedValues?: string[];
+	selectionStart?: number | null;
+	selectionEnd?: number | null;
+	selectionDirection?: SelectionDirection | null;
+	active?: boolean;
+};
+
+type ScrollStateSnapshot = {
+	locator: ElementLocator;
+	scrollTop: number;
+	scrollLeft: number;
+};
+
+type BoundaryStateSnapshot = {
+	id: string;
+	controlStates: ControlStateSnapshot[];
+	scrollStates: ScrollStateSnapshot[];
+};
+
 const HYDRATION_ATTRIBUTE_NAMES = [
 	"data-hydrate-id",
 	"data-hydrate",
@@ -217,6 +254,334 @@ const normaliseHydrationMarkup = (container: ParentNode): void => {
 	}
 };
 
+const isRestorableFormControl = (
+	element: Element,
+): element is RestorableFormControl =>
+	element instanceof HTMLInputElement ||
+	element instanceof HTMLTextAreaElement ||
+	element instanceof HTMLSelectElement;
+
+const getElementPathWithinRoot = (root: Element, element: Element): number[] => {
+	if (root === element) {
+		return [];
+	}
+
+	const path: number[] = [];
+	let current: Element | null = element;
+	while (current && current !== root) {
+		const parentElement: HTMLElement | null = current.parentElement;
+		if (!parentElement) {
+			return [];
+		}
+
+		path.unshift(Array.from(parentElement.children).indexOf(current));
+		current = parentElement;
+	}
+
+	return path;
+};
+
+const resolveElementPathWithinRoot = (
+	root: Element,
+	path: number[],
+): Element | null => {
+	let current: Element | null = root;
+	for (const index of path) {
+		if (!current || index < 0 || index >= current.children.length) {
+			return null;
+		}
+		current = current.children[index] as Element;
+	}
+
+	return current;
+};
+
+const elementMatchesLocator = (
+	element: Element,
+	locator: ElementLocator,
+): boolean => {
+	if (element.tagName.toLowerCase() !== locator.tagName) {
+		return false;
+	}
+
+	if (
+		locator.inputType &&
+		element instanceof HTMLInputElement &&
+		element.type !== locator.inputType
+	) {
+		return false;
+	}
+
+	if (locator.inputType && !(element instanceof HTMLInputElement)) {
+		return false;
+	}
+
+	return true;
+};
+
+const getNamedElementsWithinRoot = (
+	root: Element,
+	name: string,
+	tagName: string,
+	inputType?: string,
+): Element[] => {
+	const candidates: Element[] = [];
+	if (root.getAttribute("name") === name) {
+		candidates.push(root);
+	}
+
+	for (const candidate of root.querySelectorAll("[name]")) {
+		if (!(candidate instanceof Element)) {
+			continue;
+		}
+		if (candidate.getAttribute("name") === name) {
+			candidates.push(candidate);
+		}
+	}
+
+	return candidates.filter((candidate) => {
+		if (candidate.tagName.toLowerCase() !== tagName) {
+			return false;
+		}
+
+		if (inputType && candidate instanceof HTMLInputElement) {
+			return candidate.type === inputType;
+		}
+
+		return !inputType || candidate instanceof HTMLInputElement;
+	});
+};
+
+const createElementLocator = (root: Element, element: Element): ElementLocator => {
+	const name = element.getAttribute("name") ?? undefined;
+	const tagName = element.tagName.toLowerCase();
+	const inputType =
+		element instanceof HTMLInputElement ? element.type : undefined;
+	const locator: ElementLocator = {
+		id: element.id || undefined,
+		name,
+		path: getElementPathWithinRoot(root, element),
+		tagName,
+		inputType,
+	};
+
+	if (name) {
+		const namedElements = getNamedElementsWithinRoot(
+			root,
+			name,
+			tagName,
+			inputType,
+		);
+		const nameIndex = namedElements.indexOf(element);
+		if (nameIndex >= 0) {
+			locator.nameIndex = nameIndex;
+		}
+	}
+
+	return locator;
+};
+
+const resolveElementWithinRoot = (
+	root: Element,
+	locator: ElementLocator,
+): Element | null => {
+	if (locator.id) {
+		if (root.id === locator.id && elementMatchesLocator(root, locator)) {
+			return root;
+		}
+
+		for (const candidate of root.querySelectorAll("[id]")) {
+			if (
+				candidate instanceof Element &&
+				candidate.id === locator.id &&
+				elementMatchesLocator(candidate, locator)
+			) {
+				return candidate;
+			}
+		}
+	}
+
+	if (locator.name) {
+		const namedElements = getNamedElementsWithinRoot(
+			root,
+			locator.name,
+			locator.tagName,
+			locator.inputType,
+		);
+		if (
+			typeof locator.nameIndex === "number" &&
+			locator.nameIndex >= 0 &&
+			locator.nameIndex < namedElements.length
+		) {
+			return namedElements[locator.nameIndex] ?? null;
+		}
+
+		if (namedElements.length === 1) {
+			return namedElements[0] ?? null;
+		}
+	}
+
+	const candidate = resolveElementPathWithinRoot(root, locator.path);
+	if (candidate && elementMatchesLocator(candidate, locator)) {
+		return candidate;
+	}
+
+	return null;
+};
+
+const getRestorableFormControls = (root: Element): RestorableFormControl[] => {
+	const controls: RestorableFormControl[] = [];
+	if (isRestorableFormControl(root)) {
+		controls.push(root);
+	}
+
+	for (const candidate of root.querySelectorAll("input, textarea, select")) {
+		if (candidate instanceof Element && isRestorableFormControl(candidate)) {
+			controls.push(candidate);
+		}
+	}
+
+	return controls;
+};
+
+const readSelectionState = (
+	control: HTMLInputElement | HTMLTextAreaElement,
+): Pick<
+	ControlStateSnapshot,
+	"selectionStart" | "selectionEnd" | "selectionDirection"
+> => {
+	try {
+		return {
+			selectionStart: control.selectionStart,
+			selectionEnd: control.selectionEnd,
+			selectionDirection: control.selectionDirection,
+		};
+	} catch {
+		return {};
+	}
+};
+
+const snapshotControlState = (
+	root: Element,
+	control: RestorableFormControl,
+): ControlStateSnapshot => {
+	const snapshot: ControlStateSnapshot = {
+		locator: createElementLocator(root, control),
+		active: document.activeElement === control,
+	};
+
+	if (control instanceof HTMLInputElement) {
+		if (control.type !== "file") {
+			snapshot.value = control.value;
+		}
+		if (control.type === "checkbox" || control.type === "radio") {
+			snapshot.checked = control.checked;
+		}
+		Object.assign(snapshot, readSelectionState(control));
+		return snapshot;
+	}
+
+	if (control instanceof HTMLTextAreaElement) {
+		snapshot.value = control.value;
+		Object.assign(snapshot, readSelectionState(control));
+		return snapshot;
+	}
+
+	snapshot.selectedValues = Array.from(control.selectedOptions).map(
+		(option) => option.value,
+	);
+	return snapshot;
+};
+
+const restoreControlState = (
+	root: Element,
+	snapshot: ControlStateSnapshot,
+): void => {
+	const target = resolveElementWithinRoot(root, snapshot.locator);
+	if (!target || !isRestorableFormControl(target)) {
+		return;
+	}
+
+	if (target instanceof HTMLInputElement) {
+		if (typeof snapshot.checked === "boolean") {
+			target.checked = snapshot.checked;
+		}
+		if (typeof snapshot.value === "string" && target.type !== "file") {
+			target.value = snapshot.value;
+		}
+	} else if (target instanceof HTMLTextAreaElement) {
+		if (typeof snapshot.value === "string") {
+			target.value = snapshot.value;
+		}
+	} else if (snapshot.selectedValues) {
+		const selectedValues = new Set(snapshot.selectedValues);
+		for (const option of Array.from(target.options)) {
+			option.selected = selectedValues.has(option.value);
+		}
+	}
+
+	if (snapshot.active) {
+		try {
+			target.focus({ preventScroll: true });
+		} catch {
+			target.focus();
+		}
+	}
+
+	if (
+		(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) &&
+		typeof snapshot.selectionStart === "number" &&
+		typeof snapshot.selectionEnd === "number"
+	) {
+		try {
+			target.setSelectionRange(
+				snapshot.selectionStart,
+				snapshot.selectionEnd,
+				snapshot.selectionDirection ?? undefined,
+			);
+		} catch {
+			// Ignore unsupported selection APIs for certain input types.
+		}
+	}
+};
+
+const getScrollableElements = (root: Element): Element[] => {
+	const elements: Element[] = [];
+	const candidates: Element[] = [root];
+	for (const candidate of root.querySelectorAll("*")) {
+		if (candidate instanceof Element) {
+			candidates.push(candidate);
+		}
+	}
+
+	for (const candidate of candidates) {
+		if (candidate.scrollTop !== 0 || candidate.scrollLeft !== 0) {
+			elements.push(candidate);
+		}
+	}
+
+	return elements;
+};
+
+const snapshotBoundaryState = (boundary: Element): BoundaryStateSnapshot | null => {
+	const id = boundary.getAttribute("data-hydrate-id");
+	if (!id) {
+		return null;
+	}
+
+	return {
+		id,
+		controlStates: getRestorableFormControls(boundary).map((control) =>
+			snapshotControlState(boundary, control),
+		),
+		scrollStates: getScrollableElements(boundary).map((element) => ({
+			locator: createElementLocator(boundary, element),
+			scrollTop: element.scrollTop,
+			scrollLeft: element.scrollLeft,
+		})),
+	};
+};
+
 const shouldPreserveHydratedBoundary = (
 	boundary: Element,
 	options: NavigateOptions,
@@ -230,6 +595,70 @@ const shouldPreserveHydratedBoundary = (
 	}
 
 	return true;
+};
+
+const collectBoundaryStateSnapshots = (
+	container: ParentNode,
+	options: NavigateOptions,
+): BoundaryStateSnapshot[] => {
+	if (!options.preserveHydratedState) {
+		return [];
+	}
+
+	const currentBoundaries = new Map<string, Element>();
+	for (const boundary of document.querySelectorAll('[data-hydrate="true"]')) {
+		const id = boundary.getAttribute("data-hydrate-id");
+		if (!id) {
+			continue;
+		}
+		currentBoundaries.set(id, boundary);
+	}
+
+	const snapshots: BoundaryStateSnapshot[] = [];
+	for (const nextBoundary of container.querySelectorAll('[data-hydrate="true"]')) {
+		const id = nextBoundary.getAttribute("data-hydrate-id");
+		if (!id) {
+			continue;
+		}
+
+		const currentBoundary = currentBoundaries.get(id);
+		if (!currentBoundary) {
+			continue;
+		}
+
+		const snapshot = snapshotBoundaryState(currentBoundary);
+		if (snapshot) {
+			snapshots.push(snapshot);
+		}
+	}
+
+	return snapshots;
+};
+
+const restoreBoundaryStateSnapshots = (
+	snapshots: BoundaryStateSnapshot[],
+): void => {
+	for (const snapshot of snapshots) {
+		const boundary = document.querySelector(
+			`[data-hydrate-id="${snapshot.id}"]`,
+		);
+		if (!(boundary instanceof Element)) {
+			continue;
+		}
+
+		for (const controlState of snapshot.controlStates) {
+			restoreControlState(boundary, controlState);
+		}
+
+		for (const scrollState of snapshot.scrollStates) {
+			const element = resolveElementWithinRoot(boundary, scrollState.locator);
+			if (!(element instanceof Element)) {
+				continue;
+			}
+			element.scrollTop = scrollState.scrollTop;
+			element.scrollLeft = scrollState.scrollLeft;
+		}
+	}
 };
 
 const preserveHydratedBoundaries = (
@@ -507,7 +936,15 @@ export const navigateTo = async (
 			return;
 		}
 
+		const preservedWindowScroll = options.preserveHydratedState
+			? { x: window.scrollX, y: window.scrollY }
+			: null;
+
 		normaliseHydrationMarkup(newBody);
+		const boundaryStateSnapshots = collectBoundaryStateSnapshots(
+			newBody,
+			options,
+		);
 		preserveHydratedBoundaries(newBody, options);
 
 		// Save scroll position for current page (for back/forward)
@@ -526,10 +963,11 @@ export const navigateTo = async (
 
 		// Trigger hydration for all wrappers in the new body
 		await triggerHydration(document.body);
+		restoreBoundaryStateSnapshots(boundaryStateSnapshots);
 
 		// Update history
 		if (replace) {
-			history.replaceState({ navigated: true }, "", url);
+			history.replaceState({ ...history.state, navigated: true }, "", url);
 		} else {
 			history.pushState({ navigated: true }, "", url);
 		}
@@ -541,6 +979,8 @@ export const navigateTo = async (
 			if (target) {
 				target.scrollIntoView();
 			}
+		} else if (preservedWindowScroll) {
+			window.scrollTo(preservedWindowScroll.x, preservedWindowScroll.y);
 		} else {
 			window.scrollTo(0, 0);
 		}

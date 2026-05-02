@@ -347,11 +347,11 @@ export function defussSsg(
 						: await initializeRpc(projectDir, config, debug);
 				lastRpcReloadResult = ok;
 
-					if (ok) {
-						sendCustomEvent(server, "defuss:rpc-reloaded");
-					}
-					currentReload?.resolve(ok);
-				})
+				if (ok) {
+					sendCustomEvent(server, "defuss:rpc-reloaded");
+				}
+				currentReload?.resolve(ok);
+			})
 				.catch((error) => {
 					currentReload?.reject(error);
 				});
