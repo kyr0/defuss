@@ -19,6 +19,7 @@ Use Bun for package management. The published package targets Node `^20.19.0 || 
 - defuss components imported into MDX and HTML-like pages
 - Automatic hydration boundaries for components rendered from `components/`, `src/components/`, `csr/`, or `src/csr/`
 - Static assets copied from `assets/` or `src/assets/`
+- Vite-style `public/` assets copied to the output root and served at `/<file>`
 - File-based API routes from `pages/**/*.ts` and `pages/**/*.js`
 - Root `index.mdx`, `index.md`, or `index.html` fallback when no pages directory exists
 - Pre-rendered endpoints via `prerender = true` and `getStaticPaths()`
@@ -282,7 +283,7 @@ Single command    -> <command> .
 Command + folder  -> <command> <folder>
 ```
 
-When `pages`, `components`, or `assets` are not configured explicitly, `defuss-ssg` prefers `src/pages`, `src/components`, `src/csr`, and `src/assets` before falling back to their project-root equivalents. If no pages directory exists, it falls back to root `index.mdx`, then `index.md`, then `index.html`.
+When `pages`, `components`, or `assets` are not configured explicitly, `defuss-ssg` prefers `src/pages`, `src/components`, `src/csr`, and `src/assets` before falling back to their project-root equivalents. If no pages directory exists, it falls back to root `index.mdx`, then `index.md`, then `index.html`. A project-root `public/` directory is treated like Vite/Astro `public`: its files are available at the site root.
 
 Commands:
 

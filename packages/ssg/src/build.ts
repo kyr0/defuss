@@ -12,7 +12,7 @@ import {
 } from "defuss/server";
 
 import { resolve, join, dirname, relative, sep, extname } from "node:path";
-import { cp, writeFile } from "node:fs/promises";
+import { cp, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
 	existsSync,
@@ -84,6 +84,66 @@ const resolveLocalHelperFile = (
 	return resolve(__dirname, builtRelativePath);
 };
 
+const injectStylesheetLinks = (html: string, hrefs: string[]): string => {
+	const missingHrefs = hrefs.filter((href) => !html.includes(`href="${href}"`));
+	if (missingHrefs.length === 0) {
+		return html;
+	}
+
+	const linkTags = missingHrefs
+		.map((href) => `<link rel="stylesheet" href="${href}">`)
+		.join("");
+
+	if (html.includes("</head>")) {
+		return html.replace("</head>", `${linkTags}</head>`);
+	}
+
+	return `${linkTags}${html}`;
+};
+
+const getComponentStylesheetHrefs = async (
+	componentsOutputDir: string,
+	componentsPublicDir: string,
+): Promise<string[]> => {
+	if (!existsSync(componentsOutputDir)) {
+		return [];
+	}
+
+	const cssFiles = await glob.async(join(componentsOutputDir, "**/*.css"));
+	return cssFiles
+		.sort((left, right) => left.localeCompare(right))
+		.map((cssFile) =>
+			`/${normalizePath(join(componentsPublicDir, relative(componentsOutputDir, cssFile)))}`,
+		);
+};
+
+const injectComponentStylesheetsIntoOutputHtml = async (
+	outputProjectDir: string,
+	componentsOutputDir: string,
+	componentsPublicDir: string,
+): Promise<void> => {
+	if (!existsSync(outputProjectDir)) {
+		return;
+	}
+
+	const stylesheetHrefs = await getComponentStylesheetHrefs(
+		componentsOutputDir,
+		componentsPublicDir,
+	);
+	if (stylesheetHrefs.length === 0) {
+		return;
+	}
+
+	const htmlFiles = await glob.async(join(outputProjectDir, "**/*.html"));
+	for (const htmlFile of htmlFiles) {
+		const currentHtml = await readFile(htmlFile, "utf8");
+		const nextHtml = injectStylesheetLinks(currentHtml, stylesheetHrefs);
+		if (nextHtml !== currentHtml) {
+			await writeFile(htmlFile, nextHtml);
+		}
+	}
+};
+
 /**
  * A single, complete build process for a static site project.
  * @param projectDir The root directory of the project to build
@@ -129,6 +189,7 @@ export const build = async ({
 	const inputPagesDir = projectPaths.pagesSourceDirAbsolute;
 	const inputComponentsDir = projectPaths.componentsSourceDirAbsolute;
 	const inputAssetsDir = projectPaths.assetsSourceDirAbsolute;
+	const inputPublicDir = join(projectDir, "public");
 	const hasInputPagesDir = projectPaths.hasPagesSourceDir;
 	const tmpPagesDir = join(config.tmp, projectPaths.pagesSourceDir);
 	const tmpComponentsDir = join(config.tmp, projectPaths.componentsSourceDir);
@@ -153,6 +214,7 @@ export const build = async ({
 		console.log("Input pages dir:", inputPagesDir);
 		console.log("Input components dir:", inputComponentsDir);
 		console.log("Input assets dir:", inputAssetsDir);
+		console.log("Input public dir:", inputPublicDir);
 		console.log("Temp pages dir:", tmpPagesDir);
 		console.log("Temp components dir:", tmpComponentsDir);
 		console.log("Output pages dir:", outputPagesDir);
@@ -189,6 +251,8 @@ export const build = async ({
 			changeKind = "component";
 		} else if (isPathInOrUnder(changedRelative, projectPaths.assetsSourceDir)) {
 			changeKind = "asset";
+		} else if (isPathInOrUnder(changedRelative, "public")) {
+			changeKind = "asset";
 		} else if (
 			changedRelative === "config.ts" ||
 			changedRelative === "config.js"
@@ -220,6 +284,7 @@ export const build = async ({
 			firstSegment === ".endpoints" ||
 			firstSegment === ".ssg-temp" ||
 			firstSegment === ".git" ||
+			firstSegment === "public" ||
 			projectPaths.assetsSourceDirCandidates.some((candidateDir) =>
 				isPathInOrUnder(relative, candidateDir),
 			)
@@ -585,6 +650,18 @@ export const build = async ({
 		if (existsSync(inputAssetsDir)) {
 			await cp(inputAssetsDir, outputAssetsDir, { recursive: true });
 		}
+
+		if (existsSync(inputPublicDir)) {
+			await cp(inputPublicDir, outputProjectDir, { recursive: true });
+		}
+	}
+
+	if (isFullBuild || changeKind === "page" || changeKind === "component") {
+		await injectComponentStylesheetsIntoOutputHtml(
+			outputProjectDir,
+			outputComponentsDir,
+			projectPaths.componentsPublicDir,
+		);
 	}
 	timeEndDebug("[build] copy-outputs");
 

@@ -1,7 +1,7 @@
+import glob from "fast-glob";
 import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
-import { dirname, extname, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { extname, join, relative, resolve } from "node:path";
 
 import type { PluginOption, ViteDevServer } from "vite";
 
@@ -41,9 +41,6 @@ import type {
 	DevChangeKind,
 	SsgConfig,
 } from "./types.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const MIME_TYPES: Record<string, string> = {
 	".css": "text/css; charset=utf-8",
@@ -449,20 +446,37 @@ const injectHmrClientModule = (html: string): string => {
 	return `${importTag}${html}`;
 };
 
-const resolveRuntimeHelperFile = (): string | null => {
-	const candidates = [
-		join(__dirname, "runtime.ts"),
-		join(__dirname, "..", "src", "runtime.ts"),
-		join(__dirname, "runtime.mjs"),
-	];
-
-	for (const candidate of candidates) {
-		if (existsSync(candidate)) {
-			return candidate;
-		}
+const injectStylesheetLinks = (html: string, hrefs: string[]): string => {
+	const missingHrefs = hrefs.filter((href) => !html.includes(`href="${href}"`));
+	if (missingHrefs.length === 0) {
+		return html;
 	}
 
-	return null;
+	const linkTags = missingHrefs
+		.map((href) => `<link rel="stylesheet" href="${href}">`)
+		.join("");
+
+	if (html.includes("</head>")) {
+		return html.replace("</head>", `${linkTags}</head>`);
+	}
+
+	return `${linkTags}${html}`;
+};
+
+const getComponentStylesheetHrefs = async (
+	componentsOutputDir: string,
+	componentsPublicDir: string,
+): Promise<string[]> => {
+	if (!existsSync(componentsOutputDir)) {
+		return [];
+	}
+
+	const cssFiles = await glob.async(join(componentsOutputDir, "**/*.css"));
+	return cssFiles
+		.sort((left, right) => left.localeCompare(right))
+		.map((cssFile) =>
+			`/${normalizePath(join(componentsPublicDir, relative(componentsOutputDir, cssFile)))}`,
+		);
 };
 
 const isHtmlLikeFile = (filePath: string): boolean => {
@@ -538,6 +552,10 @@ const classifyChangedFile = (
 	}
 
 	if (isPathInOrUnder(relativeFile, paths.assetsSourceDir)) {
+		return "asset";
+	}
+
+	if (isPathInOrUnder(relativeFile, "public")) {
 		return "asset";
 	}
 
@@ -1113,6 +1131,13 @@ export function defussSsg(
 
 			const el = renderSync(vdom, document.documentElement, { browserGlobals }) as any;
 			let html = renderToString(el);
+			html = injectStylesheetLinks(
+				html,
+				await getComponentStylesheetHrefs(
+					join(projectDir, config.output, currentPaths.componentsPublicDir),
+					currentPaths.componentsPublicDir,
+				),
+			);
 
 			// Inject our HMR client before Vite transforms the HTML so the
 			// virtual module import is rewritten into a browser-loadable URL.
@@ -1140,35 +1165,21 @@ export function defussSsg(
 	): Promise<boolean> => {
 		const requestUrl = new URL(req.url || "/", "http://localhost");
 		const pathname = requestUrl.pathname;
+		const currentPaths = resolveSsgPaths(projectDir, config);
+		const componentRoutePrefix = `/${currentPaths.componentsPublicDir}/`;
 
-		if (!pathname.startsWith(`/${config.components}/`)) {
-			return false;
-		}
-
-		const componentRoutePrefix = `/${config.components}/`;
-
-		// Handle runtime.js - served from the package
-		if (pathname === `/${config.components}/runtime.js`) {
-			const runtimePath = resolveRuntimeHelperFile();
-			if (!runtimePath) {
-				return false;
-			}
-			const transformed = await server.transformRequest(runtimePath);
-			if (transformed) {
-				res.setHeader("Cache-Control", "no-store");
-				res.setHeader("Content-Type", "text/javascript; charset=utf-8");
-				res.statusCode = 200;
-				res.end(transformed.code);
-				return true;
-			}
+		if (!pathname.startsWith(componentRoutePrefix)) {
 			return false;
 		}
 
 		// Handle component files: /components/foo.js -> projectDir/components/foo.tsx
 		const relativeComponentPath = pathname.slice(componentRoutePrefix.length);
+		const componentExtension = extname(relativeComponentPath).toLowerCase();
 		const isBuiltComponentAsset =
+			relativeComponentPath === "runtime.js" ||
 			relativeComponentPath.startsWith("chunks/") ||
-			/^chunk-|^client-/.test(relativeComponentPath);
+			/^chunk-|^client-/.test(relativeComponentPath) ||
+			componentExtension !== ".js";
 
 		if (isBuiltComponentAsset) {
 			return false;
@@ -1178,7 +1189,6 @@ export function defussSsg(
 			extname(relativeComponentPath),
 			"",
 		);
-		const currentPaths = resolveSsgPaths(projectDir, config);
 		const extensions = [".tsx", ".ts", ".jsx", ".js"];
 		let sourceFile: string | null = null;
 
@@ -1194,10 +1204,7 @@ export function defussSsg(
 		}
 
 		if (!sourceFile) {
-			res.setHeader("Cache-Control", "no-store");
-			res.statusCode = 404;
-			res.end();
-			return true;
+			return false;
 		}
 
 		const transformed = await server.transformRequest(sourceFile);
@@ -1247,9 +1254,18 @@ export function defussSsg(
 		);
 
 		if (outputFile.endsWith(".html")) {
+			const currentPaths = resolveSsgPaths(projectDir, config);
 			const html = await server.transformIndexHtml(
 				requestUrl.pathname,
-				injectHmrClientModule(body.toString("utf8")),
+				injectHmrClientModule(
+					injectStylesheetLinks(
+						body.toString("utf8"),
+						await getComponentStylesheetHrefs(
+							join(projectDir, config.output, currentPaths.componentsPublicDir),
+							currentPaths.componentsPublicDir,
+						),
+					),
+				),
 			);
 			res.statusCode = 200;
 			res.end(method === "HEAD" ? undefined : html);
@@ -1309,6 +1325,7 @@ export function defussSsg(
 				...paths.assetsSourceDirCandidates.map((candidateDir) =>
 					join(projectDir, candidateDir),
 				),
+				join(projectDir, "public"),
 				join(projectDir, "config.ts"),
 				join(projectDir, "config.js"),
 			];
