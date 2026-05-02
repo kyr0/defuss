@@ -77,10 +77,25 @@ export const build = async ({
 	// TODO: implement detailed error handing and status tracking (see setup.ts)
 
 	const startTime = performance.now();
+	const logDebug = (...args: unknown[]) => {
+		if (debug) {
+			console.log(...args);
+		}
+	};
+	const timeDebug = (label: string) => {
+		if (debug) {
+			console.time(label);
+		}
+	};
+	const timeEndDebug = (label: string) => {
+		if (debug) {
+			console.timeEnd(label);
+		}
+	};
 
-	console.time("[build] readConfig");
+	timeDebug("[build] readConfig");
 	const config = (await readConfig(projectDir, debug)) as SsgConfig;
-	console.timeEnd("[build] readConfig");
+	timeEndDebug("[build] readConfig");
 
 	if (debug) {
 		console.log("Using config:", config);
@@ -167,7 +182,7 @@ export const build = async ({
 				`Incremental build - changeKind: ${changeKind}, file: ${changedRelative}`,
 			);
 		}
-		console.log(
+		logDebug(
 			`[build] changeKind=${changeKind}, changedRelative=${changedRelative}`,
 		);
 	}
@@ -177,34 +192,34 @@ export const build = async ({
 
 	// -- Pre plugins (full build only) ---------------------------------
 	if (isFullBuild) {
-		console.time("[build] pre-plugins");
+		timeDebug("[build] pre-plugins");
 		for (const plugin of config.plugins || []) {
 			if (
 				plugin.phase === "pre" &&
 				(plugin.mode === mode || plugin.mode === "both")
 			) {
-				console.time(`[build] pre-plugin:${plugin.name}`);
+				timeDebug(`[build] pre-plugin:${plugin.name}`);
 				if (debug) {
 					console.log(`Running pre-plugin: ${plugin.name}`);
 				}
 				await (plugin.fn as PluginFnPrePost)(projectDir, config);
-				console.timeEnd(`[build] pre-plugin:${plugin.name}`);
+				timeEndDebug(`[build] pre-plugin:${plugin.name}`);
 			}
 		}
-		console.timeEnd("[build] pre-plugins");
+		timeEndDebug("[build] pre-plugins");
 	}
 
 	// -- Prepare temp folder --------------------------------------------
-	console.time("[build] prepare-temp");
+	timeDebug("[build] prepare-temp");
 	if (isFullBuild || !tempExists) {
 		// Full rebuild: nuke & recreate temp
 		if (tempExists) {
-			console.time("[build] prepare-temp:rmSync");
+			timeDebug("[build] prepare-temp:rmSync");
 			rmSync(config.tmp, { recursive: true });
-			console.timeEnd("[build] prepare-temp:rmSync");
+			timeEndDebug("[build] prepare-temp:rmSync");
 		}
 
-		console.time("[build] prepare-temp:cp");
+		timeDebug("[build] prepare-temp:cp");
 		await cp(projectDir, config.tmp, {
 			recursive: true,
 			filter: (src: string) => {
@@ -227,7 +242,7 @@ export const build = async ({
 				return true;
 			},
 		});
-		console.timeEnd("[build] prepare-temp:cp");
+		timeEndDebug("[build] prepare-temp:cp");
 
 		// Symlink node_modules into temp so esbuild can resolve packages
 		const srcNodeModules = join(projectDir, "node_modules");
@@ -250,15 +265,15 @@ export const build = async ({
 			await cp(srcFile, destFile);
 		}
 	}
-	console.timeEnd("[build] prepare-temp");
+	timeEndDebug("[build] prepare-temp");
 
 	// Copy runtime helper into temp components.
-	console.time("[build] copy-hydration");
+	timeDebug("[build] copy-hydration");
 	await cp(
 		resolveLocalHelperFile("runtime.ts", "runtime.mjs"),
 		join(tmpComponentsDir, "runtime.ts"),
 	);
-	console.timeEnd("[build] copy-hydration");
+	timeEndDebug("[build] copy-hydration");
 
 	// -- Clean stale component .js outputs ------------------------------
 	// Page SSR loading should resolve source .tsx files so auto-hydration
@@ -274,17 +289,17 @@ export const build = async ({
 	// -- Collect page source files for Vite SSR loading -----------------
 	let pageSourceFiles: string[] = [];
 	if (changeKind !== "asset" && changeKind !== "endpoint") {
-		console.time("[build] collect-pages");
+		timeDebug("[build] collect-pages");
 		pageSourceFiles =
 			changeKind === "page"
 				? [join(config.tmp, changedRelative)]
 				: await glob.async(join(tmpPagesDir, "**/*.mdx"));
-		console.timeEnd("[build] collect-pages");
+		timeEndDebug("[build] collect-pages");
 	}
 
 	// -- Render pages to HTML -------------------------------------------
 	if (changeKind !== "asset" && changeKind !== "endpoint") {
-		console.time("[build] render-pages");
+		timeDebug("[build] render-pages");
 		const pageModuleServer = await createServer({
 			root: config.tmp,
 			configFile: false,
@@ -311,7 +326,7 @@ export const build = async ({
 				inputFiles = pageSourceFiles.filter((pageFile) => existsSync(pageFile));
 			} else {
 				if (changeKind === "component") {
-					console.log(
+					logDebug(
 						"[build] component-dep: rendering all pages because Vite SSR loading has no esbuild metafile dependency graph",
 					);
 				}
@@ -336,21 +351,17 @@ export const build = async ({
 					console.log("Relative output HTML path:", relativeOutputHtmlFilePath);
 				}
 
-				console.time(`[build] page:${pageLabel} ssrLoadModule`);
+				timeDebug(`[build] page:${pageLabel} ssrLoadModule`);
 				const modulePath = `/${relative(config.tmp, inputFile).split(sep).join("/")}`;
 				const exports = (await pageModuleServer.ssrLoadModule(modulePath)) as Record<
 					string,
 					any
 				>;
-				console.timeEnd(`[build] page:${pageLabel} ssrLoadModule`);
+				timeEndDebug(`[build] page:${pageLabel} ssrLoadModule`);
 
-				if (debug) {
-					console.log("exports", exports);
-				}
-
-				console.time(`[build] page:${pageLabel} vdom`);
+				timeDebug(`[build] page:${pageLabel} vdom`);
 				let vdom = exports.default(exports) as VNode;
-				console.timeEnd(`[build] page:${pageLabel} vdom`);
+				timeEndDebug(`[build] page:${pageLabel} vdom`);
 				vdom = applyAutoHydrate(
 					vdom,
 					tmpComponentsDir,
@@ -364,7 +375,7 @@ export const build = async ({
 						plugin.phase === "page-vdom" &&
 						(plugin.mode === mode || plugin.mode === "both")
 					) {
-						console.time(`[build] page:${pageLabel} plugin:${plugin.name}`);
+						timeDebug(`[build] page:${pageLabel} plugin:${plugin.name}`);
 						if (debug) {
 							console.log(`Running page-vdom plugin: ${plugin.name}`);
 						}
@@ -375,11 +386,11 @@ export const build = async ({
 							config,
 							exports,
 						);
-						console.timeEnd(`[build] page:${pageLabel} plugin:${plugin.name}`);
+						timeEndDebug(`[build] page:${pageLabel} plugin:${plugin.name}`);
 					}
 				}
 
-				console.time(`[build] page:${pageLabel} renderSync`);
+				timeDebug(`[build] page:${pageLabel} renderSync`);
 				const browserGlobals = getBrowserGlobals();
 				const document = getDocument(false, browserGlobals);
 				browserGlobals.document = document;
@@ -387,7 +398,7 @@ export const build = async ({
 				let el = renderSync(vdom, document.documentElement, {
 					browserGlobals,
 				}) as HTMLElement;
-				console.timeEnd(`[build] page:${pageLabel} renderSync`);
+				timeEndDebug(`[build] page:${pageLabel} renderSync`);
 
 				// run any "page-dom" plugins
 				for (const plugin of config.plugins || []) {
@@ -395,7 +406,7 @@ export const build = async ({
 						plugin.phase === "page-dom" &&
 						(plugin.mode === mode || plugin.mode === "both")
 					) {
-						console.time(`[build] page:${pageLabel} dom-plugin:${plugin.name}`);
+						timeDebug(`[build] page:${pageLabel} dom-plugin:${plugin.name}`);
 						if (debug) {
 							console.log(`Running page-dom plugin: ${plugin.name}`);
 						}
@@ -405,15 +416,15 @@ export const build = async ({
 							projectDir,
 							config,
 						);
-						console.timeEnd(
+						timeEndDebug(
 							`[build] page:${pageLabel} dom-plugin:${plugin.name}`,
 						);
 					}
 				}
 
-				console.time(`[build] page:${pageLabel} renderToString`);
+				timeDebug(`[build] page:${pageLabel} renderToString`);
 				let html = renderToString(el);
-				console.timeEnd(`[build] page:${pageLabel} renderToString`);
+				timeEndDebug(`[build] page:${pageLabel} renderToString`);
 
 				// run any "page-html" plugins
 				for (const plugin of config.plugins || []) {
@@ -421,7 +432,7 @@ export const build = async ({
 						plugin.phase === "page-html" &&
 						(plugin.mode === mode || plugin.mode === "both")
 					) {
-						console.time(`[build] page:${pageLabel} html-plugin:${plugin.name}`);
+						timeDebug(`[build] page:${pageLabel} html-plugin:${plugin.name}`);
 						if (debug) {
 							console.log(`Running page-html plugin: ${plugin.name}`);
 						}
@@ -431,7 +442,7 @@ export const build = async ({
 							projectDir,
 							config,
 						);
-						console.timeEnd(
+						timeEndDebug(
 							`[build] page:${pageLabel} html-plugin:${plugin.name}`,
 						);
 					}
@@ -448,13 +459,13 @@ export const build = async ({
 					mkdirSync(finalOutputDir, { recursive: true });
 				}
 
-				console.time(`[build] page:${pageLabel} writeFile`);
+				timeDebug(`[build] page:${pageLabel} writeFile`);
 				await writeFile(finalOutputFile, html);
-				console.timeEnd(`[build] page:${pageLabel} writeFile`);
+				timeEndDebug(`[build] page:${pageLabel} writeFile`);
 			}
 		} finally {
 			await pageModuleServer.close();
-			console.timeEnd("[build] render-pages");
+			timeEndDebug("[build] render-pages");
 		}
 	}
 
@@ -464,7 +475,7 @@ export const build = async ({
 
 	// -- Vite: compile components (client-side JS) ----------------------
 	if (isFullBuild || changeKind === "component") {
-		console.time("[build] vite-components");
+		timeDebug("[build] vite-components");
 
 		const componentEntryFiles = await glob.async([
 			join(tmpComponentsDir, "**/*.tsx"),
@@ -499,18 +510,18 @@ export const build = async ({
 				},
 			},
 		});
-		console.timeEnd("[build] vite-components");
+		timeEndDebug("[build] vite-components");
 	}
 
 	// -- Build endpoints (.ts/.js files in pages) -----------------------
 	if (isFullBuild || changeKind === "page" || changeKind === "endpoint") {
-		console.time("[build] build-endpoints");
+		timeDebug("[build] build-endpoints");
 		await buildEndpoints(projectDir, config, debug);
-		console.timeEnd("[build] build-endpoints");
+		timeEndDebug("[build] build-endpoints");
 	}
 
 	// -- Copy outputs ---------------------------------------------------
-	console.time("[build] copy-outputs");
+	timeDebug("[build] copy-outputs");
 	if (isFullBuild || changeKind === "component") {
 		await cp(tmpComponentOutDir, outputComponentsDir, { recursive: true });
 	}
@@ -518,13 +529,13 @@ export const build = async ({
 	if (isFullBuild || changeKind === "asset") {
 		await cp(inputAssetsDir, outputAssetsDir, { recursive: true });
 	}
-	console.timeEnd("[build] copy-outputs");
+	timeEndDebug("[build] copy-outputs");
 
 	// -- Post plugins ---------------------------------------------------
 	// Run post plugins on full build, or when components change (may affect styles).
 	// Skip for single-page edits to save time.
 	if (isFullBuild || changeKind === "component") {
-		console.time("[build] post-plugins");
+		timeDebug("[build] post-plugins");
 		for (const plugin of config.plugins || []) {
 			if (
 				plugin.phase === "post" &&
@@ -536,7 +547,7 @@ export const build = async ({
 				await (plugin.fn as PluginFnPrePost)(projectDir, config);
 			}
 		}
-		console.timeEnd("[build] post-plugins");
+		timeEndDebug("[build] post-plugins");
 	}
 
 	// remove the temporary folder after a production build (not in serve mode)

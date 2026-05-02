@@ -1,5 +1,5 @@
-import os from "node:os";
 import fs from "node:fs/promises";
+import { dirname } from "node:path";
 import autocannon from "autocannon";
 
 process.setMaxListeners(0);
@@ -22,6 +22,7 @@ const CONNECTIONS = (process.env.CONNECTIONS ??
 const METHOD = (process.env.METHOD ?? "GET").toUpperCase();
 const PATH = process.env.PATH ?? "";
 const BODY = process.env.BODY ?? "";
+const RESULTS_FILE = process.env.RESULTS_FILE ?? ".tmp/bench-results.json";
 
 function titleFor(connections: number) {
     return `${connections}c p${PIPELINING} w${BENCH_WORKERS}`;
@@ -46,7 +47,7 @@ function runOnce({ connections, warmup = false }: { connections: number; warmup?
 
         };
 
-        const inst = autocannon(opts as any, (err, res) => {
+        autocannon(opts as any, (err, res) => {
             if (err) return reject(err);
             return resolve(res);
         });
@@ -101,8 +102,9 @@ async function main() {
         rows,
     };
 
-    await fs.writeFile("bench-results.json", JSON.stringify(out, null, 2));
-    console.log("\nWrote bench-results.json");
+    await fs.mkdir(dirname(RESULTS_FILE), { recursive: true });
+    await fs.writeFile(RESULTS_FILE, JSON.stringify(out, null, 2));
+    console.log(`\nWrote ${RESULTS_FILE}`);
 }
 
 main().catch((e) => {

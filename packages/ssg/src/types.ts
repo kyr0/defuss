@@ -110,8 +110,8 @@ export interface DevOptions {
 	host?: string | boolean;
 
 	/**
-	 * Temporary bridge flag while the Vite request-time renderer lands.
-	 * When true, the current SSG build writes static dev output to dist.
+	 * Compatibility flag for dev mode.
+	 * When true, dev also refreshes static output in dist alongside request-time SSR.
 	 * Defaults to true for the CLI-backed dev command.
 	 */
 	writeDevOutput?: boolean;
@@ -163,8 +163,8 @@ export interface DefussSsgViteOptions {
 	debug?: boolean;
 
 	/**
-	 * Temporary bridge flag while request-time Vite rendering lands.
-	 * When true, SSG output is written to dist and served from there.
+	 * Compatibility flag for the Vite plugin's dev bridge.
+	 * When true, request-time SSR also keeps dist output refreshed for middleware fallbacks.
 	 */
 	writeDevOutput?: boolean;
 }

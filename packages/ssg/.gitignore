@@ -1,5 +1,7 @@
 .ssg-temp
 *.tgz
+bench-results.json
+lb.mjs
 node_modules
 dist
 .tmp

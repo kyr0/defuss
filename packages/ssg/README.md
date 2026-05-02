@@ -1,370 +1,320 @@
-<h1 align="center">
+# defuss-ssg
 
-<img src="https://github.com/kyr0/defuss/blob/main/assets/defuss_mascott.png?raw=true" width="100px" />
+Static site generation, request-time dev SSR, file-based endpoints, and production serving for defuss.
 
-<p align="center">
-  
-  <code>defuss-ssg</code>
+`defuss-ssg` is both a CLI and a library:
 
-</p>
+- `dev` starts a Vite server and renders MD/MDX pages on demand through SSR.
+- `build` renders static HTML, bundles client components, compiles endpoints, and copies assets.
+- `serve` serves built output with `defuss-express`, plus dynamic endpoints and optional RPC.
 
-<sup align="center">
+Use Bun for package management. The published package targets Node `^20.19.0 || >=22.12.0`.
 
-Static Site Generator (SSG) for defuss
+## What It Supports
 
-</sup>
+- Markdown and MDX pages from `pages/`
+- YAML or TOML frontmatter exposed as `meta`
+- GitHub Flavored Markdown via `remark-gfm`
+- KaTeX math via `$...$` and `$$...$$`
+- defuss components imported into MDX and HTML-like pages
+- Automatic hydration boundaries for components rendered from `components/`
+- Static assets copied from `assets/`
+- File-based API routes from `pages/**/*.ts` and `pages/**/*.js`
+- Pre-rendered endpoints via `prerender = true` and `getStaticPaths()`
+- RPC auto-discovery from `rpc.ts` or `rpc.js` when `defuss-rpc` is installed
+- Plugin hooks for `pre`, `page-vdom`, `page-dom`, `page-html`, and `post`
+- Multicore production serving through `--multicore` or `workers: "auto"`
 
-</h1>
+## Install
 
-<h3 align="center">
-Usage
-</h3>
-
-Simply generate a static site from a content directory to an output directory with full defuss-MDX (GFM + Frontmatter) support:
-
-```bash
-bunx defuss-ssg build ./folder
-```
-
-Or install globally or locally in a project:
-
-```bash 
-bun add -g defuss-ssg
-```
-
-And then run (in an NPM script or globally):
-
-<h4>One-time builds</h4>
+Run directly:
 
 ```bash
-defuss-ssg build ./folder
+bunx defuss-ssg build ./my-site
 ```
 
-<h4>Vite-powered development</h4>
+Or add it as a dev dependency:
 
 ```bash
-defuss-ssg dev ./folder
+bun add -D defuss-ssg
 ```
 
-This starts a Vite dev server at http://localhost:3000 and watches for changes in:
+## Quick Start
 
-- `pages/` directory
-- `components/` directory
-- `assets/` directory
+```text
+my-site/
+├── pages/
+│   ├── index.mdx
+│   └── api/
+│       └── ping.json.ts
+├── components/
+│   └── button.tsx
+├── assets/
+│   └── styles.css
+├── config.ts
+└── rpc.ts
+```
 
-Changes trigger automatic rebuilds, with the last change always taking priority to prevent build queueing issues.
+Minimal config:
 
-The current migration bridge still writes dev output to `dist/` while the request-time Vite renderer is being moved over.
+```ts
+import { rehypePlugins, remarkPlugins, type SsgConfig } from "defuss-ssg";
 
-<h4>Production serving</h4>
+const config: SsgConfig = {
+	pages: "pages",
+	output: "dist",
+	components: "components",
+	assets: "assets",
+	tmp: ".ssg-temp",
+	plugins: [],
+	remarkPlugins: [...remarkPlugins],
+	rehypePlugins: [...rehypePlugins],
+	rpc: true,
+};
+
+export default config;
+```
+
+Example page:
+
+```mdx
+---
+title: Home
+---
+
+import { Button } from "../components/button.js";
+
+# {meta.title}
+
+This page uses MDX, frontmatter, and a defuss component.
+
+<Button label="Click me" />
+```
+
+Example component:
+
+```tsx
+export function Button({ label }: { label: string }) {
+	return <button type="button">{label}</button>;
+}
+```
+
+Build the site:
 
 ```bash
-defuss-ssg serve ./folder
+defuss-ssg build ./my-site
 ```
 
-This serves already-built output with `defuss-express`. Run `defuss-ssg build ./folder` first.
+Start Vite-powered development:
 
-<h4>Local development of SSG and running the example</h4>
+```bash
+defuss-ssg dev ./my-site
+```
 
-Unlike other SSG systems, this package is **not** meant to be installed in a project, but rather used as a global CLI tool or programmatically.
+Serve the already built output:
 
-Developing this means to clone the repo, install dependencies and run the example site:
+```bash
+defuss-ssg serve ./my-site
+```
+
+`serve` expects existing build output in `dist/`, so run `build` first.
+
+## How It Works
+
+### Dev Mode
+
+`defuss-ssg dev` starts a Vite server rooted at your project. Requests for MD and MDX pages are resolved through Vite's transform pipeline and rendered on demand with SSR. Page, component, endpoint, RPC, config, and asset changes are coalesced before reload. CSS assets are hot-swapped when possible, and hydration boundaries restore local form and scroll state across component updates.
+
+By default, the CLI keeps `dist/` refreshed during dev as a compatibility fallback for middleware paths. Programmatic users can disable that bridge with `writeDevOutput: false`.
+
+### Build Mode
+
+`defuss-ssg build` loads `config.ts`, copies the project into `.ssg-temp`, renders each page through a temporary Vite SSR server, applies automatic hydration wrapping, bundles client components, compiles endpoints into `.endpoints`, copies assets into `dist`, and removes the temp directory unless debug mode is enabled.
+
+### Serve Mode
+
+`defuss-ssg serve` reads the built output from `dist/` and serves it with `defuss-express`. Dynamic endpoint modules are registered at runtime, and `rpc.ts` or `rpc.js` is compiled and initialized automatically when RPC is enabled and `defuss-rpc` is installed.
+
+## Endpoints
+
+Endpoint source files live under `pages/` and export HTTP method handlers.
+
+```ts
+import type { APIRoute } from "defuss-ssg";
+
+export const GET: APIRoute = async () => {
+	return Response.json({ ok: true, ts: Date.now() });
+};
+```
+
+Supported method exports are `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, and `ALL`.
+
+Dynamic routes use bracket syntax:
+
+```text
+pages/api/[id].json.ts  ->  /api/:id.json
+pages/feed.xml.ts       ->  /feed.xml
+```
+
+To pre-render an endpoint during `build`, export `prerender = true`. Dynamic routes can also export `getStaticPaths()`.
+
+```ts
+import type { APIRoute } from "defuss-ssg";
+
+export const prerender = true;
+
+export const getStaticPaths = () => [
+	{ params: { slug: "hello-world" } },
+	{ params: { slug: "release-notes" } },
+];
+
+export const GET: APIRoute = async ({ params }) => {
+	return new Response(`Post: ${params.slug}`);
+};
+```
+
+## RPC
+
+RPC is optional and discovered automatically from `rpc.ts` or `rpc.js` in the project root. Install `defuss-rpc` to enable it.
+
+```ts
+export default {
+	mathApi: {
+		add: async (a: number, b: number) => a + b,
+	},
+	greetApi: {
+		hello: async (name: string) => `Hello, ${name}!`,
+	},
+};
+```
+
+When RPC is active, `defuss-ssg` exposes:
+
+- `POST /rpc`
+- `POST /rpc/schema`
+
+Set `rpc: false` in `config.ts` to disable RPC discovery.
+
+## Plugins
+
+`defuss-ssg` plugins run in build order and can modify the pipeline at distinct phases.
+
+```ts
+import type { SsgPlugin } from "defuss-ssg";
+
+const htmlStampPlugin: SsgPlugin = {
+	name: "html-stamp",
+	phase: "page-html",
+	mode: "both",
+	fn: (html, relativeOutputHtmlFilePath) => {
+		return html.replace(
+			"</body>",
+			`<!-- built:${relativeOutputHtmlFilePath} --></body>`,
+		);
+	},
+};
+
+export default {
+	plugins: [htmlStampPlugin],
+};
+```
+
+Available phases:
+
+- `pre`: before a full build starts
+- `page-vdom`: after page VDOM creation and before render
+- `page-dom`: after DOM render and before serialization
+- `page-html`: after HTML serialization and before write
+- `post`: after the build completes
+
+`page-vdom` hooks receive the page props/module exports as their fifth argument.
+
+## Programmatic API
+
+```ts
+import { build, dev, serve, setup } from "defuss-ssg";
+
+const projectDir = "./my-site";
+
+const setupStatus = await setup(projectDir);
+if (setupStatus.code !== "OK") {
+	throw new Error(setupStatus.message);
+}
+
+await build({
+	projectDir,
+	mode: "build",
+	debug: true,
+});
+
+await dev({
+	projectDir,
+	port: 3000,
+	host: true,
+	writeDevOutput: true,
+});
+
+await serve({
+	projectDir,
+	port: 3000,
+	workers: "auto",
+});
+```
+
+The main package exports `build`, `dev`, `serve`, `setup`, config defaults, endpoint types, RPC helpers, and plugin types.
+
+Advanced subpath exports:
+
+- `defuss-ssg/vite`: exposes `defussSsg()` for custom Vite integration
+- `defuss-ssg/runtime`: exposes the client runtime used for navigation, hydration, and live reload
+
+Most projects only need the main package export.
+
+## CLI Reference
+
+```bash
+defuss-ssg [dev|build|serve] [folder] [--debug] [--multicore]
+
+No args           -> serve .
+Single path       -> serve <path>
+Single command    -> <command> .
+Command + folder  -> <command> <folder>
+```
+
+Commands:
+
+- `dev`: starts the Vite dev server on port `3000` by default
+- `build`: generates the static site into `dist/`
+- `serve`: serves the built output from `dist/`
+
+Flags:
+
+- `--debug` or `-d`: enable verbose logging
+- `--multicore`: use `workers: "auto"` for `serve`
+
+## Local Package Development
+
+To work on `defuss-ssg` inside this monorepo:
 
 ```bash
 git clone https://github.com/kyr0/defuss.git
-
 cd defuss/packages/ssg
-
-bun i && bun build
-
-# for building and serving the example site with auto-rebuild:
-bun run cli-dev ./example
-
-# for one-time build of the example site:
-bun run cli-build ./example
+bun install
+bun run build
+bun run cli-dev
 ```
 
-Please create a PR or issue if you find any bugs or have feature requests.
+The example project used by the package scripts lives in `../../example-ssg/`.
 
-<h4>Programmatic API</h4>
+## Benchmarking
 
-Advanced users may want to use the library programmatically:
-
-```typescript
-import { setup, build, dev, serve } from "defuss-ssg";
-
-(async () => {
-
-  // Setup project initially
-  const setupStatus = await setup("./my-site");
-  if (setupStatus.code !== "OK") { 
-    console.error("Setup failed:", setupStatus.message);
-    process.exit(1);
-  }
-
-  // One-time build
-  await build({
-    projectDir: "./my-site",
-    debug: true,
-  });
-
-  // Or start the Vite-backed dev server
-  await dev({
-    projectDir: "./my-site", 
-    debug: true,
-  });
-
-  // Or serve an already-built production output
-  await serve({
-    projectDir: "./my-site",
-    workers: "auto",
-  });
-})();
-```
-
-<h3 align="center">
-Overview
-</h3>
-
-> `defuss-ssg` is a CLI tool and library for building static websites using modern JavaScript/TypeScript and `defuss`. It reads content files (Markdown, MDX) from a specified directory, processes them with MDX plugins, compiles components with esbuild, and outputs fully static HTML sites ready for deployment.
-
-> It supports a plugin system for extending the build process at various phases (pre-build, post-build, page-level transformations), Vite-backed development, and defuss-express production serving.
-
-<h3 align="center">
-
-Features
-
-</h3>
-
-- **MDX Support**: Full Markdown + JSX support with frontmatter parsing
-- **Component Integration**: Use defuss components in your MDX files
-- **Plugin System**: Extend the build process with custom plugins at multiple phases
-- **Fast Compilation**: Powered by esbuild today, with Vite now orchestrating development
-- **Dev Mode**: Vite-backed development server with auto-rebuild and full reload
-- **Production Runtime**: `defuss-express` serves static output plus dynamic endpoints and RPC
-- **TypeScript Ready**: Full TypeScript support for components and configuration
-- **Asset Handling**: Automatic copying of static assets to output directory
-- **Flexible Configuration**: Configurable via TypeScript config file with sensible defaults
-
-<h3 align="center">
-
-Example site project structure
-
-</h3>
-
-Create a project structure like this:
-
-```typescript
-my-site/
-├-- pages/
-│   ├-- index.mdx
-│   └-- blog/
-│       └-- hello-world.mdx
-├-- components/
-│   └-- button.tsx
-├-- assets/
-│   └-- styles.css
-└-- config.ts
-```
-Then run `defuss-ssg build ./my-site` and a `dist` folder will be created with the complete static build.
-
-<h3 align="center">
-
-Config file
-
-</h3>
-
-You can customize the paths and behaviour of the build process, by creating a simple `config.ts` file in the project folder.
-
-##### Example `config.ts` file
-
-```typescript
-import { remarkPlugins, rehypePlugins } from "defuss-ssg";
-
-export default {
-  pages: "pages",
-  output: "dist",
-  components: "components",
-  assets: "assets",
-  remarkPlugins: [...remarkPlugins], // default remark plugins
-  rehypePlugins: [...rehypePlugins], // default rehype plugins
-  plugins: [],
-};
-```
-
-You may add any `remark` and `rehype` plugin of your choice. See the `MDX` documentation for more informations on Remark and Rehype.
-
-`defuss-ssg` plugins can be registered via the `plugins` array and are executed in order of registration, in each build phase.
-
-##### Example MDX page (`pages/index.mdx`)
-
-```mdx
----
-title: Home Page
----
-
-import Button from "../components/button.js"
-
-# Welcome to my site
-
-This is a **markdown** page with JSX components.
-
-<Button>Click me</Button>
-```
-
-##### Example Button component (`components/button.tsx`)
-
-Components are imported as `.js` but saved as `.tsx`:
-
-```typescript
-export const Button = ({ label }: { label: string }) => {
-  return (
-    <button type="button" onClick={() => alert("Button clicked!")}>
-      {label}
-    </button>
-  );
-};
-```
-
-
-<h3 align="center">
-
-Plugin System
-
-</h3>
-
-Extend the build process with plugins that run at different phases:
-
-```typescript
-import { rule, transval, access } from 'defuss-transval';
-
-type UserData = {
-  user: {
-    profile: {
-      name: string;
-      email: string;
-      settings: {
-        theme: 'light' | 'dark';
-        notifications: boolean;
-      };
-    };
-    posts: Array<{
-      title: string;
-      published: boolean;
-    import { SsgPlugin } from "defuss-ssg";
-
-const myPlugin: SsgPlugin = {
-  name: "my-plugin",
-  phase: "page-html", // "pre" | "post" | "page-vdom" | "page-dom" | "page-html"
-  fn: (html, relativePath, config) => {
-    // Modify HTML before writing
-    return html.replace("old-text", "new-text");
-  },
-};
-
-export default {
-  plugins: [myPlugin],
-  // ... other config
-};
-```
-
-Available plugin phases:
-
-- **pre**: Before build starts
-- **page-vdom**: After VDOM creation for each page
-- **page-dom**: After DOM rendering for each page
-- **page-html**: After HTML serialization for each page
-- **post**: After build completes
-
-
-<h3 align="center">
-
-MDX Features
-
-</h3>
-
-`defuss-ssg` supports full MDX with `defuss` components and common GFM Markdown features:
-
-- **Frontmatter**: YAML/TOML metadata extraction - the `meta` object holds frontmatter data - use e.g. `{ meta.title }` for page title defined in frontmatter like this: 
-```mdx
---- 
-title: My Page 
----
-```
-
-- **JSX Components**: Use `defuss` components in your content
-- **Math Support**: KaTeX rendering with `$...$` and `$$...$$`
-- **Custom Plugins**: Extend MDX processing with remark/rehype plugins
-
-<h3 align="center">
-
-Build Process
-
-</h3>
-
-The build process follows these steps:
-
-1. **Copy Project**: Copy all files to temporary directory
-2. **Compile MDX**: Process MDX files to ESM JavaScript
-3. **Compile Components**: Bundle components with esbuild
-4. **Evaluate Pages**: Run page functions to generate VDOM
-5. **Render HTML**: Convert VDOM to HTML using defuss/server
-6. **Run Plugins**: Execute plugins at various phases
-7. **Copy Assets**: Copy static assets to output
-8. **Clean Up**: Remove temporary files (unless debug mode)
-
-<h3 align="center">
-
-CLI Reference 
-
-</h3>
+The benchmark scripts are for local experiments, not committed performance guarantees.
 
 ```bash
-defuss-ssg <command> <folder>
-
-Commands:
-  build <folder>    Build the static site
-  serve <folder>    Serve with auto-rebuild on changes
+bun run bench
+bun run bench:rpc
 ```
 
-<h3 align="center">
-Benchmark
-</h3>
+Benchmark result snapshots are written to `.tmp/bench-results.json` by default. Override that path with `RESULTS_FILE=/path/to/file.json` if needed.
 
-The following benchmark was performed on the RPC endpoint of the example site, which calls a simple server-side function that adds two numbers. The test was run with 1024 concurrent connections, a pipelining factor of 256, and 8 workers for 30 seconds on a Macbook Air M4, 24 GB RAM under medium load (IDE, browser, docker, Spotify, Mail and terminal running while the benchmark was conducted).
-
-```bash
-$ bun x autocannon -p 256 -w 8 -c 1024 -d 30 -m POST -H 'content-type: application/json' -b '{"className":"mathApi","methodName":"add","args":[1,2]}' http://127.0.0.1:3000/rpc
-Running 30s test @ http://127.0.0.1:3000/rpc
-1024 connections with 256 pipelining factor
-8 workers
-
-/
-┌─────────┬────────┬─────────┬─────────┬─────────┬────────────┬────────────┬─────────┐
-│ Stat    │ 2.5%   │ 50%     │ 97.5%   │ 99%     │ Avg        │ Stdev      │ Max     │
-├─────────┼────────┼─────────┼─────────┼─────────┼────────────┼────────────┼─────────┤
-│ Latency │ 617 ms │ 4708 ms │ 5629 ms │ 6230 ms │ 4367.37 ms │ 1263.71 ms │ 7115 ms │
-└─────────┴────────┴─────────┴─────────┴─────────┴────────────┴────────────┴─────────┘
-┌───────────┬─────────┬─────────┬─────────┬─────────┬──────────┬─────────┬─────────┐
-│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg      │ Stdev   │ Min     │
-├───────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┼─────────┤
-│ Req/Sec   │ 41,215  │ 41,215  │ 54,559  │ 66,751  │ 55,371.2 │ 5,492.3 │ 41,210  │
-├───────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┼─────────┤
-│ Bytes/Sec │ 8.37 MB │ 8.37 MB │ 11.1 MB │ 13.5 MB │ 11.2 MB  │ 1.11 MB │ 8.37 MB │
-└───────────┴─────────┴─────────┴─────────┴─────────┴──────────┴─────────┴─────────┘
-
-Req/Bytes counts sampled once per second.
-# of samples: 240
-
-1923k requests in 30.08s, 337 MB read
-```
-
-<p align="center">
-
-  <img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/assets/defuss_comic.png" width="400px" />
-
-</p>
-
-<p align="center">
-  <i><b>Come visit us on <code>defuss</code> Island!</b></i>
-</p>
+For local load-balancing experiments, use `scripts/lb.ts` directly.
