@@ -27,25 +27,25 @@ app.use?.(express.static?.(publicDir));
 
 // Inline file with cache headers
 app.get?.("/file/inline", (_req: any, res: any) => {
-  res.setHeader("Content-Type", "text/plain");
-  res.setHeader("Cache-Control", "public, max-age=3600, immutable");
-  res.sendFile(join(publicDir, "hello.txt"));
+	res.setHeader("Content-Type", "text/plain");
+	res.setHeader("Cache-Control", "public, max-age=3600, immutable");
+	res.sendFile(join(publicDir, "hello.txt"));
 });
 
 // Download with content-disposition: attachment
 app.get?.("/file/download", (_req: any, res: any) => {
-  res.download(join(publicDir, "data.json"), "my-data.json");
+	res.download(join(publicDir, "data.json"), "my-data.json");
 });
 
 // No-cache delivery
 app.get?.("/file/fresh", (_req: any, res: any) => {
-  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-  res.setHeader("Pragma", "no-cache");
-  res.sendFile(join(publicDir, "hello.txt"));
+	res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+	res.setHeader("Pragma", "no-cache");
+	res.sendFile(join(publicDir, "hello.txt"));
 });
 
 app.get?.("/health", (_req: any, res: any) => {
-  res.status(200).json({ ok: true, pid: process.pid });
+	res.status(200).json({ ok: true, pid: process.pid });
 });
 
 await startServer(app, { port: PORT, workers: "auto" });
@@ -61,6 +61,6 @@ console.log(`
 `);
 
 setTimeout(() => {
-  console.log("Auto-stopping...");
-  stopServer();
+	console.log("Auto-stopping...");
+	stopServer();
 }, 3_000);

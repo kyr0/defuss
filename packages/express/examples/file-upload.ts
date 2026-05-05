@@ -14,35 +14,35 @@ const app = express({ threads: 0 });
 app.disable?.("x-powered-by");
 
 app.post?.("/upload", (req: any, res: any) => {
-  const chunks: Buffer[] = [];
-  let received = 0;
-  const total = Number(req.headers["content-length"] ?? 0);
+	const chunks: Buffer[] = [];
+	let received = 0;
+	const total = Number(req.headers["content-length"] ?? 0);
 
-  req.on("data", (chunk: Buffer) => {
-    chunks.push(chunk);
-    received += chunk.length;
-    if (total > 0) {
-      const pct = ((received / total) * 100).toFixed(1);
-      console.log(`[upload] progress: ${received}/${total} bytes (${pct}%)`);
-    }
-  });
+	req.on("data", (chunk: Buffer) => {
+		chunks.push(chunk);
+		received += chunk.length;
+		if (total > 0) {
+			const pct = ((received / total) * 100).toFixed(1);
+			console.log(`[upload] progress: ${received}/${total} bytes (${pct}%)`);
+		}
+	});
 
-  req.on("end", () => {
-    const body = Buffer.concat(chunks);
-    console.log(`[upload] complete: ${body.length} bytes received`);
-    res.status(200).json({
-      ok: true,
-      received: body.length,
-      expectedLength: total,
-      match: body.length === total,
-    });
-  });
+	req.on("end", () => {
+		const body = Buffer.concat(chunks);
+		console.log(`[upload] complete: ${body.length} bytes received`);
+		res.status(200).json({
+			ok: true,
+			received: body.length,
+			expectedLength: total,
+			match: body.length === total,
+		});
+	});
 });
 
 // Upload form page
 app.get?.("/", (_req: any, res: any) => {
-  res.setHeader("Content-Type", "text/html");
-  res.send(`<!DOCTYPE html>
+	res.setHeader("Content-Type", "text/html");
+	res.send(`<!DOCTYPE html>
 <html>
 <head><title>File Upload</title></head>
 <body>
@@ -79,7 +79,7 @@ app.get?.("/", (_req: any, res: any) => {
 });
 
 app.get?.("/health", (_req: any, res: any) => {
-  res.status(200).json({ ok: true, pid: process.pid });
+	res.status(200).json({ ok: true, pid: process.pid });
 });
 
 await startServer(app, { port: PORT, workers: "auto" });
@@ -92,6 +92,6 @@ console.log(`
 `);
 
 setTimeout(() => {
-  console.log("Auto-stopping...");
-  stopServer();
+	console.log("Auto-stopping...");
+	stopServer();
 }, 5_000);

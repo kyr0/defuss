@@ -16,8 +16,8 @@ const app = express({ threads: 0 });
 app.disable?.("x-powered-by");
 
 app.get?.("/", (_req: any, res: any) => {
-  res.setHeader("Content-Type", "text/html");
-  res.send(`<!DOCTYPE html>
+	res.setHeader("Content-Type", "text/html");
+	res.send(`<!DOCTYPE html>
 <html>
 <head><title>WebSocket Echo</title></head>
 <body>
@@ -42,34 +42,34 @@ app.get?.("/", (_req: any, res: any) => {
 });
 
 app.get?.("/health", (_req: any, res: any) => {
-  res.status(200).json({ ok: true, pid: process.pid });
+	res.status(200).json({ ok: true, pid: process.pid });
 });
 
 await startServer(app, { port: PORT, workers: 1 });
 
 // Set up WebSocket echo handler via uWebSockets.js native API
 try {
-  const uwsApp = (app as any).uwsApp;
-  if (uwsApp?.ws) {
-    uwsApp.ws("/ws", {
-      open: (ws: any) => {
-        console.log(`[ws] client connected (pid ${process.pid})`);
-      },
-      message: (ws: any, message: ArrayBuffer, isBinary: boolean) => {
-        // Echo the message back
-        ws.send(message, isBinary);
-      },
-      close: (ws: any, code: number) => {
-        console.log(`[ws] client disconnected (code ${code})`);
-      },
-    });
-    console.log(`[ws] WebSocket echo handler registered at ws://localhost:${PORT}/ws`);
-  } else {
-    console.log("[ws] uwsApp.ws not available - WebSocket echo not registered");
-    console.log("[ws] Note: uwsApp is only available in worker processes, not in primary");
-  }
+	const uwsApp = (app as any).uwsApp;
+	if (uwsApp?.ws) {
+		uwsApp.ws("/ws", {
+			open: (ws: any) => {
+				console.log(`[ws] client connected (pid ${process.pid})`);
+			},
+			message: (ws: any, message: ArrayBuffer, isBinary: boolean) => {
+				// Echo the message back
+				ws.send(message, isBinary);
+			},
+			close: (ws: any, code: number) => {
+				console.log(`[ws] client disconnected (code ${code})`);
+			},
+		});
+		console.log(`[ws] WebSocket echo handler registered at ws://localhost:${PORT}/ws`);
+	} else {
+		console.log("[ws] uwsApp.ws not available - WebSocket echo not registered");
+		console.log("[ws] Note: uwsApp is only available in worker processes, not in primary");
+	}
 } catch (err) {
-  console.log("[ws] Could not set up WebSocket:", err);
+	console.log("[ws] Could not set up WebSocket:", err);
 }
 
 console.log(`
@@ -80,6 +80,6 @@ console.log(`
 `);
 
 setTimeout(() => {
-  console.log("Auto-stopping...");
-  stopServer();
+	console.log("Auto-stopping...");
+	stopServer();
 }, 5_000);
