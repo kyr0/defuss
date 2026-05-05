@@ -1,30 +1,34 @@
 ---
 title: My Page
+date: "2025-09-06"
+summary: First blog post discovered through the new generation-time content glob API.
+tags:
+  - demo
+  - ssg
 ---
 
+import Head from '../../components/head.js'
 import Footer from '../../components/footer.js'
 import Header from '../../components/header.js'
-export const year = 2025;
-export const someData = await import('../../data.json');
+import { year } from '../../lib/data.js'
 
 <html>
-<head>
-  <title>{ meta.title }</title>
-</head>
+<Head meta={meta} />
 <body>
+<main class="container">
 
-  <Header />
+  <Header active={"blog"} />
 
-  # Blog { meta.title }
+  # { meta.title }
 
-  <h1>{ meta.title }</h1>
   <p>Blog of website!</p>
-
-  <Footer year={year} />
 
   $$
     L = \frac{1}{2} \rho v^2 S C_L
   $$
 
+  <Footer year={year} />
+
+</main>
 </body>
 </html>

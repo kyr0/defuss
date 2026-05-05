@@ -7,7 +7,6 @@ import Footer from '../components/footer.js'
 import Header from '../components/header.js'
 import ClickButton from '../components/button.js'
 import RpcDemo from '../components/rpc-demo.js'
-import { Hydrate } from "defuss-ssg/components"
 import { year } from "../lib/data.js"
 
 export const someData = await import('../data.json');
@@ -32,7 +31,7 @@ Currently we can render buttons, but the client-side interactivity is not yet im
 
 ## RPC Demo
 
-Call server-side functions directly from the browser with full type safety - no REST endpoints needed:
+Call `mathApi.add`, `mathApi.multiply`, and `greetApi.hello`, then upload an image through the built-in RPC transport, store the raw binary in a JSONL-backed defuss-db table, and fetch it back as an ArrayBuffer for a direct image preview:
 
 <RpcDemo />
 
@@ -77,7 +76,7 @@ www.example.com, https://example.com, and contact@example.com.
 
 ### Tasklist
 
-- [ ] to do
+- [x] to do
 - [ ] another to do
 
 <Footer year={year} />

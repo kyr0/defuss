@@ -29,3 +29,5 @@ yarn-error.log*
 
 # rpc transpiled files
 .rpc
+
+.data/

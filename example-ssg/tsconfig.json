@@ -1,10 +1,20 @@
 {
-  "include": ["pages", "components"],
+  "include": ["pages", "components", "lib", "rpc.ts"],
   "compilerOptions": {
     /* defuss JSX */
     "module": "Node16",
     "moduleResolution": "Node16",
     "jsx": "react-jsx",
-    "jsxImportSource": "defuss"
+    "jsxImportSource": "defuss",
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../packages/defuss/src/*"],
+      "defuss": ["../packages/defuss/dist/index.d.ts"],
+      "defuss/jsx-runtime": ["../packages/defuss/dist/render/index.d.ts"],
+      "defuss-rpc/client.js": ["../packages/rpc/src/client.ts"],
+      "defuss-rpc/server.js": ["../packages/rpc/src/server.ts"],
+      "defuss-db/server.js": ["../packages/db/src/server.ts"]
+    }
   }
 }

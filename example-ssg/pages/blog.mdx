@@ -1,0 +1,33 @@
+---
+title: Blog
+---
+
+import Head from "../components/head.js"
+import Footer from "../components/footer.js"
+import Header from "../components/header.js"
+import BlogList from "../lib/blog-list.js"
+import { year } from "../lib/data.js"
+import { glob } from "virtual:defuss-ssg/content"
+
+export const posts = (await glob("pages/blog/**/*.mdx")).sort((left, right) =>
+  String(right.meta.date || "").localeCompare(String(left.meta.date || ""))
+)
+
+<html>
+<Head meta={meta} />
+<body>
+<main class="container">
+
+<Header active={"blog"} />
+
+# { meta.title }
+
+These entries are discovered from disk at generation time via <code>virtual:defuss-ssg/content</code>.
+
+<BlogList entries={posts} />
+
+<Footer year={year} />
+
+</main>
+</body>
+</html>

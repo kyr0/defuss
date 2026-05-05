@@ -18,7 +18,7 @@ export default function Head({ meta }: HeadProps) {
       ></link>
 
       {/* Link to a global stylesheet with helper classes and overrides */}
-      <link rel="stylesheet" href="assets/style.css" />
+      <link rel="stylesheet" href="/assets/style.css" />
 
       {/* Include KaTeX CSS to style the rendered math */}
       <link

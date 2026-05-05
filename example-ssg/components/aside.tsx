@@ -1,7 +1,7 @@
 import type { Props } from "defuss";
 
 export interface AsideProps extends Props {
-  active: string;
+  active?: string;
 }
 
 export default function Aside({ active }: AsideProps) {
