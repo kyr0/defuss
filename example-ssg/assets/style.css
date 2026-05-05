@@ -21,17 +21,37 @@
   --rpc-demo-border-soft: rgba(16, 37, 66, 0.1);
   --rpc-demo-border-dashed: rgba(16, 37, 66, 0.28);
   --rpc-demo-panel-bg: rgba(255, 255, 255, 0.78);
-  --rpc-demo-panel-accent-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(231, 241, 255, 0.88));
+  --rpc-demo-panel-accent-bg: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.92),
+    rgba(231, 241, 255, 0.88)
+  );
   --rpc-demo-shell-bg:
-    linear-gradient(140deg, rgba(240, 247, 255, 0.96), rgba(255, 255, 255, 0.98)),
-    radial-gradient(circle at top right, rgba(59, 110, 165, 0.14), transparent 38%);
+    linear-gradient(
+      140deg,
+      rgba(240, 247, 255, 0.96),
+      rgba(255, 255, 255, 0.98)
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(59, 110, 165, 0.14),
+      transparent 38%
+    );
   --rpc-demo-shadow: 0 24px 60px rgba(9, 24, 48, 0.08);
   --rpc-demo-pill-bg: rgba(16, 37, 66, 0.08);
   --rpc-demo-input-bg: rgba(255, 255, 255, 0.82);
   --rpc-demo-file-bg: rgba(255, 255, 255, 0.7);
   --rpc-demo-soft-surface: rgba(16, 37, 66, 0.05);
-  --rpc-demo-divider: linear-gradient(90deg, rgba(16, 37, 66, 0.16), rgba(16, 37, 66, 0));
-  --rpc-demo-preview-frame-bg: linear-gradient(135deg, rgba(16, 37, 66, 0.96), rgba(59, 110, 165, 0.9));
+  --rpc-demo-divider: linear-gradient(
+    90deg,
+    rgba(16, 37, 66, 0.16),
+    rgba(16, 37, 66, 0)
+  );
+  --rpc-demo-preview-frame-bg: linear-gradient(
+    135deg,
+    rgba(16, 37, 66, 0.96),
+    rgba(59, 110, 165, 0.9)
+  );
   --rpc-demo-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --rpc-demo-preview-ink: #f8fbff;
   --rpc-demo-preview-ink-soft: rgba(248, 251, 255, 0.82);
@@ -49,17 +69,33 @@
     --rpc-demo-border-soft: rgba(130, 172, 222, 0.18);
     --rpc-demo-border-dashed: rgba(163, 198, 241, 0.34);
     --rpc-demo-panel-bg: rgba(10, 18, 32, 0.8);
-    --rpc-demo-panel-accent-bg: linear-gradient(160deg, rgba(14, 25, 43, 0.96), rgba(21, 38, 65, 0.92));
+    --rpc-demo-panel-accent-bg: linear-gradient(
+      160deg,
+      rgba(14, 25, 43, 0.96),
+      rgba(21, 38, 65, 0.92)
+    );
     --rpc-demo-shell-bg:
       linear-gradient(145deg, rgba(7, 14, 27, 0.96), rgba(12, 22, 38, 0.98)),
-      radial-gradient(circle at top right, rgba(76, 132, 202, 0.18), transparent 42%);
+      radial-gradient(
+        circle at top right,
+        rgba(76, 132, 202, 0.18),
+        transparent 42%
+      );
     --rpc-demo-shadow: 0 28px 70px rgba(0, 0, 0, 0.34);
     --rpc-demo-pill-bg: rgba(163, 198, 241, 0.16);
     --rpc-demo-input-bg: rgba(6, 15, 28, 0.88);
     --rpc-demo-file-bg: rgba(7, 16, 31, 0.84);
     --rpc-demo-soft-surface: rgba(163, 198, 241, 0.08);
-    --rpc-demo-divider: linear-gradient(90deg, rgba(163, 198, 241, 0.22), rgba(163, 198, 241, 0));
-    --rpc-demo-preview-frame-bg: linear-gradient(135deg, rgba(8, 18, 34, 0.98), rgba(26, 55, 94, 0.92));
+    --rpc-demo-divider: linear-gradient(
+      90deg,
+      rgba(163, 198, 241, 0.22),
+      rgba(163, 198, 241, 0)
+    );
+    --rpc-demo-preview-frame-bg: linear-gradient(
+      135deg,
+      rgba(8, 18, 34, 0.98),
+      rgba(26, 55, 94, 0.92)
+    );
     --rpc-demo-preview-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     --rpc-demo-preview-ink: #f8fbff;
     --rpc-demo-preview-ink-soft: rgba(248, 251, 255, 0.78);
@@ -208,7 +244,8 @@
 .rpc-demo-drop-area.rpc-demo-drop-active {
   border-color: var(--rpc-demo-ink);
   background: var(--rpc-demo-input-bg);
-  box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--rpc-demo-ink) 18%, transparent);
+  box-shadow: 0 0 0 0.2rem
+    color-mix(in srgb, var(--rpc-demo-ink) 18%, transparent);
   transform: translateY(-1px);
 }
 
@@ -342,6 +379,10 @@
   margin: 0;
   font-size: 0.92rem;
   color: var(--rpc-demo-ink-soft);
+}
+
+.rpc-demo-header {
+  background: var(--rpc-demo-panel-bg);
 }
 
 @media (min-width: 900px) {
