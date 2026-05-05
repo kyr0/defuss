@@ -74,6 +74,7 @@ export function defussRpc(options: RpcPluginOptions): PluginOption {
         basePath: options.basePath,
         jsonSizeLimit: options.jsonSizeLimit,
         corsOrigin: options.corsOrigin,
+        compression: options.compression,
       });
 
       const { url } = await server.start();

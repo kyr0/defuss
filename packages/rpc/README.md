@@ -35,6 +35,7 @@ Remote Procedure Call (RPC)
 - ✅ **Vite Plugin** - Auto-starts an RPC server alongside Vite dev, with file watching and HMR
 - ✅ **Astro Integration** - First-class Astro support via `defussRpc()`, with `Astro.locals.rpcEndpoint`
 - ✅ **ExpressRpcServer** - Managed Express.js adapter with CORS, health check, and streaming support
+- ✅ **File Uploads** - First-class binary upload with `upload()` / `uploadComplete()`, server handlers, SSE progress, gzip compression, and resumable transfers
 - ✅ **Hook System** - Guard and result hooks on both server and client for auth, logging, and auditing
 - ✅ **Schema Introspection** - Automatic API schema generation and discovery at `/rpc/schema`
 - ✅ **Framework Agnostic** - Works with Astro, Vite, Express.js, or any framework that supports `Request`/`Response`
@@ -249,6 +250,9 @@ await server.stop();
 | `GET/POST /health`    | Liveness check `{ status: "ok" }`         |
 | `POST /rpc`           | Dispatch an RPC call                      |
 | `POST /rpc/schema`    | Return the registered namespace schema    |
+| `POST /rpc/upload`    | Binary file upload (NDJSON response)      |
+| `HEAD /rpc/upload/:id`| Resume check — returns `X-Upload-Offset`  |
+| `GET /rpc/upload/progress/:id` | SSE stream of server-side progress |
 
 ---
 
@@ -306,6 +310,108 @@ If the generator throws, an error frame is sent:
 ```
 
 Non-generator methods continue to use standard single-response JSON as before.
+
+---
+
+## File Uploads
+
+`defuss-rpc` provides first-class binary upload support with progress tracking, gzip compression, hash verification, and resumable transfers — no chunking or manual MD5 required.
+
+### Server — register an upload handler
+
+Use `addUploadHandler()` for buffered uploads (entire payload in memory) or `addStreamingUploadHandler()` for large files processed as a stream:
+
+```ts
+import { addUploadHandler, addStreamingUploadHandler } from "defuss-rpc/server";
+
+// Buffered: receives the full Uint8Array after upload completes
+addUploadHandler<{ size: number; name: string }>("file-upload", async (data, meta) => {
+  // data is a Uint8Array, meta contains uploadId, sha256, md5, originalSize, etc.
+  await fs.writeFile(`uploads/${meta.uploadId}.bin`, data);
+  return { size: data.byteLength, name: meta.uploadId };
+});
+
+// Streaming: receives a ReadableStream<Uint8Array> for real-time processing
+addStreamingUploadHandler<{ totalBytes: number }>("video-ingest", async (stream, meta) => {
+  const reader = stream.getReader();
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+  }
+  return { totalBytes };
+});
+```
+
+The `meta` object (`UploadMeta`) contains:
+
+| Field            | Type     | Description                                      |
+| :--------------- | :------- | :----------------------------------------------- |
+| `uploadId`       | `string` | Unique upload identifier                         |
+| `handlerName`    | `string` | Registered handler name                          |
+| `originalSize`   | `number` | Expected total bytes (from client header)        |
+| `bytesReceived`  | `number` | Actual bytes received (after decompression)      |
+| `sha256`         | `string` | SHA-256 hex digest of received content           |
+| `md5`            | `string` | MD5 hex digest of received content               |
+| `durationMs`     | `number` | Server-side processing duration in ms            |
+| `contentEncoding`| `string` | Transfer encoding (`"identity"`, `"gzip"`, etc.) |
+| `offset`         | `number` | Byte offset (0 for fresh, >0 for resumed)        |
+
+### Client — upload with progress
+
+Use `upload()` for progress tracking or `uploadComplete()` for fire-and-forget:
+
+```ts
+import { upload, uploadComplete } from "defuss-rpc/client";
+
+// With progress events (async generator)
+for await (const event of upload<MyResult>("file-upload", file)) {
+  if (event.type === "sending")   console.log(`Sending: ${event.percent}%`);
+  if (event.type === "receiving") console.log(`Server: ${event.percent}%`);
+  if (event.type === "complete")  console.log("Done!", event.result, event.sha256);
+}
+
+// Fire-and-forget (returns UploadResult<T>)
+const result = await uploadComplete<MyResult>("file-upload", buffer);
+console.log(result.sha256, result.md5, result.result);
+```
+
+### Upload events
+
+The `upload()` generator yields three event types:
+
+| Event       | Fields                                        | Description                           |
+| :---------- | :-------------------------------------------- | :------------------------------------ |
+| `sending`   | `bytesSent`, `totalBytes`, `percent`          | Client-side bytes fed to the network  |
+| `receiving` | `bytesReceived`, `totalBytes`, `percent`      | Server-confirmed progress (via SSE)   |
+| `complete`  | `result`, `uploadId`, `sha256`, `md5`, `durationMs`, `bytesReceived` | Final result with hashes |
+
+### Options
+
+```ts
+await upload("handler", data, {
+  baseUrl: "http://localhost:3210",  // Override RPC endpoint
+  compression: "auto",               // "auto" | "gzip" | "none"
+  chunkSize: 256 * 1024,             // Streaming chunk size (256 KiB default)
+  uploadId: "previous-id",           // Resume a previous upload
+  signal: abortController.signal,    // AbortSignal for cancellation
+  headers: { Authorization: "..." }, // Extra headers
+  progress: true,                    // Enable SSE sideband (default: true)
+});
+```
+
+### Resumable uploads
+
+Pass a previously used `uploadId` to resume an interrupted upload. The client sends a `HEAD` request to check the server offset and skips already-transferred bytes:
+
+```ts
+for await (const event of upload("file-upload", largeFile, {
+  uploadId: "my-upload-id",
+})) {
+  // Automatically resumes from where it left off
+}
+```
 
 ---
 
@@ -434,6 +540,7 @@ This means you can pass and return binary data (`Uint8Array`), dates, maps, and 
 │   ├-- astro-integration.ts # Astro integration wrapping the Vite plugin
 │   ├-- astro-middleware.ts  # Injects Astro.locals.rpcEndpoint
 │   ├-- rpc-state.ts         # Shared state: config, base URL, server reference
+│   ├-- upload-state.ts      # Upload handler registry and temp-file state
 │   └-- types.d.ts           # TypeScript type definitions
 ├-- tsconfig.json
 ├-- LICENSE
@@ -450,7 +557,7 @@ This means you can pass and return binary data (`Uint8Array`), dates, maps, and 
 
 ## Examples
 
-- [`examples/with-rpc-upload`](../../examples/with-rpc-upload/) - Chunked binary file upload with `Uint8Array` via DSON
+- [`examples/with-rpc-upload`](../../examples/with-rpc-upload/) - Binary file upload with progress bar, SSE tracking, and hash verification
 - [`examples/with-rpc-chat-streaming`](../../examples/with-rpc-chat-streaming/) - AI-style chat streaming using async generators
 
 ## 🧞 Commands
@@ -460,7 +567,8 @@ All commands are run from the root of the project, from a terminal:
 | Command       | Action                                           |
 | :------------ | :----------------------------------------------- |
 | `bun run build`   | Build the RPC package.                      |
-| `bun run test`    | Run the test suite (**runs under Node.js via Vitest**). |
+| `bun run test`    | Run the Node.js test suite (via Vitest). |
+| `bun run test:browser` | Run Playwright browser integration tests. |
 | `bun run publish` | Publish a new version of `defuss-rpc`.      |
 
 > **Note:** `bun run test` invokes `vitest run` which executes under Node.js. Do **not** use `bun test` (Bun's built-in test runner) — the uWebSockets.js native addon is incompatible with Bun's module loader.

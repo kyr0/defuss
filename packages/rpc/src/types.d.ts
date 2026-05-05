@@ -166,3 +166,90 @@ export type DsonStreamFrame =
   | { type: "yield"; value: unknown }
   | { type: "return"; value: unknown }
   | { type: "error"; error: { message: string; stack?: string } };
+
+// ── Upload API types ─────────────────────────────────────────────────────────
+
+/**
+ * Metadata passed to upload handler functions after the upload body has been received.
+ */
+export interface UploadMeta {
+  /** Unique upload identifier (client-generated or auto-assigned). */
+  uploadId: string;
+  /** The registered handler name (e.g. `"vfs-upload"`). */
+  handlerName: string;
+  /** Total expected size in bytes (from `X-Original-Size` header). */
+  originalSize: number;
+  /** Actual bytes received (after decompression). */
+  bytesReceived: number;
+  /** SHA-256 hex digest of the full received content. */
+  sha256: string;
+  /** MD5 hex digest of the full received content. */
+  md5: string;
+  /** Server-side processing duration in milliseconds. */
+  durationMs: number;
+  /** Content-Encoding used for the transfer (`"identity"`, `"gzip"`, etc.). */
+  contentEncoding: string;
+  /** Byte offset this upload started from (0 for fresh, >0 for resumed). */
+  offset: number;
+}
+
+/**
+ * A buffered upload handler — receives the complete upload as a `Uint8Array`.
+ * Suitable for small-to-medium files that fit comfortably in memory.
+ */
+export type UploadHandlerFn<T = unknown> = (
+  data: Uint8Array,
+  meta: UploadMeta,
+) => T | Promise<T>;
+
+/**
+ * A streaming upload handler — receives a `ReadableStream<Uint8Array>` for
+ * real-time processing of large files without buffering the entire payload.
+ *
+ * The stream always starts from byte 0, even on resumed uploads (previously
+ * received data is replayed from the temp file).
+ */
+export type UploadStreamHandlerFn<T = unknown> = (
+  stream: ReadableStream<Uint8Array>,
+  meta: UploadMeta,
+) => T | Promise<T>;
+
+/**
+ * NDJSON frame sent by the server in the upload response body.
+ *
+ * - `received` — upload body fully consumed; contains hash digests and byte count.
+ * - `result`   — the upload handler's return value (DSON-serialized).
+ * - `error`    — the upload handler threw during execution.
+ */
+export type UploadStreamFrame =
+  | {
+      type: "received";
+      uploadId: string;
+      bytesReceived: number;
+      sha256: string;
+      md5: string;
+      durationMs: number;
+    }
+  | { type: "result"; value: unknown }
+  | { type: "error"; error: { message: string; stack?: string } };
+
+/**
+ * Server-confirmed progress event pushed via SSE (`GET /rpc/upload/progress/{uploadId}`).
+ */
+export interface UploadProgressEvent {
+  /** Bytes received so far (after decompression). */
+  bytesReceived: number;
+  /** Total expected bytes (from `X-Original-Size`). */
+  totalBytes: number;
+  /** Percentage complete (0–100). */
+  percent: number;
+}
+
+/**
+ * Internal registration entry for an upload handler.
+ * @internal
+ */
+export interface UploadHandlerEntry {
+  fn: UploadHandlerFn<unknown> | UploadStreamHandlerFn<unknown>;
+  mode: "buffered" | "streaming";
+}

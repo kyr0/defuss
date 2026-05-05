@@ -1,5 +1,6 @@
 import type { ExpressRpcServer } from "./express-server.js";
 import type { ApiNamespace } from "./types.d.js";
+import type { ExpressRpcServerOptions } from "./express-server.js";
 
 export interface RpcPluginOptions {
   /** Map of namespace name → class constructor or plain-object module to expose over RPC. */
@@ -61,6 +62,14 @@ export interface RpcPluginOptions {
    * @default `"*"`
    */
   corsOrigin?: string | string[];
+  /**
+   * Enable/disable transport compression in the embedded Express RPC server.
+   *
+   * Forwarded to {@link ExpressRpcServerOptions.compression}. Useful in tests
+   * to reduce hanging-process noise from compression stream handles.
+   * @default true
+   */
+  compression?: ExpressRpcServerOptions["compression"];
   /**
    * Glob patterns for API source files to watch during development.
    *

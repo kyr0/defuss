@@ -175,7 +175,11 @@ export class ExpressRpcServer {
         );
         res.header(
           "Access-Control-Allow-Headers",
-          "Origin, X-Requested-With, Content-Type, Accept, Authorization, Content-Encoding",
+          "Origin, X-Requested-With, Content-Type, Accept, Authorization, Content-Encoding, X-Upload-Handler, X-Upload-Id, X-Original-Size, X-Upload-Offset",
+        );
+        res.header(
+          "Access-Control-Expose-Headers",
+          "X-Upload-Offset, X-Upload-Handler, X-Original-Size, X-Upload-Status",
         );
 
         if (req.method === "OPTIONS") {
@@ -194,6 +198,27 @@ export class ExpressRpcServer {
       (_req: ExpressRequest, res: ExpressResponse) => {
         res.json({ status: "ok", timestamp: new Date().toISOString() });
       },
+    );
+
+    // ── Upload routes — mounted BEFORE the text body parser so the raw
+    //    binary stream is forwarded untouched to rpcRoute. ────────────
+
+    // SSE progress: GET /rpc/upload/progress/:uploadId
+    this.app.get(
+      `${this.basePath}/rpc/upload/progress/:uploadId`,
+      this.handleUploadStream.bind(this),
+    );
+
+    // Resume status: HEAD /rpc/upload/:uploadId
+    this.app.head(
+      `${this.basePath}/rpc/upload/:uploadId`,
+      this.handleUploadHead.bind(this),
+    );
+
+    // Upload body: POST /rpc/upload
+    this.app.post(
+      `${this.basePath}/rpc/upload`,
+      this.handleUploadPost.bind(this),
     );
 
     // RPC endpoint - forward to the existing rpcRoute handler
@@ -318,6 +343,187 @@ export class ExpressRpcServer {
         error: "Internal server error",
         message: error instanceof Error ? error.message : String(error),
       });
+    }
+  }
+
+  // ── Upload request handlers ──────────────────────────────────────────────
+
+  /**
+   * Converts an Express request into a Fetch `Request` with the raw Node.js
+   * readable stream as body (no text parsing), delegates to `rpcRoute`, and
+   * streams the NDJSON response back.
+   */
+  private async handleUploadPost(req: ExpressRequest, res: ExpressResponse) {
+    try {
+      const { Readable } = await import("node:stream");
+      const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+
+      // Convert Node.js readable to a web ReadableStream for the Fetch body.
+      const webStream = Readable.toWeb(req as any) as ReadableStream<Uint8Array>;
+
+      const fetchRequest = new Request(url, {
+        method: "POST",
+        headers: req.headers as Record<string, string>,
+        body: webStream,
+        // @ts-expect-error — duplex required for streaming uploads
+        duplex: "half",
+      });
+
+      const response = await rpcRoute({ request: fetchRequest } as any);
+      await this.pipeResponse(response, req, res);
+    } catch (error) {
+      console.error("Upload POST error:", error);
+      res.status(500).json({
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Forwards HEAD /rpc/upload/:uploadId to rpcRoute and maps response headers.
+   */
+  private async handleUploadHead(req: ExpressRequest, res: ExpressResponse) {
+    try {
+      const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+      const fetchRequest = new Request(url, {
+        method: "HEAD",
+        headers: req.headers as Record<string, string>,
+      });
+
+      const response = await rpcRoute({ request: fetchRequest } as any);
+
+      res.status(response.status);
+      for (const [key, value] of response.headers.entries()) {
+        res.set(key, value);
+      }
+      res.end();
+    } catch (error) {
+      console.error("Upload HEAD error:", error);
+      res.status(500).json({
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Forwards GET /rpc/upload/progress/:uploadId to rpcRoute and pipes the
+   * SSE stream back to the Express response.
+   */
+  private async handleUploadStream(req: ExpressRequest, res: ExpressResponse) {
+    try {
+      const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+      const fetchRequest = new Request(url, {
+        method: "GET",
+        headers: req.headers as Record<string, string>,
+      });
+
+      const response = await rpcRoute({ request: fetchRequest } as any);
+
+      res.status(response.status);
+      res.set("content-type", "text/event-stream");
+      res.set("cache-control", "no-cache");
+      res.set("connection", "keep-alive");
+
+      if (response.body) {
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+      }
+      res.end();
+    } catch (error) {
+      console.error("Upload SSE error:", error);
+      res.status(500).json({
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Pipes a Fetch Response to an Express response, handling NDJSON streaming
+   * and optional gzip compression (reuses the same logic as handleRpcRequest).
+   */
+  private async pipeResponse(
+    response: Response,
+    req: ExpressRequest,
+    res: ExpressResponse,
+  ) {
+    const contentType =
+      response.headers.get("content-type") || "application/json";
+
+    const acceptEncoding =
+      (req.headers as Record<string, string>)["accept-encoding"] || "";
+    const useGzip =
+      this.compression.enabled && acceptEncoding.includes("gzip");
+
+    if (
+      (contentType === "application/x-ndjson" ||
+        contentType === "text/event-stream") &&
+      response.body
+    ) {
+      res.status(response.status).set("content-type", contentType);
+
+      if (useGzip && contentType === "application/x-ndjson") {
+        res.set("content-encoding", "gzip");
+        res.set("vary", "Accept-Encoding");
+
+        const gzip = createGzip({
+          level: this.compression.level,
+          flush: zlibConstants.Z_SYNC_FLUSH,
+        });
+
+        gzip.on("data", (compressed: Buffer) => {
+          res.write(compressed);
+        });
+
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await new Promise<void>((resolve, reject) => {
+            gzip.write(value, (err) => (err ? reject(err) : resolve()));
+          });
+        }
+
+        await new Promise<void>((resolve, reject) => {
+          gzip.on("end", () => resolve());
+          gzip.on("error", reject);
+          gzip.end();
+        });
+        res.end();
+      } else {
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      }
+    } else {
+      const responseText = await response.text();
+
+      if (useGzip && responseText.length > 1024) {
+        const compressed = gzipSync(responseText, {
+          level: this.compression.level,
+        });
+        res
+          .status(response.status)
+          .set("content-type", contentType)
+          .set("content-encoding", "gzip")
+          .set("vary", "Accept-Encoding");
+        res.end(compressed);
+      } else {
+        res
+          .status(response.status)
+          .set("content-type", contentType)
+          .send(responseText);
+      }
     }
   }
 

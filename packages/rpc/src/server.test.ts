@@ -139,6 +139,35 @@ describe("RPC Server", () => {
       });
     });
 
+    it("should handle legacy JSON RPC call payloads", async () => {
+      createRpcServer({ TestUserApi, TestProductApi });
+
+      const request = new Request("http://localhost/rpc", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          className: "TestUserApi",
+          methodName: "getUser",
+          args: ["123"],
+        }),
+      });
+
+      const response = await rpcRoute({ request } as any);
+      expect(response.status).toBe(200);
+
+      const result = await response.text();
+      const userData = await DSON.parse(result);
+
+      expect(userData).toEqual({
+        id: "123",
+        name: "User 123",
+        email: "user123@example.com",
+        age: 1230,
+      });
+    });
+
     it("should handle RPC calls with multiple arguments", async () => {
       createRpcServer({ TestUserApi, TestProductApi });
 
