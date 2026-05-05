@@ -29,6 +29,11 @@ import {
 	sendWebResponse,
 } from "./http-adapter.js";
 import {
+	createContentModulePlugin,
+	hasContentModuleImporters,
+	invalidateContentModule,
+} from "./content-vite.js";
+import {
 	filePathToRoute,
 	getPageSourceRootDir,
 	pageSourceFileToOutputPath,
@@ -784,9 +789,10 @@ export function defussSsg(
 		server: ViteDevServer,
 		file: string,
 		kind: Extract<DevChangeKind, "page" | "component" | "dependency">,
+		reloadCurrentPage = false,
 	): Promise<void> => {
 		const absoluteFile = resolve(file);
-		const reloadKey = `${kind}:${absoluteFile}`;
+		const reloadKey = `${kind}:${absoluteFile}:${reloadCurrentPage ? "current" : "target"}`;
 		const existingTimer = ssgReloadTimers.get(reloadKey);
 		if (existingTimer) {
 			clearTimeout(existingTimer);
@@ -834,7 +840,9 @@ export function defussSsg(
 						const currentPaths = resolveSsgPaths(projectDir, config);
 						sendCustomEvent(server, "defuss:ssg-reload", {
 							path:
-								kind === "page" && isHtmlLikeFile(absoluteFile)
+								!reloadCurrentPage &&
+								kind === "page" &&
+								isHtmlLikeFile(absoluteFile)
 									? filePathToRoute(absoluteFile, config, projectDir)
 									: undefined,
 							kind,
@@ -1006,10 +1014,14 @@ export function defussSsg(
 		res: any,
 	): Promise<boolean> => {
 		const requestUrl = new URL(req.url || "/", "http://localhost");
-		if (req.method !== "POST") {
-			return false;
-		}
-		if (requestUrl.pathname !== "/rpc" && requestUrl.pathname !== "/rpc/schema") {
+		const pathname = requestUrl.pathname;
+		const isRpcRequest =
+			pathname === "/rpc" ||
+			pathname === "/rpc/schema" ||
+			pathname === "/rpc/upload" ||
+			pathname.startsWith("/rpc/upload/");
+
+		if (!isRpcRequest) {
 			return false;
 		}
 		if (!rpcFile || config.rpc === false) {
@@ -1175,31 +1187,43 @@ export function defussSsg(
 		// Handle component files: /components/foo.js -> projectDir/components/foo.tsx
 		const relativeComponentPath = pathname.slice(componentRoutePrefix.length);
 		const componentExtension = extname(relativeComponentPath).toLowerCase();
+		const sourceExtensions = new Set([".tsx", ".ts", ".jsx", ".js"]);
 		const isBuiltComponentAsset =
 			relativeComponentPath === "runtime.js" ||
 			relativeComponentPath.startsWith("chunks/") ||
 			/^chunk-|^client-/.test(relativeComponentPath) ||
-			componentExtension !== ".js";
+			!sourceExtensions.has(componentExtension);
 
 		if (isBuiltComponentAsset) {
 			return false;
 		}
 
-		const componentBase = relativeComponentPath.replace(
-			extname(relativeComponentPath),
-			"",
-		);
-		const extensions = [".tsx", ".ts", ".jsx", ".js"];
 		let sourceFile: string | null = null;
 
-		for (const ext of extensions) {
-			const candidate = join(
+		if (componentExtension !== ".js") {
+			const directSourceCandidate = join(
 				currentPaths.componentsSourceDirAbsolute,
-				`${componentBase}${ext}`,
+				relativeComponentPath,
 			);
-			if (existsSync(candidate)) {
-				sourceFile = candidate;
-				break;
+			if (existsSync(directSourceCandidate)) {
+				sourceFile = directSourceCandidate;
+			}
+		}
+
+		if (!sourceFile) {
+			const componentBase = relativeComponentPath.replace(
+				extname(relativeComponentPath),
+				"",
+			);
+			for (const ext of sourceExtensions) {
+				const candidate = join(
+					currentPaths.componentsSourceDirAbsolute,
+					`${componentBase}${ext}`,
+				);
+				if (existsSync(candidate)) {
+					sourceFile = candidate;
+					break;
+				}
 			}
 		}
 
@@ -1369,11 +1393,18 @@ export function defussSsg(
 					return;
 				}
 
-				if (
-					kind === "page" ||
-					kind === "component" ||
-					kind === "dependency"
-				) {
+				if (kind === "page") {
+					invalidateContentModule(server, Date.now());
+					await scheduleSsgReload(
+						server,
+						file,
+						kind,
+						hasContentModuleImporters(server),
+					);
+					return;
+				}
+
+				if (kind === "component" || kind === "dependency") {
 					await scheduleSsgReload(server, file, kind);
 					return;
 				}
@@ -1440,11 +1471,23 @@ export function defussSsg(
 				return [];
 			}
 
-			if (
-				kind === "page" ||
-				kind === "component" ||
-				kind === "dependency"
-			) {
+			if (kind === "page") {
+				if (ctx.type === "update") {
+					await ctx.read();
+				}
+
+				invalidateChangedFile(ctx.server, ctx.file, ctx.timestamp);
+				invalidateContentModule(ctx.server, ctx.timestamp);
+				await scheduleSsgReload(
+					ctx.server,
+					ctx.file,
+					kind,
+					hasContentModuleImporters(ctx.server),
+				);
+				return [];
+			}
+
+			if (kind === "component" || kind === "dependency") {
 				if (ctx.type === "update") {
 					await ctx.read();
 				}
@@ -1469,5 +1512,11 @@ export function defussSsg(
 		},
 	};
 
-	return [plugin];
+	return [
+		createContentModulePlugin({
+			projectDir: () => projectDir,
+			pagesDir: () => config.pages,
+		}),
+		plugin,
+	];
 }

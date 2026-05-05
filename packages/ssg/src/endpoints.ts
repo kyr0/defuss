@@ -1,9 +1,9 @@
-import esbuild from "esbuild";
 import glob from "fast-glob";
-import { join, relative, dirname } from "node:path";
+import { join, relative, dirname, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { existsSync, mkdirSync } from "node:fs";
 import { writeFile, readFile } from "node:fs/promises";
+import { build as rolldownBuild } from "rolldown";
 import type {
 	EndpointRouteContext,
 	EndpointRouteMethod,
@@ -208,30 +208,48 @@ export const compileEndpoints = async (
 	debug = false,
 ): Promise<Map<string, string>> => {
 	if (sourceFiles.length === 0) return new Map();
+	const resolvedPagesDir = resolve(pagesDir);
+	const resolvedOutDir = resolve(outDir);
 
 	if (debug) {
 		console.log(`Compiling ${sourceFiles.length} endpoint source file(s)...`);
 	}
 
-	console.time("[endpoints] esbuild-compile");
-	await esbuild.build({
-		entryPoints: sourceFiles,
-		format: "esm",
-		bundle: true,
-		platform: "node",
-		target: ["esnext"],
-		outdir: outDir,
-		outbase: pagesDir,
-		outExtension: { ".js": ".mjs" },
-	});
-	console.timeEnd("[endpoints] esbuild-compile");
-
 	// Build the source=>compiled mapping
 	const mapping = new Map<string, string>();
-	for (const src of sourceFiles) {
-		const rel = relative(pagesDir, src).replace(/\.(ts|js)$/, ".mjs");
-		mapping.set(src, join(outDir, rel));
+	console.time("[endpoints] rolldown-compile");
+	try {
+		for (const src of sourceFiles) {
+			const resolvedSourceFile = resolve(src);
+			const rel = relative(resolvedPagesDir, resolvedSourceFile).replace(
+				/\.(ts|js)$/,
+				".mjs",
+			);
+			const compiledFile = join(resolvedOutDir, rel);
+			const compiledDir = dirname(compiledFile);
+
+			if (!existsSync(compiledDir)) {
+				mkdirSync(compiledDir, { recursive: true });
+			}
+
+			await rolldownBuild({
+				input: resolvedSourceFile,
+				cwd: resolvedPagesDir,
+				platform: "node",
+				output: {
+					file: compiledFile,
+					format: "esm",
+					codeSplitting: false,
+					sourcemap: false,
+				},
+			});
+
+			mapping.set(src, compiledFile);
+		}
+	} finally {
+		console.timeEnd("[endpoints] rolldown-compile");
 	}
+
 	return mapping;
 };
 
@@ -259,7 +277,7 @@ export const loadEndpointModule = async (
 /**
  * Discover, compile, load and resolve all endpoint files.
  *
- * Source `.ts`/`.js` files are compiled with esbuild into the
+ * Source `.ts`/`.js` files are compiled with Rolldown into the
  * `.endpoints/` directory as `.mjs` modules.  The compiled modules
  * are then dynamically imported so we can inspect their exports.
  *

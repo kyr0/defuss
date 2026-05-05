@@ -247,9 +247,9 @@ export const filePathToRoute = (
 	const paths = resolveSsgPaths(cwd, config);
 	const pageSourceRootDir =
 		paths.hasPagesSourceDir &&
-		normalizePath(filePath).startsWith(
-			`${normalizePath(paths.pagesSourceDirAbsolute)}/`,
-		)
+			normalizePath(filePath).startsWith(
+				`${normalizePath(paths.pagesSourceDirAbsolute)}/`,
+			)
 			? paths.pagesSourceDirAbsolute
 			: cwd;
 	let routePath = pageSourceFileToOutputPath(filePath, pageSourceRootDir);

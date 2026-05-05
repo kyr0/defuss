@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./config.js";
 export * from "./build.js";
+export * from "./content.js";
 export * from "./dev.js";
 export * from "./serve.js";
 export * from "./endpoints.js";

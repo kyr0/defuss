@@ -1,18 +1,32 @@
-FROM node:latest
+# syntax=docker/dockerfile:1.7
 
-RUN apt-get update && apt-get install -y git
+FROM oven/bun:1.3.9 AS builder
+
+WORKDIR /repo
+
+COPY . .
+
+RUN bun install --frozen-lockfile
+RUN node ./packages/ssg/scripts/prepare-container-runtime.mjs
+
+FROM node:24-trixie-slim
 
 WORKDIR /app
 
-# Only copy manifests first for better caching
-COPY package.json ./
-
-# Install (tsx is needed at runtime since we're running TS directly)
-RUN npm install
-
-COPY ./src ./src
-
 ENV NODE_ENV=production
-EXPOSE 3001 3002 3003 3004 3005 3006 3007 3008
 
-CMD ["npm", "run", "start"]
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends git \
+	&& git config --global url."https://github.com/".insteadOf ssh://git@github.com/ \
+	&& git config --global url."https://github.com/".insteadOf git@github.com: \
+	&& rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local/bin/bun /usr/local/bin/bun
+RUN ln -sf /usr/local/bin/bun /usr/local/bin/bunx
+
+COPY --from=builder /repo/packages/ssg/.container-runtime/ /app/
+
+EXPOSE 3000
+
+ENTRYPOINT ["node", "/app/dist/cli.mjs"]
+CMD ["dev", "/workspace", "--host", "0.0.0.0", "--port", "3000"]

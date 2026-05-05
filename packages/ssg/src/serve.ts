@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import process from "node:process";
 import { express, startServer } from "defuss-express";
 import { readConfig } from "./config.js";
 import { registerEndpoints } from "./endpoints.js";
@@ -76,6 +77,7 @@ const createRpcHandler = () => {
 export const serve = async ({
 	projectDir,
 	debug = false,
+	host,
 	port = 3000,
 	workers = 1,
 }: ServeOptions): Promise<Status> => {
@@ -107,6 +109,9 @@ export const serve = async ({
 		const rpcHandler = createRpcHandler();
 		app.post?.("/rpc", rpcHandler);
 		app.post?.("/rpc/schema", rpcHandler);
+		app.post?.("/rpc/upload", rpcHandler);
+		app.get?.("/rpc/upload/progress/:uploadId", rpcHandler);
+		app.head?.("/rpc/upload/:uploadId", rpcHandler);
 	}
 
 	const staticMiddleware = express.static?.(outputDir);
@@ -116,6 +121,7 @@ export const serve = async ({
 
 	try {
 		await startServer(app, {
+			host,
 			port,
 			workers,
 		});
@@ -129,8 +135,12 @@ export const serve = async ({
 		};
 	}
 
-	console.log(`defuss-ssg production server running at http://localhost:${port}`);
-	console.log(`Serving static output from ${outputDir}`);
+	if (typeof process.env.DEFUSS_WORKER_INDEX !== "string") {
+		console.log(
+			`defuss-ssg production server running at http://${host ?? "localhost"}:${port}`,
+		);
+		console.log(`Serving static output from ${outputDir}`);
+	}
 
 	return {
 		code: "OK",

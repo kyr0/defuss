@@ -22,10 +22,11 @@
     "type": "git"
   },
   "scripts": {
-    "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun",
+    "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun && rm -rf ./.container-runtime",
     "pretest": "bun run build",
     "prebuild": "bun run clean",
     "build": "pkgroll",
+    "prepare:container": "node ./scripts/prepare-container-runtime.mjs",
     "test:browser": "vitest run --config vitest.browser.config.ts --passWithNoTests",
     "cli-dev": "node ./dist/cli.mjs dev ../../example-ssg/",
     "cli-dev:three": "node ./dist/cli.mjs dev ../../examples/with-three.js/",
@@ -87,7 +88,7 @@
   },
   "peerDependenciesMeta": {
     "defuss-rpc": {
-      "optional": true
+      "optional": false
     }
   },
   "dependencies": {
@@ -105,8 +106,11 @@
     "remark-mdx-frontmatter": "^5.2.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
+    "rolldown": "^1.0.0-rc.18",
+    "toml": "^3.0.0",
     "vite": "^8.0.0",
-    "ws": "^8.20.0"
+    "ws": "^8.20.0",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@vitest/browser": "^4.0.17",

@@ -31,6 +31,7 @@ import type {
 	SsgConfig,
 	Status,
 } from "./types.js";
+import { createContentModulePlugin } from "./content-vite.js";
 import { readConfig } from "./config.js";
 import { applyAutoHydrate } from "./hydration.js";
 import {
@@ -499,6 +500,10 @@ export const build = async ({
 				middlewareMode: true,
 			},
 			plugins: [
+				createContentModulePlugin({
+					projectDir,
+					pagesDir: config.pages,
+				}),
 				defuss({ enableJsxDevMode: true }),
 				mdx({
 					jsxImportSource: "defuss",

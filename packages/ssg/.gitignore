@@ -1,4 +1,5 @@
 .ssg-temp
+.container-runtime
 *.tgz
 bench-results.json
 lb.mjs

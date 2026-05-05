@@ -1,8 +1,7 @@
-import esbuild from "esbuild";
 import { join, resolve } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { pathToFileURL } from "node:url";
+import { build as rolldownBuild } from "rolldown";
 import type { SsgConfig } from "./types.js";
 
 /**
@@ -24,7 +23,7 @@ export const discoverRpcFile = (projectDir: string): string | null => {
 };
 
 /**
- * Compile the RPC module source file with esbuild into the `.rpc/` directory.
+ * Compile the RPC module source file with Rolldown into the `.rpc/` directory.
  *
  * @param rpcFilePath Absolute path to the rpc.ts / rpc.js source file
  * @param projectDir The project root directory
@@ -36,28 +35,35 @@ export const compileRpcModule = async (
 	projectDir: string,
 	debug = false,
 ): Promise<string> => {
-	const outDir = join(projectDir, ".rpc");
+	const resolvedProjectDir = resolve(projectDir);
+	const resolvedRpcFilePath = resolve(rpcFilePath);
+	const outDir = join(resolvedProjectDir, ".rpc");
+	const tsconfigPath = join(resolvedProjectDir, "tsconfig.json");
 	if (!existsSync(outDir)) {
 		mkdirSync(outDir, { recursive: true });
 	}
 
 	if (debug) {
-		console.log(`Compiling RPC module: ${rpcFilePath}`);
+		console.log(`Compiling RPC module: ${resolvedRpcFilePath}`);
 	}
 
-	const compileLabel = "[rpc] esbuild-compile";
+	const compileLabel = "[rpc] rolldown-compile";
 	console.time(compileLabel);
 	try {
-		await esbuild.build({
-			entryPoints: [rpcFilePath],
-			format: "esm",
-			bundle: true,
+		await rolldownBuild({
+			input: resolvedRpcFilePath,
+			cwd: resolvedProjectDir,
 			platform: "node",
-			target: ["esnext"],
-			outdir: outDir,
-			outExtension: { ".js": ".mjs" },
-			// Mark defuss-rpc as external so it uses the installed version
-			external: ["defuss-rpc", "defuss-rpc/*"],
+			tsconfig: existsSync(tsconfigPath) ? tsconfigPath : false,
+			// Mark defuss-rpc as external so it uses the installed version.
+			external: ["defuss-rpc", /^defuss-rpc(?:\/.*)?$/],
+			output: {
+				dir: outDir,
+				format: "esm",
+				entryFileNames: "rpc.mjs",
+				chunkFileNames: "chunks/[name]-[hash].mjs",
+				sourcemap: false,
+			},
 		});
 	} finally {
 		console.timeEnd(compileLabel);
@@ -72,18 +78,18 @@ export const compileRpcModule = async (
 
 /**
  * Dynamically import a compiled RPC module.
- * Uses a base64 data URL to bust Node's import cache.
+ * Uses a cache-busting file URL while keeping the compiled module in-place so
+ * bare imports continue resolving against the project directory.
  */
 const loadRpcModule = async (
 	compiledPath: string,
 ): Promise<Record<string, unknown>> => {
-	const code = await readFile(compiledPath, "utf-8");
-	const tmpFile = join(
-		tmpdir(),
-		`defuss-rpc-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`,
+	const compiledUrl = pathToFileURL(compiledPath);
+	compiledUrl.searchParams.set(
+		"t",
+		`${Date.now()}-${Math.random().toString(36).slice(2)}`,
 	);
-	await writeFile(tmpFile, code, "utf-8");
-	return await import(tmpFile);
+	return await import(compiledUrl.href);
 };
 
 /**
@@ -167,7 +173,7 @@ export const initializeRpc = async (
 	// Try to import defuss-rpc
 	let rpcServer: {
 		createRpcServer: (ns: Record<string, unknown>) => void;
-		clearRpcServer: () => void;
+		clearRpcServer: () => void | Promise<void>;
 	};
 	try {
 		// @ts-expect-error defuss-rpc is an optional peer dependency
@@ -183,6 +189,11 @@ export const initializeRpc = async (
 	// Compile and load the module
 	try {
 		const compiledPath = await compileRpcModule(rpcFilePath, projectDir, debug);
+
+		// Clear previous RPC state before importing the module so side-effect
+		// registrations such as addUploadHandler() remain active.
+		await rpcServer.clearRpcServer();
+
 		const moduleExports = await loadRpcModule(compiledPath);
 		const namespace = buildRpcNamespace(moduleExports);
 
@@ -193,8 +204,6 @@ export const initializeRpc = async (
 			return false;
 		}
 
-		// Clear any previously registered RPC server (for hot reload)
-		rpcServer.clearRpcServer();
 		rpcServer.createRpcServer(namespace as any);
 
 		console.log(

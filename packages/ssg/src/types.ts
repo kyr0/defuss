@@ -129,6 +129,12 @@ export interface ServeOptions {
 	projectDir: string;
 
 	/**
+	 * Public host for the production HTTP runtime.
+	 * Defaults to defuss-express' configured host.
+	 */
+	host?: string;
+
+	/**
 	 * Public port for the production HTTP runtime.
 	 * Defaults to 3000.
 	 */
@@ -167,6 +173,52 @@ export interface DefussSsgViteOptions {
 	 * When true, request-time SSR also keeps dist output refreshed for middleware fallbacks.
 	 */
 	writeDevOutput?: boolean;
+}
+
+export interface ContentGlobOptions {
+	/**
+	 * Directory the glob patterns are resolved from.
+	 * Defaults to the current working directory.
+	 */
+	cwd?: string;
+
+	/**
+	 * Directory used to derive public routes for matched page files.
+	 * Defaults to "pages".
+	 */
+	pagesDir?: string;
+
+	/**
+	 * Optional ignore globs passed through to fast-glob.
+	 */
+	ignore?: string[];
+}
+
+export interface ContentEntry {
+	/**
+	 * Absolute file path on disk.
+	 */
+	filePath: string;
+
+	/**
+	 * Path relative to the glob `cwd`.
+	 */
+	relativePath: string;
+
+	/**
+	 * Route-friendly identifier without a leading slash.
+	 */
+	slug: string;
+
+	/**
+	 * Public route when the file lives under the configured pages directory.
+	 */
+	route?: string;
+
+	/**
+	 * Parsed YAML or TOML frontmatter.
+	 */
+	meta: Record<string, unknown>;
 }
 
 export type EndpointRouteMethod =

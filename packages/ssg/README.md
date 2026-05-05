@@ -8,7 +8,7 @@ Static site generation, request-time dev SSR, file-based endpoints, and producti
 - `build` renders static HTML, bundles client components, compiles endpoints, and copies assets.
 - `serve` serves built output with `defuss-express`, plus dynamic endpoints and optional RPC.
 
-Use Bun for package management. The published package targets Node `^20.19.0 || >=22.12.0`.
+Use Bun for package management. The published package and the container runtime both target Node `^20.19.0 || >=22.12.0`.
 
 ## What It Supports
 
@@ -121,6 +121,73 @@ defuss-ssg serve ./my-site
 
 `serve` expects existing build output in `dist/`, so run `build` first.
 
+## Docker and Podman
+
+The container image uses Bun in the builder stage and ships a Node runtime image with Bun available for project setup at startup. Container usage still mirrors `bunx defuss-ssg <cli-args>`, but the container now runs the mounted project's own setup flow first: it reads that project's `package.json`, uses its declared package manager, installs that project's dependencies into the mounted project, and then runs `dev`, `build`, or `serve`.
+
+Build the image from this directory:
+
+```bash
+docker build -t defuss-ssg -f Dockerfile ../..
+podman build -t defuss-ssg -f Dockerfile ../..
+```
+
+Run a one-off build against a mounted site:
+
+```bash
+docker run --rm -it \
+	-v "$PWD/../../example-ssg:/workspace" \
+	-v defuss-ssg-node-modules:/workspace/node_modules \
+	defuss-ssg build /workspace
+```
+
+Serve the built output with one published port:
+
+```bash
+docker run --rm -it \
+	-p 3000:3000 \
+	-v "$PWD/../../example-ssg:/workspace" \
+	-v defuss-ssg-node-modules:/workspace/node_modules \
+	defuss-ssg serve /workspace --multicore --host 0.0.0.0 --port 3000
+```
+
+Start dev mode with Vite HMR through the same public port:
+
+```bash
+docker run --rm -it \
+	-p 3000:3000 \
+	-v "$PWD/../../example-ssg:/workspace" \
+	-v defuss-ssg-node-modules:/workspace/node_modules \
+	defuss-ssg dev /workspace --host 0.0.0.0 --port 3000
+```
+
+To persist container-installed project dependencies between runs, add a container-managed volume for `node_modules`:
+
+```bash
+docker run --rm -it \
+	-p 3000:3000 \
+	-v "$PWD/../../example-ssg:/workspace" \
+	-v defuss-ssg-node-modules:/workspace/node_modules \
+	defuss-ssg dev /workspace --host 0.0.0.0 --port 3000
+```
+
+Replace `docker` with `podman` for the same commands.
+
+Notes:
+
+- The container runs the same `setup()` flow as local CLI usage and installs the mounted project's declared dependencies with its declared package manager.
+- Use a container-managed volume for `/workspace/node_modules` if you want install results to persist between container runs. Avoid bind-mounting a host `node_modules` directory across OS/architecture boundaries.
+- This keeps local non-container usage and container usage aligned: the project owns its dependency graph in both cases.
+- One published port is enough, even with `--multicore`. `defuss-express` keeps worker ports internal and load-balances behind the public port.
+- `compose.yml` provides `ssg` and `ssg-dev` services. Set `SSG_SITE=/abs/path/to/site` to override the default example mount.
+
+Compose examples:
+
+```bash
+docker compose up ssg
+docker compose --profile dev up ssg-dev
+```
+
 ## How It Works
 
 ### Dev Mode
@@ -136,6 +203,45 @@ By default, the CLI keeps `dist/` refreshed during dev as a compatibility fallba
 ### Serve Mode
 
 `defuss-ssg serve` reads the built output from `dist/` and serves it with `defuss-express`. Dynamic endpoint modules are registered at runtime, and `rpc.ts` or `rpc.js` is compiled and initialized automatically when RPC is enabled and `defuss-rpc` is installed.
+
+## Content Discovery
+
+For generation-time listings such as blog archives, `defuss-ssg` now exposes a small `glob()` API.
+
+Use the virtual module inside MDX or other code that Vite evaluates for SSR:
+
+```ts
+import { glob } from "virtual:defuss-ssg/content";
+
+export const posts = (await glob("pages/blog/**/*.mdx")).sort((left, right) =>
+	String(right.meta.date || "").localeCompare(String(left.meta.date || "")),
+);
+```
+
+Use the direct package export in non-Vite server-side contexts such as `config.ts` or custom plugins:
+
+```ts
+import { glob } from "defuss-ssg";
+
+const posts = await glob("pages/blog/**/*.mdx", {
+	cwd: process.cwd(),
+});
+```
+
+Each entry contains:
+
+- `filePath`: absolute file path
+- `relativePath`: path relative to `cwd`
+- `slug`: route-like identifier without a leading slash
+- `route`: public route when the file lives under the configured `pages` directory
+- `meta`: parsed YAML or TOML frontmatter
+
+Notes:
+
+- `cwd` defaults to the current working directory for the direct helper.
+- The virtual module binds `cwd` and `pages` to the active SSG project automatically.
+- `route` is only derived for files inside the configured `pages` directory.
+- v1 returns metadata records only; it does not eagerly execute every matched MDX module.
 
 ## Endpoints
 
@@ -275,7 +381,7 @@ Most projects only need the main package export.
 ## CLI Reference
 
 ```bash
-defuss-ssg [dev|build|serve] [folder] [--debug] [--multicore]
+defuss-ssg [dev|build|serve] [folder] [options]
 
 No args           -> dev .
 Single path       -> dev <path>
@@ -295,6 +401,9 @@ Flags:
 
 - `--debug` or `-d`: enable verbose logging
 - `--multicore`: use `workers: "auto"` for `serve`
+- `--host` or `-H <host>`: override the dev or serve bind host
+- `--port` or `-p <port>`: override the dev or serve port
+- `--skip-setup` or `--no-setup`: skip project dependency installation for prepared environments and containers
 
 ## Local Package Development
 

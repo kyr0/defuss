@@ -4,13 +4,128 @@ import { serve } from "./serve.js";
 import { resolve } from "node:path";
 import { setup } from "./setup.js";
 
+const usage = `Usage: defuss-ssg [dev|build|serve] [folder] [options]
+  No args           => dev .
+  Single path       => dev <path>
+  Single command    => <command> .
+  Command + folder  => <command> <folder>
+  Flags:
+    --debug, -d
+    --multicore
+    --port, -p <number>
+    --host, -H <host>
+    --skip-setup`;
+
+const isTruthy = (value?: string): boolean => {
+	if (!value) return false;
+	return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+};
+
+const isDefussWorkerProcess = (): boolean =>
+	typeof process.env.DEFUSS_WORKER_INDEX === "string";
+
+const readFlagValue = (args: string[], index: number, flag: string): string => {
+	const next = args[index + 1];
+	if (!next || next.startsWith("-")) {
+		throw new Error(`Missing value for ${flag}`);
+	}
+
+	return next;
+};
+
+const parsePort = (value: string): number => {
+	const port = Number(value);
+	if (!Number.isInteger(port) || port < 1 || port > 65535) {
+		throw new Error(`Invalid port: ${value}`);
+	}
+
+	return port;
+};
+
+const parseCliArgs = (args: string[]) => {
+	let debug = false;
+	let multicore = false;
+	let skipSetup =
+		isTruthy(process.env.DEFUSS_SSG_SKIP_SETUP) || isDefussWorkerProcess();
+	let port: number | undefined;
+	let host: string | undefined;
+	const positional: string[] = [];
+
+	for (let index = 0; index < args.length; index += 1) {
+		const arg = args[index];
+
+		if (arg === "--debug" || arg === "-d") {
+			debug = true;
+			continue;
+		}
+
+		if (arg === "--multicore") {
+			multicore = true;
+			continue;
+		}
+
+		if (arg === "--skip-setup" || arg === "--no-setup") {
+			skipSetup = true;
+			continue;
+		}
+
+		if (arg === "--port" || arg === "-p") {
+			port = parsePort(readFlagValue(args, index, arg));
+			index += 1;
+			continue;
+		}
+
+		if (arg.startsWith("--port=")) {
+			port = parsePort(arg.slice("--port=".length));
+			continue;
+		}
+
+		if (arg === "--host" || arg === "-H") {
+			host = readFlagValue(args, index, arg);
+			index += 1;
+			continue;
+		}
+
+		if (arg.startsWith("--host=")) {
+			host = arg.slice("--host=".length);
+			if (!host) {
+				throw new Error("Missing value for --host");
+			}
+			continue;
+		}
+
+		positional.push(arg);
+	}
+
+	return {
+		debug,
+		multicore,
+		skipSetup,
+		port,
+		host,
+		positional,
+	};
+};
+
 (async () => {
 	const args = process.argv.slice(2);
-	const debug = args.includes("--debug") || args.includes("-d");
-	const multicore = args.includes("--multicore");
-	const positional = args.filter((a) => !a.startsWith("-"));
 	const commands = new Set(["dev", "build", "serve"]);
-	const usage = "Usage: defuss-ssg [dev|build|serve] [folder]\n  No args           => dev .\n  Single path       => dev <path>\n  Single command    => <command> .\n  Command + folder  => <command> <folder>\n  Flags: [--debug] [--multicore]";
+
+	let debug: boolean;
+	let multicore: boolean;
+	let skipSetup: boolean;
+	let port: number | undefined;
+	let host: string | undefined;
+	let positional: string[];
+
+	try {
+		({ debug, multicore, skipSetup, port, host, positional } = parseCliArgs(args));
+	} catch (error) {
+		console.error(
+			`${error instanceof Error ? error.message : "Invalid CLI arguments"}\n${usage}`,
+		);
+		process.exit(1);
+	}
 
 	let command: string;
 	let folder: string;
@@ -44,29 +159,51 @@ import { setup } from "./setup.js";
 	}
 
 	const projectDir = resolve(folder);
+	const workerProcess = isDefussWorkerProcess();
 
-	// initialize the project (if not already done)
-	await setup(projectDir);
+	if (skipSetup) {
+		if (!workerProcess) {
+			console.log(
+				`Skipping dependency setup for ${folder} (prepared environment).`,
+			);
+		}
+	} else {
+		const setupStatus = await setup(projectDir);
+		if (setupStatus.code !== "OK") {
+			console.error(setupStatus.message);
+			process.exit(1);
+		}
+	}
 
 	if (command === "dev") {
-		console.log(`Starting Vite dev server for ${folder}...`);
+		if (!workerProcess) {
+			console.log(`Starting Vite dev server for ${folder}...`);
+		}
 		await dev({
 			projectDir,
 			debug,
+			host,
+			port,
 			writeDevOutput: true,
 		});
 	} else if (command === "build") {
-		console.log(`Building ${folder}...`);
+		if (!workerProcess) {
+			console.log(`Building ${folder}...`);
+		}
 		await build({
 			projectDir,
 			debug,
 			mode: "build",
 		});
 	} else if (command === "serve") {
-		console.log(`Serving built output for ${folder}...`);
+		if (!workerProcess) {
+			console.log(`Serving built output for ${folder}...`);
+		}
 		await serve({
 			projectDir,
 			debug,
+			host,
+			port,
 			workers: multicore ? "auto" : 1,
 		});
 	} else {
