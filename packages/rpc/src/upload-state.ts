@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { mkdir, stat, rm } from "node:fs/promises";
 import type { UploadProgressEvent } from "./types.d.js";
 
-// ── Session types ────────────────────────────────────────────────────────────
+// -- Session types ------------------------------------------------------------
 
 export interface UploadSession {
 	uploadId: string;
@@ -16,13 +16,13 @@ export interface UploadSession {
 	createdAt: number;
 }
 
-// ── State stores ─────────────────────────────────────────────────────────────
+// -- State stores -------------------------------------------------------------
 
 const sessions: Map<string, UploadSession> = new Map();
 
 let uploadDir: string = join(tmpdir(), "defuss-uploads");
 
-// ── Upload directory ─────────────────────────────────────────────────────────
+// -- Upload directory ---------------------------------------------------------
 
 /** Returns the directory used for upload temp files. */
 export function getUploadDir(): string {
@@ -39,7 +39,7 @@ export async function ensureUploadDir(): Promise<void> {
 	await mkdir(uploadDir, { recursive: true });
 }
 
-// ── Session CRUD ─────────────────────────────────────────────────────────────
+// -- Session CRUD -------------------------------------------------------------
 
 /**
  * Creates a new upload session and returns it.
@@ -85,7 +85,7 @@ export function deleteSession(uploadId: string): void {
 	sessions.delete(uploadId);
 }
 
-// ── Progress pub/sub ─────────────────────────────────────────────────────────
+// -- Progress pub/sub ---------------------------------------------------------
 
 /** Subscribes to progress events for a given upload. */
 export function addProgressListener(
@@ -120,13 +120,13 @@ export function emitProgress(
 		try {
 			listener(event);
 		} catch (_) {
-			// Listener threw — remove it to avoid repeated failures.
+			// Listener threw - remove it to avoid repeated failures.
 			session.progressListeners.delete(listener);
 		}
 	}
 }
 
-// ── Cleanup ──────────────────────────────────────────────────────────────────
+// -- Cleanup ------------------------------------------------------------------
 
 /**
  * Deletes the temp file for a session and removes the session from the store.
@@ -151,7 +151,7 @@ export async function clearAllSessions(): Promise<void> {
 	sessions.clear();
 }
 
-// ── Resume helper ────────────────────────────────────────────────────────────
+// -- Resume helper ------------------------------------------------------------
 
 /**
  * Returns the actual byte count stored in the temp file on disk.

@@ -98,7 +98,7 @@ export function defussRpc(options: RpcPluginOptions): PluginOption {
 						`[defuss-rpc] API file changed: ${file}, re-registering namespace...`,
 					);
 					// Clear and re-register the RPC namespace
-					// The Express server keeps running — it delegates to rpcRoute which reads from the live registry
+					// The Express server keeps running - it delegates to rpcRoute which reads from the live registry
 					clearRpcServer();
 					createRpcServer(options.api);
 				}

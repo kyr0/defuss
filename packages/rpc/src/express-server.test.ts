@@ -319,7 +319,7 @@ describe("Express RPC Server", () => {
 			expect(res.headers["content-encoding"]).toBe("gzip");
 			expect(res.headers["vary"]).toBe("Accept-Encoding");
 
-			// Raw body is gzip — decompress to get NDJSON text
+			// Raw body is gzip - decompress to get NDJSON text
 			const decompressed = gunzipSync(res.body).toString("utf-8");
 			const frames = decompressed
 				.split("\n")
@@ -392,7 +392,7 @@ describe("Express RPC Server", () => {
 		});
 
 		it("should gzip-compress large buffered RPC responses", async () => {
-			// searchProducts returns an array — with limit=50 the DSON text exceeds 1 KB
+			// searchProducts returns an array - with limit=50 the DSON text exceeds 1 KB
 			const res = await rawPost(
 				`${serverInfo.url}/rpc`,
 				DSON.stringify({

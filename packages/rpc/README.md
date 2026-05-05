@@ -20,26 +20,26 @@ Remote Procedure Call (RPC)
 > |---|---|
 > | **Node.js** | **20, 22, 24, 25** |
 > | **Platforms** | macOS (x64, arm64), Linux (x64, arm64), Windows (x64) |
-> | **Linux glibc** | **≥ 2.38** (Ubuntu 24.04+, Debian 13+, RHEL 9.4+) |
+> | **Linux glibc** | **>= 2.38** (Ubuntu 24.04+, Debian 13+, RHEL 9.4+) |
 >
-> Tests **must** be run with `bun run test` (which invokes `vitest` under Node.js). **Do not** use `bun test` — that triggers Bun's built-in test runner which cannot load the uWebSockets.js native addon.
+> Tests **must** be run with `bun run test` (which invokes `vitest` under Node.js). **Do not** use `bun test` - that triggers Bun's built-in test runner which cannot load the uWebSockets.js native addon.
 
 `defuss-rpc` is a tiny but powerful RPC library for building type-safe APIs in JavaScript and TypeScript. It enables seamless client-server communication with automatic type safety, bi-directional, seamless binary data format support (via `DSON` - just pass `Uint8Array` around; uploads and downloads of TB of data are possible, including streaming and chunked transfers, progress tracking, resend, hash integrity checks, etc.), generator streaming, and minimal setup.
 
 ## ✨ Features
 
-- ✅ **Type-safe** - Full TypeScript support with automatic client type generation
-- ✅ **Classes & Modules** - Define APIs as classes (stateful) or plain objects (functional)
-- ✅ **Generator Streaming** - `async *` generators stream to the client as NDJSON, consumed via `for await...of`
-- ✅ **DSON Serialization** - `Date`, `Map`, `Set`, `Uint8Array`, `BigInt`, and more survive the wire
-- ✅ **Vite Plugin** - Auto-starts an RPC server alongside Vite dev, with file watching and HMR
-- ✅ **Astro Integration** - First-class Astro support via `defussRpc()`, with `Astro.locals.rpcEndpoint`
-- ✅ **ExpressRpcServer** - Managed Express.js adapter with CORS, health check, and streaming support
-- ✅ **File Uploads** - First-class binary upload with `upload()` / `uploadComplete()`, server handlers, SSE progress, gzip compression, and resumable transfers
-- ✅ **Hook System** - Guard and result hooks on both server and client for auth, logging, and auditing
-- ✅ **Schema Introspection** - Automatic API schema generation and discovery at `/rpc/schema`
-- ✅ **Framework Agnostic** - Works with Astro, Vite, Express.js, or any framework that supports `Request`/`Response`
-- ✅ **Fast Upload** - Optimized for large binary transfers with streaming / half-duplex support, gzip compression, and hash verification (SHA-256 and MD5)
+- **Type-safe** - Full TypeScript support with automatic client type generation
+- **Classes & Modules** - Define APIs as classes (stateful) or plain objects (functional)
+- **Generator Streaming** - `async *` generators stream to the client as NDJSON, consumed via `for await...of`
+- **DSON Serialization** - `Date`, `Map`, `Set`, `Uint8Array`, `BigInt`, and more survive the wire
+- **Vite Plugin** - Auto-starts an RPC server alongside Vite dev, with file watching and HMR
+- **Astro Integration** - First-class Astro support via `defussRpc()`, with `Astro.locals.rpcEndpoint`
+- **ExpressRpcServer** - Managed Express.js adapter with CORS, health check, and streaming support
+- **File Uploads** - First-class binary upload with `upload()` / `uploadComplete()`, server handlers, SSE progress, gzip compression, and resumable transfers
+- **Hook System** - Guard and result hooks on both server and client for auth, logging, and auditing
+- **Schema Introspection** - Automatic API schema generation and discovery at `/rpc/schema`
+- **Framework Agnostic** - Works with Astro, Vite, Express.js, or any framework that supports `Request`/`Response`
+- **Fast Upload** - Optimized for large binary transfers with (NDJSON) streaming / half-duplex support, gzip compression, and hash verification (SHA-256 and MD5)
 
 ---
 
@@ -97,7 +97,7 @@ Choose one of the integrations below - [Astro](#astro-integration), [Vite](#vite
 
 ### 5. Use on the client
 
-When using the Vite or Astro plugin, the RPC endpoint is **auto-registered** — just import the virtual module anywhere in your app and call `getRpcClient()` without options:
+When using the Vite or Astro plugin, the RPC endpoint is **auto-registered** - just import the virtual module anywhere in your app and call `getRpcClient()` without options:
 
 ```ts
 import "virtual:defuss-rpc"; // auto-registers the endpoint (import once in your entry point)
@@ -127,7 +127,7 @@ Or override the endpoint per-client:
 const rpc = await getRpcClient<RpcApi>({ baseUrl: "http://other-host:4000" });
 ```
 
-**Resolution order:** explicit `baseUrl` option → auto-registered endpoint from virtual module → `""` (current page origin).
+**Resolution order:** explicit `baseUrl` option => auto-registered endpoint from virtual module => `""` (current page origin).
 
 ---
 
@@ -199,7 +199,7 @@ The plugin:
 - Watches API files and hot-reloads the RPC namespace on change
 
 ```ts
-// Client code — just import the virtual module and go
+// Client code - just import the virtual module and go
 import "virtual:defuss-rpc";
 import { getRpcClient } from "defuss-rpc/client";
 
@@ -210,7 +210,7 @@ const rpc = await getRpcClient<RpcApi>(); // endpoint auto-resolved
 
 | Option          | Type                   | Default              | Description                                           |
 | :-------------- | :--------------------- | :------------------- | :---------------------------------------------------- |
-| `api`           | `ApiNamespace`         | *(required)*         | Map of namespace name → class or module               |
+| `api`           | `ApiNamespace`         | *(required)*         | Map of namespace name => class or module               |
 | `port`          | `number`               | `0`                  | Port for the RPC server (`0` = OS-assigned)           |
 | `protocol`      | `"http" \| "https"`    | `"http"`             | Protocol for the endpoint URL                         |
 | `host`          | `string`               | `"localhost"`        | Host/IP to bind (`"0.0.0.0"` for all interfaces)     |
@@ -252,7 +252,7 @@ await server.stop();
 | `POST /rpc`           | Dispatch an RPC call                      |
 | `POST /rpc/schema`    | Return the registered namespace schema    |
 | `POST /rpc/upload`    | Binary file upload (NDJSON response)      |
-| `HEAD /rpc/upload/:id`| Resume check — returns `X-Upload-Offset`  |
+| `HEAD /rpc/upload/:id`| Resume check - returns `X-Upload-Offset`  |
 | `GET /rpc/upload/progress/:id` | SSE stream of server-side progress |
 
 ---
@@ -316,9 +316,9 @@ Non-generator methods continue to use standard single-response JSON as before.
 
 ## File Uploads
 
-`defuss-rpc` provides first-class binary upload support with progress tracking, gzip compression, hash verification, and resumable transfers — no chunking or manual MD5 required.
+`defuss-rpc` provides first-class binary upload support with progress tracking, gzip compression, hash verification, and resumable transfers - no chunking or manual MD5 required.
 
-### Server — register an upload handler
+### Server - register an upload handler
 
 Use `addUploadHandler()` for buffered uploads (entire payload in memory) or `addStreamingUploadHandler()` for large files processed as a stream:
 
@@ -359,7 +359,7 @@ The `meta` object (`UploadMeta`) contains:
 | `contentEncoding`| `string` | Transfer encoding (`"identity"`, `"gzip"`, etc.) |
 | `offset`         | `number` | Byte offset (0 for fresh, >0 for resumed)        |
 
-### Client — upload with progress
+### Client - upload with progress
 
 Use `upload()` for progress tracking or `uploadComplete()` for fire-and-forget:
 
@@ -534,15 +534,15 @@ This means you can pass and return binary data (`Uint8Array`), dates, maps, and 
 ```text
 /
 ├-- src/
-│   ├-- client.ts            # Proxy-based RPC client, generator consumer
-│   ├-- server.ts            # rpcRoute handler, schema generation, streaming
-│   ├-- express-server.ts    # ExpressRpcServer adapter with CORS & streaming
-│   ├-- vite-plugin.ts       # Vite plugin: dev server, virtual module, HMR
-│   ├-- astro-integration.ts # Astro integration wrapping the Vite plugin
-│   ├-- astro-middleware.ts  # Injects Astro.locals.rpcEndpoint
-│   ├-- rpc-state.ts         # Shared state: config, base URL, server reference
-│   ├-- upload-state.ts      # Upload handler registry and temp-file state
-│   └-- types.d.ts           # TypeScript type definitions
+|   ├-- client.ts            # Proxy-based RPC client, generator consumer
+|   ├-- server.ts            # rpcRoute handler, schema generation, streaming
+|   ├-- express-server.ts    # ExpressRpcServer adapter with CORS & streaming
+|   ├-- vite-plugin.ts       # Vite plugin: dev server, virtual module, HMR
+|   ├-- astro-integration.ts # Astro integration wrapping the Vite plugin
+|   ├-- astro-middleware.ts  # Injects Astro.locals.rpcEndpoint
+|   ├-- rpc-state.ts         # Shared state: config, base URL, server reference
+|   ├-- upload-state.ts      # Upload handler registry and temp-file state
+|   └-- types.d.ts           # TypeScript type definitions
 ├-- tsconfig.json
 ├-- LICENSE
 └-- package.json
@@ -572,7 +572,7 @@ All commands are run from the root of the project, from a terminal:
 | `bun run test:browser` | Run Playwright browser integration tests. |
 | `bun run publish` | Publish a new version of `defuss-rpc`.      |
 
-> **Note:** `bun run test` invokes `vitest run` which executes under Node.js. Do **not** use `bun test` (Bun's built-in test runner) — the uWebSockets.js native addon is incompatible with Bun's module loader.
+> **Note:** `bun run test` invokes `vitest run` which executes under Node.js. Do **not** use `bun test` (Bun's built-in test runner) - the uWebSockets.js native addon is incompatible with Bun's module loader.
 
 ---
 

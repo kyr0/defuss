@@ -1,5 +1,5 @@
 /**
- * Vitest globalSetup — runs in Node.js, before/after browser test suites.
+ * Vitest globalSetup - runs in Node.js, before/after browser test suites.
  *
  * Starts an ExpressRpcServer with upload handlers so browser tests can hit it.
  * The chosen port is exposed via `__RPC_TEST_PORT__` which the browser tests
@@ -25,7 +25,7 @@ export async function setup({ provide }: UploadBrowserSetupContext) {
 	// Register standard RPC APIs
 	createRpcServer({ TestUserApi, TestProductApi, TestStreamModule });
 
-	// ── Buffered upload handler ──────────────────────────────────────
+	// -- Buffered upload handler --------------------------------------
 	addUploadHandler<{
 		size: number;
 		sha256Echo: string;
@@ -40,7 +40,7 @@ export async function setup({ provide }: UploadBrowserSetupContext) {
 		};
 	});
 
-	// ── Streaming upload handler ─────────────────────────────────────
+	// -- Streaming upload handler -------------------------------------
 	addStreamingUploadHandler<{
 		totalBytes: number;
 		chunkCount: number;
@@ -62,7 +62,7 @@ export async function setup({ provide }: UploadBrowserSetupContext) {
 		};
 	});
 
-	// ── Handler that returns complex data ────────────────────────────
+	// -- Handler that returns complex data ----------------------------
 	addUploadHandler<{
 		received: boolean;
 		uploadId: string;
@@ -77,7 +77,7 @@ export async function setup({ provide }: UploadBrowserSetupContext) {
 		};
 	});
 
-	// ── Handler that throws an error ─────────────────────────────────
+	// -- Handler that throws an error ---------------------------------
 	addUploadHandler("test-error-handler", async () => {
 		throw new Error("Intentional handler error");
 	});

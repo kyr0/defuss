@@ -3,13 +3,13 @@ import type { ApiNamespace } from "./types.d.js";
 import type { ExpressRpcServerOptions } from "./express-server.js";
 
 export interface RpcPluginOptions {
-	/** Map of namespace name → class constructor or plain-object module to expose over RPC. */
+	/** Map of namespace name => class constructor or plain-object module to expose over RPC. */
 	api: ApiNamespace;
 	/**
 	 * Port the RPC server should listen on.
 	 *
-	 * - `0` (default) — let the OS assign a random available port.
-	 * - Any positive integer — bind to that specific port.
+	 * - `0` (default) - let the OS assign a random available port.
+	 * - Any positive integer - bind to that specific port.
 	 *
 	 * When omitted and `protocol` is `"https"`, defaults to `443`; for `"http"` defaults to `0`.
 	 */
@@ -23,15 +23,15 @@ export interface RpcPluginOptions {
 	/**
 	 * Host/IP the RPC server should bind to.
 	 *
-	 * - `"localhost"` (default) — only reachable from the local machine.
-	 * - `"0.0.0.0"` — listen on all network interfaces (useful for Docker / LAN access).
+	 * - `"localhost"` (default) - only reachable from the local machine.
+	 * - `"0.0.0.0"` - listen on all network interfaces (useful for Docker / LAN access).
 	 * - Any valid IPv4/IPv6 address.
 	 */
 	host?: string;
 	/**
 	 * URL path prefix prepended to every RPC route (`/rpc`, `/rpc/schema`, `/health`).
 	 *
-	 * @example `"/api/v1"` → endpoints become `/api/v1/rpc`, `/api/v1/health`, etc.
+	 * @example `"/api/v1"` => endpoints become `/api/v1/rpc`, `/api/v1/health`, etc.
 	 * @default `""`
 	 */
 	basePath?: string;

@@ -46,10 +46,10 @@ export const RPC_UPLOAD_PATH = "/rpc/upload" as const;
 /** Prefix for SSE upload-progress endpoint: `/rpc/upload/progress/{uploadId}`. */
 export const RPC_UPLOAD_PROGRESS_PATH = "/rpc/upload/progress/" as const;
 
-/** Map from namespace name → entry (class or module). */
+/** Map from namespace name => entry (class or module). */
 const rpcApiEntries: Map<string, RpcApiEntry> = new Map();
 
-/** Map from handler name → upload handler entry (buffered or streaming). */
+/** Map from handler name => upload handler entry (buffered or streaming). */
 const uploadHandlers: Map<string, UploadHandlerEntry> = new Map();
 
 const hooks: ServerHook[] = [];
@@ -116,7 +116,7 @@ function streamGeneratorResponse(
 			try {
 				const { done, value } = await iter.next();
 				if (done) {
-					// Terminal return frame — value is the generator's return value
+					// Terminal return frame - value is the generator's return value
 					const frame: DsonStreamFrame = {
 						type: "return",
 						value: value ?? null,
@@ -146,7 +146,7 @@ function streamGeneratorResponse(
 	});
 }
 
-// ── Upload ID sanitizer ──────────────────────────────────────────────────────
+// -- Upload ID sanitizer ------------------------------------------------------
 
 function sanitizeUploadId(raw: string): string {
 	const sanitized = raw.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 128);
@@ -165,7 +165,7 @@ function pipeDecompressedBody(
 	);
 }
 
-// ── Upload POST handler ──────────────────────────────────────────────────────
+// -- Upload POST handler ------------------------------------------------------
 
 /**
  * Handles `POST /rpc/upload`.
@@ -198,7 +198,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 	);
 	const contentEncoding = request.headers.get("content-encoding") || "identity";
 
-	// ── Validate handler ───────────────────────────────────────────────
+	// -- Validate handler -----------------------------------------------
 	const handlerEntry = uploadHandlers.get(handlerName);
 	if (!handlerEntry) {
 		return new Response(
@@ -207,7 +207,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 		);
 	}
 
-	// ── Guard hooks ────────────────────────────────────────────────────
+	// -- Guard hooks ----------------------------------------------------
 	for (const hook of hooks.filter((h) => h.phase === "guard")) {
 		const allowed = await hook.fn(
 			"__upload__",
@@ -223,7 +223,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 		}
 	}
 
-	// ── Session management (create or resume) ──────────────────────────
+	// -- Session management (create or resume) --------------------------
 	await ensureUploadDir();
 
 	let session = getSession(uploadId);
@@ -244,7 +244,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 	} else {
 		session = createSession(uploadId, handlerName, originalSize);
 		if (offset > 0) {
-			// Offset > 0 but no existing session — can't resume what we don't have
+			// Offset > 0 but no existing session - can't resume what we don't have
 			return new Response(
 				JSON.stringify({ error: `No session found for uploadId "${uploadId}" to resume` }),
 				{ status: 404, headers: { "Content-Type": "application/json" } },
@@ -253,13 +253,13 @@ async function handleUploadPost(request: Request): Promise<Response> {
 	}
 	session = session!;
 
-	// ── Set up hash + file write + progress ────────────────────────────
+	// -- Set up hash + file write + progress ----------------------------
 	const sha256 = createHash("sha256");
 	const md5 = createHash("md5");
 	let bytesReceived = isResume ? offset : 0;
 
 	// For streaming handlers on fresh uploads, we tee the body:
-	// one branch → disk + hash + progress, other → handler stream.
+	// one branch => disk + hash + progress, other => handler stream.
 	// For buffered handlers or resumed streaming: write to disk first.
 	const useDirectStreaming =
 		handlerEntry.mode === "streaming" && !isResume;
@@ -279,7 +279,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 	// Create or decompress the body stream
 	let bodyStream: ReadableStream<Uint8Array> | null = request.body;
 	if (!bodyStream) {
-		// No body — treat as empty upload
+		// No body - treat as empty upload
 		bodyStream = new ReadableStream({
 			start(controller) {
 				controller.close();
@@ -351,7 +351,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 		// Close the handler stream if tee'd
 		handlerStreamController?.close();
 
-		// ── Hash computation ───────────────────────────────────────────
+		// -- Hash computation -------------------------------------------
 		// For fresh uploads, the incremental hash covers the full content.
 		// For resumed uploads, we must hash the ENTIRE file from disk.
 		let sha256Hex: string;
@@ -374,7 +374,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 		// Mark session complete
 		updateSession(uploadId, { bytesReceived, status: "complete" });
 
-		// ── Build upload meta ──────────────────────────────────────────
+		// -- Build upload meta ------------------------------------------
 		const meta: UploadMeta = {
 			uploadId,
 			handlerName,
@@ -387,7 +387,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 			offset,
 		};
 
-		// ── Call handler ───────────────────────────────────────────────
+		// -- Call handler -----------------------------------------------
 		let handlerResult: unknown;
 
 		try {
@@ -398,17 +398,17 @@ async function handleUploadPost(request: Request): Promise<Response> {
 					meta,
 				);
 			} else if (useDirectStreaming && handlerStream) {
-				// Handler already received the stream via tee — but we need to
+				// Handler already received the stream via tee - but we need to
 				// start the handler before the stream is consumed. For simplicity
 				// in this first implementation: re-read from disk for streaming too
 				// when we didn't tee (resume case). For direct streaming, the
-				// handlerStream was already fed above — invoke handler with it.
+				// handlerStream was already fed above - invoke handler with it.
 				// Actually, we need to be careful: the handler might not have
 				// consumed the stream yet if it's lazy. We started feeding it above
 				// synchronously during read. If the handler awaits lazily, the
 				// ReadableStream buffered the chunks. That's fine.
 				//
-				// But wait — we already closed handlerStreamController above.
+				// But wait - we already closed handlerStreamController above.
 				// We need to invoke the handler BEFORE consuming the body so it
 				// can read in parallel. Let's restructure for v2. For now, fall
 				// back to reading from disk for streaming handlers too.
@@ -426,7 +426,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 					meta,
 				);
 			} else {
-				// Streaming handler on resume — replay the full temp file
+				// Streaming handler on resume - replay the full temp file
 				const fullData = await readFile(session.tempFilePath);
 				const replayStream = new ReadableStream<Uint8Array>({
 					start(controller) {
@@ -480,7 +480,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 			});
 		}
 
-		// ── Run result hooks ───────────────────────────────────────────
+		// -- Run result hooks -------------------------------------------
 		for (const hook of hooks.filter((h) => h.phase === "result")) {
 			await hook.fn(
 				"__upload__",
@@ -491,7 +491,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 			);
 		}
 
-		// ── Build NDJSON response ──────────────────────────────────────
+		// -- Build NDJSON response --------------------------------------
 		const receivedFrame: UploadStreamFrame = {
 			type: "received",
 			uploadId,
@@ -538,7 +538,7 @@ export function addHook(hook: ServerHook) {
 	hooks.push(hook);
 }
 
-// ── Upload handler registration ──────────────────────────────────────────────
+// -- Upload handler registration ----------------------------------------------
 
 /** Characters allowed in upload handler names. */
 const HANDLER_NAME_RE = /^[a-zA-Z0-9._-]{1,128}$/;
@@ -581,7 +581,7 @@ export function addUploadHandler<T = unknown>(
  * The handler receives a `ReadableStream<Uint8Array>` for real-time processing
  * of large uploads without buffering the entire payload in memory.
  *
- * On resumed uploads the stream always starts from byte 0 — previously stored
+ * On resumed uploads the stream always starts from byte 0 - previously stored
  * temp-file data is replayed first, followed by newly received bytes.
  *
  * @param name    - A unique handler name (same rules as `addUploadHandler`).
@@ -634,7 +634,7 @@ export function clearUploadHandlers(): void {
  *
  * Must be called before the first request reaches `rpcRoute`.
  *
- * @param ns - Map of namespace name → class constructor or plain module object.
+ * @param ns - Map of namespace name => class constructor or plain module object.
  *
  * @example
  * createRpcServer({ UserApi, OrderApi, mathUtils });
@@ -657,7 +657,7 @@ export function createRpcServer(ns: ApiNamespace) {
 /**
  * Clear the RPC server registry and remove all registered hooks.
  *
- * Intended for **test isolation only** — resets global state between test cases so each test
+ * Intended for **test isolation only** - resets global state between test cases so each test
  * starts with a clean namespace registry and an empty hook list.
  */
 export async function clearRpcServer() {
@@ -678,20 +678,20 @@ export async function clearRpcServer() {
  * | any    | `/rpc/schema`  | Returns the full JSON schema of all registered namespaces. |
  * | POST   | `/rpc`         | Dispatches a single RPC call described in the request body.|
  *
- * **Request body** (`POST /rpc`): `RpcCallDescriptor` JSON — `{ className, methodName, args }`.
+ * **Request body** (`POST /rpc`): `RpcCallDescriptor` JSON - `{ className, methodName, args }`.
  *
  * **Response body**: DSON-serialized return value (`Content-Type: application/json`).
  * DSON extends JSON to preserve `Date`, `Map`, `Set`, `ArrayBuffer`, `BigInt`, and typed arrays.
  *
  * **Hook execution order:**
- * 1. Guard hooks — any hook returning `false` short-circuits with HTTP 403.
+ * 1. Guard hooks - any hook returning `false` short-circuits with HTTP 403.
  * 2. Method/function invocation on the registered namespace entry.
- * 3. Result hooks — run after a successful return, before the response is flushed.
+ * 3. Result hooks - run after a successful return, before the response is flushed.
  *
  * **HTTP status codes:**
- * - `403` — A guard hook returned `false`.
- * - `404` — Namespace (`className`) or method/function name not found.
- * - `500` — The method/function threw during execution.
+ * - `403` - A guard hook returned `false`.
+ * - `404` - Namespace (`className`) or method/function name not found.
+ * - `500` - The method/function threw during execution.
  */
 export const rpcRoute: APIRoute = async ({ request }) => {
 	const url = new URL(request.url);
@@ -727,7 +727,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 		});
 	}
 
-	// ── Upload: SSE progress stream ──────────────────────────────────────────
+	// -- Upload: SSE progress stream ------------------------------------------
 	// GET /rpc/upload/progress/{uploadId}
 	if (
 		request.method === "GET" &&
@@ -790,7 +790,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 				addProgressListener(uploadId, onProgress);
 
 				// We also need to listen for completion to close the stream.
-				// Poll the session status — listeners are removed when the session completes.
+				// Poll the session status - listeners are removed when the session completes.
 				const pollInterval = setInterval(() => {
 					const s = getSession(uploadId);
 					if (!s || s.status === "complete" || s.status === "error") {
@@ -827,7 +827,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 		});
 	}
 
-	// ── Upload: HEAD resume status ───────────────────────────────────────────
+	// -- Upload: HEAD resume status -------------------------------------------
 	// HEAD /rpc/upload/{uploadId}
 	if (
 		request.method === "HEAD" &&
@@ -855,7 +855,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 		});
 	}
 
-	// ── Upload: POST body ────────────────────────────────────────────────────
+	// -- Upload: POST body ----------------------------------------------------
 	// POST /rpc/upload
 	if (request.method === "POST" && pathname.endsWith(RPC_UPLOAD_PATH)) {
 		return handleUploadPost(request);
@@ -924,7 +924,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 				args,
 			);
 			// For non-generator async functions, await the result.
-			// For generators, we keep the raw iterator — don't await it.
+			// For generators, we keep the raw iterator - don't await it.
 			if (!isGeneratorResult(result) && result instanceof Promise) {
 				result = await result;
 			}
@@ -982,7 +982,7 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 		}
 	}
 
-	// Generator result → stream NDJSON frames
+	// Generator result => stream NDJSON frames
 	if (isGeneratorResult(result)) {
 		const iter =
 			Symbol.asyncIterator in (result as any)

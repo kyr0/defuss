@@ -25,8 +25,8 @@ export interface ExpressRpcServerOptions {
 	/**
 	 * Host/IP the server should bind to.
 	 *
-	 * - `"localhost"` (default) — only reachable from the local machine.
-	 * - `"0.0.0.0"` — listen on all network interfaces (useful for Docker / LAN access).
+	 * - `"localhost"` (default) - only reachable from the local machine.
+	 * - `"0.0.0.0"` - listen on all network interfaces (useful for Docker / LAN access).
 	 * - Any valid IPv4/IPv6 address.
 	 */
 	host?: string;
@@ -43,17 +43,17 @@ export interface ExpressRpcServerOptions {
 	/**
 	 * Enable transport-level gzip compression for RPC responses.
 	 *
-	 * - `true` (default): compress with `Z_BEST_SPEED` (level 1) — optimised for
+	 * - `true` (default): compress with `Z_BEST_SPEED` (level 1) - optimised for
 	 *   latency-sensitive streaming (e.g. real-time PCM audio over NDJSON).
 	 * - `false`: disable compression entirely.
-	 * - `{ level: 1–9 }`: enable with a custom zlib compression level.
+	 * - `{ level: 1-9 }`: enable with a custom zlib compression level.
 	 *
 	 * Streaming (NDJSON) responses use `Z_SYNC_FLUSH` so each frame is immediately
 	 * decompressible by the client.  Browsers transparently decompress
 	 * `Content-Encoding: gzip` in `fetch()`, so no client-side changes are needed.
 	 *
 	 * When enabled the server also accepts gzip / deflate-compressed **request**
-	 * bodies (`Content-Encoding: gzip | deflate`) — useful for uploading large
+	 * bodies (`Content-Encoding: gzip | deflate`) - useful for uploading large
 	 * binary payloads such as PCM audio chunks.
 	 */
 	compression?: boolean | { level?: number };
@@ -64,13 +64,13 @@ export interface ExpressRpcServerOptions {
  * framework-agnostic `rpcRoute` handler.
  *
  * Converts each incoming Express request into a Fetch API `Request` so that `rpcRoute`
- * — designed for Astro's SSR adapter — can process it without modification, then maps the
+ * - designed for Astro's SSR adapter - can process it without modification, then maps the
  * resulting Fetch `Response` back to an Express response.
  *
  * **Endpoints exposed:**
- * - `GET/POST  {basePath}/health`      → liveness check `{ status: "ok", timestamp }`.
- * - `POST      {basePath}/rpc`         → dispatches an RPC call via `rpcRoute`.
- * - `any       {basePath}/rpc/schema`  → returns the registered namespace schema.
+ * - `GET/POST  {basePath}/health`      => liveness check `{ status: "ok", timestamp }`.
+ * - `POST      {basePath}/rpc`         => dispatches an RPC call via `rpcRoute`.
+ * - `any       {basePath}/rpc/schema`  => returns the registered namespace schema.
  */
 export class ExpressRpcServer {
 	private app: ReturnType<typeof express>;
@@ -95,7 +95,7 @@ export class ExpressRpcServer {
 			? options.corsOrigin.join(",")
 			: (options.corsOrigin ?? "*");
 
-		// Resolve compression config: true → level 1, false → disabled, { level } → custom.
+		// Resolve compression config: true => level 1, false => disabled, { level } => custom.
 		const comp = options.compression ?? true;
 		if (comp === false) {
 			this.compression = { enabled: false, level: 0 };
@@ -148,7 +148,7 @@ export class ExpressRpcServer {
 							}
 						}
 					} catch (_err) {
-						// If decompression fails, fall through — the text parser will handle it
+						// If decompression fails, fall through - the text parser will handle it
 						// (likely producing a parse error, which is the correct behaviour).
 					}
 					next();
@@ -161,7 +161,7 @@ export class ExpressRpcServer {
 			express.text({ limit: this.jsonSizeLimit, type: "application/json" }),
 		);
 
-		// CORS — applied to every response, including pre-flight OPTIONS requests.
+		// CORS - applied to every response, including pre-flight OPTIONS requests.
 		this.app.use(
 			(
 				req: ExpressRequest,
@@ -200,8 +200,8 @@ export class ExpressRpcServer {
 			},
 		);
 
-		// ── Upload routes — mounted BEFORE the text body parser so the raw
-		//    binary stream is forwarded untouched to rpcRoute. ────────────
+		// -- Upload routes - mounted BEFORE the text body parser so the raw
+		//    binary stream is forwarded untouched to rpcRoute. ------------
 
 		// SSE progress: GET /rpc/upload/progress/:uploadId
 		this.app.get(
@@ -346,7 +346,7 @@ export class ExpressRpcServer {
 		}
 	}
 
-	// ── Upload request handlers ──────────────────────────────────────────────
+	// -- Upload request handlers ----------------------------------------------
 
 	/**
 	 * Converts an Express request into a Fetch `Request` with the raw Node.js
@@ -365,7 +365,7 @@ export class ExpressRpcServer {
 				method: "POST",
 				headers: req.headers as Record<string, string>,
 				body: webStream,
-				// @ts-expect-error — duplex required for streaming uploads
+				// @ts-expect-error - duplex required for streaming uploads
 				duplex: "half",
 			});
 
@@ -530,7 +530,7 @@ export class ExpressRpcServer {
 	/**
 	 * Start listening for HTTP connections.
 	 *
-	 * @returns `{ port, url }` — the port the server is bound to and the full base URL.
+	 * @returns `{ port, url }` - the port the server is bound to and the full base URL.
 	 *   If `options.port` was `0` (the default), the OS assigns a random available port;
 	 *   the actual bound port is reflected in the returned value.
 	 */
@@ -549,7 +549,7 @@ export class ExpressRpcServer {
 	/**
 	 * Stop the HTTP server.
 	 *
-	 * Uses uWebSockets.js' synchronous `close()` — in-flight requests are not drained.
+	 * Uses uWebSockets.js' synchronous `close()` - in-flight requests are not drained.
 	 * Resolves immediately after the listening socket is released.
 	 */
 	async stop(): Promise<void> {
@@ -578,7 +578,7 @@ export class ExpressRpcServer {
 }
 
 /**
- * Convenience helper — creates an `ExpressRpcServer`, starts it, and returns the instance
+ * Convenience helper - creates an `ExpressRpcServer`, starts it, and returns the instance
  * together with the bound port and base URL.
  *
  * @example

@@ -10,7 +10,7 @@ import type {
 export * from "./types.d.js";
 export type * from "./rpc-state.js";
 
-/** Client-side endpoint paths — must stay in sync with server.ts `RPC_PATH`/`RPC_SCHEMA_PATH`. */
+/** Client-side endpoint paths - must stay in sync with server.ts `RPC_PATH`/`RPC_SCHEMA_PATH`. */
 const RPC_PATH = "/rpc" as const;
 const RPC_SCHEMA_PATH = "/rpc/schema" as const;
 
@@ -26,7 +26,7 @@ let _defaultEndpoint = "";
  * `baseUrl` option is provided.
  *
  * This is called automatically by the `virtual:defuss-rpc` module emitted by
- * the Vite / Astro plugin — you normally don't need to call it yourself.
+ * the Vite / Astro plugin - you normally don't need to call it yourself.
  *
  * @param url - Full RPC endpoint URL (e.g. `"http://localhost:3210"`).
  */
@@ -64,7 +64,7 @@ export async function getSchema(baseUrl = "") {
 	return response.json();
 }
 
-/** Cached schema — populated on the first `getSchema()` call. Invalidate with `clearSchemaCache()`. */
+/** Cached schema - populated on the first `getSchema()` call. Invalidate with `clearSchemaCache()`. */
 let schema: RpcApiSchema | null = null;
 
 /**
@@ -111,14 +111,14 @@ export function setHeaders(headers: HeadersInit) {
  * Each returned function, when called with positional arguments, executes the full client-side
  * hook pipeline before and after the network request:
  *
- * 1. **Guard hooks** (`"guard"` phase) — run before the fetch is dispatched.
+ * 1. **Guard hooks** (`"guard"` phase) - run before the fetch is dispatched.
  *    Any hook returning falsy throws an Error and aborts the call.
- * 2. **Fetch** — POST to `{baseUrl}/rpc` with JSON body `{ className, methodName, args }`.
- * 3. **Response hooks** (`"response"` phase) — run after the raw HTTP Response arrives,
+ * 2. **Fetch** - POST to `{baseUrl}/rpc` with JSON body `{ className, methodName, args }`.
+ * 3. **Response hooks** (`"response"` phase) - run after the raw HTTP Response arrives,
  *    before the body is read. Useful for logging or early rejection based on status.
- * 4. **DSON deserialization** — response text is parsed with `DSON.parse`, which restores
+ * 4. **DSON deserialization** - response text is parsed with `DSON.parse`, which restores
  *    `Date`, `Map`, `Set`, `ArrayBuffer`, `BigInt`, and typed arrays that plain `JSON.parse` drops.
- * 5. **Result hooks** (`"result"` phase) — run after deserialization with the final `data` value.
+ * 5. **Result hooks** (`"result"` phase) - run after deserialization with the final `data` value.
  *
  * @param namespaceName - The registered namespace (class or module name).
  * @param methodName    - The method or function name on the namespace.
@@ -294,7 +294,7 @@ function createRpcGeneratorMethod(
 					yield frame.value;
 				} else if (frame.type === "return") {
 					returnValue = frame.value;
-					// Don't break — let the read loop finish naturally
+					// Don't break - let the read loop finish naturally
 				} else if (frame.type === "error") {
 					throw new Error(frame.error.message);
 				}
@@ -411,9 +411,9 @@ export async function getRpcClient<T extends Record<string, unknown>>(
 /** Alias for {@link getRpcClient} */
 export const createRpcClient = getRpcClient;
 
-// ── Upload API ───────────────────────────────────────────────────────────────
+// -- Upload API ---------------------------------------------------------------
 
-/** Upload endpoint path — must match server.ts `RPC_UPLOAD_PATH`. */
+/** Upload endpoint path - must match server.ts `RPC_UPLOAD_PATH`. */
 const RPC_UPLOAD_PATH = "/rpc/upload" as const;
 
 /** Accepted binary source types for `upload()`. */
@@ -449,9 +449,9 @@ export interface UploadOptions {
 /**
  * Events yielded by the `upload()` async generator.
  *
- * - `sending`   — client-tracked bytes handed to the network stack.
- * - `receiving` — server-confirmed bytes (via SSE sideband).
- * - `complete`  — upload finished; contains handler result, hashes, and stats.
+ * - `sending`   - client-tracked bytes handed to the network stack.
+ * - `receiving` - server-confirmed bytes (via SSE sideband).
+ * - `complete`  - upload finished; contains handler result, hashes, and stats.
  */
 export type UploadEvent<T = unknown> =
 	| { type: "sending"; bytesSent: number; totalBytes: number; percent: number }
@@ -478,7 +478,7 @@ export interface UploadResult<T = unknown> {
 	durationMs: number;
 }
 
-// ── Binary helpers ───────────────────────────────────────────────────────────
+// -- Binary helpers -----------------------------------------------------------
 
 type ArrayBufferBackedBytes = Uint8Array<ArrayBuffer>;
 
@@ -609,15 +609,15 @@ function sanitizeUploadId(value: string): string {
 	return sanitized || crypto.randomUUID();
 }
 
-// ── upload() — async generator with progress ─────────────────────────────────
+// -- upload() - async generator with progress ---------------------------------
 
 /**
  * Upload binary data to a named server-side handler.
  *
  * Returns an async generator that yields:
- * - `{ type: "sending", ... }`   — client-side progress (bytes fed to the network).
- * - `{ type: "receiving", ... }` — server-confirmed progress (via SSE sideband).
- * - `{ type: "complete", ... }`  — final result with hashes and handler return value.
+ * - `{ type: "sending", ... }`   - client-side progress (bytes fed to the network).
+ * - `{ type: "receiving", ... }` - server-confirmed progress (via SSE sideband).
+ * - `{ type: "complete", ... }`  - final result with hashes and handler return value.
  *
  * Supports **resumable uploads**: pass a previously used `uploadId` in `options`.
  * The client will `HEAD` to check the server offset and resume from there.
@@ -650,7 +650,7 @@ export async function* upload<T = unknown>(
 	const normalized = normalizeBinarySource(data);
 	const totalBytes = getSourceSize(normalized);
 
-	// ── Resume check ─────────────────────────────────────────────────
+	// -- Resume check -------------------------------------------------
 	let offset = 0;
 	if (options.uploadId) {
 		try {
@@ -664,13 +664,13 @@ export async function* upload<T = unknown>(
 					10,
 				);
 			}
-			// 404 → no session to resume, start fresh (offset = 0)
+			// 404 => no session to resume, start fresh (offset = 0)
 		} catch {
-			// Network error on HEAD — start fresh
+			// Network error on HEAD - start fresh
 		}
 	}
 
-	// ── SSE sideband for server progress ─────────────────────────────
+	// -- SSE sideband for server progress -----------------------------
 	const serverProgressQueue: UploadEvent<T>[] = [];
 	let eventSource: EventSource | null = null;
 
@@ -695,14 +695,14 @@ export async function* upload<T = unknown>(
 				} catch { /* ignore parse errors */ }
 			};
 			eventSource.onerror = () => {
-				// SSE failed — progress events stop but upload continues
+				// SSE failed - progress events stop but upload continues
 			};
 		} catch {
-			// EventSource construction failed — continue without SSE
+			// EventSource construction failed - continue without SSE
 		}
 	}
 
-	// ── Build upload stream with progress tracking ───────────────────
+	// -- Build upload stream with progress tracking -------------------
 	const clientProgressQueue: UploadEvent<T>[] = [];
 	let bytesSent = offset;
 	const sourceToUpload = sliceBinarySource(normalized, offset);
@@ -743,7 +743,7 @@ export async function* upload<T = unknown>(
 		usedCompression = compressedUpload.usedCompression;
 	}
 
-	// ── Guard hooks ──────────────────────────────────────────────────
+	// -- Guard hooks --------------------------------------------------
 	const reqInit: RequestInit & { duplex?: string } = {
 		method: "POST",
 		headers: {
@@ -779,7 +779,7 @@ export async function* upload<T = unknown>(
 		}
 	}
 
-	// ── Dispatch fetch + yield progress ──────────────────────────────
+	// -- Dispatch fetch + yield progress ------------------------------
 	let fetchDone = false;
 	let fetchResponse: Response | undefined;
 	let fetchError: Error | undefined;
@@ -840,7 +840,7 @@ export async function* upload<T = unknown>(
 		} as UploadEvent<T>;
 	}
 
-	// ── Response hooks ───────────────────────────────────────────────
+	// -- Response hooks -----------------------------------------------
 	for (const responseHook of hooks.filter(
 		(h: ClientHook) => h.phase === "response",
 	)) {
@@ -867,7 +867,7 @@ export async function* upload<T = unknown>(
 		);
 	}
 
-	// ── Parse NDJSON response ────────────────────────────────────────
+	// -- Parse NDJSON response ----------------------------------------
 	const responseText = await fetchResponse.text();
 	const lines = responseText.split("\n").filter(Boolean);
 
@@ -889,7 +889,7 @@ export async function* upload<T = unknown>(
 		throw new Error("Upload response missing 'received' frame");
 	}
 
-	// ── Result hooks ─────────────────────────────────────────────────
+	// -- Result hooks -------------------------------------------------
 	const resultValue = resultFrame?.value as T;
 
 	for (const resultHook of hooks.filter(
@@ -905,7 +905,7 @@ export async function* upload<T = unknown>(
 		);
 	}
 
-	// ── Yield final complete event ───────────────────────────────────
+	// yield final complete event
 	yield {
 		type: "complete",
 		result: resultValue,
@@ -917,7 +917,6 @@ export async function* upload<T = unknown>(
 	} as UploadEvent<T>;
 }
 
-// ── uploadComplete() — convenience wrapper ───────────────────────────────────
 
 /**
  * Upload binary data and return only the final result (no progress events).

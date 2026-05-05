@@ -36,12 +36,12 @@ export interface RpcModuleSchema {
 }
 
 /**
- * A single entry in the RPC schema — either a class or a module descriptor.
+ * A single entry in the RPC schema - either a class or a module descriptor.
  * The full schema is an array of these, serialized as JSON at `/rpc/schema`.
  */
 export type RpcSchemaEntry = RpcClassSchema | RpcModuleSchema;
 
-/** The full schema returned by `/rpc/schema` — an array of namespace descriptors. */
+/** The full schema returned by `/rpc/schema` - an array of namespace descriptors. */
 export type RpcApiSchema = RpcSchemaEntry[];
 
 /**
@@ -60,7 +60,7 @@ export interface ApiNamespace {
  */
 export interface RpcCallDescriptor {
 	/**
-	 * Optional request ID — reserved for future request-correlation and deduplication.
+	 * Optional request ID - reserved for future request-correlation and deduplication.
 	 * Not currently consumed by `rpcRoute`.
 	 */
 	id?: string | number;
@@ -82,9 +82,9 @@ export interface RpcCallDescriptor {
 /**
  * Lifecycle phase for server-side hooks.
  *
- * - `"guard"` — runs **before** the method is invoked. Return `false` to reject with HTTP 403.
+ * - `"guard"` - runs **before** the method is invoked. Return `false` to reject with HTTP 403.
  *   Returning `void`/`undefined` is treated as allowed.
- * - `"result"` — runs **after** the method returns successfully, before the response is sent.
+ * - `"result"` - runs **after** the method returns successfully, before the response is sent.
  *   Return value is ignored; use for logging, auditing, or side-effects.
  */
 export type ServerHookPhase = "guard" | "result";
@@ -118,11 +118,11 @@ export type ServerHook = {
 /**
  * Lifecycle phase for client-side hooks.
  *
- * - `"guard"` — runs **before** the fetch is dispatched. Return falsy to abort (throws an Error).
+ * - `"guard"` - runs **before** the fetch is dispatched. Return falsy to abort (throws an Error).
  *   Returning `void`/`undefined` is treated as allowed.
- * - `"response"` — runs **after** the raw HTTP `Response` arrives, before DSON deserialization.
+ * - `"response"` - runs **after** the raw HTTP `Response` arrives, before DSON deserialization.
  *   Useful for logging, metrics, or reading raw response headers/status.
- * - `"result"` — runs **after** the response body has been DSON-deserialized. Use for result
+ * - `"result"` - runs **after** the response body has been DSON-deserialized. Use for result
  *   logging or side-effects. `data` is populated with the final return value.
  */
 export type ClientHookPhase = "guard" | "response" | "result";
@@ -158,16 +158,16 @@ export type ClientHook = {
 /**
  * A single NDJSON frame sent by the server when an RPC method returns a generator.
  *
- * - `yield`  — one yielded value (non-terminal).
- * - `return` — the generator's return value (terminal, stream ends after this).
- * - `error`  — an error thrown during iteration (terminal).
+ * - `yield`  - one yielded value (non-terminal).
+ * - `return` - the generator's return value (terminal, stream ends after this).
+ * - `error`  - an error thrown during iteration (terminal).
  */
 export type DsonStreamFrame =
 	| { type: "yield"; value: unknown }
 	| { type: "return"; value: unknown }
 	| { type: "error"; error: { message: string; stack?: string } };
 
-// ── Upload API types ─────────────────────────────────────────────────────────
+// -- Upload API types ---------------------------------------------------------
 
 /**
  * Metadata passed to upload handler functions after the upload body has been received.
@@ -194,7 +194,7 @@ export interface UploadMeta {
 }
 
 /**
- * A buffered upload handler — receives the complete upload as a `Uint8Array`.
+ * A buffered upload handler - receives the complete upload as a `Uint8Array`.
  * Suitable for small-to-medium files that fit comfortably in memory.
  */
 export type UploadHandlerFn<T = unknown> = (
@@ -203,7 +203,7 @@ export type UploadHandlerFn<T = unknown> = (
 ) => T | Promise<T>;
 
 /**
- * A streaming upload handler — receives a `ReadableStream<Uint8Array>` for
+ * A streaming upload handler - receives a `ReadableStream<Uint8Array>` for
  * real-time processing of large files without buffering the entire payload.
  *
  * The stream always starts from byte 0, even on resumed uploads (previously
@@ -217,9 +217,9 @@ export type UploadStreamHandlerFn<T = unknown> = (
 /**
  * NDJSON frame sent by the server in the upload response body.
  *
- * - `received` — upload body fully consumed; contains hash digests and byte count.
- * - `result`   — the upload handler's return value (DSON-serialized).
- * - `error`    — the upload handler threw during execution.
+ * - `received` - upload body fully consumed; contains hash digests and byte count.
+ * - `result`   - the upload handler's return value (DSON-serialized).
+ * - `error`    - the upload handler threw during execution.
  */
 export type UploadStreamFrame =
 	| {
@@ -241,7 +241,7 @@ export interface UploadProgressEvent {
 	bytesReceived: number;
 	/** Total expected bytes (from `X-Original-Size`). */
 	totalBytes: number;
-	/** Percentage complete (0–100). */
+	/** Percentage complete (0-100). */
 	percent: number;
 }
 

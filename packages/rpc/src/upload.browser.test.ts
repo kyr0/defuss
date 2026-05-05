@@ -21,7 +21,7 @@ import { describe, it, expect, inject } from "vitest";
 import { DSON } from "defuss-dson";
 import { upload } from "./client.js";
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 /** Build the base URL from the injected test port. */
 function baseUrl(): string {
@@ -62,9 +62,9 @@ async function sha256Hex(data: Uint8Array<ArrayBuffer>): Promise<string> {
 		.join("");
 }
 
-// ── Tests ────────────────────────────────────────────────────────────────────
+// -- Tests --------------------------------------------------------------------
 
-describe("Upload API — browser integration", () => {
+describe("Upload API - browser integration", () => {
 	it("should upload through the browser upload() helper", async () => {
 		const data = generateTestData(1536);
 		const events: Array<any> = [];
@@ -92,7 +92,7 @@ describe("Upload API — browser integration", () => {
 		expect(completeEvent.result.handlerName).toBe("test-buffered");
 	});
 
-	// ── Basic buffered upload via uploadComplete() ───────────────────
+	// -- Basic buffered upload via uploadComplete() -------------------
 
 	it("should upload a small file via uploadComplete() and return handler result", async () => {
 		const data = generateTestData(1024); // 1 KB
@@ -132,7 +132,7 @@ describe("Upload API — browser integration", () => {
 		expect(resultFrame.value.handlerName).toBe("test-buffered");
 	});
 
-	// ── Streaming upload handler ─────────────────────────────────────
+	// -- Streaming upload handler -------------------------------------
 
 	it("should upload data to a streaming handler", async () => {
 		const data = generateTestData(4096); // 4 KB
@@ -161,7 +161,7 @@ describe("Upload API — browser integration", () => {
 		expect(resultFrame.value.handlerName).toBe("test-streaming");
 	});
 
-	// ── Large upload with integrity check ────────────────────────────
+	// -- Large upload with integrity check ----------------------------
 
 	it("should upload 512KB and verify SHA-256 integrity", async () => {
 		const size = 512 * 1024;
@@ -190,7 +190,7 @@ describe("Upload API — browser integration", () => {
 		expect(receivedFrame.sha256).toBe(expectedSha256);
 	});
 
-	// ── Upload with gzip compression ─────────────────────────────────
+	// -- Upload with gzip compression ---------------------------------
 
 	it("should upload with gzip compression and server decompresses", async () => {
 		const data = generateTestData(2048);
@@ -227,7 +227,7 @@ describe("Upload API — browser integration", () => {
 		expect(resultFrame.value.size).toBe(2048);
 	});
 
-	// ── Upload with no compression ───────────────────────────────────
+	// -- Upload with no compression -----------------------------------
 
 	it("should upload raw binary without compression", async () => {
 		const data = generateTestData(256);
@@ -253,7 +253,7 @@ describe("Upload API — browser integration", () => {
 		expect(receivedFrame.bytesReceived).toBe(256);
 	});
 
-	// ── Error: unknown handler ───────────────────────────────────────
+	// -- Error: unknown handler ---------------------------------------
 
 	it("should return 404 for unknown upload handler", async () => {
 		const data = createLiteralData([1, 2, 3]);
@@ -275,7 +275,7 @@ describe("Upload API — browser integration", () => {
 		expect(body.error).toContain("nonexistent-handler");
 	});
 
-	// ── Error: handler that throws ───────────────────────────────────
+	// -- Error: handler that throws -----------------------------------
 
 	it("should return NDJSON error frame when handler throws", async () => {
 		const data = createLiteralData([1, 2, 3]);
@@ -308,7 +308,7 @@ describe("Upload API — browser integration", () => {
 		expect(errorFrame.error.message).toBe("Intentional handler error");
 	});
 
-	// ── Metadata echo ────────────────────────────────────────────────
+	// -- Metadata echo ------------------------------------------------
 
 	it("should pass correct metadata to upload handler", async () => {
 		const data = generateTestData(128);
@@ -338,7 +338,7 @@ describe("Upload API — browser integration", () => {
 		expect(resultFrame.value.offset).toBe(0);
 	});
 
-	// ── HEAD resume check (no session) ───────────────────────────────
+	// -- HEAD resume check (no session) -------------------------------
 
 	it("should return 404 for HEAD on non-existent upload", async () => {
 		const response = await fetch(
@@ -348,14 +348,14 @@ describe("Upload API — browser integration", () => {
 		expect(response.status).toBe(404);
 	});
 
-	// ── SSE progress endpoint ────────────────────────────────────────
+	// -- SSE progress endpoint ----------------------------------------
 
 	it("should receive SSE progress events during upload", async () => {
-		const size = 1024 * 1024; // 1 MB — large enough to observe progress
+		const size = 1024 * 1024; // 1 MB - large enough to observe progress
 		const data = generateTestData(size);
 		const uploadId = `sse-test-${Date.now()}`;
 
-		// Start the upload first — the session is created on the server only
+		// Start the upload first - the session is created on the server only
 		// when the POST arrives. We launch both the upload and SSE concurrently.
 		const uploadPromise = fetch(`${baseUrl()}/rpc/upload`, {
 			method: "POST",
@@ -419,7 +419,7 @@ describe("Upload API — browser integration", () => {
 		}
 	});
 
-	// ── Resumable upload (full round-trip) ───────────────────────────
+	// -- Resumable upload (full round-trip) ---------------------------
 
 	it("should support resumable uploads via HEAD + POST with offset", async () => {
 		const totalSize = 2048;
@@ -440,7 +440,7 @@ describe("Upload API — browser integration", () => {
 			body: firstHalf,
 		});
 
-		// First upload completes with only 1024 of 2048 bytes — but handler still runs
+		// First upload completes with only 1024 of 2048 bytes - but handler still runs
 		// because the server received the full body as sent.
 		expect(firstResponse.status).toBe(201);
 
@@ -449,7 +449,7 @@ describe("Upload API — browser integration", () => {
 		expect(firstReceived.bytesReceived).toBe(1024);
 	});
 
-	// ── Standard RPC still works alongside upload routes ─────────────
+	// -- Standard RPC still works alongside upload routes -------------
 
 	it("should handle regular RPC calls alongside upload endpoints", async () => {
 		// Make a standard RPC call
@@ -484,7 +484,7 @@ describe("Upload API — browser integration", () => {
 		expect(userApi).toBeDefined();
 	});
 
-	// ── NDJSON streaming (generator RPC) via browser fetch ───────────
+	// -- NDJSON streaming (generator RPC) via browser fetch -----------
 
 	it("should stream NDJSON for generator methods", async () => {
 		const response = await fetch(`${baseUrl()}/rpc`, {
@@ -519,7 +519,7 @@ describe("Upload API — browser integration", () => {
 		expect(returnFrame.value).toBe(5);
 	});
 
-	// ── Upload to Blob source ────────────────────────────────────────
+	// -- Upload to Blob source ----------------------------------------
 
 	it("should upload from a Blob source", async () => {
 		const textContent = "Hello, defuss-rpc upload from Blob!";
@@ -544,7 +544,7 @@ describe("Upload API — browser integration", () => {
 		expect(resultFrame.value.size).toBe(blob.size);
 	});
 
-	// ── Multiple concurrent uploads ──────────────────────────────────
+	// -- Multiple concurrent uploads ----------------------------------
 
 	it("should handle multiple concurrent uploads", async () => {
 		const uploads = Array.from({ length: 5 }, (_, i) => {
@@ -573,7 +573,7 @@ describe("Upload API — browser integration", () => {
 		}
 	});
 
-	// ── Empty upload (0 bytes) ───────────────────────────────────────
+	// -- Empty upload (0 bytes) ---------------------------------------
 
 	it("should handle empty upload (0 bytes)", async () => {
 		const data = generateTestData(0);
@@ -600,7 +600,7 @@ describe("Upload API — browser integration", () => {
 		expect(resultFrame.value.size).toBe(0);
 	});
 
-	// ── CORS headers present (verified via OPTIONS preflight) ────────
+	// -- CORS headers present (verified via OPTIONS preflight) --------
 
 	it("should respond to OPTIONS preflight on upload endpoint", async () => {
 		const response = await fetch(`${baseUrl()}/rpc/upload`, {
