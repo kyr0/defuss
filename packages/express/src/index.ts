@@ -5,22 +5,22 @@ import { getServerConfig, resolveServerConfig, setServerConfig } from "./config.
 import { startPrimaryRuntime, stopPrimaryRuntime } from "./master.js";
 import { startWorkerRuntime, stopWorkerRuntime } from "./worker.js";
 import {
-  createResourceAwareLoadBalancer,
-  defaultLoadBalancer,
-  leastConnectionsLoadBalancer,
-  resourceAwareLoadBalancer,
-  roundRobinLoadBalancer,
+	createResourceAwareLoadBalancer,
+	defaultLoadBalancer,
+	leastConnectionsLoadBalancer,
+	resourceAwareLoadBalancer,
+	roundRobinLoadBalancer,
 } from "./load-balancers.js";
 import type {
-  BackendCandidate,
-  ExpressLike,
-  LoadBalancerContext,
-  LoadBalancerFunction,
-  ParsedRequest,
-  ResolvedServerConfig,
-  ServerConfigInput,
-  StartServerResult,
-  WorkerRuntimeStats,
+	BackendCandidate,
+	ExpressLike,
+	LoadBalancerContext,
+	LoadBalancerFunction,
+	ParsedRequest,
+	ResolvedServerConfig,
+	ServerConfigInput,
+	StartServerResult,
+	WorkerRuntimeStats,
 } from "./types.js";
 import type { ResourceAwareLoadBalancerWeights } from "./load-balancers.js";
 
@@ -36,7 +36,7 @@ export type ExpressRouter = UltimateExpressModule.Router;
 export type ExpressHandler = UltimateExpressModule.Handler;
 
 const normalizeConfig = (next?: ServerConfigInput): ResolvedServerConfig =>
-  next ? setServerConfig(next) : resolveServerConfig();
+	next ? setServerConfig(next) : resolveServerConfig();
 
 /**
  * Start the defuss-express server.
@@ -53,13 +53,13 @@ const normalizeConfig = (next?: ServerConfigInput): ResolvedServerConfig =>
  * @returns Metadata about the started process.
  */
 export const startServer = async (
-  app: ExpressLike,
-  nextConfig?: ServerConfigInput,
+	app: ExpressLike,
+	nextConfig?: ServerConfigInput,
 ): Promise<StartServerResult> => {
-  const config = normalizeConfig(nextConfig);
-  return cluster.isPrimary
-    ? startPrimaryRuntime(app, config)
-    : startWorkerRuntime(app, config);
+	const config = normalizeConfig(nextConfig);
+	return cluster.isPrimary
+		? startPrimaryRuntime(app, config)
+		: startWorkerRuntime(app, config);
 };
 
 /**
@@ -70,31 +70,31 @@ export const startServer = async (
  * destroys active connections and closes the app server.
  */
 export const stopServer = async (): Promise<void> =>
-  cluster.isPrimary ? stopPrimaryRuntime(getServerConfig()) : stopWorkerRuntime(getServerConfig());
+	cluster.isPrimary ? stopPrimaryRuntime(getServerConfig()) : stopWorkerRuntime(getServerConfig());
 
 export {
-  createResourceAwareLoadBalancer,
-  defaultLoadBalancer,
-  express,
-  expressDefault,
-  getServerConfig,
-  leastConnectionsLoadBalancer,
-  resourceAwareLoadBalancer,
-  roundRobinLoadBalancer,
-  setServerConfig,
+	createResourceAwareLoadBalancer,
+	defaultLoadBalancer,
+	express,
+	expressDefault,
+	getServerConfig,
+	leastConnectionsLoadBalancer,
+	resourceAwareLoadBalancer,
+	roundRobinLoadBalancer,
+	setServerConfig,
 };
 
 export type {
-  BackendCandidate,
-  ExpressLike,
-  LoadBalancerContext,
-  LoadBalancerFunction,
-  ParsedRequest,
-  ResolvedServerConfig,
-  ResourceAwareLoadBalancerWeights,
-  ServerConfigInput,
-  StartServerResult,
-  WorkerRuntimeStats,
+	BackendCandidate,
+	ExpressLike,
+	LoadBalancerContext,
+	LoadBalancerFunction,
+	ParsedRequest,
+	ResolvedServerConfig,
+	ResourceAwareLoadBalancerWeights,
+	ServerConfigInput,
+	StartServerResult,
+	WorkerRuntimeStats,
 };
 
 export default expressDefault;

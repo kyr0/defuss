@@ -22,7 +22,7 @@ const customBalancer = ({ request, candidates }: LoadBalancerContext) => {
     );
     const picked = candidates[Math.abs(hash) % candidates.length]!;
     console.log(
-      `[balancer] /api sticky → worker ${picked.id} (session ${request.headers["x-session-id"]})`,
+      `[balancer] /api sticky => worker ${picked.id} (session ${request.headers["x-session-id"]})`,
     );
     return picked;
   }
@@ -33,7 +33,7 @@ const customBalancer = ({ request, candidates }: LoadBalancerContext) => {
   );
   const picked = sorted[0]!;
   console.log(
-    `[balancer] ${request.method ?? "?"} ${request.path ?? "/"} → worker ${picked.id} (cpu ${picked.stats?.cpuPercent?.toFixed(1) ?? "?"}%)`,
+    `[balancer] ${request.method ?? "?"} ${request.path ?? "/"} => worker ${picked.id} (cpu ${picked.stats?.cpuPercent?.toFixed(1) ?? "?"}%)`,
   );
   return picked;
 };

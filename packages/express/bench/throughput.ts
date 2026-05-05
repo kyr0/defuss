@@ -228,7 +228,7 @@ function runAutocannon(scenario: Scenario): void {
 
 async function main() {
   console.log("=".repeat(72));
-  console.log(" defuss-express + defuss-dson  ·  autocannon benchmark");
+  console.log(" defuss-express + defuss-dson  -  autocannon benchmark");
   console.log("=".repeat(72));
   console.log(`  Concurrency : ${CONCURRENCY}`);
   console.log(`  Duration    : ${DURATION_S}s per scenario (+${WARMUP_S}s warmup)`);

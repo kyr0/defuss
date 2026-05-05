@@ -2,11 +2,11 @@ import process from "node:process";
 import type { Socket } from "node:net";
 
 import type {
-  DefussMessageFromWorker,
-  ExpressLike,
-  ResolvedServerConfig,
-  StartServerResult,
-  WorkerRuntimeStats,
+	DefussMessageFromWorker,
+	ExpressLike,
+	ResolvedServerConfig,
+	StartServerResult,
+	WorkerRuntimeStats,
 } from "./types.js";
 import { workerRuntime } from "./runtime.js";
 import { getServerConfig } from "./config.js";
@@ -16,31 +16,31 @@ const now = (): number => Date.now();
 const getWorkerIndex = (): number => Number(process.env.DEFUSS_WORKER_INDEX ?? 0);
 
 const getWorkerPort = (config: ResolvedServerConfig): number =>
-  config.baseWorkerPort + getWorkerIndex();
+	config.baseWorkerPort + getWorkerIndex();
 
 /**
  * Collect a point-in-time memory and process snapshot.
  *
- * **Note**: `cpuPercent` is always `0` here — CPU utilisation requires a
+ * **Note**: `cpuPercent` is always `0` here - CPU utilisation requires a
  * delta between two `process.cpuUsage()` readings and is only available
  * from {@link createCpuSampler}.  Callers that transmit this snapshot over
  * IPC (e.g. {@link createStatsReporter}) overwrite `cpuPercent` with the
  * sampler's result before sending.
  */
 const serializeWorkerStats = (): WorkerRuntimeStats => {
-  const memory = process.memoryUsage();
-  return {
-    pid: process.pid,
-    cpuPercent: 0,
-    rssBytes: memory.rss,
-    heapUsedBytes: memory.heapUsed,
-    heapTotalBytes: memory.heapTotal,
-    externalBytes: memory.external,
-    arrayBuffersBytes: memory.arrayBuffers,
-    uptimeMs: process.uptime() * 1000,
-    activeConnections: workerRuntime.activeConnections.size,
-    sampledAt: now(),
-  };
+	const memory = process.memoryUsage();
+	return {
+		pid: process.pid,
+		cpuPercent: 0,
+		rssBytes: memory.rss,
+		heapUsedBytes: memory.heapUsed,
+		heapTotalBytes: memory.heapTotal,
+		externalBytes: memory.external,
+		arrayBuffersBytes: memory.arrayBuffers,
+		uptimeMs: process.uptime() * 1000,
+		activeConnections: workerRuntime.activeConnections.size,
+		sampledAt: now(),
+	};
 };
 
 /**
@@ -52,84 +52,84 @@ const serializeWorkerStats = (): WorkerRuntimeStats => {
  * active during the interval.
  *
  * The first invocation measures CPU from sampler-construction time onward,
- * which naturally captures any startup work — subsequent readings reflect
+ * which naturally captures any startup work - subsequent readings reflect
  * ongoing steady-state load.
  */
 const createCpuSampler = () => {
-  let previousUsage = process.cpuUsage();
-  let previousTime = process.hrtime.bigint();
+	let previousUsage = process.cpuUsage();
+	let previousTime = process.hrtime.bigint();
 
-  return (): number => {
-    const usage = process.cpuUsage(previousUsage);
-    const currentTime = process.hrtime.bigint();
-    const elapsedMicros = Number(currentTime - previousTime) / 1_000;
+	return (): number => {
+		const usage = process.cpuUsage(previousUsage);
+		const currentTime = process.hrtime.bigint();
+		const elapsedMicros = Number(currentTime - previousTime) / 1_000;
 
-    previousUsage = process.cpuUsage();
-    previousTime = currentTime;
+		previousUsage = process.cpuUsage();
+		previousTime = currentTime;
 
-    if (elapsedMicros <= 0) {
-      return 0;
-    }
+		if (elapsedMicros <= 0) {
+			return 0;
+		}
 
-    const consumedMicros = usage.user + usage.system;
-    return (consumedMicros / elapsedMicros) * 100;
-  };
+		const consumedMicros = usage.user + usage.system;
+		return (consumedMicros / elapsedMicros) * 100;
+	};
 };
 
 const createStatsReporter = (
-  config: ResolvedServerConfig,
-  port: number,
+	config: ResolvedServerConfig,
+	port: number,
 ) => {
-  const sampleCpu = createCpuSampler();
+	const sampleCpu = createCpuSampler();
 
-  const buildMessage = (
-    type: DefussMessageFromWorker["type"],
-  ): DefussMessageFromWorker => {
-    const cpuPercent = sampleCpu();
-    const stats: WorkerRuntimeStats = {
-      ...serializeWorkerStats(),
-      cpuPercent,
-    };
+	const buildMessage = (
+		type: DefussMessageFromWorker["type"],
+	): DefussMessageFromWorker => {
+		const cpuPercent = sampleCpu();
+		const stats: WorkerRuntimeStats = {
+			...serializeWorkerStats(),
+			cpuPercent,
+		};
 
-    config.telemetry.setGauge("active_connections", stats.activeConnections);
-    config.telemetry.recordHistogram("cpu_percent", cpuPercent);
+		config.telemetry.setGauge("active_connections", stats.activeConnections);
+		config.telemetry.recordHistogram("cpu_percent", cpuPercent);
 
-    return {
-      type,
-      workerIndex: getWorkerIndex(),
-      port,
-      pid: process.pid,
-      stats,
-    } as DefussMessageFromWorker;
-  };
+		return {
+			type,
+			workerIndex: getWorkerIndex(),
+			port,
+			pid: process.pid,
+			stats,
+		} as DefussMessageFromWorker;
+	};
 
-  return {
-    announceReady: () => process.send?.(buildMessage("defuss:worker-ready")),
-    announceHeartbeat: () => process.send?.(buildMessage("defuss:worker-stats")),
-    announceStopping: () =>
-      process.send?.({
-        type: "defuss:worker-stopping",
-        workerIndex: getWorkerIndex(),
-        port,
-        pid: process.pid,
-      } satisfies DefussMessageFromWorker),
-    startHeartbeatLoop: () => {
-      workerRuntime.heartbeatTimer = setInterval(() => {
-        process.send?.(buildMessage("defuss:worker-stats"));
-      }, config.workerHeartbeatIntervalMs);
-      workerRuntime.heartbeatTimer.unref();
-    },
-  };
+	return {
+		announceReady: () => process.send?.(buildMessage("defuss:worker-ready")),
+		announceHeartbeat: () => process.send?.(buildMessage("defuss:worker-stats")),
+		announceStopping: () =>
+			process.send?.({
+				type: "defuss:worker-stopping",
+				workerIndex: getWorkerIndex(),
+				port,
+				pid: process.pid,
+			} satisfies DefussMessageFromWorker),
+		startHeartbeatLoop: () => {
+			workerRuntime.heartbeatTimer = setInterval(() => {
+				process.send?.(buildMessage("defuss:worker-stats"));
+			}, config.workerHeartbeatIntervalMs);
+			workerRuntime.heartbeatTimer.unref();
+		},
+	};
 };
 
 const registerConnectionTracking = (socket: Socket) => {
-  workerRuntime.activeConnections.add(socket);
-  const cleanup = () => {
-    workerRuntime.activeConnections.delete(socket);
-  };
+	workerRuntime.activeConnections.add(socket);
+	const cleanup = () => {
+		workerRuntime.activeConnections.delete(socket);
+	};
 
-  socket.once("close", cleanup);
-  socket.once("error", cleanup);
+	socket.once("close", cleanup);
+	socket.once("error", cleanup);
 };
 
 /**
@@ -137,59 +137,59 @@ const registerConnectionTracking = (socket: Socket) => {
  * all tracked connections, and close the application server.
  */
 export const stopWorkerRuntime = async (
-  config: ResolvedServerConfig = getServerConfig(),
+	config: ResolvedServerConfig = getServerConfig(),
 ): Promise<void> => {
-  if (workerRuntime.stopPromise) {
-    return workerRuntime.stopPromise;
-  }
+	if (workerRuntime.stopPromise) {
+		return workerRuntime.stopPromise;
+	}
 
-  if (!workerRuntime.appServer) {
-    return;
-  }
+	if (!workerRuntime.appServer) {
+		return;
+	}
 
-  workerRuntime.stopPromise = new Promise<void>((resolve) => {
-    if (workerRuntime.heartbeatTimer) {
-      clearInterval(workerRuntime.heartbeatTimer);
-      workerRuntime.heartbeatTimer = undefined;
-    }
+	workerRuntime.stopPromise = new Promise<void>((resolve) => {
+		if (workerRuntime.heartbeatTimer) {
+			clearInterval(workerRuntime.heartbeatTimer);
+			workerRuntime.heartbeatTimer = undefined;
+		}
 
-    for (const socket of workerRuntime.activeConnections) {
-      socket.destroy();
-    }
+		for (const socket of workerRuntime.activeConnections) {
+			socket.destroy();
+		}
 
-    const timeout = setTimeout(resolve, config.gracefulShutdownTimeoutMs);
-    timeout.unref();
+		const timeout = setTimeout(resolve, config.gracefulShutdownTimeoutMs);
+		timeout.unref();
 
-    try {
-      workerRuntime.appServer?.close(() => {
-        clearTimeout(timeout);
-        resolve();
-      });
-    } catch {
-      clearTimeout(timeout);
-      resolve();
-    }
-  });
+		try {
+			workerRuntime.appServer?.close(() => {
+				clearTimeout(timeout);
+				resolve();
+			});
+		} catch {
+			clearTimeout(timeout);
+			resolve();
+		}
+	});
 
-  return workerRuntime.stopPromise;
+	return workerRuntime.stopPromise;
 };
 
 const installSignalHandlers = (
-  reporter: ReturnType<typeof createStatsReporter>,
-  config: ResolvedServerConfig,
+	reporter: ReturnType<typeof createStatsReporter>,
+	config: ResolvedServerConfig,
 ) => {
-  if (!config.installSignalHandlers || workerRuntime.signalHandlersInstalled) {
-    return;
-  }
+	if (!config.installSignalHandlers || workerRuntime.signalHandlersInstalled) {
+		return;
+	}
 
-  workerRuntime.signalHandlersInstalled = true;
-  const stop = () => {
-    reporter.announceStopping();
-    void stopWorkerRuntime(config).finally(() => process.exit(0));
-  };
+	workerRuntime.signalHandlersInstalled = true;
+	const stop = () => {
+		reporter.announceStopping();
+		void stopWorkerRuntime(config).finally(() => process.exit(0));
+	};
 
-  process.on("SIGINT", stop);
-  process.on("SIGTERM", stop);
+	process.on("SIGINT", stop);
+	process.on("SIGTERM", stop);
 };
 
 /**
@@ -199,32 +199,32 @@ const installSignalHandlers = (
  * connection statistics.
  */
 export const startWorkerRuntime = async (
-  app: ExpressLike,
-  config: ResolvedServerConfig,
+	app: ExpressLike,
+	config: ResolvedServerConfig,
 ): Promise<StartServerResult> => {
-  const port = getWorkerPort(config);
-  const reporter = createStatsReporter(config, port);
+	const port = getWorkerPort(config);
+	const reporter = createStatsReporter(config, port);
 
-  return new Promise<StartServerResult>((resolve) => {
-    const server = app.listen(port, config.workerHost, () => {
-      config.logger.info(
-        `[defuss-express] worker ${process.pid} listening on http://${config.workerHost}:${port}`,
-      );
-      reporter.announceReady();
-      reporter.announceHeartbeat();
-      resolve({
-        mode: "worker",
-        pid: process.pid,
-        host: config.workerHost,
-        port,
-        workerIndex: getWorkerIndex(),
-        workerPort: port,
-      });
-    });
+	return new Promise<StartServerResult>((resolve) => {
+		const server = app.listen(port, config.workerHost, () => {
+			config.logger.info(
+				`[defuss-express] worker ${process.pid} listening on http://${config.workerHost}:${port}`,
+			);
+			reporter.announceReady();
+			reporter.announceHeartbeat();
+			resolve({
+				mode: "worker",
+				pid: process.pid,
+				host: config.workerHost,
+				port,
+				workerIndex: getWorkerIndex(),
+				workerPort: port,
+			});
+		});
 
-    workerRuntime.appServer = server;
-    server.on?.("connection", registerConnectionTracking);
-    reporter.startHeartbeatLoop();
-    installSignalHandlers(reporter, config);
-  });
+		workerRuntime.appServer = server;
+		server.on?.("connection", registerConnectionTracking);
+		reporter.startHeartbeatLoop();
+		installSignalHandlers(reporter, config);
+	});
 };

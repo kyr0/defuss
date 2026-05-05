@@ -7,41 +7,68 @@ import { pickBackend } from "./load-balancers.js";
 import { primaryRuntime } from "./runtime.js";
 import { getServerConfig } from "./config.js";
 import type {
-  BackendCandidate,
-  DefussMessageFromWorker,
-  ExpressLike,
-  ParsedRequest,
-  ResolvedServerConfig,
-  StartServerResult,
+	BackendCandidate,
+	DefussMessageFromWorker,
+	ExpressLike,
+	ParsedRequest,
+	ResolvedServerConfig,
+	StartServerResult,
 } from "./types.js";
 
 const now = (): number => Date.now();
 
-const asCandidates = (config: ResolvedServerConfig): BackendCandidate[] =>
-  [...primaryRuntime.backends.values()]
-    .filter((backend) => backend.ready)
-    .map((backend) => {
-      const stale = backend.lastHeartbeatAt
-        ? now() - backend.lastHeartbeatAt > config.workerHeartbeatStaleAfterMs
-        : false;
+// Diagnostic counters for benchmark troubleshooting
+const benchDiagnostics = {
+	upstreamErrors: 0,
+	upstreamCloses: 0,
+	noHealthyBackends: 0,
+	backendDisappeared: 0,
+	preludeTimeouts: 0,
+	connectionErrors: 0,
+};
 
-      return {
-        id: backend.id,
-        workerIndex: backend.workerIndex,
-        host: backend.host,
-        port: backend.port,
-        pid: backend.pid,
-        ready: backend.ready,
-        healthy: backend.healthy && !stale,
-        lastHeartbeatAt: backend.lastHeartbeatAt,
-        activeProxyConnections: backend.activeProxyConnections,
-        stats: backend.stats,
-      };
-    })
-    .filter((candidate) => candidate.healthy);
+const logBench = (label: string, value?: unknown) => {
+	console.error(`[BENCH_DIAG] ${label}`, value !== undefined ? value : "");
+};
+
+const asCandidates = (config: ResolvedServerConfig): BackendCandidate[] => {
+	const allBackends = [...primaryRuntime.backends.values()];
+	const readyBackends = allBackends.filter((backend) => backend.ready);
+	const result = allBackends
+		.filter((backend) => backend.ready)
+		.map((backend) => {
+			const stale = backend.lastHeartbeatAt
+				? now() - backend.lastHeartbeatAt > config.workerHeartbeatStaleAfterMs
+				: false;
+
+			return {
+				id: backend.id,
+				workerIndex: backend.workerIndex,
+				host: backend.host,
+				port: backend.port,
+				pid: backend.pid,
+				ready: backend.ready,
+				healthy: backend.healthy && !stale,
+				lastHeartbeatAt: backend.lastHeartbeatAt,
+				activeProxyConnections: backend.activeProxyConnections,
+				stats: backend.stats,
+			};
+		})
+		.filter((candidate) => candidate.healthy);
+
+	// Diagnostic: log healthy backend count when not all ready backends are healthy
+	if (result.length !== readyBackends.length) {
+		logBench(
+			"asCandidates",
+			`healthy=${result.length}/${readyBackends.length} total=${allBackends.length}`,
+		);
+	}
+
+	return result;
+};
 
 const waitFor = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+	new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Buffer the initial bytes of an inbound TCP connection up to
@@ -54,269 +81,300 @@ const waitFor = (ms: number): Promise<void> =>
  * blindly with whatever bytes were collected.
  */
 const collectPrelude = async (
-  socket: Socket,
-  config: ResolvedServerConfig,
+	socket: Socket,
+	config: ResolvedServerConfig,
 ): Promise<{ buffered: Buffer; request: ParsedRequest }> => {
-  socket.pause();
+	socket.pause();
 
-  return new Promise((resolve) => {
-    const chunks: Buffer[] = [];
-    let total = 0;
-    let settled = false;
-    let bufferedSoFar = Buffer.alloc(0);
+	return new Promise((resolve) => {
+		const chunks: Buffer[] = [];
+		let total = 0;
+		let settled = false;
+		let bufferedSoFar = Buffer.alloc(0);
 
-    const finish = () => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      cleanup();
-      socket.pause();
-      resolve({
-        buffered: bufferedSoFar,
-        request: parseRequestHead(bufferedSoFar, socket.remoteAddress, socket.remotePort),
-      });
-    };
+		const finish = () => {
+			if (settled) {
+				return;
+			}
+			settled = true;
+			cleanup();
+			socket.pause();
+			resolve({
+				buffered: bufferedSoFar,
+				request: parseRequestHead(bufferedSoFar, socket.remoteAddress, socket.remotePort),
+			});
+		};
 
-    const onData = (chunk: Buffer) => {
-      chunks.push(chunk);
-      total += chunk.length;
-      bufferedSoFar = Buffer.concat(chunks);
-      if (total >= config.maxHeaderBytes || hasCompleteHttpHeaders(bufferedSoFar)) {
-        finish();
-      }
-    };
+		const onData = (chunk: Buffer) => {
+			chunks.push(chunk);
+			total += chunk.length;
+			bufferedSoFar = Buffer.concat(chunks);
+			if (total >= config.maxHeaderBytes || hasCompleteHttpHeaders(bufferedSoFar)) {
+				finish();
+			}
+		};
 
-    const onClose = () => finish();
-    const onError = () => finish();
+		const onClose = () => finish();
+		const onError = () => finish();
 
-    const timer = setTimeout(finish, config.requestInspectionTimeoutMs);
-    timer.unref();
+		const timer = setTimeout(finish, config.requestInspectionTimeoutMs);
+		timer.unref();
 
-    const cleanup = () => {
-      clearTimeout(timer);
-      socket.off("data", onData);
-      socket.off("close", onClose);
-      socket.off("end", onClose);
-      socket.off("error", onError);
-    };
+		const cleanup = () => {
+			clearTimeout(timer);
+			socket.off("data", onData);
+			socket.off("close", onClose);
+			socket.off("end", onClose);
+			socket.off("error", onError);
+		};
 
-    socket.on("data", onData);
-    socket.once("close", onClose);
-    socket.once("end", onClose);
-    socket.once("error", onError);
-    socket.resume();
-  });
+		socket.on("data", onData);
+		socket.once("close", onClose);
+		socket.once("end", onClose);
+		socket.once("error", onError);
+		socket.resume();
+	});
 };
 
 const updateBackendFromWorkerMessage = (
-  message: DefussMessageFromWorker,
-  config: ResolvedServerConfig,
+	message: DefussMessageFromWorker,
+	config: ResolvedServerConfig,
 ) => {
-  const worker = primaryRuntime.workerByIndex.get(message.workerIndex);
-  const backend = primaryRuntime.backends.get(message.workerIndex) ?? {
-    id: `worker-${message.workerIndex}`,
-    workerIndex: message.workerIndex,
-    host: config.workerHost,
-    port: message.port,
-    pid: message.pid,
-    ready: false,
-    healthy: false,
-    activeProxyConnections: 0,
-  };
+	const worker = primaryRuntime.workerByIndex.get(message.workerIndex);
+	const backend = primaryRuntime.backends.get(message.workerIndex) ?? {
+		id: `worker-${message.workerIndex}`,
+		workerIndex: message.workerIndex,
+		host: config.workerHost,
+		port: message.port,
+		pid: message.pid,
+		ready: false,
+		healthy: false,
+		activeProxyConnections: 0,
+	};
 
-  if (message.type === "defuss:worker-stopping") {
-    primaryRuntime.backends.set(message.workerIndex, {
-      ...backend,
-      worker,
-      ready: false,
-      healthy: false,
-      pid: message.pid,
-      lastHeartbeatAt: now(),
-    });
-    config.telemetry.setGauge("healthy_backends", asCandidates(config).length);
-    return;
-  }
+	if (message.type === "defuss:worker-stopping") {
+		primaryRuntime.backends.set(message.workerIndex, {
+			...backend,
+			worker,
+			ready: false,
+			healthy: false,
+			pid: message.pid,
+			lastHeartbeatAt: now(),
+		});
+		config.telemetry.setGauge("healthy_backends", asCandidates(config).length);
+		return;
+	}
 
-  primaryRuntime.backends.set(message.workerIndex, {
-    ...backend,
-    worker,
-    pid: message.pid,
-    port: message.port,
-    host: config.workerHost,
-    ready: true,
-    healthy: true,
-    lastHeartbeatAt: now(),
-    stats: message.stats,
-  });
-  config.telemetry.setGauge("healthy_backends", asCandidates(config).length);
+	primaryRuntime.backends.set(message.workerIndex, {
+		...backend,
+		worker,
+		pid: message.pid,
+		port: message.port,
+		host: config.workerHost,
+		ready: true,
+		healthy: true,
+		lastHeartbeatAt: now(),
+		stats: message.stats,
+	});
+	config.telemetry.setGauge("healthy_backends", asCandidates(config).length);
 };
 
 const forkWorker = (
-  index: number,
-  config: ResolvedServerConfig,
+	index: number,
+	config: ResolvedServerConfig,
 ): Worker => {
-  const worker = cluster.fork({
-    ...process.env,
-    ...config.workerEnv,
-    DEFUSS_WORKER_INDEX: String(index),
-  });
+	const worker = cluster.fork({
+		...process.env,
+		...config.workerEnv,
+		DEFUSS_WORKER_INDEX: String(index),
+	});
 
-  primaryRuntime.workerByIndex.set(index, worker);
-  primaryRuntime.workerIndexById.set(worker.id, index);
+	primaryRuntime.workerByIndex.set(index, worker);
+	primaryRuntime.workerIndexById.set(worker.id, index);
 
-  worker.on("message", (message: DefussMessageFromWorker) => {
-    if (!message || typeof message !== "object" || !("type" in message)) {
-      return;
-    }
-    updateBackendFromWorkerMessage(message, config);
-  });
+	worker.on("message", (message: DefussMessageFromWorker) => {
+		if (!message || typeof message !== "object" || !("type" in message)) {
+			return;
+		}
+		updateBackendFromWorkerMessage(message, config);
+	});
 
-  return worker;
+	return worker;
 };
 
 const installSignalHandlers = (
-  stop: () => Promise<void>,
-  config: ResolvedServerConfig,
+	stop: () => Promise<void>,
+	config: ResolvedServerConfig,
 ) => {
-  if (!config.installSignalHandlers || primaryRuntime.signalHandlersInstalled) {
-    return;
-  }
+	if (!config.installSignalHandlers || primaryRuntime.signalHandlersInstalled) {
+		return;
+	}
 
-  primaryRuntime.signalHandlersInstalled = true;
-  process.on("SIGINT", () => {
-    void stop();
-  });
-  process.on("SIGTERM", () => {
-    void stop();
-  });
+	primaryRuntime.signalHandlersInstalled = true;
+	process.on("SIGINT", () => {
+		void stop();
+	});
+	process.on("SIGTERM", () => {
+		void stop();
+	});
 };
 
 const waitForAtLeastOneReadyBackend = async (
-  config: ResolvedServerConfig,
+	config: ResolvedServerConfig,
 ): Promise<void> => {
-  const deadline = now() + Math.max(5_000, config.gracefulShutdownTimeoutMs);
+	const deadline = now() + Math.max(5_000, config.gracefulShutdownTimeoutMs);
 
-  while (now() < deadline) {
-    if (asCandidates(config).length > 0) {
-      return;
-    }
-    await waitFor(25);
-  }
+	while (now() < deadline) {
+		if (asCandidates(config).length > 0) {
+			return;
+		}
+		await waitFor(25);
+	}
 
-  throw new Error("defuss-express: no worker became ready during startup");
+	throw new Error("defuss-express: no worker became ready during startup");
 };
 
 const connectToBackend = async (
-  client: Socket,
-  config: ResolvedServerConfig,
-  request: ParsedRequest,
-  buffered: Buffer,
-  previousIndexRef: { value: number },
+	client: Socket,
+	config: ResolvedServerConfig,
+	request: ParsedRequest,
+	buffered: Buffer,
+	previousIndexRef: { value: number },
 ): Promise<void> => {
-  const candidates = asCandidates(config);
-  if (candidates.length === 0) {
-    client.destroy(new Error("defuss-express: no healthy backends are available"));
-    return;
-  }
+	const candidates = asCandidates(config);
+	if (candidates.length === 0) {
+		benchDiagnostics.noHealthyBackends += 1;
+		logBench("ERROR: no healthy backends", `count=${benchDiagnostics.noHealthyBackends}`);
+		client.destroy(new Error("defuss-express: no healthy backends are available"));
+		return;
+	}
 
-  const backend = await pickBackend(
-    {
-      candidates,
-      request,
-      socket: client,
-      previousIndex: previousIndexRef.value,
-    },
-    config.loadBalancer,
-  );
+	const backend = await pickBackend(
+		{
+			candidates,
+			request,
+			socket: client,
+			previousIndex: previousIndexRef.value,
+		},
+		config.loadBalancer,
+	);
 
-  previousIndexRef.value += 1;
+	previousIndexRef.value += 1;
 
-  const entry = primaryRuntime.backends.get(backend.workerIndex);
-  if (!entry) {
-    client.destroy(new Error("defuss-express: selected backend disappeared"));
-    return;
-  }
+	const entry = primaryRuntime.backends.get(backend.workerIndex);
+	if (!entry) {
+		benchDiagnostics.backendDisappeared += 1;
+		logBench(
+			"ERROR: backend disappeared",
+			`workerIndex=${backend.workerIndex} count=${benchDiagnostics.backendDisappeared}`,
+		);
+		client.destroy(new Error("defuss-express: selected backend disappeared"));
+		return;
+	}
 
-  entry.activeProxyConnections += 1;
-  let released = false;
-  const release = () => {
-    if (released) {
-      return;
-    }
-    released = true;
-    entry.activeProxyConnections = Math.max(0, entry.activeProxyConnections - 1);
-  };
+	entry.activeProxyConnections += 1;
+	let released = false;
+	const release = () => {
+		if (released) {
+			return;
+		}
+		released = true;
+		entry.activeProxyConnections = Math.max(0, entry.activeProxyConnections - 1);
+	};
 
-  const upstream = net.connect({
-    host: entry.host,
-    port: entry.port,
-    allowHalfOpen: config.allowHalfOpen,
-  });
+	const upstream = net.connect({
+		host: entry.host,
+		port: entry.port,
+		allowHalfOpen: config.allowHalfOpen,
+	});
 
-  const cleanup = () => {
-    release();
-    client.destroy();
-    upstream.destroy();
-  };
+	const cleanup = () => {
+		release();
+		client.destroy();
+		upstream.destroy();
+	};
 
-  upstream.once("connect", () => {
-    client.setNoDelay(true);
-    upstream.setNoDelay(true);
-    if (buffered.length > 0) {
-      upstream.write(buffered);
-    }
-    client.pipe(upstream);
-    upstream.pipe(client);
-    client.resume();
-  });
+	upstream.once("connect", () => {
+		client.setNoDelay(true);
+		upstream.setNoDelay(true);
+		if (buffered.length > 0) {
+			upstream.write(buffered);
+		}
+		client.pipe(upstream);
+		upstream.pipe(client);
+		client.resume();
+	});
 
-  upstream.once("error", cleanup);
-  upstream.once("close", () => {
-    release();
-    client.destroy();
-  });
-  client.once("error", cleanup);
-  client.once("close", () => {
-    release();
-    upstream.destroy();
-  });
+	upstream.once("error", (error) => {
+		benchDiagnostics.upstreamErrors += 1;
+		logBench(
+			"ERROR: upstream error",
+			`code=${(error as NodeJS.ErrnoException).code} count=${benchDiagnostics.upstreamErrors} worker=${entry.workerIndex}:${entry.port}`,
+		);
+		cleanup();
+	});
+	upstream.once("close", () => {
+		benchDiagnostics.upstreamCloses += 1;
+		logBench(
+			"upstream close",
+			`count=${benchDiagnostics.upstreamCloses} worker=${entry.workerIndex}:${entry.port}`,
+		);
+		release();
+		client.destroy();
+	});
+	client.once("error", (error) => {
+		benchDiagnostics.connectionErrors += 1;
+		logBench(
+			"ERROR: client error",
+			`code=${(error as NodeJS.ErrnoException).code} count=${benchDiagnostics.connectionErrors}`,
+		);
+		cleanup();
+	});
+	client.once("close", () => {
+		release();
+		upstream.destroy();
+	});
 };
 
 const createLoadBalancer = (
-  config: ResolvedServerConfig,
+	config: ResolvedServerConfig,
 ): Promise<Server> => {
-  const previousIndexRef = { value: 0 };
+	const previousIndexRef = { value: 0 };
 
-  const listenServer = net.createServer(
-    {
-      allowHalfOpen: config.allowHalfOpen,
-    },
-    async (client) => {
-      config.telemetry.incrementCounter("connections");
-      try {
-        const t0 = performance.now();
-        const { buffered, request } = await collectPrelude(client, config);
-        config.telemetry.recordHistogram("prelude_duration_ms", performance.now() - t0);
-        await connectToBackend(client, config, request, buffered, previousIndexRef);
-      } catch (error) {
-        config.logger.error("[defuss-express] load balancer connection error", error);
-        config.telemetry.incrementCounter("proxy_errors");
-        client.destroy();
-      }
-    },
-  );
+	const listenServer = net.createServer(
+		{
+			allowHalfOpen: config.allowHalfOpen,
+		},
+		async (client) => {
+			config.telemetry.incrementCounter("connections");
+			try {
+				const t0 = performance.now();
+				const { buffered, request } = await collectPrelude(client, config);
+				config.telemetry.recordHistogram("prelude_duration_ms", performance.now() - t0);
+				await connectToBackend(client, config, request, buffered, previousIndexRef);
+			} catch (error) {
+				benchDiagnostics.connectionErrors += 1;
+				logBench(
+					"ERROR: load balancer catch",
+					`${String(error)} count=${benchDiagnostics.connectionErrors}`,
+				);
+				config.logger.error("[defuss-express] load balancer connection error", error);
+				config.telemetry.incrementCounter("proxy_errors");
+				client.destroy();
+			}
+		},
+	);
 
-  return new Promise((resolve, reject) => {
-    listenServer.once("error", reject);
-    listenServer.listen(config.port, config.host, () => {
-      listenServer.off("error", reject);
-      config.logger.info(
-        `[defuss-express] primary ${process.pid} listening on tcp://${config.host}:${config.port}`,
-      );
-      resolve(listenServer);
-    });
-  });
+	return new Promise((resolve, reject) => {
+		listenServer.once("error", reject);
+		listenServer.listen(config.port, config.host, () => {
+			listenServer.off("error", reject);
+			config.logger.info(
+				`[defuss-express] primary ${process.pid} listening on tcp://${config.host}:${config.port}`,
+			);
+			resolve(listenServer);
+		});
+	});
 };
 
 /**
@@ -325,37 +383,37 @@ const createLoadBalancer = (
  * `gracefulShutdownTimeoutMs` for cleanup.
  */
 export const stopPrimaryRuntime = async (
-  config: ResolvedServerConfig = getServerConfig(),
+	config: ResolvedServerConfig = getServerConfig(),
 ): Promise<void> => {
-  if (primaryRuntime.stopPromise) {
-    return primaryRuntime.stopPromise;
-  }
+	if (primaryRuntime.stopPromise) {
+		return primaryRuntime.stopPromise;
+	}
 
-  if (!primaryRuntime.listenServer) {
-    return;
-  }
+	if (!primaryRuntime.listenServer) {
+		return;
+	}
 
-  primaryRuntime.stopPromise = new Promise<void>((resolve) => {
-    const timeout = setTimeout(resolve, config.gracefulShutdownTimeoutMs);
-    timeout.unref();
+	primaryRuntime.stopPromise = new Promise<void>((resolve) => {
+		const timeout = setTimeout(resolve, config.gracefulShutdownTimeoutMs);
+		timeout.unref();
 
-    const finish = () => {
-      clearTimeout(timeout);
-      resolve();
-    };
+		const finish = () => {
+			clearTimeout(timeout);
+			resolve();
+		};
 
-    try {
-      primaryRuntime.listenServer?.close(finish);
-    } catch {
-      finish();
-    }
+		try {
+			primaryRuntime.listenServer?.close(finish);
+		} catch {
+			finish();
+		}
 
-    for (const worker of primaryRuntime.workerByIndex.values()) {
-      worker.kill("SIGTERM");
-    }
-  });
+		for (const worker of primaryRuntime.workerByIndex.values()) {
+			worker.kill("SIGTERM");
+		}
+	});
 
-  return primaryRuntime.stopPromise;
+	return primaryRuntime.stopPromise;
 };
 
 /**
@@ -365,48 +423,48 @@ export const stopPrimaryRuntime = async (
  * healthy workers via the configured load-balancer strategy.
  */
 export const startPrimaryRuntime = async (
-  _app: ExpressLike,
-  config: ResolvedServerConfig,
+	_app: ExpressLike,
+	config: ResolvedServerConfig,
 ): Promise<StartServerResult> => {
-  if (primaryRuntime.startPromise) {
-    return primaryRuntime.startPromise;
-  }
+	if (primaryRuntime.startPromise) {
+		return primaryRuntime.startPromise;
+	}
 
-  primaryRuntime.startPromise = (async () => {
-    for (let index = 0; index < config.workers; index += 1) {
-      forkWorker(index, config);
-    }
+	primaryRuntime.startPromise = (async () => {
+		for (let index = 0; index < config.workers; index += 1) {
+			forkWorker(index, config);
+		}
 
-    cluster.on("exit", (worker) => {
-      const index = primaryRuntime.workerIndexById.get(worker.id);
-      if (index === undefined) {
-        return;
-      }
+		cluster.on("exit", (worker) => {
+			const index = primaryRuntime.workerIndexById.get(worker.id);
+			if (index === undefined) {
+				return;
+			}
 
-      primaryRuntime.workerIndexById.delete(worker.id);
-      primaryRuntime.workerByIndex.delete(index);
-      primaryRuntime.backends.delete(index);
+			primaryRuntime.workerIndexById.delete(worker.id);
+			primaryRuntime.workerByIndex.delete(index);
+			primaryRuntime.backends.delete(index);
 
-      if (config.respawnWorkers && !primaryRuntime.stopPromise) {
-        config.logger.warn(
-          `[defuss-express] worker ${worker.process.pid ?? "unknown"} exited, respawning index ${index}`,
-        );
-        forkWorker(index, config);
-      }
-    });
+			if (config.respawnWorkers && !primaryRuntime.stopPromise) {
+				config.logger.warn(
+					`[defuss-express] worker ${worker.process.pid ?? "unknown"} exited, respawning index ${index}`,
+				);
+				forkWorker(index, config);
+			}
+		});
 
-    await waitForAtLeastOneReadyBackend(config);
-    primaryRuntime.listenServer = await createLoadBalancer(config);
-    installSignalHandlers(() => stopPrimaryRuntime(config), config);
+		await waitForAtLeastOneReadyBackend(config);
+		primaryRuntime.listenServer = await createLoadBalancer(config);
+		installSignalHandlers(() => stopPrimaryRuntime(config), config);
 
-    return {
-      mode: "primary",
-      pid: process.pid,
-      host: config.host,
-      port: config.port,
-      workers: config.workers,
-    };
-  })();
+		return {
+			mode: "primary",
+			pid: process.pid,
+			host: config.host,
+			port: config.port,
+			workers: config.workers,
+		};
+	})();
 
-  return primaryRuntime.startPromise;
+	return primaryRuntime.startPromise;
 };

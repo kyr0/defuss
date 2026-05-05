@@ -1,15 +1,15 @@
 import type {
-  BackendCandidate,
-  LoadBalancerContext,
-  LoadBalancerFunction,
+	BackendCandidate,
+	LoadBalancerContext,
+	LoadBalancerFunction,
 } from "./types.js";
 
 const withFallback = (candidates: BackendCandidate[]): BackendCandidate => {
-  const first = candidates[0];
-  if (!first) {
-    throw new Error("defuss-express: no healthy backend candidates are available");
-  }
-  return first;
+	const first = candidates[0];
+	if (!first) {
+		throw new Error("defuss-express: no healthy backend candidates are available");
+	}
+	return first;
 };
 
 /**
@@ -17,11 +17,11 @@ const withFallback = (candidates: BackendCandidate[]): BackendCandidate => {
  * incremented per connection so each worker gets an equal share.
  */
 export const roundRobinLoadBalancer: LoadBalancerFunction = ({
-  candidates,
-  previousIndex,
+	candidates,
+	previousIndex,
 }) => {
-  const index = candidates.length === 0 ? 0 : previousIndex % candidates.length;
-  return withFallback(candidates.slice(index).concat(candidates.slice(0, index)));
+	const index = candidates.length === 0 ? 0 : previousIndex % candidates.length;
+	return withFallback(candidates.slice(index).concat(candidates.slice(0, index)));
 };
 
 /**
@@ -29,12 +29,12 @@ export const roundRobinLoadBalancer: LoadBalancerFunction = ({
  * Useful under heterogeneous request durations.
  */
 export const leastConnectionsLoadBalancer: LoadBalancerFunction = ({
-  candidates,
+	candidates,
 }) => {
-  const sorted = [...candidates].sort(
-    (left, right) => left.activeProxyConnections - right.activeProxyConnections,
-  );
-  return withFallback(sorted);
+	const sorted = [...candidates].sort(
+		(left, right) => left.activeProxyConnections - right.activeProxyConnections,
+	);
+	return withFallback(sorted);
 };
 
 /**
@@ -42,28 +42,28 @@ export const leastConnectionsLoadBalancer: LoadBalancerFunction = ({
  * All values are non-negative multipliers applied to the corresponding metric.
  */
 export type ResourceAwareLoadBalancerWeights = {
-  /** Multiplier for active proxy connection count (default `10`). */
-  connectionWeight?: number;
-  /** Multiplier for CPU usage percentage 0–100+ (default `2`). */
-  cpuWeight?: number;
-  /** Multiplier for heap utilisation ratio 0–1 (default `100`). */
-  heapWeight?: number;
+	/** Multiplier for active proxy connection count (default `10`). */
+	connectionWeight?: number;
+	/** Multiplier for CPU usage percentage 0-100+ (default `2`). */
+	cpuWeight?: number;
+	/** Multiplier for heap utilisation ratio 0-1 (default `100`). */
+	heapWeight?: number;
 };
 
 const scoreResourceAware = (
-  candidate: BackendCandidate,
-  weights: Required<ResourceAwareLoadBalancerWeights>,
+	candidate: BackendCandidate,
+	weights: Required<ResourceAwareLoadBalancerWeights>,
 ): number => {
-  const stats = candidate.stats;
-  const cpu = stats?.cpuPercent ?? 0;
-  const heapRatio =
-    stats && stats.heapTotalBytes > 0 ? stats.heapUsedBytes / stats.heapTotalBytes : 0;
+	const stats = candidate.stats;
+	const cpu = stats?.cpuPercent ?? 0;
+	const heapRatio =
+		stats && stats.heapTotalBytes > 0 ? stats.heapUsedBytes / stats.heapTotalBytes : 0;
 
-  return (
-    candidate.activeProxyConnections * weights.connectionWeight +
-    cpu * weights.cpuWeight +
-    heapRatio * weights.heapWeight
-  );
+	return (
+		candidate.activeProxyConnections * weights.connectionWeight +
+		cpu * weights.cpuWeight +
+		heapRatio * weights.heapWeight
+	);
 };
 
 /**
@@ -72,9 +72,9 @@ const scoreResourceAware = (
  * The candidate with the **lowest** score wins.  Formula:
  *
  * ```
- * score = connections × connectionWeight
- *       + cpuPercent × cpuWeight
- *       + (heapUsed / heapTotal) × heapWeight
+ * score = connections x connectionWeight
+ *       + cpuPercent x cpuWeight
+ *       + (heapUsed / heapTotal) x heapWeight
  * ```
  *
  * Default weights (`10 / 2 / 100`) bias toward spreading connections first,
@@ -82,27 +82,27 @@ const scoreResourceAware = (
  *
  * @example
  * ```ts
- * // CPU-first variant — strongly prefer idle workers
+ * // CPU-first variant - strongly prefer idle workers
  * const balancer = createResourceAwareLoadBalancer({ cpuWeight: 50 });
  * await startServer(app, { loadBalancer: balancer });
  * ```
  */
 export const createResourceAwareLoadBalancer = ({
-  connectionWeight = 10,
-  cpuWeight = 2,
-  heapWeight = 100,
+	connectionWeight = 10,
+	cpuWeight = 2,
+	heapWeight = 100,
 }: ResourceAwareLoadBalancerWeights = {}): LoadBalancerFunction => {
-  const weights: Required<ResourceAwareLoadBalancerWeights> = {
-    connectionWeight,
-    cpuWeight,
-    heapWeight,
-  };
-  return ({ candidates }) => {
-    const sorted = [...candidates].sort(
-      (left, right) => scoreResourceAware(left, weights) - scoreResourceAware(right, weights),
-    );
-    return withFallback(sorted);
-  };
+	const weights: Required<ResourceAwareLoadBalancerWeights> = {
+		connectionWeight,
+		cpuWeight,
+		heapWeight,
+	};
+	return ({ candidates }) => {
+		const sorted = [...candidates].sort(
+			(left, right) => scoreResourceAware(left, weights) - scoreResourceAware(right, weights),
+		);
+		return withFallback(sorted);
+	};
 };
 
 /**
@@ -110,7 +110,7 @@ export const createResourceAwareLoadBalancer = ({
  * CPU pressure, and heap utilisation.  Formula:
  *
  * ```
- * score = connections × 10 + cpuPercent × 2 + (heapUsed / heapTotal) × 100
+ * score = connections x 10 + cpuPercent x 2 + (heapUsed / heapTotal) x 100
  * ```
  *
  * The candidate with the **lowest** score wins.
@@ -119,7 +119,7 @@ export const createResourceAwareLoadBalancer = ({
  */
 export const resourceAwareLoadBalancer: LoadBalancerFunction = createResourceAwareLoadBalancer();
 
-/** Default balancer — currently {@link roundRobinLoadBalancer}. */
+/** Default balancer - currently {@link roundRobinLoadBalancer}. */
 export const defaultLoadBalancer = roundRobinLoadBalancer;
 
 /**
@@ -127,9 +127,9 @@ export const defaultLoadBalancer = roundRobinLoadBalancer;
  * function.  Normalises sync and async balancer return values.
  */
 export const pickBackend = async (
-  context: LoadBalancerContext,
-  loadBalancer?: LoadBalancerFunction,
+	context: LoadBalancerContext,
+	loadBalancer?: LoadBalancerFunction,
 ): Promise<BackendCandidate> => {
-  const chooser = loadBalancer ?? defaultLoadBalancer;
-  return chooser(context);
+	const chooser = loadBalancer ?? defaultLoadBalancer;
+	return chooser(context);
 };

@@ -65,7 +65,7 @@ try {
     });
     console.log(`[ws] WebSocket echo handler registered at ws://localhost:${PORT}/ws`);
   } else {
-    console.log("[ws] uwsApp.ws not available — WebSocket echo not registered");
+    console.log("[ws] uwsApp.ws not available - WebSocket echo not registered");
     console.log("[ws] Note: uwsApp is only available in worker processes, not in primary");
   }
 } catch (err) {

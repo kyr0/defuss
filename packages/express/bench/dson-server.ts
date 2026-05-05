@@ -2,9 +2,9 @@
  * Benchmark server for defuss-express with DSON payload processing.
  *
  * Spawns one worker per CPU core. Each worker runs three routes:
- *   POST /dson/echo       – parse DSON body, re-serialize, return
- *   POST /dson/transform  – parse DSON body, enrich with metadata, re-serialize
- *   GET  /dson/generate   – build a complex typed object, serialize with DSON
+ *   POST /dson/echo       - parse DSON body, re-serialize, return
+ *   POST /dson/transform  - parse DSON body, enrich with metadata, re-serialize
+ *   GET  /dson/generate   - build a complex typed object, serialize with DSON
  *
  * Start:  node --import tsx bench/dson-server.ts
  * Stop:   SIGINT / SIGTERM
@@ -39,7 +39,7 @@ setServerConfig({
 const app = express({ threads: 0 });
 app.disable?.("x-powered-by");
 
-// Raw body middleware – collect the full body as a string
+// Raw body middleware - collect the full body as a string
 app.use?.((req: any, _res: any, next: any) => {
   if (req.method === "GET" || req.method === "HEAD") return next();
   const chunks: Buffer[] = [];
@@ -50,7 +50,7 @@ app.use?.((req: any, _res: any, next: any) => {
   });
 });
 
-/** POST /dson/echo – parse + re-serialize (round-trip stress) */
+/** POST /dson/echo - parse + re-serialize (round-trip stress) */
 app.post?.("/dson/echo", (req: any, res: any) => {
   const parsed = DSON.parse(req.body);
   const out = DSON.stringify(parsed);
@@ -58,7 +58,7 @@ app.post?.("/dson/echo", (req: any, res: any) => {
   res.status(200).send(out);
 });
 
-/** POST /dson/transform – parse, enrich, re-serialize */
+/** POST /dson/transform - parse, enrich, re-serialize */
 app.post?.("/dson/transform", (req: any, res: any) => {
   const parsed = DSON.parse(req.body) as Record<string, unknown>;
   const enriched = {
@@ -72,7 +72,7 @@ app.post?.("/dson/transform", (req: any, res: any) => {
   res.status(200).send(out);
 });
 
-/** GET /dson/generate – build a complex typed payload, serialize */
+/** GET /dson/generate - build a complex typed payload, serialize */
 app.get?.("/dson/generate", (_req: any, res: any) => {
   const payload = {
     id: crypto.randomUUID(),
@@ -95,7 +95,7 @@ app.get?.("/dson/generate", (_req: any, res: any) => {
   res.status(200).send(out);
 });
 
-/** GET /health – simple health check */
+/** GET /health - simple health check */
 app.get?.("/health", (_req: any, res: any) => {
   res.status(200).json({ ok: true, pid: process.pid });
 });

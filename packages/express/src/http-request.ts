@@ -10,7 +10,7 @@ const HEADER_END = Buffer.from("\r\n\r\n");
  * data has arrived for request-aware routing.
  */
 export const hasCompleteHttpHeaders = (buffer: Buffer): boolean =>
-  buffer.includes(HEADER_END);
+	buffer.includes(HEADER_END);
 
 /**
  * Parse the HTTP/1.x request-line and headers from a raw TCP buffer.
@@ -31,41 +31,41 @@ export const hasCompleteHttpHeaders = (buffer: Buffer): boolean =>
  *          or `"unknown"` when the request-line could not be parsed.
  */
 export const parseRequestHead = (
-  buffer: Buffer,
-  remoteAddress?: string,
-  remotePort?: number,
+	buffer: Buffer,
+	remoteAddress?: string,
+	remotePort?: number,
 ): ParsedRequest => {
-  const rawHead = buffer.toString("latin1");
-  const lines: string[] = rawHead.split("\r\n");
-  const requestLine = lines[0] ?? "";
-  const [method, path, httpVersionToken] = requestLine.split(" ");
-  const httpVersion = httpVersionToken?.startsWith("HTTP/")
-    ? httpVersionToken.slice("HTTP/".length)
-    : undefined;
+	const rawHead = buffer.toString("latin1");
+	const lines: string[] = rawHead.split("\r\n");
+	const requestLine = lines[0] ?? "";
+	const [method, path, httpVersionToken] = requestLine.split(" ");
+	const httpVersion = httpVersionToken?.startsWith("HTTP/")
+		? httpVersionToken.slice("HTTP/".length)
+		: undefined;
 
-  const headers = lines.slice(1).reduce((acc: Record<string, string>, line: string) => {
-    const separatorIndex = line.indexOf(":");
-    if (separatorIndex <= 0) {
-      return acc;
-    }
+	const headers = lines.slice(1).reduce((acc: Record<string, string>, line: string) => {
+		const separatorIndex = line.indexOf(":");
+		if (separatorIndex <= 0) {
+			return acc;
+		}
 
-    const name = line.slice(0, separatorIndex).trim().toLowerCase();
-    const value = line.slice(separatorIndex + 1).trim();
-    if (name.length > 0) {
-      acc[name] = value;
-    }
-    return acc;
-  }, {});
+		const name = line.slice(0, separatorIndex).trim().toLowerCase();
+		const value = line.slice(separatorIndex + 1).trim();
+		if (name.length > 0) {
+			acc[name] = value;
+		}
+		return acc;
+	}, {});
 
-  return {
-    method,
-    path,
-    httpVersion,
-    host: headers.host,
-    headers,
-    remoteAddress,
-    remotePort,
-    protocol: method && path ? "http1" : "unknown",
-    rawHead,
-  };
+	return {
+		method,
+		path,
+		httpVersion,
+		host: headers.host,
+		headers,
+		remoteAddress,
+		remotePort,
+		protocol: method && path ? "http1" : "unknown",
+		rawHead,
+	};
 };
