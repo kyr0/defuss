@@ -39,6 +39,7 @@ Remote Procedure Call (RPC)
 - ✅ **Hook System** - Guard and result hooks on both server and client for auth, logging, and auditing
 - ✅ **Schema Introspection** - Automatic API schema generation and discovery at `/rpc/schema`
 - ✅ **Framework Agnostic** - Works with Astro, Vite, Express.js, or any framework that supports `Request`/`Response`
+- ✅ **Fast Upload** - Optimized for large binary transfers with streaming / half-duplex support, gzip compression, and hash verification (SHA-256 and MD5)
 
 ---
 

@@ -1,142 +1,142 @@
 // Test API classes for RPC testing
 export class TestUserApi {
-  async getUser(id: string) {
-    return {
-      id,
-      name: `User ${id}`,
-      email: `user${id}@example.com`,
-      age: Number.parseInt(id) * 10,
-    };
-  }
+	async getUser(id: string) {
+		return {
+			id,
+			name: `User ${id}`,
+			email: `user${id}@example.com`,
+			age: Number.parseInt(id) * 10,
+		};
+	}
 
-  async createUser(userData: { name: string; email: string; age: number }) {
-    return {
-      id: "new-user-id",
-      ...userData,
-      createdAt: new Date().toISOString(),
-    };
-  }
+	async createUser(userData: { name: string; email: string; age: number }) {
+		return {
+			id: "new-user-id",
+			...userData,
+			createdAt: new Date().toISOString(),
+		};
+	}
 
-  async updateUser(
-    id: string,
-    updates: Partial<{ name: string; email: string; age: number }>,
-  ) {
-    return {
-      id,
-      name: updates.name || `User ${id}`,
-      email: updates.email || `user${id}@example.com`,
-      age: updates.age || Number.parseInt(id) * 10,
-      updatedAt: new Date().toISOString(),
-    };
-  }
+	async updateUser(
+		id: string,
+		updates: Partial<{ name: string; email: string; age: number }>,
+	) {
+		return {
+			id,
+			name: updates.name || `User ${id}`,
+			email: updates.email || `user${id}@example.com`,
+			age: updates.age || Number.parseInt(id) * 10,
+			updatedAt: new Date().toISOString(),
+		};
+	}
 
-  async deleteUser(id: string) {
-    return { success: true, deletedId: id };
-  }
+	async deleteUser(id: string) {
+		return { success: true, deletedId: id };
+	}
 
-  // Synchronous method for testing
-  getUserCount() {
-    return 42;
-  }
+	// Synchronous method for testing
+	getUserCount() {
+		return 42;
+	}
 }
 
 export class TestProductApi {
-  async getProduct(id: string) {
-    return {
-      id,
-      name: `Product ${id}`,
-      price: Number.parseFloat(id) * 100,
-      category: "test-category",
-    };
-  }
+	async getProduct(id: string) {
+		return {
+			id,
+			name: `Product ${id}`,
+			price: Number.parseFloat(id) * 100,
+			category: "test-category",
+		};
+	}
 
-  async searchProducts(query: string, limit = 10) {
-    const products = [];
-    for (let i = 1; i <= limit; i++) {
-      products.push({
-        id: `product-${i}`,
-        name: `${query} Product ${i}`,
-        price: i * 50,
-        category: "search-results",
-      });
-    }
-    return products;
-  }
+	async searchProducts(query: string, limit = 10) {
+		const products = [];
+		for (let i = 1; i <= limit; i++) {
+			products.push({
+				id: `product-${i}`,
+				name: `${query} Product ${i}`,
+				price: i * 50,
+				category: "search-results",
+			});
+		}
+		return products;
+	}
 
-  async throwError() {
-    throw new Error("This is a test error");
-  }
+	async throwError() {
+		throw new Error("This is a test error");
+	}
 
-  // Method that returns complex data structures
-  async getComplexData() {
-    return {
-      metadata: {
-        version: "1.0.0",
-        timestamp: new Date().toISOString(),
-      },
-      data: [
-        { nested: { value: 123, array: [1, 2, 3] } },
-        { nested: { value: 456, array: [4, 5, 6] } },
-      ],
-      buffer: new ArrayBuffer(8),
-      date: new Date(),
-      map: new Map([
-        ["key1", "value1"],
-        ["key2", "value2"],
-      ]),
-    };
-  }
+	// Method that returns complex data structures
+	async getComplexData() {
+		return {
+			metadata: {
+				version: "1.0.0",
+				timestamp: new Date().toISOString(),
+			},
+			data: [
+				{ nested: { value: 123, array: [1, 2, 3] } },
+				{ nested: { value: 456, array: [4, 5, 6] } },
+			],
+			buffer: new ArrayBuffer(8),
+			date: new Date(),
+			map: new Map([
+				["key1", "value1"],
+				["key2", "value2"],
+			]),
+		};
+	}
 }
 
 /** Simple math utilities as a plain object module */
 export const TestMathModule = {
-  add: async (a: number, b: number): Promise<number> => a + b,
-  multiply: async (a: number, b: number): Promise<number> => a * b,
-  subtract: async (a: number, b: number): Promise<number> => a - b,
-  divide: async (a: number, b: number): Promise<number> => {
-    if (b === 0) throw new Error("Division by zero");
-    return a / b;
-  },
-  // Synchronous method for testing
-  pi: () => Math.PI,
+	add: async (a: number, b: number): Promise<number> => a + b,
+	multiply: async (a: number, b: number): Promise<number> => a * b,
+	subtract: async (a: number, b: number): Promise<number> => a - b,
+	divide: async (a: number, b: number): Promise<number> => {
+		if (b === 0) throw new Error("Division by zero");
+		return a / b;
+	},
+	// Synchronous method for testing
+	pi: () => Math.PI,
 };
 
 /** String utilities as a plain object module */
 export const TestStringModule = {
-  echo: async (msg: string): Promise<string> => msg,
-  upper: async (msg: string): Promise<string> => msg.toUpperCase(),
-  concat: async (a: string, b: string): Promise<string> => a + b,
-  now: async (): Promise<Date> => new Date(),
+	echo: async (msg: string): Promise<string> => msg,
+	upper: async (msg: string): Promise<string> => msg.toUpperCase(),
+	concat: async (a: string, b: string): Promise<string> => a + b,
+	now: async (): Promise<Date> => new Date(),
 };
 
 /** Module with async generator functions for streaming tests */
 export const TestStreamModule = {
-  /** Yields numbers 0..n-1, then returns the total count. */
-  async *countUp(n: number) {
-    for (let i = 0; i < n; i++) {
-      yield i;
-    }
-    return n;
-  },
+	/** Yields numbers 0..n-1, then returns the total count. */
+	async *countUp(n: number) {
+		for (let i = 0; i < n; i++) {
+			yield i;
+		}
+		return n;
+	},
 
-  /** Yields two values then throws an error mid-stream. */
-  async *throwMidStream() {
-    yield "a";
-    yield "b";
-    throw new Error("mid-stream error");
-  },
+	/** Yields two values then throws an error mid-stream. */
+	async *throwMidStream() {
+		yield "a";
+		yield "b";
+		throw new Error("mid-stream error");
+	},
 
-  /** Yields string chunks simulating a chat response. */
-  async *chat(message: string) {
-    const words = message.split(" ");
-    for (const word of words) {
-      yield word;
-    }
-    return message;
-  },
+	/** Yields string chunks simulating a chat response. */
+	async *chat(message: string) {
+		const words = message.split(" ");
+		for (const word of words) {
+			yield word;
+		}
+		return message;
+	},
 
-  /** A regular (non-generator) async function, co-located for schema tests. */
-  async ping() {
-    return "pong";
-  },
+	/** A regular (non-generator) async function, co-located for schema tests. */
+	async ping() {
+		return "pong";
+	},
 };

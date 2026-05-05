@@ -14,15 +14,15 @@ export type RpcApiEntry = RpcApiClass | RpcApiModule;
 
 /** Descriptor for a single method/function in the RPC schema. */
 export interface RpcMethodDescriptor {
-  async: boolean;
-  generator: boolean;
+	async: boolean;
+	generator: boolean;
 }
 
 export interface RpcClassSchema {
-  kind: "class";
-  className: string;
-  methods: Record<string, RpcMethodDescriptor>;
-  properties: Record<string, unknown>;
+	kind: "class";
+	className: string;
+	methods: Record<string, RpcMethodDescriptor>;
+	properties: Record<string, unknown>;
 }
 
 /**
@@ -30,9 +30,9 @@ export interface RpcClassSchema {
  * Returned as part of the array from `/rpc/schema`.
  */
 export interface RpcModuleSchema {
-  kind: "module";
-  moduleName: string;
-  methods: Record<string, RpcMethodDescriptor>;
+	kind: "module";
+	moduleName: string;
+	methods: Record<string, RpcMethodDescriptor>;
 }
 
 /**
@@ -52,29 +52,29 @@ export type RpcApiSchema = RpcSchemaEntry[];
  * createRpcServer({ UserApi, OrderApi, mathUtils });
  */
 export interface ApiNamespace {
-  [name: string]: RpcApiEntry;
+	[name: string]: RpcApiEntry;
 }
 
 /**
  * Wire format of a single RPC call sent from client to server as the POST body of `/rpc`.
  */
 export interface RpcCallDescriptor {
-  /**
-   * Optional request ID — reserved for future request-correlation and deduplication.
-   * Not currently consumed by `rpcRoute`.
-   */
-  id?: string | number;
-  /**
-   * Optional Unix millisecond timestamp of when the call was initiated on the client.
-   * Establishes implicit call order when multiple concurrent requests are in flight.
-   */
-  ts?: number;
-  /** The registered namespace name (class name or module name). */
-  className: string;
-  /** The method or function name to invoke on the namespace. */
-  methodName: string;
-  /** Positional argument list, serialized as a JSON array. */
-  args: unknown[];
+	/**
+	 * Optional request ID — reserved for future request-correlation and deduplication.
+	 * Not currently consumed by `rpcRoute`.
+	 */
+	id?: string | number;
+	/**
+	 * Optional Unix millisecond timestamp of when the call was initiated on the client.
+	 * Establishes implicit call order when multiple concurrent requests are in flight.
+	 */
+	ts?: number;
+	/** The registered namespace name (class name or module name). */
+	className: string;
+	/** The method or function name to invoke on the namespace. */
+	methodName: string;
+	/** Positional argument list, serialized as a JSON array. */
+	args: unknown[];
 }
 
 // hooks
@@ -103,16 +103,16 @@ export type ServerHookPhase = "guard" | "result";
  * @param result     - The return value of the method (only populated in `"result"` phase).
  */
 export type ServerHookFn = (
-  className: string,
-  methodName: string,
-  args: unknown[],
-  request: Request,
-  result?: unknown,
+	className: string,
+	methodName: string,
+	args: unknown[],
+	request: Request,
+	result?: unknown,
 ) => boolean | Promise<boolean> | void | Promise<void>;
 
 export type ServerHook = {
-  fn: ServerHookFn;
-  phase: ServerHookPhase;
+	fn: ServerHookFn;
+	phase: ServerHookPhase;
 };
 
 /**
@@ -142,17 +142,17 @@ export type ClientHookPhase = "guard" | "response" | "result";
  * @param data       - The deserialized result (only in `"result"` phase).
  */
 export type ClientHookFn = (
-  className: string,
-  methodName: string,
-  args: unknown[],
-  request?: RequestInit,
-  response?: Response,
-  data?: unknown,
+	className: string,
+	methodName: string,
+	args: unknown[],
+	request?: RequestInit,
+	response?: Response,
+	data?: unknown,
 ) => boolean | Promise<boolean> | void | Promise<void>;
 
 export type ClientHook = {
-  fn: ClientHookFn;
-  phase: ClientHookPhase;
+	fn: ClientHookFn;
+	phase: ClientHookPhase;
 };
 
 /**
@@ -163,9 +163,9 @@ export type ClientHook = {
  * - `error`  — an error thrown during iteration (terminal).
  */
 export type DsonStreamFrame =
-  | { type: "yield"; value: unknown }
-  | { type: "return"; value: unknown }
-  | { type: "error"; error: { message: string; stack?: string } };
+	| { type: "yield"; value: unknown }
+	| { type: "return"; value: unknown }
+	| { type: "error"; error: { message: string; stack?: string } };
 
 // ── Upload API types ─────────────────────────────────────────────────────────
 
@@ -173,24 +173,24 @@ export type DsonStreamFrame =
  * Metadata passed to upload handler functions after the upload body has been received.
  */
 export interface UploadMeta {
-  /** Unique upload identifier (client-generated or auto-assigned). */
-  uploadId: string;
-  /** The registered handler name (e.g. `"vfs-upload"`). */
-  handlerName: string;
-  /** Total expected size in bytes (from `X-Original-Size` header). */
-  originalSize: number;
-  /** Actual bytes received (after decompression). */
-  bytesReceived: number;
-  /** SHA-256 hex digest of the full received content. */
-  sha256: string;
-  /** MD5 hex digest of the full received content. */
-  md5: string;
-  /** Server-side processing duration in milliseconds. */
-  durationMs: number;
-  /** Content-Encoding used for the transfer (`"identity"`, `"gzip"`, etc.). */
-  contentEncoding: string;
-  /** Byte offset this upload started from (0 for fresh, >0 for resumed). */
-  offset: number;
+	/** Unique upload identifier (client-generated or auto-assigned). */
+	uploadId: string;
+	/** The registered handler name (e.g. `"vfs-upload"`). */
+	handlerName: string;
+	/** Total expected size in bytes (from `X-Original-Size` header). */
+	originalSize: number;
+	/** Actual bytes received (after decompression). */
+	bytesReceived: number;
+	/** SHA-256 hex digest of the full received content. */
+	sha256: string;
+	/** MD5 hex digest of the full received content. */
+	md5: string;
+	/** Server-side processing duration in milliseconds. */
+	durationMs: number;
+	/** Content-Encoding used for the transfer (`"identity"`, `"gzip"`, etc.). */
+	contentEncoding: string;
+	/** Byte offset this upload started from (0 for fresh, >0 for resumed). */
+	offset: number;
 }
 
 /**
@@ -198,8 +198,8 @@ export interface UploadMeta {
  * Suitable for small-to-medium files that fit comfortably in memory.
  */
 export type UploadHandlerFn<T = unknown> = (
-  data: Uint8Array,
-  meta: UploadMeta,
+	data: Uint8Array,
+	meta: UploadMeta,
 ) => T | Promise<T>;
 
 /**
@@ -210,8 +210,8 @@ export type UploadHandlerFn<T = unknown> = (
  * received data is replayed from the temp file).
  */
 export type UploadStreamHandlerFn<T = unknown> = (
-  stream: ReadableStream<Uint8Array>,
-  meta: UploadMeta,
+	stream: ReadableStream<Uint8Array>,
+	meta: UploadMeta,
 ) => T | Promise<T>;
 
 /**
@@ -222,27 +222,27 @@ export type UploadStreamHandlerFn<T = unknown> = (
  * - `error`    — the upload handler threw during execution.
  */
 export type UploadStreamFrame =
-  | {
-      type: "received";
-      uploadId: string;
-      bytesReceived: number;
-      sha256: string;
-      md5: string;
-      durationMs: number;
-    }
-  | { type: "result"; value: unknown }
-  | { type: "error"; error: { message: string; stack?: string } };
+	| {
+		type: "received";
+		uploadId: string;
+		bytesReceived: number;
+		sha256: string;
+		md5: string;
+		durationMs: number;
+	}
+	| { type: "result"; value: unknown }
+	| { type: "error"; error: { message: string; stack?: string } };
 
 /**
  * Server-confirmed progress event pushed via SSE (`GET /rpc/upload/progress/{uploadId}`).
  */
 export interface UploadProgressEvent {
-  /** Bytes received so far (after decompression). */
-  bytesReceived: number;
-  /** Total expected bytes (from `X-Original-Size`). */
-  totalBytes: number;
-  /** Percentage complete (0–100). */
-  percent: number;
+	/** Bytes received so far (after decompression). */
+	bytesReceived: number;
+	/** Total expected bytes (from `X-Original-Size`). */
+	totalBytes: number;
+	/** Percentage complete (0–100). */
+	percent: number;
 }
 
 /**
@@ -250,6 +250,6 @@ export interface UploadProgressEvent {
  * @internal
  */
 export interface UploadHandlerEntry {
-  fn: UploadHandlerFn<unknown> | UploadStreamHandlerFn<unknown>;
-  mode: "buffered" | "streaming";
+	fn: UploadHandlerFn<unknown> | UploadStreamHandlerFn<unknown>;
+	mode: "buffered" | "streaming";
 }

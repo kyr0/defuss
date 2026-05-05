@@ -1,20 +1,20 @@
 import { defineMiddleware } from "astro/middleware";
 import {
-  getRpcEndpoint,
-  getRpcConfig,
-  getRpcServer,
-  setRpcEndpoint,
-  setRpcServer,
+	getRpcEndpoint,
+	getRpcConfig,
+	getRpcServer,
+	setRpcEndpoint,
+	setRpcServer,
 } from "./rpc-state.js";
 import { createRpcServer } from "./server.js";
 import { ExpressRpcServer } from "./express-server.js";
 
 declare global {
-  namespace App {
-    interface Locals {
-      rpcEndpoint: string;
-    }
-  }
+	namespace App {
+		interface Locals {
+			rpcEndpoint: string;
+		}
+	}
 }
 
 /**
@@ -28,34 +28,34 @@ declare global {
  *   for all subsequent requests.
  */
 export const onRequest = defineMiddleware(async (context, next) => {
-  let url = getRpcEndpoint();
+	let url = getRpcEndpoint();
 
-  // Production lazy-start: if no server is running yet, start one
-  if (!url && !getRpcServer()) {
-    const config = getRpcConfig();
-    if (config) {
-      // Register the RPC namespace
-      createRpcServer(config.api);
+	// Production lazy-start: if no server is running yet, start one
+	if (!url && !getRpcServer()) {
+		const config = getRpcConfig();
+		if (config) {
+			// Register the RPC namespace
+			createRpcServer(config.api);
 
-      // Start the Express RPC server
-      const server = new ExpressRpcServer({
-        port: config.port,
-        protocol: config.protocol,
-        host: config.host,
-        basePath: config.basePath,
-        jsonSizeLimit: config.jsonSizeLimit,
-        corsOrigin: config.corsOrigin,
-      });
+			// Start the Express RPC server
+			const server = new ExpressRpcServer({
+				port: config.port,
+				protocol: config.protocol,
+				host: config.host,
+				basePath: config.basePath,
+				jsonSizeLimit: config.jsonSizeLimit,
+				corsOrigin: config.corsOrigin,
+			});
 
-      const result = await server.start();
+			const result = await server.start();
 
-      // If an explicit endpoint was provided, use it; otherwise derive from the running server
-      url = config.endpoint ?? config.productionUrl ?? result.url;
-      setRpcEndpoint(url);
-      setRpcServer(server);
-    }
-  }
+			// If an explicit endpoint was provided, use it; otherwise derive from the running server
+			url = config.endpoint ?? config.productionUrl ?? result.url;
+			setRpcEndpoint(url);
+			setRpcServer(server);
+		}
+	}
 
-  context.locals.rpcEndpoint = url;
-  return next();
+	context.locals.rpcEndpoint = url;
+	return next();
 });

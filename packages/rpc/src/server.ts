@@ -1,33 +1,33 @@
 import type { APIRoute } from "astro";
 import { DSON } from "defuss-dson";
 import type {
-  ApiNamespace,
-  DsonStreamFrame,
-  RpcApiClass,
-  RpcApiEntry,
-  RpcApiModule,
-  RpcCallDescriptor,
-  RpcMethodDescriptor,
-  RpcSchemaEntry,
-  ServerHook,
-  UploadHandlerEntry,
-  UploadHandlerFn,
-  UploadStreamHandlerFn,
-  UploadMeta,
-  UploadStreamFrame,
-  UploadProgressEvent,
+	ApiNamespace,
+	DsonStreamFrame,
+	RpcApiClass,
+	RpcApiEntry,
+	RpcApiModule,
+	RpcCallDescriptor,
+	RpcMethodDescriptor,
+	RpcSchemaEntry,
+	ServerHook,
+	UploadHandlerEntry,
+	UploadHandlerFn,
+	UploadStreamHandlerFn,
+	UploadMeta,
+	UploadStreamFrame,
+	UploadProgressEvent,
 } from "./types.d.js";
 import {
-  createSession,
-  getSession,
-  updateSession,
-  cleanupSession,
-  clearAllSessions,
-  ensureUploadDir,
-  emitProgress,
-  addProgressListener,
-  removeProgressListener,
-  getTempFileSize,
+	createSession,
+	getSession,
+	updateSession,
+	cleanupSession,
+	clearAllSessions,
+	ensureUploadDir,
+	emitProgress,
+	addProgressListener,
+	removeProgressListener,
+	getTempFileSize,
 } from "./upload-state.js";
 
 // re-export for type / code safety
@@ -55,22 +55,22 @@ const uploadHandlers: Map<string, UploadHandlerEntry> = new Map();
 const hooks: ServerHook[] = [];
 
 const parseRpcCallDescriptor = (serialized: string): RpcCallDescriptor => {
-  try {
-    return DSON.parse(serialized);
-  } catch (dsonError) {
-    try {
-      return JSON.parse(serialized) as RpcCallDescriptor;
-    } catch {
-      throw dsonError;
-    }
-  }
+	try {
+		return DSON.parse(serialized);
+	} catch (dsonError) {
+		try {
+			return JSON.parse(serialized) as RpcCallDescriptor;
+		} catch {
+			throw dsonError;
+		}
+	}
 };
 
 /**
  * Returns true if the entry is a class constructor, false if it's a plain object module.
  */
 function isRpcClass(entry: RpcApiEntry): entry is RpcApiClass {
-  return typeof entry === "function" && !!entry.prototype;
+	return typeof entry === "function" && !!entry.prototype;
 }
 
 /**
@@ -78,27 +78,27 @@ function isRpcClass(entry: RpcApiEntry): entry is RpcApiClass {
  * (excluding plain strings and arrays, which are iterable but not generators).
  */
 function isGeneratorResult(
-  value: unknown,
+	value: unknown,
 ): value is AsyncIterable<unknown> | Iterable<unknown> {
-  if (value == null || typeof value === "string" || Array.isArray(value))
-    return false;
-  return (
-    typeof (value as any)[Symbol.asyncIterator] === "function" ||
-    typeof (value as any)[Symbol.iterator] === "function"
-  );
+	if (value == null || typeof value === "string" || Array.isArray(value))
+		return false;
+	return (
+		typeof (value as any)[Symbol.asyncIterator] === "function" ||
+		typeof (value as any)[Symbol.iterator] === "function"
+	);
 }
 
 /**
  * Detect the constructor name to determine if a function is async, a generator, or both.
  */
 function describeFn(fn: Function): RpcMethodDescriptor {
-  const ctorName = fn.constructor?.name ?? "";
-  return {
-    async:
-      ctorName === "AsyncFunction" || ctorName === "AsyncGeneratorFunction",
-    generator:
-      ctorName === "GeneratorFunction" || ctorName === "AsyncGeneratorFunction",
-  };
+	const ctorName = fn.constructor?.name ?? "";
+	return {
+		async:
+			ctorName === "AsyncFunction" || ctorName === "AsyncGeneratorFunction",
+		generator:
+			ctorName === "GeneratorFunction" || ctorName === "AsyncGeneratorFunction",
+	};
 }
 
 /**
@@ -108,49 +108,61 @@ function describeFn(fn: Function): RpcMethodDescriptor {
  * Uses manual `.next()` loop (not `for await...of`) to capture the generator's return value.
  */
 function streamGeneratorResponse(
-  iter: AsyncIterator<unknown> | Iterator<unknown>,
+	iter: AsyncIterator<unknown> | Iterator<unknown>,
 ): Response {
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async pull(controller) {
-      try {
-        const { done, value } = await iter.next();
-        if (done) {
-          // Terminal return frame — value is the generator's return value
-          const frame: DsonStreamFrame = {
-            type: "return",
-            value: value ?? null,
-          };
-          controller.enqueue(encoder.encode(DSON.stringify(frame) + "\n"));
-          controller.close();
-        } else {
-          const frame: DsonStreamFrame = { type: "yield", value };
-          controller.enqueue(encoder.encode(DSON.stringify(frame) + "\n"));
-        }
-      } catch (error: unknown) {
-        const frame: DsonStreamFrame = {
-          type: "error",
-          error: {
-            message: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-          },
-        };
-        controller.enqueue(encoder.encode(DSON.stringify(frame) + "\n"));
-        controller.close();
-      }
-    },
-  });
+	const encoder = new TextEncoder();
+	const stream = new ReadableStream({
+		async pull(controller) {
+			try {
+				const { done, value } = await iter.next();
+				if (done) {
+					// Terminal return frame — value is the generator's return value
+					const frame: DsonStreamFrame = {
+						type: "return",
+						value: value ?? null,
+					};
+					controller.enqueue(encoder.encode(DSON.stringify(frame) + "\n"));
+					controller.close();
+				} else {
+					const frame: DsonStreamFrame = { type: "yield", value };
+					controller.enqueue(encoder.encode(DSON.stringify(frame) + "\n"));
+				}
+			} catch (error: unknown) {
+				const frame: DsonStreamFrame = {
+					type: "error",
+					error: {
+						message: error instanceof Error ? error.message : String(error),
+						stack: error instanceof Error ? error.stack : undefined,
+					},
+				};
+				controller.enqueue(encoder.encode(DSON.stringify(frame) + "\n"));
+				controller.close();
+			}
+		},
+	});
 
-  return new Response(stream, {
-    headers: { "Content-Type": "application/x-ndjson" },
-  });
+	return new Response(stream, {
+		headers: { "Content-Type": "application/x-ndjson" },
+	});
 }
 
 // ── Upload ID sanitizer ──────────────────────────────────────────────────────
 
 function sanitizeUploadId(raw: string): string {
-  const sanitized = raw.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 128);
-  return sanitized || "invalid";
+	const sanitized = raw.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 128);
+	return sanitized || "invalid";
+}
+
+function pipeDecompressedBody(
+	bodyStream: ReadableStream<Uint8Array>,
+	format: "gzip" | "deflate",
+): ReadableStream<Uint8Array> {
+	return bodyStream.pipeThrough(
+		new DecompressionStream(format) as unknown as ReadableWritablePair<
+			Uint8Array,
+			Uint8Array
+		>,
+	);
 }
 
 // ── Upload POST handler ──────────────────────────────────────────────────────
@@ -165,359 +177,355 @@ function sanitizeUploadId(raw: string): string {
  * Returns an NDJSON response with `received` and `result` (or `error`) frames.
  */
 async function handleUploadPost(request: Request): Promise<Response> {
-  const { createHash } = await import("node:crypto");
-  const { createWriteStream } = await import("node:fs");
-  const { readFile } = await import("node:fs/promises");
-  const { performance } = await import("node:perf_hooks");
+	const { createHash } = await import("node:crypto");
+	const { createWriteStream } = await import("node:fs");
+	const { readFile } = await import("node:fs/promises");
+	const { performance } = await import("node:perf_hooks");
 
-  const startedAt = performance.now();
+	const startedAt = performance.now();
 
-  const handlerName = request.headers.get("x-upload-handler") || "";
-  const uploadId = sanitizeUploadId(
-    request.headers.get("x-upload-id") || crypto.randomUUID(),
-  );
-  const originalSize = Number.parseInt(
-    request.headers.get("x-original-size") || "0",
-    10,
-  );
-  const offset = Number.parseInt(
-    request.headers.get("x-upload-offset") || "0",
-    10,
-  );
-  const contentEncoding = request.headers.get("content-encoding") || "identity";
+	const handlerName = request.headers.get("x-upload-handler") || "";
+	const uploadId = sanitizeUploadId(
+		request.headers.get("x-upload-id") || crypto.randomUUID(),
+	);
+	const originalSize = Number.parseInt(
+		request.headers.get("x-original-size") || "0",
+		10,
+	);
+	const offset = Number.parseInt(
+		request.headers.get("x-upload-offset") || "0",
+		10,
+	);
+	const contentEncoding = request.headers.get("content-encoding") || "identity";
 
-  // ── Validate handler ───────────────────────────────────────────────
-  const handlerEntry = uploadHandlers.get(handlerName);
-  if (!handlerEntry) {
-    return new Response(
-      JSON.stringify({ error: `Upload handler "${handlerName}" not found` }),
-      { status: 404, headers: { "Content-Type": "application/json" } },
-    );
-  }
+	// ── Validate handler ───────────────────────────────────────────────
+	const handlerEntry = uploadHandlers.get(handlerName);
+	if (!handlerEntry) {
+		return new Response(
+			JSON.stringify({ error: `Upload handler "${handlerName}" not found` }),
+			{ status: 404, headers: { "Content-Type": "application/json" } },
+		);
+	}
 
-  // ── Guard hooks ────────────────────────────────────────────────────
-  for (const hook of hooks.filter((h) => h.phase === "guard")) {
-    const allowed = await hook.fn(
-      "__upload__",
-      handlerName,
-      [originalSize],
-      request,
-    );
-    if (allowed === false) {
-      return new Response(JSON.stringify({ error: "Forbidden by hook" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-  }
+	// ── Guard hooks ────────────────────────────────────────────────────
+	for (const hook of hooks.filter((h) => h.phase === "guard")) {
+		const allowed = await hook.fn(
+			"__upload__",
+			handlerName,
+			[originalSize],
+			request,
+		);
+		if (allowed === false) {
+			return new Response(JSON.stringify({ error: "Forbidden by hook" }), {
+				status: 403,
+				headers: { "Content-Type": "application/json" },
+			});
+		}
+	}
 
-  // ── Session management (create or resume) ──────────────────────────
-  await ensureUploadDir();
+	// ── Session management (create or resume) ──────────────────────────
+	await ensureUploadDir();
 
-  let session = getSession(uploadId);
-  const isResume = offset > 0 && !!session;
+	let session = getSession(uploadId);
+	const isResume = offset > 0 && !!session;
 
-  if (isResume) {
-    // Validate offset matches what's on disk
-    const fileSize = await getTempFileSize(uploadId);
-    if (fileSize !== offset) {
-      return new Response(
-        JSON.stringify({
-          error: `Offset mismatch: client claims ${offset}, server has ${fileSize} bytes`,
-        }),
-        { status: 409, headers: { "Content-Type": "application/json" } },
-      );
-    }
-    updateSession(uploadId, { status: "uploading" });
-  } else {
-    session = createSession(uploadId, handlerName, originalSize);
-    if (offset > 0) {
-      // Offset > 0 but no existing session — can't resume what we don't have
-      return new Response(
-        JSON.stringify({ error: `No session found for uploadId "${uploadId}" to resume` }),
-        { status: 404, headers: { "Content-Type": "application/json" } },
-      );
-    }
-  }
-  session = session!;
+	if (isResume) {
+		// Validate offset matches what's on disk
+		const fileSize = await getTempFileSize(uploadId);
+		if (fileSize !== offset) {
+			return new Response(
+				JSON.stringify({
+					error: `Offset mismatch: client claims ${offset}, server has ${fileSize} bytes`,
+				}),
+				{ status: 409, headers: { "Content-Type": "application/json" } },
+			);
+		}
+		updateSession(uploadId, { status: "uploading" });
+	} else {
+		session = createSession(uploadId, handlerName, originalSize);
+		if (offset > 0) {
+			// Offset > 0 but no existing session — can't resume what we don't have
+			return new Response(
+				JSON.stringify({ error: `No session found for uploadId "${uploadId}" to resume` }),
+				{ status: 404, headers: { "Content-Type": "application/json" } },
+			);
+		}
+	}
+	session = session!;
 
-  // ── Set up hash + file write + progress ────────────────────────────
-  const sha256 = createHash("sha256");
-  const md5 = createHash("md5");
-  let bytesReceived = isResume ? offset : 0;
+	// ── Set up hash + file write + progress ────────────────────────────
+	const sha256 = createHash("sha256");
+	const md5 = createHash("md5");
+	let bytesReceived = isResume ? offset : 0;
 
-  // For streaming handlers on fresh uploads, we tee the body:
-  // one branch → disk + hash + progress, other → handler stream.
-  // For buffered handlers or resumed streaming: write to disk first.
-  const useDirectStreaming =
-    handlerEntry.mode === "streaming" && !isResume;
+	// For streaming handlers on fresh uploads, we tee the body:
+	// one branch → disk + hash + progress, other → handler stream.
+	// For buffered handlers or resumed streaming: write to disk first.
+	const useDirectStreaming =
+		handlerEntry.mode === "streaming" && !isResume;
 
-  // Readable stream for the handler (streaming mode, tee'd)
-  let handlerStreamController: ReadableStreamDefaultController<Uint8Array> | null = null;
-  let handlerStream: ReadableStream<Uint8Array> | null = null;
+	// Readable stream for the handler (streaming mode, tee'd)
+	let handlerStreamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+	let handlerStream: ReadableStream<Uint8Array> | null = null;
 
-  if (useDirectStreaming) {
-    handlerStream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        handlerStreamController = controller;
-      },
-    });
-  }
+	if (useDirectStreaming) {
+		handlerStream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				handlerStreamController = controller;
+			},
+		});
+	}
 
-  // Create or decompress the body stream
-  let bodyStream: ReadableStream<Uint8Array> | null = request.body;
-  if (!bodyStream) {
-    // No body — treat as empty upload
-    bodyStream = new ReadableStream({
-      start(controller) {
-        controller.close();
-      },
-    });
-  }
+	// Create or decompress the body stream
+	let bodyStream: ReadableStream<Uint8Array> | null = request.body;
+	if (!bodyStream) {
+		// No body — treat as empty upload
+		bodyStream = new ReadableStream({
+			start(controller) {
+				controller.close();
+			},
+		});
+	}
 
-  // Handle content-encoding decompression via DecompressionStream
-  if (contentEncoding === "gzip") {
-    bodyStream = bodyStream.pipeThrough(new DecompressionStream("gzip"));
-  } else if (contentEncoding === "deflate") {
-    bodyStream = bodyStream.pipeThrough(new DecompressionStream("deflate"));
-  }
+	// Handle content-encoding decompression via DecompressionStream
+	if (contentEncoding === "gzip") {
+		bodyStream = pipeDecompressedBody(bodyStream, "gzip");
+	} else if (contentEncoding === "deflate") {
+		bodyStream = pipeDecompressedBody(bodyStream, "deflate");
+	}
 
-  try {
-    // Open temp file for writing (append if resuming)
-    const fileWriteStream = createWriteStream(session.tempFilePath, {
-      flags: isResume ? "a" : "w",
-      highWaterMark: 1024 * 1024,
-    });
+	try {
+		// Open temp file for writing (append if resuming)
+		const fileWriteStream = createWriteStream(session.tempFilePath, {
+			flags: isResume ? "a" : "w",
+			highWaterMark: 1024 * 1024,
+		});
 
-    // Read the request body chunk-by-chunk
-    const reader = bodyStream.getReader();
+		// Read the request body chunk-by-chunk
+		const reader = bodyStream.getReader();
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
 
-      // Write to disk
-      await new Promise<void>((resolve, reject) => {
-        const ok = fileWriteStream.write(value, (err) =>
-          err ? reject(err) : undefined,
-        );
-        if (ok) {
-          resolve();
-        } else {
-          fileWriteStream.once("drain", resolve);
-        }
-      });
+			// Write to disk
+			await new Promise<void>((resolve, reject) => {
+				const ok = fileWriteStream.write(value, (err) =>
+					err ? reject(err) : undefined,
+				);
+				if (ok) {
+					resolve();
+				} else {
+					fileWriteStream.once("drain", resolve);
+				}
+			});
 
-      // Hash incrementally (only new bytes)
-      sha256.update(value);
-      md5.update(value);
+			// Hash incrementally (only new bytes)
+			sha256.update(value);
+			md5.update(value);
 
-      // Track progress
-      bytesReceived += value.byteLength;
-      updateSession(uploadId, { bytesReceived });
+			// Track progress
+			bytesReceived += value.byteLength;
+			updateSession(uploadId, { bytesReceived });
 
-      const percent =
-        originalSize > 0
-          ? Math.min(100, Math.round((bytesReceived / originalSize) * 100))
-          : 0;
-      emitProgress(uploadId, {
-        bytesReceived,
-        totalBytes: originalSize,
-        percent,
-      });
+			const percent =
+				originalSize > 0
+					? Math.min(100, Math.round((bytesReceived / originalSize) * 100))
+					: 0;
+			emitProgress(uploadId, {
+				bytesReceived,
+				totalBytes: originalSize,
+				percent,
+			});
 
-      // Feed the live handler stream (streaming mode, no resume)
-      if (handlerStreamController) {
-        handlerStreamController.enqueue(value);
-      }
-    }
+			// Feed the live handler stream (streaming mode, no resume)
+			handlerStreamController?.enqueue(value);
+		}
 
-    // Close the file write stream
-    await new Promise<void>((resolve, reject) => {
-      fileWriteStream.end(() => resolve());
-      fileWriteStream.on("error", reject);
-    });
+		// Close the file write stream
+		await new Promise<void>((resolve, reject) => {
+			fileWriteStream.end(() => resolve());
+			fileWriteStream.on("error", reject);
+		});
 
-    // Close the handler stream if tee'd
-    if (handlerStreamController) {
-      handlerStreamController.close();
-    }
+		// Close the handler stream if tee'd
+		handlerStreamController?.close();
 
-    // ── Hash computation ───────────────────────────────────────────
-    // For fresh uploads, the incremental hash covers the full content.
-    // For resumed uploads, we must hash the ENTIRE file from disk.
-    let sha256Hex: string;
-    let md5Hex: string;
+		// ── Hash computation ───────────────────────────────────────────
+		// For fresh uploads, the incremental hash covers the full content.
+		// For resumed uploads, we must hash the ENTIRE file from disk.
+		let sha256Hex: string;
+		let md5Hex: string;
 
-    if (isResume) {
-      const fullContent = await readFile(session.tempFilePath);
-      const fullSha256 = createHash("sha256").update(fullContent).digest("hex");
-      const fullMd5 = createHash("md5").update(fullContent).digest("hex");
-      sha256Hex = fullSha256;
-      md5Hex = fullMd5;
-      bytesReceived = fullContent.byteLength;
-    } else {
-      sha256Hex = sha256.digest("hex");
-      md5Hex = md5.digest("hex");
-    }
+		if (isResume) {
+			const fullContent = await readFile(session.tempFilePath);
+			const fullSha256 = createHash("sha256").update(fullContent).digest("hex");
+			const fullMd5 = createHash("md5").update(fullContent).digest("hex");
+			sha256Hex = fullSha256;
+			md5Hex = fullMd5;
+			bytesReceived = fullContent.byteLength;
+		} else {
+			sha256Hex = sha256.digest("hex");
+			md5Hex = md5.digest("hex");
+		}
 
-    const durationMs = Math.round((performance.now() - startedAt) * 100) / 100;
+		const durationMs = Math.round((performance.now() - startedAt) * 100) / 100;
 
-    // Mark session complete
-    updateSession(uploadId, { bytesReceived, status: "complete" });
+		// Mark session complete
+		updateSession(uploadId, { bytesReceived, status: "complete" });
 
-    // ── Build upload meta ──────────────────────────────────────────
-    const meta: UploadMeta = {
-      uploadId,
-      handlerName,
-      originalSize,
-      bytesReceived,
-      sha256: sha256Hex,
-      md5: md5Hex,
-      durationMs,
-      contentEncoding,
-      offset,
-    };
+		// ── Build upload meta ──────────────────────────────────────────
+		const meta: UploadMeta = {
+			uploadId,
+			handlerName,
+			originalSize,
+			bytesReceived,
+			sha256: sha256Hex,
+			md5: md5Hex,
+			durationMs,
+			contentEncoding,
+			offset,
+		};
 
-    // ── Call handler ───────────────────────────────────────────────
-    let handlerResult: unknown;
+		// ── Call handler ───────────────────────────────────────────────
+		let handlerResult: unknown;
 
-    try {
-      if (handlerEntry.mode === "buffered") {
-        const fullData = await readFile(session.tempFilePath);
-        handlerResult = await (handlerEntry.fn as UploadHandlerFn<unknown>)(
-          new Uint8Array(fullData.buffer, fullData.byteOffset, fullData.byteLength),
-          meta,
-        );
-      } else if (useDirectStreaming && handlerStream) {
-        // Handler already received the stream via tee — but we need to
-        // start the handler before the stream is consumed. For simplicity
-        // in this first implementation: re-read from disk for streaming too
-        // when we didn't tee (resume case). For direct streaming, the
-        // handlerStream was already fed above — invoke handler with it.
-        // Actually, we need to be careful: the handler might not have
-        // consumed the stream yet if it's lazy. We started feeding it above
-        // synchronously during read. If the handler awaits lazily, the
-        // ReadableStream buffered the chunks. That's fine.
-        //
-        // But wait — we already closed handlerStreamController above.
-        // We need to invoke the handler BEFORE consuming the body so it
-        // can read in parallel. Let's restructure for v2. For now, fall
-        // back to reading from disk for streaming handlers too.
-        const fullData = await readFile(session.tempFilePath);
-        const replayStream = new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.enqueue(
-              new Uint8Array(fullData.buffer, fullData.byteOffset, fullData.byteLength),
-            );
-            controller.close();
-          },
-        });
-        handlerResult = await (handlerEntry.fn as UploadStreamHandlerFn<unknown>)(
-          replayStream,
-          meta,
-        );
-      } else {
-        // Streaming handler on resume — replay the full temp file
-        const fullData = await readFile(session.tempFilePath);
-        const replayStream = new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.enqueue(
-              new Uint8Array(fullData.buffer, fullData.byteOffset, fullData.byteLength),
-            );
-            controller.close();
-          },
-        });
-        handlerResult = await (handlerEntry.fn as UploadStreamHandlerFn<unknown>)(
-          replayStream,
-          meta,
-        );
-      }
-    } catch (handlerError: unknown) {
-      updateSession(uploadId, { status: "error" });
+		try {
+			if (handlerEntry.mode === "buffered") {
+				const fullData = await readFile(session.tempFilePath);
+				handlerResult = await (handlerEntry.fn as UploadHandlerFn<unknown>)(
+					new Uint8Array(fullData.buffer, fullData.byteOffset, fullData.byteLength),
+					meta,
+				);
+			} else if (useDirectStreaming && handlerStream) {
+				// Handler already received the stream via tee — but we need to
+				// start the handler before the stream is consumed. For simplicity
+				// in this first implementation: re-read from disk for streaming too
+				// when we didn't tee (resume case). For direct streaming, the
+				// handlerStream was already fed above — invoke handler with it.
+				// Actually, we need to be careful: the handler might not have
+				// consumed the stream yet if it's lazy. We started feeding it above
+				// synchronously during read. If the handler awaits lazily, the
+				// ReadableStream buffered the chunks. That's fine.
+				//
+				// But wait — we already closed handlerStreamController above.
+				// We need to invoke the handler BEFORE consuming the body so it
+				// can read in parallel. Let's restructure for v2. For now, fall
+				// back to reading from disk for streaming handlers too.
+				const fullData = await readFile(session.tempFilePath);
+				const replayStream = new ReadableStream<Uint8Array>({
+					start(controller) {
+						controller.enqueue(
+							new Uint8Array(fullData.buffer, fullData.byteOffset, fullData.byteLength),
+						);
+						controller.close();
+					},
+				});
+				handlerResult = await (handlerEntry.fn as UploadStreamHandlerFn<unknown>)(
+					replayStream,
+					meta,
+				);
+			} else {
+				// Streaming handler on resume — replay the full temp file
+				const fullData = await readFile(session.tempFilePath);
+				const replayStream = new ReadableStream<Uint8Array>({
+					start(controller) {
+						controller.enqueue(
+							new Uint8Array(fullData.buffer, fullData.byteOffset, fullData.byteLength),
+						);
+						controller.close();
+					},
+				});
+				handlerResult = await (handlerEntry.fn as UploadStreamHandlerFn<unknown>)(
+					replayStream,
+					meta,
+				);
+			}
+		} catch (handlerError: unknown) {
+			updateSession(uploadId, { status: "error" });
 
-      const errFrame: UploadStreamFrame = {
-        type: "error",
-        error: {
-          message:
-            handlerError instanceof Error
-              ? handlerError.message
-              : String(handlerError),
-          stack:
-            handlerError instanceof Error ? handlerError.stack : undefined,
-        },
-      };
+			const errFrame: UploadStreamFrame = {
+				type: "error",
+				error: {
+					message:
+						handlerError instanceof Error
+							? handlerError.message
+							: String(handlerError),
+					stack:
+						handlerError instanceof Error ? handlerError.stack : undefined,
+				},
+			};
 
-      const ndjson =
-        JSON.stringify({
-          type: "received",
-          uploadId,
-          bytesReceived,
-          sha256: sha256Hex,
-          md5: md5Hex,
-          durationMs,
-        } satisfies UploadStreamFrame) +
-        "\n" +
-        JSON.stringify(errFrame) +
-        "\n";
+			const ndjson =
+				JSON.stringify({
+					type: "received",
+					uploadId,
+					bytesReceived,
+					sha256: sha256Hex,
+					md5: md5Hex,
+					durationMs,
+				} satisfies UploadStreamFrame) +
+				"\n" +
+				JSON.stringify(errFrame) +
+				"\n";
 
-      // Run result hooks even on error
-      for (const hook of hooks.filter((h) => h.phase === "result")) {
-        await hook.fn("__upload__", handlerName, [originalSize], request, undefined);
-      }
+			// Run result hooks even on error
+			for (const hook of hooks.filter((h) => h.phase === "result")) {
+				await hook.fn("__upload__", handlerName, [originalSize], request, undefined);
+			}
 
-      return new Response(ndjson, {
-        status: 200,
-        headers: { "Content-Type": "application/x-ndjson" },
-      });
-    }
+			return new Response(ndjson, {
+				status: 200,
+				headers: { "Content-Type": "application/x-ndjson" },
+			});
+		}
 
-    // ── Run result hooks ───────────────────────────────────────────
-    for (const hook of hooks.filter((h) => h.phase === "result")) {
-      await hook.fn(
-        "__upload__",
-        handlerName,
-        [originalSize],
-        request,
-        handlerResult,
-      );
-    }
+		// ── Run result hooks ───────────────────────────────────────────
+		for (const hook of hooks.filter((h) => h.phase === "result")) {
+			await hook.fn(
+				"__upload__",
+				handlerName,
+				[originalSize],
+				request,
+				handlerResult,
+			);
+		}
 
-    // ── Build NDJSON response ──────────────────────────────────────
-    const receivedFrame: UploadStreamFrame = {
-      type: "received",
-      uploadId,
-      bytesReceived,
-      sha256: sha256Hex,
-      md5: md5Hex,
-      durationMs,
-    };
+		// ── Build NDJSON response ──────────────────────────────────────
+		const receivedFrame: UploadStreamFrame = {
+			type: "received",
+			uploadId,
+			bytesReceived,
+			sha256: sha256Hex,
+			md5: md5Hex,
+			durationMs,
+		};
 
-    const resultFrame: UploadStreamFrame = {
-      type: "result",
-      value: handlerResult,
-    };
+		const resultFrame: UploadStreamFrame = {
+			type: "result",
+			value: handlerResult,
+		};
 
-    const ndjson =
-      DSON.stringify(receivedFrame) + "\n" + DSON.stringify(resultFrame) + "\n";
+		const ndjson =
+			DSON.stringify(receivedFrame) + "\n" + DSON.stringify(resultFrame) + "\n";
 
-    // Clean up temp file now that handler succeeded
-    await cleanupSession(uploadId);
+		// Clean up temp file now that handler succeeded
+		await cleanupSession(uploadId);
 
-    return new Response(ndjson, {
-      status: 201,
-      headers: { "Content-Type": "application/x-ndjson" },
-    });
-  } catch (error: unknown) {
-    updateSession(uploadId, { status: "error" });
+		return new Response(ndjson, {
+			status: 201,
+			headers: { "Content-Type": "application/x-ndjson" },
+		});
+	} catch (error: unknown) {
+		updateSession(uploadId, { status: "error" });
 
-    const message =
-      error instanceof Error ? error.message : "Unknown upload failure";
-    return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
-  }
+		const message =
+			error instanceof Error ? error.message : "Unknown upload failure";
+		return new Response(
+			JSON.stringify({ error: message }),
+			{ status: 500, headers: { "Content-Type": "application/json" } },
+		);
+	}
 }
 
 /**
@@ -527,7 +535,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
  * @param hook - The hook to add
  */
 export function addHook(hook: ServerHook) {
-  hooks.push(hook);
+	hooks.push(hook);
 }
 
 // ── Upload handler registration ──────────────────────────────────────────────
@@ -553,18 +561,18 @@ const HANDLER_NAME_RE = /^[a-zA-Z0-9._-]{1,128}$/;
  * ```
  */
 export function addUploadHandler<T = unknown>(
-  name: string,
-  handler: UploadHandlerFn<T>,
+	name: string,
+	handler: UploadHandlerFn<T>,
 ): void {
-  if (!HANDLER_NAME_RE.test(name)) {
-    throw new Error(
-      `Invalid upload handler name "${name}": must match ${HANDLER_NAME_RE}`,
-    );
-  }
-  uploadHandlers.set(name, {
-    fn: handler as UploadHandlerFn<unknown>,
-    mode: "buffered",
-  });
+	if (!HANDLER_NAME_RE.test(name)) {
+		throw new Error(
+			`Invalid upload handler name "${name}": must match ${HANDLER_NAME_RE}`,
+		);
+	}
+	uploadHandlers.set(name, {
+		fn: handler as UploadHandlerFn<unknown>,
+		mode: "buffered",
+	});
 }
 
 /**
@@ -593,18 +601,18 @@ export function addUploadHandler<T = unknown>(
  * ```
  */
 export function addStreamingUploadHandler<T = unknown>(
-  name: string,
-  handler: UploadStreamHandlerFn<T>,
+	name: string,
+	handler: UploadStreamHandlerFn<T>,
 ): void {
-  if (!HANDLER_NAME_RE.test(name)) {
-    throw new Error(
-      `Invalid upload handler name "${name}": must match ${HANDLER_NAME_RE}`,
-    );
-  }
-  uploadHandlers.set(name, {
-    fn: handler as UploadStreamHandlerFn<unknown>,
-    mode: "streaming",
-  });
+	if (!HANDLER_NAME_RE.test(name)) {
+		throw new Error(
+			`Invalid upload handler name "${name}": must match ${HANDLER_NAME_RE}`,
+		);
+	}
+	uploadHandlers.set(name, {
+		fn: handler as UploadStreamHandlerFn<unknown>,
+		mode: "streaming",
+	});
 }
 
 /**
@@ -612,7 +620,7 @@ export function addStreamingUploadHandler<T = unknown>(
  * Intended for **test isolation only**.
  */
 export function clearUploadHandlers(): void {
-  uploadHandlers.clear();
+	uploadHandlers.clear();
 }
 
 /**
@@ -632,18 +640,18 @@ export function clearUploadHandlers(): void {
  * createRpcServer({ UserApi, OrderApi, mathUtils });
  */
 export function createRpcServer(ns: ApiNamespace) {
-  // Clear existing entries if empty namespace is passed
-  if (Object.keys(ns).length === 0) {
-    rpcApiEntries.clear();
-    return;
-  }
+	// Clear existing entries if empty namespace is passed
+	if (Object.keys(ns).length === 0) {
+		rpcApiEntries.clear();
+		return;
+	}
 
-  if (rpcApiEntries.size > 0) {
-    return; // Prevent re-publishing the same namespace
-  }
-  for (const [name, entry] of Object.entries(ns)) {
-    rpcApiEntries.set(name, entry);
-  }
+	if (rpcApiEntries.size > 0) {
+		return; // Prevent re-publishing the same namespace
+	}
+	for (const [name, entry] of Object.entries(ns)) {
+		rpcApiEntries.set(name, entry);
+	}
 }
 
 /**
@@ -653,10 +661,10 @@ export function createRpcServer(ns: ApiNamespace) {
  * starts with a clean namespace registry and an empty hook list.
  */
 export async function clearRpcServer() {
-  rpcApiEntries.clear();
-  hooks.length = 0;
-  uploadHandlers.clear();
-  await clearAllSessions();
+	rpcApiEntries.clear();
+	hooks.length = 0;
+	uploadHandlers.clear();
+	await clearAllSessions();
 }
 
 /**
@@ -686,333 +694,333 @@ export async function clearRpcServer() {
  * - `500` — The method/function threw during execution.
  */
 export const rpcRoute: APIRoute = async ({ request }) => {
-  const url = new URL(request.url);
-  // Normalize trailing slashes so "/rpc/schema/" and "/rpc/schema" resolve identically.
-  const pathname = url.pathname.replace(/\/+$/, "");
+	const url = new URL(request.url);
+	// Normalize trailing slashes so "/rpc/schema/" and "/rpc/schema" resolve identically.
+	const pathname = url.pathname.replace(/\/+$/, "");
 
-  if (pathname.endsWith(RPC_SCHEMA_PATH)) {
-    // Return schema describing all registered classes and modules
-    const schemaEntries: RpcSchemaEntry[] = [];
+	if (pathname.endsWith(RPC_SCHEMA_PATH)) {
+		// Return schema describing all registered classes and modules
+		const schemaEntries: RpcSchemaEntry[] = [];
 
-    for (const [name, entry] of rpcApiEntries) {
-      if (isRpcClass(entry)) {
-        const desc = describeInstance(entry.prototype) as {
-          className: string;
-          methods: Record<string, RpcMethodDescriptor>;
-          properties: Record<string, unknown>;
-        };
-        schemaEntries.push({
-          kind: "class",
-          className: name,
-          methods: desc.methods,
-          properties: desc.properties,
-        });
-      } else {
-        schemaEntries.push(describeModule(name, entry));
-      }
-    }
+		for (const [name, entry] of rpcApiEntries) {
+			if (isRpcClass(entry)) {
+				const desc = describeInstance(entry.prototype) as {
+					className: string;
+					methods: Record<string, RpcMethodDescriptor>;
+					properties: Record<string, unknown>;
+				};
+				schemaEntries.push({
+					kind: "class",
+					className: name,
+					methods: desc.methods,
+					properties: desc.properties,
+				});
+			} else {
+				schemaEntries.push(describeModule(name, entry));
+			}
+		}
 
-    return new Response(JSON.stringify(schemaEntries), {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  }
+		return new Response(JSON.stringify(schemaEntries), {
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+	}
 
-  // ── Upload: SSE progress stream ──────────────────────────────────────────
-  // GET /rpc/upload/progress/{uploadId}
-  if (
-    request.method === "GET" &&
-    pathname.includes(RPC_UPLOAD_PROGRESS_PATH)
-  ) {
-    const uploadId = sanitizeUploadId(
-      pathname.slice(pathname.lastIndexOf(RPC_UPLOAD_PROGRESS_PATH) + RPC_UPLOAD_PROGRESS_PATH.length),
-    );
-    const session = getSession(uploadId);
+	// ── Upload: SSE progress stream ──────────────────────────────────────────
+	// GET /rpc/upload/progress/{uploadId}
+	if (
+		request.method === "GET" &&
+		pathname.includes(RPC_UPLOAD_PROGRESS_PATH)
+	) {
+		const uploadId = sanitizeUploadId(
+			pathname.slice(pathname.lastIndexOf(RPC_UPLOAD_PROGRESS_PATH) + RPC_UPLOAD_PROGRESS_PATH.length),
+		);
+		const session = getSession(uploadId);
 
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      start(controller) {
-        if (!session) {
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "error", error: "Unknown upload" })}\n\n`),
-          );
-          controller.close();
-          return;
-        }
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream({
+			start(controller) {
+				if (!session) {
+					controller.enqueue(
+						encoder.encode(`data: ${JSON.stringify({ type: "error", error: "Unknown upload" })}\n\n`),
+					);
+					controller.close();
+					return;
+				}
 
-        // If already complete, send final event immediately.
-        if (session.status === "complete") {
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "complete",
-                bytesReceived: session.bytesReceived,
-                totalBytes: session.originalSize,
-                percent: 100,
-              })}\n\n`,
-            ),
-          );
-          controller.close();
-          return;
-        }
+				// If already complete, send final event immediately.
+				if (session.status === "complete") {
+					controller.enqueue(
+						encoder.encode(
+							`data: ${JSON.stringify({
+								type: "complete",
+								bytesReceived: session.bytesReceived,
+								totalBytes: session.originalSize,
+								percent: 100,
+							})}\n\n`,
+						),
+					);
+					controller.close();
+					return;
+				}
 
-        const onProgress = (event: UploadProgressEvent) => {
-          try {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: "progress", ...event })}\n\n`,
-              ),
-            );
-          } catch {
-            // Controller closed
-            removeProgressListener(uploadId, onProgress);
-          }
-        };
+				const onProgress = (event: UploadProgressEvent) => {
+					try {
+						controller.enqueue(
+							encoder.encode(
+								`data: ${JSON.stringify({ type: "progress", ...event })}\n\n`,
+							),
+						);
+					} catch {
+						// Controller closed
+						removeProgressListener(uploadId, onProgress);
+					}
+				};
 
-        // Send current state immediately so the client doesn't start at 0.
-        if (session.bytesReceived > 0) {
-          onProgress({
-            bytesReceived: session.bytesReceived,
-            totalBytes: session.originalSize,
-            percent: Math.round((session.bytesReceived / session.originalSize) * 100),
-          });
-        }
+				// Send current state immediately so the client doesn't start at 0.
+				if (session.bytesReceived > 0) {
+					onProgress({
+						bytesReceived: session.bytesReceived,
+						totalBytes: session.originalSize,
+						percent: Math.round((session.bytesReceived / session.originalSize) * 100),
+					});
+				}
 
-        addProgressListener(uploadId, onProgress);
+				addProgressListener(uploadId, onProgress);
 
-        // We also need to listen for completion to close the stream.
-        // Poll the session status — listeners are removed when the session completes.
-        const pollInterval = setInterval(() => {
-          const s = getSession(uploadId);
-          if (!s || s.status === "complete" || s.status === "error") {
-            clearInterval(pollInterval);
-            removeProgressListener(uploadId, onProgress);
-            if (s && s.status === "complete") {
-              try {
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({
-                      type: "complete",
-                      bytesReceived: s.bytesReceived,
-                      totalBytes: s.originalSize,
-                      percent: 100,
-                    })}\n\n`,
-                  ),
-                );
-              } catch { /* closed */ }
-            }
-            try {
-              controller.close();
-            } catch { /* already closed */ }
-          }
-        }, 200);
-      },
-    });
+				// We also need to listen for completion to close the stream.
+				// Poll the session status — listeners are removed when the session completes.
+				const pollInterval = setInterval(() => {
+					const s = getSession(uploadId);
+					if (!s || s.status === "complete" || s.status === "error") {
+						clearInterval(pollInterval);
+						removeProgressListener(uploadId, onProgress);
+						if (s && s.status === "complete") {
+							try {
+								controller.enqueue(
+									encoder.encode(
+										`data: ${JSON.stringify({
+											type: "complete",
+											bytesReceived: s.bytesReceived,
+											totalBytes: s.originalSize,
+											percent: 100,
+										})}\n\n`,
+									),
+								);
+							} catch { /* closed */ }
+						}
+						try {
+							controller.close();
+						} catch { /* already closed */ }
+					}
+				}, 200);
+			},
+		});
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
-  }
+		return new Response(stream, {
+			headers: {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
+				Connection: "keep-alive",
+			},
+		});
+	}
 
-  // ── Upload: HEAD resume status ───────────────────────────────────────────
-  // HEAD /rpc/upload/{uploadId}
-  if (
-    request.method === "HEAD" &&
-    pathname.includes(RPC_UPLOAD_PATH + "/") &&
-    !pathname.includes("/progress/")
-  ) {
-    const uploadId = sanitizeUploadId(
-      pathname.slice(pathname.lastIndexOf(RPC_UPLOAD_PATH + "/") + RPC_UPLOAD_PATH.length + 1),
-    );
-    const session = getSession(uploadId);
+	// ── Upload: HEAD resume status ───────────────────────────────────────────
+	// HEAD /rpc/upload/{uploadId}
+	if (
+		request.method === "HEAD" &&
+		pathname.includes(RPC_UPLOAD_PATH + "/") &&
+		!pathname.includes("/progress/")
+	) {
+		const uploadId = sanitizeUploadId(
+			pathname.slice(pathname.lastIndexOf(RPC_UPLOAD_PATH + "/") + RPC_UPLOAD_PATH.length + 1),
+		);
+		const session = getSession(uploadId);
 
-    if (!session) {
-      return new Response(null, { status: 404 });
-    }
+		if (!session) {
+			return new Response(null, { status: 404 });
+		}
 
-    const fileSize = await getTempFileSize(uploadId);
-    return new Response(null, {
-      status: 200,
-      headers: {
-        "X-Upload-Offset": String(fileSize),
-        "X-Upload-Handler": session.handlerName,
-        "X-Original-Size": String(session.originalSize),
-        "X-Upload-Status": session.status,
-      },
-    });
-  }
+		const fileSize = await getTempFileSize(uploadId);
+		return new Response(null, {
+			status: 200,
+			headers: {
+				"X-Upload-Offset": String(fileSize),
+				"X-Upload-Handler": session.handlerName,
+				"X-Original-Size": String(session.originalSize),
+				"X-Upload-Status": session.status,
+			},
+		});
+	}
 
-  // ── Upload: POST body ────────────────────────────────────────────────────
-  // POST /rpc/upload
-  if (request.method === "POST" && pathname.endsWith(RPC_UPLOAD_PATH)) {
-    return handleUploadPost(request);
-  }
+	// ── Upload: POST body ────────────────────────────────────────────────────
+	// POST /rpc/upload
+	if (request.method === "POST" && pathname.endsWith(RPC_UPLOAD_PATH)) {
+		return handleUploadPost(request);
+	}
 
-  // Prefer DSON for lossless transport, but accept the older JSON envelope
-  // so legacy clients can still reach the current server implementation.
-  const callDescriptor = parseRpcCallDescriptor(await request.text());
-  const { className, methodName, args } = callDescriptor;
+	// Prefer DSON for lossless transport, but accept the older JSON envelope
+	// so legacy clients can still reach the current server implementation.
+	const callDescriptor = parseRpcCallDescriptor(await request.text());
+	const { className, methodName, args } = callDescriptor;
 
-  // Call "guard" hooks
-  for (const hook of hooks.filter((h) => h.phase === "guard")) {
-    const allowed = await hook.fn(className, methodName, args, request);
-    // Only an explicit `false` return blocks the call; `void`/`undefined` implicitly allows it.
-    if (allowed === false) {
-      console.error("[defuss-rpc] Forbidden by hook", {
-        className,
-        methodName,
-        args,
-        request,
-      });
-      return new Response(JSON.stringify({ error: "Forbidden by hook" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-  }
+	// Call "guard" hooks
+	for (const hook of hooks.filter((h) => h.phase === "guard")) {
+		const allowed = await hook.fn(className, methodName, args, request);
+		// Only an explicit `false` return blocks the call; `void`/`undefined` implicitly allows it.
+		if (allowed === false) {
+			console.error("[defuss-rpc] Forbidden by hook", {
+				className,
+				methodName,
+				args,
+				request,
+			});
+			return new Response(JSON.stringify({ error: "Forbidden by hook" }), {
+				status: 403,
+				headers: { "Content-Type": "application/json" },
+			});
+		}
+	}
 
-  const entry = rpcApiEntries.get(className);
-  if (!entry) {
-    console.error("[defuss-rpc] Namespace not found", {
-      className,
-      methodName,
-      args,
-      request,
-    });
-    return new Response(
-      JSON.stringify({ error: `Namespace ${className} not found` }),
-      { status: 404, headers: { "Content-Type": "application/json" } },
-    );
-  }
+	const entry = rpcApiEntries.get(className);
+	if (!entry) {
+		console.error("[defuss-rpc] Namespace not found", {
+			className,
+			methodName,
+			args,
+			request,
+		});
+		return new Response(
+			JSON.stringify({ error: `Namespace ${className} not found` }),
+			{ status: 404, headers: { "Content-Type": "application/json" } },
+		);
+	}
 
-  let result = null;
+	let result = null;
 
-  if (isRpcClass(entry)) {
-    // Class-based: instantiate and call
-    const instance = new entry() as Record<string, unknown>;
-    const method = instance[methodName];
-    if (typeof method !== "function") {
-      console.error("[defuss-rpc] Method not found", {
-        className,
-        methodName,
-        args,
-        request,
-      });
-      return new Response(
-        JSON.stringify({
-          error: `Method ${methodName} not found on class ${className}`,
-        }),
-        { status: 404, headers: { "Content-Type": "application/json" } },
-      );
-    }
-    try {
-      result = (method as (...args: unknown[]) => unknown).apply(
-        instance,
-        args,
-      );
-      // For non-generator async functions, await the result.
-      // For generators, we keep the raw iterator — don't await it.
-      if (!isGeneratorResult(result) && result instanceof Promise) {
-        result = await result;
-      }
-    } catch (error: unknown) {
-      console.error("[defuss-rpc] Error calling method", {
-        className,
-        methodName,
-        args,
-        request,
-        error,
-      });
-      return new Response(
-        JSON.stringify({
-          error: `Error calling method ${methodName}: ${error instanceof Error ? error.message : String(error)}`,
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
-      );
-    }
-  } else {
-    // Module-based: call function directly on the object
-    const fn = (entry as Record<string, unknown>)[methodName];
-    if (typeof fn !== "function") {
-      console.error("[defuss-rpc] Function not found", {
-        className,
-        methodName,
-        args,
-        request,
-      });
-      return new Response(
-        JSON.stringify({
-          error: `Function ${methodName} not found on module ${className}`,
-        }),
-        { status: 404, headers: { "Content-Type": "application/json" } },
-      );
-    }
-    try {
-      result = (fn as (...args: unknown[]) => unknown)(...args);
-      if (!isGeneratorResult(result) && result instanceof Promise) {
-        result = await result;
-      }
-    } catch (error: unknown) {
-      console.error("[defuss-rpc] Error calling function", {
-        className,
-        methodName,
-        args,
-        request,
-        error,
-      });
-      return new Response(
-        JSON.stringify({
-          error: `Error calling function ${methodName}: ${error instanceof Error ? error.message : String(error)}`,
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
-      );
-    }
-  }
+	if (isRpcClass(entry)) {
+		// Class-based: instantiate and call
+		const instance = new entry() as Record<string, unknown>;
+		const method = instance[methodName];
+		if (typeof method !== "function") {
+			console.error("[defuss-rpc] Method not found", {
+				className,
+				methodName,
+				args,
+				request,
+			});
+			return new Response(
+				JSON.stringify({
+					error: `Method ${methodName} not found on class ${className}`,
+				}),
+				{ status: 404, headers: { "Content-Type": "application/json" } },
+			);
+		}
+		try {
+			result = (method as (...args: unknown[]) => unknown).apply(
+				instance,
+				args,
+			);
+			// For non-generator async functions, await the result.
+			// For generators, we keep the raw iterator — don't await it.
+			if (!isGeneratorResult(result) && result instanceof Promise) {
+				result = await result;
+			}
+		} catch (error: unknown) {
+			console.error("[defuss-rpc] Error calling method", {
+				className,
+				methodName,
+				args,
+				request,
+				error,
+			});
+			return new Response(
+				JSON.stringify({
+					error: `Error calling method ${methodName}: ${error instanceof Error ? error.message : String(error)}`,
+				}),
+				{ status: 500, headers: { "Content-Type": "application/json" } },
+			);
+		}
+	} else {
+		// Module-based: call function directly on the object
+		const fn = (entry as Record<string, unknown>)[methodName];
+		if (typeof fn !== "function") {
+			console.error("[defuss-rpc] Function not found", {
+				className,
+				methodName,
+				args,
+				request,
+			});
+			return new Response(
+				JSON.stringify({
+					error: `Function ${methodName} not found on module ${className}`,
+				}),
+				{ status: 404, headers: { "Content-Type": "application/json" } },
+			);
+		}
+		try {
+			result = (fn as (...args: unknown[]) => unknown)(...args);
+			if (!isGeneratorResult(result) && result instanceof Promise) {
+				result = await result;
+			}
+		} catch (error: unknown) {
+			console.error("[defuss-rpc] Error calling function", {
+				className,
+				methodName,
+				args,
+				request,
+				error,
+			});
+			return new Response(
+				JSON.stringify({
+					error: `Error calling function ${methodName}: ${error instanceof Error ? error.message : String(error)}`,
+				}),
+				{ status: 500, headers: { "Content-Type": "application/json" } },
+			);
+		}
+	}
 
-  // Generator result → stream NDJSON frames
-  if (isGeneratorResult(result)) {
-    const iter =
-      Symbol.asyncIterator in (result as any)
-        ? (result as AsyncIterable<unknown>)[Symbol.asyncIterator]()
-        : (result as Iterable<unknown>)[Symbol.iterator]();
-    return streamGeneratorResponse(iter);
-  }
+	// Generator result → stream NDJSON frames
+	if (isGeneratorResult(result)) {
+		const iter =
+			Symbol.asyncIterator in (result as any)
+				? (result as AsyncIterable<unknown>)[Symbol.asyncIterator]()
+				: (result as Iterable<unknown>)[Symbol.iterator]();
+		return streamGeneratorResponse(iter);
+	}
 
-  // Call "result" hooks
-  for (const hook of hooks.filter((h) => h.phase === "result")) {
-    await hook.fn(className, methodName, args, request, result);
-  }
+	// Call "result" hooks
+	for (const hook of hooks.filter((h) => h.phase === "result")) {
+		await hook.fn(className, methodName, args, request, result);
+	}
 
-  return new Response(await DSON.stringify(result), {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+	return new Response(await DSON.stringify(result), {
+		headers: {
+			"Content-Type": "application/json",
+		},
+	});
 };
 
 /**
  * Describe a plain-object module's functions for the schema.
  */
 export function describeModule(
-  name: string,
-  obj: RpcApiModule,
+	name: string,
+	obj: RpcApiModule,
 ): RpcSchemaEntry {
-  const methods: Record<string, RpcMethodDescriptor> = {};
-  for (const key of Object.keys(obj)) {
-    if (typeof obj[key] === "function") {
-      methods[key] = describeFn(obj[key] as Function);
-    }
-  }
-  return {
-    kind: "module",
-    moduleName: name,
-    methods,
-  };
+	const methods: Record<string, RpcMethodDescriptor> = {};
+	for (const key of Object.keys(obj)) {
+		if (typeof obj[key] === "function") {
+			methods[key] = describeFn(obj[key] as Function);
+		}
+	}
+	return {
+		kind: "module",
+		moduleName: name,
+		methods,
+	};
 }
 
 /**
@@ -1025,46 +1033,46 @@ export function describeModule(
  *                Circular references are replaced with the sentinel string `"[Circular]"`.
  */
 export function describeInstance(
-  proto: unknown,
-  seen = new WeakSet(),
+	proto: unknown,
+	seen = new WeakSet(),
 ): unknown {
-  if (proto === null || typeof proto !== "object") return null;
-  if (seen.has(proto)) return "[Circular]";
-  seen.add(proto);
+	if (proto === null || typeof proto !== "object") return null;
+	if (seen.has(proto)) return "[Circular]";
+	seen.add(proto);
 
-  const cls =
-    ((proto as Record<string, unknown>).constructor as { name?: string })
-      ?.name || "Object";
-  const methods = Object.getOwnPropertyNames(proto)
-    .filter(
-      (name) =>
-        name !== "constructor" &&
-        typeof (proto as Record<string, unknown>)[name] === "function",
-    )
-    .reduce(
-      (acc, name) => {
-        const fn = (proto as Record<string, unknown>)[name] as Function;
-        acc[name] = describeFn(fn);
-        return acc;
-      },
-      {} as Record<string, RpcMethodDescriptor>,
-    );
+	const cls =
+		((proto as Record<string, unknown>).constructor as { name?: string })
+			?.name || "Object";
+	const methods = Object.getOwnPropertyNames(proto)
+		.filter(
+			(name) =>
+				name !== "constructor" &&
+				typeof (proto as Record<string, unknown>)[name] === "function",
+		)
+		.reduce(
+			(acc, name) => {
+				const fn = (proto as Record<string, unknown>)[name] as Function;
+				acc[name] = describeFn(fn);
+				return acc;
+			},
+			{} as Record<string, RpcMethodDescriptor>,
+		);
 
-  const properties = Object.keys(proto).reduce(
-    (acc, key) => {
-      const val = (proto as Record<string, unknown>)[key];
-      acc[key] =
-        typeof val === "object" && val !== null
-          ? describeInstance(val, seen)
-          : typeof val;
-      return acc;
-    },
-    {} as Record<string, unknown>,
-  );
+	const properties = Object.keys(proto).reduce(
+		(acc, key) => {
+			const val = (proto as Record<string, unknown>)[key];
+			acc[key] =
+				typeof val === "object" && val !== null
+					? describeInstance(val, seen)
+					: typeof val;
+			return acc;
+		},
+		{} as Record<string, unknown>,
+	);
 
-  return {
-    className: cls,
-    methods,
-    properties,
-  };
+	return {
+		className: cls,
+		methods,
+		properties,
+	};
 }

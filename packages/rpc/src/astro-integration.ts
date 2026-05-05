@@ -37,28 +37,28 @@ import { setRpcConfig, type RpcPluginOptions } from "./rpc-state.js";
  * ```
  */
 export function defussRpc(options: RpcPluginOptions): AstroIntegration {
-  return {
-    name: "defuss-rpc",
-    hooks: {
-      "astro:config:setup": ({ updateConfig, addMiddleware }) => {
-        // Save config so middleware can lazy-start in production
-        setRpcConfig(options);
+	return {
+		name: "defuss-rpc",
+		hooks: {
+			"astro:config:setup": ({ updateConfig, addMiddleware }) => {
+				// Save config so middleware can lazy-start in production
+				setRpcConfig(options);
 
-        // Add the Vite plugin (handles dev server startup + virtual module)
-        updateConfig({
-          vite: {
-            plugins: [defussRpcVitePlugin(options) as any],
-          },
-        });
+				// Add the Vite plugin (handles dev server startup + virtual module)
+				updateConfig({
+					vite: {
+						plugins: [defussRpcVitePlugin(options) as any],
+					},
+				});
 
-        // Inject middleware that populates Astro.locals.rpcEndpoint
-        addMiddleware({
-          order: "pre",
-          entrypoint: "defuss-rpc/astro-middleware.js",
-        });
-      },
-    },
-  };
+				// Inject middleware that populates Astro.locals.rpcEndpoint
+				addMiddleware({
+					order: "pre",
+					entrypoint: "defuss-rpc/astro-middleware.js",
+				});
+			},
+		},
+	};
 }
 
 export type { RpcPluginOptions };
