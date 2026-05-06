@@ -11,24 +11,24 @@ import tailwindcss from "@tailwindcss/vite";
 
 // https://astro.build/config
 export default defineConfig({
-  // add the defuss integration to Astro
-  integrations: [
-    defuss({
-      include: ["src/**/*.tsx"],
-    }),
-  ],
+	// add the defuss integration to Astro
+	integrations: [
+		defuss({
+			include: ["src/**/*.tsx"],
+		}),
+	],
 
-  vite: {
-    ssr: {
-      noExternal: ["astro"],
-    },
-    plugins: [
-      tailwindcss() as any,
-    ],
-  },
+	vite: {
+		ssr: {
+			noExternal: ["astro"],
+		},
+		plugins: [
+			tailwindcss() as any,
+		],
+	},
 
-  // the node adapter allows for server-side rendering and preview mode
-  adapter: node({
-    mode: "standalone",
-  }),
+	// the node adapter allows for server-side rendering and preview mode
+	adapter: node({
+		mode: "standalone",
+	}),
 });
