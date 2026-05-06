@@ -22,7 +22,8 @@
     "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun",
     "prebuild": "bun run clean",
     "build": "pkgroll",
-    "postbuild": "tsx ./scripts/finalize-build.ts"
+    "postbuild": "tsx ./scripts/finalize-build.ts",
+    "prepublishOnly": "bun run build"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
