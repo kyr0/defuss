@@ -60,40 +60,6 @@ export default defineConfig({
 
 **Note on Advanced Usage:** `defuss({ ... })` can be called with arguments to `include` and `exclude` files from the underlaying `babel` transpilation. Using the `babel` property, a specific `babel` configuration can be provided. Please find the `DefussPluginOptions` [here]().
 
-<h3 align="center">
-
-🚀 How does `defuss-astro` work?
-
-</h3>
-
-Inside this package, you'll find the following relevant folders and files:
-
-```text
-/
-├── scripts/finalize-build.ts
-├── src/index.ts
-├── src/types.ts
-├── src/render.ts
-├── src/client.ts
-├── src/server.ts
-├── tsconfig.json
-├── LICENSE
-├── package.json
-```
-
-The `src/index.ts` file is the "entry point" for our Astro Integration. Its default exported function is called in any `astro.config.(mjs|ts)` of any integrating Astro project *(see above)*.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command       | Action                                                                                                                                                                                                                           |
-| :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm build`    | Build a new version of the integration. |
-| `npm publish`    | Publish a new version of the `defuss-astro` integration package. |
-
----
-
 <img src="https://raw.githubusercontent.com/kyr0/defuss/refs/heads/main/assets/defuss_comic.png" />
 
 <caption><i><b>Come visit us on defuss island!</b></i></caption>
