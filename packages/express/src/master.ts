@@ -315,10 +315,12 @@ const connectToBackend = async (
 	});
 	upstream.once("close", () => {
 		benchDiagnostics.upstreamCloses += 1;
+		/* noisy; absolutely normal for every connection to close after request is done
 		logBench(
 			"upstream close",
 			`count=${benchDiagnostics.upstreamCloses} worker=${entry.workerIndex}:${entry.port}`,
 		);
+		*/
 		release();
 		client.destroy();
 	});
