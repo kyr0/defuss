@@ -1,6 +1,11 @@
 import mdx from "@mdx-js/rollup";
 import glob from "fast-glob";
-import { build as viteBuild, createServer, type PluginOption } from "vite";
+import {
+	build as viteBuild,
+	createServer,
+	mergeConfig,
+	type PluginOption,
+} from "vite";
 import defuss from "defuss-vite";
 
 import {
@@ -491,28 +496,33 @@ export const build = async ({
 	// -- Render pages to HTML -------------------------------------------
 	if (changeKind !== "asset" && changeKind !== "endpoint") {
 		timeDebug("[build] render-pages");
-		const pageModuleServer = await createServer({
-			root: config.tmp,
-			configFile: false,
-			appType: "custom",
-			logLevel: debug ? "info" : "error",
-			server: {
-				middlewareMode: true,
-			},
-			plugins: [
-				createContentModulePlugin({
-					projectDir,
-					pagesDir: config.pages,
-				}),
-				defuss({ enableJsxDevMode: true }),
-				mdx({
-					jsxImportSource: "defuss",
-					development: true,
-					remarkPlugins: config.remarkPlugins,
-					rehypePlugins: config.rehypePlugins,
-				}),
-			],
-		});
+		const pageModuleServer = await createServer(
+			mergeConfig(
+				{
+					root: config.tmp,
+					configFile: false,
+					appType: "custom",
+					logLevel: debug ? "info" : "error",
+					server: {
+						middlewareMode: true,
+					},
+					plugins: [
+						createContentModulePlugin({
+							projectDir,
+							pagesDir: config.pages,
+						}),
+						defuss({ enableJsxDevMode: true }),
+						mdx({
+							jsxImportSource: "defuss",
+							development: true,
+							remarkPlugins: config.remarkPlugins,
+							rehypePlugins: config.rehypePlugins,
+						}),
+					],
+				},
+				config.viteConfig ?? {},
+			),
+		);
 
 		try {
 			let inputFiles: string[];
@@ -691,28 +701,33 @@ export const build = async ({
 			...(await loadProjectTailwindVitePlugins(projectDir, debug)),
 		];
 
-		await viteBuild({
-			root: resolve(tmpComponentsDir),
-			configFile: false,
-			publicDir: false,
-			plugins: componentBuildPlugins,
-			build: {
-				lib: {
-					entry: componentEntries,
-					formats: ["es"],
-					fileName: (_format, entryName) => `${entryName}.js`,
-				},
-				target: "esnext",
-				outDir: resolve(tmpComponentOutDir),
-				emptyOutDir: false,
-				minify: false,
-				rollupOptions: {
-					output: {
-						chunkFileNames: "chunks/[name]-[hash].js",
+		await viteBuild(
+			mergeConfig(
+				{
+					root: resolve(tmpComponentsDir),
+					configFile: false,
+					publicDir: false,
+					plugins: componentBuildPlugins,
+					build: {
+						lib: {
+							entry: componentEntries,
+							formats: ["es"],
+							fileName: (_format, entryName) => `${entryName}.js`,
+						},
+						target: "esnext",
+						outDir: resolve(tmpComponentOutDir),
+						emptyOutDir: false,
+						minify: false,
+						rollupOptions: {
+							output: {
+								chunkFileNames: "chunks/[name]-[hash].js",
+							},
+						},
 					},
 				},
-			},
-		});
+				config.viteConfig ?? {},
+			),
+		);
 		await normalizeComponentStylesheets(tmpComponentOutDir);
 		timeEndDebug("[build] vite-components");
 	}

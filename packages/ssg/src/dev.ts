@@ -1,5 +1,5 @@
 import mdx from "@mdx-js/rollup";
-import { createServer } from "vite";
+import { createServer, mergeConfig } from "vite";
 import defuss from "defuss-vite";
 
 import type { DevOptions, Status } from "./types.js";
@@ -26,38 +26,43 @@ export const dev = async ({
 	// Read config early to pass MDX plugins to the main Vite server
 	const config = await readConfig(projectDir, debug);
 
-	const server = await createServer({
-		root: projectDir,
-		configFile: false,
-		appType: "custom",
-		server: {
-			host,
-			port,
-			watch: {
-				ignored: [
-					"**/node_modules/**",
-					"**/dist/**",
-					"**/.ssg-temp/**",
-					"**/.endpoints/**",
-					"**/.rpc/**",
+	const server = await createServer(
+		mergeConfig(
+			{
+				root: projectDir,
+				configFile: false,
+				appType: "custom",
+				server: {
+					host,
+					port,
+					watch: {
+						ignored: [
+							"**/node_modules/**",
+							"**/dist/**",
+							"**/.ssg-temp/**",
+							"**/.endpoints/**",
+							"**/.rpc/**",
+						],
+					},
+				},
+				plugins: [
+					defuss({ enableJsxDevMode: true }),
+					mdx({
+						jsxImportSource: "defuss",
+						development: true,
+						remarkPlugins: config.remarkPlugins,
+						rehypePlugins: config.rehypePlugins,
+					}),
+					...defussSsg({
+						projectDir,
+						debug,
+						writeDevOutput,
+					}),
 				],
 			},
-		},
-		plugins: [
-			defuss({ enableJsxDevMode: true }),
-			mdx({
-				jsxImportSource: "defuss",
-				development: true,
-				remarkPlugins: config.remarkPlugins,
-				rehypePlugins: config.rehypePlugins,
-			}),
-			...defussSsg({
-				projectDir,
-				debug,
-				writeDevOutput,
-			}),
-		],
-	});
+			config.viteConfig ?? {},
+		),
+	);
 
 	await server.listen(port);
 	server.printUrls();

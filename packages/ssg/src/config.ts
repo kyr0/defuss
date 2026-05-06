@@ -25,6 +25,34 @@ const defaultRemarkPlugins: RemarkPlugins = [
 
 const defaultRehypePlugins: RehypePlugins = [rehypeKatex, rehypeStringify];
 
+const resolveConfigPath = (projectDir: string): string | null => {
+	for (const candidate of ["config.ts", "config.js"]) {
+		const configPath = join(projectDir, candidate);
+		if (existsSync(configPath)) {
+			return configPath;
+		}
+	}
+
+	return null;
+};
+
+const applyConfigDefaults = (config: SsgConfig): SsgConfig => {
+	config.pages = config.pages || configDefaults.pages;
+	config.output = config.output || configDefaults.output;
+	config.components = config.components || configDefaults.components;
+	config.assets = config.assets || configDefaults.assets;
+	config.plugins = config.plugins || configDefaults.plugins;
+	config.tmp = config.tmp || configDefaults.tmp;
+	config.remarkPlugins = config.remarkPlugins || configDefaults.remarkPlugins;
+	config.rehypePlugins = config.rehypePlugins || configDefaults.rehypePlugins;
+	config.rpc = config.rpc ?? configDefaults.rpc;
+	config.containerRuntime =
+		config.containerRuntime ?? configDefaults.containerRuntime;
+	config.viteConfig = config.viteConfig ?? configDefaults.viteConfig;
+
+	return config;
+};
+
 type CompiledChunk = {
 	type: "chunk";
 	code: string;
@@ -69,10 +97,10 @@ export const readConfig = async (
 	debug: boolean,
 ): Promise<SsgConfig> => {
 	const resolvedProjectDir = resolve(projectDir);
-	const configPath = join(resolvedProjectDir, "config.ts");
+	const configPath = resolveConfigPath(resolvedProjectDir);
 	let config = {} as SsgConfig;
 
-	if (existsSync(configPath)) {
+	if (configPath) {
 		if (debug) {
 			console.log(`Using config from ${configPath}`);
 		}
@@ -86,18 +114,7 @@ export const readConfig = async (
 		config = module.default;
 	}
 
-	// apply meaningful defaults
-	config.pages = config.pages || configDefaults.pages;
-	config.output = config.output || configDefaults.output;
-	config.components = config.components || configDefaults.components;
-	config.assets = config.assets || configDefaults.assets;
-	config.plugins = config.plugins || configDefaults.plugins;
-	config.tmp = config.tmp || configDefaults.tmp;
-	config.remarkPlugins = config.remarkPlugins || configDefaults.remarkPlugins;
-	config.rehypePlugins = config.rehypePlugins || configDefaults.rehypePlugins;
-	config.rpc = config.rpc ?? configDefaults.rpc;
-
-	return config;
+	return applyConfigDefaults(config);
 };
 
 export const configDefaults: SsgConfig = {
@@ -110,4 +127,6 @@ export const configDefaults: SsgConfig = {
 	remarkPlugins: defaultRemarkPlugins,
 	rehypePlugins: defaultRehypePlugins,
 	rpc: true,
+	containerRuntime: undefined,
+	viteConfig: {},
 };

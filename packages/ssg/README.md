@@ -62,6 +62,7 @@ Minimal config:
 ```ts
 import { rehypePlugins, remarkPlugins, type SsgConfig } from "defuss-ssg";
 
+// all of the fields are optional; you can also skip the file itself!
 const config: SsgConfig = {
 	pages: "pages",
 	output: "dist",
@@ -72,10 +73,18 @@ const config: SsgConfig = {
 	remarkPlugins: [...remarkPlugins],
 	rehypePlugins: [...rehypePlugins],
 	rpc: true,
-};
+  // e.g. set defuss-ssg to use podman even if docker is available
+  containerRuntime: "docker",
+  // override Vite config
+	viteConfig: {
+    ...
+	},
+} satisfies SsgConfig;
 
 export default config;
 ```
+
+`containerRuntime` forces `docker` or `podman` for `docker-*` commands. `viteConfig` is merged into defuss-ssg's internal Vite config for both `dev` and `build`, so you can add aliases, plugins, server options, and similar Vite settings from `config.ts`.
 
 Example page:
 
@@ -96,8 +105,16 @@ This page uses MDX, frontmatter, and a defuss component.
 Example component:
 
 ```tsx
-export function Button({ label }: { label: string }) {
-	return <button type="button">{label}</button>;
+import type { Props } from "defuss";
+
+export interface ButtonProps extends Props {
+  label: string;
+}
+
+export function Button({ label }: ButtonProps) {
+	return (
+    <button type="button">{label}</button>
+  );
 }
 ```
 
@@ -123,70 +140,49 @@ defuss-ssg serve ./my-site
 
 ## Docker and Podman
 
-The container image uses Bun in the builder stage and ships a Node runtime image with Bun available for project setup at startup. Container usage still mirrors `bunx defuss-ssg <cli-args>`, but the container now runs the mounted project's own setup flow first: it reads that project's `package.json`, uses its declared package manager, installs that project's dependencies into the mounted project, and then runs `dev`, `build`, or `serve`.
-
-Build the image from this directory:
+The primary container workflow is built into the CLI:
 
 ```bash
-docker build -t defuss-ssg -f Dockerfile ../..
-podman build -t defuss-ssg -f Dockerfile ../..
+bunx defuss-ssg docker-dev ./my-site
+bunx defuss-ssg docker-build ./my-site
+bunx defuss-ssg docker-serve ./my-site --multicore
 ```
 
-Run a one-off build against a mounted site:
+When you are working from this monorepo before the next npm publish, use the built local CLI instead of `bunx defuss-ssg`. `bunx defuss-ssg` resolves the last published package, so it will not see unreleased `docker-*` commands from this checkout:
 
 ```bash
-docker run --rm -it \
-	-v "$PWD/../../example-ssg:/workspace" \
-	-v defuss-ssg-node-modules:/workspace/node_modules \
-	defuss-ssg build /workspace
+cd packages/ssg
+bun run build
+node ./dist/cli.mjs docker-dev ../../example-ssg --port 3111 --docker-args --network host
 ```
 
-Serve the built output with one published port:
+Each `docker-*` command writes a temporary Dockerfile, builds a local `defuss-ssg` image, mounts your project at `/workspace`, mounts a deterministic container-managed `/workspace/node_modules` volume, and then runs the matching inner `defuss-ssg` command. The mounted project still owns its dependency graph: the container reads that project's `package.json`, uses its declared package manager, installs the project's dependencies, and then starts `dev`, `build`, or `serve`.
+
+`docker-dev` and `docker-serve` automatically bind the inner service to `0.0.0.0` and publish the selected port. One published port is enough even with `--multicore`; `defuss-express` keeps worker ports internal and load-balances behind the public port.
+
+Runtime selection:
+
+- `docker` is preferred automatically when available
+- `podman` is used automatically when Docker is unavailable
+- Set `containerRuntime` in `config.ts` to force one runtime explicitly
+
+```ts
+export default {
+	containerRuntime: "podman",
+};
+```
+
+Outer container runtime arguments can be forwarded with `--docker-args`. Everything after that marker is appended to the outer `docker run` or `podman run` call, while the arguments before it still go to the inner `defuss-ssg` command:
 
 ```bash
-docker run --rm -it \
-	-p 3000:3000 \
-	-v "$PWD/../../example-ssg:/workspace" \
-	-v defuss-ssg-node-modules:/workspace/node_modules \
-	defuss-ssg serve /workspace --multicore --host 0.0.0.0 --port 3000
+bunx defuss-ssg docker-dev ./my-site --port 3000 --docker-args --network host
+bunx defuss-ssg docker-serve ./my-site --multicore --docker-args --env NODE_ENV=production
 ```
 
-Start dev mode with Vite HMR through the same public port:
-
-```bash
-docker run --rm -it \
-	-p 3000:3000 \
-	-v "$PWD/../../example-ssg:/workspace" \
-	-v defuss-ssg-node-modules:/workspace/node_modules \
-	defuss-ssg dev /workspace --host 0.0.0.0 --port 3000
-```
-
-To persist container-installed project dependencies between runs, add a container-managed volume for `node_modules`:
-
-```bash
-docker run --rm -it \
-	-p 3000:3000 \
-	-v "$PWD/../../example-ssg:/workspace" \
-	-v defuss-ssg-node-modules:/workspace/node_modules \
-	defuss-ssg dev /workspace --host 0.0.0.0 --port 3000
-```
-
-Replace `docker` with `podman` for the same commands.
-
-Notes:
-
-- The container runs the same `setup()` flow as local CLI usage and installs the mounted project's declared dependencies with its declared package manager.
-- Use a container-managed volume for `/workspace/node_modules` if you want install results to persist between container runs. Avoid bind-mounting a host `node_modules` directory across OS/architecture boundaries.
-- This keeps local non-container usage and container usage aligned: the project owns its dependency graph in both cases.
-- One published port is enough, even with `--multicore`. `defuss-express` keeps worker ports internal and load-balances behind the public port.
-- `compose.yml` provides `ssg` and `ssg-dev` services. Set `SSG_SITE=/abs/path/to/site` to override the default example mount.
-
-Compose examples:
-
-```bash
-docker compose up ssg
-docker compose --profile dev up ssg-dev
-```
+Good to know:
+- The container runs the same `setup()` flow as local CLI usage.
+- Use the generated container-managed `/workspace/node_modules` volume instead of bind-mounting host `node_modules` across OS or architecture boundaries.
+- For manual container management, a static, minimal Dockerfile is available as `Dockerfile` too.
 
 ## How It Works
 
@@ -301,9 +297,19 @@ When RPC is active, `defuss-ssg` exposes:
 - `POST /rpc`
 - `POST /rpc/schema`
 
-Set `rpc: false` in `config.ts` to disable RPC discovery.
+Set `rpc: false` in `config.ts` to disable RPC auto-discovery.
 
-## Plugins
+To use the RPC in your client components, import the generated client helper:
+
+```ts
+import { createRpcClient } from "defuss-ssg/rpc";
+
+const rpc = createRpcClient();
+const sum = await rpc.mathApi.add(2, 3);
+console.log(sum); // 5
+```
+
+## Custom MDX plugins
 
 `defuss-ssg` plugins run in build order and can modify the pipeline at distinct phases.
 
@@ -381,7 +387,7 @@ Most projects only need the main package export.
 ## CLI Reference
 
 ```bash
-defuss-ssg [dev|build|serve] [folder] [options]
+defuss-ssg [dev|build|serve|docker-dev|docker-build|docker-serve] [folder] [options]
 
 No args           -> dev .
 Single path       -> dev <path>
@@ -396,6 +402,9 @@ Commands:
 - `dev`: starts the Vite dev server on port `3000` by default
 - `build`: generates the static site into `dist/`
 - `serve`: serves the built output from `dist/`
+- `docker-dev`: builds the generated image, mounts the project, and starts `dev` inside Docker or Podman
+- `docker-build`: builds the generated image, mounts the project, and runs `build` inside Docker or Podman
+- `docker-serve`: builds the generated image, mounts the project, and runs `serve` inside Docker or Podman
 
 Flags:
 
@@ -404,6 +413,7 @@ Flags:
 - `--host` or `-H <host>`: override the dev or serve bind host
 - `--port` or `-p <port>`: override the dev or serve port
 - `--skip-setup` or `--no-setup`: skip project dependency installation for prepared environments and containers
+- `--docker-args <args...>`: forward everything after the marker to the outer `docker run` or `podman run` invocation used by `docker-*`
 
 ## Local Package Development
 

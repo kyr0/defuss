@@ -92,7 +92,7 @@ const getInstallCommand = (
 	if (pm === "bun") {
 		return {
 			cmd: "bun",
-			args: ["install", "--no-cache", "--linker", "isolated"],
+			args: ["install", "--no-cache"],
 			env: { ...process.env, BUN_WORKSPACE_ROOT: projectDir },
 		};
 	}

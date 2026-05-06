@@ -1,8 +1,10 @@
 import type { Options } from "@mdx-js/esbuild";
 import type { VNode } from "defuss/server";
+import type { InlineConfig } from "vite";
 
 export type RemarkPlugins = Options["remarkPlugins"];
 export type RehypePlugins = Options["rehypePlugins"];
+export type ContainerRuntime = "docker" | "podman";
 
 export type StatusCode =
 	| "OK"
@@ -338,4 +340,16 @@ export interface SsgConfig {
 	 * - `string`: path to a custom RPC file (relative to project root)
 	 */
 	rpc?: string | boolean;
+
+	/**
+	 * Optional override for containerized CLI commands.
+	 * When omitted, the CLI prefers Docker and falls back to Podman.
+	 */
+	containerRuntime?: ContainerRuntime;
+
+	/**
+	 * Optional Vite config merged into defuss-ssg's internal Vite config.
+	 * Use this to customize Vite behavior without replacing SSG defaults.
+	 */
+	viteConfig?: InlineConfig;
 }

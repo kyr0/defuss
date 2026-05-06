@@ -1,10 +1,11 @@
 import { build } from "./build.js";
+import { runContainerCommand } from "./container.js";
 import { dev } from "./dev.js";
 import { serve } from "./serve.js";
 import { resolve } from "node:path";
 import { setup } from "./setup.js";
 
-const usage = `Usage: defuss-ssg [dev|build|serve] [folder] [options]
+const usage = `Usage: defuss-ssg [dev|build|serve|docker-dev|docker-build|docker-serve] [folder] [options]
   No args           => dev .
   Single path       => dev <path>
   Single command    => <command> .
@@ -14,7 +15,8 @@ const usage = `Usage: defuss-ssg [dev|build|serve] [folder] [options]
     --multicore
     --port, -p <number>
     --host, -H <host>
-    --skip-setup`;
+		--skip-setup
+		--docker-args <args...>`;
 
 const isTruthy = (value?: string): boolean => {
 	if (!value) return false;
@@ -43,6 +45,12 @@ const parsePort = (value: string): number => {
 };
 
 const parseCliArgs = (args: string[]) => {
+	const dockerArgsIndex = args.indexOf("--docker-args");
+	const cliArgs =
+		dockerArgsIndex === -1 ? args : args.slice(0, dockerArgsIndex);
+	const dockerArgs =
+		dockerArgsIndex === -1 ? [] : args.slice(dockerArgsIndex + 1);
+
 	let debug = false;
 	let multicore = false;
 	let skipSetup =
@@ -51,8 +59,8 @@ const parseCliArgs = (args: string[]) => {
 	let host: string | undefined;
 	const positional: string[] = [];
 
-	for (let index = 0; index < args.length; index += 1) {
-		const arg = args[index];
+	for (let index = 0; index < cliArgs.length; index += 1) {
+		const arg = cliArgs[index];
 
 		if (arg === "--debug" || arg === "-d") {
 			debug = true;
@@ -99,6 +107,7 @@ const parseCliArgs = (args: string[]) => {
 
 	return {
 		debug,
+		dockerArgs,
 		multicore,
 		skipSetup,
 		port,
@@ -109,9 +118,22 @@ const parseCliArgs = (args: string[]) => {
 
 (async () => {
 	const args = process.argv.slice(2);
-	const commands = new Set(["dev", "build", "serve"]);
+	const commands = new Set([
+		"dev",
+		"build",
+		"serve",
+		"docker-dev",
+		"docker-build",
+		"docker-serve",
+	]);
+	const containerCommands = new Set([
+		"docker-dev",
+		"docker-build",
+		"docker-serve",
+	]);
 
 	let debug: boolean;
+	let dockerArgs: string[];
 	let multicore: boolean;
 	let skipSetup: boolean;
 	let port: number | undefined;
@@ -119,7 +141,8 @@ const parseCliArgs = (args: string[]) => {
 	let positional: string[];
 
 	try {
-		({ debug, multicore, skipSetup, port, host, positional } = parseCliArgs(args));
+		({ debug, dockerArgs, multicore, skipSetup, port, host, positional } =
+			parseCliArgs(args));
 	} catch (error) {
 		console.error(
 			`${error instanceof Error ? error.message : "Invalid CLI arguments"}\n${usage}`,
@@ -160,6 +183,28 @@ const parseCliArgs = (args: string[]) => {
 
 	const projectDir = resolve(folder);
 	const workerProcess = isDefussWorkerProcess();
+	const isContainerCommand = containerCommands.has(command);
+
+	if (!isContainerCommand && dockerArgs.length > 0) {
+		console.error(
+			`--docker-args can only be used with docker-dev, docker-build, or docker-serve.\n${usage}`,
+		);
+		process.exit(1);
+	}
+
+	if (isContainerCommand) {
+		await runContainerCommand({
+			command: command as "docker-dev" | "docker-build" | "docker-serve",
+			projectDir,
+			debug,
+			host,
+			port,
+			multicore,
+			skipSetup,
+			dockerArgs,
+		});
+		return;
+	}
 
 	if (skipSetup) {
 		if (!workerProcess) {
