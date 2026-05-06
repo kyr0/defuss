@@ -138,7 +138,16 @@ defuss-ssg serve ./my-site
 
 `serve` expects existing build output in `dist/`, so run `build` first.
 
-## Docker and Podman
+For checked-out, unpublished, or locally linked package development use e.g.:
+
+```bash
+node ./dist/cli.mjs dev ../../examples/with-dson/ --port 3010
+```
+
+
+## Production Deployment
+
+`defuss-ssg` supports `podman` and `docker` for production deployment.
 
 The primary container workflow is built into the CLI:
 

@@ -503,6 +503,9 @@ export const build = async ({
 					configFile: false,
 					appType: "custom",
 					logLevel: debug ? "info" : "error",
+					optimizeDeps: {
+						noDiscovery: true,
+					},
 					server: {
 						middlewareMode: true,
 					},

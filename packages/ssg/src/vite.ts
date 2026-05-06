@@ -68,6 +68,8 @@ const MIME_TYPES: Record<string, string> = {
 const HMR_CLIENT_MODULE_ID = "virtual:defuss-ssg/hmr-client";
 const HMR_CLIENT_RESOLVED_ID = "\0virtual:defuss-ssg/hmr-client";
 const HMR_CLIENT_CODE = `
+import { $ } from "defuss";
+
 if (import.meta.hot) {
 	const noticeId = "__defuss-ssg-dev-connection-notice";
 	const noticeStyleId = "__defuss-ssg-dev-connection-notice-style";
@@ -179,10 +181,170 @@ if (import.meta.hot) {
 		}
 	};
 
+	const waitForSuccessfulPing = async (socketUrl) => {
+		const pingUrl = new URL(socketUrl);
+		pingUrl.search = "";
+
+		const ping = async () => {
+			try {
+				const socket = new WebSocket(pingUrl.href, "vite-ping");
+				return await new Promise((resolve) => {
+					const onOpen = () => {
+						cleanup();
+						resolve(true);
+					};
+
+					const onError = () => {
+						cleanup();
+						resolve(false);
+					};
+
+					const cleanup = () => {
+						socket.removeEventListener("open", onOpen);
+						socket.removeEventListener("error", onError);
+						try {
+							socket.close();
+						} catch {
+							// Ignore close races while probing for restart.
+						}
+					};
+
+					socket.addEventListener("open", onOpen, { once: true });
+					socket.addEventListener("error", onError, { once: true });
+				});
+			} catch {
+				return false;
+			}
+		};
+
+		while (!(await ping())) {
+			await wait(1000);
+		}
+	};
+
+	const syncElementAttributes = (currentEl, nextEl) => {
+		const nextAttrNames = new Set(nextEl.getAttributeNames());
+
+		for (const attrName of currentEl.getAttributeNames()) {
+			if (!nextAttrNames.has(attrName)) {
+				currentEl.removeAttribute(attrName);
+			}
+		}
+
+		for (const attrName of nextAttrNames) {
+			const nextValue = nextEl.getAttribute(attrName);
+			if (nextValue === null) {
+				currentEl.removeAttribute(attrName);
+				continue;
+			}
+
+			if (currentEl.getAttribute(attrName) !== nextValue) {
+				currentEl.setAttribute(attrName, nextValue);
+			}
+		}
+	};
+
+	const updateHead = (doc) => {
+		const newTitle = doc.querySelector("title");
+		if (newTitle) {
+			document.title = newTitle.textContent || "";
+		}
+
+		const newMetas = doc.querySelectorAll("meta");
+		for (const meta of newMetas) {
+			const name = meta.getAttribute("name") || meta.getAttribute("property");
+			if (!name) {
+				continue;
+			}
+
+			const existing = document.querySelector(
+				'meta[name="' + name + '"], meta[property="' + name + '"]',
+			);
+			if (existing) {
+				existing.setAttribute("content", meta.getAttribute("content") || "");
+			} else {
+				document.head.appendChild(meta.cloneNode(true));
+			}
+		}
+
+		const newLinks = doc.querySelectorAll('link[rel="stylesheet"]');
+		for (const link of newLinks) {
+			const href = link.getAttribute("href");
+			if (href && !document.querySelector('link[href="' + href + '"]')) {
+				document.head.appendChild(link.cloneNode(true));
+			}
+		}
+	};
+
+	const hasMeaningfulChildNodes = (element) =>
+		Array.from(element.childNodes).some((node) => {
+			if (node.nodeType === Node.TEXT_NODE) {
+				return Boolean(node.textContent && node.textContent.trim());
+			}
+
+			return true;
+		});
+
+	const preserveClientRenderedRoots = (nextBody) => {
+		const nextRoots = nextBody.querySelectorAll("[id]");
+
+		for (const nextRoot of nextRoots) {
+			const id = nextRoot.getAttribute("id");
+			if (!id || hasMeaningfulChildNodes(nextRoot)) {
+				continue;
+			}
+
+			const currentRoot = document.getElementById(id);
+			if (!currentRoot || currentRoot.tagName !== nextRoot.tagName) {
+				continue;
+			}
+
+			if (!hasMeaningfulChildNodes(currentRoot)) {
+				continue;
+			}
+
+			nextRoot.innerHTML = currentRoot.innerHTML;
+		}
+	};
+
+	const softRefreshWithoutRuntime = async () => {
+		const requestUrl = new URL(window.location.href);
+		requestUrl.searchParams.set("__defuss_ssg_hmr", String(Date.now()));
+
+		const response = await fetch(requestUrl.toString(), {
+			cache: "no-store",
+			credentials: "same-origin",
+		});
+		const contentType = response.headers.get("content-type") || "";
+
+		if (!response.ok || !contentType.includes("text/html")) {
+			window.location.reload();
+			return;
+		}
+
+		const html = await response.text();
+		const doc = new DOMParser().parseFromString(html, "text/html");
+		if (!doc.documentElement || !doc.body) {
+			window.location.reload();
+			return;
+		}
+
+		const scrollX = window.scrollX;
+		const scrollY = window.scrollY;
+
+		syncElementAttributes(document.documentElement, doc.documentElement);
+		syncElementAttributes(document.body, doc.body);
+		updateHead(doc);
+		preserveClientRenderedRoots(doc.body);
+		await $(document.body).update(doc.body.innerHTML);
+		window.scrollTo(scrollX, scrollY);
+	};
+
 	const softRefreshCurrentPage = async (kind = "other") => {
 		const runtime = window.__defuss_ssg_runtime;
 
 		if (!runtime?.navigateTo) {
+			await softRefreshWithoutRuntime();
 			return;
 		}
 
@@ -344,17 +506,8 @@ if (import.meta.hot) {
 
 		state.reconnectPromise = (async () => {
 			closeFallbackSocket();
-			await openFallbackSocket(socketUrl);
-			hideDisconnectNotice();
-
-			try {
-				await softRefreshCurrentPage("other");
-			} catch (error) {
-				console.error(
-					"[defuss-ssg] failed to soft refresh after reconnect",
-					error,
-				);
-			}
+			await waitForSuccessfulPing(socketUrl);
+			window.location.reload();
 		})().finally(() => {
 			state.reconnectPromise = null;
 		});
@@ -377,14 +530,10 @@ if (import.meta.hot) {
 		showDisconnectNotice();
 
 		const state = getConnectionState();
-		const socketUrl = data?.webSocket?.url || state.reconnectUrl;
-		if (!socketUrl) {
-			return;
+		if (data?.webSocket?.url) {
+			state.reconnectUrl = data.webSocket.url;
 		}
-
-		state.reconnectUrl = socketUrl;
-		suppressViteDisconnectReload();
-		void startReconnect(socketUrl);
+		closeFallbackSocket();
 	};
 
 	const onConnect = (data) => {
@@ -399,7 +548,7 @@ if (import.meta.hot) {
 		}
 	};
 
-	const onReload = (data) => {
+	const onReload = async (data) => {
 		const runtime = window.__defuss_ssg_runtime;
 
 		if (data?.kind === "asset" && data?.assetExt === ".css") {
@@ -414,14 +563,11 @@ if (import.meta.hot) {
 		const pathMatch = currentNorm === eventNorm;
 
 		if (!data?.path || pathMatch) {
-			if (runtime?.navigateTo) {
-				runtime.pageCache?.clear();
-				runtime.bustCache = true;
-				runtime.navigateTo(window.location.pathname, true, {
-					preserveHydratedState: true,
-					kind: data?.kind,
-					componentSrc: data?.componentSrc,
-				});
+			try {
+				await softRefreshCurrentPage(data?.kind || "other");
+			} catch (error) {
+				console.error("[defuss-ssg] failed to soft refresh current page", error);
+				window.location.reload();
 			}
 		}
 	};
@@ -835,6 +981,7 @@ export function defussSsg(
 					}
 
 					lastSsgReloadSignatures.set(reloadKey, reloadSignature);
+					await rebuildOutput(existsSync(absoluteFile) ? absoluteFile : undefined);
 				})
 					.then(() => {
 						const currentPaths = resolveSsgPaths(projectDir, config);
