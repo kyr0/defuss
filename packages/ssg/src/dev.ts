@@ -1,9 +1,8 @@
 import mdx from "@mdx-js/rollup";
-import { createServer, mergeConfig } from "vite";
+import { createServer, type InlineConfig } from "vite";
 import defuss from "defuss-vite";
-
 import type { DevOptions, Status } from "./types.js";
-import { readConfig } from "./config.js";
+import { mergeUserViteConfig, readConfig } from "./config.js";
 import { validateProjectDir } from "./validation.js";
 import { defussSsg } from "./vite.js";
 
@@ -23,45 +22,46 @@ export const dev = async ({
 	const projectDirStatus = validateProjectDir(projectDir);
 	if (projectDirStatus.code !== "OK") return projectDirStatus;
 
-	// Read config early to pass MDX plugins to the main Vite server
-	const config = await readConfig(projectDir, debug);
-
-	const server = await createServer(
-		mergeConfig(
-			{
-				root: projectDir,
-				configFile: false,
-				appType: "custom",
-				server: {
-					host,
-					port,
-					watch: {
-						ignored: [
-							"**/node_modules/**",
-							"**/dist/**",
-							"**/.ssg-temp/**",
-							"**/.endpoints/**",
-							"**/.rpc/**",
-						],
-					},
-				},
-				plugins: [
-					defuss({ enableJsxDevMode: true }),
-					mdx({
-						jsxImportSource: "defuss",
-						development: true,
-						remarkPlugins: config.remarkPlugins,
-						rehypePlugins: config.rehypePlugins,
-					}),
-					...defussSsg({
-						projectDir,
-						debug,
-						writeDevOutput,
-					}),
+	// Resolve non-Vite settings first so the current Vite base can reflect them.
+	const initialConfig = await readConfig(projectDir, debug);
+	const currentViteConfig: InlineConfig = {
+		root: projectDir,
+		configFile: false,
+		appType: "custom",
+		server: {
+			host,
+			port,
+			watch: {
+				ignored: [
+					"**/node_modules/**",
+					"**/dist/**",
+					"**/.ssg-temp/**",
+					"**/.endpoints/**",
+					"**/.rpc/**",
 				],
 			},
-			config.viteConfig ?? {},
-		),
+		},
+		plugins: [
+			defuss({ enableJsxDevMode: true }),
+			mdx({
+				jsxImportSource: "defuss",
+				development: true,
+				remarkPlugins: initialConfig.remarkPlugins,
+				rehypePlugins: initialConfig.rehypePlugins,
+			}),
+			...defussSsg({
+				projectDir,
+				debug,
+				writeDevOutput,
+			}),
+		],
+	};
+	const config = await readConfig(projectDir, debug, {
+		currentViteConfig,
+	});
+
+	const server = await createServer(
+		mergeUserViteConfig(currentViteConfig, config.viteConfig),
 	);
 
 	await server.listen(port);

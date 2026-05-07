@@ -1,6 +1,6 @@
 {
   "name": "defuss-ssg",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -25,7 +25,7 @@
     "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun && rm -rf ./.container-runtime",
     "pretest": "bun run build",
     "prebuild": "bun run clean",
-    "build": "pkgroll",
+    "build": "pkgroll && node ./scripts/append-virtual-config-types.mjs",
     "prepare:container": "node ./scripts/prepare-container-runtime.mjs",
     "test:browser": "vitest run --config vitest.browser.config.ts --passWithNoTests",
     "cli-dev": "node ./dist/cli.mjs dev ../../example-ssg/",

@@ -42,6 +42,7 @@ type LiveReloadKind =
 
 type NavigateOptions = {
 	preserveHydratedState?: boolean;
+	preserveHydratedBoundaries?: boolean;
 	kind?: LiveReloadKind;
 	componentSrc?: string;
 };
@@ -705,6 +706,10 @@ const shouldPreserveHydratedBoundary = (
 		return false;
 	}
 
+	if (options.preserveHydratedBoundaries === false) {
+		return false;
+	}
+
 	if (options.kind === "component" && options.componentSrc) {
 		return boundary.getAttribute("data-hydrate-src") !== options.componentSrc;
 	}
@@ -1024,6 +1029,15 @@ export const navigateTo = async (
 		console.log(
 			`[navigateTo] url=${url} key=${key} replace=${replace} cached=${pageCache.has(key)}`,
 		);
+		console.log("[defuss-ssg] Morph refresh: navigateTo start", {
+			url,
+			replace,
+			kind: options.kind || "other",
+			preserveHydratedState: options.preserveHydratedState !== false,
+			preserveHydratedBoundaries:
+				options.preserveHydratedBoundaries !== false,
+			componentSrc: options.componentSrc || null,
+		});
 
 		// Fetch if not cached
 		if (!pageCache.has(key)) {
@@ -1082,11 +1096,26 @@ export const navigateTo = async (
 		console.log(
 			`[navigateTo] Morphing body content (new length=${bodyHtml.length})`,
 		);
+		console.log("[defuss-ssg] Morph refresh: DOM morph start", {
+			url,
+			bodyLength: bodyHtml.length,
+			kind: options.kind || "other",
+		});
 		await $(document.body).update(bodyHtml);
+		console.log("[defuss-ssg] Morph refresh: DOM morph complete", {
+			url,
+			bodyLength: bodyHtml.length,
+			kind: options.kind || "other",
+		});
 
 		// Trigger hydration for all wrappers in the new body
 		await triggerHydration(document.body);
 		restoreBoundaryStateSnapshots(boundaryStateSnapshots);
+		console.log("[defuss-ssg] Morph refresh: hydration restore complete", {
+			url,
+			kind: options.kind || "other",
+			boundarySnapshots: boundaryStateSnapshots.length,
+		});
 
 		// Update history
 		if (replace) {

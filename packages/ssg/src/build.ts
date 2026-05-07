@@ -3,7 +3,7 @@ import glob from "fast-glob";
 import {
 	build as viteBuild,
 	createServer,
-	mergeConfig,
+	type InlineConfig,
 	type PluginOption,
 } from "vite";
 import defuss from "defuss-vite";
@@ -37,7 +37,7 @@ import type {
 	Status,
 } from "./types.js";
 import { createContentModulePlugin } from "./content-vite.js";
-import { readConfig } from "./config.js";
+import { mergeUserViteConfig, readConfig } from "./config.js";
 import { applyAutoHydrate } from "./hydration.js";
 import {
 	getPageSourceRootDir,
@@ -496,34 +496,38 @@ export const build = async ({
 	// -- Render pages to HTML -------------------------------------------
 	if (changeKind !== "asset" && changeKind !== "endpoint") {
 		timeDebug("[build] render-pages");
+		const currentPageModuleViteConfig: InlineConfig = {
+			root: config.tmp,
+			configFile: false,
+			appType: "custom",
+			logLevel: debug ? "info" : "error",
+			optimizeDeps: {
+				noDiscovery: true,
+			},
+			server: {
+				middlewareMode: true,
+			},
+			plugins: [
+				createContentModulePlugin({
+					projectDir,
+					pagesDir: config.pages,
+				}),
+				defuss({ enableJsxDevMode: true }),
+				mdx({
+					jsxImportSource: "defuss",
+					development: true,
+					remarkPlugins: config.remarkPlugins,
+					rehypePlugins: config.rehypePlugins,
+				}),
+			],
+		};
+		const pageModuleConfig = await readConfig(projectDir, debug, {
+			currentViteConfig: currentPageModuleViteConfig,
+		});
 		const pageModuleServer = await createServer(
-			mergeConfig(
-				{
-					root: config.tmp,
-					configFile: false,
-					appType: "custom",
-					logLevel: debug ? "info" : "error",
-					optimizeDeps: {
-						noDiscovery: true,
-					},
-					server: {
-						middlewareMode: true,
-					},
-					plugins: [
-						createContentModulePlugin({
-							projectDir,
-							pagesDir: config.pages,
-						}),
-						defuss({ enableJsxDevMode: true }),
-						mdx({
-							jsxImportSource: "defuss",
-							development: true,
-							remarkPlugins: config.remarkPlugins,
-							rehypePlugins: config.rehypePlugins,
-						}),
-					],
-				},
-				config.viteConfig ?? {},
+			mergeUserViteConfig(
+				currentPageModuleViteConfig,
+				pageModuleConfig.viteConfig,
 			),
 		);
 
@@ -703,32 +707,36 @@ export const build = async ({
 			defuss(),
 			...(await loadProjectTailwindVitePlugins(projectDir, debug)),
 		];
-
-		await viteBuild(
-			mergeConfig(
-				{
-					root: resolve(tmpComponentsDir),
-					configFile: false,
-					publicDir: false,
-					plugins: componentBuildPlugins,
-					build: {
-						lib: {
-							entry: componentEntries,
-							formats: ["es"],
-							fileName: (_format, entryName) => `${entryName}.js`,
-						},
-						target: "esnext",
-						outDir: resolve(tmpComponentOutDir),
-						emptyOutDir: false,
-						minify: false,
-						rollupOptions: {
-							output: {
-								chunkFileNames: "chunks/[name]-[hash].js",
-							},
-						},
+		const currentComponentViteConfig: InlineConfig = {
+			root: resolve(tmpComponentsDir),
+			configFile: false,
+			publicDir: false,
+			plugins: componentBuildPlugins,
+			build: {
+				lib: {
+					entry: componentEntries,
+					formats: ["es"],
+					fileName: (_format: string, entryName: string) => `${entryName}.js`,
+				},
+				target: "esnext",
+				outDir: resolve(tmpComponentOutDir),
+				emptyOutDir: false,
+				minify: false,
+				rollupOptions: {
+					output: {
+						chunkFileNames: "chunks/[name]-[hash].js",
 					},
 				},
-				config.viteConfig ?? {},
+			},
+		};
+		const componentBuildConfig = await readConfig(projectDir, debug, {
+			currentViteConfig: currentComponentViteConfig,
+		});
+
+		await viteBuild(
+			mergeUserViteConfig(
+				currentComponentViteConfig,
+				componentBuildConfig.viteConfig,
 			),
 		);
 		await normalizeComponentStylesheets(tmpComponentOutDir);

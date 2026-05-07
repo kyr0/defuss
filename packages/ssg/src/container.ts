@@ -149,9 +149,9 @@ const runContainerRuntime = (
 	}
 };
 
-const hasPublishArgs = (dockerArgs: string[]): boolean => {
-	for (let index = 0; index < dockerArgs.length; index += 1) {
-		const arg = dockerArgs[index];
+const hasPublishArgs = (containerArgs: string[]): boolean => {
+	for (let index = 0; index < containerArgs.length; index += 1) {
+		const arg = containerArgs[index];
 		if (
 			arg === "-p" ||
 			arg === "-P" ||
@@ -167,7 +167,7 @@ const hasPublishArgs = (dockerArgs: string[]): boolean => {
 };
 
 const extractHostNetworkArgs = (
-	dockerArgs: string[],
+	containerArgs: string[],
 ): {
 	remainingArgs: string[];
 	hostNetworkRequested: boolean;
@@ -175,15 +175,15 @@ const extractHostNetworkArgs = (
 	const remainingArgs: string[] = [];
 	let hostNetworkRequested = false;
 
-	for (let index = 0; index < dockerArgs.length; index += 1) {
-		const arg = dockerArgs[index];
+	for (let index = 0; index < containerArgs.length; index += 1) {
+		const arg = containerArgs[index];
 
 		if (arg === "--net=host" || arg === "--network=host") {
 			hostNetworkRequested = true;
 			continue;
 		}
 
-		if ((arg === "--net" || arg === "--network") && dockerArgs[index + 1] === "host") {
+		if ((arg === "--net" || arg === "--network") && containerArgs[index + 1] === "host") {
 			hostNetworkRequested = true;
 			index += 1;
 			continue;
@@ -198,7 +198,7 @@ const extractHostNetworkArgs = (
 	};
 };
 
-export type ContainerCommand = "docker-dev" | "docker-build" | "docker-serve";
+export type ContainerCommand = "container-dev" | "container-build" | "container-serve";
 
 export interface RunContainerCommandOptions {
 	command: ContainerCommand;
@@ -208,7 +208,7 @@ export interface RunContainerCommandOptions {
 	port?: number;
 	multicore?: boolean;
 	skipSetup?: boolean;
-	dockerArgs: string[];
+	containerArgs: string[];
 }
 
 const getInnerCommand = (
@@ -222,7 +222,7 @@ const createInnerArgs = ({
 	port,
 	multicore,
 	skipSetup,
-}: Omit<RunContainerCommandOptions, "projectDir" | "dockerArgs">): {
+}: Omit<RunContainerCommandOptions, "projectDir" | "containerArgs">): {
 	innerArgs: string[];
 	selectedPort?: number;
 } => {
@@ -262,11 +262,11 @@ export const runContainerCommand = async ({
 	port,
 	multicore = false,
 	skipSetup = false,
-	dockerArgs,
+	containerArgs,
 }: RunContainerCommandOptions): Promise<void> => {
 	const resolvedProjectDir = resolve(projectDir);
 	const runtime = await resolveContainerRuntime(resolvedProjectDir, debug);
-	const { remainingArgs, hostNetworkRequested } = extractHostNetworkArgs(dockerArgs);
+	const { remainingArgs, hostNetworkRequested } = extractHostNetworkArgs(containerArgs);
 	const useHostNetwork = hostNetworkRequested && process.platform === "linux";
 	const tempDir = mkdtempSync(join(tmpdir(), "defuss-ssg-container-"));
 	const volumeName = getNodeModulesVolumeName(resolvedProjectDir);

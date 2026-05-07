@@ -5,7 +5,7 @@ import { serve } from "./serve.js";
 import { resolve } from "node:path";
 import { setup } from "./setup.js";
 
-const usage = `Usage: defuss-ssg [dev|build|serve|docker-dev|docker-build|docker-serve] [folder] [options]
+const usage = `Usage: defuss-ssg [dev|build|serve|container-dev|container-build|container-serve] [folder] [options]
   No args           => dev .
   Single path       => dev <path>
   Single command    => <command> .
@@ -16,7 +16,7 @@ const usage = `Usage: defuss-ssg [dev|build|serve|docker-dev|docker-build|docker
     --port, -p <number>
     --host, -H <host>
 		--skip-setup
-		--docker-args <args...>`;
+		--container-args <args...>`;
 
 const isTruthy = (value?: string): boolean => {
 	if (!value) return false;
@@ -45,11 +45,11 @@ const parsePort = (value: string): number => {
 };
 
 const parseCliArgs = (args: string[]) => {
-	const dockerArgsIndex = args.indexOf("--docker-args");
+	const containerArgsIndex = args.indexOf("--container-args");
 	const cliArgs =
-		dockerArgsIndex === -1 ? args : args.slice(0, dockerArgsIndex);
-	const dockerArgs =
-		dockerArgsIndex === -1 ? [] : args.slice(dockerArgsIndex + 1);
+		containerArgsIndex === -1 ? args : args.slice(0, containerArgsIndex);
+	const containerArgs =
+		containerArgsIndex === -1 ? [] : args.slice(containerArgsIndex + 1);
 
 	let debug = false;
 	let multicore = false;
@@ -107,7 +107,7 @@ const parseCliArgs = (args: string[]) => {
 
 	return {
 		debug,
-		dockerArgs,
+		containerArgs,
 		multicore,
 		skipSetup,
 		port,
@@ -122,18 +122,18 @@ const parseCliArgs = (args: string[]) => {
 		"dev",
 		"build",
 		"serve",
-		"docker-dev",
-		"docker-build",
-		"docker-serve",
+		"container-dev",
+		"container-build",
+		"container-serve",
 	]);
 	const containerCommands = new Set([
-		"docker-dev",
-		"docker-build",
-		"docker-serve",
+		"container-dev",
+		"container-build",
+		"container-serve",
 	]);
 
 	let debug: boolean;
-	let dockerArgs: string[];
+	let containerArgs: string[];
 	let multicore: boolean;
 	let skipSetup: boolean;
 	let port: number | undefined;
@@ -141,7 +141,7 @@ const parseCliArgs = (args: string[]) => {
 	let positional: string[];
 
 	try {
-		({ debug, dockerArgs, multicore, skipSetup, port, host, positional } =
+		({ debug, containerArgs, multicore, skipSetup, port, host, positional } =
 			parseCliArgs(args));
 	} catch (error) {
 		console.error(
@@ -185,23 +185,23 @@ const parseCliArgs = (args: string[]) => {
 	const workerProcess = isDefussWorkerProcess();
 	const isContainerCommand = containerCommands.has(command);
 
-	if (!isContainerCommand && dockerArgs.length > 0) {
+	if (!isContainerCommand && containerArgs.length > 0) {
 		console.error(
-			`--docker-args can only be used with docker-dev, docker-build, or docker-serve.\n${usage}`,
+			`--container-args can only be used with container-dev, container-build, or container-serve.\n${usage}`,
 		);
 		process.exit(1);
 	}
 
 	if (isContainerCommand) {
 		await runContainerCommand({
-			command: command as "docker-dev" | "docker-build" | "docker-serve",
+			command: command as "container-dev" | "container-build" | "container-serve",
 			projectDir,
 			debug,
 			host,
 			port,
 			multicore,
 			skipSetup,
-			dockerArgs,
+			containerArgs,
 		});
 		return;
 	}

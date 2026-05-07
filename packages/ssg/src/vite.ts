@@ -307,7 +307,127 @@ if (import.meta.hot) {
 		}
 	};
 
-	const softRefreshWithoutRuntime = async () => {
+	const isLocalBodyModuleScript = (script) => {
+		if (!(script instanceof HTMLScriptElement)) {
+			return false;
+		}
+
+		if (script.type !== "module") {
+			return false;
+		}
+
+		if (!script.src) {
+			return Boolean(script.textContent && script.textContent.trim());
+		}
+
+		try {
+			const url = new URL(
+				script.getAttribute("src") || script.src,
+				window.location.href,
+			);
+			return (
+				url.origin === window.location.origin &&
+				!url.pathname.startsWith("/@") &&
+				!url.pathname.startsWith("/__vite")
+			);
+		} catch {
+			return false;
+		}
+	};
+
+	const rerunLocalBodyModuleScripts = async () => {
+		const currentScripts = Array.from(
+			document.body.querySelectorAll('script[type="module"]'),
+		).filter((script) => isLocalBodyModuleScript(script));
+		const scriptCount = currentScripts.length;
+
+		console.log("[defuss-ssg] Morph refresh: rerunning body module scripts", {
+			count: scriptCount,
+			currentScripts: currentScripts.map((script) =>
+				script.getAttribute("src") || "<inline-module-script>",
+			),
+		});
+
+		if (scriptCount === 0) {
+			return;
+		}
+
+		const cacheBust = String(Date.now());
+		await Promise.all(
+			currentScripts.slice(0, scriptCount).map(
+				(currentScript, index) =>
+					new Promise((resolve) => {
+						const nextScript = document.createElement("script");
+
+						for (const attribute of currentScript.getAttributeNames()) {
+							if (attribute === "src") {
+								continue;
+							}
+							nextScript.setAttribute(
+								attribute,
+								currentScript.getAttribute(attribute) || "",
+							);
+						}
+
+						nextScript.type = "module";
+
+						if (currentScript.src) {
+							const url = new URL(
+								currentScript.getAttribute("src") || currentScript.src,
+								window.location.href,
+							);
+							url.searchParams.set(
+								"__defuss_ssg_hmr",
+								cacheBust + "-" + index,
+							);
+							nextScript.src = url.toString();
+							nextScript.addEventListener(
+								"load",
+								() => {
+									console.log(
+										"[defuss-ssg] Morph refresh: reran body module script",
+										{ src: nextScript.src },
+									);
+									resolve(undefined);
+								},
+								{ once: true },
+							);
+							nextScript.addEventListener(
+								"error",
+								() => {
+									console.error(
+										"[defuss-ssg] Morph refresh: failed to rerun body module script",
+										{ src: nextScript.src },
+									);
+									resolve(undefined);
+								},
+								{ once: true },
+							);
+						} else {
+							nextScript.textContent = currentScript.textContent || "";
+						}
+
+						currentScript.replaceWith(nextScript);
+
+						if (!currentScript.src) {
+							console.log(
+								"[defuss-ssg] Morph refresh: reran inline body module script",
+							);
+							resolve(undefined);
+						}
+					}),
+			),
+		);
+	};
+
+	const softRefreshWithoutRuntime = async (options = {}) => {
+		const rerunModuleScripts = options.rerunModuleScripts === true;
+
+		console.log("[defuss-ssg] Morph refresh: fallback DOM update start", {
+			url: window.location.pathname,
+			rerunModuleScripts,
+		});
+
 		const requestUrl = new URL(window.location.href);
 		requestUrl.searchParams.set("__defuss_ssg_hmr", String(Date.now()));
 
@@ -335,23 +455,60 @@ if (import.meta.hot) {
 		syncElementAttributes(document.documentElement, doc.documentElement);
 		syncElementAttributes(document.body, doc.body);
 		updateHead(doc);
-		preserveClientRenderedRoots(doc.body);
-		await $(document.body).update(doc.body.innerHTML);
+
+		if (rerunModuleScripts) {
+			document.body.innerHTML = doc.body.innerHTML;
+			console.log(
+				"[defuss-ssg] Morph refresh: reset fallback body shell for module rerun",
+				{ url: window.location.pathname },
+			);
+		} else {
+			preserveClientRenderedRoots(doc.body);
+			await $(document.body).update(doc.body.innerHTML);
+			console.log("[defuss-ssg] Morph refresh: fallback DOM update complete", {
+				url: window.location.pathname,
+				rerunModuleScripts,
+			});
+		}
+
+		if (rerunModuleScripts) {
+			await rerunLocalBodyModuleScripts();
+			console.log("[defuss-ssg] Morph refresh: fallback module rerun complete", {
+				url: window.location.pathname,
+				rerunModuleScripts,
+			});
+		}
+
 		window.scrollTo(scrollX, scrollY);
 	};
 
-	const softRefreshCurrentPage = async (kind = "other") => {
+	const softRefreshCurrentPage = async (kind = "other", options = {}) => {
 		const runtime = window.__defuss_ssg_runtime;
+		const preserveHydratedState =
+			options.preserveHydratedState !== false;
+		const preserveHydratedBoundaries =
+			options.preserveHydratedBoundaries !== false;
+		const rerunModuleScripts = options.rerunModuleScripts === true;
+
+		console.log("[defuss-ssg] Morph refresh: applying", {
+			url: window.location.pathname,
+			kind,
+			preserveHydratedState,
+			preserveHydratedBoundaries,
+			rerunModuleScripts,
+			hasRuntimeNavigate: Boolean(runtime?.navigateTo),
+		});
 
 		if (!runtime?.navigateTo) {
-			await softRefreshWithoutRuntime();
+			await softRefreshWithoutRuntime({ rerunModuleScripts });
 			return;
 		}
 
 		runtime.pageCache?.clear();
 		runtime.bustCache = true;
 		await runtime.navigateTo(window.location.pathname, true, {
-			preserveHydratedState: true,
+			preserveHydratedState,
+			preserveHydratedBoundaries,
 			kind,
 		});
 	};
@@ -550,6 +707,9 @@ if (import.meta.hot) {
 
 	const onReload = async (data) => {
 		const runtime = window.__defuss_ssg_runtime;
+		const preserveHydratedBoundaries =
+			data?.preserveHydratedBoundaries !== false;
+		const rerunModuleScripts = data?.rerunModuleScripts === true;
 
 		if (data?.kind === "asset" && data?.assetExt === ".css") {
 			if (runtime?.refreshLocalStylesheets?.()) {
@@ -562,14 +722,34 @@ if (import.meta.hot) {
 		const eventNorm = (path || "/").replace(/\\/$/, "") || "/";
 		const pathMatch = currentNorm === eventNorm;
 
+		console.log("[defuss-ssg] Morph refresh detected", {
+			kind: data?.kind || "other",
+			eventPath: path,
+			currentPath: window.location.pathname,
+			pathMatch,
+			preserveHydratedBoundaries,
+			rerunModuleScripts,
+			componentSrc: data?.componentSrc || null,
+			hasRuntimeNavigate: Boolean(runtime?.navigateTo),
+		});
+
 		if (!data?.path || pathMatch) {
 			try {
-				await softRefreshCurrentPage(data?.kind || "other");
+				await softRefreshCurrentPage(data?.kind || "other", {
+					preserveHydratedBoundaries,
+					rerunModuleScripts,
+				});
 			} catch (error) {
 				console.error("[defuss-ssg] failed to soft refresh current page", error);
 				window.location.reload();
 			}
+			return;
 		}
+
+		console.log("[defuss-ssg] Morph refresh ignored for non-current path", {
+			eventPath: path,
+			currentPath: window.location.pathname,
+		});
 	};
 
 	import.meta.hot.on("vite:ws:disconnect", onDisconnect);
@@ -649,6 +829,11 @@ const isPathInOrUnder = (filePath: string, dirPath: string): boolean => {
 
 const isRootIndexPageSource = (filePath: string): boolean =>
 	/^index(?:\.mdx?|\.html)?$/i.test(normalizePath(filePath));
+
+const isJsxComponentFile = (filePath: string): boolean => {
+	const extension = extname(filePath).toLowerCase();
+	return extension === ".tsx" || extension === ".jsx";
+};
 
 const getOutputCandidates = (pathname: string): string[] => {
 	if (pathname === "/") {
@@ -985,6 +1170,12 @@ export function defussSsg(
 				})
 					.then(() => {
 						const currentPaths = resolveSsgPaths(projectDir, config);
+						const preserveHydratedBoundaries = !(
+							kind === "dependency" && isJsxComponentFile(absoluteFile)
+						);
+						const rerunModuleScripts =
+							isJsxComponentFile(absoluteFile) &&
+							(kind === "component" || kind === "dependency");
 						sendCustomEvent(server, "defuss:ssg-reload", {
 							path:
 								!reloadCurrentPage &&
@@ -993,6 +1184,8 @@ export function defussSsg(
 									? filePathToRoute(absoluteFile, config, projectDir)
 									: undefined,
 							kind,
+							preserveHydratedBoundaries,
+							rerunModuleScripts,
 							componentSrc:
 								kind === "component"
 									? filePathToComponentPublicPath(
@@ -1599,6 +1792,9 @@ export function defussSsg(
 		},
 		async hotUpdate(ctx) {
 			const kind = classifyChangedFile(ctx.file, projectDir, config, rpcFile);
+			const isJsxSoftRefreshUpdate =
+				(kind === "component" || kind === "dependency") &&
+				isJsxComponentFile(ctx.file);
 			if (kind === "other") {
 				return;
 			}
@@ -1641,7 +1837,12 @@ export function defussSsg(
 
 				invalidateChangedFile(ctx.server, ctx.file, ctx.timestamp);
 				await scheduleSsgReload(ctx.server, ctx.file, kind);
-				return [];
+
+				if (isJsxSoftRefreshUpdate) {
+					return [];
+				}
+
+				return ctx.modules;
 			}
 
 			if (kind === "asset") {

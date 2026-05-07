@@ -86,6 +86,31 @@ export default config;
 
 `containerRuntime` forces `docker` or `podman` for `docker-*` commands. `viteConfig` is merged into defuss-ssg's internal Vite config for both `dev` and `build`, so you can add aliases, plugins, server options, and similar Vite settings from `config.ts`.
 
+If you need to extend the current defuss-ssg Vite config instead of only passing a patch object, import it from the virtual module and merge from there:
+
+```ts
+import { mergeConfig } from "vite";
+import { viteConfig as currentViteConfig } from "virtual:defuss-ssg/config";
+
+const config: SsgConfig = {
+	viteConfig: mergeConfig(currentViteConfig, {
+		resolve: {
+			alias: {
+				"@app": new URL("./src", import.meta.url).pathname,
+			},
+		},
+    server: {
+      // your custom domain, headers etc.
+      allowedHosts: ["example-ssg.demo.defuss.tech"],
+    },
+	}),
+};
+
+export default config;
+```
+
+The virtual module resolves to the current internal `defuss-ssg` Vite config, so you can also inspect or extend existing plugin arrays and nested Vite settings without re-creating them manually.
+
 Example page:
 
 ```mdx
@@ -152,9 +177,9 @@ node ./dist/cli.mjs dev ../../examples/with-dson/ --port 3010
 The primary container workflow is built into the CLI:
 
 ```bash
-bunx defuss-ssg docker-dev ./my-site
-bunx defuss-ssg docker-build ./my-site
-bunx defuss-ssg docker-serve ./my-site --multicore
+bunx defuss-ssg container-dev ./my-site
+bunx defuss-ssg container-build ./my-site
+bunx defuss-ssg container-serve ./my-site --multicore
 ```
 
 When you are working from this monorepo before the next npm publish, use the built local CLI instead of `bunx defuss-ssg`. `bunx defuss-ssg` resolves the last published package, so it will not see unreleased `docker-*` commands from this checkout:
@@ -162,12 +187,12 @@ When you are working from this monorepo before the next npm publish, use the bui
 ```bash
 cd packages/ssg
 bun run build
-node ./dist/cli.mjs docker-dev ../../example-ssg --port 3111 --docker-args --network host
+node ./dist/cli.mjs container-dev ../../example-ssg --port 3111 --container-args --network host
 ```
 
 Each `docker-*` command writes a temporary Dockerfile, builds a local `defuss-ssg` image, mounts your project at `/workspace`, mounts a deterministic container-managed `/workspace/node_modules` volume, and then runs the matching inner `defuss-ssg` command. The mounted project still owns its dependency graph: the container reads that project's `package.json`, uses its declared package manager, installs the project's dependencies, and then starts `dev`, `build`, or `serve`.
 
-`docker-dev` and `docker-serve` automatically bind the inner service to `0.0.0.0` and publish the selected port. One published port is enough even with `--multicore`; `defuss-express` keeps worker ports internal and load-balances behind the public port.
+`container-dev` and `container-serve` automatically bind the inner service to `0.0.0.0` and publish the selected port. One published port is enough even with `--multicore`; `defuss-express` keeps worker ports internal and load-balances behind the public port.
 
 Runtime selection:
 
@@ -181,11 +206,11 @@ export default {
 };
 ```
 
-Outer container runtime arguments can be forwarded with `--docker-args`. Everything after that marker is appended to the outer `docker run` or `podman run` call, while the arguments before it still go to the inner `defuss-ssg` command:
+Outer container runtime arguments can be forwarded with `--container-args`. Everything after that marker is appended to the outer `docker run` or `podman run` call, while the arguments before it still go to the inner `defuss-ssg` command:
 
 ```bash
-bunx defuss-ssg docker-dev ./my-site --port 3000 --docker-args --network host
-bunx defuss-ssg docker-serve ./my-site --multicore --docker-args --env NODE_ENV=production
+bunx defuss-ssg container-dev ./my-site --port 3000 --container-args --network host
+bunx defuss-ssg container-serve ./my-site --multicore --container-args --env NODE_ENV=production
 ```
 
 Good to know:
@@ -246,7 +271,7 @@ Notes:
 - `cwd` defaults to the current working directory for the direct helper.
 - The virtual module binds `cwd` and `pages` to the active SSG project automatically.
 - `route` is only derived for files inside the configured `pages` directory.
-- v1 returns metadata records only; it does not eagerly execute every matched MDX module.
+- Returns metadata records only; it does not eagerly execute every matched MDX module.
 
 ## Endpoints
 
@@ -396,7 +421,7 @@ Most projects only need the main package export.
 ## CLI Reference
 
 ```bash
-defuss-ssg [dev|build|serve|docker-dev|docker-build|docker-serve] [folder] [options]
+defuss-ssg [dev|build|serve|container-dev|container-build|container-serve] [folder] [options]
 
 No args           -> dev .
 Single path       -> dev <path>
@@ -411,9 +436,9 @@ Commands:
 - `dev`: starts the Vite dev server on port `3000` by default
 - `build`: generates the static site into `dist/`
 - `serve`: serves the built output from `dist/`
-- `docker-dev`: builds the generated image, mounts the project, and starts `dev` inside Docker or Podman
-- `docker-build`: builds the generated image, mounts the project, and runs `build` inside Docker or Podman
-- `docker-serve`: builds the generated image, mounts the project, and runs `serve` inside Docker or Podman
+- `container-dev`: builds the generated image, mounts the project, and starts `dev` inside Docker or Podman
+- `container-build`: builds the generated image, mounts the project, and runs `build` inside Docker or Podman
+- `container-serve`: builds the generated image, mounts the project, and runs `serve` inside Docker or Podman
 
 Flags:
 
@@ -422,7 +447,7 @@ Flags:
 - `--host` or `-H <host>`: override the dev or serve bind host
 - `--port` or `-p <port>`: override the dev or serve port
 - `--skip-setup` or `--no-setup`: skip project dependency installation for prepared environments and containers
-- `--docker-args <args...>`: forward everything after the marker to the outer `docker run` or `podman run` invocation used by `docker-*`
+- `--container-args <args...>`: forward everything after the marker to the outer `docker run` or `podman run` invocation used by `docker-*`
 
 ## Local Package Development
 
