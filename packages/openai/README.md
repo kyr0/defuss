@@ -23,7 +23,7 @@ A tiny OpenAI client built directly on top of the standard `fetch()` API.
 ## Install
 
 ```bash
-npm install defuss-openai
+bunx add defuss-openai
 ```
 
 Requires a runtime with native `fetch`, `ReadableStream`, `AbortController`, and `TextDecoder`.
@@ -65,7 +65,7 @@ for await (const chunk of stream) {
 
 ```ts
 const response = await openai.createSpeech({
-  model: 'gpt-4o-mini-tts',
+  model: 'gpt-5-mini-tts',
   voice: 'alloy',
   input: 'hello from a tiny client',
 });
@@ -77,7 +77,7 @@ Or stream it:
 
 ```ts
 const stream = await openai.createSpeechStream({
-  model: 'gpt-4o-mini-tts',
+  model: 'gpt-5-mini-tts',
   voice: 'alloy',
   input: 'hello from a tiny client',
 });

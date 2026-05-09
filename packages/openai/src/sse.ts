@@ -15,83 +15,83 @@
  *   Defaults to identity cast.
  */
 export const createSSEStream = <T>(
-  source: ReadableStream<Uint8Array>,
-  map: (event: unknown) => T = (event) => event as T
+	source: ReadableStream<Uint8Array>,
+	map: (event: unknown) => T = (event) => event as T
 ): ReadableStream<T> => {
-  const reader = source.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
+	const reader = source.getReader();
+	const decoder = new TextDecoder();
+	let buffer = '';
 
-  /**
-   * Scans the buffer for complete SSE events (separated by `\n\n`).
-   *
-   * Normal mode (`flushTail=false`): retains the last segment as it may be
-   * incomplete. EOF mode (`flushTail=true`): consumes everything including
-   * any trailing partial event. Returns `true` when `[DONE]` closes the stream.
-   */
-  const flushEvents = (
-    controller: ReadableStreamDefaultController<T>,
-    flushTail = false
-  ) => {
-    const normalized = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const parts = normalized.split('\n\n');
+	/**
+	 * Scans the buffer for complete SSE events (separated by `\n\n`).
+	 *
+	 * Normal mode (`flushTail=false`): retains the last segment as it may be
+	 * incomplete. EOF mode (`flushTail=true`): consumes everything including
+	 * any trailing partial event. Returns `true` when `[DONE]` closes the stream.
+	 */
+	const flushEvents = (
+		controller: ReadableStreamDefaultController<T>,
+		flushTail = false
+	) => {
+		const normalized = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+		const parts = normalized.split('\n\n');
 
-    if (!flushTail) {
-      buffer = parts.pop() ?? '';
-    } else {
-      buffer = '';
-    }
+		if (!flushTail) {
+			buffer = parts.pop() ?? '';
+		} else {
+			buffer = '';
+		}
 
-    for (const rawEvent of flushTail ? parts : parts) {
-      const data = parseSSEEvent(rawEvent);
-      if (data == null || data.length === 0) continue;
-      if (data === '[DONE]') {
-        controller.close();
-        void reader.cancel();
-        return true;
-      }
-      controller.enqueue(map(JSON.parse(data)));
-    }
+		for (const rawEvent of flushTail ? parts : parts) {
+			const data = parseSSEEvent(rawEvent);
+			if (data == null || data.length === 0) continue;
+			if (data === '[DONE]') {
+				controller.close();
+				void reader.cancel();
+				return true;
+			}
+			controller.enqueue(map(JSON.parse(data)));
+		}
 
-    if (flushTail) {
-      const tail = parseSSEEvent(buffer);
-      if (tail && tail !== '[DONE]') {
-        controller.enqueue(map(JSON.parse(tail)));
-      }
-      if (tail === '[DONE]') {
-        controller.close();
-        void reader.cancel();
-        return true;
-      }
-    }
+		if (flushTail) {
+			const tail = parseSSEEvent(buffer);
+			if (tail && tail !== '[DONE]') {
+				controller.enqueue(map(JSON.parse(tail)));
+			}
+			if (tail === '[DONE]') {
+				controller.close();
+				void reader.cancel();
+				return true;
+			}
+		}
 
-    return false;
-  };
+		return false;
+	};
 
-  return new ReadableStream<T>({
-    async start(controller) {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const closed = flushEvents(controller);
-          if (closed) return;
-        }
+	return new ReadableStream<T>({
+		async start(controller) {
+			try {
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					buffer += decoder.decode(value, { stream: true });
+					const closed = flushEvents(controller);
+					if (closed) return;
+				}
 
-        buffer += decoder.decode();
-        const closed = flushEvents(controller, true);
-        if (!closed) controller.close();
-      } catch (error) {
-        controller.error(error);
-      } finally {
-        reader.releaseLock();
-      }
-    },
-    async cancel(reason) {
-      await reader.cancel(reason);
-    },
-  });
+				buffer += decoder.decode();
+				const closed = flushEvents(controller, true);
+				if (!closed) controller.close();
+			} catch (error) {
+				controller.error(error);
+			} finally {
+				reader.releaseLock();
+			}
+		},
+		async cancel(reason) {
+			await reader.cancel(reason);
+		},
+	});
 };
 
 /**
@@ -103,20 +103,20 @@ export const createSSEStream = <T>(
  * @returns The joined data string, or `undefined` if no data lines exist.
  */
 const parseSSEEvent = (rawEvent: string): string | undefined => {
-  const lines = rawEvent.split('\n');
-  const data: string[] = [];
+	const lines = rawEvent.split('\n');
+	const data: string[] = [];
 
-  for (const line of lines) {
-    if (!line || line.startsWith(':')) continue;
+	for (const line of lines) {
+		if (!line || line.startsWith(':')) continue;
 
-    const separatorIndex = line.indexOf(':');
-    const field = separatorIndex === -1 ? line : line.slice(0, separatorIndex);
-    let value = separatorIndex === -1 ? '' : line.slice(separatorIndex + 1);
+		const separatorIndex = line.indexOf(':');
+		const field = separatorIndex === -1 ? line : line.slice(0, separatorIndex);
+		let value = separatorIndex === -1 ? '' : line.slice(separatorIndex + 1);
 
-    if (value.startsWith(' ')) value = value.slice(1);
-    if (field === 'data') data.push(value);
-  }
+		if (value.startsWith(' ')) value = value.slice(1);
+		if (field === 'data') data.push(value);
+	}
 
-  if (data.length === 0) return undefined;
-  return data.join('\n');
+	if (data.length === 0) return undefined;
+	return data.join('\n');
 };

@@ -1,0 +1,17 @@
+# defuss-openai e2e test configuration
+# OPENAI_MODEL is used by tests, MLX_MODEL is used by the server
+# Both can be a HuggingFace path OR a local filesystem path
+
+OPENAI_BASE_URL=http://127.0.0.1:8430/v1
+OPENAI_MODEL=kyr0/zaya1-base-8b-4bit-MLX
+
+# MLX LM Server configuration (used by scripts/start.sh and Makefile)
+# --model accepts HuggingFace paths or local directory paths
+MLX_MODEL=kyr0/zaya1-base-8b-4bit-MLX
+MLX_HOST=127.0.0.1
+MLX_PORT=8430
+MLX_TEMP=0.0
+MLX_TOP_P=1.0
+MLX_MAX_TOKENS=8192
+MLX_PREFILL_STEP_SIZE=512
+MLX_PROMPT_CACHE_SIZE=0

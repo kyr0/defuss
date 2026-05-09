@@ -1,14 +1,15 @@
 {
-  "include": ["src"],
+  "include": ["src", "test"],
   "exclude": ["**/node_modules", "**/.*/"],
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "module": "node16",
     "moduleResolution": "node16",
     "moduleDetection": "force",
     "target": "ES2022",
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "types": ["node"],
     "resolveJsonModule": false,
     "declaration": true,
     "sourceMap": true,
