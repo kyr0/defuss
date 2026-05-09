@@ -38,7 +38,7 @@ const openai = createClient({
 });
 
 const chat = await openai.createChatCompletion({
-  model: 'prism-ml/Bonsai-8B-mlx-1bit',
+  model: 'kyr0/zaya1-base-8b-4bit-MLX',
   messages: [{ role: 'user', content: 'hello' }],
 });
 
@@ -49,7 +49,7 @@ console.log(chat.choices[0]?.message?.content);
 
 ```ts
 const stream = await openai.streamChatCompletion({
-  model: 'prism-ml/Bonsai-8B-mlx-1bit',
+  model: 'kyr0/zaya1-base-8b-4bit-MLX',
   messages: [{ role: 'user', content: 'count to 3' }],
 });
 
@@ -192,7 +192,7 @@ Env vars used by examples and tests:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OPENAI_BASE_URL` | `http://127.0.0.1:8430/v1` | Base URL for local inference server |
-| `OPENAI_MODEL` | `prism-ml/Bonsai-8B-mlx-1bit` | Default model for examples/tests |
+| `OPENAI_MODEL` | `kyr0/zaya1-base-8b-4bit-MLX` | Default model for examples/tests (5 GB VRAM, great quality), other local models could be used - for example, `prism-ml/Bonsai-8B-mlx-1bit` (2GB VRAM, lower quality) or `kyr0/Gemma-4-Waldwicht-Winzling` (4 bit dynamic quant of Gemma4-E2B, 3GB VRAM, medium quality) with the [Waldwicht Inference server](https://github.com/kyr0/waldwicht) |
 
 In browsers, `process.env` is not available. Pass credentials explicitly via `ClientConfig` or use a backend proxy.
 
