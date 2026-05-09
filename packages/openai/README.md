@@ -11,7 +11,7 @@ A tiny OpenAI client built directly on top of the standard `fetch()` API.
 - **Streaming support for chat/completions**
 - **Audio/TTS support via standard `Response` streams**
 - **Only the types this package actually needs**
-- **Tool calling support**
+- **Tool calling support (including zyphra format)**
 
 ## Supported endpoints
 
@@ -23,13 +23,12 @@ A tiny OpenAI client built directly on top of the standard `fetch()` API.
 ## Install
 
 ```bash
-bunx add defuss-openai
+bun add defuss-openai
 ```
 
 Requires a runtime with native `fetch`, `ReadableStream`, `AbortController`, and `TextDecoder`.
 
 ## Usage
-
 
 ```ts
 import { createClient } from 'defuss-openai';
@@ -59,6 +58,44 @@ for await (const chunk of stream) {
 }
 ```
 
+## Tool Calling
+
+### Standard OpenAI tool calling
+
+Pass tools via the `tools` parameter as usual:
+
+```ts
+const chat = await openai.createChatCompletion({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'What is the weather in Berlin?' }],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'getWeather',
+        parameters: { type: 'object', properties: { city: { type: 'string' } } },
+      },
+    },
+  ],
+});
+
+// Tool calls appear on the message
+const toolCalls = chat.choices[0]?.message?.tool_calls;
+```
+
+### Zyphra tool call parsing
+
+For models that emit tool calls in the zyphra XML format (wrapped in `<zyphra_tool_call>` tags), `createChatCompletion` automatically parses them into standard `tool_calls` on the response message. The XML blocks are stripped from `content` after parsing.
+
+You can also parse zyphra tool calls manually:
+
+```ts
+import { parseZyphraToolCalls } from 'defuss-openai';
+
+const toolCalls = parseZyphraToolCalls(rawModelOutput);
+// → ToolCall[] with { id, type: 'function', function: { name, arguments } }
+```
+
 ## TTS / speech
 
 `createSpeech()` returns the raw `Response`. That keeps the API isomorphic and lets you choose how to consume the audio.
@@ -73,9 +110,17 @@ const response = await openai.createSpeech({
 const audio = await response.arrayBuffer();
 ```
 
-Or stream it:
+Or use the convenience wrappers:
 
 ```ts
+// Get the full audio as an ArrayBuffer
+const buffer = await openai.createSpeechBuffer({
+  model: 'gpt-5-mini-tts',
+  voice: 'alloy',
+  input: 'hello from a tiny client',
+});
+
+// Get a ReadableStream of raw bytes for progressive playback
 const stream = await openai.createSpeechStream({
   model: 'gpt-5-mini-tts',
   voice: 'alloy',
@@ -95,13 +140,106 @@ createClient(config?: ClientConfig): OpenAIClient
 
 The returned client is a frozen plain object with these methods:
 
-- `createChatCompletion(params, opts?)`
-- `streamChatCompletion(params, opts?)`
-- `createEmbeddings(params, opts?)`
-- `createModeration(params, opts?)`
-- `createSpeech(params, opts?)`
-- `createSpeechBuffer(params, opts?)`
-- `createSpeechStream(params, opts?)`
+- `createChatCompletion(params, opts?)` — Non-streaming chat completion (auto-parses zyphra tool calls)
+- `streamChatCompletion(params, opts?)` — SSE streaming chat completion
+- `createEmbeddings(params, opts?)` — Vector embeddings
+- `createModeration(params, opts?)` — Content moderation
+- `createSpeech(params, opts?)` — TTS, returns raw `Response`
+- `createSpeechBuffer(params, opts?)` — TTS, returns `ArrayBuffer`
+- `createSpeechStream(params, opts?)` — TTS, returns `ReadableStream<Uint8Array>`
+
+### Client Configuration
+
+```ts
+type ClientConfig = {
+  apiKey?: string;       // Falls back to OPENAI_API_KEY in process.env
+  organization?: string;  // Falls back to OPENAI_ORG_ID in process.env
+  project?: string;       // Falls back to OPENAI_PROJECT_ID in process.env
+  baseUrl?: string;       // Override for local/custom servers (default: https://api.openai.com/v1)
+  fetch?: typeof fetch;   // Custom fetch implementation
+  headers?: HeadersInit;  // Additional headers
+  timeout?: number;       // Per-request timeout in ms (default: 10min)
+  maxRetries?: number;    // Retry count on 5xx/429 (default: 2)
+};
+```
+
+### Environment Variables
+
+This client reads env vars directly from `process.env` — it does not use an in-memory store. To load values from a `.env` file, use [`defuss-env`](https://www.npmjs.com/package/defuss-env) with `inject: true`:
+
+```ts
+import { load } from 'defuss-env';
+
+// Load .env and inject into process.env (required for this client to pick up values)
+load('.env', true);
+
+import { createClient } from 'defuss-openai';
+
+// Now apiKey, organization, and project will be read from process.env
+const openai = createClient();
+```
+
+Env vars read by the client:
+
+| Variable | Config Field | Default | Description |
+|----------|-------------|---------|-------------|
+| `OPENAI_API_KEY` | `apiKey` | `""` | API key (optional for local servers) |
+| `OPENAI_ORG_ID` | `organization` | _(none)_ | Organization ID |
+| `OPENAI_PROJECT_ID` | `project` | _(none)_ | Project ID |
+
+Env vars used by examples and tests:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENAI_BASE_URL` | `http://127.0.0.1:8430/v1` | Base URL for local inference server |
+| `OPENAI_MODEL` | `prism-ml/Bonsai-8B-mlx-1bit` | Default model for examples/tests |
+
+In browsers, `process.env` is not available. Pass credentials explicitly via `ClientConfig` or use a backend proxy.
+
+### Per-Request Options
+
+Each method accepts an optional `RequestOptions` as the second argument:
+
+```ts
+type RequestOptions = {
+  headers?: HeadersInit;
+  signal?: AbortSignal;
+  fetch?: typeof fetch;
+  timeout?: number;
+  maxRetries?: number;
+};
+```
+
+### Errors
+
+The package exports structured error constructors and utilities:
+
+```ts
+import {
+  castToError,
+  createAPIError,
+  createConnectionError,
+  createConnectionTimeoutError,
+  createOpenAIError,
+  createUserAbortError,
+  isAbortError,
+} from 'defuss-openai';
+```
+
+All errors are `OpenAIError` instances with optional `status`, `headers`, `code`, `param`, `type`, `requestId`, and `cause` properties.
+
+### Other Exports
+
+```ts
+// Parse zyphra XML tool calls from raw model output
+import { parseZyphraToolCalls } from 'defuss-openai';
+
+// SSE stream helper (for building custom streaming logic)
+import { createSSEStream } from 'defuss-openai';
+
+// Deprecated alias for createClient
+import { createOpenAI, OpenAI } from 'defuss-openai';
+```
 
 ## Why this shape?
 
