@@ -1,0 +1,71 @@
+---
+import "./base.css";
+
+interface Props {
+  title: string;
+}
+---
+
+<!doctype html>
+<html class="defuss-shadcn" lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Chat with any OpenAI-compatible LLM using defuss and defuss-rpc streaming." />
+    <title>{Astro.props.title}</title>
+
+    <script is:inline>
+      (() => {
+        const applyThemeVariant = (themeVariant) => {
+          document.documentElement.classList.forEach((c) => {
+            if (c.startsWith("theme-")) {
+              document.documentElement.classList.remove(c);
+            }
+          });
+
+          if (themeVariant) {
+            document.documentElement.classList.add(`theme-${themeVariant}`);
+            try { localStorage.setItem("themeVariant", themeVariant); } catch (_e) {}
+          } else {
+            try { localStorage.removeItem("themeVariant"); } catch (_e) {}
+          }
+        };
+
+        try {
+          const stored = localStorage.getItem("themeMode");
+          if (stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches) {
+            document.documentElement.classList.add("dark");
+          }
+
+          const storedVariant = localStorage.getItem("themeVariant");
+          if (storedVariant) {
+            applyThemeVariant(storedVariant);
+          }
+        } catch (_e) {}
+
+        const apply = (dark) => {
+          document.documentElement.classList.toggle("dark", dark);
+          try { localStorage.setItem("themeMode", dark ? "dark" : "light"); } catch (_e) {}
+        };
+
+        document.addEventListener("defuss:theme", (event) => {
+          const custom = event;
+          const mode = custom?.detail?.mode;
+          const variant = custom?.detail?.themeVariant;
+          if (typeof variant === "string") {
+            applyThemeVariant(variant);
+          }
+          apply(
+            mode === "dark" ? true :
+            mode === "light" ? false :
+            !document.documentElement.classList.contains("dark")
+          );
+        });
+      })();
+    </script>
+  </head>
+
+  <body class="defuss-shadcn antialiased bg-background text-foreground overflow-hidden">
+    <slot />
+  </body>
+</html>

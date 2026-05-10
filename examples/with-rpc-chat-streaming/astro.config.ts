@@ -13,12 +13,13 @@ export default defineConfig({
     defussRpc({
       api: RpcApi,
       port: 0,
-      watch: ["src/api/**/*.ts"],
+      watch: ["src/rpc/**/*.ts", "src/lib/**/*.ts"],
     }),
   ],
   vite: {
     ssr: {
       noExternal: ["astro"],
+      external: ["defuss-rpc", "defuss-env", "defuss-openai"],
     },
     plugins: [tailwindcss() as any],
   },

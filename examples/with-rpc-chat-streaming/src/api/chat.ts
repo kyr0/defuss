@@ -1,5 +1,5 @@
 /**
- * Chat API module — demonstrates RPC generator streaming.
+ * Chat API module - demonstrates RPC generator streaming.
  *
  * `streamMessage` is an async generator that yields 2-3 words at a time,
  * simulating word-by-word AI chat output. Each iteration has a random

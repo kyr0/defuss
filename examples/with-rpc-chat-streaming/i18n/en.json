@@ -1,0 +1,78 @@
+{
+  "navigation": {
+    "brand_name": "defuss Chat",
+    "logout": "Logout"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "de": "Deutsch"
+  },
+  "theme": {
+    "variant_label": "Theme variant",
+    "default": "Default",
+    "claude": "Claude",
+    "doom_64": "Doom 64",
+    "supabase": "Supabase",
+    "toggle_dark_mode": "Toggle dark mode"
+  },
+  "pre_auth": {
+    "tagline": "Chat with any OpenAI-compatible LLM. Stream responses in real-time with full control over parameters."
+  },
+  "login": {
+    "title": "Sign in",
+    "description": "Enter your credentials to access the chat",
+    "email_label": "Email",
+    "email_placeholder": "you@example.com",
+    "password_label": "Password",
+    "remember_me": "Remember me",
+    "sign_in_button": "Sign in",
+    "demo_credentials": "Demo credentials",
+    "demo_email_label": "Email:",
+    "demo_password_label": "Password:",
+    "form_errors": "Form Errors",
+    "validation_failed": "Validation failed",
+    "please_fix_errors": "Please fix the errors below.",
+    "welcome_back": "Welcome back!",
+    "redirecting": "Redirecting to chat...",
+    "login_failed": "Login failed",
+    "invalid_credentials": "Invalid credentials",
+    "check_credentials": "Please check your credentials.",
+    "unexpected_error": "Unexpected error",
+    "try_again": "Please try again.",
+    "copy": "Copy"
+  },
+  "chat": {
+    "new_conversation": "New conversation",
+    "toggle_conversations": "Toggle conversations",
+    "toggle_settings": "Toggle settings",
+    "start_conversation": "Start a conversation",
+    "type_message_to_begin": "Type a message below to begin chatting",
+    "type_message_placeholder": "Type a message...",
+    "send_message": "Send message",
+    "thinking": "Thinking...",
+    "delete_message": "Delete message",
+    "resend_message": "Resend message"
+  },
+  "sidebar": {
+    "conversations": "Conversations",
+    "new_conversation": "New conversation",
+    "no_conversations": "No conversations yet. Start a new chat!",
+    "delete_conversation": "Delete conversation"
+  },
+  "settings": {
+    "title": "Settings",
+    "base_url": "Base URL",
+    "api_key": "API Key",
+    "model": "Model",
+    "system_prompt": "System Prompt",
+    "system_prompt_placeholder": "You are a helpful assistant.",
+    "temperature": "Temperature",
+    "max_tokens": "Max Tokens",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "repetition_penalty": "Repetition Penalty",
+    "presence_penalty": "Presence Penalty",
+    "enable_thinking": "Enable thinking"
+  }
+}

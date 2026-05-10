@@ -1,10 +1,16 @@
 {
-  "extends": "astro/tsconfigs/base",
   "compilerOptions": {
     "jsx": "react-jsx",
     "jsxImportSource": "defuss",
-    "baseUrl": ".",
-    "types": ["node"]
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "resolveJsonModule": true,
+    "types": ["astro/client"],
+    "strict": true,
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": "."
   },
-  "include": ["src", "test", "src/virtual-defuss-rpc.d.ts"]
+  "include": ["src", "test", "astro.config.ts", ".astro/types.d.ts"]
 }

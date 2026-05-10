@@ -1,7 +1,19 @@
-/// <reference types="astro/client" />
+/// <reference path="../.astro/types.d.ts" />
+/// <reference path="astro/client" />
 
-declare namespace App {
-  interface Locals {
-    rpcEndpoint: string;
-  }
+import type { AppProps } from "./models/app";
+
+declare global {
+	namespace App {
+		interface Locals {
+			APP_PROPS: AppProps | null;
+			rpcEndpoint: string;
+		}
+	}
+
+	interface Window {
+		$APP_PROPS: AppProps | null;
+		__RPC_ENDPOINT__?: string;
+	}
 }
+
