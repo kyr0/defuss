@@ -1,6 +1,6 @@
 {
   "name": "defuss-markdown",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "Incremental Markdown -> Defuss JSX bridge built on Incremark core.",
   "keywords": [

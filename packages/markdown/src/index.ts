@@ -81,6 +81,7 @@ interface BlockState {
 const DEFAULT_PARSER_OPTIONS = Object.freeze({
 	gfm: true,
 	math: true,
+	table: true,
 	htmlTree: true,
 	containers: true,
 });
@@ -393,7 +394,7 @@ function renderUnknownNode(node: MarkdownAstNode, context: RenderContext): VNode
 function renderTable(node: MarkdownAstNode, context: RenderContext): VNodeChild {
 	const rows = Array.isArray(node.children) ? node.children : [];
 	if (rows.length === 0) {
-		return h("table", {});
+		return h("table", { class: "table" });
 	}
 
 	const [headerRow, ...bodyRows] = rows;
@@ -401,7 +402,7 @@ function renderTable(node: MarkdownAstNode, context: RenderContext): VNodeChild 
 
 	return h(
 		"table",
-		{},
+		{ class: "table" },
 		h(
 			"thead",
 			{},
@@ -493,19 +494,69 @@ function hydrateStateFromParserOrUpdate(
 	update: unknown,
 	state: BlockState,
 ): void {
+	const updateKeys = update && typeof update === "object" ? Object.keys(update as object) : [];
+	console.log("[defuss-markdown] hydrateState: updateKeys =", updateKeys, "isIncremental =", isIncrementalUpdate(update));
+
+	// Incremark's append() returns { completed, updated, pending, ... }
+	// Process these incrementally WITHOUT clearing state, so pending blocks
+	// with partial content are preserved between renders.
+	if (isIncrementalUpdate(update)) {
+		const value = update as Record<string, unknown>;
+		const completed = pickBlockArray(value.completed);
+		const updated = pickBlockArray(value.updated);
+		const pending = pickBlockArray(value.pending);
+		const removed = pickBlockArray(value.removed);
+
+		console.log("[defuss-markdown] Incremark INCREMENTAL path:", {
+			completed: completed.map((b) => `${b.id}(${b.status})`),
+			updated: updated.map((b) => `${b.id}(${b.status})`),
+			pending: pending.map((b) => `${b.id}(${b.status})`),
+			removed: removed.map((b) => b.id),
+		});
+
+		applyIncrementalCollections(state, update);
+
+		// Also check parser.getCompletedBlocks() for blocks not in the update
+		const parserCompleted = pickBlockArray(parser.getCompletedBlocks?.());
+		if (parserCompleted.length > 0) {
+			for (const block of parserCompleted) {
+				upsertBlock(state, block);
+			}
+		}
+
+		// Merge pending from parser state too
+		const parserPending = pickBlockArray(parser.pendingBlocks ?? parser.pendingBlock);
+		for (const block of parserPending) {
+			upsertBlock(state, block);
+		}
+
+		return;
+	}
+
 	const directSnapshot = extractSnapshotBlocksFromUpdate(update);
 	if (directSnapshot) {
+		console.log("[defuss-markdown] DIRECT SNAPSHOT path, blocks =", directSnapshot.map((b) => b.id));
 		replaceState(state, directSnapshot);
 		return;
 	}
 
 	const parserSnapshot = extractBlocksFromParser(parser);
 	if (parserSnapshot) {
+		console.log("[defuss-markdown] PARSER SNAPSHOT path, blocks =", parserSnapshot.map((b) => b.id));
 		replaceState(state, parserSnapshot);
 		return;
 	}
 
+	console.log("[defuss-markdown] FALLBACK to applyIncrementalCollections");
 	applyIncrementalCollections(state, update);
+}
+
+function isIncrementalUpdate(update: unknown): boolean {
+	if (!update || typeof update !== "object") {
+		return false;
+	}
+	const value = update as Record<string, unknown>;
+	return Array.isArray(value.completed) || Array.isArray(value.updated) || Array.isArray(value.pending);
 }
 
 function extractSnapshotBlocksFromUpdate(update: unknown): MarkdownBlockLike[] | null {
@@ -515,18 +566,38 @@ function extractSnapshotBlocksFromUpdate(update: unknown): MarkdownBlockLike[] |
 
 	const value = update as Record<string, unknown>;
 	const direct = pickBlockArray(value.blocks);
-	return direct.length > 0 ? direct : null;
+	const pending = pickBlockArray(value.pendingBlocks ?? value.pendingBlock);
+
+	if (direct.length > 0) {
+		// Merge completed blocks with pending to ensure partial block content renders during streaming
+		if (pending.length > 0) {
+			return mergeCompletedAndPending(direct, pending);
+		}
+		return direct;
+	}
+
+	if (pending.length > 0) {
+		return pending;
+	}
+
+	return null;
 }
 
 function extractBlocksFromParser(parser: ParserLike): MarkdownBlockLike[] | null {
+	const pending = pickBlockArray(parser.pendingBlocks ?? parser.pendingBlock);
+
 	const methodBlocks = pickBlockArray(parser.getBlocks?.());
 	if (methodBlocks.length > 0) {
+		// Merge completed blocks with pending to ensure partial block content renders during streaming
+		if (pending.length > 0) {
+			return mergeCompletedAndPending(methodBlocks, pending);
+		}
 		return methodBlocks;
 	}
 
 	const methodMerged = mergeCompletedAndPending(
 		pickBlockArray(parser.getCompletedBlocks?.()),
-		pickBlockArray(parser.pendingBlocks ?? parser.pendingBlock),
+		pending,
 	);
 	if (methodMerged.length > 0) {
 		return methodMerged;
@@ -534,12 +605,15 @@ function extractBlocksFromParser(parser: ParserLike): MarkdownBlockLike[] | null
 
 	const propBlocks = pickBlockArray(parser.blocks);
 	if (propBlocks.length > 0) {
+		if (pending.length > 0) {
+			return mergeCompletedAndPending(propBlocks, pending);
+		}
 		return propBlocks;
 	}
 
 	const propMerged = mergeCompletedAndPending(
 		pickBlockArray((parser as Record<string, unknown>).completedBlocks),
-		pickBlockArray(parser.pendingBlocks ?? parser.pendingBlock),
+		pending,
 	);
 	return propMerged.length > 0 ? propMerged : null;
 }
