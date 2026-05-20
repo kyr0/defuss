@@ -1,5 +1,4 @@
 import { $, createRef, render } from "defuss";
-import { Button } from "defuss-shadcn";
 import { updateWithMarkdown } from "defuss-markdown";
 import {
 	chatStore,
@@ -16,7 +15,6 @@ import { t } from "../../i18n";
 
 // Module-level state to persist across re-renders
 let activeStreamAbort: AbortController | null = null;
-const buttonContainerRef = createRef<HTMLDivElement>();
 
 async function streamResponseForConversation(conversationId: string) {
 	chatStore.set({ ...chatStore.value, isStreaming: true });
@@ -136,7 +134,7 @@ window.addEventListener("chat:resend", (e: Event) => {
 
 export function ChatInput() {
 	const textareaRef = createRef<HTMLTextAreaElement>();
-	const sendBtnRef = createRef<HTMLButtonElement>();
+	const actionBtnRef = createRef<HTMLButtonElement>();
 
 	const autoResize = () => {
 		const el = textareaRef.current;
@@ -145,40 +143,6 @@ export function ChatInput() {
 			el.style.height = Math.min(el.scrollHeight, 200) + "px";
 		}
 	};
-
-	const renderButton = () => {
-	  if (chatStore.value.isStreaming) {
-	    $(buttonContainerRef).jsx(
-	      <Button
-	        type="button"
-	        size="icon"
-	        variant="destructive"
-	        className="size-11 shrink-0 rounded-xl"
-	        onClick={handleStop}
-	        aria-label={t("chat.stop_generating")}
-	        title={t("chat.stop_generating")}
-	      >
-	        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2" /></svg>
-	      </Button>,
-	    );
-	  } else {
-			$(buttonContainerRef).jsx(
-				<Button
-					ref={sendBtnRef}
-					type="button"
-					size="icon"
-					className="size-11 shrink-0 rounded-xl"
-					onClick={handleSend}
-					aria-label={t("chat.send_message")}
-					title={t("chat.send_message")}
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" /><path d="m21.854 2.147-10.94 10.939" /></svg>
-				</Button>,
-			);
-		}
-	};
-
-	chatStore.subscribe(renderButton);
 
 	const handleSend = async () => {
 		const textarea = textareaRef.current;
@@ -417,6 +381,33 @@ export function ChatInput() {
 		}
 	};
 
+	const handleAction = () => {
+		if (chatStore.value.isStreaming) {
+			handleStop();
+		} else {
+			handleSend();
+		}
+	};
+
+	const updateButtonState = () => {
+		const btn = actionBtnRef.current;
+		if (!btn) return;
+
+		if (chatStore.value.isStreaming) {
+			$(btn).html('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2" /></svg>');
+			btn.className = "btn btn-icon btn-destructive size-11 shrink-0 rounded-xl";
+			btn.setAttribute("aria-label", t("chat.stop_generating"));
+			btn.setAttribute("title", t("chat.stop_generating"));
+		} else {
+			$(btn).html('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" /><path d="m21.854 2.147-10.94 10.939" /></svg>');
+			btn.className = "btn btn-icon size-11 shrink-0 rounded-xl";
+			btn.setAttribute("aria-label", t("chat.send_message"));
+			btn.setAttribute("title", t("chat.send_message"));
+		}
+	};
+
+	chatStore.subscribe(updateButtonState);
+
 	return (
 		<div class="chat-input-area border-t bg-background px-2 py-2">
 			<div class="flex items-end gap-2">
@@ -428,7 +419,17 @@ export function ChatInput() {
 					onInput={autoResize}
 					onKeyDown={handleKeyDown}
 				/>
-				<div ref={buttonContainerRef} onMount={renderButton} />
+				<button
+					ref={actionBtnRef}
+					type="button"
+					class="btn btn-icon size-11 shrink-0 rounded-xl"
+					onClick={handleAction}
+					aria-label={t("chat.send_message")}
+					title={t("chat.send_message")}
+					onMount={updateButtonState}
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" /><path d="m21.854 2.147-10.94 10.939" /></svg>
+				</button>
 			</div>
 		</div>
 	);
