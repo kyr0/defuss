@@ -14,18 +14,13 @@ import { getRpcClient } from "../../lib/rpc-client";
 import { setStreamRendering, scrollToBottomForce, setShouldAutoScroll, shouldAutoScrollGet } from "./message-list";
 import { t } from "../../i18n";
 
-// Module-level resend handler (avoids closure issues and duplicate listeners)
-let sendBtnRef: HTMLButtonElement | null = null;
-
-// Module-level AbortController for canceling active streaming
+// Module-level state to persist across re-renders
 let activeStreamAbort: AbortController | null = null;
+const buttonContainerRef = createRef<HTMLDivElement>();
 
 async function streamResponseForConversation(conversationId: string) {
 	chatStore.set({ ...chatStore.value, isStreaming: true });
 	setShouldAutoScroll(true);
-
-	const sendBtn = sendBtnRef;
-	if (sendBtn) sendBtn.disabled = true;
 
 	// Create abort controller for this streaming operation
 	activeStreamAbort = new AbortController();
@@ -142,7 +137,6 @@ window.addEventListener("chat:resend", (e: Event) => {
 export function ChatInput() {
 	const textareaRef = createRef<HTMLTextAreaElement>();
 	const sendBtnRef = createRef<HTMLButtonElement>();
-	const buttonContainerRef = createRef<HTMLDivElement>();
 
 	const autoResize = () => {
 		const el = textareaRef.current;
@@ -409,6 +403,8 @@ export function ChatInput() {
 			// Ignore RPC errors on cancel
 		}
 
+		// Stop streaming state immediately to hide Stop button and streaming animation
+		setStreamRendering(null);
 		chatStore.set({ ...chatStore.value, isStreaming: false });
 		activeStreamAbort = null;
 	};
