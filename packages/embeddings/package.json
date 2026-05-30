@@ -1,6 +1,6 @@
 {
   "name": "defuss-embeddings",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "license": "MIT",
   "description": "Isomorphic text embeddings with Harrier ONNX int8 plus exact and TurboQuant-style vector search.",
@@ -100,7 +100,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "defuss-db": "^1.1.4",
+    "defuss-db": "^2.0.0",
     "defuss-multicore": "^0.0.2"
   },
   "devDependencies": {

@@ -17,17 +17,26 @@ import { attachRecords, searchTopK } from "./vector-search.js";
 
 interface LiveTimingSample {
   readonly label: string;
-  readonly exactHit: boolean;
-  readonly approximateHit: boolean;
-  readonly exactRank: number;
-  readonly rerankedRank: number;
-  readonly rerankedHit: boolean;
+  readonly exactDirectHit: boolean;
+  readonly exactCandidateHit: boolean;
+  readonly exactRerankedHit: boolean;
+  readonly turboCandidateHit: boolean;
+  readonly turboRerankedHit: boolean;
+  readonly exactDirectRank: number;
+  readonly exactCandidateRank: number;
+  readonly exactRerankedRank: number;
+  readonly turboCandidateRank: number;
+  readonly turboRerankedRank: number;
   readonly queryEmbedMs: number;
-  readonly exactMs: number;
-  readonly approximateMs: number;
-  readonly rerankMs: number;
-  readonly totalApproximateMs: number;
-  readonly endToEndApproximateMs: number;
+  readonly exactDirectMs: number;
+  readonly exactCandidateMs: number;
+  readonly exactRerankMs: number;
+  readonly exactTotalMs: number;
+  readonly turboCandidateMs: number;
+  readonly turboRerankMs: number;
+  readonly turboTotalMs: number;
+  readonly endToEndExactMs: number;
+  readonly endToEndTurboMs: number;
 }
 
 interface LiveNeedleCase {
@@ -50,6 +59,10 @@ const getFixtureDoc = (id: string): RetrievalDoc => {
 };
 
 const round = (value: number): number => Number(value.toFixed(3));
+
+const hitRecordIds = <THit extends { record?: RetrievalDoc }>(hits: readonly THit[]): string[] => {
+  return hits.map((hit) => hit.record?.id ?? "");
+};
 
 const summarizeMetric = (values: readonly number[]) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -178,8 +191,7 @@ describe("live needle in haystack retrieval", () => {
   it(
     "retrieves live needles and reports end-to-end latency",
     async () => {
-      const exactK = 100;
-      const approximateK = 100;
+      const candidateK = 100;
       const rerankK = 10;
       const timings: LiveTimingSample[] = [];
 
@@ -193,45 +205,77 @@ describe("live needle in haystack retrieval", () => {
         const { result: queryVector, ms: queryEmbedMs } = await measureAsync(() =>
           embedder.embedQuery(needle.query),
         );
-        const { result: exactTopK, ms: exactMs } = measureSync(() =>
-          attachRecords(searchTopK(documentVectors, queryVector, exactK), haystack),
+        const { result: exactDirectTopK, ms: exactDirectMs } = measureSync(() =>
+          attachRecords(searchTopK(documentVectors, queryVector, rerankK), haystack),
         );
-        const { result: approximateTopK, ms: approximateMs } = measureSync(() =>
-          searchTurboQuantIndex(turboIndex, queryVector, approximateK),
+        const { result: exactCandidateHits, ms: exactCandidateMs } = measureSync(() =>
+          searchTopK(documentVectors, queryVector, candidateK),
         );
-        const { result: rerankedTopK, ms: rerankMs } = measureSync(() =>
+        const exactCandidateTopK = attachRecords(exactCandidateHits, haystack);
+        const { result: exactRerankedTopK, ms: exactRerankMs } = measureSync(() =>
           attachRecords(
-            rerankSearchHits(documentVectors, queryVector, approximateTopK, rerankK),
+            rerankSearchHits(documentVectors, queryVector, exactCandidateHits, rerankK),
             haystack,
           ),
         );
-        const exactRank = exactTopK.findIndex((hit) => hit.record?.id === needle.id) + 1;
-        const rerankedRank = rerankedTopK.findIndex((hit) => hit.record?.id === needle.id) + 1;
-        const exactHit = exactRank > 0;
-        const approximateHit = approximateTopK.some((hit) => haystack[hit.index]?.id === needle.id);
-        const rerankedHit = rerankedRank > 0;
+        const { result: turboCandidateHits, ms: turboCandidateMs } = measureSync(() =>
+          searchTurboQuantIndex(turboIndex, queryVector, candidateK),
+        );
+        const turboCandidateTopK = attachRecords(turboCandidateHits, haystack);
+        const { result: turboRerankedTopK, ms: turboRerankMs } = measureSync(() =>
+          attachRecords(
+            rerankSearchHits(documentVectors, queryVector, turboCandidateHits, rerankK),
+            haystack,
+          ),
+        );
+        const exactDirectRank = exactDirectTopK.findIndex((hit) => hit.record?.id === needle.id) + 1;
+        const exactCandidateRank =
+          exactCandidateTopK.findIndex((hit) => hit.record?.id === needle.id) + 1;
+        const exactRerankedRank =
+          exactRerankedTopK.findIndex((hit) => hit.record?.id === needle.id) + 1;
+        const turboCandidateRank =
+          turboCandidateTopK.findIndex((hit) => hit.record?.id === needle.id) + 1;
+        const turboRerankedRank =
+          turboRerankedTopK.findIndex((hit) => hit.record?.id === needle.id) + 1;
+        const exactDirectHit = exactDirectRank > 0;
+        const exactCandidateHit = exactCandidateRank > 0;
+        const exactRerankedHit = exactRerankedRank > 0;
+        const turboCandidateHit = turboCandidateRank > 0;
+        const turboRerankedHit = turboRerankedRank > 0;
 
         timings.push({
           label: needle.id,
-          exactHit,
-          approximateHit,
-          exactRank,
-          rerankedRank,
-          rerankedHit,
+          exactDirectHit,
+          exactCandidateHit,
+          exactRerankedHit,
+          turboCandidateHit,
+          turboRerankedHit,
+          exactDirectRank,
+          exactCandidateRank,
+          exactRerankedRank,
+          turboCandidateRank,
+          turboRerankedRank,
           queryEmbedMs,
-          exactMs,
-          approximateMs,
-          rerankMs,
-          totalApproximateMs: approximateMs + rerankMs,
-          endToEndApproximateMs: queryEmbedMs + approximateMs + rerankMs,
+          exactDirectMs,
+          exactCandidateMs,
+          exactRerankMs,
+          exactTotalMs: exactCandidateMs + exactRerankMs,
+          turboCandidateMs,
+          turboRerankMs,
+          turboTotalMs: turboCandidateMs + turboRerankMs,
+          endToEndExactMs: queryEmbedMs + exactCandidateMs + exactRerankMs,
+          endToEndTurboMs: queryEmbedMs + turboCandidateMs + turboRerankMs,
         });
+
+        expect(hitRecordIds(exactRerankedTopK)).toEqual(hitRecordIds(exactDirectTopK));
 
         console.info(
           `[needle-haystack] live case ${needle.id} ${JSON.stringify({
-            exactHit,
-            exactRank,
-            rerankedRank,
-            approximateHit,
+            exactDirectRank,
+            exactCandidateRank,
+            exactRerankedRank,
+            turboCandidateRank,
+            turboRerankedRank,
           })}`,
         );
       }
@@ -239,22 +283,28 @@ describe("live needle in haystack retrieval", () => {
       const summary = {
         corpusSize: benchmarkCases[0]?.haystack.length ?? 0,
         scenarios: benchmarkCases.length,
-        exactK,
-        approximateK,
+        candidateK,
         rerankK,
-        exactHitCount: timings.filter((entry) => entry.exactHit).length,
-        approximateHitCount: timings.filter((entry) => entry.approximateHit).length,
-        exactRank: summarizeMetric(timings.map((entry) => entry.exactRank)),
-        rerankedRank: summarizeMetric(timings.map((entry) => entry.rerankedRank)),
-        rerankedHitCount: timings.filter((entry) => entry.rerankedHit).length,
+        exactDirectHitCount: timings.filter((entry) => entry.exactDirectHit).length,
+        exactCandidateHitCount: timings.filter((entry) => entry.exactCandidateHit).length,
+        exactRerankedHitCount: timings.filter((entry) => entry.exactRerankedHit).length,
+        turboCandidateHitCount: timings.filter((entry) => entry.turboCandidateHit).length,
+        turboRerankedHitCount: timings.filter((entry) => entry.turboRerankedHit).length,
+        exactDirectRank: summarizeMetric(timings.map((entry) => entry.exactDirectRank)),
+        exactCandidateRank: summarizeMetric(timings.map((entry) => entry.exactCandidateRank)),
+        exactRerankedRank: summarizeMetric(timings.map((entry) => entry.exactRerankedRank)),
+        turboCandidateRank: summarizeMetric(timings.map((entry) => entry.turboCandidateRank)),
+        turboRerankedRank: summarizeMetric(timings.map((entry) => entry.turboRerankedRank)),
         queryEmbedMs: summarizeMetric(timings.map((entry) => entry.queryEmbedMs)),
-        exactMs: summarizeMetric(timings.map((entry) => entry.exactMs)),
-        approximateMs: summarizeMetric(timings.map((entry) => entry.approximateMs)),
-        rerankMs: summarizeMetric(timings.map((entry) => entry.rerankMs)),
-        totalApproximateMs: summarizeMetric(timings.map((entry) => entry.totalApproximateMs)),
-        endToEndApproximateMs: summarizeMetric(
-          timings.map((entry) => entry.endToEndApproximateMs),
-        ),
+        exactDirectMs: summarizeMetric(timings.map((entry) => entry.exactDirectMs)),
+        exactCandidateMs: summarizeMetric(timings.map((entry) => entry.exactCandidateMs)),
+        exactRerankMs: summarizeMetric(timings.map((entry) => entry.exactRerankMs)),
+        exactTotalMs: summarizeMetric(timings.map((entry) => entry.exactTotalMs)),
+        turboCandidateMs: summarizeMetric(timings.map((entry) => entry.turboCandidateMs)),
+        turboRerankMs: summarizeMetric(timings.map((entry) => entry.turboRerankMs)),
+        turboTotalMs: summarizeMetric(timings.map((entry) => entry.turboTotalMs)),
+        endToEndExactMs: summarizeMetric(timings.map((entry) => entry.endToEndExactMs)),
+        endToEndTurboMs: summarizeMetric(timings.map((entry) => entry.endToEndTurboMs)),
       };
 
       console.info(
@@ -262,11 +312,15 @@ describe("live needle in haystack retrieval", () => {
       );
 
       expect(summary.queryEmbedMs.avg).toBeGreaterThan(0);
-      expect(summary.exactMs.avg).toBeGreaterThan(0);
-      expect(summary.approximateMs.avg).toBeGreaterThan(0);
-      expect(summary.rerankMs.avg).toBeGreaterThan(0);
-      expect(summary.totalApproximateMs.avg).toBeGreaterThan(0);
-      expect(summary.endToEndApproximateMs.avg).toBeGreaterThan(0);
+      expect(summary.exactDirectMs.avg).toBeGreaterThan(0);
+      expect(summary.exactCandidateMs.avg).toBeGreaterThan(0);
+      expect(summary.exactRerankMs.avg).toBeGreaterThan(0);
+      expect(summary.exactTotalMs.avg).toBeGreaterThan(0);
+      expect(summary.turboCandidateMs.avg).toBeGreaterThan(0);
+      expect(summary.turboRerankMs.avg).toBeGreaterThan(0);
+      expect(summary.turboTotalMs.avg).toBeGreaterThan(0);
+      expect(summary.endToEndExactMs.avg).toBeGreaterThan(0);
+      expect(summary.endToEndTurboMs.avg).toBeGreaterThan(0);
     },
     LIVE_TIMEOUT_MS,
   );

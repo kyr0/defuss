@@ -155,24 +155,37 @@ console.log(docVectors, query);
 
 These numbers come from local runs on 11 April 2026. They are only a snapshot and will vary with hardware, cache state, runtime version, and network conditions.
 
+### Quality takeaway
+
+- The fair comparison is `exact candidate top-100 + exact rerank top-10` versus `TurboQuant candidate top-100 + exact rerank top-10`.
+- `exact direct top-10` and `exact candidate top-100 + exact rerank top-10` matched on the synthetic and live runs, which is what you want from the exact baseline.
+- On the current benchmark snapshot, `TurboQuant candidate top-100 + exact rerank top-10` matched `exact candidate top-100 + exact rerank top-10` on all synthetic cases and on the current live Harrier cases.
+- That does not mean exact search stops being the quality upper bound. Exact still sees the whole corpus, and reranking cannot recover a relevant document that TurboQuant never surfaced in its candidate set.
+- In the current live Harrier run, the quality bottleneck was the embedding model ranking itself rather than TurboQuant candidate loss: one query landed at exact candidate rank 66 and TurboQuant candidate rank 54, so both exact rerank and TurboQuant rerank correctly kept it out of top-10; one query was absent from both exact and TurboQuant top-100.
+
 ### Synthetic large-haystack benchmark
 
 Command: `bun run test:needle`
 
 - Corpus: 25,000 vectors
 - Dimensions: 640
-- Pipeline: single-thread exact top-10 vs multicore exact top-10 vs approximate top-100 plus rerank to top-10
-- Needle recall: 4/4 planted needles recovered by single-thread exact search, multicore exact search, approximate top-100, and reranked top-10
-- TurboQuant index build: 834.276 ms
-- Single-thread exact latency: avg 32.286 ms, median 35.194 ms
-- Multicore exact latency: avg 115.032 ms, median 132.950 ms
-- Approximate top-100 latency: avg 40.696 ms, median 39.141 ms
-- Rerank latency: avg 0.445 ms, median 0.412 ms
-- Approximate plus rerank total: avg 41.140 ms, median 39.553 ms
-- Single-thread exact throughput: avg 796,640 docs/s
-- Multicore exact throughput: avg 232,583 docs/s
-- Approximate throughput: avg 673,194 docs/s
-- Multicore speed relative to single-thread exact: avg 0.304x
+- Pipeline: exact direct top-10, exact candidate top-100 plus exact rerank top-10, multicore exact baselines, and TurboQuant candidate top-100 plus exact rerank top-10
+- Quality: 4/4 planted needles recovered by exact direct top-10, exact+rerank, multicore exact direct, multicore exact+rerank, TurboQuant candidate top-100, and TurboQuant+rerank
+- TurboQuant index build: 343.399 ms
+- Exact direct top-10 latency: avg 13.458 ms, median 14.040 ms
+- Exact candidate top-100 latency: avg 13.323 ms, median 13.410 ms
+- Exact rerank latency: avg 0.137 ms, median 0.115 ms
+- Exact candidate plus rerank total: avg 13.460 ms, median 13.516 ms
+- Multicore exact direct top-10 latency: avg 33.762 ms, median 34.518 ms
+- Multicore exact candidate top-100 latency: avg 36.976 ms, median 40.323 ms
+- Multicore exact candidate plus rerank total: avg 37.122 ms, median 40.468 ms
+- TurboQuant candidate top-100 latency: avg 17.968 ms, median 17.334 ms
+- TurboQuant rerank latency: avg 0.150 ms, median 0.157 ms
+- TurboQuant candidate plus rerank total: avg 18.118 ms, median 17.497 ms
+- Exact candidate throughput: avg 1,886,088 docs/s
+- Multicore exact candidate throughput: avg 695,886 docs/s
+- TurboQuant candidate throughput: avg 1,397,003 docs/s
+- Multicore exact candidate speed relative to single-thread exact candidate: avg 0.369x
 
 ### Browser synthetic benchmark
 
@@ -180,17 +193,21 @@ Command: `bun run test:needle:browser`
 
 - Corpus: 8,000 vectors in Chromium
 - Dimensions: 384
-- Pipeline: single-thread exact top-k vs multicore exact top-k vs approximate top-100 plus rerank
-- Outcome check: multicore exact results matched the single-thread exact baseline for all 3 planted needles before timings were reported
-- TurboQuant index build: 100.300 ms
-- Single-thread exact latency: avg 5.233 ms, median 5.300 ms
-- Multicore exact latency: avg 21.000 ms, median 16.100 ms
-- Approximate top-100 latency: avg 4.033 ms, median 4.100 ms
-- Approximate plus rerank total: avg 4.233 ms, median 4.400 ms
-- Single-thread exact throughput: avg 1,534,891 docs/s
-- Multicore exact throughput: avg 433,911 docs/s
-- Approximate throughput: avg 1,987,082 docs/s
-- Multicore speed relative to single-thread exact: avg 0.279x
+- Pipeline: exact direct top-10, exact candidate top-100 plus exact rerank top-10, multicore exact baselines, and TurboQuant candidate top-100 plus exact rerank top-10
+- Quality: 3/3 planted needles recovered by exact direct top-10, exact+rerank, multicore exact direct, multicore exact+rerank, TurboQuant candidate top-100, and TurboQuant+rerank
+- TurboQuant index build: 55.600 ms
+- Exact direct top-10 latency: avg 2.467 ms, median 2.500 ms
+- Exact candidate top-100 latency: avg 2.367 ms, median 2.400 ms
+- Exact candidate plus rerank total: avg 2.400 ms, median 2.400 ms
+- Multicore exact direct top-10 latency: avg 5.600 ms, median 5.500 ms
+- Multicore exact candidate top-100 latency: avg 5.400 ms, median 5.400 ms
+- Multicore exact candidate plus rerank total: avg 5.467 ms, median 5.400 ms
+- TurboQuant candidate top-100 latency: avg 2.433 ms, median 2.400 ms
+- TurboQuant candidate plus rerank total: avg 2.467 ms, median 2.500 ms
+- Exact candidate throughput: avg 3,381,643 docs/s
+- Multicore exact candidate throughput: avg 1,481,820 docs/s
+- TurboQuant candidate throughput: avg 3,296,172 docs/s
+- Multicore exact candidate speed relative to single-thread exact candidate: avg 0.438x
 - Use this benchmark to validate whether worker overhead pays off on your browser target, because the crossover point varies noticeably by machine, runtime, and corpus layout
 
 ### Live Harrier benchmark
@@ -200,16 +217,22 @@ Command: `bun run test:needle:live`
 - Query format: Harrier instructed queries using `Instruct: ...` followed by `Query: ...`
 - Corpus: 512 natural-language passages per case
 - Cases: 4 natural search queries against 4 planted target passages
-- Exact top-100 hit count: 3/4
-- Approximate top-100 hit count: 3/4
-- Reranked top-10 hit count: 2/4
-- Exact rank snapshot: `protein-guideline` rank 1, `summit-definition` rank 66, `css-center-div` rank 1, `python-virtualenv` not returned in top-100 on that run
-- Query embedding latency: avg 40.703 ms, median 36.237 ms
-- Exact search latency: avg 1.629 ms, median 1.240 ms
-- Approximate top-100 latency: avg 2.856 ms, median 3.116 ms
-- Rerank latency: avg 0.297 ms, median 0.315 ms
-- Approximate plus rerank total: avg 3.153 ms, median 3.431 ms
-- End-to-end approximate retrieval: avg 43.857 ms, median 37.328 ms
+- Exact direct top-10 hit count: 2/4
+- Exact candidate top-100 hit count: 3/4
+- Exact candidate plus rerank top-10 hit count: 2/4
+- TurboQuant candidate top-100 hit count: 3/4
+- TurboQuant candidate plus rerank top-10 hit count: 2/4
+- Case snapshot: `protein-guideline` exact rank 1 and TurboQuant rank 1; `summit-definition` exact candidate rank 66 and TurboQuant candidate rank 54, but both reranked top-10 results miss; `css-center-div` exact rank 1 and TurboQuant rank 1; `python-virtualenv` is absent from both exact and TurboQuant top-100 on this run
+- Query embedding latency: avg 30.365 ms, median 30.590 ms
+- Exact direct top-10 latency: avg 1.441 ms, median 1.122 ms
+- Exact candidate top-100 latency: avg 1.136 ms, median 1.493 ms
+- Exact rerank latency: avg 0.290 ms, median 0.387 ms
+- Exact candidate plus rerank total: avg 1.426 ms, median 1.881 ms
+- TurboQuant candidate top-100 latency: avg 1.957 ms, median 1.336 ms
+- TurboQuant rerank latency: avg 0.187 ms, median 0.152 ms
+- TurboQuant candidate plus rerank total: avg 2.144 ms, median 1.487 ms
+- End-to-end exact retrieval: avg 31.791 ms, median 31.143 ms
+- End-to-end TurboQuant retrieval: avg 32.509 ms, median 31.736 ms
 
 ## Notes
 
@@ -221,14 +244,15 @@ Command: `bun run test:needle:live`
 - `prefetchModel(...)` is optional and only exists to warm the same cache earlier at runtime; `loadModel(...)` and the first embedding call will also warm the cache automatically.
 - Use `inspectModelCache(...)` and `clearModelCache(...)` if you want to inspect or purge cached assets explicitly.
 - The `turboquant` module here is **only for vector search**, not model-weight quantization.
+- For fair quality comparisons, compare `searchTopK(..., 100)` + `rerankSearchHits(..., 10)` against `searchTurboQuantIndex(..., 100)` + `rerankSearchHits(..., 10)`. Comparing direct exact top-10 against TurboQuant+rerank mixes different pipeline stages.
 - Quick unit tests use injected mock extractors, while `bun run test:live` runs both a Node live suite and a browser live suite against the real Harrier model.
 - `searchTopKMulticore(...)` uses worker-backed brute-force search and returns the same ranked hits as `searchTopK(...)`, but asynchronously.
 - `openAICompatible` switches the runtime from local ONNX inference to an arbitrary OpenAI-compatible `/embeddings` HTTP endpoint.
 - When `openAICompatible` is active, `prefetchModel(...)`, `inspectModelCache(...)`, and `clearModelCache(...)` are not applicable and will throw.
 - `embedQuery()` still uses Harrier-style `Instruct: ...\nQuery: ...` formatting by default. For non-Harrier endpoint models, pass `{ instruction: "" }` or call `embedOne()` directly.
-- `bun run test:needle` runs a synthetic large-haystack benchmark that verifies planted needles stay retrievable while reporting single-thread exact, multicore exact, approximate-search, and rerank latency.
-- `bun run test:needle:browser` runs a Chromium benchmark for the same comparison on the browser worker runtime.
-- `bun run test:needle:live` runs the real Harrier model against a larger generated text corpus and reports query-embedding plus retrieval latency.
+- `bun run test:needle` runs a synthetic large-haystack benchmark that verifies planted needles stay retrievable while reporting exact direct, exact+rerank, multicore exact, and TurboQuant+rerank latency.
+- `bun run test:needle:browser` runs the same fair-comparison benchmark in Chromium.
+- `bun run test:needle:live` runs the real Harrier model against a larger generated text corpus and reports exact+rerank versus TurboQuant+rerank quality plus end-to-end latency.
 
 ## Scripts
 

@@ -1,15 +1,12 @@
-import type { DefussRecord } from "defuss-db";
+import { DefussTable, defineTable, type DefussRecord } from "defuss-db";
 import { DEFAULT_TRANSFORMERS_CACHE_NAME } from "./model-source.js";
 
 export const BROWSER_MODEL_CACHE_DB_NAME = "defuss-embeddings-cache";
 export const BROWSER_MODEL_CACHE_TABLE_NAME = "model_files";
 
 interface BrowserModelCacheRecord extends DefussRecord {
-  pk?: number;
   cacheKey: string;
-  cacheKey_index: string;
   remoteUrl: string;
-  remoteUrl_index: string;
   fileName: string;
   modelId: string;
   revision: string;
@@ -18,19 +15,28 @@ interface BrowserModelCacheRecord extends DefussRecord {
   updatedAt: string;
 }
 
+const browserModelCacheTable = defineTable<BrowserModelCacheRecord>({
+  name: BROWSER_MODEL_CACHE_TABLE_NAME,
+  indexes: [
+    {
+      name: "cacheKey",
+      source: "cacheKey",
+      unique: true,
+    },
+    {
+      name: "remoteUrl",
+      source: "remoteUrl",
+    },
+  ],
+});
+
 let providerPromise: Promise<{
-  createTable(table: string): Promise<void>;
   connect(options?: object): Promise<void>;
   disconnect(): Promise<void>;
-  findOne<T extends DefussRecord>(
-    table: string,
-    query: Partial<Record<string, string | bigint | number | boolean | null | ArrayBuffer | Blob>>,
-  ): Promise<T | null>;
-  upsert<T extends DefussRecord>(
-    table: string,
-    value: T,
-    query: Partial<Record<string, string | bigint | number | boolean | null | ArrayBuffer | Blob>>,
-  ): Promise<string | number | bigint>;
+  table: DefussTable<BrowserModelCacheRecord, object>;
+  findOne(selector: Partial<Record<string, string | bigint | number | boolean | null | ArrayBuffer | Blob>>): Promise<BrowserModelCacheRecord | null>;
+  upsert(selector: Partial<Record<string, string | bigint | number | boolean | null | ArrayBuffer | Blob>>, value: BrowserModelCacheRecord): Promise<string | number | bigint>;
+  delete(selector: Partial<Record<string, string | bigint | number | boolean | null | ArrayBuffer | Blob>>): Promise<void>;
 } | null> = null;
 
 const getProvider = async () => {
@@ -40,17 +46,25 @@ const getProvider = async () => {
 
   providerPromise = (async () => {
     const { DexieProvider } = await import("defuss-db/client.js");
-    const provider = new DexieProvider(BROWSER_MODEL_CACHE_DB_NAME);
+    const provider = new DexieProvider(BROWSER_MODEL_CACHE_DB_NAME) as any;
     await provider.connect();
-    await provider.createTable(BROWSER_MODEL_CACHE_TABLE_NAME);
-    return provider;
+    const table = new DefussTable(provider, browserModelCacheTable);
+    await table.init();
+    return {
+      connect: provider.connect.bind(provider),
+      disconnect: provider.disconnect.bind(provider),
+      table,
+      findOne: table.findOne.bind(table),
+      upsert: table.upsert.bind(table),
+      delete: table.delete.bind(table),
+    };
   })();
 
   return providerPromise;
 };
 
 const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  return new Uint8Array(bytes).slice().buffer;
 };
 
 const toUint8Array = (value: unknown): Uint8Array | null => {
@@ -130,9 +144,7 @@ export const readBrowserPersistentCachedFile = async (
     return null;
   }
 
-  const record = await provider.findOne<BrowserModelCacheRecord>(BROWSER_MODEL_CACHE_TABLE_NAME, {
-    cacheKey_index: cacheKey,
-  });
+  const record = await provider.findOne({ cacheKey });
 
   if (!record) {
     return null;
@@ -155,9 +167,7 @@ export const inspectBrowserPersistentCachedFile = async (cacheKey: string): Prom
     return false;
   }
 
-  const record = await provider.findOne<BrowserModelCacheRecord>(BROWSER_MODEL_CACHE_TABLE_NAME, {
-    cacheKey_index: cacheKey,
-  });
+  const record = await provider.findOne({ cacheKey });
 
   return Boolean(record);
 };
@@ -176,13 +186,11 @@ export const writeBrowserPersistentCachedFile = async (options: {
     return;
   }
 
-  await provider.upsert<BrowserModelCacheRecord>(
-    BROWSER_MODEL_CACHE_TABLE_NAME,
+  await provider.upsert(
+    { cacheKey: options.cacheKey },
     {
       cacheKey: options.cacheKey,
-      cacheKey_index: options.cacheKey,
       remoteUrl: options.remoteUrl,
-      remoteUrl_index: options.remoteUrl,
       fileName: options.fileName,
       modelId: options.modelId,
       revision: options.revision,
@@ -190,7 +198,6 @@ export const writeBrowserPersistentCachedFile = async (options: {
       contentType: options.contentType,
       updatedAt: new Date().toISOString(),
     },
-    { cacheKey_index: options.cacheKey },
   );
 };
 
@@ -236,17 +243,13 @@ export const deleteBrowserPersistentCachedFile = async (cacheKey: string): Promi
     return false;
   }
 
-  const existing = await provider.findOne<BrowserModelCacheRecord>(BROWSER_MODEL_CACHE_TABLE_NAME, {
-    cacheKey_index: cacheKey,
-  });
+  const existing = await provider.findOne({ cacheKey });
 
   if (!existing) {
     return false;
   }
 
-  await provider.delete(BROWSER_MODEL_CACHE_TABLE_NAME, {
-    cacheKey_index: cacheKey,
-  });
+  await provider.delete({ cacheKey });
 
   return true;
 };

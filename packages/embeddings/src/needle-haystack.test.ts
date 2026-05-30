@@ -15,16 +15,28 @@ interface SyntheticNeedleCase {
 
 interface TimingSample {
   readonly label: string;
-  readonly exactSingleMs: number;
-  readonly exactMulticoreMs: number;
-  readonly approximateMs: number;
-  readonly rerankMs: number;
-  readonly totalApproximateMs: number;
-  readonly exactSingleDocsPerSecond: number;
-  readonly exactMulticoreDocsPerSecond: number;
-  readonly approximateDocsPerSecond: number;
-  readonly rerankCandidatesPerSecond: number;
-  readonly exactMulticoreSpeedup: number;
+  readonly exactDirectHit: boolean;
+  readonly exactRerankedHit: boolean;
+  readonly turboCandidateHit: boolean;
+  readonly turboRerankedHit: boolean;
+  readonly exactDirectMs: number;
+  readonly exactCandidateMs: number;
+  readonly exactRerankMs: number;
+  readonly exactTotalMs: number;
+  readonly exactMulticoreDirectMs: number;
+  readonly exactMulticoreCandidateMs: number;
+  readonly exactMulticoreRerankMs: number;
+  readonly exactMulticoreTotalMs: number;
+  readonly turboCandidateMs: number;
+  readonly turboRerankMs: number;
+  readonly turboTotalMs: number;
+  readonly exactDirectDocsPerSecond: number;
+  readonly exactCandidateDocsPerSecond: number;
+  readonly exactMulticoreDirectDocsPerSecond: number;
+  readonly exactMulticoreCandidateDocsPerSecond: number;
+  readonly turboCandidateDocsPerSecond: number;
+  readonly exactMulticoreDirectSpeedup: number;
+  readonly exactMulticoreCandidateSpeedup: number;
 }
 
 const round = (value: number): number => Number(value.toFixed(3));
@@ -54,6 +66,10 @@ const measureAsync = async <T>(
   const startedAt = performance.now();
   const result = await fn();
   return { result, ms: performance.now() - startedAt };
+};
+
+const hitIndexes = <THit extends { index: number }>(hits: readonly THit[]): number[] => {
+  return hits.map((hit) => hit.index);
 };
 
 const makeSeededUnitVector = (seed: number, dims: number): Float32Array => {
@@ -111,11 +127,11 @@ const buildSyntheticNeedleHaystack = (
 
 describe("needle in haystack retrieval benchmark", () => {
   it(
-    "retrieves planted needles and reports single-thread, multicore, and TurboQuant latency",
+    "retrieves planted needles and reports exact+rerank versus TurboQuant+rerank latency",
     async () => {
       const corpusSize = 25_000;
       const dims = 640;
-      const approximateK = 100;
+      const candidateK = 100;
       const rerankK = 10;
       const exactMulticoreOptions = {
         cores: 4,
@@ -128,70 +144,133 @@ describe("needle in haystack retrieval benchmark", () => {
       );
 
       searchTopK(haystack, cases[0]!.query, rerankK);
+      searchTopK(haystack, cases[0]!.query, candidateK);
       await searchTopKMulticore(haystack, cases[0]!.query, rerankK, exactMulticoreOptions);
-      searchTurboQuantIndex(turboIndex, cases[0]!.query, approximateK);
+      await searchTopKMulticore(haystack, cases[0]!.query, candidateK, exactMulticoreOptions);
+      searchTurboQuantIndex(turboIndex, cases[0]!.query, candidateK);
 
       const timings: TimingSample[] = [];
 
       for (const testCase of cases) {
-        const { result: exactSingleTopK, ms: exactSingleMs } = measureSync(() =>
+        const { result: exactDirectTopK, ms: exactDirectMs } = measureSync(() =>
           searchTopK(haystack, testCase.query, rerankK),
         );
-        const { result: exactMulticoreTopK, ms: exactMulticoreMs } = await measureAsync(() =>
-          searchTopKMulticore(haystack, testCase.query, rerankK, exactMulticoreOptions),
+        const { result: exactCandidateTopK, ms: exactCandidateMs } = measureSync(() =>
+          searchTopK(haystack, testCase.query, candidateK),
         );
-        const { result: approximateTopK, ms: approximateMs } = measureSync(() =>
-          searchTurboQuantIndex(turboIndex, testCase.query, approximateK),
+        const { result: exactRerankedTopK, ms: exactRerankMs } = measureSync(() =>
+          rerankSearchHits(haystack, testCase.query, exactCandidateTopK, rerankK),
         );
-        const { result: rerankedTopK, ms: rerankMs } = measureSync(() =>
-          rerankSearchHits(haystack, testCase.query, approximateTopK, rerankK),
+        const { result: exactMulticoreDirectTopK, ms: exactMulticoreDirectMs } =
+          await measureAsync(() =>
+            searchTopKMulticore(haystack, testCase.query, rerankK, exactMulticoreOptions),
+          );
+        const { result: exactMulticoreCandidateTopK, ms: exactMulticoreCandidateMs } =
+          await measureAsync(() =>
+            searchTopKMulticore(haystack, testCase.query, candidateK, exactMulticoreOptions),
+          );
+        const { result: exactMulticoreRerankedTopK, ms: exactMulticoreRerankMs } = measureSync(
+          () => rerankSearchHits(haystack, testCase.query, exactMulticoreCandidateTopK, rerankK),
         );
+        const { result: turboCandidateTopK, ms: turboCandidateMs } = measureSync(() =>
+          searchTurboQuantIndex(turboIndex, testCase.query, candidateK),
+        );
+        const { result: turboRerankedTopK, ms: turboRerankMs } = measureSync(() =>
+          rerankSearchHits(haystack, testCase.query, turboCandidateTopK, rerankK),
+        );
+
+        const exactDirectHit = exactDirectTopK[0]?.index === testCase.expectedIndex;
+        const exactRerankedHit = exactRerankedTopK[0]?.index === testCase.expectedIndex;
+        const turboCandidateHit = turboCandidateTopK.some(
+          (hit) => hit.index === testCase.expectedIndex,
+        );
+        const turboRerankedHit = turboRerankedTopK[0]?.index === testCase.expectedIndex;
 
         timings.push({
           label: testCase.label,
-          exactSingleMs,
-          exactMulticoreMs,
-          approximateMs,
-          rerankMs,
-          totalApproximateMs: approximateMs + rerankMs,
-          exactSingleDocsPerSecond: (corpusSize / exactSingleMs) * 1000,
-          exactMulticoreDocsPerSecond: (corpusSize / exactMulticoreMs) * 1000,
-          approximateDocsPerSecond: (corpusSize / approximateMs) * 1000,
-          rerankCandidatesPerSecond: (approximateK / rerankMs) * 1000,
-          exactMulticoreSpeedup: exactSingleMs / exactMulticoreMs,
+          exactDirectHit,
+          exactRerankedHit,
+          turboCandidateHit,
+          turboRerankedHit,
+          exactDirectMs,
+          exactCandidateMs,
+          exactRerankMs,
+          exactTotalMs: exactCandidateMs + exactRerankMs,
+          exactMulticoreDirectMs,
+          exactMulticoreCandidateMs,
+          exactMulticoreRerankMs,
+          exactMulticoreTotalMs: exactMulticoreCandidateMs + exactMulticoreRerankMs,
+          turboCandidateMs,
+          turboRerankMs,
+          turboTotalMs: turboCandidateMs + turboRerankMs,
+          exactDirectDocsPerSecond: (corpusSize / exactDirectMs) * 1000,
+          exactCandidateDocsPerSecond: (corpusSize / exactCandidateMs) * 1000,
+          exactMulticoreDirectDocsPerSecond: (corpusSize / exactMulticoreDirectMs) * 1000,
+          exactMulticoreCandidateDocsPerSecond:
+            (corpusSize / exactMulticoreCandidateMs) * 1000,
+          turboCandidateDocsPerSecond: (corpusSize / turboCandidateMs) * 1000,
+          exactMulticoreDirectSpeedup: exactDirectMs / exactMulticoreDirectMs,
+          exactMulticoreCandidateSpeedup: exactCandidateMs / exactMulticoreCandidateMs,
         });
 
-        expect(exactSingleTopK[0]?.index).toBe(testCase.expectedIndex);
-        expect(exactMulticoreTopK).toEqual(exactSingleTopK);
-        expect(approximateTopK.some((hit) => hit.index === testCase.expectedIndex)).toBe(true);
-        expect(rerankedTopK[0]?.index).toBe(testCase.expectedIndex);
+        expect(exactDirectHit).toBe(true);
+        expect(exactRerankedHit).toBe(true);
+        expect(hitIndexes(exactRerankedTopK)).toEqual(hitIndexes(exactDirectTopK));
+        expect(hitIndexes(exactMulticoreDirectTopK)).toEqual(hitIndexes(exactDirectTopK));
+        expect(hitIndexes(exactMulticoreRerankedTopK)).toEqual(hitIndexes(exactRerankedTopK));
+        expect(turboCandidateHit).toBe(true);
+        expect(turboRerankedHit).toBe(true);
       }
 
       const summary = {
         corpusSize,
         dims,
-        approximateK,
+        candidateK,
         rerankK,
         indexBuildMs: round(indexBuildMs),
-        exactSingleMs: summarizeMetric(timings.map((entry) => entry.exactSingleMs)),
-        exactMulticoreMs: summarizeMetric(timings.map((entry) => entry.exactMulticoreMs)),
-        approximateMs: summarizeMetric(timings.map((entry) => entry.approximateMs)),
-        rerankMs: summarizeMetric(timings.map((entry) => entry.rerankMs)),
-        totalApproximateMs: summarizeMetric(timings.map((entry) => entry.totalApproximateMs)),
-        exactSingleDocsPerSecond: summarizeMetric(
-          timings.map((entry) => entry.exactSingleDocsPerSecond),
+        exactDirectHitCount: timings.filter((entry) => entry.exactDirectHit).length,
+        exactRerankedHitCount: timings.filter((entry) => entry.exactRerankedHit).length,
+        turboCandidateHitCount: timings.filter((entry) => entry.turboCandidateHit).length,
+        turboRerankedHitCount: timings.filter((entry) => entry.turboRerankedHit).length,
+        exactDirectMs: summarizeMetric(timings.map((entry) => entry.exactDirectMs)),
+        exactCandidateMs: summarizeMetric(timings.map((entry) => entry.exactCandidateMs)),
+        exactRerankMs: summarizeMetric(timings.map((entry) => entry.exactRerankMs)),
+        exactTotalMs: summarizeMetric(timings.map((entry) => entry.exactTotalMs)),
+        exactMulticoreDirectMs: summarizeMetric(
+          timings.map((entry) => entry.exactMulticoreDirectMs),
         ),
-        exactMulticoreDocsPerSecond: summarizeMetric(
-          timings.map((entry) => entry.exactMulticoreDocsPerSecond),
+        exactMulticoreCandidateMs: summarizeMetric(
+          timings.map((entry) => entry.exactMulticoreCandidateMs),
         ),
-        approximateDocsPerSecond: summarizeMetric(
-          timings.map((entry) => entry.approximateDocsPerSecond),
+        exactMulticoreRerankMs: summarizeMetric(
+          timings.map((entry) => entry.exactMulticoreRerankMs),
         ),
-        rerankCandidatesPerSecond: summarizeMetric(
-          timings.map((entry) => entry.rerankCandidatesPerSecond),
+        exactMulticoreTotalMs: summarizeMetric(
+          timings.map((entry) => entry.exactMulticoreTotalMs),
         ),
-        exactMulticoreSpeedup: summarizeMetric(
-          timings.map((entry) => entry.exactMulticoreSpeedup),
+        turboCandidateMs: summarizeMetric(timings.map((entry) => entry.turboCandidateMs)),
+        turboRerankMs: summarizeMetric(timings.map((entry) => entry.turboRerankMs)),
+        turboTotalMs: summarizeMetric(timings.map((entry) => entry.turboTotalMs)),
+        exactDirectDocsPerSecond: summarizeMetric(
+          timings.map((entry) => entry.exactDirectDocsPerSecond),
+        ),
+        exactCandidateDocsPerSecond: summarizeMetric(
+          timings.map((entry) => entry.exactCandidateDocsPerSecond),
+        ),
+        exactMulticoreDirectDocsPerSecond: summarizeMetric(
+          timings.map((entry) => entry.exactMulticoreDirectDocsPerSecond),
+        ),
+        exactMulticoreCandidateDocsPerSecond: summarizeMetric(
+          timings.map((entry) => entry.exactMulticoreCandidateDocsPerSecond),
+        ),
+        turboCandidateDocsPerSecond: summarizeMetric(
+          timings.map((entry) => entry.turboCandidateDocsPerSecond),
+        ),
+        exactMulticoreDirectSpeedup: summarizeMetric(
+          timings.map((entry) => entry.exactMulticoreDirectSpeedup),
+        ),
+        exactMulticoreCandidateSpeedup: summarizeMetric(
+          timings.map((entry) => entry.exactMulticoreCandidateSpeedup),
         ),
       };
 
@@ -200,16 +279,26 @@ describe("needle in haystack retrieval benchmark", () => {
       );
 
       expect(summary.indexBuildMs).toBeGreaterThan(0);
-      expect(summary.exactSingleMs.avg).toBeGreaterThan(0);
-      expect(summary.exactMulticoreMs.avg).toBeGreaterThan(0);
-      expect(summary.approximateMs.avg).toBeGreaterThan(0);
-      expect(summary.rerankMs.avg).toBeGreaterThan(0);
-      expect(summary.totalApproximateMs.avg).toBeGreaterThan(0);
-      expect(summary.exactSingleDocsPerSecond.avg).toBeGreaterThan(0);
-      expect(summary.exactMulticoreDocsPerSecond.avg).toBeGreaterThan(0);
-      expect(summary.approximateDocsPerSecond.avg).toBeGreaterThan(0);
-      expect(summary.rerankCandidatesPerSecond.avg).toBeGreaterThan(0);
-      expect(summary.exactMulticoreSpeedup.avg).toBeGreaterThan(0);
+      expect(summary.exactRerankedHitCount).toBe(cases.length);
+      expect(summary.turboRerankedHitCount).toBe(cases.length);
+      expect(summary.exactDirectMs.avg).toBeGreaterThan(0);
+      expect(summary.exactCandidateMs.avg).toBeGreaterThan(0);
+      expect(summary.exactRerankMs.avg).toBeGreaterThan(0);
+      expect(summary.exactTotalMs.avg).toBeGreaterThan(0);
+      expect(summary.exactMulticoreDirectMs.avg).toBeGreaterThan(0);
+      expect(summary.exactMulticoreCandidateMs.avg).toBeGreaterThan(0);
+      expect(summary.exactMulticoreRerankMs.avg).toBeGreaterThan(0);
+      expect(summary.exactMulticoreTotalMs.avg).toBeGreaterThan(0);
+      expect(summary.turboCandidateMs.avg).toBeGreaterThan(0);
+      expect(summary.turboRerankMs.avg).toBeGreaterThan(0);
+      expect(summary.turboTotalMs.avg).toBeGreaterThan(0);
+      expect(summary.exactDirectDocsPerSecond.avg).toBeGreaterThan(0);
+      expect(summary.exactCandidateDocsPerSecond.avg).toBeGreaterThan(0);
+      expect(summary.exactMulticoreDirectDocsPerSecond.avg).toBeGreaterThan(0);
+      expect(summary.exactMulticoreCandidateDocsPerSecond.avg).toBeGreaterThan(0);
+      expect(summary.turboCandidateDocsPerSecond.avg).toBeGreaterThan(0);
+      expect(summary.exactMulticoreDirectSpeedup.avg).toBeGreaterThan(0);
+      expect(summary.exactMulticoreCandidateSpeedup.avg).toBeGreaterThan(0);
     },
     120_000,
   );
