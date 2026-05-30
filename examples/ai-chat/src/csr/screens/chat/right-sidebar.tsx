@@ -49,6 +49,7 @@ export function RightSidebar() {
 			repetitionPenalty: parseFloat((fd.get("repetitionPenalty") as string) || "1.0"),
 			presencePenalty: parseFloat((fd.get("presencePenalty") as string) || "0"),
 			enableThinking: (fd.get("enableThinking") as string) === "on",
+			devMode: (fd.get("devMode") as string) === "on",
 		};
 
 		chatStore.set({ ...chatStore.value, settings });
@@ -65,8 +66,12 @@ export function RightSidebar() {
 
 	return (
 		<div ref={containerRef} class="chat-sidebar-right flex flex-col h-full border-l bg-sidebar text-sidebar-foreground">
-			<div class="flex items-center px-2 py-1 border-b h-10">
+			<div class="flex items-center justify-between px-2 py-1 border-b h-10">
 				<h2 class="font-semibold text-sm sidebar-title">{t("settings.title")}</h2>
+				<div class="flex items-center gap-1.5">
+					<input id="devMode" name="devMode" type="checkbox" class="input" checked={s.devMode} />
+					<Label htmlFor="devMode" className="text-xs font-medium cursor-pointer sidebar-title">{t("settings.dev_mode")}</Label>
+				</div>
 			</div>
 			<div class="sidebar-content flex-1 overflow-y-auto p-3 scrollbar">
 				<form ref={formRef} class="grid gap-4" onChange={saveSettings}>

@@ -1,0 +1,17 @@
+{
+  "extends": "astro/tsconfigs/base",
+
+  "compilerOptions": {
+    /* defuss JSX */
+    "jsx": "react-jsx",
+    "jsxImportSource": "defuss",
+
+    "baseUrl": ".",
+    "paths": {
+      "@components/*": ["src/csr/components/*"],
+      "@core/*": ["src/lib/core/*"],
+      "@model/*": ["src/models/*"],
+      "@layouts/*": ["src/layouts/*"]
+    }
+  }
+}

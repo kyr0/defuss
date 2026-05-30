@@ -6,12 +6,22 @@ import {
 	createConversation,
 	addMessage,
 	updateMessageContent,
+	updateMessageMeta,
 	updateConversationTitle,
 	saveConversationsToStorage,
 } from "../../lib/chat-store";
+import type { CallTraceEntry } from "../../../models/chat";
 import { getRpcClient } from "../../lib/rpc-client";
 import { setStreamRendering, scrollToBottomForce, setShouldAutoScroll, shouldAutoScrollGet } from "./message-list";
 import { t } from "../../i18n";
+
+interface CallTraceChunk {
+	__callTrace: CallTraceEntry[];
+}
+
+function isCallTraceChunk(chunk: string | CallTraceChunk): chunk is CallTraceChunk {
+	return typeof chunk === "object" && chunk !== null && "__callTrace" in chunk;
+}
 
 // Module-level state to persist across re-renders
 let activeStreamAbort: AbortController | null = null;
@@ -263,6 +273,12 @@ export function ChatInput() {
 
 					for await (const chunk of stream) {
 						if (signal.aborted) break;
+						// Handle _meta call_trace chunk
+							if (isCallTraceChunk(chunk)) {
+								console.log("[ChatInput] received __callTrace chunk:", JSON.stringify(chunk.__callTrace));
+								updateMessageMeta(conversationId, assistantMsgId, { callTrace: chunk.__callTrace });
+								continue;
+							}
 						fullResponse += chunk;
 						pending += chunk;
 

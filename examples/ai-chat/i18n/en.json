@@ -65,7 +65,8 @@
     "confirm_delete": "Delete",
     "confirm_retry": "Retry",
     "confirm_cancel": "Cancel",
-    "stop_generating": "Stop generating"
+    "stop_generating": "Stop generating",
+    "copy_message": "Copy message"
   },
   "sidebar": {
     "conversations": "Conversations",
@@ -89,6 +90,7 @@
     "top_p": "Top P",
     "repetition_penalty": "Repetition Penalty",
     "presence_penalty": "Presence Penalty",
-    "enable_thinking": "Enable thinking"
+    "enable_thinking": "Enable thinking",
+    "dev_mode": "Dev Mode"
   }
 }

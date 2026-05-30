@@ -244,6 +244,19 @@ function MessageBubble({ message, onDelete, onRetry }: { key: string; message: C
 		}
 	};
 
+	const handleCopy = (e: Event) => {
+		e.stopPropagation();
+		const btn = (e.target as HTMLElement).closest("button");
+		navigator.clipboard.writeText(message.content || "")
+			.then(() => {
+				if (btn) {
+					btn.classList.add("copied");
+					setTimeout(() => btn.classList.remove("copied"), 2000);
+				}
+			})
+			.catch(console.error);
+	};
+
 	const handleEdit = (e: Event) => {
 		e.stopPropagation();
 		editingMessages.add(message.id);
@@ -351,39 +364,55 @@ function MessageBubble({ message, onDelete, onRetry }: { key: string; message: C
 					: "bg-white/70 dark:bg-white/10 text-foreground rounded-bl-md border border-gray-200 dark:border-gray-700"
 					}`}
 			>
-				<div class="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 transition-all">
-					{isUser && !isPendingAssistant && (
+					<div class="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 transition-all">
+						{isUser && !isPendingAssistant && (
+							<button
+								type="button"
+								class={`p-1 rounded transition-all cursor-pointer border hover:bg-primary/20 ${isUser ? "border-white/40 hover:border-white/60" : "border-gray-300 dark:border-gray-600 hover:border-primary/50"}`}
+								onClick={handleEdit}
+								aria-label={t("chat.edit_message")}
+								title={t("chat.edit_message")}
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+							</button>
+						)}
+						{!isPendingAssistant && (
+							<button
+								type="button"
+								class={`group p-1 rounded transition-all cursor-pointer border hover:border-primary/50 hover:bg-primary/20 ${isUser ? "border-white/40" : "border-gray-300 dark:border-gray-600"}`}
+								onClick={handleCopy}
+								aria-label={t("chat.copy_message")}
+								title={t("chat.copy_message")}
+							>
+								<div class="group-[.copied]:hidden">
+									<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+								</div>
+								<div class="hidden group-[.copied]:block">
+									<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+								</div>
+							</button>
+						)}
+						{!isPendingAssistant && (
+							<button
+								type="button"
+								class={`p-1 rounded transition-all cursor-pointer border hover:bg-primary/20 ${isUser ? "border-white/40 hover:border-white/60" : "border-gray-300 dark:border-gray-600 hover:border-primary/50"}`}
+								onClick={handleResend}
+								aria-label={t("chat.resend_message")}
+								title={t("chat.resend_message")}
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path d="M16 21h5v-5" /></svg>
+							</button>
+						)}
 						<button
 							type="button"
-							class={`p-1 rounded transition-all cursor-pointer border hover:bg-primary/20 ${isUser ? "border-white/40 hover:border-white/60" : "border-gray-300 dark:border-gray-600 hover:border-primary/50"}`}
-							onClick={handleEdit}
-							aria-label={t("chat.edit_message")}
-							title={t("chat.edit_message")}
+							class={`p-1 rounded transition-all cursor-pointer border hover:bg-destructive/20 hover:text-destructive ${isUser ? "border-white/40 hover:border-white/60" : "border-gray-300 dark:border-gray-600 hover:border-destructive"}`}
+							onClick={handleDelete}
+							aria-label={t("chat.delete_message")}
+							title={t("chat.delete_message")}
 						>
-							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
 						</button>
-					)}
-					{!isPendingAssistant && (
-						<button
-							type="button"
-							class={`p-1 rounded transition-all cursor-pointer border hover:bg-primary/20 ${isUser ? "border-white/40 hover:border-white/60" : "border-gray-300 dark:border-gray-600 hover:border-primary/50"}`}
-							onClick={handleResend}
-							aria-label={t("chat.resend_message")}
-							title={t("chat.resend_message")}
-						>
-							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path d="M16 21h5v-5" /></svg>
-						</button>
-					)}
-					<button
-						type="button"
-						class={`p-1 rounded transition-all cursor-pointer border hover:bg-destructive/20 hover:text-destructive ${isUser ? "border-white/40 hover:border-white/60" : "border-gray-300 dark:border-gray-600 hover:border-destructive"}`}
-						onClick={handleDelete}
-						aria-label={t("chat.delete_message")}
-						title={t("chat.delete_message")}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
-					</button>
-				</div>
+					</div>
 				{isPendingAssistant && (
 					<div
 						data-msg-loading={message.id}
@@ -415,7 +444,27 @@ function MessageBubble({ message, onDelete, onRetry }: { key: string; message: C
 				>
 					{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
 				</div>
+				{!isUser && !isPendingAssistant && chatStore.value.settings.devMode && message.meta?.callTrace && message.meta.callTrace.length > 0 && (() => {
+					console.log("[MessageBubble] rendering call trace for msg", message.id, "devMode=", chatStore.value.settings.devMode, "callTrace=", message.meta.callTrace);
+					return (
+					<div class="call-trace-footer" data-msg-calltrace={message.id}>
+						{message.meta.callTrace.map((entry, i) => (
+							<div key={`${message.id}-trace-${i}`} class={`call-trace-entry call-trace-${entry.type}`}>
+								<span class="call-trace-type">{entry.type}</span>
+								<span class="call-trace-name">{entry.name}</span>
+								{entry.result && Object.keys(entry.result).length > 0 && (
+									<span class="call-trace-result">
+										{Object.entries(entry.result).map(([k, v]) => (
+											<span key={k} class="call-trace-kv">{k}={String(v)}</span>
+										))}
+									</span>
+								)}
+							</div>
+						))}
+					</div>
+					);
+				})()}
 			</div>
 		</div>
 	);
-}
+	}

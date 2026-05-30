@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "defuss-browser-extension": {
+      "command": "bun",
+      "args": ["run", "mcp"],
+      "cwd": "."
+    }
+  }
+}

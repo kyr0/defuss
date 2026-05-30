@@ -65,7 +65,8 @@
     "confirm_delete": "Löschen",
     "confirm_retry": "Wiederholen",
     "confirm_cancel": "Abbrechen",
-    "stop_generating": "Generierung stoppen"
+    "stop_generating": "Generierung stoppen",
+    "copy_message": "Nachricht kopieren"
   },
   "sidebar": {
     "conversations": "Unterhaltungen",
@@ -89,6 +90,7 @@
     "top_p": "Top P",
     "repetition_penalty": "Wiederholungsstrafe",
     "presence_penalty": "Präsenzstrafe",
-    "enable_thinking": "Denken aktivieren"
+    "enable_thinking": "Denken aktivieren",
+    "dev_mode": "Entwicklermodus"
   }
 }

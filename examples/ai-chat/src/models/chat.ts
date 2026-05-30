@@ -1,5 +1,12 @@
 export type MessageRole = "user" | "assistant" | "system";
 
+export interface CallTraceEntry {
+  type: "evaluator" | "strategy";
+  name: string;
+  params: Record<string, unknown>;
+  result?: Record<string, unknown>;
+}
+
 export interface AssistantMessageMeta {
   model: string;
   temperature: number;
@@ -9,6 +16,7 @@ export interface AssistantMessageMeta {
   repetitionPenalty: number;
   presencePenalty: number;
   enableThinking: boolean;
+  callTrace?: CallTraceEntry[];
 }
 
 export interface ChatMessage {
@@ -39,6 +47,7 @@ export interface ChatSettings {
   repetitionPenalty: number;
   presencePenalty: number;
   enableThinking: boolean;
+  devMode: boolean;
 }
 
 export const DEFAULT_CHAT_SETTINGS: ChatSettings = {
@@ -53,4 +62,5 @@ export const DEFAULT_CHAT_SETTINGS: ChatSettings = {
   repetitionPenalty: 1,
   presencePenalty: 0,
   enableThinking: false,
+  devMode: false,
 };

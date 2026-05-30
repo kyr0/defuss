@@ -160,6 +160,25 @@ export function updateMessageContent(conversationId: string, messageId: string, 
   saveConversationsToStorage();
 }
 
+export function updateMessageMeta(conversationId: string, messageId: string, meta: Partial<AssistantMessageMeta>) {
+  const { conversations } = chatStore.value;
+  chatStore.set({
+    ...chatStore.value,
+    conversations: conversations.map((c) =>
+      c.id === conversationId
+        ? {
+            ...c,
+            messages: c.messages.map((m) =>
+              m.id === messageId && m.meta ? { ...m, meta: { ...m.meta, ...meta } } : m,
+            ),
+            updatedAt: new Date().toISOString(),
+          }
+        : c,
+    ),
+  });
+  saveConversationsToStorage();
+}
+
 export function saveSettingsToStorage(settings: ChatSettings) {
   try {
     localStorage.setItem("chat_settings", JSON.stringify(settings));

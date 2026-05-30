@@ -1,5 +1,5 @@
 import { load, getEnv } from "defuss-env";
-import { createClient, type ChatMessage as OpenAIChatMessage } from "defuss-openai";
+import { createClient, type ChatMessage as OpenAIChatMessage, type CallTraceEntry, type ResponseMeta } from "defuss-openai";
 
 load(".env", true, false);
 
@@ -96,29 +96,45 @@ export class ChatApi {
 			console.log("[ChatApi] stream obtained, reading...");
 
 			const reader = stream.getReader();
-			let full = "";
-
-			while (true) {
-				if (signal.aborted) {
-					await reader.cancel();
-					break;
+				let full = "";
+				let callTrace: CallTraceEntry[] | undefined;
+	
+				while (true) {
+					if (signal.aborted) {
+						await reader.cancel();
+						break;
+					}
+					const { done, value } = await reader.read();
+					if (done) break;
+	
+					// Debug: log raw chunk keys to inspect SSE structure
+					console.log("[ChatApi] SSE chunk keys:", Object.keys(value), "_meta:", (value as Record<string, unknown>)._meta);
+	
+					// Check for _meta.call_trace in this chunk
+					const meta = (value as Record<string, unknown>)._meta as ResponseMeta | undefined;
+					if (meta?.call_trace) {
+						callTrace = meta.call_trace;
+						console.log("[ChatApi] received _meta.call_trace:", JSON.stringify(callTrace));
+					}
+	
+					const content = value.choices?.[0]?.delta?.content;
+					if (content) {
+						full += content;
+						process.stdout.write(content);
+						yield content;
+					}
 				}
-				const { done, value } = await reader.read();
-				if (done) break;
-
-				const content = value.choices?.[0]?.delta?.content;
-				if (content) {
-					full += content;
-					process.stdout.write(content);
-					yield content;
+	
+				// Yield call_trace as a special marker after all text chunks
+				if (callTrace) {
+					yield { __callTrace: callTrace };
 				}
-			}
-
-			if (full) {
-				process.stdout.write("\n");
-			}
-
-			return full;
+	
+				if (full) {
+					process.stdout.write("\n");
+				}
+	
+				return full;
 		} catch (err: any) {
 			console.error("[ChatApi] streamChat ERROR:", err);
 			const errorMsg = `Error: ${err.message || "Failed to connect to LLM API"}`;

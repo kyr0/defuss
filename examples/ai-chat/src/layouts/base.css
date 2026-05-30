@@ -297,3 +297,64 @@ body {
   /* Ensure content blocks have consistent spacing */
   margin-top: 0.85rem;
 }
+
+/* Call trace footer (Dev Mode) */
+.call-trace-footer {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: color-mix(in oklch, var(--defuss-muted) 30%, transparent);
+  border: 1px solid color-mix(in oklch, var(--defuss-muted) 50%, transparent);
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--defuss-muted-foreground);
+}
+
+.call-trace-entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.call-trace-entry:not(:last-child) {
+  border-bottom: 1px solid color-mix(in oklch, var(--defuss-muted) 25%, transparent);
+}
+
+.call-trace-type {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 16px;
+}
+
+.call-trace-evaluator .call-trace-type {
+  background: color-mix(in oklch, var(--defuss-primary) 20%, transparent);
+  color: var(--defuss-primary);
+}
+
+.call-trace-strategy .call-trace-type {
+  background: color-mix(in oklch, hsl(280 60% 60%) 20%, transparent);
+  color: hsl(280 60% 60%);
+}
+
+.call-trace-name {
+  font-weight: 500;
+  color: var(--defuss-foreground);
+}
+
+.call-trace-result {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+.call-trace-kv {
+  white-space: nowrap;
+}
