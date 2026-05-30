@@ -27,7 +27,7 @@ beforeAll(async () => {
   compressedPng = compress(hugePng, { quality: 6 });
 });
 
-// ── Text benchmarks (decompressText) ────────────────────────────────
+// -- Text benchmarks (decompressText) --------------------------------
 
 describe("decompressText – short JSON", () => {
   bench("decompressText", () => {
@@ -47,7 +47,7 @@ describe("decompressText – 8 KB HTML", () => {
   });
 });
 
-// ── Binary benchmarks (decompress) ──────────────────────────────────
+// -- Binary benchmarks (decompress) ----------------------------------
 
 describe("decompress – 512 B pseudorandom binary", () => {
   bench("decompress", () => {

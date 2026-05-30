@@ -56,7 +56,7 @@ async function main() {
       `  ${pad("Quality", 7)}  │  ${pad("Output", 10)}  │  ${pad("Ratio", 7)}  │  ${pad("Compress ms", 11)}  │  ${pad("Decompress ms", 13)}`,
     );
     console.log(
-      `  ${"─".repeat(7)}  │  ${"─".repeat(10)}  │  ${"─".repeat(7)}  │  ${"─".repeat(11)}  │  ${"─".repeat(13)}`,
+      `  ${"-".repeat(7)}  │  ${"-".repeat(10)}  │  ${"-".repeat(7)}  │  ${"-".repeat(11)}  │  ${"-".repeat(13)}`,
     );
 
     for (const q of QUALITIES) {

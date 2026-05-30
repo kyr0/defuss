@@ -2,7 +2,7 @@
 
 ## Install Rust, wasm-pack, and all required targets cross-platform
 setup:
-	@echo "── defuss-brotli setup ──"
+	@echo "-- defuss-brotli setup --"
 	@command -v rustup >/dev/null 2>&1 || { \
 		echo "Rust not found. Installing via rustup…"; \
 		curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; \

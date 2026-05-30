@@ -11,7 +11,7 @@ beforeAll(async () => {
   hugePng = new Uint8Array(await (await fetch("/huge.png")).arrayBuffer());
 });
 
-// ── Text benchmarks (compressText) ──────────────────────────────────
+// -- Text benchmarks (compressText) ----------------------------------
 
 describe("compressText (browser) – short JSON (83 B)", () => {
   bench("quality 6", () => {
@@ -47,7 +47,7 @@ describe("compressText (browser) – 8 KB HTML", () => {
   });
 });
 
-// ── Binary benchmarks (compress) ────────────────────────────────────
+// -- Binary benchmarks (compress) ------------------------------------
 
 describe("compress (browser) – 512 B pseudorandom binary", () => {
   bench("quality 6", () => {
