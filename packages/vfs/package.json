@@ -26,7 +26,7 @@
     "prebuild": "bun run clean",
     "build": "pkgroll",
     "test": "vitest run --coverage",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run test"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
