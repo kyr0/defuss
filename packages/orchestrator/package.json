@@ -26,9 +26,10 @@
     "clean": "rm -rf ./dist",
     "prebuild": "bun run clean",
     "build": "pkgroll",
+    "pretest": "bun run build",
     "test": "vitest --run --coverage",
     "bench": "vitest bench --run",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run test"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
@@ -54,8 +55,8 @@
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
   "dependencies": {
-    "defuss-hash": "^0.1.0",
-    "defuss-open-telemetry": "^0.1.0"
+    "defuss-hash": "^0.1.4",
+    "defuss-open-telemetry": "^0.1.2"
   },
   "devDependencies": {
     "@types/node": "^25.4.0",
