@@ -175,11 +175,11 @@ export class ExpressRpcServer {
 				);
 				res.header(
 					"Access-Control-Allow-Headers",
-					"Origin, X-Requested-With, Content-Type, Accept, Authorization, Content-Encoding, X-Upload-Handler, X-Upload-Id, X-Original-Size, X-Upload-Offset",
+					"Origin, X-Requested-With, Content-Type, Accept, Authorization, Content-Encoding, X-Upload-Handler, X-Upload-Id, X-Original-Size, X-Upload-Offset, X-Original-Filename",
 				);
 				res.header(
 					"Access-Control-Expose-Headers",
-					"X-Upload-Offset, X-Upload-Handler, X-Original-Size, X-Upload-Status",
+					"X-Upload-Offset, X-Upload-Handler, X-Original-Size, X-Upload-Status, Content-Disposition, Content-Length, X-Download-Id, X-File-Size, X-File-Sha256",
 				);
 
 				if (req.method === "OPTIONS") {
@@ -229,6 +229,12 @@ export class ExpressRpcServer {
 			`${this.basePath}/rpc/schema`,
 			this.handleRpcRequest.bind(this),
 		);
+
+		// RPC download endpoint - forward to the existing rpcRoute handler
+		this.app.get(
+			`${this.basePath}/rpc/download`,
+			this.handleRpcRequest.bind(this),
+		);
 	}
 
 	/**
@@ -241,6 +247,7 @@ export class ExpressRpcServer {
 	 */
 	private async handleRpcRequest(req: ExpressRequest, res: ExpressResponse) {
 		try {
+			console.log(`[defuss-rpc] ${req.method} ${req.originalUrl}`);
 			// Reconstruct the full request URL so rpcRoute can inspect the pathname.
 			const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
 			const astroRequest = new Request(url, {
@@ -257,6 +264,7 @@ export class ExpressRpcServer {
 
 			// Call the existing rpcRoute handler
 			const response = await rpcRoute({ request: astroRequest } as any);
+			console.log(`[defuss-rpc] Response status: ${response.status}`);
 
 			const contentType =
 				response.headers.get("content-type") || "application/json";
@@ -315,10 +323,36 @@ export class ExpressRpcServer {
 					}
 					res.end();
 				}
+			} else if (response.body && !contentType.startsWith("application/json")) {
+				// Binary/streaming response (e.g., file downloads) - pipe directly without buffering.
+				const contentLength = response.headers.get("content-length");
+				console.log(
+					`[defuss-rpc] Streaming binary response (${contentType}, Content-Length: ${contentLength})`,
+				);
+				res.status(response.status).set("content-type", contentType);
+	
+				// Forward headers from the inner response. Include Content-Disposition
+				// for filename preservation and Content-Length for download progress.
+				for (const [key, value] of response.headers.entries()) {
+					if (key !== "content-type" && key !== "transfer-encoding") {
+						res.setHeader(key, value);
+					}
+				}
+	
+				const reader = response.body.getReader();
+				let totalBytes = 0;
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					totalBytes += value.byteLength;
+					res.write(value);
+				}
+				console.log(`[defuss-rpc] Streamed ${totalBytes} bytes`);
+				res.end();
 			} else {
 				// Buffer and send the full response for non-streaming content.
 				const responseText = await response.text();
-
+	
 				if (useGzip && responseText.length > 1024) {
 					// Compress larger buffered responses (>1 KB) to save bandwidth.
 					const compressed = gzipSync(responseText, {
@@ -338,7 +372,10 @@ export class ExpressRpcServer {
 				}
 			}
 		} catch (error) {
-			console.error("RPC request error:", error);
+			const msg = error instanceof Error ? error.message : String(error);
+			const stack = error instanceof Error ? error.stack : undefined;
+			console.error(`[defuss-rpc] ERROR ${req.method} ${req.originalUrl}: ${msg}`);
+			if (stack) console.error(stack);
 			res.status(500).json({
 				error: "Internal server error",
 				message: error instanceof Error ? error.message : String(error),

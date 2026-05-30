@@ -2,6 +2,10 @@ import type { APIRoute } from "astro";
 import { DSON } from "defuss-dson";
 import type {
 	ApiNamespace,
+	DownloadHandlerEntry,
+	DownloadHandlerFn,
+	DownloadMeta,
+	DownloadStreamHandlerFn,
 	DsonStreamFrame,
 	RpcApiClass,
 	RpcApiEntry,
@@ -46,11 +50,17 @@ export const RPC_UPLOAD_PATH = "/rpc/upload" as const;
 /** Prefix for SSE upload-progress endpoint: `/rpc/upload/progress/{uploadId}`. */
 export const RPC_UPLOAD_PROGRESS_PATH = "/rpc/upload/progress/" as const;
 
+/** Base path of the download endpoint. */
+export const RPC_DOWNLOAD_PATH = "/rpc/download" as const;
+
 /** Map from namespace name => entry (class or module). */
 const rpcApiEntries: Map<string, RpcApiEntry> = new Map();
 
 /** Map from handler name => upload handler entry (buffered or streaming). */
 const uploadHandlers: Map<string, UploadHandlerEntry> = new Map();
+
+/** Map from handler name => download handler entry (buffered or streaming). */
+const downloadHandlers: Map<string, DownloadHandlerEntry> = new Map();
 
 const hooks: ServerHook[] = [];
 
@@ -197,6 +207,7 @@ async function handleUploadPost(request: Request): Promise<Response> {
 		10,
 	);
 	const contentEncoding = request.headers.get("content-encoding") || "identity";
+	const originalFilename = request.headers.get("x-original-filename") || "";
 
 	// -- Validate handler -----------------------------------------------
 	const handlerEntry = uploadHandlers.get(handlerName);
@@ -255,7 +266,6 @@ async function handleUploadPost(request: Request): Promise<Response> {
 
 	// -- Set up hash + file write + progress ----------------------------
 	const sha256 = createHash("sha256");
-	const md5 = createHash("md5");
 	let bytesReceived = isResume ? offset : 0;
 
 	// For streaming handlers on fresh uploads, we tee the body:
@@ -322,7 +332,6 @@ async function handleUploadPost(request: Request): Promise<Response> {
 
 			// Hash incrementally (only new bytes)
 			sha256.update(value);
-			md5.update(value);
 
 			// Track progress
 			bytesReceived += value.byteLength;
@@ -355,18 +364,13 @@ async function handleUploadPost(request: Request): Promise<Response> {
 		// For fresh uploads, the incremental hash covers the full content.
 		// For resumed uploads, we must hash the ENTIRE file from disk.
 		let sha256Hex: string;
-		let md5Hex: string;
 
 		if (isResume) {
 			const fullContent = await readFile(session.tempFilePath);
-			const fullSha256 = createHash("sha256").update(fullContent).digest("hex");
-			const fullMd5 = createHash("md5").update(fullContent).digest("hex");
-			sha256Hex = fullSha256;
-			md5Hex = fullMd5;
+			sha256Hex = createHash("sha256").update(fullContent).digest("hex");
 			bytesReceived = fullContent.byteLength;
 		} else {
 			sha256Hex = sha256.digest("hex");
-			md5Hex = md5.digest("hex");
 		}
 
 		const durationMs = Math.round((performance.now() - startedAt) * 100) / 100;
@@ -381,10 +385,10 @@ async function handleUploadPost(request: Request): Promise<Response> {
 			originalSize,
 			bytesReceived,
 			sha256: sha256Hex,
-			md5: md5Hex,
 			durationMs,
 			contentEncoding,
 			offset,
+			originalFilename,
 		};
 
 		// -- Call handler -----------------------------------------------
@@ -462,7 +466,6 @@ async function handleUploadPost(request: Request): Promise<Response> {
 					uploadId,
 					bytesReceived,
 					sha256: sha256Hex,
-					md5: md5Hex,
 					durationMs,
 				} satisfies UploadStreamFrame) +
 				"\n" +
@@ -497,7 +500,6 @@ async function handleUploadPost(request: Request): Promise<Response> {
 			uploadId,
 			bytesReceived,
 			sha256: sha256Hex,
-			md5: md5Hex,
 			durationMs,
 		};
 
@@ -623,6 +625,93 @@ export function clearUploadHandlers(): void {
 	uploadHandlers.clear();
 }
 
+// -- Download handler registration ----------------------------------------------
+
+/**
+ * Register a **buffered** download handler.
+ *
+ * The handler returns a `Uint8Array` (or `{ data, fileMeta }`) with the complete file data.
+ *
+ * @param name    - A unique handler name (alphanumeric, dots, hyphens, underscores; max 128 chars).
+ * @param handler - Called with `(meta)` and returns file data.
+ *
+ * @example
+ * ```ts
+ * addDownloadHandler("static-file", async (meta) => {
+ *   const data = await readFile("/path/to/file.zip");
+ *   return {
+ *     data: new Uint8Array(data),
+ *     fileMeta: {
+ *       size: data.byteLength,
+ *       contentType: "application/zip",
+ *       filename: "file.zip",
+ *     },
+ *   };
+ * });
+ * ```
+ */
+export function addDownloadHandler<T = unknown>(
+	name: string,
+	handler: DownloadHandlerFn<T>,
+): void {
+	if (!HANDLER_NAME_RE.test(name)) {
+		throw new Error(
+			`Invalid download handler name "${name}": must match ${HANDLER_NAME_RE}`,
+		);
+	}
+	downloadHandlers.set(name, {
+		fn: handler as DownloadHandlerFn<unknown>,
+		mode: "buffered",
+	});
+}
+
+/**
+ * Register a **streaming** download handler.
+ *
+ * The handler returns `{ stream, fileMeta }` for real-time streaming of large files
+ * without buffering the entire payload in memory.
+ *
+ * @param name    - A unique handler name (same rules as `addDownloadHandler`).
+ * @param handler - Called with `(meta)` and returns `{ stream, fileMeta }`.
+ *
+ * @example
+ * ```ts
+ * addStreamingDownloadHandler("large-file", async (meta) => {
+ *   const file = await openAsBlob("/path/to/large.zip");
+ *   return {
+ *     stream: file.stream(),
+ *     fileMeta: {
+ *       size: file.size,
+ *       contentType: "application/zip",
+ *       filename: "large.zip",
+ *     },
+ *   };
+ * });
+ * ```
+ */
+export function addStreamingDownloadHandler<T = unknown>(
+	name: string,
+	handler: DownloadStreamHandlerFn<T>,
+): void {
+	if (!HANDLER_NAME_RE.test(name)) {
+		throw new Error(
+			`Invalid download handler name "${name}": must match ${HANDLER_NAME_RE}`,
+		);
+	}
+	downloadHandlers.set(name, {
+		fn: handler as DownloadStreamHandlerFn<unknown>,
+		mode: "streaming",
+	});
+}
+
+/**
+ * Remove all registered download handlers.
+ * Intended for **test isolation only**.
+ */
+export function clearDownloadHandlers(): void {
+	downloadHandlers.clear();
+}
+
 /**
  * Register an API namespace map with the RPC server.
  *
@@ -664,6 +753,7 @@ export async function clearRpcServer() {
 	rpcApiEntries.clear();
 	hooks.length = 0;
 	uploadHandlers.clear();
+	downloadHandlers.clear();
 	await clearAllSessions();
 }
 
@@ -859,6 +949,122 @@ export const rpcRoute: APIRoute = async ({ request }) => {
 	// POST /rpc/upload
 	if (request.method === "POST" && pathname.endsWith(RPC_UPLOAD_PATH)) {
 		return handleUploadPost(request);
+	}
+
+	// -- Download: GET body ---------------------------------------------------
+	// GET /rpc/download?handler=file-download&downloadId=xxx
+	if (
+		request.method === "GET" &&
+		pathname.endsWith(RPC_DOWNLOAD_PATH)
+	) {
+		const handlerName = url.searchParams.get("handler") || "";
+		const downloadId = url.searchParams.get("downloadId") || crypto.randomUUID();
+		const rangeHeader = request.headers.get("range");
+
+		const handlerEntry = downloadHandlers.get(handlerName);
+		if (!handlerEntry) {
+			return new Response(
+				JSON.stringify({ error: `Download handler "${handlerName}" not found` }),
+				{ status: 404, headers: { "Content-Type": "application/json" } },
+			);
+		}
+
+		// Guard hooks
+		for (const hook of hooks.filter((h) => h.phase === "guard")) {
+			const allowed = await hook.fn(
+				"__download__",
+				handlerName,
+				[downloadId],
+				request,
+			);
+			if (allowed === false) {
+				return new Response(JSON.stringify({ error: "Forbidden by hook" }), {
+					status: 403,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+		}
+
+		let rangeStart = 0;
+		let rangeEnd: number | undefined;
+		if (rangeHeader) {
+			const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+			if (match) {
+				rangeStart = Number.parseInt(match[1], 10);
+				if (match[2]) rangeEnd = Number.parseInt(match[2], 10);
+			}
+		}
+
+		const downloadMeta: DownloadMeta = {
+			downloadId,
+			handlerName,
+			rangeStart,
+			rangeEnd,
+		};
+
+		try {
+			let data: Uint8Array;
+			let stream: ReadableStream<Uint8Array> | null = null;
+			let fileMeta: {
+				size: number;
+				contentType: string;
+				filename?: string;
+				sha256?: string;
+				lastModified?: number;
+			};
+
+			if (handlerEntry.mode === "buffered") {
+				const result = await (
+					handlerEntry.fn as DownloadHandlerFn<unknown>
+				)(downloadMeta);
+				if (result instanceof Uint8Array) {
+					data = result;
+					fileMeta = {
+						size: data.byteLength,
+						contentType: "application/octet-stream",
+					};
+				} else {
+					data = result.data;
+					fileMeta = result.fileMeta;
+				}
+				stream = new ReadableStream({
+					start(controller) {
+						controller.enqueue(data);
+						controller.close();
+					},
+				});
+			} else {
+				const result = await (
+					handlerEntry.fn as DownloadStreamHandlerFn<unknown>
+				)(downloadMeta);
+				stream = result.stream;
+				fileMeta = result.fileMeta;
+			}
+
+			const headers: Record<string, string> = {
+				"Content-Type": fileMeta.contentType || "application/octet-stream",
+				"Content-Length": String(fileMeta.size),
+				"X-Download-Id": downloadId,
+				"X-File-Size": String(fileMeta.size),
+			};
+
+			if (fileMeta.sha256) headers["X-File-Sha256"] = fileMeta.sha256;
+			if (fileMeta.filename) {
+				headers["Content-Disposition"] = `attachment; filename="${fileMeta.filename}"`;
+			}
+			if (fileMeta.lastModified) {
+				headers["Last-Modified"] = new Date(fileMeta.lastModified).toUTCString();
+			}
+
+			return new Response(stream, { status: 200, headers });
+		} catch (error: unknown) {
+			return new Response(
+				JSON.stringify({
+					error: error instanceof Error ? error.message : "Download failed",
+				}),
+				{ status: 500, headers: { "Content-Type": "application/json" } },
+			);
+		}
 	}
 
 	// Prefer DSON for lossless transport, but accept the older JSON envelope

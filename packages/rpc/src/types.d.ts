@@ -183,14 +183,14 @@ export interface UploadMeta {
 	bytesReceived: number;
 	/** SHA-256 hex digest of the full received content. */
 	sha256: string;
-	/** MD5 hex digest of the full received content. */
-	md5: string;
 	/** Server-side processing duration in milliseconds. */
 	durationMs: number;
 	/** Content-Encoding used for the transfer (`"identity"`, `"gzip"`, etc.). */
 	contentEncoding: string;
 	/** Byte offset this upload started from (0 for fresh, >0 for resumed). */
 	offset: number;
+	/** Original filename from the client (from `X-Original-Filename` header). */
+	originalFilename: string;
 }
 
 /**
@@ -227,7 +227,6 @@ export type UploadStreamFrame =
 		uploadId: string;
 		bytesReceived: number;
 		sha256: string;
-		md5: string;
 		durationMs: number;
 	}
 	| { type: "result"; value: unknown }
@@ -251,5 +250,74 @@ export interface UploadProgressEvent {
  */
 export interface UploadHandlerEntry {
 	fn: UploadHandlerFn<unknown> | UploadStreamHandlerFn<unknown>;
+	mode: "buffered" | "streaming";
+}
+
+// -- Download API types ---------------------------------------------------------
+
+/**
+ * Metadata passed to download handler functions.
+ */
+export interface DownloadMeta {
+	/** Unique download identifier. */
+	downloadId: string;
+	/** The registered handler name (e.g. `"file-download"`). */
+	handlerName: string;
+	/** Optional byte-range start offset for resumable downloads. */
+	rangeStart?: number;
+	/** Optional byte-range end offset for resumable downloads. */
+	rangeEnd?: number;
+}
+
+/**
+ * Metadata returned by download handlers describing the file to send.
+ */
+export interface DownloadFileMeta {
+	/** Total file size in bytes. */
+	size: number;
+	/** MIME content type (e.g. `"application/zip"`). */
+	contentType: string;
+	/** Suggested filename for the browser. */
+	filename?: string;
+	/** SHA-256 hex digest of the file content. */
+	sha256?: string;
+	/** Last-Modified timestamp. */
+	lastModified?: number;
+}
+
+/**
+ * A buffered download handler - returns a `Uint8Array` with the complete file data.
+ * Suitable for small-to-medium files that fit comfortably in memory.
+ */
+export type DownloadHandlerFn<T = unknown> = (
+	meta: DownloadMeta,
+) => (Uint8Array | { data: Uint8Array; fileMeta: DownloadFileMeta }) | Promise<Uint8Array | { data: Uint8Array; fileMeta: DownloadFileMeta }>;
+
+/**
+ * A streaming download handler - returns a `ReadableStream<Uint8Array>` for
+ * real-time streaming of large files without buffering the entire payload.
+ */
+export type DownloadStreamHandlerFn<T = unknown> = (
+	meta: DownloadMeta,
+) => ({ stream: ReadableStream<Uint8Array>; fileMeta: DownloadFileMeta }) | Promise<{ stream: ReadableStream<Uint8Array>; fileMeta: DownloadFileMeta }>;
+
+/**
+ * Server-confirmed progress event pushed via SSE (`GET /rpc/download/progress/{downloadId}`).
+ */
+export interface DownloadProgressEvent {
+	/** Bytes sent so far. */
+	bytesSent: number;
+	/** Total bytes to send. */
+	totalBytes: number;
+	/** Percentage complete (0-100). */
+	percent: number;
+}
+
+/**
+ * Internal registration entry for a download handler.
+ * @internal
+ */
+export interface DownloadHandlerEntry {
+	fn: DownloadHandlerFn<unknown> | DownloadStreamHandlerFn<unknown>;
 	mode: "buffered" | "streaming";
 }

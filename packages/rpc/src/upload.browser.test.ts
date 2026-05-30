@@ -123,7 +123,6 @@ describe("Upload API - browser integration", () => {
 		expect(receivedFrame.type).toBe("received");
 		expect(receivedFrame.bytesReceived).toBe(1024);
 		expect(receivedFrame.sha256).toBe(expectedSha256);
-		expect(receivedFrame.md5).toBeTruthy();
 		expect(receivedFrame.durationMs).toBeGreaterThanOrEqual(0);
 
 		expect(resultFrame.type).toBe("result");

@@ -444,6 +444,8 @@ export interface UploadOptions {
 	 * @default true
 	 */
 	progress?: boolean;
+	/** Original filename of the uploaded file, forwarded to the server via `X-Original-Filename` header. */
+	originalFilename?: string;
 }
 
 /**
@@ -462,7 +464,6 @@ export type UploadEvent<T = unknown> =
 		uploadId: string;
 		bytesReceived: number;
 		sha256: string;
-		md5: string;
 		durationMs: number;
 	};
 
@@ -474,7 +475,6 @@ export interface UploadResult<T = unknown> {
 	uploadId: string;
 	bytesReceived: number;
 	sha256: string;
-	md5: string;
 	durationMs: number;
 }
 
@@ -752,6 +752,7 @@ export async function* upload<T = unknown>(
 			"X-Upload-Id": uploadId,
 			"X-Original-Size": String(totalBytes),
 			"X-Upload-Offset": String(offset),
+			...(options.originalFilename ? { "X-Original-Filename": options.originalFilename } : {}),
 			...(usedCompression === "gzip" ? { "Content-Encoding": "gzip" } : {}),
 			...(customHeaders || {}),
 			...(options.headers || {}),
@@ -912,7 +913,6 @@ export async function* upload<T = unknown>(
 		uploadId: receivedFrame.uploadId,
 		bytesReceived: receivedFrame.bytesReceived,
 		sha256: receivedFrame.sha256,
-		md5: receivedFrame.md5,
 		durationMs: receivedFrame.durationMs,
 	} as UploadEvent<T>;
 }
@@ -952,7 +952,6 @@ export async function uploadComplete<T = unknown>(
 				uploadId: event.uploadId,
 				bytesReceived: event.bytesReceived,
 				sha256: event.sha256,
-				md5: event.md5,
 				durationMs: event.durationMs,
 			};
 		}
@@ -961,4 +960,142 @@ export async function uploadComplete<T = unknown>(
 		throw new Error("Upload completed without a result event");
 	}
 	return result;
+}
+
+// -- Download API ---------------------------------------------------------------
+
+/**
+ * Options for downloading a file via the RPC upload transport.
+ */
+export interface DownloadOptions {
+	/**
+	 * Custom headers to include in the download request.
+	 * Use this for authentication (e.g., `{ Authorization: "Bearer token" }`).
+	 */
+	headers?: Record<string, string>;
+	/**
+	 * Custom download ID to use instead of generating one.
+	 * Use this to reference an existing upload session for downloading.
+	 */
+	downloadId?: string;
+}
+
+/**
+ * Result returned after a successful download.
+ */
+export interface DownloadResult<T = unknown> {
+	/** The handler's return value (if any). */
+	result: T;
+	/** Unique download identifier. */
+	downloadId: string;
+	/** Total bytes downloaded. */
+	bytesDownloaded: number;
+	/** SHA-256 hex digest of the downloaded content. */
+	sha256: string | null;
+	/** Server-side processing duration in milliseconds. */
+	durationMs: number | null;
+	/** Suggested filename from Content-Disposition header. */
+	filename: string | null;
+}
+
+/**
+ * Download a file using the RPC download transport.
+ *
+ * @param handlerName - The registered download handler name.
+ * @param baseUrl - Base URL for the RPC server.
+ * @param options - Download options (headers for auth, etc.).
+ * @returns A Promise resolving to the download result.
+ */
+export async function download<T = unknown>(
+	handlerName: string,
+	baseUrl: string,
+	options: DownloadOptions = {},
+): Promise<DownloadResult<T>> {
+	const downloadId = options.downloadId || crypto.randomUUID();
+	const url = new URL(`${baseUrl}/rpc/download`);
+	url.searchParams.set("handler", handlerName);
+	url.searchParams.set("downloadId", downloadId);
+
+	const headers: Record<string, string> = {
+		...(options.headers || {}),
+	};
+
+	const response = await fetch(url.toString(), {
+		method: "GET",
+		headers,
+	});
+
+	if (!response.ok) {
+		const body = await response.text();
+		throw new Error(`Download failed: ${response.status} ${response.statusText} - ${body}`);
+	}
+
+	const contentType = response.headers.get("Content-Type") || "application/octet-stream";
+	const contentLength = Number.parseInt(
+		response.headers.get("Content-Length") || "0",
+		10,
+	);
+	const sha256 = response.headers.get("X-File-Sha256") || null;
+	const disposition = response.headers.get("Content-Disposition");
+	const filename = disposition
+		? disposition.match(/filename="?([^";]+)"?/)?.[1] || null
+		: null;
+
+	// Read the response body as ArrayBuffer for binary data
+	const buffer = await response.arrayBuffer();
+	const data = new Uint8Array(buffer);
+
+	return {
+		result: null as unknown as T,
+		downloadId,
+		bytesDownloaded: data.byteLength,
+		sha256,
+		durationMs: null,
+		filename,
+	};
+}
+
+/**
+ * Download a file and return it as a Blob for easy browser usage.
+ *
+ * @param handlerName - The registered download handler name.
+ * @param baseUrl - Base URL for the RPC server.
+ * @param options - Download options (headers for auth, etc.).
+ * @returns A Promise resolving to the blob and metadata.
+ */
+export async function downloadAsBlob(
+	handlerName: string,
+	baseUrl: string,
+	options: DownloadOptions = {},
+): Promise<{ blob: Blob; result: DownloadResult }> {
+	const downloadId = options.downloadId || crypto.randomUUID();
+	const response = await fetch(
+		`${baseUrl}/rpc/download?handler=${encodeURIComponent(handlerName)}&downloadId=${downloadId}`,
+		{ method: "GET", headers: options.headers },
+	);
+
+	if (!response.ok) {
+		const body = await response.text();
+		throw new Error(`Download failed: ${response.status} ${response.statusText} - ${body}`);
+	}
+
+	const blob = await response.blob();
+
+	const sha256 = response.headers.get("X-File-Sha256") || null;
+	const disposition = response.headers.get("Content-Disposition");
+	const filename = disposition
+		? disposition.match(/filename="?([^";]+)"?/)?.[1] || null
+		: null;
+
+	return {
+		blob,
+		result: {
+			result: null as unknown,
+			downloadId: crypto.randomUUID(),
+			bytesDownloaded: blob.size,
+			sha256,
+			durationMs: null,
+			filename,
+		},
+	};
 }

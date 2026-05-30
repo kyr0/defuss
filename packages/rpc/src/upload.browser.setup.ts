@@ -29,13 +29,11 @@ export async function setup({ provide }: UploadBrowserSetupContext) {
 	addUploadHandler<{
 		size: number;
 		sha256Echo: string;
-		md5Echo: string;
 		handlerName: string;
 	}>("test-buffered", async (data, meta) => {
 		return {
 			size: data.byteLength,
 			sha256Echo: meta.sha256,
-			md5Echo: meta.md5,
 			handlerName: meta.handlerName,
 		};
 	});

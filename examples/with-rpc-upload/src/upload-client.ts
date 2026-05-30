@@ -10,7 +10,6 @@ export type UploadEvent<T = unknown> =
       uploadId: string;
       bytesReceived: number;
       sha256: string;
-      md5: string;
       durationMs: number;
     };
 
@@ -19,7 +18,6 @@ export interface UploadResult<T = unknown> {
   uploadId: string;
   bytesReceived: number;
   sha256: string;
-  md5: string;
   durationMs: number;
 }
 
@@ -84,6 +82,7 @@ export async function* uploadFile(
       "X-Upload-Id": uploadId,
       "X-Original-Size": String(totalBytes),
       "X-Upload-Offset": "0",
+      "X-Original-Filename": file.name,
     },
     body: file,
   });
@@ -113,7 +112,6 @@ export async function* uploadFile(
     uploadId: string;
     bytesReceived: number;
     sha256: string;
-    md5: string;
     durationMs: number;
   } | null = null;
   let resultFrame: { value: FileUploadResult } | null = null;
@@ -125,7 +123,6 @@ export async function* uploadFile(
           uploadId: string;
           bytesReceived: number;
           sha256: string;
-          md5: string;
           durationMs: number;
         }
       | { type: "result"; value: FileUploadResult }
@@ -150,7 +147,6 @@ export async function* uploadFile(
     uploadId: receivedFrame.uploadId,
     bytesReceived: receivedFrame.bytesReceived,
     sha256: receivedFrame.sha256,
-    md5: receivedFrame.md5,
     durationMs: receivedFrame.durationMs,
   };
 }
@@ -169,7 +165,6 @@ export async function uploadFileComplete(
         uploadId: event.uploadId,
         bytesReceived: event.bytesReceived,
         sha256: event.sha256,
-        md5: event.md5,
         durationMs: event.durationMs,
       };
     }

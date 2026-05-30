@@ -36,6 +36,7 @@ Remote Procedure Call (RPC)
 - **Astro Integration** - First-class Astro support via `defussRpc()`, with `Astro.locals.rpcEndpoint`
 - **ExpressRpcServer** - Managed Express.js adapter with CORS, health check, and streaming support
 - **File Uploads** - First-class binary upload with `upload()` / `uploadComplete()`, server handlers, SSE progress, gzip compression, and resumable transfers
+- **File Downloads** - First-class binary download with `download()` / `downloadAsBlob()`, server handlers, auth headers, hash integrity, and streaming support
 - **Hook System** - Guard and result hooks on both server and client for auth, logging, and auditing
 - **Schema Introspection** - Automatic API schema generation and discovery at `/rpc/schema`
 - **Framework Agnostic** - Works with Astro, Vite, Express.js, or any framework that supports `Request`/`Response`
@@ -254,6 +255,34 @@ await server.stop();
 | `POST /rpc/upload`    | Binary file upload (NDJSON response)      |
 | `HEAD /rpc/upload/:id`| Resume check - returns `X-Upload-Offset`  |
 | `GET /rpc/upload/progress/:id` | SSE stream of server-side progress |
+| `GET /rpc/download`            | Binary file download                |
+
+### CORS Headers
+
+`ExpressRpcServer` sets CORS headers automatically. By default, `Access-Control-Expose-Headers` includes upload-related headers (`X-Upload-Offset`, `X-Upload-Handler`, `X-Original-Size`, `X-Upload-Status`).
+
+**For file downloads**, the browser's `fetch()` API can only read response headers explicitly exposed via `Access-Control-Expose-Headers`. If your download handler sets `Content-Disposition` (for filename preservation) or custom headers like `X-File-Sha256`, they must be exposed:
+
+```ts
+const server = new ExpressRpcServer({
+  port: 3210,
+  corsOrigin: "*",
+});
+
+// Expose download headers for browser fetch() access
+const app = server.getApp();
+app.use((req, res, next) => {
+  res.header(
+    "Access-Control-Expose-Headers",
+    "Content-Disposition, Content-Length, X-Download-Id, X-File-Size, X-File-Sha256",
+  );
+  next();
+});
+
+await server.start();
+```
+
+Without this, `response.headers.get("Content-Disposition")` returns `null` in the browser, and the downloaded filename falls back to the download ID.
 
 ---
 
@@ -327,7 +356,7 @@ import { addUploadHandler, addStreamingUploadHandler } from "defuss-rpc/server";
 
 // Buffered: receives the full Uint8Array after upload completes
 addUploadHandler<{ size: number; name: string }>("file-upload", async (data, meta) => {
-  // data is a Uint8Array, meta contains uploadId, sha256, md5, originalSize, etc.
+  // data is a Uint8Array, meta contains uploadId, sha256, originalSize, etc.
   await fs.writeFile(`uploads/${meta.uploadId}.bin`, data);
   return { size: data.byteLength, name: meta.uploadId };
 });
@@ -354,7 +383,6 @@ The `meta` object (`UploadMeta`) contains:
 | `originalSize`   | `number` | Expected total bytes (from client header)        |
 | `bytesReceived`  | `number` | Actual bytes received (after decompression)      |
 | `sha256`         | `string` | SHA-256 hex digest of received content           |
-| `md5`            | `string` | MD5 hex digest of received content               |
 | `durationMs`     | `number` | Server-side processing duration in ms            |
 | `contentEncoding`| `string` | Transfer encoding (`"identity"`, `"gzip"`, etc.) |
 | `offset`         | `number` | Byte offset (0 for fresh, >0 for resumed)        |
@@ -375,7 +403,7 @@ for await (const event of upload<MyResult>("file-upload", file)) {
 
 // Fire-and-forget (returns UploadResult<T>)
 const result = await uploadComplete<MyResult>("file-upload", buffer);
-console.log(result.sha256, result.md5, result.result);
+console.log(result.sha256, result.result);
 ```
 
 ### Upload events
@@ -386,7 +414,7 @@ The `upload()` generator yields three event types:
 | :---------- | :-------------------------------------------- | :------------------------------------ |
 | `sending`   | `bytesSent`, `totalBytes`, `percent`          | Client-side bytes fed to the network  |
 | `receiving` | `bytesReceived`, `totalBytes`, `percent`      | Server-confirmed progress (via SSE)   |
-| `complete`  | `result`, `uploadId`, `sha256`, `md5`, `durationMs`, `bytesReceived` | Final result with hashes |
+| `complete`  | `result`, `uploadId`, `sha256`, `durationMs`, `bytesReceived` | Final result with hash |
 
 ### Options
 
@@ -413,6 +441,78 @@ for await (const event of upload("file-upload", largeFile, {
   // Automatically resumes from where it left off
 }
 ```
+
+---
+
+## File Downloads
+
+Download files from the server using `addDownloadHandler()` (buffered) or `addStreamingDownloadHandler()` (streaming). Downloads support authentication via request headers, hash integrity verification, and `Content-Disposition` for browser file saving.
+
+### Server - register a download handler
+
+```ts
+import { addDownloadHandler, addStreamingDownloadHandler } from "defuss-rpc/server";
+import { readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+
+// Buffered: loads entire file into memory (small/medium files)
+addDownloadHandler("static-file", async (meta) => {
+  const data = await readFile("/path/to/file.zip");
+  return {
+    data: new Uint8Array(data),
+    fileMeta: {
+      size: data.byteLength,
+      contentType: "application/zip",
+      filename: "file.zip",
+    },
+  };
+});
+
+// Streaming: streams from disk (large files, no memory pressure)
+addStreamingDownloadHandler("large-file", async (meta) => {
+  const { createReadStream } = await import("node:fs");
+  const { stat } = await import("node:fs/promises");
+  const filePath = "/path/to/large-video.mp4";
+  const statResult = await stat(filePath);
+
+  return {
+    stream: createReadStream(filePath).readableWebStream(),
+    fileMeta: {
+      size: statResult.size,
+      contentType: "video/mp4",
+      filename: "large-video.mp4",
+      lastModified: statResult.mtimeMs,
+    },
+  };
+});
+```
+
+### Client - download with auth
+
+```ts
+import { download, downloadAsBlob } from "defuss-rpc/client";
+
+// Download as raw binary (returns DownloadResult)
+const result = await download("static-file", rpcBaseUrl, {
+  headers: { Authorization: "Bearer my-token" },
+});
+console.log(result.bytesDownloaded, result.sha256, result.filename);
+
+// Download as Blob (for browser usage)
+const { blob, result } = await downloadAsBlob("static-file", rpcBaseUrl, {
+  headers: { Authorization: "Bearer my-token" },
+});
+console.log(blob.size, result.filename);
+```
+
+### Download result
+
+| Field             | Type     | Description                                    |
+| :---------------- | :------- | :--------------------------------------------- |
+| `downloadId`      | `string` | Unique download identifier                     |
+| `bytesDownloaded` | `number` | Total bytes received                           |
+| `sha256`          | `string` | SHA-256 hex digest (from `X-File-Sha256`)      |
+| `filename`        | `string` | Suggested filename (from `Content-Disposition`) |
 
 ---
 

@@ -8,8 +8,8 @@ import "./src/api/file-upload.js";
 
 export default defineConfig({
 	plugins: [
-		tailwindcss() as Plugin,
-		defuss() as Plugin,
+		tailwindcss(),
+		defuss(),
 		defussRpc({
 			api: {},
 			port: 0,

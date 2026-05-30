@@ -1,5 +1,6 @@
 import { render, $, createRef, createStore } from "defuss";
 import { rpcBaseUrl } from "virtual:defuss-rpc";
+import { downloadAsBlob } from "defuss-rpc/client.js";
 import {
 	Button,
 	Card,
@@ -20,11 +21,14 @@ interface UploadState {
 	statusText: string;
 	fileSize: number | null;
 	sha256: string | null;
-	md5: string | null;
 	durationMs: number | null;
 	uploadId: string | null;
 	bytesReceived: number | null;
 	error: string | null;
+	downloading: boolean;
+	downloadProgress: number;
+	downloadStatus: string | null;
+	originalName: string | null;
 }
 
 const store = createStore<UploadState>({
@@ -34,11 +38,14 @@ const store = createStore<UploadState>({
 	statusText: "",
 	fileSize: null,
 	sha256: null,
-	md5: null,
 	durationMs: null,
 	uploadId: null,
 	bytesReceived: null,
 	error: null,
+	downloading: false,
+	downloadProgress: 0,
+	downloadStatus: null,
+	originalName: null,
 });
 
 const formatBytes = (bytes: number): string => {
@@ -67,11 +74,13 @@ const resetState = () => {
 		statusText: "",
 		fileSize: null,
 		sha256: null,
-		md5: null,
 		durationMs: null,
 		uploadId: null,
 		bytesReceived: null,
 		error: null,
+		downloading: false,
+		downloadProgress: 0,
+		downloadStatus: null,
 	});
 };
 
@@ -86,11 +95,13 @@ const processFile = async (file: File) => {
 		statusText: `Uploading ${file.name}...`,
 		fileSize: file.size,
 		sha256: null,
-		md5: null,
 		durationMs: null,
 		uploadId: null,
 		bytesReceived: null,
 		error: null,
+		downloading: false,
+		downloadProgress: 0,
+		downloadStatus: null,
 	});
 
 	try {
@@ -105,10 +116,10 @@ const processFile = async (file: File) => {
 					progress: 100,
 					statusText: "Upload complete!",
 					sha256: event.sha256,
-					md5: event.md5,
 					durationMs: event.durationMs,
 					uploadId: event.uploadId,
 					bytesReceived: event.bytesReceived,
+					originalName: event.result.originalName || null,
 				});
 			}
 		}
@@ -124,6 +135,45 @@ const processFile = async (file: File) => {
 	}
 };
 
+const downloadFile = async (uploadId: string) => {
+	if (store.value.downloading) return;
+
+	store.set({
+		downloading: true,
+		downloadProgress: 0,
+		downloadStatus: "Downloading...",
+	});
+
+	try {
+		const result = await downloadAsBlob("file-download", rpcBaseUrl, {
+			downloadId: uploadId,
+		});
+
+		// Trigger browser download
+		const url = URL.createObjectURL(result.blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = result.result.filename || `${uploadId}.bin`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+
+		store.set({
+			downloading: false,
+			downloadProgress: 100,
+			downloadStatus: `Downloaded ${formatBytes(result.result.bytesDownloaded)}`,
+		});
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "Download failed";
+		store.set({
+			downloading: false,
+			downloadProgress: 0,
+			downloadStatus: `Error: ${message}`,
+		});
+	}
+};
+
 const onFileChange = (e: Event) => {
 	const input = e.target as HTMLInputElement;
 	const file = input.files?.[0];
@@ -136,7 +186,7 @@ const onDrop = (files: FileList | null) => {
 };
 
 const renderContent = () => {
-	const { status, fileName, statusText, progress, sha256, md5, durationMs, uploadId, bytesReceived } = store.value;
+	const { status, fileName, statusText, progress, sha256, durationMs, uploadId, bytesReceived, downloading, downloadProgress, downloadStatus } = store.value;
 
 	if (status === "idle") {
 		return (
@@ -225,17 +275,25 @@ const renderContent = () => {
 								</code>
 							</div>
 							<div class="space-y-1">
-								<p class="text-xs text-muted-foreground">MD5</p>
-								<code class="inline-block text-xs bg-muted p-2 rounded-md break-all">
-									{md5}
-								</code>
-							</div>
-							<div class="space-y-1">
 								<p class="text-xs text-muted-foreground">Upload ID</p>
 								<code class="inline-block text-xs bg-muted p-2 rounded-md break-all">
 									{uploadId}
 								</code>
 							</div>
+						</div>
+						<div class="pt-2">
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => uploadId && downloadFile(uploadId)}
+								disabled={downloading}
+							>
+								{downloading ? "Downloading..." : "Download via RPC"}
+							</Button>
+							{downloadStatus && (
+								<p class="mt-2 text-xs text-muted-foreground">{downloadStatus}</p>
+							)}
+							{downloading && <Progress value={downloadProgress} />}
 						</div>
 					</div>
 				)}

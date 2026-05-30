@@ -4,13 +4,14 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "clean": "rm -rf ./dist && rm -rf ./node_modules/.vite",
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.0",
-    "defuss": "^3.4.6",
+    "defuss": "workspace:*",
     "defuss-dson": "^1.1.1",
     "defuss-rpc": "^1.6.0",
     "defuss-express": "^0.3.2",
