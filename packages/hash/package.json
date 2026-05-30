@@ -34,7 +34,8 @@
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "bench": "vitest bench --run --config vitest.bench.config.ts",
     "pretest:browser": "bun run build",
-    "prebench": "bun run build"
+    "prebench": "bun run build",
+    "prepublishOnly": "bun run test"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
