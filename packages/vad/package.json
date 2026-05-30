@@ -1,7 +1,7 @@
 {
   "name": "defuss-vad",
   "type": "module",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "keywords": [
     "vad",
     "voice-activity-detection",
@@ -88,7 +88,7 @@
     "test:e2e": "bunx vitest run --config vitest.config.ts --coverage",
     "test:e2e:browser": "bunx vitest run --config vitest.browser.config.ts --coverage",
     "build": "bun run test && pkgroll",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run test"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
