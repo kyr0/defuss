@@ -12,16 +12,17 @@ if (typeof process !== "undefined" && process?.versions?.node) {
 	const url = await import("node:url");
 	const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 	console.log(`Loading .env from ${path.resolve(__dirname, "../.env")}`);
-	load(path.resolve(__dirname, "../.env"), true, false);
+	load(path.resolve(__dirname, "../.env"), true, true);
 }
 
 const BASE_URL = getEnv("OPENAI_BASE_URL", "http://127.0.0.1:8430/v1");
 const MODEL = getEnv("OPENAI_MODEL", "prism-ml/Bonsai-8B-mlx-1bit");
+const API_KEY = getEnv("OPENAI_API_KEY", "");
 
 console.log(`Using OPENAI_BASE_URL=${BASE_URL}`);
 console.log(`Using OPENAI_MODEL=${MODEL}`);
 
-const modelClient = createClient({ baseUrl: BASE_URL });
+const modelClient = createClient({ baseUrl: BASE_URL, apiKey: API_KEY });
 
 // ---------------------------------------------------------------------------
 // Tool-calling fixtures
