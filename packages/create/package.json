@@ -1,6 +1,6 @@
 {
   "name": "create-defuss",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -22,7 +22,8 @@
     "pretest": "bun run build",
     "prebuild": "bun run clean",
     "build": "pkgroll --minify --sourcemap",
-    "e2e": "bun run build && node ./dist/e2e.mjs"
+    "e2e": "bun run build && node ./dist/e2e.mjs",
+    "prepublishOnly": "bun run test"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "exports": {

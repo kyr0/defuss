@@ -168,9 +168,9 @@ Inside the project, you'll find the following relevant files:
 
 ```text
 /
-├── src/cli.ts
-├── src/git.ts
-├── package.json
+├-- src/cli.ts
+├-- src/git.ts
+├-- package.json
 ```
 
 ## 🧞 Commands
