@@ -1,7 +1,7 @@
 {
   "name": "defuss-openai",
   "type": "module",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "An isomorphic fetch-based OpenAI API client for Node.js and browsers, designed for use with the defuss framework - supporting kyr0 (Aron Homberg) made models.",
   "keywords": [
     "openai",
