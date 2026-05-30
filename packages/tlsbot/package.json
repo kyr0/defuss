@@ -1,0 +1,40 @@
+{
+  "name": "defuss-tlsbot",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "WIP: Zero-dependency TypeScript TLS certificate bot for Ubuntu Linux. Uses certbot for ACME DNS-01 with a plugin system for DNS providers.",
+  "bin": {
+    "defuss-tlsbot": "dist/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rm -rf ./dist && rm -rf ./node_modules/.bun",
+    "prebuild": "bun run clean",
+    "build": "pkgroll",
+    "test": "vitest --run --coverage",
+    "cli": "node ./dist/cli.mjs"
+  },
+  "devDependencies": {
+    "pkgroll": "^2.5.1",
+    "vitest": "^4.1.2",
+    "@vitest/coverage-v8": "^4.1.2"
+  }
+}
