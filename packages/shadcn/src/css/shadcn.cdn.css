@@ -1,2 +1,2 @@
-@import "tailwindcss" source(none);
+@import "tailwindcss" source("../**/*.{ts,tsx,js,jsx,css}");
 @import "./shadcn.css";

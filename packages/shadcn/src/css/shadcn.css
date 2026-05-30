@@ -1183,8 +1183,17 @@
 /* Tables */
 @layer components {
   .defuss-shadcn {
+    .table-container {
+      overflow-x: auto;
+      width: 100%;
+      border-width: var(--border-width, 1px);
+      border-style: var(--border-style, solid);
+      border-color: var(--color-border);
+      border-radius: var(--radius);
+    }
+
     .table {
-      @apply w-full caption-bottom text-sm;
+      @apply caption-bottom text-sm min-w-[fit-content];
       thead {
         @apply [&_tr]:border-b;
       }

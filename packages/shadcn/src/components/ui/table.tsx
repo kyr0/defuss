@@ -20,8 +20,8 @@ export const Table: FC<TableProps> = ({
   const tableRef = ref || createRef<HTMLTableElement>();
 
   return (
-    <div class="table-container">
-      <table ref={tableRef} class={cn("table", className)} {...props}>
+    <div class={cn("table-container", className)}>
+      <table ref={tableRef} class="table" {...props}>
         {children}
       </table>
     </div>
