@@ -17,6 +17,8 @@ export { createClient, createOpenAI, OpenAI } from './client.js';
 export { createSSEStream } from './sse.js';
 export { parseZyphraToolCalls } from './zyphra.js';
 export type {
+	CallTraceEntry,
+	ResponseMeta,
 	ChatChunkChoice,
 	ChatChoice,
 	ChatContentPart,

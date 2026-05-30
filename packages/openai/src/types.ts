@@ -209,16 +209,30 @@ export type ChatChunkChoice = {
 	} | null;
 };
 
+/** A single entry in the call trace metadata. */
+export type CallTraceEntry = {
+  type: "evaluator" | "strategy";
+  name: string;
+  params: Record<string, unknown>;
+  result?: Record<string, unknown>;
+};
+
+/** Metadata attached to responses by some LLM proxies (e.g. glitcr). */
+export type ResponseMeta = {
+  call_trace: CallTraceEntry[];
+};
+
 /** A single SSE frame from a streaming chat completion. Each chunk carries a `delta`. */
 export type ChatStreamChunk = {
-	id: string;
-	object: string;
-	created: number;
-	model: string;
-	system_fingerprint?: string | null;
-	choices: ChatChunkChoice[];
-	usage?: Usage;
-	[key: string]: unknown;
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  system_fingerprint?: string | null;
+  choices: ChatChunkChoice[];
+  usage?: Usage;
+  _meta?: ResponseMeta;
+  [key: string]: unknown;
 };
 
 /** Streaming request params - identical to `ChatParams`; `stream: true` is added automatically. */
