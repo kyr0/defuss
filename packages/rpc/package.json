@@ -1,6 +1,6 @@
 {
   "name": "defuss-rpc",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -126,7 +126,7 @@
     "node": "^20.0.0 || ^22.0.0 || ^24.0.0 || ^25.0.0"
   },
   "dependencies": {
-    "defuss-dson": "^1.1.1"
+    "defuss-dson": "^1.1.2"
   },
   "overrides": {
     "happy-dom": "^20.6.1"
