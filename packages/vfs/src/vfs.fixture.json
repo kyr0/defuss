@@ -1,0 +1,12 @@
+{
+  "entries": [
+    [
+      "/src/main.g",
+      "module main; fn main = (): i32 { return 0; }"
+    ],
+    [
+      "/src/util.md.g",
+      "# util\n\n```g\nmodule util;\nfn answer = (): i32 { return 42; }\n```\n"
+    ]
+  ]
+}
