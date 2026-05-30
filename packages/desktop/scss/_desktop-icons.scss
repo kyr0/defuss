@@ -1,0 +1,89 @@
+.desktop-icons-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 92px;
+  grid-template-rows: repeat(auto-fill, 92px);
+  gap: 8px;
+  width: max-content;
+  height: calc(100vh - 40px);
+  padding: 12px 8px;
+  align-content: start;
+}
+
+.desktop-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  width: 92px;
+  min-height: 92px;
+  padding: 4px;
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+.desktop-icon__image {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+}
+
+.desktop-icon__image img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.desktop-icon__label {
+  max-width: 84px;
+  color: #fff;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.2;
+  text-shadow: 1px 1px 1px #000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Selection rectangle (singleton div)
+.selection-model {
+  position: absolute;
+  z-index: 998;
+  border: 1px dotted darkblue;
+  background-color: rgba(0, 0, 139, 0.1);
+  pointer-events: none;
+}
+
+// Selected icon state (Windows XP style)
+.desktop-icon.icon-selected {
+
+  .desktop-icon__image {
+    position: relative;
+
+    // Blue overlay masked to icon pixel content via --icon-src custom property
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(12, 80, 176, 0.5);
+      -webkit-mask-image: var(--icon-src);
+      mask-image: var(--icon-src);
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      pointer-events: none;
+    }
+  }
+
+  .desktop-icon__label {
+    color: #fff;
+    background: rgba(12, 80, 176, 0.8);
+  }
+}

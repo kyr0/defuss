@@ -15,6 +15,15 @@
     rgba(148, 187, 233, 0) 18%
   );
   box-shadow: inset 0px -2px 5px 0px rgba(0, 0, 0, 0.3);
+
+  button,
+  button:focus,
+  button.focused,
+  button:not(:disabled):hover,
+  button:not(:disabled):active {
+    outline: none !important;
+    box-shadow: none !important;
+  }
 }
 
 $taskbarItemBlue: #1e94f0;
@@ -26,14 +35,14 @@ ul.taskbar {
   margin: 0;
   padding: 3px 0px 3px 10px;
   list-style: none;
-  height: 100%;
+  height: 24px;
   display: flex;
   justify-content: flex-start;
   flex-wrap: nowrap;
   flex-grow: 1;
 
   li {
-    height: 100%;
+    height: 20px;
     flex: 0 1 146px;
     margin: 0px 1px 0px 0px;
     background-color: $taskbarItemBlue;
@@ -41,7 +50,7 @@ ul.taskbar {
     border-top-color: $taskbarItemBorderDark;
     border-bottom-color: $taskbarItemBorderDark;
     border-right-color: $taskbarItemBorderDark;
-    padding: 3px 10px;
+    padding: 1px 8px;
     border-radius: 4px;
     // white glow in top left corner
     background-image: linear-gradient(
@@ -51,6 +60,25 @@ ul.taskbar {
     );
     // Tiny inset box shadow on the bottom
     box-shadow: inset 0px -1px 0px 0px rgba(0, 0, 0, 0.05);
+
+    .taskbar__task-btn {
+      width: 100%;
+      height: 16px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      margin: 0;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+      outline: none;
+
+      &:focus,
+      &.focused {
+        outline: none;
+      }
+    }
 
     &.active {
       background-color: #0063b6;

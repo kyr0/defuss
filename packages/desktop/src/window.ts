@@ -66,6 +66,20 @@ export const defaultWindowOptions: CreateWindowOptions = {
 
 export class WindowManager {
   windows: Array<WindowState> = [];
+  private listeners = new Set<() => void>();
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emitChanged() {
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
 
   constructor() {
     $(() => {
@@ -125,6 +139,7 @@ export class WindowManager {
       this.windows.push(window);
 
       this.renderWindowsActivationState();
+      this.emitChanged();
     }
   }
 
@@ -203,6 +218,7 @@ export class WindowManager {
     }
 
     this.windows.push(state as WindowState);
+    this.emitChanged();
 
     return state as WindowState;
   }
@@ -238,6 +254,7 @@ export class WindowManager {
         }
         : win,
     );
+    this.emitChanged();
     return updatedWindow;
   }
 
@@ -251,6 +268,7 @@ export class WindowManager {
     this.windows = this.windows.filter((win) => win.id !== id);
 
     this.renderWindowsActivationState();
+    this.emitChanged();
 
     win.ref.state?.onClose?.(); // Trigger the close callback if provided
   }
@@ -313,6 +331,7 @@ export class WindowManager {
 
     // Update the title bar button state
     this.toggleTitleBarMaximizedButtonState(id);
+    this.emitChanged();
 
     // Trigger the maximize callback if provided
     if (isMaximized) {
@@ -324,33 +343,33 @@ export class WindowManager {
     let win = this.getWindow(id);
     if (!win) return;
 
-    // x and y position update (update prev to current position)
-    win = this.updateWindow(id, { prevX: win.x, prevY: win.y })!;
+    if (win.minimized) {
+      this.restoreWindow(id);
+      return;
+    }
 
-    // Toggle minimized state
-    const isMinimized = !win.minimized;
-
-    // Update the window state
+    // Store current dimensions/position before minimizing
+    const actualWidth = win.el.offsetWidth || win.width;
+    const actualHeight = win.el.offsetHeight || win.height;
     win = this.updateWindow(id, {
-      minimized: isMinimized,
-      width: isMinimized ? 0 : win.width,
-      height: isMinimized ? 0 : win.height,
-      x: isMinimized ? -10000 : win.x, // Move off-screen when minimized
-      y: isMinimized ? -10000 : win.y,
+      prevX: win.x,
+      prevY: win.y,
+      prevWidth: actualWidth,
+      prevHeight: actualHeight,
+      minimized: true,
     })!;
 
     const $win = $(win.el);
     $win.css({
-      width: isMinimized ? "0px" : `${win.width}px`,
-      height: isMinimized ? "0px" : `${win.height}px`,
-      left: isMinimized ? "-10000px" : `${win.x}px`,
-      top: isMinimized ? "-10000px" : `${win.y}px`,
+      left: "-10000px",
+      top: "-10000px",
     });
 
+    this.renderWindowsActivationState();
+    this.emitChanged();
+
     // Trigger the minimize callback if provided
-    if (isMinimized) {
-      win.ref.state?.onMinimize?.();
-    }
+    win.ref.state?.onMinimize?.();
   }
 
   restoreWindow(id: string) {
@@ -359,6 +378,7 @@ export class WindowManager {
 
     // Restore the window to its previous position and size
     win = this.updateWindow(id, {
+      minimized: false,
       maximized: false,
       width: win.prevWidth || 800, // Use stored previous width
       height: win.prevHeight || 600, // Use stored previous height
@@ -376,6 +396,8 @@ export class WindowManager {
 
     // Update the title bar button state
     this.toggleTitleBarMaximizedButtonState(id);
+    this.setActiveWindow(id);
+    this.emitChanged();
   }
 
   toggleTitleBarMaximizedButtonState(id: string) {

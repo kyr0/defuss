@@ -5,3 +5,4 @@ export * from "./shell.js";
 export * from "./taskbar.js";
 export * from "./start-button.js";
 export * from "./start-menu.js";
+export * from "./desktop-icon.js";

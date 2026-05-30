@@ -4,7 +4,9 @@ import { throttle } from "defuss-runtime";
 
 export interface WindowProps
   extends Props<HTMLDivElement, WindowRefState>,
-  CreateWindowOptions { }
+  CreateWindowOptions { 
+	ref: Ref<HTMLDivElement, WindowRefState>;
+}
 
 export interface WindowRefState {
   onClose: () => void;
@@ -32,6 +34,9 @@ export function Window({
   onMinimize = () => { },
   onMaximize = () => { },
 }: WindowProps) {
+  const MIN_WINDOW_WIDTH = 240;
+  const MIN_WINDOW_HEIGHT = 160;
+
   // ---- drag state ----
   let isDragging = false;
   let dragPointerId: number | null = null;
@@ -45,6 +50,14 @@ export function Window({
 
   // Element used for pointer capture (because currentTarget is #document in delegated systems)
   let capturedTitleBar: HTMLElement | null = null;
+
+  // ---- resize state ----
+  let isResizing = false;
+  let resizePointerId: number | null = null;
+  let resizeDirection: string | null = null;
+  let capturedResizeHandle: HTMLElement | null = null;
+  let resizeStartMouse = { x: 0, y: 0 };
+  let resizeStartWin = { x, y, width, height };
 
   const initialWindowState = windowManager.addWindow({
     id,
@@ -130,7 +143,44 @@ export function Window({
     windowManager.updateWindow(initialWindowState.id, { x: lastWin.x, y: lastWin.y });
   };
 
+  const stopResizing = (event?: PointerEvent) => {
+    if (!isResizing) return;
+
+    if (
+      event &&
+      capturedResizeHandle &&
+      typeof capturedResizeHandle.releasePointerCapture === "function" &&
+      resizePointerId === event.pointerId
+    ) {
+      try {
+        capturedResizeHandle.releasePointerCapture(event.pointerId);
+      } catch { }
+    }
+
+    isResizing = false;
+    resizePointerId = null;
+    resizeDirection = null;
+    capturedResizeHandle = null;
+
+    const el = ref.current as HTMLElement | null;
+    if (!el) return;
+
+    const left = Number.parseFloat(el.style.left);
+    const top = Number.parseFloat(el.style.top);
+    const width = Number.parseFloat(el.style.width);
+    const height = Number.parseFloat(el.style.height);
+
+    windowManager.updateWindow(initialWindowState.id, {
+      x: Number.isFinite(left) ? left : lastWin.x,
+      y: Number.isFinite(top) ? top : lastWin.y,
+      width: Number.isFinite(width) ? width : el.offsetWidth,
+      height: Number.isFinite(height) ? height : el.offsetHeight,
+    });
+  };
+
   const onTitlePointerDown = (event: PointerEvent) => {
+    if (isResizing) return;
+
     // left button only for mouse; allow touch/pen
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
@@ -156,6 +206,106 @@ export function Window({
     }
 
     event.preventDefault();
+  };
+
+  const onResizePointerDown = (event: PointerEvent) => {
+    if (!resizable) return;
+    if (isDragging) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    const currentState = windowManager.getWindow(initialWindowState.id);
+    if (currentState?.maximized) return;
+
+    const target = event.target as Element | null;
+    const handle = target?.closest?.(".window-resize-handle") as HTMLElement | null;
+    const direction = handle?.getAttribute("data-dir");
+    if (!handle || !direction) return;
+
+    const currentPos = getCurrentWinPos();
+    const el = ref.current as HTMLElement | null;
+    if (!el) return;
+
+    isResizing = true;
+    resizePointerId = event.pointerId;
+    resizeDirection = direction;
+    capturedResizeHandle = handle;
+    resizeStartMouse = { x: event.clientX, y: event.clientY };
+    resizeStartWin = {
+      x: currentPos.x,
+      y: currentPos.y,
+      width: el.offsetWidth,
+      height: el.offsetHeight,
+    };
+
+    if (typeof handle.setPointerCapture === "function") {
+      handle.setPointerCapture(event.pointerId);
+    }
+
+    windowManager.setActiveWindow(initialWindowState.id);
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const onResizePointerMove = (event: PointerEvent) => {
+    if (!isResizing) return;
+    if (resizePointerId !== null && event.pointerId !== resizePointerId) return;
+    if (!resizeDirection) return;
+
+    const el = ref.current as HTMLElement | null;
+    if (!el) return;
+
+    const deltaX = event.clientX - resizeStartMouse.x;
+    const deltaY = event.clientY - resizeStartMouse.y;
+
+    let newX = resizeStartWin.x;
+    let newY = resizeStartWin.y;
+    let newWidth = resizeStartWin.width;
+    let newHeight = resizeStartWin.height;
+
+    if (resizeDirection.includes("e")) {
+      newWidth = Math.max(MIN_WINDOW_WIDTH, resizeStartWin.width + deltaX);
+    }
+
+    if (resizeDirection.includes("s")) {
+      newHeight = Math.max(MIN_WINDOW_HEIGHT, resizeStartWin.height + deltaY);
+    }
+
+    if (resizeDirection.includes("w")) {
+      const tentativeWidth = resizeStartWin.width - deltaX;
+      newWidth = Math.max(MIN_WINDOW_WIDTH, tentativeWidth);
+      newX = resizeStartWin.x + (resizeStartWin.width - newWidth);
+    }
+
+    if (resizeDirection.includes("n")) {
+      const tentativeHeight = resizeStartWin.height - deltaY;
+      newHeight = Math.max(MIN_WINDOW_HEIGHT, tentativeHeight);
+      newY = resizeStartWin.y + (resizeStartWin.height - newHeight);
+    }
+
+    lastWin = { x: newX, y: newY };
+
+    el.style.left = `${newX}px`;
+    el.style.top = `${newY}px`;
+    el.style.width = `${newWidth}px`;
+    el.style.height = `${newHeight}px`;
+
+    updateWindowState({
+      x: newX,
+      y: newY,
+      width: newWidth,
+      height: newHeight,
+    });
+
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const onResizePointerUp = (event: PointerEvent) => {
+    stopResizing(event);
+  };
+
+  const onResizePointerCancel = (event: PointerEvent) => {
+    stopResizing(event);
   };
 
   const onTitlePointerMove = (event: PointerEvent) => {
@@ -195,7 +345,10 @@ export function Window({
     // Safety nets: leaving tab/window can drop the "up" event
     $(document).on("blur", () => stopDragging());
     $(document).on("visibilitychange", () => {
-      if (document.hidden) stopDragging();
+      if (document.hidden) {
+        stopDragging();
+        stopResizing();
+      }
     });
   };
 
@@ -215,6 +368,7 @@ export function Window({
     <div
       class="window crt"
       ref={ref}
+      data-resizable={String(resizable)}
       onMouseDown={onWindowMouseDown}
       style={{
         width,
@@ -242,6 +396,74 @@ export function Window({
         </div>
       </div>
       <div class="window-body">{children}</div>
+      {resizable && (
+        <>
+          <div
+            class="window-resize-handle window-resize-handle--n"
+            data-dir="n"
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+            onPointerCancel={onResizePointerCancel}
+          ></div>
+          <div
+            class="window-resize-handle window-resize-handle--e"
+            data-dir="e"
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+            onPointerCancel={onResizePointerCancel}
+          ></div>
+          <div
+            class="window-resize-handle window-resize-handle--s"
+            data-dir="s"
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+            onPointerCancel={onResizePointerCancel}
+          ></div>
+          <div
+            class="window-resize-handle window-resize-handle--w"
+            data-dir="w"
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+            onPointerCancel={onResizePointerCancel}
+          ></div>
+          <div
+            class="window-resize-handle window-resize-handle--ne"
+            data-dir="ne"
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+            onPointerCancel={onResizePointerCancel}
+          ></div>
+          <div
+            class="window-resize-handle window-resize-handle--se"
+            data-dir="se"
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+            onPointerCancel={onResizePointerCancel}
+          ></div>
+          <div
+            class="window-resize-handle window-resize-handle--sw"
+            data-dir="sw"
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+            onPointerCancel={onResizePointerCancel}
+          ></div>
+          <div
+            class="window-resize-handle window-resize-handle--nw"
+            data-dir="nw"
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+            onPointerCancel={onResizePointerCancel}
+          ></div>
+        </>
+      )}
     </div>
   );
 }

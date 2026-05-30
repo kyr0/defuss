@@ -1,4 +1,4 @@
-import { createRef, type Props } from "defuss";
+import { createRef, type Props, type Ref } from "defuss";
 import { Desktop } from "./desktop.js";
 import {
   defaultDesktopOptions,
@@ -8,6 +8,7 @@ import {
 import { Taskbar } from "./taskbar.js";
 
 export interface ShellProps extends Props<HTMLDivElement> {
+	ref: Ref<HTMLDivElement>;
   desktopConfig: CreateDesktopOptions;
 }
 

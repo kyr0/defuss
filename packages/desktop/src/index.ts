@@ -8,3 +8,5 @@ export * from "./window.js";
 export * from "./taskbar.js";
 export * from "./shell.js";
 export * from "./sound.js";
+export * from "./selection-model.js";
+export * from "../../../examples/xp-window-manager/src/apps/index.js";

@@ -1,4 +1,8 @@
+import { desktopShell } from "../../shell.js";
+
 export const StartMenu = () => {
+  const bundledApps = desktopShell.apps.filter((app) => app.bundle);
+
   return (
     <div class="slide-open crt">
       <div class="top">
@@ -7,79 +11,78 @@ export const StartMenu = () => {
       <div class="menu">
         <div class="programs">
           <ul>
-            <li tabindex="-1">
-              <a class="program-image" href="#">
-                <img src="/icons/ie.png" alt="" />
-              </a>
-              <a href="#">Internet Explorer</a>
-            </li>
-            <li tabindex="-1">
-              <a class="program-image" href="#">
-                <img src="/icons/paint.png" alt="" />
-              </a>
-              <a href="#">Paint</a>
-            </li>
-            <li tabindex="-1">
-              <a class="program-image" href="#">
-                <img src="/icons/media-player.png" alt="" />
-              </a>
-              <a href="#">Windows Media Player</a>
-            </li>
-            <li tabindex="-1">
-              <a class="program-image" href="#">
-                <img src="/icons/outlook-express.jpg" alt="" />
-              </a>
-              <a href="#">E-mail</a>
-            </li>
+            {bundledApps.map((app) => (
+              <li tabindex="-1" key={app.bundle!.executable}>
+                <a
+                  class="program-image"
+                  href="#"
+                  onClick={(event: Event) => {
+                    event.preventDefault();
+                    desktopShell.runApp(app.bundle!.executable);
+                  }}
+                >
+                  <img src={app.bundle!.icon} alt="" />
+                </a>
+                <a
+                  href="#"
+                  onClick={(event: Event) => {
+                    event.preventDefault();
+                    desktopShell.runApp(app.bundle!.executable);
+                  }}
+                >
+                  {app.bundle!.displayName}
+                </a>
+              </li>
+            ))}
           </ul>
         </div>
         <div class="system">
           <ul>
             <li tabindex="-1">
               <a href="#" class="program-image">
-                <img src="/icons/documents.png" alt="" />
+                <img src="/desktop/documents.png" alt="" />
               </a>
               <a href="#">My Documents</a>
             </li>
             <li tabindex="-1">
               <a href="#" class="program-image">
-                <img src="/icons/pictures.png" alt="" />
+                <img src="/desktop/pictures.png" alt="" />
               </a>
               <a href="#">My Pictures</a>
             </li>
             <li tabindex="-1">
               <a href="#" class="program-image">
-                <img src="/icons/music.png" alt="" />
+                <img src="/desktop/music.png" alt="" />
               </a>
               <a href="#">My Music</a>
             </li>
             <li tabindex="-1">
               <a href="#" class="program-image">
-                <img src="/icons/computer.png" alt="" />
+                <img src="/desktop/computer.png" alt="" />
               </a>
               <a href="#">My Computer</a>
             </li>
             <li tabindex="-1">
               <a href="#" class="program-image">
-                <img src="/icons/control-panel.png" alt="" />
+                <img src="/desktop/control-panel.png" alt="" />
               </a>
               <a href="#">Control Panel</a>
             </li>
             <li tabindex="-1">
               <a href="#" class="program-image">
-                <img src="/icons/support-help.png" alt="" />
+                <img src="/desktop/support-help.png" alt="" />
               </a>
               <a href="#">Help and Support</a>
             </li>
             <li tabindex="-1">
               <a href="#" class="program-image">
-                <img src="/icons/search.png" alt="" />
+                <img src="/desktop/search.png" alt="" />
               </a>
               <a href="#">Search</a>
             </li>
             <li tabindex="-1">
               <a href="#" class="program-image">
-                <img src="/icons/run.png" alt="" />
+                <img src="/desktop/run.png" alt="" />
               </a>
               <a href="#">Run...</a>
             </li>

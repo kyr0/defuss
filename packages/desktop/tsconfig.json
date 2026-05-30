@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src"],
+  "include": ["src", "../../examples/xp-window-manager/src/apps"],
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",

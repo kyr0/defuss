@@ -1,0 +1,75 @@
+.defuss-app-root {
+  width: 100%;
+  height: 100%;
+}
+
+.defuss-notepad {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  width: 100%;
+  height: 100%;
+}
+
+.defuss-notepad__menubar {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding: 2px 4px;
+  border-bottom: 1px solid #c0c0c0;
+}
+
+.defuss-notepad__menubar button {
+  min-width: 48px;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 1px 6px;
+  font: inherit;
+}
+
+.defuss-notepad__menubar button:hover {
+  border-color: #7f9db9;
+  background: #dbe9ff;
+}
+
+.defuss-notepad__editor {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border: 0;
+  outline: none;
+  padding: 6px;
+  font-family: "Perfect DOS VGA 437 Win", "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.defuss-ie {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  width: 100%;
+  height: 100%;
+}
+
+.defuss-ie__toolbar {
+  background: #ece9d8;
+  border-bottom: 1px solid #a2b9d8;
+  padding: 6px;
+}
+
+.defuss-ie__toolbar .field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.defuss-ie__toolbar input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.defuss-ie__frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}

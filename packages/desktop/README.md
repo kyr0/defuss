@@ -177,17 +177,17 @@ Inside this package, you'll find the following relevant folders and files:
 
 ```text
 /
-├── src/
-│   ├── WindowManager.ts
-│   ├── Window.ts
-│   ├── Desktop.ts
-│   ├── Taskbar.ts
-│   ├── ApplicationLauncher.ts
-│   └── themes/
-├── dist/
-├── tsconfig.json
-├── LICENSE
-├── package.json
+├-- src/
+│   ├-- WindowManager.ts
+│   ├-- Window.ts
+│   ├-- Desktop.ts
+│   ├-- Taskbar.ts
+│   ├-- ApplicationLauncher.ts
+│   └-- themes/
+├-- dist/
+├-- tsconfig.json
+├-- LICENSE
+├-- package.json
 ```
 
 The core `WindowManager` class orchestrates all window operations, while individual components handle specific aspects like the desktop, taskbar, and application management.

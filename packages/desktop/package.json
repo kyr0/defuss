@@ -1,6 +1,6 @@
 {
   "name": "defuss-desktop",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -25,7 +25,8 @@
     "build": "pkgroll",
     "postbuild": "npm run copy-scss",
     "copy-scss": "mkdir -p dist/scss dist/themes && cp index.scss dist/ && cp xp.scss dist/ && cp -r scss/* dist/scss/ && cp -r themes/* dist/themes/",
-    "test": "vitest --run  --coverage"
+    "test": "vitest --run  --coverage",
+    "prepublishOnly": "bun run build"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

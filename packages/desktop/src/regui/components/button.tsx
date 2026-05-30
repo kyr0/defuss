@@ -1,8 +1,9 @@
-import { createRef, type Props } from "defuss";
+import { createRef, type Props, type Ref } from "defuss";
 
 export interface ButtonProps extends Props<HTMLButtonElement> {
   onClick?: () => void;
   disabled?: boolean;
+	ref?: Ref<HTMLButtonElement>;
 }
 
 export function Button({
