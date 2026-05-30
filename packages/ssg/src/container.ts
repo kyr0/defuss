@@ -7,13 +7,13 @@ import { fileURLToPath } from "node:url";
 import { readConfig } from "./config.js";
 import type { ContainerRuntime } from "./types.js";
 
-const CONTAINER_IMAGE_TAG = "defuss-ssg";
-const CONTAINER_WORKSPACE_DIR = "/workspace";
-const CONTAINER_NODE_MODULES_DIR = `${CONTAINER_WORKSPACE_DIR}/node_modules`;
-const DEFAULT_CONTAINER_PORT = 3000;
-const GENERATED_DOCKERFILE_NAME = "Dockerfile";
+export const CONTAINER_IMAGE_TAG = "defuss-ssg";
+export const CONTAINER_WORKSPACE_DIR = "/workspace";
+export const CONTAINER_NODE_MODULES_DIR = `${CONTAINER_WORKSPACE_DIR}/node_modules`;
+export const DEFAULT_CONTAINER_PORT = 3000;
+export const GENERATED_DOCKERFILE_NAME = "Dockerfile";
 
-const createDockerfile = (packageTarballName: string): string => `# syntax=docker/dockerfile:1.7
+export const createDockerfile = (packageTarballName: string): string => `# syntax=docker/dockerfile:1.7
 
 FROM oven/bun:1.3.9 AS bun
 
@@ -41,10 +41,10 @@ ENTRYPOINT ["defuss-ssg"]
 CMD ["dev", "/workspace", "--host", "0.0.0.0", "--port", "3000"]
 `;
 
-const getPackageRootDir = (): string =>
+export const getPackageRootDir = (): string =>
 	fileURLToPath(new URL("../", import.meta.url));
 
-const packCurrentPackage = (tempDir: string): string => {
+export const packCurrentPackage = (tempDir: string): string => {
 	const packageRootDir = getPackageRootDir();
 	const result = spawnSync(
 		"npm",
@@ -75,7 +75,7 @@ const packCurrentPackage = (tempDir: string): string => {
 	return tarballName;
 };
 
-const getNodeModulesVolumeName = (projectDir: string): string => {
+export const getNodeModulesVolumeName = (projectDir: string): string => {
 	const safeBaseName =
 		basename(projectDir)
 			.toLowerCase()
@@ -89,7 +89,7 @@ const getNodeModulesVolumeName = (projectDir: string): string => {
 	return `defuss-ssg-node-modules-${safeBaseName}-${hash}`;
 };
 
-const hasCommand = (command: string): boolean => {
+export const hasCommand = (command: string): boolean => {
 	const result = spawnSync(command, ["--version"], {
 		stdio: "ignore",
 		shell: process.platform === "win32",
@@ -98,7 +98,7 @@ const hasCommand = (command: string): boolean => {
 	return !result.error && result.status === 0;
 };
 
-const resolveContainerRuntime = async (
+export const resolveContainerRuntime = async (
 	projectDir: string,
 	debug: boolean,
 ): Promise<ContainerRuntime> => {
@@ -126,7 +126,7 @@ const resolveContainerRuntime = async (
 	);
 };
 
-const runContainerRuntime = (
+export const runContainerRuntime = (
 	runtime: ContainerRuntime,
 	args: string[],
 	label: string,
@@ -149,7 +149,7 @@ const runContainerRuntime = (
 	}
 };
 
-const hasPublishArgs = (containerArgs: string[]): boolean => {
+export const hasPublishArgs = (containerArgs: string[]): boolean => {
 	for (let index = 0; index < containerArgs.length; index += 1) {
 		const arg = containerArgs[index];
 		if (
@@ -166,7 +166,7 @@ const hasPublishArgs = (containerArgs: string[]): boolean => {
 	return false;
 };
 
-const extractHostNetworkArgs = (
+export const extractHostNetworkArgs = (
 	containerArgs: string[],
 ): {
 	remainingArgs: string[];
@@ -211,11 +211,11 @@ export interface RunContainerCommandOptions {
 	containerArgs: string[];
 }
 
-const getInnerCommand = (
+export const getInnerCommand = (
 	command: ContainerCommand,
 ): "dev" | "build" | "serve" => command.slice("docker-".length) as "dev" | "build" | "serve";
 
-const createInnerArgs = ({
+export const createInnerArgs = ({
 	command,
 	debug,
 	host,

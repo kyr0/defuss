@@ -35,11 +35,11 @@ export interface ReadConfigOptions {
 	currentViteConfig?: InlineConfig;
 }
 
-type VirtualConfigModuleState = {
+export type VirtualConfigModuleState = {
 	viteConfig: InlineConfig;
 };
 
-type CompiledConfigModule = {
+export type CompiledConfigModule = {
 	entryFileName: string;
 	outputFiles: Array<{
 		fileName: string;
@@ -50,7 +50,7 @@ type CompiledConfigModule = {
 	stateKey: string;
 };
 
-const resolveConfigPath = (projectDir: string): string | null => {
+export const resolveConfigPath = (projectDir: string): string | null => {
 	for (const candidate of ["config.ts", "config.js"]) {
 		const configPath = join(projectDir, candidate);
 		if (existsSync(configPath)) {
@@ -61,7 +61,7 @@ const resolveConfigPath = (projectDir: string): string | null => {
 	return null;
 };
 
-const applyConfigDefaults = (config: SsgConfig): SsgConfig => {
+export const applyConfigDefaults = (config: SsgConfig): SsgConfig => {
 	config.pages = config.pages || configDefaults.pages;
 	config.output = config.output || configDefaults.output;
 	config.components = config.components || configDefaults.components;
@@ -78,7 +78,7 @@ const applyConfigDefaults = (config: SsgConfig): SsgConfig => {
 	return config;
 };
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+export const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 	if (value === null || typeof value !== "object") {
 		return false;
 	}
@@ -87,7 +87,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 	return prototype === Object.prototype || prototype === null;
 };
 
-const cloneConfigValue = <T>(value: T): T => {
+export const cloneConfigValue = <T>(value: T): T => {
 	if (Array.isArray(value)) {
 		return value.map((entry) => cloneConfigValue(entry)) as T;
 	}
@@ -104,7 +104,7 @@ const cloneConfigValue = <T>(value: T): T => {
 	return value;
 };
 
-const createTaggedBaseViteConfig = (
+export const createTaggedBaseViteConfig = (
 	viteConfig: InlineConfig = {},
 ): InlineConfig => {
 	const taggedConfig = cloneConfigValue(viteConfig) as InlineConfig &
@@ -113,12 +113,12 @@ const createTaggedBaseViteConfig = (
 	return taggedConfig;
 };
 
-const isTaggedBaseViteConfig = (
+export const isTaggedBaseViteConfig = (
 	viteConfig: unknown,
 ): viteConfig is InlineConfig & Record<string, unknown> =>
 	isPlainObject(viteConfig) && viteConfig[BASE_VITE_CONFIG_MARKER] === true;
 
-const stripBaseViteConfigMarker = (viteConfig: InlineConfig): InlineConfig => {
+export const stripBaseViteConfigMarker = (viteConfig: InlineConfig): InlineConfig => {
 	const strippedConfig = {
 		...(viteConfig as Record<string, unknown>),
 	} as Record<string, unknown>;
@@ -126,21 +126,21 @@ const stripBaseViteConfigMarker = (viteConfig: InlineConfig): InlineConfig => {
 	return strippedConfig as InlineConfig;
 };
 
-const setVirtualConfigModuleState = (
+export const setVirtualConfigModuleState = (
 	stateKey: string,
 	state: VirtualConfigModuleState,
 ): void => {
 	(globalThis as Record<string, unknown>)[stateKey] = state;
 };
 
-const clearVirtualConfigModuleState = (stateKey: string): void => {
+export const clearVirtualConfigModuleState = (stateKey: string): void => {
 	delete (globalThis as Record<string, unknown>)[stateKey];
 };
 
-const createConfigModuleStateKey = (): string =>
+export const createConfigModuleStateKey = (): string =>
 	`__defussSsgConfigModule_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-const createConfigModulePlugin = (stateKey: string): RolldownPlugin => ({
+export const createConfigModulePlugin = (stateKey: string): RolldownPlugin => ({
 	name: "rolldown:defuss-ssg-config",
 	resolveId(id) {
 		if (id === SSG_CONFIG_MODULE_ID) {
@@ -165,10 +165,10 @@ const createConfigModulePlugin = (stateKey: string): RolldownPlugin => ({
 	},
 });
 
-const isBareModuleId = (id: string): boolean =>
+export const isBareModuleId = (id: string): boolean =>
 	!id.startsWith(".") && !id.startsWith("/") && !id.startsWith("\0");
 
-const compileConfigModule = async (
+export const compileConfigModule = async (
 	configPath: string,
 	projectDir: string,
 ): Promise<CompiledConfigModule> => {
@@ -226,7 +226,7 @@ const compileConfigModule = async (
 	}
 };
 
-const loadCompiledConfigModule = async (
+export const loadCompiledConfigModule = async (
 	compiledConfigModule: CompiledConfigModule,
 	configPath: string,
 	projectDir: string,
@@ -319,6 +319,6 @@ export const configDefaults: SsgConfig = {
 	remarkPlugins: defaultRemarkPlugins,
 	rehypePlugins: defaultRehypePlugins,
 	rpc: true,
-	containerRuntime: undefined,
+	containerRuntime: "docker",
 	viteConfig: {},
 };

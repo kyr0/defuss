@@ -1,6 +1,6 @@
 {
   "name": "defuss-ssg",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -35,10 +35,10 @@
     "cli-serve:mc": "node ./dist/cli.mjs serve ../../example-ssg/ --multicore",
     "test:cli-dev:three": "bun run build && vitest run scripts/cli-dev-three.spec.ts",
     "bench:rpc": "npx autocannon -p 256 -w 8 -c 1024 -d 30 -m POST -H 'content-type: application/json' -b '{\"className\":\"mathApi\",\"methodName\":\"add\",\"args\":[1,2]}' http://127.0.0.1:3000/rpc",
-    "test": "echo 'No tests available'",
+    "test": "bun run test:cli-dev:three",
     "bench": "npx autocannon -p 32 -w 8 -c 200 -d 20 -m POST -H \"content-type: application/json\" -b '{\"hello\":\"world\"}' http://127.0.0.1:3000/body",
     "start": "node ./dist/cli.mjs dev ../../example-ssg/",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run test"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
