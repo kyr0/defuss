@@ -1,8 +1,10 @@
 {
   "name": "defuss-open-telemetry",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT",
   "description": "Small OpenTelemetry bridge package for defuss metrics sinks.",
   "keywords": [
@@ -38,7 +40,9 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >=21.0.0"
   },
