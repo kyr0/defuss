@@ -21,7 +21,8 @@
     "clean": "rm -rf ./dist",
     "prebuild": "bun run clean",
     "build": "pkgroll",
-    "test": "vitest --run --coverage"
+    "test": "vitest --run --coverage",
+    "prepublishOnly": "bun run test"
   },
   "author": "Aron Homberg",
   "sideEffects": false,
