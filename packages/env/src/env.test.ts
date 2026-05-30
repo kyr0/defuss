@@ -284,10 +284,9 @@ describe("getEnv / setEnv interaction", () => {
     });
   });
 
-  it("returns undefined when no fallback provided", () => {
-    // Test getEnv without fallback parameter
+  it("returns empty string when no explicit fallback provided", () => {
     const NONEXISTENT = `NONEXISTENT_${Math.random().toString(36).slice(2)}`;
-    expect(getEnv(NONEXISTENT)).toBeUndefined();
+    expect(getEnv(NONEXISTENT)).toBe("");
   });
 
   it("initializes _secrets when it's null", () => {
@@ -305,6 +304,9 @@ describe("getEnv / setEnv interaction", () => {
       // nothing set yet -> fallback returned
       expect(getEnv(UNIQUE, "fb")).toBe("fb");
 
+      // nothing set, no explicit fallback -> empty string
+      expect(getEnv(UNIQUE)).toBe("");
+
       // process.env set -> read from process.env
       process.env[UNIQUE] = "env";
       expect(getEnv(UNIQUE, "fb")).toBe("env");
@@ -313,6 +315,31 @@ describe("getEnv / setEnv interaction", () => {
       setEnv(UNIQUE, "mem");
       expect(getEnv(UNIQUE, "fb")).toBe("mem");
     });
+  });
+
+  it("always returns a string, never undefined", () => {
+    const MISSING = `MISSING_${Math.random().toString(36).slice(2)}`;
+    const result: string = getEnv(MISSING);
+    expect(typeof result).toBe("string");
+    expect(result).toBe("");
+  });
+
+  it("uses explicit fallback when variable is missing", () => {
+    const MISSING = `MISSING_${Math.random().toString(36).slice(2)}`;
+    expect(getEnv(MISSING, "default_val")).toBe("default_val");
+  });
+
+  it("ignores fallback when variable exists in process.env", () => {
+    const KEY = `FALLBACK_TEST_${Math.random().toString(36).slice(2)}`;
+    withEnv({ [KEY]: "real" }, () => {
+      expect(getEnv(KEY, "fallback")).toBe("real");
+    });
+  });
+
+  it("ignores fallback when variable exists in in-memory store", () => {
+    const KEY = `MEM_FB_${Math.random().toString(36).slice(2)}`;
+    setEnv(KEY, "mem-value");
+    expect(getEnv(KEY, "fallback")).toBe("mem-value");
   });
 
   it("setEnv does not mutate process.env", () => {

@@ -196,10 +196,10 @@ let _secrets: EnvMap = {};
  * falling back to `fallback` if not found.
  *
  * @param name     Variable name.
- * @param fallback Optional fallback value.
- * @returns        The value or `undefined` if missing and no fallback provided.
+ * @param fallback Fallback value returned when the variable is not set.
+ * @returns        The resolved value (never `undefined`).
  */
-export function getEnv(name: string, fallback?: string): string | undefined {
+export function getEnv(name: string, fallback = ""): string {
   return (
     _secrets?.[name] ?? (isNode ? process.env[name] : undefined) ?? fallback
   );
