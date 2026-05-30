@@ -28,8 +28,17 @@ const getPoolFactory = async (): Promise<(script: string, config: any) => Worker
     const { createBrowserPool } = await import("./pool-browser.js");
     createPoolFn = createBrowserPool;
   } else {
-    const { createNodePool } = await import("./pool-node.js");
-    createPoolFn = createNodePool;
+    try {
+      const [{ createNodePool }, { Worker }] = await Promise.all([
+        import("./pool-node.js"),
+        import("node:worker_threads"),
+      ]);
+      createPoolFn = (script: string, config: any) => createNodePool(script, Worker, config);
+    } catch {
+      throw new Error(
+        "[defuss-multicore] node:worker_threads not available. Are you running in Node.js?",
+      );
+    }
   }
   return createPoolFn!;
 };

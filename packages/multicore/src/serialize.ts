@@ -48,6 +48,7 @@ export const serializeFunction = (fn: Function): string => {
 'use strict';
 
 const __fn = ${fnString};
+let __nodeParentPort = null;
 
 const __isTypedArray = (v) =>
   ArrayBuffer.isView(v) && !(v instanceof DataView);
@@ -66,18 +67,27 @@ const __getTransferables = (value) => {
   return [];
 };
 
+const __dispatch = (msg, transfer) => {
+  if (typeof postMessage === 'function') {
+    postMessage(msg, transfer ?? []);
+    return;
+  }
+
+  if (__nodeParentPort) {
+    __nodeParentPort.postMessage(msg, transfer ?? []);
+    return;
+  }
+
+  throw new Error('Node worker parentPort is not ready.');
+};
+
 const __handleMessage = (data) => {
   if (data.type === 'execute') {
     try {
       const result = __fn(...data.args);
       const transfer = __getTransferables(result);
       const msg = { type: 'result', id: data.id, value: result };
-      if (typeof postMessage === 'function') {
-        postMessage(msg, transfer);
-      } else {
-        const { parentPort } = require('node:worker_threads');
-        parentPort.postMessage(msg, transfer);
-      }
+      __dispatch(msg, transfer);
     } catch (err) {
       const msg = {
         type: 'error',
@@ -85,12 +95,7 @@ const __handleMessage = (data) => {
         error: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined,
       };
-      if (typeof postMessage === 'function') {
-        postMessage(msg);
-      } else {
-        const { parentPort } = require('node:worker_threads');
-        parentPort.postMessage(msg);
-      }
+      __dispatch(msg);
     }
   }
   // 'abort' type is a no-op; the caller terminates the worker externally
@@ -102,15 +107,17 @@ if (typeof self !== 'undefined' && typeof self.onmessage !== 'undefined') {
 }
 
 // Node.js worker_threads
-if (typeof require !== 'undefined') {
-  try {
-    const { parentPort } = require('node:worker_threads');
-    if (parentPort) {
-      parentPort.on('message', __handleMessage);
-    }
-  } catch (_) {
-    // Not in worker_threads context - ignore
-  }
+if (typeof postMessage !== 'function') {
+  import('node:worker_threads')
+    .then(({ parentPort }) => {
+      __nodeParentPort = parentPort ?? null;
+      if (__nodeParentPort) {
+        __nodeParentPort.on('message', __handleMessage);
+      }
+    })
+    .catch(() => {
+      // Not in worker_threads context - ignore
+    });
 }
 `.trim();
 };

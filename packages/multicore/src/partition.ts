@@ -116,11 +116,19 @@ export const getCoreCount = (): number => {
   if (typeof navigator !== "undefined" && navigator.hardwareConcurrency) {
     return navigator.hardwareConcurrency;
   }
+
+  const nodeProcess =
+    typeof process !== "undefined" ? (process as typeof process & { getBuiltinModule?: any }) : null;
+
   try {
-    // Dynamic require for Node.js - avoid static import for browser bundles
-    const os = require("node:os");
-    return os.cpus().length;
+    const getBuiltinModule = nodeProcess?.getBuiltinModule;
+    if (typeof getBuiltinModule === "function") {
+      const os = getBuiltinModule("node:os");
+      return os.cpus().length;
+    }
   } catch {
-    return 4;
+    // ignore and fall through to the default core count
   }
+
+  return 4;
 };
