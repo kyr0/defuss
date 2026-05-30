@@ -1,6 +1,6 @@
 {
   "name": "defuss-jwt",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -30,7 +30,7 @@
     "prebuild": "bun run clean",
     "build": "pkgroll",
     "cli-gen-keys": "node ./dist/cli.mjs gen-keys",
-    "test": "vitest --run  --coverage",    
+    "test": "vitest --run  --coverage",
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
