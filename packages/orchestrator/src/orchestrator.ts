@@ -199,7 +199,7 @@ export interface Orchestrator<TTelemetry = Record<string, unknown>> {
 export function createOrchestrator<TTelemetry = Record<string, unknown>>(
 	rawConfig: OrchestratorConfig<TTelemetry>,
 ): Orchestrator<TTelemetry> {
-	// ── resolved config ──────────────────────────────────────────────────
+	// -- resolved config --------------------------------------------------
 	const peerTtlMs = rawConfig.peerTtlMs ?? 30_000;
 	const workItemMaxTimeResponsibleMs =
 		rawConfig.workItemMaxTimeResponsibleMs ?? 300_000;
@@ -219,7 +219,7 @@ export function createOrchestrator<TTelemetry = Record<string, unknown>>(
 	const selectWorkItemForWorker =
 		rawConfig.selectWorkItemForWorker ?? defaultSelectWorkItemForWorker;
 
-	// ── self peer ────────────────────────────────────────────────────────
+	// -- self peer --------------------------------------------------------
 	const selfPeer: PeerInfo = {
 		id: rawConfig.self.id,
 		endpoint: rawConfig.self.endpoint,
@@ -228,7 +228,7 @@ export function createOrchestrator<TTelemetry = Record<string, unknown>>(
 		metadata: rawConfig.self.metadata,
 	};
 
-	// ── mutable state ────────────────────────────────────────────────────
+	// -- mutable state ----------------------------------------------------
 	const peers = new Map<string, PeerInfo>();
 	peers.set(selfPeer.id, clone(selfPeer));
 
@@ -240,7 +240,7 @@ export function createOrchestrator<TTelemetry = Record<string, unknown>>(
 	const cleanupHeap = createMinHeap<TimerEntry>(compareTimerEntry);
 	const liveWorkers = new Map<string, WorkerProposal<TTelemetry>>();
 
-	// ── internal helpers ─────────────────────────────────────────────────
+	// -- internal helpers -------------------------------------------------
 
 	/** Compact the pending queue when the dead head grows too large. */
 	function compactPendingQueue(): void {
@@ -375,7 +375,7 @@ export function createOrchestrator<TTelemetry = Record<string, unknown>>(
 		telemetry.setGauge(METRIC_NAMES.liveWorkersGauge, liveWorkers.size);
 	}
 
-	// ── public getStatus (used by several report* methods) ───────────────
+	// -- public getStatus (used by several report* methods) ---------------
 
 	function getStatus(id: string): StatusResult {
 		const ts = now();

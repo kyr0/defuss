@@ -1,5 +1,7 @@
 # `defuss-orchestrator`
 
+NOT RELEASED YET. -> Test with browser extension!
+
 TODO: Better docs etc., better test coverage. More realistic examples with long-running workers, snapshots, and durable state. Chaos testing with simulated worker and network failures.
 
 Federated pull-based orchestration with:
