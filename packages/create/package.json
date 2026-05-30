@@ -22,7 +22,7 @@
     "pretest": "bun run build",
     "prebuild": "bun run clean",
     "build": "pkgroll --minify --sourcemap",
-    "e2e": "bun run build && node ./dist/e2e.mjs",
+    "test": "bun run build && node ./dist/e2e.mjs",
     "prepublishOnly": "bun run test"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
