@@ -37,6 +37,8 @@ export interface DataviewRequest {
   sorters?: DataviewSorter[];
   page?: number;
   pageSize?: number;
+  /** Field used as the row identifier in flat mode (default: "id"). Tree mode falls back to tree.idField. */
+  idField?: string;
   meta?: Partial<DataviewMeta>;
   tree?: DataviewTreeOptions;
 }
@@ -51,6 +53,8 @@ export interface DataviewState {
   sorters: Array<DataviewSorter & { direction: DataviewSortDirection }>;
   page: number;
   pageSize?: number;
+  /** Field used as the row identifier (default: "id"). For tree mode this mirrors tree.idField. */
+  idField: string;
   meta: DataviewMeta;
   tree?: {
     idField: string;

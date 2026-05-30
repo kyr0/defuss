@@ -1,6 +1,6 @@
 {
   "name": "defuss-dataview",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -32,7 +32,8 @@
     "prebuild": "bun run clean",
     "build": "pkgroll",
     "test": "vitest --run  --coverage",
-    "benchmark": "tsx src/dataview.benchmark.ts"
+    "benchmark": "tsx src/dataview.benchmark.ts",
+    "prepublishOnly": "bun run test"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

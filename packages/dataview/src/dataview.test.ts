@@ -13,6 +13,7 @@ describe("createDataview", () => {
       sorters: [],
       page: 0,
       pageSize: undefined,
+      idField: "id",
       meta: {
         selectedRowIds: [],
         lockedColumns: [],
@@ -39,6 +40,37 @@ describe("createDataview", () => {
 
   it("throws for invalid pageSize", () => {
     expect(() => createDataview({ pageSize: 0 })).toThrow();
+  });
+
+  it("uses 'id' as the default idField", () => {
+    const view = createDataview();
+    expect(view.idField).toBe("id");
+  });
+
+  it("normalizes explicit idField", () => {
+    const view = createDataview({ idField: "_id" });
+    expect(view.idField).toBe("_id");
+  });
+
+  it("inherits idField from tree.idField when not explicitly set", () => {
+    const view = createDataview({
+      tree: {
+        idField: "nodeId",
+        parentIdField: "parentId",
+      },
+    });
+    expect(view.idField).toBe("nodeId");
+  });
+
+  it("explicit idField takes precedence over tree.idField", () => {
+    const view = createDataview({
+      idField: "customId",
+      tree: {
+        idField: "nodeId",
+        parentIdField: "parentId",
+      },
+    });
+    expect(view.idField).toBe("customId");
   });
 
   it("throws for invalid filter definition", () => {
@@ -710,5 +742,39 @@ describe("applyDataview", () => {
 
     const result = applyDataview(flatRows, view);
     expect(result.every((entry) => entry.meta.isSelected === false)).toBe(true);
+  });
+
+  it("uses custom idField for flat-mode row selection", () => {
+    const rows = [
+      { _id: "a", name: "Alpha" },
+      { _id: "b", name: "Beta" },
+      { _id: "c", name: "Gamma" },
+    ];
+    const view = createDataview({
+      idField: "_id",
+      meta: { selectedRowIds: ["a", "c"] },
+      sorters: [{ field: "name", direction: "asc" }],
+    });
+
+    const result = applyDataview(rows, view);
+    const selected = result.filter((entry) => entry.meta.isSelected).map((entry) => entry.row._id);
+    expect(selected).toEqual(["a", "c"]);
+
+    const notSelected = result.find((entry) => entry.row._id === "b");
+    expect(notSelected?.meta.isSelected).toBe(false);
+  });
+
+  it("flat-mode idField falls back to 'id' when not specified", () => {
+    const rows = [
+      { id: 10, name: "Alpha" },
+      { id: 20, name: "Beta" },
+    ];
+    const view = createDataview({
+      meta: { selectedRowIds: [10] },
+    });
+
+    const result = applyDataview(rows, view);
+    expect(result.find((entry) => entry.row.id === 10)?.meta.isSelected).toBe(true);
+    expect(result.find((entry) => entry.row.id === 20)?.meta.isSelected).toBe(false);
   });
 });

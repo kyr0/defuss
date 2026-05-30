@@ -14,6 +14,7 @@ const recreateDataview = <T extends DataviewState>(
     sorters: view.sorters,
     page: view.page,
     pageSize: view.pageSize,
+    idField: view.idField,
     meta,
     tree: view.tree,
   }) as T;
@@ -62,6 +63,7 @@ export const setExpandedIds = <T extends DataviewState>(
     sorters: view.sorters,
     page: view.page,
     pageSize: view.pageSize,
+    idField: view.idField,
     meta: view.meta,
     tree: {
       ...view.tree,

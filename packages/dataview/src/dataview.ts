@@ -312,18 +312,31 @@ const normalizeTree = (tree: DataviewTreeOptions | undefined): DataviewState["tr
   };
 };
 
+const normalizeIdField = (request: DataviewRequest): string => {
+  // Explicit idField wins; fall back to tree.idField for convenience; default to "id".
+  if (request.idField && typeof request.idField === "string" && request.idField.length > 0) {
+    return request.idField;
+  }
+  if (request.tree?.idField && typeof request.tree.idField === "string") {
+    return request.tree.idField;
+  }
+  return "id";
+};
+
 export const createDataview = (request: DataviewRequest = {}): DataviewState => {
   const filters = normalizeFilters(request.filters);
   const sorters = normalizeSorters(request.sorters);
   const paging = normalizePaging(request);
   const meta = normalizeMeta(request);
   const tree = normalizeTree(request.tree);
+  const idField = normalizeIdField(request);
 
   return {
     filters,
     sorters,
     page: paging.page,
     pageSize: paging.pageSize,
+    idField,
     meta,
     tree,
   };
@@ -380,8 +393,10 @@ const applyFlatDataview = <T extends DataviewRow>(
       ? new Set(dataview.meta.selectedRowIds)
       : null;
 
+  const getRowId = compileAccessor(dataview.idField);
+
   return paginate(sortedRows, dataview).map((row) => {
-    const rowId = isObject(row) ? (row.id as DataviewJsonValue) : undefined;
+    const rowId = isObject(row) ? (getRowId(row) as DataviewJsonValue) : undefined;
 
     return {
       row,
