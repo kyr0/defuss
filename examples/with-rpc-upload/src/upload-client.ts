@@ -1,233 +1,183 @@
-import { getRpcClient } from "defuss-rpc/client.js";
-import type { FileUploadApi } from "./api/file-upload.js";
-import RpcApi from "./rpc.js";
+import { DSON } from "defuss-dson";
+import type { FileUploadResult } from "./api/file-upload.js";
 
-/** Progress state emitted during each step of a chunked file upload. */
-export interface UploadProgress {
-  /** Completion percentage (0–100). */
-  percent: number;
-  /** Bytes successfully written to the server so far. */
-  bytesUploaded: number;
-  /** Total file size in bytes. */
-  totalBytes: number;
-  /** Current phase of the upload pipeline. */
-  status: "uploading" | "finalizing" | "verifying" | "confirmed" | "rejected" | "error";
-  /** Server-computed MD5 hex digest (set after finalization). */
-  serverMd5?: string;
-  /** Client-computed MD5 hex digest (set after verification). */
-  clientMd5?: string;
+export type UploadEvent<T = unknown> =
+  | { type: "sending"; bytesSent: number; totalBytes: number; percent: number }
+  | { type: "receiving"; bytesReceived: number; totalBytes: number; percent: number }
+  | {
+      type: "complete";
+      result: T;
+      uploadId: string;
+      bytesReceived: number;
+      sha256: string;
+      md5: string;
+      durationMs: number;
+    };
+
+export interface UploadResult<T = unknown> {
+  result: T;
+  uploadId: string;
+  bytesReceived: number;
+  sha256: string;
+  md5: string;
+  durationMs: number;
 }
 
 /**
- * Upload a file in chunks via defuss-rpc, with MD5 integrity verification.
- *
- * The client computes its own MD5 and compares it against the server's MD5.
- * The client **never** sends its MD5 to the server — only a boolean `isValid`.
- *
- * @param file - The `File` object to upload (from an `<input type="file">`).
- * @param rpcBaseUrl - Base URL of the running defuss-rpc server.
- * @param chunkSize - Size (in bytes) of each chunk sent over RPC. Defaults to 64 KiB.
- * @yields {UploadProgress} after each chunk and during finalization/verification.
+ * Upload a file using the new /rpc/upload transport and yield progress events.
  */
 export async function* uploadFile(
   file: File,
-  rpcBaseUrl: string,
-  chunkSize = 65536 * 16, // 1 MiB
-): AsyncGenerator<UploadProgress> {
-  const client = await getRpcClient<typeof RpcApi>({
-    baseUrl: rpcBaseUrl,
+  baseUrl: string,
+): AsyncGenerator<UploadEvent<FileUploadResult>> {
+  const uploadId = crypto.randomUUID();
+  const totalBytes = file.size;
+
+  // Queue receives SSE server progress events while the upload request is in-flight.
+  const queue: UploadEvent<FileUploadResult>[] = [];
+  let eventSource: EventSource | null = null;
+
+  if (typeof EventSource !== "undefined") {
+    try {
+      eventSource = new EventSource(`${baseUrl}/rpc/upload/progress/${uploadId}`);
+      eventSource.onmessage = (ev) => {
+        try {
+          const frame = JSON.parse(ev.data) as {
+            type?: string;
+            bytesReceived?: number;
+            totalBytes?: number;
+            percent?: number;
+          };
+          if (frame.type === "progress") {
+            queue.push({
+              type: "receiving",
+              bytesReceived: frame.bytesReceived ?? 0,
+              totalBytes: frame.totalBytes ?? totalBytes,
+              percent: frame.percent ?? 0,
+            });
+          }
+        } catch {
+          // Ignore malformed SSE frames.
+        }
+      };
+      eventSource.onerror = () => {
+        // Keep upload running if SSE fails.
+      };
+    } catch {
+      // EventSource creation failed; continue without receiving events.
+    }
+  }
+
+  // Client-side send start marker.
+  yield {
+    type: "sending",
+    bytesSent: 0,
+    totalBytes,
+    percent: 0,
+  };
+
+  const response = await fetch(`${baseUrl}/rpc/upload`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "X-Upload-Handler": "file-upload",
+      "X-Upload-Id": uploadId,
+      "X-Original-Size": String(totalBytes),
+      "X-Upload-Offset": "0",
+    },
+    body: file,
   });
 
-  const api = new client.FileUploadApi();
+  // Upload body is now fully sent from the browser perspective.
+  yield {
+    type: "sending",
+    bytesSent: totalBytes,
+    totalBytes,
+    percent: 100,
+  };
 
-  // Start upload session
-  const { uploadId } = await api.startUpload(
-    file.name,
-    file.size,
-  );
+  while (queue.length > 0) {
+    yield queue.shift()!;
+  }
 
-  const totalBytes = file.size;
-  let bytesUploaded = 0;
+  eventSource?.close();
 
-  // Accumulate all bytes for client-side MD5 computation
-  const allBytes = new Uint8Array(totalBytes);
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+  }
 
-  // Send chunks
-  while (bytesUploaded < totalBytes) {
-    const start = bytesUploaded;
-    const end = Math.min(start + chunkSize, totalBytes);
-    const blob = file.slice(start, end);
-    const arrayBuffer = await blob.arrayBuffer();
-    const chunk = new Uint8Array(arrayBuffer);
+  const responseText = await response.text();
+  const lines = responseText.split("\n").filter(Boolean);
 
-    // Copy into the full buffer for later MD5
-    allBytes.set(chunk, start);
+  let receivedFrame: {
+    uploadId: string;
+    bytesReceived: number;
+    sha256: string;
+    md5: string;
+    durationMs: number;
+  } | null = null;
+  let resultFrame: { value: FileUploadResult } | null = null;
 
-    const result = await api.uploadChunk(
-      uploadId,
-      chunk,
-    );
+  for (const line of lines) {
+    const frame = DSON.parse(line) as
+      | {
+          type: "received";
+          uploadId: string;
+          bytesReceived: number;
+          sha256: string;
+          md5: string;
+          durationMs: number;
+        }
+      | { type: "result"; value: FileUploadResult }
+      | { type: "error"; error: { message: string } };
 
-    if (result.status === "error") {
-      yield {
-        percent: Math.round((bytesUploaded / totalBytes) * 100),
-        bytesUploaded,
-        totalBytes,
-        status: "error",
+    if (frame.type === "received") {
+      receivedFrame = frame;
+    } else if (frame.type === "result") {
+      resultFrame = frame;
+    } else if (frame.type === "error") {
+      throw new Error(frame.error?.message || "Upload handler error");
+    }
+  }
+
+  if (!receivedFrame || !resultFrame) {
+    throw new Error("Upload response missing required NDJSON frames");
+  }
+
+  yield {
+    type: "complete",
+    result: resultFrame.value,
+    uploadId: receivedFrame.uploadId,
+    bytesReceived: receivedFrame.bytesReceived,
+    sha256: receivedFrame.sha256,
+    md5: receivedFrame.md5,
+    durationMs: receivedFrame.durationMs,
+  };
+}
+
+/** Upload a file and return only the final result. */
+export async function uploadFileComplete(
+  file: File,
+  baseUrl: string,
+): Promise<UploadResult<FileUploadResult>> {
+  let result: UploadResult<FileUploadResult> | undefined;
+
+  for await (const event of uploadFile(file, baseUrl)) {
+    if (event.type === "complete") {
+      result = {
+        result: event.result,
+        uploadId: event.uploadId,
+        bytesReceived: event.bytesReceived,
+        sha256: event.sha256,
+        md5: event.md5,
+        durationMs: event.durationMs,
       };
-      return;
     }
-
-    bytesUploaded = result.bytesWritten;
-
-    yield {
-      percent: Math.round((bytesUploaded / totalBytes) * 100),
-      bytesUploaded,
-      totalBytes,
-      status: "uploading",
-    };
   }
 
-  // Finalize upload — server computes its MD5
-  yield {
-    percent: 100,
-    bytesUploaded: totalBytes,
-    totalBytes,
-    status: "finalizing",
-  };
-
-  const finalResult = await api.finalizeUpload(uploadId);
-
-  if ("error" in finalResult) {
-    yield {
-      percent: 100,
-      bytesUploaded: totalBytes,
-      totalBytes,
-      status: "error",
-    };
-    return;
+  if (!result) {
+    throw new Error("Upload finished without a complete event");
   }
 
-  // Compute client-side MD5
-  yield {
-    percent: 100,
-    bytesUploaded: totalBytes,
-    totalBytes,
-    status: "verifying",
-  };
-
-  const clientMd5 = md5(allBytes);
-  const serverMd5 = finalResult.serverMd5;
-  const isValid = clientMd5 === serverMd5;
-
-  // Confirm integrity — only send boolean, never the client MD5
-  const confirmResult = await api.confirmIntegrity(
-    uploadId,
-    isValid,
-  );
-
-  yield {
-    percent: 100,
-    bytesUploaded: totalBytes,
-    totalBytes,
-    status: confirmResult.status,
-    serverMd5,
-    clientMd5,
-  };
+  return result;
 }
-
-/**
- * Pure-JS MD5 hash for browsers (SubtleCrypto does not support MD5).
- *
- * Implements RFC 1321 with no external dependencies.
- *
- * @param input - Raw bytes to hash.
- * @returns Hex-encoded 128-bit MD5 digest.
- */
-function md5(input: Uint8Array): string {
-  const bytes = input;
-  const len = bytes.length;
-
-  // Pre-processing: adding padding bits
-  const bitLen = len * 8;
-  // Append "1" bit, then zeros, then 64-bit length
-  const padLen = ((56 - (len + 1) % 64) + 64) % 64;
-  const totalLen = len + 1 + padLen + 8;
-  const buf = new Uint8Array(totalLen);
-  buf.set(bytes);
-  buf[len] = 0x80;
-
-  // Append original length in bits as 64-bit LE
-  const view = new DataView(buf.buffer);
-  view.setUint32(totalLen - 8, bitLen >>> 0, true);
-  view.setUint32(totalLen - 4, (bitLen / 0x100000000) >>> 0, true);
-
-  // Initialize hash values
-  let a0 = 0x67452301;
-  let b0 = 0xEFCDAB89;
-  let c0 = 0x98BADCFE;
-  let d0 = 0x10325476;
-
-  // Per-round shift amounts
-  const s = [
-    7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
-    5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
-    4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,
-    6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,
-  ];
-
-  // Pre-computed constants (floor(2^32 * abs(sin(i+1))))
-  const K = new Uint32Array(64);
-  for (let i = 0; i < 64; i++) {
-    K[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 0x100000000) >>> 0;
-  }
-
-  // Process each 512-bit (64-byte) chunk
-  for (let offset = 0; offset < totalLen; offset += 64) {
-    const M = new Uint32Array(16);
-    for (let j = 0; j < 16; j++) {
-      M[j] = view.getUint32(offset + j * 4, true);
-    }
-
-    let A = a0, B = b0, C = c0, D = d0;
-
-    for (let i = 0; i < 64; i++) {
-      let F: number, g: number;
-      if (i < 16) {
-        F = (B & C) | (~B & D);
-        g = i;
-      } else if (i < 32) {
-        F = (D & B) | (~D & C);
-        g = (5 * i + 1) % 16;
-      } else if (i < 48) {
-        F = B ^ C ^ D;
-        g = (3 * i + 5) % 16;
-      } else {
-        F = C ^ (B | ~D);
-        g = (7 * i) % 16;
-      }
-      F = (F + A + K[i] + M[g]) >>> 0;
-      A = D;
-      D = C;
-      C = B;
-      B = (B + ((F << s[i]) | (F >>> (32 - s[i])))) >>> 0;
-    }
-
-    a0 = (a0 + A) >>> 0;
-    b0 = (b0 + B) >>> 0;
-    c0 = (c0 + C) >>> 0;
-    d0 = (d0 + D) >>> 0;
-  }
-
-  // Produce the final hash as hex string (LE)
-  const result = new Uint8Array(16);
-  const rv = new DataView(result.buffer);
-  rv.setUint32(0, a0, true);
-  rv.setUint32(4, b0, true);
-  rv.setUint32(8, c0, true);
-  rv.setUint32(12, d0, true);
-
-  return Array.from(result).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-export { md5 };
