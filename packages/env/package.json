@@ -26,7 +26,8 @@
     "prebuild": "bun run clean",
     "build": "pkgroll",
     "cli": "node ./dist/cli.mjs",
-    "test": "vitest --run  --coverage"
+    "test": "vitest --run  --coverage",
+    "prepublishOnly": "bun run test"
   },
   "devDependencies": {
     "@types/node": "^25.0.9",
