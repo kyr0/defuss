@@ -1,4 +1,9 @@
-import type { JsonValue } from "./index";
+// Define inline to avoid circular import through ./index
+type JsonPrimitive = null | boolean | number | string;
+type JsonValue =
+  | JsonPrimitive
+  | JsonValue[]
+  | { [key: string]: JsonValue | undefined };
 
 function createDay(day: number, withHours: boolean): { d: string; typTsz?: { typ: string; sprechzeiten: { z: string }[] }[] } {
   if (!withHours) {
