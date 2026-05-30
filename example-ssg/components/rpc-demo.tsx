@@ -468,9 +468,7 @@ const RpcDemo: FC<RpcDemoProps> = () => {
 				<div>
 					<strong>RPC playground</strong>
 					<p>
-						Try the typed math and greeting APIs, then upload an image over
-						defuss-rpc, persist it with defuss-db JSONL, and fetch it back as
-						an ArrayBuffer for a direct image preview.
+						Shows seamless client/server function calls. No REST endpoints needed. defuss-rpc generates the client-side API at runtime while types are compile-time checked and complex data-types are transparently serialized and deserialized across the wire using defuss-dson.
 					</p>
 				</div>
 				<span class="rpc-demo-pill">Typed RPC + binary round-trip</span>
@@ -521,8 +519,8 @@ const RpcDemo: FC<RpcDemoProps> = () => {
 			<div>
 				<strong>RPC Upload Demo</strong>
 				<p>
-					Try the typed math and greeting APIs, then upload an image over
-					defuss-rpc, persist it with defuss-db JSONL, and fetch it back as
+					Uploads an image over
+					defuss-rpc, persists it with defuss-db JSONL, and fetches it back as
 					an ArrayBuffer for a direct image preview.
 				</p>
 			</div>
