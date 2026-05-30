@@ -30,3 +30,21 @@ dist*/
 *_wip/
 .storybook-*/
 scaffold*/
+.roo/
+.mlx-server.pid
+.mlx-server.log
+
+# large files
+*.bin
+*.wasm
+*.model
+*.onnx
+*.ckpt
+*.safetensors
+*.zip
+*.tar.gz
+*.dmg
+*.pkg
+
+.roo/
+.zoo/

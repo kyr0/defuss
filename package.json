@@ -31,9 +31,9 @@
     "clean:examples": "bun --filter \"./examples/*\" clean",
     "build:examples": "bun --filter \"./examples/*\" build",
     "prebuild:core": "bun clean:packages",
-    "build:core": "bun --filter \"./packages/defuss\" --filter \"./packages/runtime\" --filter \"./packages/astro\" --filter \"./packages/time\" --filter \"./packages/vite\" --filter \"./packages/jwt\" --filter \"./packages/open-telemetry\" --filter \"./packages/express\" --filter \"./packages/rpc\" --filter \"./packages/transval\" --filter \"./packages/dson\" --filter \"./packages/dataview\" --filter \"./packages/ssg\" --filter \"./packages/shadcn\" --filter \"./packages/storybook\" build",
+    "build:core": "bun --filter \"./packages/defuss\" --filter \"./packages/runtime\" --filter \"./packages/astro\" --filter \"./packages/vite\" --filter \"./packages/jwt\" --filter \"./packages/open-telemetry\" --filter \"./packages/express\" --filter \"./packages/rpc\" --filter \"./packages/transval\" --filter \"./packages/dson\" --filter \"./packages/dataview\" --filter \"./packages/ssg\" --filter \"./packages/shadcn\" --filter \"./packages/storybook\" --filter \"./packages/vfs\" --filter \"./packages/container\" --filter \"./packages/openai\" --filter \"./packages/deploy\" --filter \"./packages/vad\" --filter \"./packages/tlsbot\"  build",
     "pretest:core": "bun build:core",
-    "test:core": "bun --filter \"./packages/defuss\" --filter \"./packages/runtime\" --filter \"./packages/astro\" --filter \"./packages/time\" --filter \"./packages/vite\" --filter \"./packages/jwt\" --filter \"./packages/open-telemetry\" --filter \"./packages/express\" --filter \"./packages/rpc\" --filter \"./packages/transval\" --filter \"./packages/dson\" --filter \"./packages/dataview\" --filter \"./packages/ssg\" --filter \"./packages/shadcn\" --filter \"./packages/storybook\" test",
+    "test:core": "bun --filter \"./packages/defuss\" --filter \"./packages/runtime\" --filter \"./packages/astro\" --filter \"./packages/vite\" --filter \"./packages/jwt\" --filter \"./packages/open-telemetry\" --filter \"./packages/express\" --filter \"./packages/rpc\" --filter \"./packages/transval\" --filter \"./packages/dson\" --filter \"./packages/dataview\" --filter \"./packages/ssg\" --filter \"./packages/shadcn\" --filter \"./packages/storybook\" --filter \"./packages/vfs\" --filter \"./packages/container\" --filter \"./packages/openai\" --filter \"./packages/deploy\" --filter \"./packages/vad\" --filter \"./packages/tlsbot\" test",
     "test:examples": "bun --filter \"./examples/*\" test",
     "clean:packages": "bun --filter \"./packages/*\" clean",
     "build:packages": "bun --filter \"./packages/*\" build",
@@ -49,7 +49,11 @@
     "examples/*",
     "native-examples/*"
   ],
-  "author": "Aron Homberg <info@aron-homberg.de>",
+  "author": {
+    "name": "Aron Homberg",
+    "email": "info@aron-homberg.de",
+    "url": "https://aron-homberg.de"
+  },
   "sideEffects": false,
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",
