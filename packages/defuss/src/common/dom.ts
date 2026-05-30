@@ -86,8 +86,8 @@ function isTextLike(value: unknown): value is string | number | boolean {
 function isVNode(value: unknown): value is VNode<VNodeAttributes> {
   return Boolean(
     value &&
-      typeof value === "object" &&
-      "type" in (value as Record<string, unknown>),
+    typeof value === "object" &&
+    "type" in (value as Record<string, unknown>),
   );
 }
 

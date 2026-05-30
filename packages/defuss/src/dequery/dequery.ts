@@ -439,7 +439,10 @@ export class CallChainImpl<
   addClass(name: string | Array<string>): ET {
     const list = Array.isArray(name) ? name : [name];
     this._nodes.forEach((el) => {
-      (el as unknown as HTMLElement).classList.add(...list);
+      // Split space-separated class names (Tailwind convention) into individual tokens,
+      // since DOMTokenList.add() rejects tokens containing whitespace.
+      const tokens = list.flatMap((c) => c.split(/\s+/).filter(Boolean));
+      (el as unknown as HTMLElement).classList.add(...tokens);
     });
     return this as unknown as ET;
   }
@@ -447,7 +450,9 @@ export class CallChainImpl<
   removeClass(name: string | Array<string>): ET {
     const list = Array.isArray(name) ? name : [name];
     this._nodes.forEach((el) => {
-      (el as unknown as HTMLElement).classList.remove(...list);
+      // Split space-separated class names into individual tokens.
+      const tokens = list.flatMap((c) => c.split(/\s+/).filter(Boolean));
+      (el as unknown as HTMLElement).classList.remove(...tokens);
     });
     return this as unknown as ET;
   }

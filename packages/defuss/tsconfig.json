@@ -6,7 +6,7 @@
     "rootDir": "./src",
     "types": ["vitest/globals"],
     "jsx": "react-jsx",
-    "jsxImportSource": "defuss",
+    "jsxImportSource": "@/render",
     "sourceMap": true,
     "paths": {
       "@/*": ["./src/*"]

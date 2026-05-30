@@ -50,6 +50,22 @@ describe("CSS class manipulation", async () => {
     expect(await $(document.body).hasClass("nextClass3")).toEqual(false);
   });
 
+  it("can add space-separated classes in a single string", async () => {
+    // Tailwind convention: "border-primary/50 bg-muted/50"
+    const el = document.createElement("div");
+    $(el).addClass("border-primary/50 bg-muted/50");
+    expect(el.classList.contains("border-primary/50")).toBe(true);
+    expect(el.classList.contains("bg-muted/50")).toBe(true);
+  });
+
+  it("can remove space-separated classes in a single string", async () => {
+    const el = document.createElement("div");
+    el.classList.add("border-primary/50", "bg-muted/50");
+    $(el).removeClass("border-primary/50 bg-muted/50");
+    expect(el.classList.contains("border-primary/50")).toBe(false);
+    expect(el.classList.contains("bg-muted/50")).toBe(false);
+  });
+
   it("can set a single CSS property", async () => {
     await $(document.body).css("color", "red");
     expect(document.body.style.color).toBe("red");
