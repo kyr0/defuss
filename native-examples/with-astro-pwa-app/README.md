@@ -30,22 +30,22 @@ Inside of your `Astro` + `defuss` project, you'll see the following folders and 
 
 ```text
 /
-├── public/
-│   └── favicon.svg
-│   └── ...
-├── src/
-│   ├── components/
-│   │   └── App.tsx
-│   │   └── Counter.tsx
-│   ├── layouts/
-│   │   └── Layout.astro
-│   │   └── Layout.css
-│   ├── pages/
-│   │   └── index.astro
-│   └── env.d.ts
-├── package.json
-└── astro.config.ts
-└── tsconfig.json
+├-- public/
+│   └-- favicon.svg
+│   └-- ...
+├-- src/
+│   ├-- components/
+│   │   └-- App.tsx
+│   │   └-- Counter.tsx
+│   ├-- layouts/
+│   │   └-- Layout.astro
+│   │   └-- Layout.css
+│   ├-- pages/
+│   │   └-- index.astro
+│   └-- env.d.ts
+├-- package.json
+└-- astro.config.ts
+└-- tsconfig.json
 ```
 
 Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.

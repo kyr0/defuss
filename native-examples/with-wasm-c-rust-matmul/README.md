@@ -66,23 +66,23 @@ Inside of this project, you'll find a few implementations of the same algorithm:
 
 ```text
 /
-├── public/                   # Public assets 
-└── public/wasm_rust          # Rust WebAssembly module storage location
-└── public/wasm_c             # Emscripten/C WebAssembly module storage location
-└── scripts/                  # Automation scripts for building WebAssembly modules
-├── scripts/compile_c.ts.     # Script to build the C WebAssembly module
-├── scripts/compile_rust.ts   # Script to build the Rust WebAssembly module
-├── src/                      # Source code
-├── src/index.tsx             # Imports all implementations
-├── src/wasm_c.c              # C implementation of the dot product
-├── src/wasm_rust.rs          # Rust implementation of the dot product  
-├── src/js.ts                 # TypeScript implementation of the dot product
-├── src/js_jit.ts             # JIT-optimized TypeScript implementation of the dot product
-├── index.html                # Main HTML file to import the index.tsx
-├── tsconfig.json             # TypeScript configuration
-├── package.json              # Package configuration, e.g. providing exports and scripts
-├── vite.config.ts            # Vite configuration
-├── rust-toolchain.toml       # Rust toolchain configuration
+├-- public/                   # Public assets 
+└-- public/wasm_rust          # Rust WebAssembly module storage location
+└-- public/wasm_c             # Emscripten/C WebAssembly module storage location
+└-- scripts/                  # Automation scripts for building WebAssembly modules
+├-- scripts/compile_c.ts.     # Script to build the C WebAssembly module
+├-- scripts/compile_rust.ts   # Script to build the Rust WebAssembly module
+├-- src/                      # Source code
+├-- src/index.tsx             # Imports all implementations
+├-- src/wasm_c.c              # C implementation of the dot product
+├-- src/wasm_rust.rs          # Rust implementation of the dot product  
+├-- src/js.ts                 # TypeScript implementation of the dot product
+├-- src/js_jit.ts             # JIT-optimized TypeScript implementation of the dot product
+├-- index.html                # Main HTML file to import the index.tsx
+├-- tsconfig.json             # TypeScript configuration
+├-- package.json              # Package configuration, e.g. providing exports and scripts
+├-- vite.config.ts            # Vite configuration
+├-- rust-toolchain.toml       # Rust toolchain configuration
 ```
 
 ## 🧞 Commands
