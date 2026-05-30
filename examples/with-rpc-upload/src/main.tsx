@@ -159,11 +159,8 @@ const downloadFile = async (uploadId: string) => {
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
 
-		store.set({
-			downloading: false,
-			downloadProgress: 100,
-			downloadStatus: `Downloaded ${formatBytes(result.result.bytesDownloaded)}`,
-		});
+		// Reset to idle state after download has started
+		resetState();
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "Download failed";
 		store.set({
