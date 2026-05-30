@@ -2580,11 +2580,11 @@ The embedded approach eliminates complexity while maintaining all performance ch
 The system uses an elegant state machine for parallel index building where **search is disabled while ingesting, allowing writes to use every core** without complex locking or race conditions.
 
 ```
-      ┌─────────────┐   search() returns 503 / "indexing"
-      │ EngineState │── READY ─────────────┐
-      └─────────────┘                      │
+      ┌-------------┐   search() returns 503 / "indexing"
+      │ EngineState │-- READY -------------┐
+      └-------------┘                      │
                 ▲                          ▼
-                └──────── BUILDING ◄──── acquire_write()  (single writer gate)
+                └-------- BUILDING ◄---- acquire_write()  (single writer gate)
 ```
 
 ### Parallel Writing Process
@@ -4245,9 +4245,9 @@ impl Index {
     }
 }
 
-// ────────────────────────────
+// ----------------------------
 // Arena-optimized fusion helpers
-// ────────────────────────────
+// ----------------------------
 
 /// Reciprocal Rank Fusion (RRF) with arena allocation to eliminate temporary maps.
 pub fn rrf_fuse_arena<'arena>(
@@ -4342,9 +4342,9 @@ pub fn comb_sum_fuse(alpha: f32, dense: &[(u32, f32)], sparse: &[(u32, f32)], to
     comb_sum_fuse_arena(alpha, dense, sparse, top_k, &arena)
 }
 
-// ────────────────────────────
+// ----------------------------
 // Quick demo (cargo test)
-// ────────────────────────────
+// ----------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
