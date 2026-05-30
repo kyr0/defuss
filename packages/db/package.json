@@ -1,6 +1,6 @@
 {
   "name": "defuss-db",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -33,7 +33,7 @@
     "mongodb:start": "tsx scripts/mongo-start.ts",
     "mongodb:stop": "tsx scripts/mongo-stop.ts",
     "test": "tsx ./scripts/readiness.ts && vitest --run --coverage",
-    "prepublish": "bun run test"
+    "prepublishOnly": "bun run test"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,
