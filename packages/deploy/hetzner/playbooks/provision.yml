@@ -1,0 +1,366 @@
+---
+- name: Provision Hetzner Cloud infrastructure and bootstrap hosts
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../inventory/group_vars/all/main.yml
+    - ../inventory/group_vars/all/vault.yml
+  vars:
+    host_matrix:
+      - name: "{{ host_a_name }}"
+        private_key_file: "{{ ssh_key_host_a_private }}"
+        public_key_file: "{{ ssh_key_host_a_public }}"
+      - name: "{{ host_b_name }}"
+        private_key_file: "{{ ssh_key_host_b_private }}"
+        public_key_file: "{{ ssh_key_host_b_public }}"
+  tasks:
+    - name: Assert vaulted secrets are not placeholder values
+      ansible.builtin.assert:
+        that:
+          - vault_hcloud_token is defined
+          - vault_hcloud_token is not match('^REPLACE_')
+          - (not cloudflare_manage_dns | bool) or (vault_cloudflare_api_token is defined and vault_cloudflare_api_token is not match('^REPLACE_'))
+          - vault_cloudflare_origin_cert_pem is defined
+          - vault_cloudflare_origin_cert_pem is not search('REPLACE_WITH_')
+          - vault_cloudflare_origin_key_pem is defined
+          - vault_cloudflare_origin_key_pem is not search('REPLACE_WITH_')
+        fail_msg: Fill inventory/group_vars/all/vault.yml with real values first.
+
+    - name: Assert runtime SSH keys exist
+      ansible.builtin.stat:
+        path: "{{ item.private_key_file }}"
+      loop: "{{ host_matrix }}"
+      register: runtime_key_stats
+
+    - name: Fail if decrypted runtime SSH keys are missing
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.mode in ['0600', '0400']
+        fail_msg: Run ./scripts/decrypt_ssh_keys.sh before provisioning.
+      loop: "{{ runtime_key_stats.results }}"
+
+    - name: Register Hetzner SSH keys for bootstrap
+      hetzner.hcloud.ssh_key:
+        api_token: "{{ vault_hcloud_token }}"
+        name: "{{ project_slug }}-{{ item.name }}"
+        public_key: "{{ lookup('file', item.public_key_file) | trim }}"
+        state: present
+      loop: "{{ host_matrix }}"
+
+    - name: Create or update Hetzner servers
+      hetzner.hcloud.server:
+        api_token: "{{ vault_hcloud_token }}"
+        name: "{{ item.name }}"
+        server_type: "{{ hcloud_server_type }}"
+        image: "{{ hcloud_image }}"
+        location: "{{ hcloud_location }}"
+        enable_ipv4: "{{ hcloud_enable_ipv4 }}"
+        enable_ipv6: "{{ hcloud_enable_ipv6 }}"
+        backups: "{{ hcloud_backups }}"
+        delete_protection: "{{ hcloud_delete_protection }}"
+        rebuild_protection: "{{ hcloud_rebuild_protection }}"
+        ssh_keys:
+          - "{{ project_slug }}-{{ item.name }}"
+        labels:
+          project: "{{ project_slug }}"
+          role: web
+        state: present
+      loop: "{{ host_matrix }}"
+      register: hcloud_servers
+
+    - name: Add bootstrap hosts to in-memory inventory
+      ansible.builtin.add_host:
+        name: "{{ item.hcloud_server.name }}"
+        groups: bootstrap_vps,vps
+        ansible_host: "{{ item.hcloud_server.ipv4_address }}"
+        ansible_user: root
+        ansible_port: 22
+        ansible_ssh_private_key_file: >-
+          {{ ssh_key_host_a_private if item.hcloud_server.name == host_a_name else ssh_key_host_b_private }}
+        ops_private_key_file: >-
+          {{ ssh_key_host_a_private if item.hcloud_server.name == host_a_name else ssh_key_host_b_private }}
+        ops_public_key_file: >-
+          {{ ssh_key_host_a_public if item.hcloud_server.name == host_a_name else ssh_key_host_b_public }}
+        public_ipv4: "{{ item.hcloud_server.ipv4_address }}"
+      loop: "{{ hcloud_servers.results }}"
+
+    - name: Wait for SSH on bootstrap port 22
+      ansible.builtin.wait_for:
+        host: "{{ item.hcloud_server.ipv4_address }}"
+        port: 22
+        timeout: 300
+        delay: 5
+      loop: "{{ hcloud_servers.results }}"
+
+    - name: Create Cloudflare apex A records for both origins
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ cloudflare_root_record }}"
+        type: A
+        value: "{{ item.hcloud_server.ipv4_address }}"
+        proxied: "{{ cloudflare_proxied }}"
+        ttl: "{{ cloudflare_ttl }}"
+        api_token: "{{ vault_cloudflare_api_token }}"
+        state: present
+      loop: "{{ hcloud_servers.results }}"
+      when: cloudflare_manage_dns | bool
+
+    - name: Create Cloudflare www A records for both origins
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ cloudflare_www_record }}"
+        type: A
+        value: "{{ item.hcloud_server.ipv4_address }}"
+        proxied: "{{ cloudflare_proxied }}"
+        ttl: "{{ cloudflare_ttl }}"
+        api_token: "{{ vault_cloudflare_api_token }}"
+        state: present
+      loop: "{{ hcloud_servers.results }}"
+      when: cloudflare_manage_dns | bool
+
+    - name: Render generated inventory for later deploys
+      ansible.builtin.template:
+        src: templates/hosts.generated.yml.j2
+        dest: "{{ inventory_generated_path }}"
+        mode: '0600'
+
+- name: Bootstrap and harden VPS hosts
+  hosts: bootstrap_vps
+  become: true
+  gather_facts: true
+  vars_files:
+    - ../inventory/group_vars/all/main.yml
+    - ../inventory/group_vars/all/vault.yml
+  handlers:
+    - name: restart ssh
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
+    - name: restart fail2ban
+      ansible.builtin.service:
+        name: fail2ban
+        state: restarted
+
+    - name: restart docker
+      ansible.builtin.service:
+        name: docker
+        state: restarted
+
+    - name: reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install base packages
+      ansible.builtin.apt:
+        name: "{{ common_packages }}"
+        state: present
+
+    - name: Ensure ops group exists
+      ansible.builtin.group:
+        name: "{{ ops_group }}"
+        state: present
+
+    - name: Ensure ops user exists
+      ansible.builtin.user:
+        name: "{{ ops_user }}"
+        group: "{{ ops_group }}"
+        groups: docker
+        append: true
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Install operator admin public keys
+      ansible.posix.authorized_key:
+        user: "{{ ops_user }}"
+        key: "{{ item }}"
+        state: present
+      loop: "{{ ops_admin_authorized_keys }}"
+
+    - name: Install per-host deployment key
+      ansible.posix.authorized_key:
+        user: "{{ ops_user }}"
+        key: "{{ lookup('file', hostvars[inventory_hostname].ops_public_key_file) | trim }}"
+        state: present
+
+    - name: Allow passwordless sudo for ops
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/90-ops
+        mode: '0440'
+        content: |
+          {{ ops_user }} ALL=(ALL) NOPASSWD:ALL
+
+    - name: Configure SSH daemon
+      ansible.builtin.template:
+        src: templates/sshd_config.j2
+        dest: /etc/ssh/sshd_config
+        mode: '0600'
+        owner: root
+        group: root
+      notify: restart ssh
+
+    - name: Configure fail2ban jail for SSH
+      ansible.builtin.template:
+        src: templates/jail.local.j2
+        dest: /etc/fail2ban/jail.local
+        mode: '0644'
+      notify: restart fail2ban
+
+    - name: Configure hardening sysctl values
+      ansible.builtin.template:
+        src: templates/99-hardening.conf.j2
+        dest: /etc/sysctl.d/99-hardening.conf
+        mode: '0644'
+
+    - name: Apply sysctl values
+      ansible.builtin.command: sysctl --system
+      changed_when: true
+
+    - name: Configure Docker daemon
+      ansible.builtin.template:
+        src: templates/daemon.json.j2
+        dest: /etc/docker/daemon.json
+        mode: '0644'
+      notify: restart docker
+
+    - name: Ensure Docker service is enabled
+      ansible.builtin.service:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Enable unattended upgrades
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        mode: '0644'
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+
+    - name: Create Cloudflare origin certificate directory
+      ansible.builtin.file:
+        path: "{{ cloudflare_origin_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+
+    - name: Install Cloudflare origin certificate
+      ansible.builtin.copy:
+        dest: "{{ cloudflare_origin_cert_path }}"
+        content: "{{ vault_cloudflare_origin_cert_pem }}\n"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Install Cloudflare origin private key
+      ansible.builtin.copy:
+        dest: "{{ cloudflare_origin_key_path }}"
+        content: "{{ vault_cloudflare_origin_key_pem }}\n"
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Install host firewall script
+      ansible.builtin.template:
+        src: templates/apply-host-firewall.sh.j2
+        dest: /usr/local/sbin/apply-host-firewall.sh
+        mode: '0750'
+
+    - name: Install Docker Cloudflare firewall updater script
+      ansible.builtin.template:
+        src: templates/apply-docker-cloudflare.sh.j2
+        dest: /usr/local/sbin/apply-docker-cloudflare.sh
+        mode: '0750'
+
+    - name: Install firewall systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/host-firewall.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Apply host INPUT firewall
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/apply-host-firewall.sh
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: reload systemd
+
+    - name: Install Docker Cloudflare firewall service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/docker-cloudflare-firewall.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Allow only Cloudflare to reach Docker 80/443
+          After=network-online.target docker.service
+          Wants=network-online.target
+          Requires=docker.service
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/apply-docker-cloudflare.sh
+      notify: reload systemd
+
+    - name: Install Docker Cloudflare firewall timer
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/docker-cloudflare-firewall.timer
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Refresh Cloudflare IP allowlist for Docker
+
+          [Timer]
+          OnBootSec=2min
+          OnUnitActiveSec=12h
+          Persistent=true
+
+          [Install]
+          WantedBy=timers.target
+      notify: reload systemd
+
+    - name: Flush handlers before enabling services
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable and run firewall services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - host-firewall.service
+        - docker-cloudflare-firewall.service
+
+    - name: Enable Docker Cloudflare firewall timer
+      ansible.builtin.systemd:
+        name: docker-cloudflare-firewall.timer
+        enabled: true
+        state: started
+
+- name: Wait for hardened SSH port and validate connectivity
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../inventory/group_vars/all/main.yml
+  tasks:
+    - name: Wait for custom SSH port
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[item].ansible_host }}"
+        port: "{{ ssh_port }}"
+        timeout: 180
+        delay: 5
+      loop:
+        - "{{ host_a_name }}"
+        - "{{ host_b_name }}"

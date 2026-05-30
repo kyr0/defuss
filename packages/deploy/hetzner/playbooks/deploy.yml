@@ -1,0 +1,128 @@
+---
+- name: Build image locally when registry mode is disabled
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../inventory/group_vars/all/main.yml
+    - ../inventory/group_vars/all/vault.yml
+  tasks:
+    - name: Ensure local build directory exists
+      ansible.builtin.file:
+        path: "{{ runtime_dir }}/build"
+        state: directory
+        mode: '0755'
+
+    - name: Build the app image locally with buildx
+      ansible.builtin.command:
+        cmd: >-
+          docker buildx build
+          --platform {{ app_build_platform }}
+          --tag {{ app_local_image_ref }}
+          --load
+          {{ app_build_context }}
+      when: not deploy_via_registry | bool
+      changed_when: true
+
+    - name: Export Docker image tarball for upload mode
+      ansible.builtin.command:
+        cmd: >-
+          docker image save --output {{ app_local_tarball }} {{ app_local_image_ref }}
+      when: not deploy_via_registry | bool
+      changed_when: true
+
+- name: Rolling deployment to VPS origins
+  hosts: vps
+  serial: "{{ rolling_deploy_batch_size }}"
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  vars_files:
+    - ../inventory/group_vars/all/main.yml
+    - ../inventory/group_vars/all/vault.yml
+  vars:
+    effective_image_ref: >-
+      {{ deploy_registry_image_ref if deploy_via_registry | bool else app_local_image_ref }}
+    merged_container_env: "{{ container_env_common | combine(vault_app_env, recursive=True) }}"
+  tasks:
+    - name: Ensure app directory exists
+      ansible.builtin.file:
+        path: /opt/{{ app_name }}
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Upload image tarball to host
+      ansible.builtin.copy:
+        src: "{{ app_local_tarball }}"
+        dest: "{{ app_remote_tarball }}"
+        mode: '0644'
+      when: not deploy_via_registry | bool
+
+    - name: Load image tarball on host
+      ansible.builtin.command:
+        cmd: docker image load --input {{ app_remote_tarball }}
+      when: not deploy_via_registry | bool
+      changed_when: true
+
+    - name: Pull registry image on host
+      community.docker.docker_image:
+        name: "{{ deploy_registry_image_ref }}"
+        source: pull
+        force_source: true
+      when: deploy_via_registry | bool
+
+    - name: Deploy or replace the container
+      community.docker.docker_container:
+        name: "{{ app_container_name }}"
+        image: "{{ effective_image_ref }}"
+        state: started
+        recreate: true
+        restart_policy: always
+        pull: false
+        published_ports:
+          - "80:80"
+          - "443:443"
+        env: "{{ merged_container_env }}"
+        volumes:
+          - "{{ cloudflare_origin_dir }}:/run/secrets/cloudflare-origin:ro"
+        read_only: true
+        user: "{{ app_container_user }}"
+        cap_drop:
+          - ALL
+        cap_add:
+          - NET_BIND_SERVICE
+        tmpfs:
+          - /tmp:size=64m,mode=1777
+        security_opts:
+          - no-new-privileges:true
+        container_default_behavior: compatibility
+        comparisons:
+          image: strict
+
+    - name: Wait for application health endpoint
+      ansible.builtin.command:
+        cmd: curl --fail --silent --show-error --insecure https://127.0.0.1/healthz
+      register: app_health
+      retries: 30
+      delay: 3
+      until: app_health.rc == 0
+      changed_when: false
+
+    - name: Remove uploaded image tarball
+      ansible.builtin.file:
+        path: "{{ app_remote_tarball }}"
+        state: absent
+      when: not deploy_via_registry | bool
+
+- name: Clean up local build artifact
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../inventory/group_vars/all/main.yml
+  tasks:
+    - name: Remove local image tarball after successful deploy
+      ansible.builtin.file:
+        path: "{{ app_local_tarball }}"
+        state: absent
+      when: not deploy_via_registry | bool

@@ -1,0 +1,10 @@
+{
+  "name": "edge-webapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sample clustered Node origin for Cloudflare Full (strict)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

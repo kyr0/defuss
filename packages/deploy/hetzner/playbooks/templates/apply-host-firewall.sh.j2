@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+iptables -F INPUT
+iptables -P INPUT DROP
+iptables -P OUTPUT ACCEPT
+
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A INPUT -p icmp -j ACCEPT
+{% for cidr in admin_allowed_cidrs %}
+iptables -A INPUT -p tcp -s {{ cidr }} --dport {{ ssh_port }} -m conntrack --ctstate NEW -j ACCEPT
+{% endfor %}

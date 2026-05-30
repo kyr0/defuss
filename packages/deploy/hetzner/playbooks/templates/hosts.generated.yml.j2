@@ -1,0 +1,12 @@
+---
+all:
+  children:
+    vps:
+      hosts:
+{% for item in hcloud_servers.results %}
+        {{ item.hcloud_server.name }}:
+          ansible_host: {{ item.hcloud_server.ipv4_address }}
+          ansible_user: {{ ops_user }}
+          ansible_port: {{ ssh_port }}
+          ansible_ssh_private_key_file: {{ ssh_key_host_a_private if item.hcloud_server.name == host_a_name else ssh_key_host_b_private }}
+{% endfor %}

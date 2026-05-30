@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CHAIN="DOCKER-USER"
+TMP_V4="$(mktemp)"
+trap 'rm -f "$TMP_V4"' EXIT
+
+curl --fail --silent --show-error https://www.cloudflare.com/ips-v4 -o "$TMP_V4"
+
+iptables -N "$CHAIN" 2>/dev/null || true
+iptables -F "$CHAIN"
+
+while read -r cidr; do
+  [[ -z "$cidr" ]] && continue
+  iptables -A "$CHAIN" -p tcp -s "$cidr" -m multiport --dports 80,443 -j RETURN
+done < "$TMP_V4"
+
+iptables -A "$CHAIN" -p tcp -m multiport --dports 80,443 -j DROP
+iptables -A "$CHAIN" -j RETURN

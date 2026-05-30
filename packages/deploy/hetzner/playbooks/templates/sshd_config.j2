@@ -1,0 +1,24 @@
+# Managed by Ansible
+Port {{ ssh_port }}
+Protocol 2
+AddressFamily inet
+ListenAddress 0.0.0.0
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PubkeyAuthentication yes
+UsePAM yes
+PermitEmptyPasswords no
+MaxAuthTries 3
+LoginGraceTime 30
+X11Forwarding no
+AllowAgentForwarding no
+AllowTcpForwarding no
+PermitTunnel no
+ClientAliveInterval 300
+ClientAliveCountMax 2
+TCPKeepAlive no
+AllowUsers {{ ops_user }}
+AuthorizedKeysFile .ssh/authorized_keys
+Subsystem sftp /usr/lib/openssh/sftp-server

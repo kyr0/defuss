@@ -1,0 +1,10 @@
+---
+collections:
+  - name: hetzner.hcloud
+    version: ">=6.7.0"
+  - name: community.general
+    version: ">=11.4.0"
+  - name: community.docker
+    version: ">=4.7.0"
+  - name: ansible.posix
+    version: ">=2.1.0"

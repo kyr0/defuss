@@ -1,0 +1,14 @@
+---
+vault_hcloud_token: REPLACE_HETZNER_TOKEN
+vault_cloudflare_api_token: REPLACE_CLOUDFLARE_API_TOKEN
+vault_cloudflare_origin_cert_pem: |
+  -----BEGIN CERTIFICATE-----
+  REPLACE_WITH_CLOUDFLARE_ORIGIN_CERTIFICATE
+  -----END CERTIFICATE-----
+vault_cloudflare_origin_key_pem: |
+  -----BEGIN PRIVATE KEY-----
+  REPLACE_WITH_CLOUDFLARE_ORIGIN_PRIVATE_KEY
+  -----END PRIVATE KEY-----
+vault_app_env:
+  APP_NAME: edge-web
+  LOG_LEVEL: info

@@ -1,0 +1,89 @@
+---
+project_name: edge-web
+project_slug: edge-web
+
+host_a_name: edge-a
+host_b_name: edge-b
+
+hcloud_location: nbg1
+hcloud_server_type: cx23
+hcloud_image: ubuntu-24.04
+hcloud_enable_ipv4: true
+hcloud_enable_ipv6: false
+hcloud_backups: false
+hcloud_delete_protection: true
+hcloud_rebuild_protection: true
+
+cloudflare_manage_dns: true
+cloudflare_zone: example.com
+cloudflare_root_record: "@"
+cloudflare_www_record: www
+cloudflare_proxied: true
+cloudflare_ttl: 1
+
+ops_user: ops
+ops_group: ops
+ssh_port: 2222
+ops_admin_authorized_keys:
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIREPLACE_WITH_YOUR_REAL_ADMIN_PUBLIC_KEY local-admin"
+admin_allowed_cidrs:
+  - "203.0.113.10/32"
+  - "198.51.100.0/24"
+
+runtime_dir: "{{ playbook_dir | dirname }}/.runtime"
+ssh_key_runtime_dir: "{{ runtime_dir }}/ssh"
+ssh_key_host_a_private: "{{ ssh_key_runtime_dir }}/id_ops_a"
+ssh_key_host_b_private: "{{ ssh_key_runtime_dir }}/id_ops_b"
+ssh_key_host_a_public: "{{ playbook_dir | dirname }}/secrets/ssh/public/id_ops_a.pub"
+ssh_key_host_b_public: "{{ playbook_dir | dirname }}/secrets/ssh/public/id_ops_b.pub"
+
+inventory_generated_path: "{{ playbook_dir | dirname }}/inventory/hosts.generated.yml"
+
+app_name: webapp
+app_container_name: webapp
+app_image_name: local/webapp
+app_image_tag: latest
+app_local_image_ref: "{{ app_image_name }}:{{ app_image_tag }}"
+app_build_context: "{{ playbook_dir | dirname }}/app"
+app_build_platform: linux/amd64
+app_tarball_name: "{{ app_name }}-{{ app_image_tag }}.tar"
+app_local_tarball: "{{ runtime_dir }}/build/{{ app_tarball_name }}"
+app_remote_tarball: "/tmp/{{ app_tarball_name }}"
+app_domain_names:
+  - "{{ cloudflare_zone }}"
+  - "{{ cloudflare_www_record }}.{{ cloudflare_zone }}"
+app_healthcheck_url: https://127.0.0.1/healthz
+app_container_user: "1000:1000"
+app_enable_http_redirect: true
+
+cloudflare_origin_dir: /etc/ssl/cloudflare-origin
+cloudflare_origin_cert_path: "{{ cloudflare_origin_dir }}/origin.crt"
+cloudflare_origin_key_path: "{{ cloudflare_origin_dir }}/origin.key"
+
+common_packages:
+  - acl
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - docker.io
+  - fail2ban
+  - gnupg
+  - iproute2
+  - iptables
+  - jq
+  - python3-docker
+  - rsync
+  - unattended-upgrades
+
+container_env_common:
+  NODE_ENV: production
+  APP_HTTP_PORT: "80"
+  APP_HTTPS_PORT: "443"
+  TLS_CERT_PATH: /run/secrets/cloudflare-origin/origin.crt
+  TLS_KEY_PATH: /run/secrets/cloudflare-origin/origin.key
+  APP_DOMAINS: "{{ app_domain_names | join(',') }}"
+  FORCE_HTTPS_REDIRECT: "true"
+
+rolling_deploy_batch_size: 1
+deploy_via_registry: false
+deploy_registry_image_ref: ghcr.io/OWNER/REPO/webapp:latest

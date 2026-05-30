@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>bun + busybox shell over container2wasm</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@4.17.0/css/xterm.css" integrity="sha384-4qR1sn+qt6pOm0RI0DhyaYdeY2BAcH4b6R4Xaek2R5zeVS7OXDSwwLNckB915Z3h" crossorigin="anonymous" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #0b0d10;
+        color: #e5e7eb;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      body {
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+      .bar {
+        padding: 10px 14px;
+        border-bottom: 1px solid #1f2937;
+        background: #111827;
+        font-size: 12px;
+      }
+      #terminal {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .xterm, .xterm-viewport {
+        height: 100% !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bar">busybox + bun shell in browser · container2wasm WASI image</div>
+    <div id="terminal"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xterm@4.17.0/lib/xterm.min.js" integrity="sha384-DNSZ66fNdXt7E5a6ebdXK+5ZpHuRCHpjyurDN2FWaQ7EIY+L2CMbN9Ge3Va+J8xd" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-pty@0.9.4/index.js" integrity="sha384-ePHD+Mo9Gugdu2PSR/ap5Hl+Bkx+Eto+AgmBiivm2hOlHZTrGYVJR+WJXDghF/E0" crossorigin="anonymous"></script>
+    <script>
+      const term = new Terminal({
+        cursorBlink: true,
+        convertEol: true,
+        fontSize: 14,
+        scrollback: 5000,
+      });
+      window.term = term;
+      term.open(document.getElementById("terminal"));
+      term.focus();
+
+      const { master, slave } = openpty();
+
+      let termios = slave.ioctl("TCGETS");
+      termios.iflag &= ~(ISTRIP | INLCR | IGNCR | ICRNL | IXON);
+      termios.oflag &= ~OPOST;
+      termios.lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+      slave.ioctl(
+        "TCSETS",
+        new Termios(termios.iflag, termios.oflag, termios.cflag, termios.lflag, termios.cc),
+      );
+
+      term.loadAddon(master);
+      const worker = new Worker("./worker.js");
+      worker.postMessage({
+        type: "init",
+        imagename: location.origin + "/out.wasm",
+      });
+      new TtyServer(slave).start(worker);
+    </script>
+  </body>
+</html>
