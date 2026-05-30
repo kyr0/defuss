@@ -36,6 +36,7 @@ export default defineConfig({
     __BROWSER_ENV__: JSON.stringify({
       OPENAI_BASE_URL: env.OPENAI_BASE_URL || "http://127.0.0.1:8430/v1",
       OPENAI_MODEL: env.OPENAI_MODEL || "kyr0/zaya1-base-8b-4bit-MLX",
+      OPENAI_API_KEY: env.OPENAI_API_KEY || "",
     }),
   },
   test: {
