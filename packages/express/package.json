@@ -38,7 +38,7 @@
     "example:sse": "node --import tsx ./examples/server-sent-events.ts",
     "bench": "node --import tsx ./bench/throughput.ts",
     "bench:server": "node --import tsx ./bench/dson-server.ts",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run test"
   },
   "exports": {
     ".": {

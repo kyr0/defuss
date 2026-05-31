@@ -1,6 +1,6 @@
 import type { Store } from "../store/store.js";
 import type { Ref } from "../render/types.js";
-import { updateDomWithVdom } from "../common/dom.js";
+import { dequery as $ } from "../dequery/dequery.js";
 
 /**
  * Configuration for reactive rendering.
@@ -45,9 +45,7 @@ export function reactive(
       : target;
 
   const update = () => {
-    if (ref.current) {
-      updateDomWithVdom(ref.current, config.render());
-    }
+    $(ref).jsx(config.render());
   };
 
   // Initial render
