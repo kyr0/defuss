@@ -1,6 +1,7 @@
-import type { FC } from "defuss";
+import { $, createRef, createStore, type FC } from "defuss";
 import {
   Button,
+  ButtonGroup,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -10,22 +11,36 @@ import {
 } from "defuss-shadcn";
 import { CodePreview } from "../../components/CodePreview.js";
 
+const filterStore = createStore({ value: "filter1" });
+
+const renderToggleGroup = () => (
+  <ButtonGroup>
+    <ToggleButton
+      value="filter1"
+      pressed={filterStore.value.value === "filter1"}
+      onClick={() => filterStore.set({ value: "filter1" })}
+    >
+      Filter 1
+    </ToggleButton>
+    <ToggleButton
+      value="filter2"
+      pressed={filterStore.value.value === "filter2"}
+      onClick={() => filterStore.set({ value: "filter2" })}
+    >
+      Filter 2
+    </ToggleButton>
+    <ToggleButton
+      value="filter3"
+      pressed={filterStore.value.value === "filter3"}
+      onClick={() => filterStore.set({ value: "filter3" })}
+    >
+      Filter 3
+    </ToggleButton>
+  </ButtonGroup>
+);
+
 export const ButtonGroupScreen: FC = () => {
-  const setActiveToggle = (event: Event) => {
-    console.log("Clicked toggle button:", event.currentTarget);
-    const clicked = event.currentTarget as HTMLButtonElement;
-    const group = clicked.parentElement;
-    if (!group) return;
-
-    const buttons = group.querySelectorAll("button");
-    buttons.forEach((button) => {
-      button.classList.remove("btn-primary");
-      button.classList.add("btn-outline");
-    });
-
-    clicked.classList.remove("btn-outline");
-    clicked.classList.add("btn-primary");
-  };
+  const toggleGroupRef = createRef<HTMLDivElement>();
 
   return (
     <div class="space-y-6">
@@ -40,12 +55,12 @@ export const ButtonGroupScreen: FC = () => {
         code={`<div className="flex w-fit items-stretch gap-2">
   <Button variant="outline" size="icon" aria-label="Go Back">...</Button>
 
-  <div role="group" className="button-group">
+  <ButtonGroup>
     <Button variant="outline">Archive</Button>
     <Button variant="outline">Report</Button>
-  </div>
+  </ButtonGroup>
 
-  <div role="group" className="button-group">
+  <ButtonGroup>
     <Button variant="outline">Snooze</Button>
     <DropdownMenu id="demo-button-group-menu">
       <DropdownMenuTrigger id="demo-button-group-menu-trigger" className="btn-icon-outline">...</DropdownMenuTrigger>
@@ -59,7 +74,7 @@ export const ButtonGroupScreen: FC = () => {
         <DropdownMenuItem className="text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20 [&_svg]:!text-destructive">Trash</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  </div>
+  </ButtonGroup>
 </div>`}
         language="tsx"
       >
@@ -81,12 +96,12 @@ export const ButtonGroupScreen: FC = () => {
             </svg>
           </Button>
 
-          <div role="group" class="button-group">
+          <ButtonGroup>
             <Button variant="outline">Archive</Button>
             <Button variant="outline">Report</Button>
-          </div>
+          </ButtonGroup>
 
-          <div role="group" class="button-group">
+          <ButtonGroup>
             <Button variant="outline">Snooze</Button>
 
             <DropdownMenu id="demo-button-group-menu">
@@ -126,7 +141,7 @@ export const ButtonGroupScreen: FC = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          </ButtonGroup>
         </div>
       </CodePreview>
 
@@ -134,30 +149,61 @@ export const ButtonGroupScreen: FC = () => {
         Toggle Button Group
       </h2>
       <p class="text-sm text-muted-foreground">
-        Use clear active/inactive styles and spacing so selected state is easy
-        to scan.
+        Single-selection toggle group with store-driven state. Only one button
+        can be active at a time.
       </p>
 
       <CodePreview
         previewClassName="items-start justify-start"
         className="w-full"
-        code={`<div className="inline-flex gap-2">
-  <ToggleButton className="btn-primary" onClick={setActiveToggle}>Filter 1</ToggleButton>
-  <ToggleButton className="btn-outline" onClick={setActiveToggle}>Filter 2</ToggleButton>
-  <ToggleButton className="btn-outline" onClick={setActiveToggle}>Filter 3</ToggleButton>
+        code={`import { $, createRef, createStore } from "defuss";
+import { ButtonGroup, ToggleButton } from "defuss-shadcn";
+
+const store = createStore({ value: "filter1" });
+const ref = createRef<HTMLDivElement>();
+
+const renderGroup = () => (
+  <ButtonGroup>
+    <ToggleButton
+      value="filter1"
+      pressed={store.value.value === "filter1"}
+      onClick={() => store.set({ value: "filter1" })}
+    >
+      Filter 1
+    </ToggleButton>
+    <ToggleButton
+      value="filter2"
+      pressed={store.value.value === "filter2"}
+      onClick={() => store.set({ value: "filter2" })}
+    >
+      Filter 2
+    </ToggleButton>
+    <ToggleButton
+      value="filter3"
+      pressed={store.value.value === "filter3"}
+      onClick={() => store.set({ value: "filter3" })}
+    >
+      Filter 3
+    </ToggleButton>
+  </ButtonGroup>
+);
+
+<div ref={ref} onMount={() => {
+  $(ref).jsx(renderGroup());
+  store.subscribe(() => $(ref).jsx(renderGroup()));
+}}>
+  {renderGroup()}
 </div>`}
         language="tsx"
       >
-        <div class="inline-flex gap-2">
-          <ToggleButton class="btn-primary" onClick={setActiveToggle}>
-            Filter 1
-          </ToggleButton>
-          <ToggleButton class="btn-outline" onClick={setActiveToggle}>
-            Filter 2
-          </ToggleButton>
-          <ToggleButton class="btn-outline" onClick={setActiveToggle}>
-            Filter 3
-          </ToggleButton>
+        <div
+          ref={toggleGroupRef}
+          onMount={() => {
+            $(toggleGroupRef).jsx(renderToggleGroup());
+            filterStore.subscribe(() => $(toggleGroupRef).jsx(renderToggleGroup()));
+          }}
+        >
+          {renderToggleGroup()}
         </div>
       </CodePreview>
     </div>
