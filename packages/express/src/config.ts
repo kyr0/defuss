@@ -21,11 +21,17 @@ const availableCpus = (): number =>
 		? os.availableParallelism()
 		: os.cpus().length;
 
+/** Strip keys with undefined values so they don't override defaults during spread. */
+const withoutUndefined = <T extends object>(obj: T): T =>
+	Object.fromEntries(
+		Object.entries(obj).filter(([, v]) => v !== undefined),
+	) as T;
+
 const fallbackConfig = (): ResolvedServerConfig => ({
-	host: process.env.HOST ?? process.env.LISTEN_HOST ?? "0.0.0.0",
-	port: Number(process.env.PORT ?? process.env.LISTEN_PORT ?? 3000),
-	workerHost: process.env.WORKER_HOST ?? "127.0.0.1",
-	baseWorkerPort: Number(process.env.BASE_WORKER_PORT ?? 3001),
+	host: process.env.HOST || process.env.LISTEN_HOST || "0.0.0.0",
+	port: Number(process.env.PORT || process.env.LISTEN_PORT || 3000),
+	workerHost: process.env.WORKER_HOST || "127.0.0.1",
+	baseWorkerPort: Number(process.env.BASE_WORKER_PORT || 3001),
 	workers: availableCpus(),
 	requestInspectionTimeoutMs: 10,
 	maxHeaderBytes: 16 * 1024,
@@ -66,13 +72,13 @@ export const resolveServerConfig = (
 
 	return {
 		...defaults,
-		...currentConfig,
-		...next,
+		...withoutUndefined(currentConfig),
+		...withoutUndefined(next ?? {}),
 		workers,
 		logger: resolvedLogger,
 		workerEnv: {
 			...(currentConfig.workerEnv ?? {}),
-			...(next?.workerEnv ?? {}),
+			...withoutUndefined(next?.workerEnv ?? {}),
 		},
 		loadBalancer: next?.loadBalancer ?? currentConfig.loadBalancer ?? defaults.loadBalancer,
 		telemetry: next?.telemetry ?? currentConfig.telemetry ?? defaults.telemetry,
