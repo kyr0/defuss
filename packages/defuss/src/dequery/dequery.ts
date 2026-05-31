@@ -25,6 +25,7 @@ import {
 } from "../render/index.js";
 import { clearDelegatedEventsDeep } from "../render/delegated-events.js";
 import { getComponentInstance } from "../render/component-registry.js";
+import { reactive as reactiveUtil } from "../common/reactive.js";
 import type {
   DequeryOptions,
   DequerySyncMethodReturnType,
@@ -1063,6 +1064,21 @@ export class CallChainImpl<
       };
       doc.addEventListener("DOMContentLoaded", handleDOMContentLoaded);
     }
+    return this as unknown as ET;
+  }
+
+  // --- Reactive ---
+
+  reactive(config: {
+    store: import("../store/store.js").Store<any> | import("../store/store.js").Store<any>[];
+    render: () => JSX.Element;
+    cleanup?: () => void;
+  }): ET {
+    this._nodes.forEach((el) => {
+      if (el instanceof HTMLElement) {
+        reactiveUtil(config, el);
+      }
+    });
     return this as unknown as ET;
   }
 }
