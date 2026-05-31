@@ -1,4 +1,4 @@
-import { $, createRef, createStore, type FC } from "defuss";
+import { Reactive, createStore, type FC } from "defuss";
 import {
   Button,
   ButtonGroup,
@@ -14,37 +14,6 @@ import { CodePreview } from "../../components/CodePreview.js";
 const filterStore = createStore({ value: "filter1" });
 
 export const ButtonGroupScreen: FC = () => {
-  const toggleGroupRef = createRef<HTMLDivElement>();
-
-  const renderToggleGroup = () => {
-    $(toggleGroupRef).jsx(
-      <ButtonGroup>
-        <ToggleButton
-          value="filter1"
-          pressed={filterStore.value.value === "filter1"}
-          onClick={() => filterStore.set({ value: "filter1" })}
-        >
-          Filter 1
-        </ToggleButton>
-        <ToggleButton
-          value="filter2"
-          pressed={filterStore.value.value === "filter2"}
-          onClick={() => filterStore.set({ value: "filter2" })}
-        >
-          Filter 2
-        </ToggleButton>
-        <ToggleButton
-          value="filter3"
-          pressed={filterStore.value.value === "filter3"}
-          onClick={() => filterStore.set({ value: "filter3" })}
-        >
-          Filter 3
-        </ToggleButton>
-      </ButtonGroup>
-    );
-  };
-
-  filterStore.subscribe(renderToggleGroup);
 
   return (
     <div class="space-y-6">
@@ -199,7 +168,31 @@ store.subscribe(render);
 <div ref={ref} onMount={render} />`}
         language="tsx"
       >
-        <div ref={toggleGroupRef} onMount={renderToggleGroup} />
+        <Reactive store={filterStore} render={() => (
+          <ButtonGroup>
+            <ToggleButton
+              value="filter1"
+              pressed={filterStore.value.value === "filter1"}
+              onClick={() => filterStore.set({ value: "filter1" })}
+            >
+              Filter 1
+            </ToggleButton>
+            <ToggleButton
+              value="filter2"
+              pressed={filterStore.value.value === "filter2"}
+              onClick={() => filterStore.set({ value: "filter2" })}
+            >
+              Filter 2
+            </ToggleButton>
+            <ToggleButton
+              value="filter3"
+              pressed={filterStore.value.value === "filter3"}
+              onClick={() => filterStore.set({ value: "filter3" })}
+            >
+              Filter 3
+            </ToggleButton>
+          </ButtonGroup>
+        )}/>
       </CodePreview>
     </div>
   );

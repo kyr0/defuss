@@ -4,7 +4,7 @@
   "version": "0.0.4",
   "type": "module",
   "scripts": {
-    "clean": "rm -rf ./node_modules/.bun && rm -rf ./dist && rm -rf ./turbo",
+    "clean": "rm -rf node_modules/.vite  && rm -rf ./node_modules/.bun && rm -rf ./dist && rm -rf ./turbo",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
