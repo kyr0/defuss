@@ -1,7 +1,13 @@
 import { Reactive, createStore, type FC } from "defuss";
 import {
+  Badge,
   Button,
   ButtonGroup,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -12,6 +18,19 @@ import {
 import { CodePreview } from "../../components/CodePreview.js";
 
 const filterStore = createStore({ value: "filter1" });
+
+// Multi-selection mode stores (each mode tracks its own active toggles independently)
+const mode1Store = createStore<string[]>([]);
+const mode2Store = createStore<string[]>([]);
+
+const toggleInStore = (store: ReturnType<typeof createStore<string[]>>, item: string) => {
+  const current = store.value;
+  if (current.includes(item)) {
+    store.set(current.filter((v: string) => v !== item));
+  } else {
+    store.set([...current, item]);
+  }
+};
 
 export const ButtonGroupScreen: FC = () => {
 
@@ -192,6 +211,112 @@ store.subscribe(render);
               Filter 3
             </ToggleButton>
           </ButtonGroup>
+        )}/>
+      </CodePreview>
+
+      <h2 class="text-2xl font-semibold tracking-tight scroll-m-20 border-b pb-2 mt-8">
+        Split Toggle Button Group
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        Each toggle button of the same group lives in its own card. Multiple
+        buttons can be active simultaneously across cards.
+      </p>
+
+      <CodePreview
+        previewClassName="items-start justify-start"
+        className="w-full"
+        code={`import { Reactive, createStore } from "defuss";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "defuss-shadcn";
+
+const modeStore = createStore<string[]>([]);
+
+const toggleMode = (mode: string) => {
+  const current = modeStore.value;
+  if (current.includes(mode)) {
+    modeStore.set(current.filter((v) => v !== mode));
+  } else {
+    modeStore.set([...current, mode]);
+  }
+};
+
+const modes = [
+  { id: "mode1", title: "Mode 1", description: "Enable parallel processing." },
+  { id: "mode2", title: "Mode 2", description: "Enable streaming output." },
+  { id: "mode3", title: "Mode 3", description: "Enable batch mode." },
+];
+
+<Reactive store={modeStore} render={() => (
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+    {modes.map((mode) => (
+      <Card key={mode.id}>
+        <CardHeader>
+          <CardTitle>{mode.title}</CardTitle>
+          <CardDescription>{mode.description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant={modeStore.value.includes(mode.id) ? "default" : "outline"}
+            onClick={() => toggleMode(mode.id)}
+          >
+            {modeStore.value.includes(mode.id) ? "Active" : "Enable"}
+          </Button>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+)}/>`}
+        language="tsx"
+      >
+        <Reactive store={mode1Store} render={() => (
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Mode 1</CardTitle>
+                <CardDescription>Enable parallel processing for faster throughput.</CardDescription>
+              </CardHeader>
+              <CardContent class="space-y-3">
+                <ToggleButton
+                  class="w-full"
+                  pressed={mode1Store.value.includes("parallel")}
+                  onClick={() => toggleInStore(mode1Store, "parallel")}
+                >
+                  {mode1Store.value.includes("parallel") ? "Active" : "Enable"}
+                </ToggleButton>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Mode 2</CardTitle>
+                <CardDescription>Stream results in real-time as they become available.</CardDescription>
+              </CardHeader>
+              <CardContent class="space-y-3">
+                <ToggleButton
+                  class="w-full"
+                  pressed={mode1Store.value.includes("streaming")}
+                  onClick={() => toggleInStore(mode1Store, "streaming")}
+                >
+                  {mode1Store.value.includes("streaming") ? "Active" : "Enable"}
+                </ToggleButton>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Mode 3</CardTitle>
+                <CardDescription>Process items in optimized batch groups.</CardDescription>
+              </CardHeader>
+              <CardContent class="space-y-3">
+                <ToggleButton
+                  class="w-full"
+                  pressed={mode1Store.value.includes("batch")}
+                  onClick={() => toggleInStore(mode1Store, "batch")}
+                >
+                  {mode1Store.value.includes("batch") ? "Active" : "Enable"}
+                </ToggleButton>
+              </CardContent>
+            </Card>
+          </div>
         )}/>
       </CodePreview>
     </div>
