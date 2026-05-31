@@ -5,6 +5,7 @@ import { buttonVariants } from "./button.js";
 
 export type ToggleProps = ElementProps<HTMLButtonElement> & {
   pressed?: boolean;
+  value?: string;
 };
 
 export type ToggleButtonProps = ToggleProps;

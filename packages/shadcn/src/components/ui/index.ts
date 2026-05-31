@@ -41,4 +41,5 @@ export * from "./tree-view.js";
 export * from "./drop-area.js";
 // Interactive components (cont'd)
 export * from "./toggle.js";
+export * from "./button-group.js";
 export * from "./tooltip.js";
