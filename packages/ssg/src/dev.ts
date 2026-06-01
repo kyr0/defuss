@@ -1,6 +1,8 @@
 import mdx from "@mdx-js/rollup";
 import { createServer, type InlineConfig } from "vite";
 import defuss from "defuss-vite";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { DevOptions, Status } from "./types.js";
 import { mergeUserViteConfig, readConfig } from "./config.js";
 import { validateProjectDir } from "./validation.js";
@@ -31,6 +33,7 @@ export const dev = async ({
 		server: {
 			host,
 			port,
+			strictPort: false,
 			watch: {
 				ignored: [
 					"**/node_modules/**",
@@ -66,6 +69,18 @@ export const dev = async ({
 	);
 
 	await server.listen(port);
+	
+	// Write actual port to a file so Tauri can discover it
+	const resolvedPort = server.httpServer?.address();
+	const actualPort = typeof resolvedPort === "object" && resolvedPort ? resolvedPort.port : port;
+	if (actualPort !== port) {
+		console.log(`[defuss-ssg] port ${port} in use, using ${actualPort} instead`);
+		try {
+			writeFileSync(join(projectDir, ".defuss-port"), String(actualPort));
+		} catch {
+			// non-critical
+		}
+	}
 	server.printUrls();
 
 	return {
