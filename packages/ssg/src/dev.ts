@@ -38,6 +38,7 @@ export const dev = async ({
 					"**/.ssg-temp/**",
 					"**/.endpoints/**",
 					"**/.rpc/**",
+					"**/.defuss-tauri/**",
 				],
 			},
 		},

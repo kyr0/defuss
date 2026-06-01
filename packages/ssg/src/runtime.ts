@@ -266,10 +266,23 @@ const getHydrationRootElement = (nodes: Node[]): Element | null => {
 	return null;
 };
 
-const normaliseHydrationMarkup = (container: ParentNode): void => {
+/**
+ * Unwrap hydration wrappers in the new HTML so the morph engine sees
+ * the same element structure as the live DOM.
+ *
+ * For boundaries that are already hydrated in the live DOM, we skip
+ * unwrapping and instead preserve the wrapper. The caller (navigateTo)
+ * will inject the live hydrated content into these wrappers so the
+ * morph sees matching tags and morphs in-place rather than replacing.
+ */
+const normaliseHydrationMarkup = (
+	container: ParentNode,
+	preserveHydrated: boolean,
+): Map<string, Element> => {
 	const boundaries = Array.from(
 		container.querySelectorAll('[data-hydrate="true"]'),
 	);
+	const preservedWrappers = new Map<string, Element>();
 
 	for (const boundary of boundaries) {
 		const id = boundary.getAttribute("data-hydrate-id");
@@ -283,9 +296,21 @@ const normaliseHydrationMarkup = (container: ParentNode): void => {
 			continue;
 		}
 
+		if (preserveHydrated) {
+			const liveBoundary = document.querySelector(
+				`[data-hydrate-id="${id}"][data-hydrated="true"]`,
+			);
+			if (liveBoundary instanceof Element) {
+				preservedWrappers.set(id, boundary);
+				continue;
+			}
+		}
+
 		copyHydrationAttributes(boundary, rootElement, false);
 		boundary.replaceWith(...hydratableNodes);
 	}
+
+	return preservedWrappers;
 };
 
 const isRestorableFormControl = (
@@ -698,25 +723,6 @@ const syncPageControlStateSnapshots = (
 	}
 };
 
-const shouldPreserveHydratedBoundary = (
-	boundary: Element,
-	options: NavigateOptions,
-): boolean => {
-	if (!options.preserveHydratedState) {
-		return false;
-	}
-
-	if (options.preserveHydratedBoundaries === false) {
-		return false;
-	}
-
-	if (options.kind === "component" && options.componentSrc) {
-		return boundary.getAttribute("data-hydrate-src") !== options.componentSrc;
-	}
-
-	return true;
-};
-
 const collectBoundaryStateSnapshots = (
 	container: ParentNode,
 	options: NavigateOptions,
@@ -778,38 +784,6 @@ const restoreBoundaryStateSnapshots = (
 			element.scrollTop = scrollState.scrollTop;
 			element.scrollLeft = scrollState.scrollLeft;
 		}
-	}
-};
-
-const preserveHydratedBoundaries = (
-	container: ParentNode,
-	options: NavigateOptions,
-): void => {
-	const currentBoundaries = new Map<string, Element>();
-	for (const boundary of document.querySelectorAll('[data-hydrate="true"][data-hydrated="true"]')) {
-		const id = boundary.getAttribute("data-hydrate-id");
-		if (!id) {
-			continue;
-		}
-		currentBoundaries.set(id, boundary);
-	}
-
-	for (const nextBoundary of container.querySelectorAll('[data-hydrate="true"]')) {
-		const id = nextBoundary.getAttribute("data-hydrate-id");
-		if (!id) {
-			continue;
-		}
-
-		const currentBoundary = currentBoundaries.get(id);
-		if (!currentBoundary) {
-			continue;
-		}
-
-		if (!shouldPreserveHydratedBoundary(nextBoundary, options)) {
-			continue;
-		}
-
-		nextBoundary.outerHTML = currentBoundary.outerHTML;
 	}
 };
 
@@ -1075,14 +1049,81 @@ export const navigateTo = async (
 			? { x: window.scrollX, y: window.scrollY }
 			: null;
 
-		normaliseHydrationMarkup(newBody);
+		// Collect live hydrated boundaries BEFORE morph so we can exclude them
+		// from the morph and restore them afterward.
+		const liveHydratedBoundaries = new Map<string, Element>();
+		if (options.preserveHydratedState !== false) {
+			for (const boundary of document.querySelectorAll('[data-hydrate="true"][data-hydrated="true"]')) {
+				const id = boundary.getAttribute("data-hydrate-id");
+				if (id) {
+					liveHydratedBoundaries.set(id, boundary);
+				}
+			}
+		}
+
+		// For component HMR: only morph the changed component, leave everything
+		// else untouched. This is the most surgical approach.
+		if (options.kind === "component" && options.componentSrc && liveHydratedBoundaries.size > 0) {
+			// Find the changed component's boundary in the new HTML.
+			const newChangedBoundary = newBody.querySelector(
+				`[data-hydrate-src="${options.componentSrc}"]`,
+			);
+			const liveChangedBoundary = Array.from(liveHydratedBoundaries.values()).find(
+				(el) => el.getAttribute("data-hydrate-src") === options.componentSrc,
+			);
+
+			if (newChangedBoundary && liveChangedBoundary) {
+				// Morph only the changed component in place.
+				const hydratableNodes = getHydratableNodes(newChangedBoundary, newChangedBoundary.getAttribute("data-hydrate-id") || "");
+				const rootElement = getHydrationRootElement(hydratableNodes);
+				if (rootElement) {
+					await $(liveChangedBoundary).update(rootElement);
+				}
+				// Update head metadata from fresh HTML.
+					updateHead(doc);
+					// Restore scroll position.
+					if (preservedWindowScroll) {
+						window.scrollTo(preservedWindowScroll.x, preservedWindowScroll.y);
+					}
+					// Done - no full body morph needed.
+					console.log("[defuss-ssg] Morph refresh: component-only morph complete", {
+						componentSrc: options.componentSrc,
+					});
+					return;
+			}
+		}
+
+		normaliseHydrationMarkup(newBody, false);
+
+		// Replace hydrated boundaries in the new HTML with placeholders so the
+		// morph engine skips them. After morph, restore the live elements.
+		const placeholders = new Map<string, Element>();
+		for (const [id, liveBoundary] of liveHydratedBoundaries) {
+			// Skip the changed component - it should get fresh content.
+			if (options.kind === "component" && options.componentSrc) {
+				const src = liveBoundary.getAttribute("data-hydrate-src");
+				if (src === options.componentSrc) {
+					continue;
+				}
+			}
+			const newBoundary = newBody.querySelector(
+				`[data-hydrate-id="${id}"]`,
+			);
+			if (!(newBoundary instanceof Element)) {
+				continue;
+			}
+			const placeholder = document.createElement("div");
+			placeholder.setAttribute("data-hydrate-placeholder", id);
+			newBoundary.replaceWith(placeholder);
+			placeholders.set(id, placeholder);
+		}
+
 		const pageControlStateSnapshots = collectPageControlStateSnapshots(options);
 		syncPageControlStateSnapshots(newBody, pageControlStateSnapshots);
 		const boundaryStateSnapshots = collectBoundaryStateSnapshots(
 			newBody,
 			options,
 		);
-		preserveHydratedBoundaries(newBody, options);
 
 		// Save scroll position for current page (for back/forward)
 		const scrollY = window.scrollY;
@@ -1107,6 +1148,18 @@ export const navigateTo = async (
 			bodyLength: bodyHtml.length,
 			kind: options.kind || "other",
 		});
+
+		// Restore placeholders with live hydrated elements.
+		for (const [id, placeholder] of placeholders) {
+			if (!placeholder.isConnected) {
+				continue;
+			}
+			const liveBoundary = liveHydratedBoundaries.get(id);
+			if (!liveBoundary) {
+				continue;
+			}
+			placeholder.replaceWith(liveBoundary);
+		}
 
 		// Trigger hydration for all wrappers in the new body
 		await triggerHydration(document.body);
@@ -1269,6 +1322,12 @@ runtimeWindow.__defuss_ssg_runtime = {
 	},
 	set bustCache(value: boolean) {
 		runtimeWindow.__defuss_bustCache = value;
+		// Also clear in-flight fetch tracking so the next prefetch won't
+		// incorrectly skip due to a stale "fetching" flag from a previous
+		// background refresh timer.
+		if (value) {
+			fetching.clear();
+		}
 	},
 };
 

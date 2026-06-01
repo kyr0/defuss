@@ -489,6 +489,7 @@ if (import.meta.hot) {
 		const preserveHydratedBoundaries =
 			options.preserveHydratedBoundaries !== false;
 		const rerunModuleScripts = options.rerunModuleScripts === true;
+		const componentSrc = options.componentSrc || undefined;
 
 		console.log("[defuss-ssg] Morph refresh: applying", {
 			url: window.location.pathname,
@@ -496,6 +497,7 @@ if (import.meta.hot) {
 			preserveHydratedState,
 			preserveHydratedBoundaries,
 			rerunModuleScripts,
+			componentSrc,
 			hasRuntimeNavigate: Boolean(runtime?.navigateTo),
 		});
 
@@ -510,6 +512,7 @@ if (import.meta.hot) {
 			preserveHydratedState,
 			preserveHydratedBoundaries,
 			kind,
+			componentSrc,
 		});
 	};
 
@@ -738,6 +741,7 @@ if (import.meta.hot) {
 				await softRefreshCurrentPage(data?.kind || "other", {
 					preserveHydratedBoundaries,
 					rerunModuleScripts,
+					componentSrc: data?.componentSrc,
 				});
 			} catch (error) {
 				console.error("[defuss-ssg] failed to soft refresh current page", error);
@@ -1668,6 +1672,7 @@ export function defussSsg(
 							"**/.ssg-temp/**",
 							"**/.endpoints/**",
 							"**/.rpc/**",
+							"**/.defuss-tauri/**",
 						],
 					},
 				},
@@ -1713,6 +1718,25 @@ export function defussSsg(
 			});
 
 			const handleStructuralChange = async (file: string) => {
+				// Skip build output directories to prevent build loops.
+				const relFile = relative(projectDir, file).replace(/\\/g, "/");
+				const skipPrefixes = [
+					".ssg-temp",
+					".endpoints",
+					".rpc",
+					".defuss-tauri",
+					"dist",
+					"node_modules",
+				];
+				if (skipPrefixes.some((prefix) =>
+					relFile === prefix ||
+					relFile.startsWith(prefix + "/") ||
+					relFile.startsWith("./" + prefix + "/") ||
+					relFile.startsWith("../" + prefix + "/")
+				)) {
+					return;
+				}
+
 				const kind = classifyChangedFile(file, projectDir, config, rpcFile);
 				if (kind === "other") {
 					return;

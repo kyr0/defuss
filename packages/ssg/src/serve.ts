@@ -114,10 +114,15 @@ export const serve = async ({
 		app.head?.("/rpc/upload/:uploadId", rpcHandler);
 	}
 
-	const staticMiddleware = express.static?.(outputDir);
+	const staticMiddleware = express.static?.(outputDir, { index: "index.html" });
 	if (staticMiddleware) {
 		app.use?.(staticMiddleware);
 	}
+
+	// Fallback: serve index.html for any route not matched by static/endpoint handlers
+	app.use?.((_req: any, res: any) => {
+		res.sendFile("index.html", { root: outputDir });
+	});
 
 	try {
 		await startServer(app, {

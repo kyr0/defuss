@@ -363,6 +363,7 @@ export const build = async ({
 			firstSegment === config.output ||
 			firstSegment === ".endpoints" ||
 			firstSegment === ".ssg-temp" ||
+			firstSegment === ".defuss-tauri" ||
 			firstSegment === ".git" ||
 			firstSegment === "public" ||
 			projectPaths.assetsSourceDirCandidates.some((candidateDir) =>
