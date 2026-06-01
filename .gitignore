@@ -48,3 +48,7 @@ scaffold*/
 
 .roo/
 .zoo/
+.defuss-tauri/
+.endpoints/
+.rpc/
+.data/

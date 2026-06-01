@@ -1,10 +1,8 @@
 [workspace]
-members = [
-  "packages/hash",
-]
 exclude = [
   "examples/with-wasm-c-rust-matmul",
   "examples/with-tauri/src-tauri",
+  "packages/tauri/example/.defuss-tauri/src-tauri",
 ]
 resolver = "2"
 

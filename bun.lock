@@ -535,7 +535,7 @@
     },
     "packages/defuss": {
       "name": "defuss",
-      "version": "3.4.7",
+      "version": "3.4.8",
       "dependencies": {
         "@types/w3c-xmlserializer": "^2.0.4",
         "csstype": "^3.2.3",
@@ -775,7 +775,7 @@
     },
     "packages/shadcn": {
       "name": "defuss-shadcn",
-      "version": "0.6.5",
+      "version": "0.6.6",
       "devDependencies": {
         "@tailwindcss/cli": "^4.1.0",
         "@types/node": "^25.0.9",
@@ -801,7 +801,7 @@
     },
     "packages/shadcn-kitchensink": {
       "name": "defuss-shadcn-kitchensink",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "@tailwindcss/vite": "^4.1.18",
         "browserslist": "^4.28.1",
@@ -892,6 +892,18 @@
       },
       "peerDependencies": {
         "defuss-shadcn": ">=0.6.0",
+      },
+    },
+    "packages/tauri": {
+      "name": "defuss-tauri",
+      "version": "0.1.0",
+      "bin": {
+        "defuss-tauri": "dist/cli.js",
+      },
+      "devDependencies": {
+        "@types/node": "^25.9.1",
+        "pkgroll": "^2.27.1",
+        "typescript": "^5.9.3",
       },
     },
     "packages/tlsbot": {
@@ -2316,6 +2328,8 @@
     "defuss-storybook": ["defuss-storybook@workspace:packages/storybook"],
 
     "defuss-talkinghead-headtts-demo": ["defuss-talkinghead-headtts-demo@workspace:examples/vad-three.js-talking-head"],
+
+    "defuss-tauri": ["defuss-tauri@workspace:packages/tauri"],
 
     "defuss-tlsbot": ["defuss-tlsbot@workspace:packages/tlsbot"],
 
