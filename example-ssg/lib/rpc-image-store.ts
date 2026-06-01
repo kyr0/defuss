@@ -14,7 +14,6 @@ export interface StoredRpcDemoImage extends DefussRecord {
 	mimeType: string;
 	size: number;
 	sha256: string;
-	md5: string;
 	createdAt: Date;
 	imageData: ArrayBuffer;
 }

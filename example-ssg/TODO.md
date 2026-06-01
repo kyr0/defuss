@@ -1,0 +1,4 @@
+- Make sure this works with this new ./example-ssg setup
+- For that, release defuss-tauri and run: bunx defuss-tauri ... in scripts
+- No defuss-ssg dependency (auto-install it when you need it)
+- Auto-reload (without changes of code) in tauri:dev should NEVER happen

@@ -82,29 +82,27 @@ const toImage = (record: StoredRpcDemoImage): RpcDemoImage => ({
 addUploadHandler<RpcDemoUploadResult>(
 	uploadHandlerName,
 	async (data: Uint8Array, meta: UploadMeta) => {
-	const table = await getRpcDemoImageTable();
-	const existing = await table.findOne({ id: meta.uploadId });
+		const table = await getRpcDemoImageTable();
+		const existing = await table.findOne({ id: meta.uploadId });
 
-	await table.upsert(
-		{ id: meta.uploadId },
-		{
-			id: meta.uploadId,
-			fileName: existing?.fileName ?? `${meta.uploadId}.bin`,
-			mimeType: existing?.mimeType ?? "application/octet-stream",
+		await table.upsert(
+			{ id: meta.uploadId },
+			{
+				id: meta.uploadId,
+				fileName: existing?.fileName ?? `${meta.uploadId}.bin`,
+				mimeType: existing?.mimeType ?? "application/octet-stream",
+				size: meta.bytesReceived,
+				sha256: meta.sha256,
+				createdAt: existing?.createdAt ?? new Date(),
+				imageData: toOwnedArrayBuffer(data),
+			},
+		);
+
+		return {
+			uploadId: meta.uploadId,
 			size: meta.bytesReceived,
 			sha256: meta.sha256,
-			md5: meta.md5,
-			createdAt: existing?.createdAt ?? new Date(),
-			imageData: toOwnedArrayBuffer(data),
-		},
-	);
-
-	return {
-		uploadId: meta.uploadId,
-		size: meta.bytesReceived,
-		sha256: meta.sha256,
-		md5: meta.md5,
-	};
+		};
 	},
 );
 
