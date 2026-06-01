@@ -1,0 +1,47 @@
+{
+  "name": "defuss-tauri",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Tiny Tauri bundler CLI for defuss-ssg applications.",
+  "license": "MIT",
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "bin": {
+    "defuss-tauri": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "assets",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "pkgroll",
+    "pretest": "bun run build",
+    "test": "node dist/cli.js init ./example --debug && node dist/cli.js build ./example --debug",
+    "prepublishOnly": "bun run test"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "pkgroll": "^2.27.1",
+    "typescript": "^5.9.3"
+  },
+  "keywords": [
+    "defuss",
+    "defuss-ssg",
+    "tauri",
+    "desktop",
+    "native",
+    "cli"
+  ]
+}

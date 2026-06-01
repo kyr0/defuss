@@ -1,0 +1,28 @@
+---
+title: Terms of Service
+---
+
+import Head from "../components/head.js"
+import Footer from '../components/footer.js'
+import Header from '../components/header.js'
+import { year } from "../lib/data.js"
+export const someData = await import('../data.json');
+
+<html>
+<Head meta={meta} />
+<body>
+<main class="container">
+
+<Header active={"tos"} />
+
+# { meta.title } 2
+
+The terms of service are cool!
+
+Welcome, <b>{ someData.firstName } { someData.lastName }</b>!
+
+<Footer year={year} />
+
+</main>
+</body>
+</html>

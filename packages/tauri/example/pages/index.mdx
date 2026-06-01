@@ -1,0 +1,86 @@
+---
+title: Home
+---
+
+import Head from "../components/head.js"
+import Footer from '../components/footer.js'
+import Header from '../components/header.js'
+import ClickButton from '../components/button.js'
+import RpcDemo from '../components/rpc-demo.js'
+import { year } from "../lib/data.js"
+
+export const someData = await import('../data.json');
+
+<html>
+<Head meta={meta} />
+<body>
+<main class="container">
+
+<Header active={"index"} />
+
+# { meta.title }
+
+Welcome to the defuss-ssg example website! We can use dynamic variables! 
+{someData.firstName} {someData.lastName} has been read from <code>../data.json</code> at generation time.
+
+Currently we can render buttons, but the client-side interactivity is not yet implemented:
+
+<ClickButton type="send-feedback" label="Send Feedback" className="secondary" />
+
+<ClickButton type="get-data" label="Get Data" className="secondary" />
+
+## RPC Demo
+
+Call `mathApi.add`, `mathApi.multiply`, and `greetApi.hello`, then upload an image through the built-in RPC transport, store the raw binary in a JSONL-backed `defuss-db` table, and fetch it back as an `ArrayBuffer` for a direct image preview:
+
+<RpcDemo />
+
+We also have **infinite** layout options, because you can mix Markdown and HTML:
+
+## Grid layout
+
+<div class="grid">
+  <div>1</div>
+  <div>2</div>
+  <div>3</div>
+  <div>4</div>
+</div>
+
+## Math support 
+
+We can use KaTeX for math rendering, both inline $( L = \frac{1}{2} \rho v^2 S C_L )$ and block:
+
+$$
+  L = \frac{1}{2} \rho v^2 S C_L.
+$$
+
+# GFM support
+
+### Autolink literals
+
+The following links are automatically converted into clickable links:
+
+www.example.com, https://example.com, and contact@example.com.
+
+### Strikethrough
+
+~one~ or ~~two~~ tildes.
+
+### Table
+
+| a | b  |  c |  d  |
+| - | :- | -: | :-: |
+| 1 | 2  |  3 |  4  |
+| 5 | 6  |  7 |  8  |
+| 9 | 10 | 11 | 12 |
+
+### Tasklist
+
+- [x] to do
+- [ ] another to do
+
+<Footer year={year} />
+
+</main>
+</body>
+</html>
