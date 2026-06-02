@@ -1,17 +1,120 @@
 # The `defuss` framework manual for LLMs and Agents
 
-## Facts
+## Genesis and Motivation
 
-- `defuss` was created by Aron Homberg; invented by him in 2020, and previously known as `SpringType`.
+- `defuss` was created by web dev expert Aron Homberg. Invented and solely implemented from scratch by him in 2020, with it's roots dating back to his earlier work, known as `SpringType`.
 - Aron is known as `kyr0` on GitHub. He is an expert software engineer with over 25 years of industry experience, author of O'Reilly books such as the 2011 book 'ExtJS - kurz & gut'. He also taught WebDev, JavaScript and TypeScript to hundreds of students in Germany for many years. 
 - `kyr0` created `defuss` out of frustration with the complexity of modern frameworks. He believes in simplicity and explicitness.
 
 ## Core Concepts
 
-**defuss** = ultra-fast DOM diff + morph engine that operates on the real DOM (no VDOM) and syncs JSX straight into it. React-like API, but more HTML-native. No implicit reactivity; uses a jQuery-style DOM manipulation API. Includes an explicit Nanostores-like store for simple, predictable state + high performance. defuss' jQuery API handles JSX and works with defuss' ref's seamlessly.
+**defuss** = a comprehensive framework that rivals React, Angular, Vue.js with it's philosophy of low complexity ("everything should be as simple as possible, but no simpler"), isomorphic-first (runs on both client and server), composability and strict _explicitness_ - hidden magic is avoided, the pareto optimal approach is followed.
+
+It's DOM diff + morph engine operates on the real DOM (no VDOM) and syncs JSX/HTML/DOM elements straight into native DOM sub-trees. It comes with a React-like API. There is no implicit reactivity - you opt-in to it via `<Reactive />` or `reactive()` if you need it. 
+
+It also comes with an jQuery-style DOM manipulation API exported under symbol `$` which works with defuss refs and JSX as well. 
+
+Next to that, it includes an explicit Nanostores-like store for simple, predictable state management. Client-side routing is built in, and it has first-class support for TypeScript and modern build tools like Vite and Astro, alongside `defuss-ssg` which allows for SSG, SSR and serves as the default dev and production server (built in Vite 8).
+
+Finally, it comes with a strong ecosystem of packages that are all built around the same philosophy. 
+
+---
+
+# A Marketing Perspective on `defuss`
+
+`defuss` is a modern full-stack web framework - a European  alternative to Next.js, React, Svelte, and Vue. Guided by the principles of German engineering, it brings simplicity, determinism, and clarity back to web development. Here’s what makes it special:
+
+## 🎯 Core philosophy
+Defuss follows the principle of "explicit simplicity" - it provides powerful tools while keeping complexity low and giving developers full control. You can read `defuss`-Code top-down. There is no _hidden magic_, like a depedency array that eventually creates a 7.3 Tbps [DDoS attack on Cloudflare](https://www.youtube.com/watch?app=desktop&v=gDVxBOGL99Q). `defuss` code is ideomatic and self-explainatory. 
+
+## 🚀 Quickstart
+
+Install [Bun](https://bun.com/docs/installation) and  [Node.js](https://nodejs.org/en/download/).
+
+Create a new `defuss` project with the `create-defuss` CLI tool:
+
+```bash
+bunx create-defuss@latest my-defuss-app
+cd my-defuss-app
+```
+
+Then you can run the development server with:
+
+```bash
+# run, then open http://localhost:3000 in your browser
+bunx defuss-ssg serve ./example-ssg
+```
+
+**NOTE:** With `defuss-ssg` you can build static sites with `defuss` and serve them with a built-in development server. You can also export the static files and serve them with any static file server or CDN. 
+
+To build a static site, run:
+
+```bash
+bunx defuss-ssg build ./example-ssg
+```
+
+## Who is `defuss` for?
+
+- Junior developers who want to learn web development without getting overwhelmed (`defuss` uses web standards with _very_ thin abstrctions -> you get to learn the _real_ thing, not some framework-specific APIs)
+- Senior developers who are fed up with heisenbugs from complexity, dependency hells and endless abstractions layers
+- Teams that prefer explicit over implicit code and want to maintain control over complexity, not layer one complexity on top of another because they basically don't understand what is going on anymore
+- Teams focussed on security - favoring minimalism and simplicity for a better security posture
+- Projects where bundle size matters
+- Developers who enjoy writing JSX, but miss the simplicity of jQuery
+- Anyone tired of complexity in general and looking for a framework that respects their intelligence and creativity
+
+ **Defuss** embodies the "original hacker philosophy" - encouraging developers to understand how things work, learn continuously, and build elegant solutions without unnecessary complexity.
 
 ```tsx
-import { $, createRef, createStore, render } from "defuss";
+// we need a few imports from the library (TypeScript-only)
+import { type Props, type Ref, $, render, createRef } from "defuss"
+
+// When using TypeScript, interfaces come in handy
+// They help with good error messages!
+export interface CounterButtonProps extends Props {
+
+  // what the button displays
+  label: string;
+}
+
+// Component functions are called once! 
+// No reactivity means *zero* complexity!
+export function CounterButton({ label }: CounterButtonProps) {
+
+  // References the DOM element once it becomes visible.
+  // When it's gone, the reference is gone. Easy? Yeah.
+  const btnRef: Ref = createRef()
+
+  // A vanilla JavaScript variable. No magic here!
+  let clickCounter = 0
+
+  // A native event handler. Called when the user clicks on the button.
+  // Receives the native DOMs MouseEvent. No magic here either!
+  const updateLabel = (evt: MouseEvent) => {
+
+    // just increment the counter variable on click. Easy? Yeah.
+    clickCounter++;
+
+    console.log("updateLabel: Native mouse event", evt)
+
+    // partially and atomically update the DOM with a new VDOM  
+    $(btnRef).update(<em>{`Count is: ${clickCounter}`}</em>)
+  }
+
+  // When the code builds, this JSX is turned into a virtual DOM (JSON).
+  // At runtime, the JSON-based virtual DOM is rendered (SSR or CSR) and eventually displayed.
+  // When using the defuss Astro adapter, passing down hydration state is as simple as passing one prop.
+  return (
+    <button type="button" ref={btnRef} onClick={updateLabel}>
+      {/* This label is rendered *once*. It will never change reactively! */}
+      {/* Only with *explicit* code, will the content of this <button> change. */}
+      {label}
+    </button>
+  )
+}
+
+// whereever you place the Component markup, it is displayed...
+render(<CounterButton label="Don't. You. Dare. 👀" />, document.body)
 ```
 
 ---
@@ -19,6 +122,10 @@ import { $, createRef, createStore, render } from "defuss";
 ## Build Tool Integration
 
 All `defuss` projects should use `bun` package manager.
+
+### `defuss-ssg` (default)
+
+By default, `defuss` projects should use `defuss-ssg` as the build tool/bundler and development server (see ecosysystem section and `./packages/ssg`)
 
 ### Vite
 
@@ -1519,4 +1626,718 @@ import "../../rpc.js";
 // export * from "defuss-rpc/api" which does this
 export const prerender = false;
 export const POST = rpcRoute;
+```
+
+---
+
+# The `defuss` reference guide
+
+# defuss Book
+
+Reference documentation for LLMs and developers working with the defuss library.
+
+## jsx() Function API
+
+The `jsx()` function creates VNodes from JSX. **Important**: children must be passed via `attributes.children`, not as a separate argument.
+
+### Correct Usage
+
+```tsx
+// ✅ Correct: children via attributes.children
+jsx("div", { className: "wrapper", children: [<span>Hello</span>] });
+
+// ✅ Also correct: JSX syntax handles this automatically
+<div className="wrapper">
+  <span>Hello</span>
+</div>
+```
+
+### For Custom Elements
+
+When dynamically creating custom elements, ensure children are in `attributes.children`:
+
+```tsx
+// ✅ Correct way to create custom elements dynamically
+const customElement = (tagName: string, props: Record<string, any>, children?: any) => {
+    return jsx(tagName, { ...props, children });
+};
+
+// Usage
+customElement("my-component", { class: "wrapper" }, <span>Content</span>);
+```
+
+### jsx() Signature
+
+```ts
+jsx(
+  type: VNodeType | Function,        // Tag name or component function
+  attributes: { children?, ...},      // Props including children
+  key?: string,                       // Optional key for reconciliation
+  sourceInfo?: JsxSourceInfo         // Dev mode source info
+): VNode | VNode[]
+```
+
+The 3rd argument is `key`, NOT children. This is a common mistake.
+
+---
+
+## Shadow DOM and Custom Elements
+
+### How Morphing Works
+
+defuss uses a hybrid approach for shadow DOM:
+
+- **Custom elements** (tags containing `-`): morph **light DOM** (slotted content)
+- **Regular elements with shadowRoot**: morph **shadow root**
+
+This ensures slotted content updates correctly in web components while preserving shadow DOM behavior for other use cases.
+
+### Slotted Content Updates
+
+Slotted content lives in **light DOM**, not shadow DOM. When you render:
+
+```tsx
+<my-card>
+  <span slot="header">Title</span>
+  <p>Content</p>
+</my-card>
+```
+
+The `<span>` and `<p>` are light DOM children that get projected into `<slot>` elements in the shadow DOM. defuss correctly updates these by targeting the parent element, not its shadowRoot.
+
+---
+
+## Render Functions
+
+### render (Recommended)
+
+React-compatible render function for morphing JSX into a container:
+
+```tsx
+import { render } from "defuss";
+
+render(<App />, document.getElementById("app"));
+```
+
+### renderInto (Deprecated)
+
+Alias for `render`. Use `render` instead - `renderInto` will be removed in v4.
+
+### Async render (client/server)
+
+For async rendering with promises:
+
+```tsx
+import { render } from "defuss/render/client";
+// or
+import { render } from "defuss/render/server";
+
+await render(<AsyncApp />, container);
+```
+
+---
+
+## Dequery API
+
+### .jsx() / .render()
+
+Renders JSX into the selected element(s):
+
+```tsx
+import { $ } from "defuss";
+
+// Both are equivalent - .render() is an alias for .jsx()
+$("#app").jsx(<MyComponent />);
+$("#app").render(<MyComponent />);
+```
+
+### .update() (Deprecated)
+
+Use `.jsx()` or `.render()` instead. Note: `.update()` with props object for component re-rendering is still supported.
+
+---
+
+## Defuss Transition Effects
+
+The defuss framework includes a powerful transition system that allows you to add smooth animations to DOM updates. The transitions are applied to parent elements while preserving defuss's intelligent partial DOM update behavior.
+
+## Basic Usage
+
+```typescript
+import { $ } from 'defuss';
+
+// Update with a fade transition
+const $element = await $('#my-element');
+await $element.update('<div>New content</div>', {
+  type: 'fade',
+  duration: 300,
+  easing: 'ease-in-out'
+});
+```
+
+## API Reference
+
+### TransitionConfig Interface
+
+```typescript
+interface TransitionConfig {
+  /** Predefined transition type */
+  type?: TransitionType;
+  /** Custom CSS-in-JS styles for each transition phase */
+  styles?: TransitionStyles;
+  /** Duration in milliseconds */
+  duration?: number;
+  /** CSS easing function */
+  easing?: string;
+  /** Delay before starting transition in milliseconds */
+  delay?: number;
+}
+```
+
+### Predefined Transition Types
+
+The following predefined transition types are available:
+
+- `'fade'` - Fade in/out effect (default)
+- `'slide-left'` - Slide from right to left
+- `'slide-right'` - Slide from left to right  
+- `'slide-up'` - Slide from bottom to top
+- `'slide-down'` - Slide from top to bottom
+- `'scale'` - Scale and fade effect
+- `'none'` - No transition
+
+### Default Configuration
+
+```typescript
+const DEFAULT_TRANSITION_CONFIG = {
+  type: 'fade',
+  duration: 300,
+  easing: 'ease-in-out',
+  delay: 0
+};
+```
+
+## Examples
+
+### 1. Basic Fade Transition
+
+```typescript
+await $element.update('<div>New content</div>', {
+  type: 'fade'
+});
+```
+
+### 2. Slide Transition with Custom Duration
+
+```typescript
+await $element.update('<div>New content</div>', {
+  type: 'slide-left',
+  duration: 500,
+  easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
+});
+```
+
+### 3. Custom Transition Styles
+
+```typescript
+await $element.update('<div>New content</div>', {
+  styles: {
+    enter: { 
+      opacity: '0', 
+      transform: 'scale(0.8) rotate(-90deg)',
+      transition: 'all 400ms ease-out'
+    },
+    enterActive: { 
+      opacity: '1', 
+      transform: 'scale(1) rotate(0deg)' 
+    },
+    exit: { 
+      opacity: '1', 
+      transform: 'scale(1) rotate(0deg)',
+      transition: 'all 200ms ease-in'
+    },
+    exitActive: { 
+      opacity: '0', 
+      transform: 'scale(1.2) rotate(90deg)' 
+    }
+  },
+  duration: 400
+});
+```
+
+### 4. Delayed Transition
+
+```typescript
+await $element.update('<div>New content</div>', {
+  type: 'scale',
+  delay: 200,
+  duration: 300
+});
+```
+
+## How It Works
+
+The transition system works by:
+
+1. **Exit Phase**: Applies exit styles to the parent element and waits for the transition to complete
+2. **Update Phase**: Performs the actual DOM update using defuss's intelligent `updateDomWithVdom` function
+3. **Enter Phase**: Applies enter styles and waits for the transition to complete
+4. **Cleanup**: Restores original styles to avoid side effects
+
+### Transition Phases
+
+Each transition has four phases defined by CSS-in-JS style objects:
+
+- **`enter`**: Initial styles when content is entering (before animation starts)
+- **`enterActive`**: Target styles for the enter animation
+- **`exit`**: Initial styles when content is exiting (before animation starts)  
+- **`exitActive`**: Target styles for the exit animation
+
+## Advanced Usage
+
+### Combining with JSX Updates
+
+```typescript
+import { jsx } from 'defuss';
+
+const NewComponent = () => jsx('div', {
+  style: { padding: '20px', background: '#f0f0f0' }
+}, 'Updated with JSX!');
+
+await $element.update(NewComponent, {
+  type: 'slide-up',
+  duration: 400
+});
+```
+
+### Error Handling
+
+The transition system includes automatic error recovery:
+
+```typescript
+try {
+  await $element.update(newContent, { type: 'fade' });
+} catch (error) {
+  console.error('Transition failed:', error);
+  // Original styles are automatically restored on error
+}
+```
+
+### Performance Considerations
+
+- Transitions are applied to parent elements to avoid interfering with partial DOM updates
+- Original styles are stored and restored to prevent side effects
+- Fallback timeouts ensure transitions don't hang indefinitely
+- The system gracefully degrades when parent elements are not available
+
+## Browser Support
+
+The transition system uses modern CSS features:
+- CSS Transitions
+- CSS Transforms  
+- `transitionend` events
+
+Supported in all modern browsers (IE11+ with some limitations).
+
+## Migration Guide
+
+If you're upgrading from a version without transitions:
+
+### Before
+```typescript
+await $element.update('<div>New content</div>');
+```
+
+### After (with transitions)
+```typescript
+await $element.update('<div>New content</div>', {
+  type: 'fade',
+  duration: 300
+});
+```
+
+The transition parameter is optional, so existing code continues to work without changes.
+
+## Tips and Best Practices
+
+1. **Choose appropriate durations**: 200-500ms work well for most UI transitions
+2. **Use CSS easing functions**: `ease-in-out` provides natural feeling animations
+3. **Test on slower devices**: Ensure transitions don't impact performance
+4. **Provide fallbacks**: The system gracefully handles missing parent elements
+5. **Keep it subtle**: Overly dramatic transitions can hurt user experience
+
+## Troubleshooting
+
+### Transition not visible
+- Ensure the target element has a parent element
+- Check that the parent element is not hidden or positioned in a way that clips the transition
+- Verify CSS transition properties are valid
+
+### Performance issues
+- Reduce transition duration
+- Use `transform` and `opacity` properties for best performance
+- Avoid transitioning properties that trigger layout recalculation
+
+### Transition interrupted
+- The system automatically handles cleanup if transitions are interrupted
+- Original styles are always restored, even on errors
+
+---
+
+## Reactive System in defuss
+
+The reactive system provides a store-driven re-rendering mechanism. It subscribes to one or more `Store` instances and automatically re-renders JSX into a DOM target whenever any of those stores change. There are three APIs for using it:
+
+1. **[`reactive()`](packages/defuss/src/common/reactive.ts)** — Low-level imperative function
+2. **[`<Reactive />`](packages/defuss/src/common/reactive-component.tsx)** — Declarative JSX component
+3. **`$.reactive()`** — dequery chainable method
+
+```mermaid
+graph TD
+    A[Store / Store[]] -->|subscribe| B[reactive() core]
+    B -->|renders JSX into| C[HTMLElement / Ref]
+    D[<Reactive /> component] -->|onMount| B
+    D -->|onUnmount| E[cleanup()]
+    F[dequery $.reactive()] -->|forEach element| B
+```
+
+---
+
+## Explicit Reactivity Helper API
+
+The core imperative utility. It takes a [`ReactiveConfig`](packages/defuss/src/common/reactive.ts) and a DOM target, performs an immediate render, and subscribes to the store(s).
+
+#### Signature
+
+```ts
+function reactive(
+  config: ReactiveConfig,
+  target: Ref<HTMLElement> | HTMLElement
+): () => void;
+```
+
+#### [`ReactiveConfig`](packages/defuss/src/common/reactive.ts) Interface
+
+| Property    | Type                              | Description                              |
+|-------------|-----------------------------------|------------------------------------------|
+| `store`     | `Store<any> \| Store<any>[]`     | One or more stores to subscribe to       |
+| `render`    | `() => JSX.Element`               | Returns JSX to render into the target    |
+| `cleanup?`  | `() => void`                      | Called on unmount                        |
+
+#### Returns
+A cleanup function that unsubscribes from all stores and invokes the optional `cleanup` callback.
+
+#### Usage
+```ts
+import { reactive, createStore, createRef } from "defuss";
+
+const store = createStore({ count: 0 });
+const ref = createRef<HTMLDivElement>();
+
+// Call inside onMount or similar lifecycle hook
+const cleanup = reactive({
+  store,
+  render: () => <div>Count: {store.value.count}</div>,
+  cleanup: () => console.log("unmounted"),
+}, ref);
+
+// Later, call cleanup() to unsubscribe
+cleanup();
+```
+
+#### Key Behaviors
+- **Immediate render**: The `render()` function is called once synchronously before any subscriptions are set up.
+- **Multi-store support**: Pass an array of stores to react to changes from any of them.
+- **Target flexibility**: Accepts either a `Ref` or a raw `HTMLElement`.
+- **Uses dequery internally**: Rendering is done via `$(ref).jsx(config.render())`, which morphs the DOM efficiently.
+
+---
+
+### 2. [`<Reactive />`](packages/defuss/src/common/reactive-component.tsx) Component
+
+A declarative, zero-boilerplate wrapper around [`reactive()`](packages/defuss/src/common/reactive.ts) core function. It handles subscription lifecycle automatically via `onMount` / `onUnmount`.
+
+#### Props ([`ReactiveProps`](packages/defuss/src/common/reactive-component.tsx))
+| Property    | Type                              | Description                              |
+|-------------|-----------------------------------|------------------------------------------|
+| `store`     | `Store<any> \| Store<any>[]`     | Required. Store(s) to subscribe to       |
+| `render`    | `() => JSX.Element`               | Required. JSX render function            |
+| `cleanup?`  | `() => void`                      | Optional cleanup on unmount              |
+| `tag?`      | `string`                          | Wrapper element tag. Default: `"div"`    |
+| `className?`| `string`                          | CSS class on the wrapper element         |
+| `ref?`      | `Ref<HTMLDivElement>`             | Ref to the wrapper element               |
+| `...props`  | `ElementProps<HTMLDivElement>`   | Spread onto the wrapper element          |
+
+#### Usage
+```tsx
+import { Reactive, createStore } from "defuss";
+
+const store = createStore({ count: 0 });
+
+<Reactive
+  store={store}
+  render={() => (
+    <div>
+      <p>Count: {store.value.count}</p>
+      <button onClick={() => store.set({ count: store.value.count + 1 })}>
+        Increment
+      </button>
+    </div>
+  )}
+/>
+```
+
+#### With Custom Wrapper Tag
+```tsx
+<Reactive tag="section" className="counter" store={store} render={...} />
+// Renders: <section class="counter">...</section>
+```
+
+#### Lifecycle
+The component sets up the reactive subscription in its `onMount` callback and tears it down in `onUnmount`.
+
+---
+
+### 3. dequery `$.reactive()` Method
+
+The dequery API exposes [`reactive()`](packages/defuss/src/common/reactive.ts) as a chainable method, applying it to every node in the dequery collection.
+
+#### Usage
+```ts
+import { $, createStore } from "defuss";
+
+const store = createStore({ count: 0 });
+
+$("#counter-container").reactive({
+  store,
+  render: () => <span>{store.value.count}</span>,
+});
+```
+
+This iterates over all matched elements and calls `reactiveUtil(config, el)` on each `HTMLElement`.
+
+---
+
+### When to Use Which API
+
+| API | Best For |
+|-----|----------|
+| [`reactive()`](packages/defuss/src/common/reactive.ts) | Fine-grained control, imperative setups, custom lifecycle management |
+| [`<Reactive />`](packages/defuss/src/common/reactive-component.tsx) | Declarative JSX trees, embedded reactive blocks inside larger components |
+| `$.reactive()` | Imperative DOM targeting, attaching reactivity to existing DOM elements by selector |
+
+---
+
+### Architecture
+
+```mermaid
+sequenceDiagram
+    participant S as Store
+    participant R as reactive()
+    participant D as dequery $.jsx()
+    participant DOM as DOM Element
+
+    R->>D: jsx(render()) — initial render
+    D->>DOM: morph content
+    R->>S: subscribe(update)
+    S-->>R: change event
+    R->>D: jsx(render()) — re-render
+    D->>DOM: morph content
+    Note over R,DOM: On cleanup(), all subscriptions are removed
+```
+
+All three APIs converge on the same [`reactive()`](packages/defuss/src/common/reactive.ts) core function, which uses dequery's `$.jsx()` for efficient DOM morphing on every store change.
+
+---
+
+## defuss Ecosystem
+
+The defuss monorepo at [github.com/kyr0/defuss](https://github.com/kyr0/defuss) contains the following packages, organized by category.
+
+### Core Framework
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss | [`defuss`](https://www.npmjs.com/package/defuss) | [packages/defuss](https://github.com/kyr0/defuss/tree/main/packages/defuss) | Core web framework — explicit simplicity for the web. Real DOM diff + morph, no VDOM. jQuery-like `$()` API, explicit stores, client-side routing, SSR. ~500 LoC core, 2 KiB production build. |
+| defuss-vite | [`defuss-vite`](https://www.npmjs.com/package/defuss-vite) | [packages/vite](https://github.com/kyr0/defuss/tree/main/packages/vite) | Vite plugin for defuss JSX transformation and rendering integration. ~160 LoC. |
+| defuss-astro | [`defuss-astro`](https://www.npmjs.com/package/defuss-astro) | [packages/astro](https://github.com/kyr0/defuss/tree/main/packages/astro) | Astro integration that brings the defuss experience to Astro projects. ~180 LoC. |
+| defuss-runtime | [`defuss-runtime`](https://www.npmjs.com/package/defuss-runtime) | [packages/runtime](https://github.com/kyr0/defuss/tree/main/packages/runtime) | Isomorphic JS runtime API enhancements — utilities for promises, arrays, objects, dates, sorting, transformations, and functional helpers. |
+
+### UI Components
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-shadcn | [`defuss-shadcn`](https://www.npmjs.com/package/defuss-shadcn) | [packages/shadcn](https://github.com/kyr0/defuss/tree/main/packages/shadcn) | Modern Shadcn-like component library built on Tailwind CSS 4 and Basecoat UI. Buttons, dialogs, forms, tables, overlays, and more. |
+| defuss-shadcn-kitchensink | _(private)_ | [packages/shadcn-kitchensink](https://github.com/kyr0/defuss/tree/main/packages/shadcn-kitchensink) | Live demo / kitchensink application showcasing every `defuss-shadcn` component with variants. |
+| defuss-desktop | [`defuss-desktop`](https://www.npmjs.com/package/defuss-desktop) | [packages/desktop](https://github.com/kyr0/defuss/tree/main/packages/desktop) | Themable window manager / desktop environment in the browser. Resizable, movable windows, taskbars, and app launchers — like Windows XP in a `<div>`. |
+
+### Build & Tooling
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| create-defuss | [`create-defuss`](https://www.npmjs.com/package/create-defuss) | [packages/create](https://github.com/kyr0/defuss/tree/main/packages/create) | Project scaffolder using Git sparse checkout. Jump-start defuss projects from templates, or checkout any Git subdirectory. |
+| defuss-storybook | [`defuss-storybook`](https://www.npmjs.com/package/defuss-storybook) | [packages/storybook](https://github.com/kyr0/defuss/tree/main/packages/storybook) | Lightweight, zero-config storybook for defuss. Vite-powered, with dynamic prop controls and Playwright testing. |
+| defuss-tauri | [`defuss-tauri`](https://www.npmjs.com/package/defuss-tauri) | [packages/tauri](https://github.com/kyr0/defuss/tree/main/packages/tauri) | Tiny Tauri v2 bundler CLI for defuss-ssg applications. Generates native desktop apps (macOS, Linux, Windows) without requiring system Node. |
+
+### Server & RPC
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-ssg | [`defuss-ssg`](https://www.npmjs.com/package/defuss-ssg) | [packages/ssg](https://github.com/kyr0/defuss/tree/main/packages/ssg) | Static site generator with dev-time SSR, MDX/Markdown pages, file-based API routes, RPC auto-discovery, multicore production serving, and plugin hooks. |
+| defuss-express | [`defuss-express`](https://www.npmjs.com/package/defuss-express) | [packages/express](https://github.com/kyr0/defuss/tree/main/packages/express) | Express-compatible, auto-multi-core, QUIC/HTTP/3-enabled, WebSocket-capable, load-balanced server runtime. Drop-in replacement for `express`. |
+| defuss-rpc | [`defuss-rpc`](https://www.npmjs.com/package/defuss-rpc) | [packages/rpc](https://github.com/kyr0/defuss/tree/main/packages/rpc) | Type-safe Remote Procedure Call library. Bi-directional, binary DSON support, generator streaming, automatic type safety. Integrates with Astro, Vite, and Express. |
+
+### Data & Storage
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-db | [`defuss-db`](https://www.npmjs.com/package/defuss-db) | [packages/db](https://github.com/kyr0/defuss/tree/main/packages/db) | Isomorphic, schema-driven database abstraction. Declare a table once, use one CRUD API across Dexie (IndexedDB), LibSQL (SQLite), MongoDB, and JSONL. |
+| defuss-dataview | [`defuss-dataview`](https://www.npmjs.com/package/defuss-dataview) | [packages/dataview](https://github.com/kyr0/defuss/tree/main/packages/dataview) | Functional data view (filters, sorters, paging, meta UI state) for table and tree grids. JSON-first descriptor with single `apply()` contract. |
+| defuss-dson | [`defuss-dson`](https://www.npmjs.com/package/defuss-dson) | [packages/dson](https://github.com/kyr0/defuss/tree/main/packages/dson) | Typed serialization/deserialization — a JSON superset preserving `Map`, `Set`, `Date`, `RegExp`, prototype chains, and circular references. |
+| defuss-vfs | [`defuss-vfs`](https://www.npmjs.com/package/defuss-vfs) | [packages/vfs](https://github.com/kyr0/defuss/tree/main/packages/vfs) | Isomorphic virtual file system with in-memory backing. Works identically in Node.js and browsers, with binary VFS image packing/unpacking. |
+| defuss-transval | [`defuss-transval`](https://www.npmjs.com/package/defuss-transval) | [packages/transval](https://github.com/kyr0/defuss/tree/main/packages/transval) | Fast, functional, chainable state/form validation library. Field-path based rules, custom validators, sync + async, type-safe. |
+
+### AI / ML
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-embeddings | [`defuss-embeddings`](https://www.npmjs.com/package/defuss-embeddings) | [packages/embeddings](https://github.com/kyr0/defuss/tree/main/packages/embeddings) | Isomorphic text embeddings with Harrier ONNX int8, exact and TurboQuant-style vector search. Client (browser) and server (Node) runtimes. |
+| defuss-openai | [`defuss-openai`](https://www.npmjs.com/package/defuss-openai) | [packages/openai](https://github.com/kyr0/defuss/tree/main/packages/openai) | Zero-dependency, fetch-based OpenAI API client. Streaming chat, audio/TTS, tool calling (including zyphra format). Works anywhere `fetch` works. |
+| defuss-vad | [`defuss-vad`](https://www.npmjs.com/package/defuss-vad) | [packages/vad](https://github.com/kyr0/defuss/tree/main/packages/vad) | Voice Activity Detection backends — FireRedVAD (ONNX), TEN-VAD (WASM), and Silero VAD (ONNX). Browser + Node.js with shared API. |
+
+### Utilities
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-hash | [`defuss-hash`](https://www.npmjs.com/package/defuss-hash) | [packages/hash](https://github.com/kyr0/defuss/tree/main/packages/hash) | Fast, stable, special-purpose hashing: JIT-optimized content hashing with key-order stability and path-based subtree skipping, plus rendezvous hashing. Pure TS, no WASM. |
+
+### Parallelism & Long-running Tasks
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-multicore | [`defuss-multicore`](https://www.npmjs.com/package/defuss-multicore) | [packages/multicore](https://github.com/kyr0/defuss/tree/main/packages/multicore) | Isomorphic multicore execution + loop-unrolled linear algebra. Web Workers (browser) + worker_threads (Node.js). Parallel map/filter/reduce, matmul, dot product. Zero dependencies. |
+| defuss-orchestrator | [`defuss-orchestrator`](https://www.npmjs.com/package/defuss-orchestrator) | [packages/orchestrator](https://github.com/kyr0/defuss/tree/main/packages/orchestrator) | Federated pull-based work orchestrator with rendezvous hashing, sticky ownership, async durability, and pluggable worker/work selection. |
+
+### Authentication
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-jwt | [`defuss-jwt`](https://www.npmjs.com/package/defuss-jwt) | [packages/jwt](https://github.com/kyr0/defuss/tree/main/packages/jwt) | Lean Ed25519 JWT signer/validator with pluggable storage. Built on JOSE, with key rotation, revocation tombstones, and CLI key generation. |
+
+### Data Formats
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-brotli | [`defuss-brotli`](https://www.npmjs.com/package/defuss-brotli) | [packages/brotli](https://github.com/kyr0/defuss/tree/main/packages/brotli) | Pure-Rust Brotli WebAssembly with split compressor/decompressor exports. Small browser decoder bundle; separate heavier encoder for server-side. |
+
+### Streaming Rendering
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-markdown | [`defuss-markdown`](https://www.npmjs.com/package/defuss-markdown) | [packages/markdown](https://github.com/kyr0/defuss/tree/main/packages/markdown) | Incremental Markdown → defuss JSX bridge built on Incremark core. Supports streaming, custom JSX/component rendering. |
+
+### Observability
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-open-telemetry | [`defuss-open-telemetry`](https://www.npmjs.com/package/defuss-open-telemetry) | [packages/open-telemetry](https://github.com/kyr0/defuss/tree/main/packages/open-telemetry) | Tiny OpenTelemetry bridge for defuss metrics sinks. Duck-typed interfaces — `incrementCounter`, `recordHistogram`, `setGauge`. Zero OTel SDK dependency. |
+
+### Security & Infrastructure
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| defuss-tlsbot | [`defuss-tlsbot`](https://www.npmjs.com/package/defuss-tlsbot) | [packages/tlsbot](https://github.com/kyr0/defuss/tree/main/packages/tlsbot) | _(WIP)_ Zero-dependency TypeScript TLS certificate bot for Ubuntu Linux. Uses certbot for ACME DNS-01 with a plugin system for DNS providers. |
+
+### Standalone Tools
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| aslopcleaner | [`aslopcleaner`](https://www.npmjs.com/package/aslopcleaner) | [packages/aslopcleaner](https://github.com/kyr0/defuss/tree/main/packages/aslopcleaner) | High-performance CLI to replace common LLM/AI Unicode punctuation and symbols with ASCII equivalents. Recursively scans directories, respects `.agentsignore`. |
+
+### Private / Experimental
+
+| Package | npm | GitHub | Description |
+|---------|-----|--------|-------------|
+| container | _(private)_ | [packages/container](https://github.com/kyr0/defuss/tree/main/packages/container) | _(WIP)_ Tiny shell-first Linux container image for `container2wasm`. Produces WASI images with browser terminal shell support. |
+
+---
+
+```mermaid
+graph LR
+  subgraph Core
+    defuss["defuss<br/>(core)"]
+    defuss-vite["defuss-vite"]
+    defuss-astro["defuss-astro"]
+    defuss-runtime["defuss-runtime"]
+  end
+
+  subgraph UI
+    defuss-shadcn["defuss-shadcn"]
+    defuss-desktop["defuss-desktop"]
+  end
+
+  subgraph Build
+    create-defuss["create-defuss"]
+    defuss-storybook["defuss-storybook"]
+    defuss-tauri["defuss-tauri"]
+  end
+
+  subgraph Server
+    defuss-ssg["defuss-ssg"]
+    defuss-express["defuss-express"]
+    defuss-rpc["defuss-rpc"]
+  end
+
+  subgraph Data
+    defuss-db["defuss-db"]
+    defuss-dataview["defuss-dataview"]
+    defuss-dson["defuss-dson"]
+    defuss-vfs["defuss-vfs"]
+    defuss-transval["defuss-transval"]
+  end
+
+  subgraph AI
+    defuss-embeddings["defuss-embeddings"]
+    defuss-openai["defuss-openai"]
+    defuss-vad["defuss-vad"]
+  end
+
+  subgraph Parallelism
+    defuss-multicore["defuss-multicore"]
+    defuss-orchestrator["defuss-orchestrator"]
+  end
+
+  subgraph Auth
+    defuss-jwt["defuss-jwt"]
+  end
+
+  subgraph DataFormats
+    defuss-brotli["defuss-brotli"]
+  end
+
+  subgraph Streaming
+    defuss-markdown["defuss-markdown"]
+  end
+
+  subgraph Utils
+    defuss-hash["defuss-hash"]
+  end
+
+  subgraph Observability
+    defuss-open-telemetry["defuss-open-telemetry"]
+  end
+
+  defuss --> defuss-vite
+  defuss --> defuss-astro
+  defuss --> defuss-shadcn
+  defuss --> defuss-desktop
+  defuss --> defuss-ssg
+  defuss-ssg --> defuss-express
+  defuss-ssg --> defuss-rpc
+  defuss-ssg --> defuss-tauri
+  defuss-rpc --> defuss-dson
+  defuss-express --> defuss-open-telemetry
+  defuss-orchestrator --> defuss-hash
+  defuss-orchestrator --> defuss-open-telemetry
+  defuss-embeddings --> defuss-multicore
 ```
