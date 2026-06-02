@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSCameraUsageDescription</key>
+  <string>This defuss-tauri app may access the camera when requested by the web app.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>This defuss-tauri app may access the microphone when requested by the web app.</string>
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>This defuss-tauri app may access location when requested by the web app.</string>
+  <key>NSBluetoothAlwaysUsageDescription</key>
+  <string>This defuss-tauri app may access Bluetooth when requested by the web app.</string>
+  <key>NSBluetoothPeripheralUsageDescription</key>
+  <string>This defuss-tauri app may access Bluetooth peripherals when requested by the web app.</string>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>This defuss-tauri app may access local network devices during development and runtime.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>This defuss-tauri app may access speech recognition when requested by the web app.</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>This defuss-tauri app may send Apple Events when explicitly requested by the app.</string>
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsLocalNetworking</key>
+    <true/>
+{{#permissive}}
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+{{/permissive}}
+  </dict>
+</dict>
+</plist>

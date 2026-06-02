@@ -1,5 +1,5 @@
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import {
 	DefussTable,
 	JsonlProvider,
@@ -27,12 +27,8 @@ const rpcDemoImages = defineTable<StoredRpcDemoImage>({
 	],
 });
 
-const dataDir = join(
-	dirname(fileURLToPath(import.meta.url)),
-	"..",
-	".data",
-	"rpc-demo",
-);
+// Write to user directory, not app bundle (which is read-only on macOS)
+const dataDir = join(homedir(), ".config", "defuss-tauri-example", ".data", "rpc-demo");
 
 let tablePromise: Promise<
 	DefussTable<StoredRpcDemoImage, JsonlProviderOptions>

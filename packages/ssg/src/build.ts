@@ -359,11 +359,16 @@ export const build = async ({
 		const firstSegment = relative.split(/[\\/]/)[0];
 
 		return !(
+			// built-in support for a few standard web dev 
+			// dist folders plus defuss/Vite/git-specific behaviour
 			firstSegment === "node_modules" ||
 			firstSegment === config.output ||
 			firstSegment === ".endpoints" ||
 			firstSegment === ".ssg-temp" ||
 			firstSegment === ".defuss-tauri" ||
+			firstSegment === "dist-tauri" ||
+			firstSegment === "dist-tauri-build" ||
+			firstSegment === "dist-tauri-dev" ||
 			firstSegment === ".git" ||
 			firstSegment === "public" ||
 			projectPaths.assetsSourceDirCandidates.some((candidateDir) =>

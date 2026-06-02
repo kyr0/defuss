@@ -22,6 +22,7 @@ export interface DefussTauriOptions {
   ssgOutput?: string;
   managedDirName?: string;
   tauriOutDir?: string;
+  tauriOutDevDir?: string;
   skipSsg?: boolean;
   skipInstall?: boolean;
   skipNode?: boolean;

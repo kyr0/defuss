@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "{{productName}}",
+  "version": "{{version}}",
+  "identifier": "{{identifier}}",
+  "build": {
+    "beforeDevCommand": "{{beforeDevCommand}}",
+    "beforeBuildCommand": "",
+    "devUrl": "{{devUrl}}",
+    "frontendDist": "{{frontendDist}}"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "security": {
+      "freezePrototype": false,
+      "capabilities": ["default"]
+    },
+    "windows": []
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "externalBin": ["binaries/node"],
+    "resources": {},
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "entitlements": "./Entitlements.plist",
+      "infoPlist": "./Info.plist"
+    }
+  }
+}

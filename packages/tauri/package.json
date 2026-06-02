@@ -22,7 +22,8 @@
   ],
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "pkgroll",
+    "prebuild": "bun run clean",
+    "build": "pkgroll && cp -r src/rust_templates dist/rust_templates",
     "pretest": "bun run build",
     "test": "node dist/cli.js init ./example --debug && node dist/cli.js build ./example --debug",
     "prepublishOnly": "bun run test"

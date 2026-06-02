@@ -1,0 +1,16 @@
+[package]
+name = "{{rustName}}"
+version = "{{version}}"
+edition = "2021"
+
+[lib]
+name = "{{rustName}}_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "{{tauriVersion}}", features = [] }
+
+[dependencies]
+tauri = { version = "{{tauriVersion}}", features = [] }
+tauri-plugin-shell = "{{tauriShellVersion}}"
+libc = "0.2"
