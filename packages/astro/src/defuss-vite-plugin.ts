@@ -60,11 +60,15 @@ export default function defussVitePlugin({
 		enforce: "pre",
 		config() {
 			return {
-				esbuild: {
-					// we want Vite to handle JSX transformations
-					jsxImportSource: "defuss",
-					jsxFactory: "jsx",
-					jsxFragment: "Fragment",
+				oxc: {
+					// we want Vite to handle JSX transformations.
+					// NOTE: `oxc` replaces the deprecated `esbuild` key in Vite 8+.
+					jsx: {
+						importSource: "defuss",
+						factory: "jsx",
+						fragment: "Fragment",
+						development: true, // enable sourceInfo for better hydration and debugging
+					},
 				},
 				optimizeDeps: {
 					// we want Vite to optimize the runtime code
