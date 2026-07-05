@@ -1,6 +1,6 @@
 {
   "name": "defuss",
-  "version": "3.4.8",
+  "version": "3.4.9",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -43,13 +43,18 @@
     "pretest": "bun run build",
     "test:watch": "vitest --coverage",
     "test": "vitest run --coverage",
+    "pretest:browser": "bunx playwright install chromium",
     "test:browser": "vitest run --config vitest.browser.config.ts",
+    "prebench:chromium": "bunx playwright install chromium",
     "kitchensink": "vitest run --config kitchensink/vitest.config.ts",
-    "bench": "vitest bench --config vitest.bench.config.ts",
-    "bench:browser": "vitest run --config vitest.browser.config.ts src/__benchmarks__/dom-benchmark.browser.test.tsx",
+    "bench": "vitest bench --run --config vitest.bench.config.ts",
+    "bench:browser": "vitest run --config vitest.bench-browser.config.ts src/__benchmarks__/dom-benchmark.browser.test.tsx",
+    "bench:ssr": "vitest run --config vitest.bench-browser.config.ts src/__benchmarks__/dom-benchmark.ssr.test.tsx",
+    "bench:chromium": "vitest run --config vitest.bench-chromium.config.ts src/__benchmarks__/dom-benchmark.browser.test.tsx",
+    "test:all": "bun run test && bun run test:browser && bun run bench && bun run bench:browser && bun run bench:ssr && bun run bench:chromium",
     "prebuild": "bun run clean",
     "build": "node scripts/build.mjs",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build && bun run test:all"
   },
   "author": "Aron Homberg <info@aron-homberg.de>",
   "sideEffects": false,

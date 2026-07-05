@@ -2,7 +2,7 @@
 import { wait } from "defuss-runtime";
 import { $ } from "./dequery.js";
 
-describe("CSS class manipulation", async () => {
+describe("CSS class manipulation", () => {
   it("can toggle a CSS class", async () => {
     await $(document.body).toggleClass("lol-t");
     expect(document.body.querySelector(".lol-t")).toBeDefined();

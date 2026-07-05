@@ -1,14 +1,24 @@
 import { defineConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
+import path from "node:path";
 
 /**
  * Browser-based test configuration using Playwright with Chrome headless.
- * Run with: pnpm test:browser
- * 
+ * Run with: bun run test:browser
+ *
  * Excludes SSR-specific tests that require happy-dom's virtual DOM.
  */
 export default defineConfig({
     plugins: [],
+    resolve: {
+        alias: {
+            "@": path.resolve(__dirname, "src"),
+        },
+    },
+    esbuild: {
+        jsx: "automatic",
+        jsxImportSource: "@/render",
+    },
     test: {
         browser: {
             enabled: true,
@@ -24,6 +34,8 @@ export default defineConfig({
             "**/kitchensink/**",
             "**/node_modules/**",
             "**/dist/**",
+            // Benchmark/performance tests — run with `bench:browser` instead
+            "**/__benchmarks__/**",
             // SSR-specific tests that don't work in real browser
             "**/server.test.tsx",
             "**/dom-ssr.test.tsx",

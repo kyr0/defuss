@@ -1,8 +1,20 @@
 import { defineConfig } from "vitest/config";
 
+/**
+ * Benchmark configuration for unit-level performance tests (*.bench.ts).
+ * Run with: bun run bench
+ *
+ * For DOM-based performance tests (e.g., 1k rows), use:
+ *   bun run bench:browser
+ */
 export default defineConfig({
     test: {
         include: ["**/*.bench.ts"],
-        environment: "node", // Benchmarks usually run faster/cleaner in Node if DOM isn't strictly required, but Store supports both. We'll verify both if possible, but Node is fine for pure JS store logic.
+        exclude: [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/__benchmarks__/**",
+        ],
+        environment: "node",
     },
 });

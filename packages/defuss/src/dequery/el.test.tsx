@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { $, CallChainImpl } from "./dequery.js";
 
-describe("Element creation test", async () => {
+describe("Element creation test", () => {
   it("can create a <div> element with class and id", async () => {
     const d = await $<HTMLElement>("<div>", { class: "boxed task", id: "foo" });
     expect(d).toBeInstanceOf(CallChainImpl); // check that d is an instance of Dequery

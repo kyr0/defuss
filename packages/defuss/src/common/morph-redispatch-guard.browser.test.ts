@@ -286,6 +286,15 @@ describe("Morph re-dispatch guard (Browser)", () => {
       }
     });
 
+    // Suppress the expected error at the browser level so it doesn't
+    // appear as an unhandled error in vitest's browser reporter
+    const suppressError = (e: ErrorEvent) => {
+      if (e.message?.includes("intentional test error")) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("error", suppressError);
+
     // First click throws - but finally block should clean up dispatchKey
     try {
       button.click();
@@ -301,5 +310,7 @@ describe("Morph re-dispatch guard (Browser)", () => {
       // may throw again
     }
     expect(fireCount).toBe(2);
+
+    window.removeEventListener("error", suppressError);
   });
 });

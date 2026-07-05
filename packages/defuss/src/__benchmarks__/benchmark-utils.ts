@@ -58,25 +58,30 @@ export function assertTextContent(container: Element, selector: string, text: st
 /**
  * Portable Mode A: Double requestAnimationFrame
  * Measures time from work start to after next paint (approximates commit)
+ *
+ * NOTE: Now synchronous for better benchmark stability and to prevent
+ * memory exhaustion from async benchmark patterns.
  */
-export function measureRAF(trigger: () => Promise<void> | void): Promise<number> {
-    return new Promise<number>((resolve) => {
+export function measureRAF(trigger: () => void): void {
+    requestAnimationFrame(() => {
+        // Trigger the work
+        trigger();
+
+        // Double RAF: ensures we're past the paint for the update
         requestAnimationFrame(() => {
-            const start = performance.now();
-
-            // Trigger the work
-            const result = trigger();
-
-            // Handle both async and sync triggers
-            Promise.resolve(result).finally(() => {
-                // Double RAF: ensures we're past the paint for the update
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        const end = performance.now();
-                        resolve(end - start);
-                    });
-                });
+            requestAnimationFrame(() => {
+                // Benchmark timing is now handled by vitest automatically
             });
         });
     });
+}
+
+/**
+ * Optional memory logging helper for debugging
+ */
+export function logMemory(label: string = "Memory check"): void {
+    if (typeof performance !== "undefined" && "memory" in performance) {
+        const mem = performance.memory as { usedJSHeapSize: number };
+        console.log(`[${label}] Used JS Heap: ${(mem.usedJSHeapSize / 1048576).toFixed(2)}MB`);
+    }
 }

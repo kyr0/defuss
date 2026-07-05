@@ -1,4 +1,4 @@
-import type { ElementProps, FC, Ref } from "../render/types.js";
+import type { ElementProps, FC, Ref, VNode } from "../render/types.js";
 import { createRef } from "../render/ref.js";
 import { reactive, type ReactiveConfig } from "./reactive.js";
 
@@ -42,23 +42,42 @@ export const Reactive: FC<ReactiveProps> = ({
   cleanup,
   tag = "div",
   className,
-  ref = createRef() as Ref<HTMLDivElement>,
+  ref: externalRef,
   ...props
 }) => {
-  const reactiveRef = ref || createRef<HTMLDivElement>();
+  // Use external ref if provided, otherwise create one internally
+  const reactiveRef = (externalRef ?? createRef()) as Ref<HTMLDivElement>;
   let cleanupFn: (() => void) | undefined;
+  let isUnmounted = false;
 
-  return (
-    <tag
-      ref={reactiveRef}
-      class={className}
-      {...props}
-      onMount={() => {
-        cleanupFn = reactive({ store, render, cleanup }, reactiveRef);
-      }}
-      onUnmount={() => {
-        cleanupFn?.();
-      }}
-    />
-  );
+  // Build attributes with lifecycle hooks
+  const attrs: Record<string, any> = {
+    ref: reactiveRef,
+  };
+
+  if (className) {
+    attrs.class = className;
+  }
+
+  // Spread additional props
+  Object.assign(attrs, props);
+
+  // Lifecycle hooks
+  attrs.onMount = () => {
+    cleanupFn = reactive({ store, render, cleanup }, reactiveRef);
+  };
+  attrs.onUnmount = () => {
+    // Guard against double-fire of onUnmount
+    if (isUnmounted) return;
+    isUnmounted = true;
+    cleanupFn?.();
+  };
+
+  // Return a VNode directly to ensure dynamic tag names are properly handled
+  // as element types rather than being treated as function components
+  return {
+    type: tag,
+    attributes: attrs,
+    children: [],
+  } as VNode;
 };

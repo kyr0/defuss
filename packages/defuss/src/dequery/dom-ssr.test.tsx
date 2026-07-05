@@ -5,7 +5,7 @@ import { createRef, type Globals } from "../render/index.js";
 import { renderIsomorphicSync } from "../render/isomorph.js";
 import { $ } from "./dequery.js";
 
-describe("General DOM manipulation", async () => {
+describe("General DOM manipulation", () => {
   let globals: Globals;
   beforeEach(() => {
     globals = getBrowserGlobals();
