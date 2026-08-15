@@ -95,6 +95,8 @@ fn final_period_candidates(asl: &Asl) -> Vec<Candidate> {
             safety: SafetyClass::Safe,
             requires_sibling_edit: true,
             allowed_in_protected: false,
+            confidence: 1.0,
+            review_on_low_confidence: true,
         });
     }
     out
@@ -122,6 +124,8 @@ fn blank_line_candidates(asl: &Asl, input: &str) -> Vec<Candidate> {
             safety: SafetyClass::Safe,
             requires_sibling_edit: false,
             allowed_in_protected: false,
+            confidence: 1.0,
+            review_on_low_confidence: true,
         });
     }
     out

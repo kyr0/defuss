@@ -6,8 +6,8 @@ use std::collections::{BTreeMap, BTreeSet};
 /// classification entirely — even if all packs assign the same class.
 #[derive(Debug, Clone, Default)]
 pub struct LexiconOverlay {
-    /// folded word -> class (unambiguous words only)
-    classes: BTreeMap<String, String>,
+    /// folded word -> (class, source language) (unambiguous words only)
+    classes: BTreeMap<String, (String, String)>,
     /// words omitted because they appear in multiple packs
     ambiguous: BTreeSet<String>,
 }
@@ -34,14 +34,18 @@ impl LexiconOverlay {
             if lang_set.len() > 1 {
                 ambiguous.insert(word);
             } else if let Some(class) = first_class.get(&word) {
-                classes.insert(word, class.clone());
+                let lang = lang_set.iter().next().unwrap().clone();
+                classes.insert(word, (class.clone(), lang));
             }
         }
         LexiconOverlay { classes, ambiguous }
     }
 
-    pub fn classify(&self, folded_word: &str) -> Option<&str> {
-        self.classes.get(folded_word).map(|s| s.as_str())
+    /// (class, source language) for an unambiguous folded word.
+    pub fn classify(&self, folded_word: &str) -> Option<(&str, &str)> {
+        self.classes
+            .get(folded_word)
+            .map(|(c, l)| (c.as_str(), l.as_str()))
     }
 
     pub fn is_ambiguous(&self, folded_word: &str) -> bool {

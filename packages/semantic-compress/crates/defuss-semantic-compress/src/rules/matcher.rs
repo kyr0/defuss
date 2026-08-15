@@ -15,6 +15,9 @@ pub struct CompiledSeqRule {
     pub kind: CandidateKind,
     pub layer: TransformLayer,
     pub priority: i32,
+    pub confidence: f32,
+    pub review_on_low_confidence: bool,
+    pub requires: Option<crate::rules::schema::RequiresJson>,
     pub elems: Vec<CompiledElem>,
     pub replacement: Option<String>,
     pub guards: crate::rules::schema::GuardsJson,
@@ -40,6 +43,9 @@ pub struct CompiledRawRule {
     pub phase: Phase,
     pub layer: TransformLayer,
     pub priority: i32,
+    pub confidence: f32,
+    pub review_on_low_confidence: bool,
+    pub requires: Option<crate::rules::schema::RequiresJson>,
     pub regex: Regex,
     pub replacement: String,
     pub guards: crate::rules::schema::GuardsJson,
@@ -68,6 +74,9 @@ pub fn compile_rule(rule: &RuleJson) -> Result<Option<CompiledSeqRule>, String> 
         kind,
         layer,
         priority: rule.priority,
+        confidence: rule.confidence,
+        review_on_low_confidence: rule.review_on_low_confidence,
+        requires: rule.requires.clone(),
         elems,
         replacement: rule.replacement.clone(),
         guards: rule.guards.clone(),
@@ -93,6 +102,9 @@ pub fn compile_raw_rule(rule: &RuleJson) -> Result<Option<CompiledRawRule>, Stri
         phase,
         layer,
         priority: rule.priority,
+        confidence: rule.confidence,
+        review_on_low_confidence: rule.review_on_low_confidence,
+        requires: rule.requires.clone(),
         regex,
         replacement: rule.replacement.clone().unwrap_or_default(),
         guards: rule.guards.clone(),
@@ -125,6 +137,30 @@ pub struct MatchContext<'a> {
     pub input: &'a str,
     pub alias_map: &'a BTreeMap<String, String>,
     pub action_words: Vec<String>,
+    /// Normalization cache (§16.1): folded/alias lookup per word.
+    pub cache: std::cell::RefCell<crate::classify::normalize::NormalizationCache<'a>>,
+}
+
+impl<'a> MatchContext<'a> {
+    pub fn new(
+        input: &'a str,
+        alias_map: &'a BTreeMap<String, String>,
+        action_words: Vec<String>,
+    ) -> Self {
+        MatchContext {
+            input,
+            alias_map,
+            action_words,
+            cache: std::cell::RefCell::new(
+                crate::classify::normalize::NormalizationCache::new(alias_map),
+            ),
+        }
+    }
+
+    /// Fold a word via the normalization cache.
+    pub fn fold(&self, word: &str) -> String {
+        self.cache.borrow_mut().get(word, "").folded
+    }
 }
 
 /// Scopes for sequence matching: sentences and heading token lists.
@@ -190,7 +226,11 @@ fn match_seq_at(
                         .as_ref()
                         .map(|w| {
                             node.kind.is_word_like()
-                                && node.text.as_deref().map(fold_word).as_deref()
+                                && node
+                                    .text
+                                    .as_deref()
+                                    .map(|t| ctx.fold(t))
+                                    .as_deref()
                                     == Some(w.as_str())
                         })
                         .unwrap_or(false);
@@ -239,7 +279,12 @@ fn match_elem(
     }
     if let Some(w) = &elem.word {
         if node.kind.is_word_like()
-            && node.text.as_deref().map(fold_word).as_deref() == Some(w.as_str())
+            && node
+                .text
+                .as_deref()
+                .map(|t| ctx.fold(t))
+                .as_deref()
+                == Some(w.as_str())
         {
             return Some(cursor + 1);
         }
@@ -275,8 +320,8 @@ fn match_elem(
                 if n2.kind.is_word_like() {
                     let bigram = format!(
                         "{} {}",
-                        node.text.as_deref().map(fold_word).unwrap_or_default(),
-                        n2.text.as_deref().map(fold_word).unwrap_or_default()
+                        node.text.as_deref().map(|t| ctx.fold(t)).unwrap_or_default(),
+                        n2.text.as_deref().map(|t| ctx.fold(t)).unwrap_or_default()
                     );
                     if ctx.alias_map.get(&bigram).map(|s| s.as_str()) == Some(key.as_str()) {
                         return Some(next + 1);
@@ -512,7 +557,7 @@ fn finalize_candidate(
             ok = node
                 .text
                 .as_deref()
-                .map(fold_word)
+                .map(|t| ctx.fold(t))
                 .map(|w| ctx.action_words.contains(&w))
                 .unwrap_or(false);
             break;
@@ -541,6 +586,42 @@ fn finalize_candidate(
         }
     }
 
+    // preconditions (§10.2)
+    if let Some(req) = &rule.requires {
+        if req.has_sentence_parent && asl.enclosing_sentence(first).is_none() {
+            return None;
+        }
+        if let Some(lang) = &req.language {
+            let all_from_lang = target_nodes
+                .iter()
+                .filter(|&&n| asl.node(n).kind.is_word_like())
+                .all(|&n| asl.node(n).meta.lang.as_deref() == Some(lang.as_str()));
+            if !all_from_lang {
+                return None;
+            }
+        }
+        if let Some(max_ratio) = req.max_removal_ratio {
+            if let Some(sid) = asl.enclosing_sentence(first) {
+                let sentence_words: Vec<NodeId> = asl
+                    .node(sid)
+                    .children
+                    .iter()
+                    .copied()
+                    .filter(|&c| asl.node(c).kind.is_word_like())
+                    .collect();
+                if !sentence_words.is_empty() {
+                    let removed = sentence_words
+                        .iter()
+                        .filter(|w| target_nodes.contains(w))
+                        .count();
+                    if removed as f32 / sentence_words.len() as f32 > max_ratio {
+                        return None;
+                    }
+                }
+            }
+        }
+    }
+
     Some(Candidate {
         id: 0, // assigned by the pipeline
         rule_id: rule.id.clone(),
@@ -554,6 +635,8 @@ fn finalize_candidate(
         safety: SafetyClass::Safe,
         requires_sibling_edit: false,
             allowed_in_protected: false,
+            confidence: rule.confidence,
+            review_on_low_confidence: rule.review_on_low_confidence,
     })
 }
 
@@ -591,6 +674,8 @@ pub fn generate_raw_candidates(
             safety: SafetyClass::Safe,
             requires_sibling_edit: false,
             allowed_in_protected: false,
+            confidence: rule.confidence,
+            review_on_low_confidence: rule.review_on_low_confidence,
         });
     }
     out

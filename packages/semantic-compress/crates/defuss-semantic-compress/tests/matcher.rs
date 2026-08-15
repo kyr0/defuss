@@ -11,11 +11,7 @@ fn ctx_for<'a>(
     alias_map: &'a BTreeMap<String, String>,
     action_words: Vec<String>,
 ) -> MatchContext<'a> {
-    MatchContext {
-        input,
-        alias_map,
-        action_words,
-    }
+    MatchContext::new(input, alias_map, action_words)
 }
 
 fn empty_alias() -> BTreeMap<String, String> {
@@ -27,7 +23,7 @@ fn rule(json: &str) -> RuleJson {
 }
 
 fn classify_en(input: &str) -> (defuss_semantic_compress::Asl, defuss_semantic_compress::RuleSet) {
-    let rules = load_rules(Some("en"), None).unwrap();
+    let rules = load_rules(Some("en"), None, &[]).unwrap();
     let mut asl = parse(input);
     classify::classify(&mut asl, &rules);
     (asl, rules)
@@ -75,7 +71,7 @@ fn matches_regex_sequence() {
 #[test]
 fn matches_normalized_forms() {
     // "I'd" and "I would" both match {normalized: "i_would"} (§19)
-    let rules = load_rules(Some("en"), None).unwrap();
+    let rules = load_rules(Some("en"), None, &[]).unwrap();
     let r = rules.packs[0]
         .rules
         .iter()
@@ -86,11 +82,7 @@ fn matches_normalized_forms() {
     for input in ["I'd like you to build this.", "I would like you to build this."] {
         let mut asl = parse(input);
         classify::classify(&mut asl, &rules);
-        let ctx = MatchContext {
-            input,
-            alias_map: &rules.alias_map,
-            action_words: rules.packs[0].action_words.clone(),
-        };
+        let ctx = MatchContext::new(input, &rules.alias_map, rules.packs[0].action_words.clone());
         let cands = generate_seq_candidates(&asl, &ctx, &compiled);
         assert_eq!(cands.len(), 1, "no match for {input:?}");
         let span = cands[0].target_span;
@@ -111,11 +103,11 @@ fn matches_optional_token() {
         .find(|r| r.id == "en.polite.please_could_you")
         .unwrap();
     let compiled = compile_rule(r).unwrap().unwrap();
-    let ctx = MatchContext {
-        input: "Please could you fix it.",
-        alias_map: &rules.alias_map,
-        action_words: rules.packs[0].action_words.clone(),
-    };
+    let ctx = MatchContext::new(
+        "Please could you fix it.",
+        &rules.alias_map,
+        rules.packs[0].action_words.clone(),
+    );
     let cands = generate_seq_candidates(&asl, &ctx, &compiled);
     // optional comma absent -> still matches "Please could you"
     assert_eq!(cands.len(), 1);
@@ -133,11 +125,7 @@ fn does_not_match_across_quote_boundary() {
         .find(|r| r.id == "en.det.remove")
         .unwrap();
     let compiled = compile_rule(r).unwrap().unwrap();
-    let ctx = MatchContext {
-        input: "Say \"the word\" out loud.",
-        alias_map: &rules.alias_map,
-        action_words: vec![],
-    };
+    let ctx = MatchContext::new("Say \"the word\" out loud.", &rules.alias_map, vec![]);
     let cands = generate_seq_candidates(&asl, &ctx, &compiled);
     assert!(cands.is_empty());
 }
@@ -152,11 +140,7 @@ fn does_not_match_across_protected_code_fence() {
         .find(|r| r.id == "en.det.remove")
         .unwrap();
     let compiled = compile_rule(r).unwrap().unwrap();
-    let ctx = MatchContext {
-        input,
-        alias_map: &rules.alias_map,
-        action_words: vec![],
-    };
+    let ctx = MatchContext::new(input, &rules.alias_map, vec![]);
     let cands = generate_seq_candidates(&asl, &ctx, &compiled);
     assert!(cands.is_empty());
 }
@@ -190,11 +174,7 @@ fn non_empty_sentence_guard() {
         .find(|r| r.id == "en.det.remove")
         .unwrap();
     let compiled = compile_rule(r).unwrap().unwrap();
-    let ctx = MatchContext {
-        input: "this",
-        alias_map: &rules.alias_map,
-        action_words: vec![],
-    };
+    let ctx = MatchContext::new("this", &rules.alias_map, vec![]);
     let cands = generate_seq_candidates(&asl, &ctx, &compiled);
     assert!(cands.is_empty());
 }

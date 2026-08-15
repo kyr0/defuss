@@ -1,8 +1,24 @@
 {
+  "schema_version": "1.0",
   "language": "en",
   "classes": {
-    "det": ["the", "a", "an", "this", "that", "these", "those"],
-    "filler": ["basically", "actually", "simply", "just", "really", "quite"],
+    "det": [
+      "the",
+      "a",
+      "an",
+      "this",
+      "that",
+      "these",
+      "those"
+    ],
+    "filler": [
+      "basically",
+      "actually",
+      "simply",
+      "just",
+      "really",
+      "quite"
+    ],
     "negation": [
       "not",
       "no",

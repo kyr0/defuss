@@ -77,6 +77,9 @@ pub enum CandidateKind {
     CompactWhitespace,
     CompactStructuredFormat,
     RepeatCompress,
+    /// Emits trace, preserves input unchanged (§11.1). Review candidates
+    /// never produce edits and never win conflicts.
+    Review,
 }
 
 impl CandidateKind {
@@ -88,6 +91,7 @@ impl CandidateKind {
             "CompactWhitespace" => CompactWhitespace,
             "CompactStructuredFormat" => CompactStructuredFormat,
             "RepeatCompress" => RepeatCompress,
+            "Review" => Review,
             _ => return None,
         })
     }
@@ -100,6 +104,7 @@ impl CandidateKind {
             CompactWhitespace => "CompactWhitespace",
             CompactStructuredFormat => "CompactStructuredFormat",
             RepeatCompress => "RepeatCompress",
+            Review => "Review",
         }
     }
 
@@ -112,6 +117,7 @@ impl CandidateKind {
             RepeatCompress => 2,
             Replace => 3,
             CompactWhitespace => 4,
+            Review => 5,
         }
     }
 }
@@ -182,6 +188,10 @@ pub struct Candidate {
     pub priority: i32,
     pub layer: TransformLayer,
 
+    /// 0.0..1.0 — how confident the engine is in this candidate (§11).
+    /// Lower-confidence candidates are filtered via `min_confidence`.
+    pub confidence: f32,
+
     pub target_nodes: Vec<NodeId>,
     pub target_span: Span,
 
@@ -201,4 +211,13 @@ pub struct Candidate {
     /// exceptions). Never set by JSON rules.
     #[serde(default)]
     pub allowed_in_protected: bool,
+
+    /// When true, below-`min_confidence` candidates downgrade to Review;
+    /// when false they are dropped entirely (§11.1).
+    #[serde(default = "default_review_on_low_confidence")]
+    pub review_on_low_confidence: bool,
+}
+
+fn default_review_on_low_confidence() -> bool {
+    true
 }

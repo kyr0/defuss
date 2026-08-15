@@ -2,7 +2,7 @@ use defuss_semantic_compress::rules::loader::load_rules;
 use defuss_semantic_compress::{classify, parse, NodeKind, Tag};
 
 fn classify_en(input: &str) -> defuss_semantic_compress::Asl {
-    let rules = load_rules(Some("en"), None).unwrap();
+    let rules = load_rules(Some("en"), None, &[]).unwrap();
     let mut asl = parse(input);
     classify::classify(&mut asl, &rules);
     asl

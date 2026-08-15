@@ -1,0 +1,5 @@
+{
+  "id": "v2.parser_fallback_unclosed_fence",
+  "input": "```json\n{ \"a\": 1,\n",
+  "expected": "```json\n{ \"a\": 1,\n"
+}

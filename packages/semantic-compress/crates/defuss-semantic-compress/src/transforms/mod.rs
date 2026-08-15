@@ -34,11 +34,12 @@ pub(crate) fn generate_rule_candidates(
     let mut seen: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     for rule in rules.iter().filter(|r| Phase::from_str(&r.phase) == Some(phase)) {
         let signature = format!(
-            "{}|{}|{}|{}",
+            "{}|{}|{}|{}|{}",
             rule.kind,
             rule.layer,
             serde_json::to_string(&rule.match_pattern).unwrap_or_default(),
-            rule.regex.clone().unwrap_or_default()
+            rule.regex.clone().unwrap_or_default(),
+            serde_json::to_string(&rule.requires).unwrap_or_default()
         );
         if !seen.insert(signature) {
             continue;

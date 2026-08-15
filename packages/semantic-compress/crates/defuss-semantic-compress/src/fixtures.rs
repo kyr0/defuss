@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use crate::{compress, CompressConfig};
+use crate::{compress, CompressConfig, ParserMode};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct E2eFixture {
@@ -16,6 +16,15 @@ pub struct E2eFixture {
     /// packs).
     #[serde(default)]
     pub rules_path: Option<String>,
+    /// Optional v2 config overrides (§21).
+    #[serde(default)]
+    pub parser_mode: Option<String>,
+    #[serde(default)]
+    pub min_confidence: Option<f32>,
+    #[serde(default)]
+    pub min_output_ratio: Option<f32>,
+    #[serde(default)]
+    pub max_removal_tokens: Option<usize>,
     pub input: String,
     pub expected: String,
     #[serde(default)]
@@ -30,15 +39,7 @@ pub struct FixtureFailure {
 
 /// Runs a single E2E fixture. `fixture_dir` resolves relative `rules_path`.
 pub fn run_fixture(fixture: &E2eFixture, fixture_dir: &Path) -> Result<(), String> {
-    let rules_path = fixture
-        .rules_path
-        .as_ref()
-        .map(|rel| fixture_dir.join(rel));
-    let config = CompressConfig {
-        lang: fixture.lang.clone(),
-        rules_path,
-        ..Default::default()
-    };
+    let config = fixture_config(fixture, fixture_dir);
     let result =
         compress(&fixture.input, config).map_err(|e| format!("compress failed: {e}"))?;
     if result.output != fixture.expected {
@@ -57,18 +58,8 @@ pub fn run_fixture(fixture: &E2eFixture, fixture_dir: &Path) -> Result<(), Strin
         return Err("output grew".to_string());
     }
     // idempotence
-    let twice = compress(
-        &result.output,
-        CompressConfig {
-            lang: fixture.lang.clone(),
-            rules_path: fixture
-                .rules_path
-                .as_ref()
-                .map(|rel| fixture_dir.join(rel)),
-            ..Default::default()
-        },
-    )
-    .map_err(|e| format!("recompress failed: {e}"))?;
+    let twice = compress(&result.output, fixture_config(fixture, fixture_dir))
+        .map_err(|e| format!("recompress failed: {e}"))?;
     if twice.output != result.output {
         return Err(format!(
             "not idempotent: {:?} -> {:?} -> {:?}",
@@ -124,4 +115,22 @@ pub fn run_fixture_dir(dir: &Path) -> (usize, Vec<FixtureFailure>) {
         }
     }
     (passed, failures)
+}
+
+fn fixture_config(fixture: &E2eFixture, fixture_dir: &Path) -> CompressConfig {
+    let parser_mode = match fixture.parser_mode.as_deref() {
+        Some("full") => ParserMode::FullProtection,
+        Some("partial") => ParserMode::PartialProtection,
+        Some("minimal") => ParserMode::MinimalProtection,
+        _ => ParserMode::default(),
+    };
+    CompressConfig {
+        lang: fixture.lang.clone(),
+        rules_path: fixture.rules_path.as_ref().map(|rel| fixture_dir.join(rel)),
+        parser_mode,
+        min_confidence: fixture.min_confidence.unwrap_or(0.8),
+        min_output_ratio: fixture.min_output_ratio.unwrap_or(0.1),
+        max_removal_tokens: fixture.max_removal_tokens,
+        ..Default::default()
+    }
 }

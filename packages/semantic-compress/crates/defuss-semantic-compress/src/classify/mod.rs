@@ -1,6 +1,7 @@
 pub mod grammar;
 pub mod language;
 pub mod lexicon;
+pub mod normalize;
 pub mod overlay;
 
 use crate::asl::{Asl, NodeId, NodeKind, Tag};
@@ -73,7 +74,6 @@ pub fn classify(asl: &mut crate::asl::Asl, rules: &RuleSet) {
     // 2. lexicon classes (det / filler / bad_word)
     let overlay = build_overlay(rules);
 
-    // 1. lexicon classes (det / filler / bad_word)
     for nid in language::unprotected_word_nodes(asl) {
         let folded = asl
             .node(nid)
@@ -81,15 +81,16 @@ pub fn classify(asl: &mut crate::asl::Asl, rules: &RuleSet) {
             .as_deref()
             .map(fold_word)
             .unwrap_or_default();
-        let (kind, tag) = match overlay.classify(&folded) {
-            Some("det") => (NodeKind::Det, Tag::Det),
-            Some("filler") => (NodeKind::Filler, Tag::Filler),
-            Some("bad_word") => (NodeKind::BadWord, Tag::BadWord),
+        let (kind, tag, lang) = match overlay.classify(&folded) {
+            Some(("det", lang)) => (NodeKind::Det, Tag::Det, lang),
+            Some(("filler", lang)) => (NodeKind::Filler, Tag::Filler, lang),
+            Some(("bad_word", lang)) => (NodeKind::BadWord, Tag::BadWord, lang),
             _ => continue,
         };
         let node = asl.node_mut(nid);
         node.kind = kind;
         node.meta.tags.push(tag);
+        node.meta.lang = Some(lang.to_string());
         node.meta.classification_rule = Some(format!("lexicon.{tag:?}"));
     }
 

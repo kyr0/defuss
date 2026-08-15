@@ -1,3 +1,4 @@
+use crate::config::ParserMode;
 use crate::span::Span;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -12,6 +13,10 @@ pub type NodeId = u32;
 pub struct Asl {
     pub root: NodeId,
     pub nodes: Vec<Node>,
+    /// Parser protection mode in effect for this tree (§5.2). Not part of
+    /// the serialized form; set at parse time.
+    #[serde(skip)]
+    pub protection: ParserMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -185,6 +190,10 @@ impl NodeKind {
 
 impl Asl {
     pub fn new() -> Asl {
+        Asl::with_protection(ParserMode::default())
+    }
+
+    pub fn with_protection(protection: ParserMode) -> Asl {
         let root = Node {
             id: 0,
             kind: NodeKind::Root,
@@ -197,6 +206,7 @@ impl Asl {
         Asl {
             root: 0,
             nodes: vec![root],
+            protection,
         }
     }
 
@@ -320,8 +330,8 @@ impl Asl {
         out
     }
 
-    /// Spans that must remain byte-identical in the output.
-    /// Quote subtrees and non-markdown CodeFence bodies are protected.
+    /// Spans that must remain byte-identical in the output, honoring the
+    /// parser protection mode (§5.2). Quotes are protected in every mode.
     pub fn protected_spans(&self) -> Vec<Span> {
         let mut out = Vec::new();
         for node in &self.nodes {
@@ -334,7 +344,14 @@ impl Asl {
                         .get("preamble")
                         .map(|s| s.as_str())
                         .unwrap_or("");
-                    if !matches!(fmt, "markdown" | "md") {
+                    let protected = match self.protection {
+                        ParserMode::FullProtection => true,
+                        ParserMode::PartialProtection => {
+                            !matches!(fmt, "markdown" | "md")
+                        }
+                        ParserMode::MinimalProtection => false,
+                    };
+                    if protected {
                         out.push(node.span);
                     }
                 }
@@ -343,6 +360,19 @@ impl Asl {
         }
         out.sort_by_key(|s| s.start);
         out
+    }
+
+    /// Parent-pointer integrity check (§26.1): every parent pointer must
+    /// point to a node that lists this node as a child.
+    pub fn parent_pointers_consistent(&self) -> bool {
+        self.nodes.iter().all(|n| match n.parent {
+            Some(p) => self
+                .nodes
+                .get(p as usize)
+                .map(|pn| pn.children.contains(&n.id))
+                .unwrap_or(false),
+            None => n.id == self.root,
+        })
     }
 
     /// True if `span` intersects any protected span.

@@ -26,6 +26,8 @@ fn cand(
         safety: SafetyClass::Safe,
         requires_sibling_edit: false,
             allowed_in_protected: false,
+            confidence: 1.0,
+            review_on_low_confidence: true,
     }
 }
 

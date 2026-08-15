@@ -1,4 +1,4 @@
-use defuss_semantic_compress::{compress, parse, render, CompressConfig, Compressor};
+use defuss_semantic_compress::{compress, parse, parse_with, render, CompressConfig, Compressor, ParseStrategy, ParserMode};
 use proptest::prelude::*;
 
 fn fragment_strategy() -> impl Strategy<Value = String> {
@@ -92,7 +92,7 @@ proptest! {
     fn prop_resolved_candidates_do_not_overlap(s in input_strategy()) {
         let compressor = Compressor::new(Some("en"), None).unwrap();
         let cfg = CompressConfig { lang: Some("en".to_string()), ..Default::default() };
-        let analysis = compressor.analyze(&s, &cfg);
+        let analysis = compressor.analyze(&s, &cfg).unwrap();
         for (i, a) in analysis.accepted.iter().enumerate() {
             for b in analysis.accepted.iter().skip(i + 1) {
                 prop_assert!(!a.target_span.overlaps(&b.target_span));
@@ -104,7 +104,7 @@ proptest! {
     fn prop_protected_spans_untouched(s in input_strategy()) {
         let compressor = Compressor::new(Some("en"), None).unwrap();
         let cfg = CompressConfig { lang: Some("en".to_string()), ..Default::default() };
-        let analysis = compressor.analyze(&s, &cfg);
+        let analysis = compressor.analyze(&s, &cfg).unwrap();
         let protected = analysis.asl.protected_spans();
         for cand in &analysis.accepted {
             if cand.allowed_in_protected {
@@ -121,7 +121,7 @@ proptest! {
     fn prop_candidate_spans_valid(s in input_strategy()) {
         let compressor = Compressor::new(Some("en"), None).unwrap();
         let cfg = CompressConfig { lang: Some("en".to_string()), ..Default::default() };
-        let analysis = compressor.analyze(&s, &cfg);
+        let analysis = compressor.analyze(&s, &cfg).unwrap();
         for c in &analysis.candidates {
             prop_assert!(c.target_span.start <= c.target_span.end);
             prop_assert!(c.target_span.end <= s.len());
@@ -129,5 +129,39 @@ proptest! {
             prop_assert!(s.is_char_boundary(c.target_span.start));
             prop_assert!(s.is_char_boundary(c.target_span.end));
         }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(128))]
+
+    #[test]
+    fn prop_output_satisfies_min_output_ratio(s in input_strategy()) {
+        // §26.5: output satisfies min_output_ratio (or safely falls back)
+        let cfg = CompressConfig { lang: Some("en".to_string()), ..Default::default() };
+        let out = compress(&s, cfg).unwrap();
+        if !s.is_empty() {
+            prop_assert!(
+                (out.output.len() as f32) >= 0.1 * s.len() as f32 || out.output == s,
+                "budget violated without fallback: {:?} -> {:?}", s, out.output
+            );
+        }
+    }
+
+    #[test]
+    fn prop_parent_pointers_consistent_after_parse(s in input_strategy()) {
+        // §26.5: parent pointers are consistent after parse
+        let asl = parse(&s);
+        prop_assert!(asl.parent_pointers_consistent());
+    }
+
+    #[test]
+    fn prop_parser_fallback_produces_protected_unknown(s in "\\`\\`\\`json\\n\\{[a-z0-9 ,}:]{0,20}") {
+        // §26.5: unclosed fence -> protected Unknown region, never a panic
+        let asl = parse_with(&s, ParseStrategy::BestEffort, ParserMode::FullProtection).unwrap();
+        if s.contains("```json\n{") {
+            prop_assert!(asl.nodes.iter().any(|n| n.kind == defuss_semantic_compress::NodeKind::Unknown && n.meta.protected));
+        }
+        prop_assert_eq!(render(&asl), s);
     }
 }

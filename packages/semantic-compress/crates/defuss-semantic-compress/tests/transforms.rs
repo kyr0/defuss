@@ -168,10 +168,29 @@ fn single_blank_line_preserved() {
 
 #[test]
 fn markdown_fence_content_is_compressed() {
-    // CodeFence(markdown) exception: det/filler rules apply inside
+    // CodeFence(markdown) exception: det/filler rules apply inside, but only
+    // in PartialProtection mode (§5.2); FullProtection leaves fences alone
     let input = "```markdown\nPlease fix the bug now.\n```\n";
-    let out = en(input);
-    assert!(out.contains("fix bug now"), "unexpected: {out:?}");
+    let out = compress(
+        input,
+        CompressConfig {
+            lang: Some("en".to_string()),
+            parser_mode: defuss_semantic_compress::ParserMode::PartialProtection,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(out.output.contains("fix bug now"), "unexpected: {out:?}");
+    // default (FullProtection): fence content untouched
+    let full = compress(
+        input,
+        CompressConfig {
+            lang: Some("en".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(full.output, input);
 }
 
 #[test]

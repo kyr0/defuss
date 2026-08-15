@@ -34,6 +34,8 @@ pub fn generate(asl: &Asl, input: &str, enabled: bool) -> Vec<Candidate> {
                 safety: SafetyClass::Safe,
                 requires_sibling_edit: false,
             allowed_in_protected: true,
+            confidence: 1.0,
+            review_on_low_confidence: true,
             })
         })
         .collect()

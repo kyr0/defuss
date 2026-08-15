@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0",
   "language": "en",
   "rules": [
     {
@@ -7,11 +8,26 @@
       "kind": "Remove",
       "layer": "Word",
       "priority": 200,
-      "match": [{ "class": "Det" }],
+      "match": [
+        {
+          "class": "Det"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
-        "forbidden_tags": ["NamedEntity", "Complementizer"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
+        "forbidden_tags": [
+          "NamedEntity",
+          "Complementizer"
+        ],
         "requires_non_empty_sentence": true
+      },
+      "confidence": 0.85,
+      "requires": {
+        "has_sentence_parent": true,
+        "language": "en"
       }
     },
     {
@@ -20,11 +36,26 @@
       "kind": "Remove",
       "layer": "Word",
       "priority": 200,
-      "match": [{ "class": "Filler" }],
+      "match": [
+        {
+          "class": "Filler"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
-        "forbidden_tags": ["NamedEntity", "Complementizer"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
+        "forbidden_tags": [
+          "NamedEntity",
+          "Complementizer"
+        ],
         "requires_non_empty_sentence": true
+      },
+      "confidence": 0.85,
+      "requires": {
+        "has_sentence_parent": true,
+        "language": "en"
       }
     },
     {
@@ -33,10 +64,21 @@
       "kind": "Remove",
       "layer": "Word",
       "priority": 300,
-      "match": [{ "class": "BadWord" }],
+      "match": [
+        {
+          "class": "BadWord"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_non_empty_sentence": true
+      },
+      "confidence": 1.0,
+      "requires": {
+        "language": "en"
       }
     },
     {
@@ -45,12 +87,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "i" }, { "whitespace": true }, { "word": "would" }],
+      "match": [
+        {
+          "word": "i"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "would"
+        }
+      ],
       "replacement": "I'd",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.i_am",
@@ -58,12 +114,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "i" }, { "whitespace": true }, { "word": "am" }],
+      "match": [
+        {
+          "word": "i"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "am"
+        }
+      ],
       "replacement": "I'm",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.i_will",
@@ -71,12 +141,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "i" }, { "whitespace": true }, { "word": "will" }],
+      "match": [
+        {
+          "word": "i"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "will"
+        }
+      ],
       "replacement": "I'll",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.you_are",
@@ -84,12 +168,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "you" }, { "whitespace": true }, { "word": "are" }],
+      "match": [
+        {
+          "word": "you"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "are"
+        }
+      ],
       "replacement": "you're",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.we_are",
@@ -97,12 +195,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "we" }, { "whitespace": true }, { "word": "are" }],
+      "match": [
+        {
+          "word": "we"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "are"
+        }
+      ],
       "replacement": "we're",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.they_are",
@@ -110,12 +222,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "they" }, { "whitespace": true }, { "word": "are" }],
+      "match": [
+        {
+          "word": "they"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "are"
+        }
+      ],
       "replacement": "they're",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.it_is",
@@ -123,12 +249,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "it" }, { "whitespace": true }, { "word": "is" }],
+      "match": [
+        {
+          "word": "it"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "is"
+        }
+      ],
       "replacement": "it's",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.you_will",
@@ -136,12 +276,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "you" }, { "whitespace": true }, { "word": "will" }],
+      "match": [
+        {
+          "word": "you"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "will"
+        }
+      ],
       "replacement": "you'll",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.we_will",
@@ -149,12 +303,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "we" }, { "whitespace": true }, { "word": "will" }],
+      "match": [
+        {
+          "word": "we"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "will"
+        }
+      ],
       "replacement": "we'll",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.they_will",
@@ -162,12 +330,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "they" }, { "whitespace": true }, { "word": "will" }],
+      "match": [
+        {
+          "word": "they"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "will"
+        }
+      ],
       "replacement": "they'll",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.you_have",
@@ -175,12 +357,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "you" }, { "whitespace": true }, { "word": "have" }],
+      "match": [
+        {
+          "word": "you"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "have"
+        }
+      ],
       "replacement": "you've",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.we_have",
@@ -188,12 +384,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "we" }, { "whitespace": true }, { "word": "have" }],
+      "match": [
+        {
+          "word": "we"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "have"
+        }
+      ],
       "replacement": "we've",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "en.contract.they_have",
@@ -201,12 +411,26 @@
       "kind": "Replace",
       "layer": "Word",
       "priority": 100,
-      "match": [{ "word": "they" }, { "whitespace": true }, { "word": "have" }],
+      "match": [
+        {
+          "word": "they"
+        },
+        {
+          "whitespace": true
+        },
+        {
+          "word": "have"
+        }
+      ],
       "replacement": "they've",
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     }
   ]
 }

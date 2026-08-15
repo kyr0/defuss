@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0",
   "language": "de",
   "action_words": [
     "analysieren",
@@ -9,7 +10,6 @@
     "baue",
     "beschreiben",
     "beschreibe",
-    "bitte",
     "erklären",
     "erkläre",
     "erstellen",
@@ -21,10 +21,6 @@
     "helfen",
     "implementieren",
     "implementiere",
-    "kannst",
-    "könntest",
-    "können",
-    "könnten",
     "löschen",
     "lösche",
     "lesen",
@@ -45,8 +41,6 @@
     "teste",
     "übersetzen",
     "übersetze",
-    "würdest",
-    "würden",
     "zeigen",
     "zeige",
     "zusammenfassen",
@@ -64,13 +58,22 @@
       "priority": 500,
       "anchor": "start",
       "match": [
-        { "word": "bitte" },
-        { "symbol": ",", "optional": true }
+        {
+          "word": "bitte"
+        },
+        {
+          "symbol": ",",
+          "optional": true
+        }
       ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_following_action_word": true
-      }
+      },
+      "confidence": 0.98
     },
     {
       "id": "de.polite.bitte_kannst_du",
@@ -80,15 +83,28 @@
       "priority": 500,
       "anchor": "start",
       "match": [
-        { "word": "bitte" },
-        { "symbol": ",", "optional": true },
-        { "word": "kannst" },
-        { "word": "du" }
+        {
+          "word": "bitte"
+        },
+        {
+          "symbol": ",",
+          "optional": true
+        },
+        {
+          "word": "kannst"
+        },
+        {
+          "word": "du"
+        }
       ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_following_action_word": true
-      }
+      },
+      "confidence": 0.98
     },
     {
       "id": "de.polite.bitte_könntest_du",
@@ -98,15 +114,28 @@
       "priority": 500,
       "anchor": "start",
       "match": [
-        { "word": "bitte" },
-        { "symbol": ",", "optional": true },
-        { "word": "könntest" },
-        { "word": "du" }
+        {
+          "word": "bitte"
+        },
+        {
+          "symbol": ",",
+          "optional": true
+        },
+        {
+          "word": "könntest"
+        },
+        {
+          "word": "du"
+        }
       ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_following_action_word": true
-      }
+      },
+      "confidence": 0.98
     },
     {
       "id": "de.polite.kannst_du",
@@ -115,11 +144,22 @@
       "layer": "Phrase",
       "priority": 500,
       "anchor": "start",
-      "match": [{ "word": "kannst" }, { "word": "du" }],
+      "match": [
+        {
+          "word": "kannst"
+        },
+        {
+          "word": "du"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_following_action_word": true
-      }
+      },
+      "confidence": 0.98
     },
     {
       "id": "de.polite.könntest_du",
@@ -128,11 +168,22 @@
       "layer": "Phrase",
       "priority": 500,
       "anchor": "start",
-      "match": [{ "word": "könntest" }, { "word": "du" }],
+      "match": [
+        {
+          "word": "könntest"
+        },
+        {
+          "word": "du"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_following_action_word": true
-      }
+      },
+      "confidence": 0.98
     },
     {
       "id": "de.polite.würdest_du",
@@ -141,11 +192,22 @@
       "layer": "Phrase",
       "priority": 500,
       "anchor": "start",
-      "match": [{ "word": "würdest" }, { "word": "du" }],
+      "match": [
+        {
+          "word": "würdest"
+        },
+        {
+          "word": "du"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_following_action_word": true
-      }
+      },
+      "confidence": 0.98
     },
     {
       "id": "de.polite.können_sie",
@@ -154,11 +216,22 @@
       "layer": "Phrase",
       "priority": 500,
       "anchor": "start",
-      "match": [{ "word": "können" }, { "word": "sie" }],
+      "match": [
+        {
+          "word": "können"
+        },
+        {
+          "word": "sie"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_following_action_word": true
-      }
+      },
+      "confidence": 0.98
     },
     {
       "id": "de.polite.würden_sie",
@@ -167,11 +240,22 @@
       "layer": "Phrase",
       "priority": 500,
       "anchor": "start",
-      "match": [{ "word": "würden" }, { "word": "sie" }],
+      "match": [
+        {
+          "word": "würden"
+        },
+        {
+          "word": "sie"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_following_action_word": true
-      }
+      },
+      "confidence": 0.98
     },
     {
       "id": "de.polite.bitte_suffix",
@@ -180,11 +264,21 @@
       "layer": "Phrase",
       "priority": 500,
       "anchor": "end",
-      "absorb_leading_symbols": [","],
-      "match": [{ "word": "bitte" }],
+      "absorb_leading_symbols": [
+        ","
+      ],
+      "match": [
+        {
+          "word": "bitte"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"]
-      }
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ]
+      },
+      "confidence": 0.98
     },
     {
       "id": "de.polite.danke",
@@ -193,11 +287,21 @@
       "layer": "Phrase",
       "priority": 500,
       "anchor": "end",
-      "absorb_leading_symbols": [","],
-      "match": [{ "word": "danke" }],
+      "absorb_leading_symbols": [
+        ","
+      ],
+      "match": [
+        {
+          "word": "danke"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"]
-      }
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ]
+      },
+      "confidence": 0.98
     }
   ]
 }

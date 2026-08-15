@@ -1,0 +1,7 @@
+{
+  "id": "v2.confidence_filtering",
+  "lang": "en",
+  "input": "Please fix the bug.",
+  "min_confidence": 0.9,
+  "expected": "fix the bug"
+}

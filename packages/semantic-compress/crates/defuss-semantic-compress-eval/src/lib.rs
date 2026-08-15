@@ -19,4 +19,4 @@ pub mod runner;
 pub use assertion::Assertion;
 pub use fixture::{load_fixtures, EvalFixture};
 pub use provider::{provider_for, MockProvider, ModelParams, OpenAiProvider, Provider};
-pub use runner::{run_eval, EvalFailure, EvalOptions, EvalReport};
+pub use runner::{run_eval, EvalFailure, EvalOptions, EvalReport, FixtureResult};

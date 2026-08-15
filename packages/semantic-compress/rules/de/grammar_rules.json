@@ -1,6 +1,11 @@
 {
+  "schema_version": "1.0",
   "language": "de",
   "classify_rules": [],
-  "named_entities": ["Der Spiegel", "Die Zeit", "Das Boot"],
+  "named_entities": [
+    "Der Spiegel",
+    "Die Zeit",
+    "Das Boot"
+  ],
   "infinitive_verbs": []
 }

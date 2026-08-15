@@ -16,6 +16,7 @@ fn lexicon(lang: &str, det: &[&str], filler: &[&str]) -> Lexicon {
         filler.iter().map(|s| s.to_string()).collect(),
     );
     Lexicon {
+        schema_version: "1.0".to_string(),
         language: lang.to_string(),
         classes,
     }
@@ -25,8 +26,8 @@ fn lexicon(lang: &str, det: &[&str], filler: &[&str]) -> Lexicon {
 fn word_in_one_language_is_classified() {
     let en = lexicon("en", &["the"], &["just"]);
     let overlay = LexiconOverlay::build(&[("en", en.entries())]);
-    assert_eq!(overlay.classify("the"), Some("det"));
-    assert_eq!(overlay.classify("just"), Some("filler"));
+    assert_eq!(overlay.classify("the"), Some(("det", "en")));
+    assert_eq!(overlay.classify("just"), Some(("filler", "en")));
     assert_eq!(overlay.classify("unrelated"), None);
 }
 
@@ -54,28 +55,28 @@ fn word_in_two_languages_same_class_still_omitted() {
 fn casefold_works() {
     let en = lexicon("en", &["The"], &[]);
     let overlay = LexiconOverlay::build(&[("en", en.entries())]);
-    assert_eq!(overlay.classify(&fold_word("THE")), Some("det"));
-    assert_eq!(overlay.classify(&fold_word("The")), Some("det"));
-    assert_eq!(overlay.classify(&fold_word("the")), Some("det"));
+    assert_eq!(overlay.classify(&fold_word("THE")), Some(("det", "en")));
+    assert_eq!(overlay.classify(&fold_word("The")), Some(("det", "en")));
+    assert_eq!(overlay.classify(&fold_word("the")), Some(("det", "en")));
 }
 
 #[test]
 fn shipped_en_de_packs_have_no_ambiguous_lexicon_words() {
     // the bundled packs are designed disjoint; overlay must keep them all
-    let rules = load_rules(None, None).unwrap();
+    let rules = load_rules(None, None, &[]).unwrap();
     let overlay = classify::build_overlay(&rules);
     assert!(
         overlay.ambiguous_words().is_empty(),
         "unexpected ambiguous words: {:?}",
         overlay.ambiguous_words()
     );
-    assert_eq!(overlay.classify("the"), Some("det"));
-    assert_eq!(overlay.classify("der"), Some("det"));
+    assert_eq!(overlay.classify("the"), Some(("det", "en")));
+    assert_eq!(overlay.classify("der"), Some(("det", "de")));
 }
 
 #[test]
 fn classification_assigns_kinds_and_tags() {
-    let rules = load_rules(Some("en"), None).unwrap();
+    let rules = load_rules(Some("en"), None, &[]).unwrap();
     let mut asl = parse("the bug is basically fixed.");
     classify::classify(&mut asl, &rules);
     let the = asl
@@ -96,7 +97,7 @@ fn classification_assigns_kinds_and_tags() {
 
 #[test]
 fn classification_skips_quotes() {
-    let rules = load_rules(Some("en"), None).unwrap();
+    let rules = load_rules(Some("en"), None, &[]).unwrap();
     let mut asl = parse("\"the\" is a word.\n");
     classify::classify(&mut asl, &rules);
     let the = asl

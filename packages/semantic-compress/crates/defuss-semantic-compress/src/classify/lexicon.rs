@@ -6,9 +6,15 @@ use crate::parse::token::fold_word;
 /// Per-language word-class lexicon (§9).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Lexicon {
+    #[serde(default = "default_schema_version")]
+    pub schema_version: String,
     pub language: String,
     /// class name -> words (e.g. "det" -> ["the", "a", ...])
     pub classes: BTreeMap<String, Vec<String>>,
+}
+
+fn default_schema_version() -> String {
+    "1.0".to_string()
 }
 
 impl Lexicon {

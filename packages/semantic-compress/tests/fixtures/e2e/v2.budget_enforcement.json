@@ -1,0 +1,7 @@
+{
+  "id": "v2.budget_enforcement",
+  "lang": "en",
+  "input": "Please, could you basically fix the bug in this project now, thanks.",
+  "min_output_ratio": 0.9,
+  "expected": "Please, could you basically fix the bug in this project now, thanks."
+}

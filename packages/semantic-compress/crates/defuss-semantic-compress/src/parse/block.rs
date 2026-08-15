@@ -1,4 +1,5 @@
 use crate::asl::{Asl, NodeId, NodeKind, Tag};
+use crate::config::ParserMode;
 use crate::parse::codefence::{fence_close, fence_open};
 use crate::parse::markdown::{
     heading_level, is_blockquote, is_table_alignment_row, is_table_row, list_item_marker,
@@ -82,7 +83,13 @@ fn tokenize_line_content(
 
 /// Parses `lines` (absolute byte offsets into `input`) into block nodes under
 /// `parent`. Lossless: every byte of the line range ends up in a leaf.
-pub fn parse_blocks(asl: &mut Asl, input: &str, parent: NodeId, lines: &[Line]) {
+pub fn parse_blocks(
+    asl: &mut Asl,
+    input: &str,
+    parent: NodeId,
+    lines: &[Line],
+    mode: ParserMode,
+) {
     let mut i = 0usize;
     while i < lines.len() {
         let line = lines[i];
@@ -107,7 +114,9 @@ pub fn parse_blocks(asl: &mut Asl, input: &str, parent: NodeId, lines: &[Line]) 
 
         // code fence
         if let Some((fence_char, fence_len, preamble)) = fence_open(text) {
-            i = parse_code_fence(asl, input, parent, lines, i, fence_char, fence_len, preamble);
+            i = parse_code_fence(
+                asl, input, parent, lines, i, fence_char, fence_len, preamble, mode,
+            );
             continue;
         }
 
@@ -302,6 +311,7 @@ fn parse_code_fence(
     fence_char: char,
     fence_len: usize,
     preamble: String,
+    mode: ParserMode,
 ) -> usize {
     let open = lines[start_idx];
     let mut j = start_idx + 1;
@@ -313,10 +323,12 @@ fn parse_code_fence(
         }
         j += 1;
     }
+    let unclosed = close_idx.is_none();
     let end_line = close_idx.map(|c| lines[c]).unwrap_or(lines[lines.len() - 1]);
     let span = Span::new(open.start, end_line.nl_end);
     let fid = asl.add_node(NodeKind::CodeFence, span, parent, None);
     let preamble_norm = preamble.to_lowercase();
+    let is_markdown = matches!(preamble_norm.as_str(), "markdown" | "md");
     {
         let f = asl.node_mut(fid);
         f.meta
@@ -325,7 +337,20 @@ fn parse_code_fence(
         f.meta
             .attrs
             .insert("preamble".to_string(), preamble_norm.clone());
-        if !matches!(preamble_norm.as_str(), "markdown" | "md") {
+        if unclosed {
+            f.meta
+                .attrs
+                .insert("malformed".to_string(), "unclosed".to_string());
+        }
+        // protection per parser mode (§5.2); malformed regions are always
+        // protected (§6.1)
+        let protected = unclosed
+            || match mode {
+                ParserMode::FullProtection => true,
+                ParserMode::PartialProtection => !is_markdown,
+                ParserMode::MinimalProtection => false,
+            };
+        if protected {
             f.meta.protected = true;
             f.meta.tags.push(Tag::CodeFence);
         }
@@ -347,8 +372,8 @@ fn parse_code_fence(
             fid,
             None,
         );
-        if matches!(preamble_norm.as_str(), "markdown" | "md") {
-            // markdown fences are parsed recursively and are not protected
+        if is_markdown && mode != ParserMode::FullProtection && !unclosed {
+            // markdown fences are parsed as prose (Partial/Minimal modes)
             let body_lines: Vec<Line> = split_lines(&input[body_start..body_end])
                 .into_iter()
                 .map(|l| Line {
@@ -357,14 +382,18 @@ fn parse_code_fence(
                     nl_end: l.nl_end + body_start,
                 })
                 .collect();
-            parse_blocks(asl, input, bid, &body_lines);
+            parse_blocks(asl, input, bid, &body_lines, mode);
         } else {
-            asl.add_node(
+            let leaf = asl.add_node(
                 NodeKind::Unknown,
                 Span::new(body_start, body_end),
                 bid,
                 Some(input[body_start..body_end].to_string()),
             );
+            if unclosed {
+                // malformed region: protected, passes through unchanged
+                asl.node_mut(leaf).meta.protected = true;
+            }
         }
     }
     // closing line (including newline)

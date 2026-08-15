@@ -126,3 +126,38 @@ fn run_eval_writes_report() {
     assert_eq!(written["passed"], 1);
     assert_eq!(written["failures"], serde_json::json!([]));
 }
+
+/// Per-fixture report entries carry the compressed run's per-section
+/// metrics (v2): a two-block input yields two section entries.
+#[test]
+fn run_eval_report_includes_sections() {
+    let dir = tempfile::tempdir().unwrap();
+    write_fixture(
+        dir.path(),
+        "two_blocks.json",
+        r#"{
+  "id": "two_blocks",
+  "task_type": "echo",
+  "input": "Please, could you fix the bug in this function now?\n\n```sh\ncd /Users/aron/x\n```\n",
+  "models": ["mock:echo"],
+  "mock_response": "fix the bug",
+  "assert": { "type": "contains_required_terms", "terms": ["fix"] }
+}"#,
+    );
+    let report = run_eval(dir.path(), &EvalOptions::default());
+    assert_eq!(report.passed, 1, "failures: {:?}", report.failures);
+
+    assert_eq!(report.results.len(), 1);
+    let entry = &report.results[0];
+    assert_eq!(entry.id, "two_blocks");
+    assert!(entry.passed);
+    assert!(entry.input_bytes > entry.output_bytes);
+    assert_eq!(entry.byte_saving, entry.input_bytes - entry.output_bytes);
+    assert!(
+        entry.sections.len() >= 2,
+        "expected >= 2 sections (paragraph + codefence), got {:?}",
+        entry.sections
+    );
+    assert_eq!(entry.sections[0].kind, "paragraph");
+    assert_eq!(entry.sections[1].kind, "codefence");
+}

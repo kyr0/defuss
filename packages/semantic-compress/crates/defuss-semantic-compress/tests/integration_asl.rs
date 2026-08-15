@@ -55,7 +55,7 @@ fn run_fixture(fx: &IntegrationFixture) -> Result<(), String> {
         lang: fx.lang.clone(),
         ..Default::default()
     };
-    let analysis = compressor.analyze(&fx.input, &config);
+    let analysis = compressor.analyze(&fx.input, &config).map_err(|e| e.to_string())?;
 
     // 1. classifications
     for (text, expected) in &fx.expected_classifications {

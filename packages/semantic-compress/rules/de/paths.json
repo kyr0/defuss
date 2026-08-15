@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0",
   "rules": [
     {
       "id": "path.home.macos",
@@ -10,7 +11,8 @@
       "replacement": "~",
       "guards": {
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     },
     {
       "id": "path.home.linux",
@@ -22,7 +24,8 @@
       "replacement": "~",
       "guards": {
         "requires_utf8_saving": true
-      }
+      },
+      "confidence": 0.95
     }
   ]
 }

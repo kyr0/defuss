@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0",
   "language": "en",
   "classify_rules": [
     {
@@ -7,10 +8,13 @@
       "before": [
         "think|believe|know|ensure|verify|confirm|assume|mean|say|said|claim|fact|hope|feel|guess|suppose|understand|realize|notice|expect|note"
       ],
-      "after": ["\\w+"],
+      "after": [
+        "\\w+"
+      ],
       "classify_as": "Complementizer",
       "protect": true,
-      "protect_following": true
+      "protect_following": true,
+      "confidence": 0.99
     }
   ],
   "named_entities": [

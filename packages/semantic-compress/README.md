@@ -84,11 +84,53 @@ tests/fixtures/
 Every compression run verifies:
 
 - output is valid UTF-8 and never longer than the input
+- output satisfies the compression budget (`min_output_ratio`, default 10%)
 - no resolved candidate intersects a protected span
 - **idempotence**: `compress(compress(x)) == compress(x)`
 
 Any violation falls back to returning the input unchanged and is counted in
-`metrics.safety_violations`.
+`metrics.safety_violations`. When the budget and idempotence constraints
+conflict (extreme compression pressure), the input is returned unchanged —
+both constraints are hard.
+
+## v2 features (per `plans/semantic-compress-updated.md`)
+
+- **Parser protection modes** — `ParserMode::FullProtection` (default: no
+  prose transforms inside any code fence), `PartialProtection` (v1 behavior:
+  `markdown` fences get prose transforms), `MinimalProtection` (fences
+  parsed but unprotected; format minifiers still apply).
+- **Parse strategies** — `ParseStrategy::BestEffort` (default: malformed
+  regions like unclosed fences become protected `Unknown` nodes that pass
+  through unchanged) and `ParseStrategy::Strict` (malformed input is an
+  error).
+- **Rule schema versioning** — every pack file carries `schema_version`;
+  packs newer than the binary's supported version are rejected at load time.
+- **Rule preconditions** — rules may declare `requires`:
+  `has_sentence_parent`, `language`, `max_removal_ratio`.
+- **Confidence scores + Review kind** — every rule has a confidence;
+  candidates below `min_confidence` (default 0.8) are downgraded to
+  `Review`: traced but never applied. `review_on_low_confidence: false`
+  drops them entirely.
+- **Compression budget guard** — `min_output_ratio` (default 0.1) and
+  `max_removal_tokens`; lowest-ranked candidates are downgraded to Review
+  until the projected output satisfies the budget. Projection is exact
+  (built through the resolver + WritePlan).
+- **Interval-index conflict resolution** — accepted spans live in a
+  `SpanIndex`; overlap queries avoid the O(n²) all-pairs scan.
+- **WritePlan architecture** — output is assembled from passthrough spans +
+  insertions; enables `--dry-run` and exact per-section metrics.
+- **Normalization cache** — folded/alias lookups cached per word.
+- **Rule pack composition + validation** — builtin packs, `--rules`
+  filesystem packs and `extra_rules` compose; packs are validated on load
+  (duplicate ids, regexes compile, referenced classes exist, confidence
+  range, schema version).
+- **Chunked processing** — `compress_chunked` splits at top-level blank
+  lines (fence-aware); CLI `--stream` / `--parallel` build on it.
+- **Per-section metrics** — `metrics.sections` reports per top-level block:
+  kind, input/output bytes, candidates generated/applied.
+- **No-op detection + result flags** — `no_candidates_applied`, `idempotent`
+  on every result; a `shared.no_candidates` trace event is emitted when
+  nothing applied.
 
 ## Usage
 
@@ -114,6 +156,15 @@ defuss-semantic-compress --stdin --lang de
 defuss-semantic-compress ast file.md          # dump the ASL as JSON
 defuss-semantic-compress test tests/fixtures/e2e/
 defuss-semantic-compress eval tests/fixtures/llm_effect/
+
+# v2 flags
+defuss-semantic-compress file.md --dry-run    # report only, no output text
+defuss-semantic-compress file.md --stream     # chunk-by-chunk streaming
+defuss-semantic-compress file.md --parallel   # multi-threaded chunks
+defuss-semantic-compress file.md --parser-mode full|partial|minimal
+defuss-semantic-compress file.md --min-confidence 0.9
+defuss-semantic-compress file.md --min-output-ratio 0.05
+defuss-semantic-compress file.md --rules ./a --rules ./b   # composition
 ```
 
 ### WASM / JS
@@ -158,7 +209,10 @@ cargo test --workspace
 - integration fixtures against the ASL (`tests/fixtures/integration`)
 - negative fixtures (§28.4 of the plan) must stay byte-identical
 - proptest properties: parse/render identity, UTF-8 validity, idempotence,
-  span validity, non-overlapping resolutions, protected-span integrity
+  span validity, non-overlapping resolutions, protected-span integrity,
+  budget compliance, parent-pointer consistency, fallback-node protection
+- adversarial fixtures (malformed input, nesting, unicode, 1MB+ lines, ...)
+- rule pack validation + schema versioning tests
 - LLM effect harness: `defuss-semantic-compress-eval` with `mock:` providers
   offline, OpenAI-compatible providers via env config
 
@@ -183,6 +237,21 @@ resolved conservatively:
    "applies everywhere" wording.
 6. Markdown table normal form is uniform: no leading/trailing pipe, `|`
    separators (the plan's §21.6 example output is internally inconsistent).
+
+### v2 additions
+
+7. **`min_confidence` defaults to 0.8**, not the v2 plan's 0.9: the shipped
+   DET/FILLER rules carry confidence 0.85, so 0.9 would downgrade them by
+   default and contradict §18.1 / §26.3 fixture expectations. Use
+   `--min-confidence 0.9` for high-confidence-only mode.
+8. **Budget vs. idempotence conflicts fall back to the input.** §19.2 makes
+   both `min_output_ratio` and idempotence hard constraints; for pathological
+   inputs (e.g. 50+ overlapping removals in one sentence) no output can
+   satisfy both, so the safety net returns the input unchanged and counts a
+   violation.
+9. **FullProtection is the default parser mode** (§21), so `markdown` fence
+   bodies are not prose-transformed by default; use `--parser-mode partial`
+   for the v1 behavior.
 
 ## License
 

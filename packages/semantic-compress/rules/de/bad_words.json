@@ -1,4 +1,11 @@
 {
+  "schema_version": "1.0",
   "language": "de",
-  "words": ["verdammt", "scheiße", "scheisse", "mist", "arsch"]
+  "words": [
+    "verdammt",
+    "scheiße",
+    "scheisse",
+    "mist",
+    "arsch"
+  ]
 }

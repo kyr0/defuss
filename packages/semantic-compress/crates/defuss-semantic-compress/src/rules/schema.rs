@@ -6,6 +6,8 @@ use std::collections::BTreeMap;
 /// rules/{lang}/bad_words.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BadWordsJson {
+    #[serde(default = "default_schema_version")]
+    pub schema_version: String,
     pub language: String,
     pub words: Vec<String>,
 }
@@ -13,6 +15,8 @@ pub struct BadWordsJson {
 /// rules/{lang}/grammar_rules.json (§11, §20.1)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GrammarRulesJson {
+    #[serde(default = "default_schema_version")]
+    pub schema_version: String,
     pub language: String,
     #[serde(default)]
     pub classify_rules: Vec<ClassifyRuleJson>,
@@ -28,6 +32,8 @@ pub struct GrammarRulesJson {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClassifyRuleJson {
     pub id: String,
+    #[serde(default = "default_confidence")]
+    pub confidence: f32,
     /// folded word this rule targets (e.g. "that")
     pub target: String,
     /// regexes; the previous word token must match one of them
@@ -49,6 +55,8 @@ pub struct ClassifyRuleJson {
 /// rules/{lang}/replacements.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReplacementsJson {
+    #[serde(default = "default_schema_version")]
+    pub schema_version: String,
     pub language: String,
     pub rules: Vec<RuleJson>,
 }
@@ -56,6 +64,8 @@ pub struct ReplacementsJson {
 /// rules/{lang}/politeness_phrases.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolitenessJson {
+    #[serde(default = "default_schema_version")]
+    pub schema_version: String,
     pub language: String,
     #[serde(default)]
     pub action_words: Vec<String>,
@@ -65,6 +75,8 @@ pub struct PolitenessJson {
 /// rules/{lang}/paths.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathsJson {
+    #[serde(default = "default_schema_version")]
+    pub schema_version: String,
     pub rules: Vec<RuleJson>,
 }
 
@@ -80,6 +92,20 @@ pub struct RuleJson {
     pub layer: String,
     #[serde(default)]
     pub priority: i32,
+
+    /// 0.0..1.0 confidence (§11). Candidates below the configured
+    /// `min_confidence` are downgraded to Review (traced, not applied).
+    #[serde(default = "default_confidence")]
+    pub confidence: f32,
+
+    /// When false, below-threshold candidates are dropped entirely instead
+    /// of being downgraded to Review (§11.1). Default: true (review).
+    #[serde(default = "default_true")]
+    pub review_on_low_confidence: bool,
+
+    /// Preconditions (§10.2): what the rule needs, not just what it forbids.
+    #[serde(default)]
+    pub requires: Option<RequiresJson>,
 
     /// Token-sequence pattern (sequence rules).
     #[serde(default, rename = "match")]
@@ -109,6 +135,21 @@ pub struct RuleJson {
 
     #[serde(default)]
     pub partial_match: bool,
+}
+
+/// Rule preconditions (§10.2).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RequiresJson {
+    /// Candidate's first target must have an enclosing Sentence.
+    #[serde(default)]
+    pub has_sentence_parent: bool,
+    /// All target words must have been classified from this language.
+    #[serde(default)]
+    pub language: Option<String>,
+    /// This candidate may not remove more than this fraction of its
+    /// sentence's words.
+    #[serde(default)]
+    pub max_removal_ratio: Option<f32>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -154,6 +195,8 @@ pub struct GuardsJson {
 /// rules/shared/markdown.json — toggles for programmatic markdown transforms.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SharedMarkdownJson {
+    #[serde(default = "default_schema_version")]
+    pub schema_version: String,
     #[serde(default = "default_true")]
     pub blank_line_collapse: bool,
     #[serde(default = "default_true")]
@@ -167,6 +210,7 @@ pub struct SharedMarkdownJson {
 impl Default for SharedMarkdownJson {
     fn default() -> Self {
         SharedMarkdownJson {
+            schema_version: default_schema_version(),
             blank_line_collapse: true,
             table_compress: true,
             final_period: true,
@@ -178,10 +222,20 @@ impl Default for SharedMarkdownJson {
 /// rules/shared/codefence_formats.json — which fence formats get compressed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SharedCodefenceFormatsJson {
+    #[serde(default = "default_schema_version")]
+    pub schema_version: String,
     #[serde(default)]
     pub formats: BTreeMap<String, bool>,
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_confidence() -> f32 {
+    1.0
+}
+
+fn default_schema_version() -> String {
+    "1.0".to_string()
 }

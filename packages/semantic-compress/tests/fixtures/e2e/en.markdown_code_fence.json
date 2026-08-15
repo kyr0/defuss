@@ -3,5 +3,6 @@
   "lang": "en",
   "input": "```markdown\nPlease fix the bug now.\n```\n",
   "expected": "```markdown\nfix bug now\n```\n",
-  "min_utf8_saving": 5
+  "min_utf8_saving": 5,
+  "parser_mode": "partial"
 }

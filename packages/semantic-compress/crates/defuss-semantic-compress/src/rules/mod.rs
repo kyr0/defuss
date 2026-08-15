@@ -1,3 +1,4 @@
+pub mod budget;
 pub mod candidate;
 pub mod loader;
 pub mod matcher;

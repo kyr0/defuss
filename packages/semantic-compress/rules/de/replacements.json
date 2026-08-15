@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0",
   "language": "de",
   "rules": [
     {
@@ -7,11 +8,26 @@
       "kind": "Remove",
       "layer": "Word",
       "priority": 200,
-      "match": [{ "class": "Det" }],
+      "match": [
+        {
+          "class": "Det"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
-        "forbidden_tags": ["NamedEntity", "Complementizer"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
+        "forbidden_tags": [
+          "NamedEntity",
+          "Complementizer"
+        ],
         "requires_non_empty_sentence": true
+      },
+      "confidence": 0.85,
+      "requires": {
+        "has_sentence_parent": true,
+        "language": "de"
       }
     },
     {
@@ -20,11 +36,26 @@
       "kind": "Remove",
       "layer": "Word",
       "priority": 200,
-      "match": [{ "class": "Filler" }],
+      "match": [
+        {
+          "class": "Filler"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
-        "forbidden_tags": ["NamedEntity", "Complementizer"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
+        "forbidden_tags": [
+          "NamedEntity",
+          "Complementizer"
+        ],
         "requires_non_empty_sentence": true
+      },
+      "confidence": 0.85,
+      "requires": {
+        "has_sentence_parent": true,
+        "language": "de"
       }
     },
     {
@@ -33,10 +64,21 @@
       "kind": "Remove",
       "layer": "Word",
       "priority": 300,
-      "match": [{ "class": "BadWord" }],
+      "match": [
+        {
+          "class": "BadWord"
+        }
+      ],
       "guards": {
-        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
         "requires_non_empty_sentence": true
+      },
+      "confidence": 1.0,
+      "requires": {
+        "language": "de"
       }
     }
   ]

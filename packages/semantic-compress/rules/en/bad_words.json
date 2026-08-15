@@ -1,4 +1,12 @@
 {
+  "schema_version": "1.0",
   "language": "en",
-  "words": ["damn", "hell", "crap", "shit", "fuck", "wtf"]
+  "words": [
+    "damn",
+    "hell",
+    "crap",
+    "shit",
+    "fuck",
+    "wtf"
+  ]
 }
