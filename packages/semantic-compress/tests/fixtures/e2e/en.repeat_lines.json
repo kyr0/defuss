@@ -1,0 +1,7 @@
+{
+  "id": "en.repeat_lines",
+  "lang": "en",
+  "input": "foo\nfoo\nfoo\n",
+  "expected": "foo x3\n",
+  "min_utf8_saving": 4
+}

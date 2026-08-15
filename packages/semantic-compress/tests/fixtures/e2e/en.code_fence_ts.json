@@ -1,0 +1,6 @@
+{
+  "id": "en.code_fence_ts",
+  "lang": "en",
+  "input": "```ts\nconst the = \"that\";\n```\n",
+  "expected": "```ts\nconst the = \"that\";\n```\n"
+}

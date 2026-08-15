@@ -1,0 +1,7 @@
+{
+  "id": "en.thanks_suffix",
+  "lang": "en",
+  "input": "Fix the bug, thank you.",
+  "expected": "Fix bug",
+  "min_utf8_saving": 5
+}

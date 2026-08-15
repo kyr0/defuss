@@ -1,0 +1,15 @@
+{
+  "id": "en.complementizer.protected",
+  "lang": "en",
+  "input": "I think that this works.",
+  "expected_classifications": [
+    [
+      "that",
+      "Complementizer"
+    ]
+  ],
+  "expected_candidates": [],
+  "expected_resolved": [],
+  "expected_rejected": [],
+  "expected_output": "I think that this works."
+}

@@ -1,0 +1,24 @@
+{
+  "language": "xx",
+  "rules": [
+    {
+      "id": "xx.det.remove",
+      "phase": "det_filler",
+      "kind": "Remove",
+      "layer": "Word",
+      "priority": 200,
+      "match": [
+        {
+          "class": "Det"
+        }
+      ],
+      "guards": {
+        "forbidden_ancestors": [
+          "Quote",
+          "CodeFence"
+        ],
+        "requires_non_empty_sentence": true
+      }
+    }
+  ]
+}

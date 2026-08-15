@@ -1,0 +1,7 @@
+{
+  "id": "en.code_fence_json",
+  "lang": "en",
+  "input": "```json\n{\n  \"a\": 1,\n  \"b\": [2, 3]\n}\n```\n",
+  "expected": "```json\n{\"a\":1,\"b\":[2,3]}\n```\n",
+  "min_utf8_saving": 5
+}

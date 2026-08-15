@@ -1,0 +1,7 @@
+{
+  "id": "en.fix_bug_polite",
+  "lang": "en",
+  "input": "Please, could you fix the bug now.",
+  "expected": "fix bug now",
+  "min_utf8_saving": 5
+}

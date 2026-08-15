@@ -1,0 +1,17 @@
+[package]
+name = "defuss-semantic-compress"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Deterministic, safe-only semantic compressor for LLM input text"
+license = "MIT"
+authors = ["Aron Homberg <info@aron-homberg.de>"]
+repository = "https://github.com/kyr0/defuss"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+regex = "1.10"
+
+[dev-dependencies]
+proptest = "1"

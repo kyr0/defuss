@@ -1,0 +1,19 @@
+[package]
+name = "defuss-semantic-compress-cli"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "CLI for defuss-semantic-compress"
+license = "MIT"
+
+[[bin]]
+name = "defuss-semantic-compress"
+path = "src/main.rs"
+
+[dependencies]
+defuss-semantic-compress = { path = "../defuss-semantic-compress" }
+defuss-semantic-compress-eval = { path = "../defuss-semantic-compress-eval" }
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[dev-dependencies]
+tempfile = "3"

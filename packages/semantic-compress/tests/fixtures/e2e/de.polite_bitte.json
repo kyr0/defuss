@@ -1,0 +1,7 @@
+{
+  "id": "de.polite_bitte",
+  "lang": "de",
+  "input": "Bitte repariere den Fehler jetzt.",
+  "expected": "repariere Fehler jetzt",
+  "min_utf8_saving": 5
+}

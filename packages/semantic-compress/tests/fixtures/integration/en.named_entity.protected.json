@@ -1,0 +1,20 @@
+{
+  "id": "en.named_entity.protected",
+  "lang": "en",
+  "input": "Please fix the bug in The Hague.",
+  "expected_classifications": [
+    [
+      "the",
+      "Det"
+    ]
+  ],
+  "expected_candidates": [
+    "en.polite.please_prefix",
+    "en.det.remove"
+  ],
+  "expected_resolved": [
+    "en.polite.please_prefix",
+    "en.det.remove"
+  ],
+  "expected_output": "fix bug in The Hague"
+}

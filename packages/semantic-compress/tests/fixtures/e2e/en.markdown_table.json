@@ -1,0 +1,7 @@
+{
+  "id": "en.markdown_table",
+  "lang": "en",
+  "input": "| Name | Age | City |\n| --- | ---: | --- |\n| Alice | 30 | Berlin |\n",
+  "expected": "Name|Age|City\n---|---:|---\nAlice|30|Berlin\n",
+  "min_utf8_saving": 5
+}

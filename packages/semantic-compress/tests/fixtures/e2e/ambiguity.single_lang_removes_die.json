@@ -1,0 +1,7 @@
+{
+  "id": "ambiguity.single_lang_removes_die",
+  "rules_path": "packs",
+  "lang": "xx",
+  "input": "die Sache",
+  "expected": "Sache"
+}

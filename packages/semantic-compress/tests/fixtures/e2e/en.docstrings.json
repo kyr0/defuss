@@ -1,0 +1,7 @@
+{
+  "id": "en.docstrings",
+  "lang": "en",
+  "input": "/**\n * Foo\n */\n",
+  "expected": "/** Foo */\n",
+  "min_utf8_saving": 3
+}

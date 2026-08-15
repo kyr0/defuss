@@ -1,0 +1,22 @@
+{
+  "id": "en.polite.det.punctuation",
+  "lang": "en",
+  "input": "Please, could you fix the bug now.",
+  "expected_classifications": [
+    [
+      "the",
+      "Det"
+    ]
+  ],
+  "expected_candidates": [
+    "en.polite.please_could_you",
+    "en.det.remove",
+    "shared.punctuation.final_period"
+  ],
+  "expected_resolved": [
+    "en.polite.please_could_you",
+    "en.det.remove",
+    "shared.punctuation.final_period"
+  ],
+  "expected_output": "fix bug now"
+}

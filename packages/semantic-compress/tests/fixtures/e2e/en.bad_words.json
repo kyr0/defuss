@@ -1,0 +1,7 @@
+{
+  "id": "en.bad_words",
+  "lang": "en",
+  "input": "What the hell is this bug.",
+  "expected": "What is bug",
+  "min_utf8_saving": 5
+}

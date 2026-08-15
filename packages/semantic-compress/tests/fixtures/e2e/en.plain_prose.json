@@ -1,0 +1,6 @@
+{
+  "id": "en.plain_prose",
+  "lang": "en",
+  "input": "He went to Berlin.",
+  "expected": "He went to Berlin."
+}

@@ -1,0 +1,19 @@
+{
+  "language": "en",
+  "classes": {
+    "det": ["the", "a", "an", "this", "that", "these", "those"],
+    "filler": ["basically", "actually", "simply", "just", "really", "quite"],
+    "negation": [
+      "not",
+      "no",
+      "never",
+      "cannot",
+      "nothing",
+      "nobody",
+      "nowhere",
+      "neither",
+      "nor",
+      "without"
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "id": "de.filler",
+  "lang": "de",
+  "input": "Das ist eigentlich wichtig.",
+  "expected": "ist wichtig"
+}

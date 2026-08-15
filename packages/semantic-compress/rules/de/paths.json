@@ -1,0 +1,28 @@
+{
+  "rules": [
+    {
+      "id": "path.home.macos",
+      "phase": "paths",
+      "kind": "Replace",
+      "layer": "Phrase",
+      "priority": 100,
+      "regex": "/Users/[A-Za-z0-9_.-]+",
+      "replacement": "~",
+      "guards": {
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "path.home.linux",
+      "phase": "paths",
+      "kind": "Replace",
+      "layer": "Phrase",
+      "priority": 100,
+      "regex": "/home/[A-Za-z0-9_.-]+",
+      "replacement": "~",
+      "guards": {
+        "requires_utf8_saving": true
+      }
+    }
+  ]
+}

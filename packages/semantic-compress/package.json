@@ -1,0 +1,22 @@
+{
+  "name": "defuss-semantic-compress",
+  "version": "0.1.0",
+  "description": "Deterministic, safe-only semantic compressor for LLM input text (Rust + WASM)",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cargo build --workspace --release",
+    "build:wasm": "wasm-pack build crates/defuss-semantic-compress-wasm --target web --out-dir pkg",
+    "test": "cargo test --workspace",
+    "cli": "cargo run -p defuss-semantic-compress-cli --"
+  },
+  "keywords": [
+    "llm",
+    "compression",
+    "semantic",
+    "tokenizer",
+    "rust",
+    "wasm"
+  ]
+}

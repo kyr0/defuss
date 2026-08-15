@@ -1,0 +1,6 @@
+{
+  "id": "en.named_entity_protection",
+  "lang": "en",
+  "input": "The Hague is nice.",
+  "expected": "The Hague is nice."
+}

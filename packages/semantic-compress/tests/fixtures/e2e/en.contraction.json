@@ -1,0 +1,7 @@
+{
+  "id": "en.contraction",
+  "lang": "en",
+  "input": "I am here to help.",
+  "expected": "I'm here to help",
+  "min_utf8_saving": 2
+}

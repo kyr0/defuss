@@ -1,0 +1,5 @@
+{
+  "id": "multilingual.mixed_safe",
+  "input": "Please fix the bug and repariere den Fehler.",
+  "expected": "fix bug and repariere Fehler"
+}

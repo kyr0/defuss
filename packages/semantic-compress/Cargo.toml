@@ -1,0 +1,14 @@
+[workspace]
+members = [
+  "crates/defuss-semantic-compress",
+  "crates/defuss-semantic-compress-cli",
+  "crates/defuss-semantic-compress-wasm",
+  "crates/defuss-semantic-compress-eval",
+]
+resolver = "2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = "symbols"

@@ -1,0 +1,7 @@
+{
+  "id": "en.paths",
+  "lang": "en",
+  "input": "open /Users/aron/code/project now",
+  "expected": "open ~/code/project now",
+  "min_utf8_saving": 5
+}

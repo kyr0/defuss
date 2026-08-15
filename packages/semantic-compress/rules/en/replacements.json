@@ -1,0 +1,212 @@
+{
+  "language": "en",
+  "rules": [
+    {
+      "id": "en.det.remove",
+      "phase": "det_filler",
+      "kind": "Remove",
+      "layer": "Word",
+      "priority": 200,
+      "match": [{ "class": "Det" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_tags": ["NamedEntity", "Complementizer"],
+        "requires_non_empty_sentence": true
+      }
+    },
+    {
+      "id": "en.filler.remove",
+      "phase": "det_filler",
+      "kind": "Remove",
+      "layer": "Word",
+      "priority": 200,
+      "match": [{ "class": "Filler" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_tags": ["NamedEntity", "Complementizer"],
+        "requires_non_empty_sentence": true
+      }
+    },
+    {
+      "id": "en.bad_words.remove",
+      "phase": "bad_words",
+      "kind": "Remove",
+      "layer": "Word",
+      "priority": 300,
+      "match": [{ "class": "BadWord" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_non_empty_sentence": true
+      }
+    },
+    {
+      "id": "en.contract.i_would",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "i" }, { "whitespace": true }, { "word": "would" }],
+      "replacement": "I'd",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.i_am",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "i" }, { "whitespace": true }, { "word": "am" }],
+      "replacement": "I'm",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.i_will",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "i" }, { "whitespace": true }, { "word": "will" }],
+      "replacement": "I'll",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.you_are",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "you" }, { "whitespace": true }, { "word": "are" }],
+      "replacement": "you're",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.we_are",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "we" }, { "whitespace": true }, { "word": "are" }],
+      "replacement": "we're",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.they_are",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "they" }, { "whitespace": true }, { "word": "are" }],
+      "replacement": "they're",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.it_is",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "it" }, { "whitespace": true }, { "word": "is" }],
+      "replacement": "it's",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.you_will",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "you" }, { "whitespace": true }, { "word": "will" }],
+      "replacement": "you'll",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.we_will",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "we" }, { "whitespace": true }, { "word": "will" }],
+      "replacement": "we'll",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.they_will",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "they" }, { "whitespace": true }, { "word": "will" }],
+      "replacement": "they'll",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.you_have",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "you" }, { "whitespace": true }, { "word": "have" }],
+      "replacement": "you've",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.we_have",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "we" }, { "whitespace": true }, { "word": "have" }],
+      "replacement": "we've",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    },
+    {
+      "id": "en.contract.they_have",
+      "phase": "contractions",
+      "kind": "Replace",
+      "layer": "Word",
+      "priority": 100,
+      "match": [{ "word": "they" }, { "whitespace": true }, { "word": "have" }],
+      "replacement": "they've",
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_utf8_saving": true
+      }
+    }
+  ]
+}

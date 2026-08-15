@@ -1,0 +1,43 @@
+{
+  "language": "de",
+  "rules": [
+    {
+      "id": "de.det.remove",
+      "phase": "det_filler",
+      "kind": "Remove",
+      "layer": "Word",
+      "priority": 200,
+      "match": [{ "class": "Det" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_tags": ["NamedEntity", "Complementizer"],
+        "requires_non_empty_sentence": true
+      }
+    },
+    {
+      "id": "de.filler.remove",
+      "phase": "det_filler",
+      "kind": "Remove",
+      "layer": "Word",
+      "priority": 200,
+      "match": [{ "class": "Filler" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "forbidden_tags": ["NamedEntity", "Complementizer"],
+        "requires_non_empty_sentence": true
+      }
+    },
+    {
+      "id": "de.bad_words.remove",
+      "phase": "bad_words",
+      "kind": "Remove",
+      "layer": "Word",
+      "priority": 300,
+      "match": [{ "class": "BadWord" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_non_empty_sentence": true
+      }
+    }
+  ]
+}

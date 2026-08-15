@@ -1,0 +1,44 @@
+{
+  "language": "de",
+  "classes": {
+    "det": [
+      "der",
+      "die",
+      "das",
+      "dieser",
+      "diese",
+      "dieses",
+      "ein",
+      "eine",
+      "einen",
+      "einem",
+      "einer",
+      "den",
+      "dem",
+      "des"
+    ],
+    "filler": [
+      "eigentlich",
+      "einfach",
+      "grundsätzlich",
+      "wirklich",
+      "ziemlich",
+      "nur",
+      "halt",
+      "eben"
+    ],
+    "negation": [
+      "nicht",
+      "kein",
+      "keine",
+      "keinen",
+      "keinem",
+      "keiner",
+      "nie",
+      "niemals",
+      "nichts",
+      "niemand",
+      "ohne"
+    ]
+  }
+}

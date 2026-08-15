@@ -1,0 +1,6 @@
+{
+  "id": "ambiguity.overlay_omits_die",
+  "rules_path": "packs",
+  "input": "die Sache",
+  "expected": "die Sache"
+}

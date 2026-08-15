@@ -1,0 +1,7 @@
+{
+  "id": "en.det_filler",
+  "lang": "en",
+  "input": "Please simply fix the bug within this project.",
+  "expected": "fix bug within project",
+  "min_utf8_saving": 5
+}

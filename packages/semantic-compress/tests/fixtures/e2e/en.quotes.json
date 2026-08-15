@@ -1,0 +1,6 @@
+{
+  "id": "en.quotes",
+  "lang": "en",
+  "input": "\"Please fix the bug.\"",
+  "expected": "\"Please fix the bug.\""
+}

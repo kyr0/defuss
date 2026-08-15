@@ -1,0 +1,6 @@
+{
+  "blank_line_collapse": true,
+  "table_compress": true,
+  "final_period": true,
+  "docstring_collapse": true
+}

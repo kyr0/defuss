@@ -1,0 +1,317 @@
+{
+  "language": "en",
+  "action_words": [
+    "add",
+    "analyze",
+    "analyse",
+    "build",
+    "can",
+    "change",
+    "check",
+    "close",
+    "compress",
+    "configure",
+    "could",
+    "create",
+    "delete",
+    "deploy",
+    "describe",
+    "do",
+    "explain",
+    "find",
+    "fix",
+    "generate",
+    "give",
+    "help",
+    "implement",
+    "install",
+    "let",
+    "list",
+    "make",
+    "note",
+    "open",
+    "please",
+    "read",
+    "refactor",
+    "remove",
+    "review",
+    "run",
+    "search",
+    "send",
+    "show",
+    "start",
+    "stop",
+    "summarize",
+    "tell",
+    "test",
+    "translate",
+    "update",
+    "verify",
+    "will",
+    "would",
+    "write"
+  ],
+  "rules": [
+    {
+      "id": "en.polite.please_prefix",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [
+        { "word": "please" },
+        { "symbol": ",", "optional": true }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.kindly",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [{ "word": "kindly" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.please_could_you",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [
+        { "word": "please" },
+        { "symbol": ",", "optional": true },
+        { "word": "could" },
+        { "word": "you" }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.please_can_you",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [
+        { "word": "please" },
+        { "symbol": ",", "optional": true },
+        { "word": "can" },
+        { "word": "you" }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.please_would_you",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [
+        { "word": "please" },
+        { "symbol": ",", "optional": true },
+        { "word": "would" },
+        { "word": "you" }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.please_will_you",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [
+        { "word": "please" },
+        { "symbol": ",", "optional": true },
+        { "word": "will" },
+        { "word": "you" }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.could_you",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [{ "word": "could" }, { "word": "you" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.can_you",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [{ "word": "can" }, { "word": "you" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.would_you",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [{ "word": "would" }, { "word": "you" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.will_you",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [{ "word": "will" }, { "word": "you" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.i_would_like_you_to",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "partial_match": true,
+      "match": [
+        { "normalized": "i_would" },
+        { "word": "like" },
+        { "word": "you" },
+        { "word": "to", "optional_if_class": "InfParticle" }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.i_would_appreciate_if_you_could",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [
+        { "normalized": "i_would" },
+        { "word": "appreciate" },
+        { "word": "if" },
+        { "word": "you" },
+        { "word": "could" }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "en.polite.please_suffix",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "end",
+      "absorb_leading_symbols": [","],
+      "match": [{ "word": "please" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"]
+      }
+    },
+    {
+      "id": "en.polite.thanks",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "end",
+      "absorb_leading_symbols": [","],
+      "match": [{ "word": "thanks" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"]
+      }
+    },
+    {
+      "id": "en.polite.thank_you",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "end",
+      "absorb_leading_symbols": [","],
+      "match": [{ "word": "thank" }, { "word": "you" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"]
+      }
+    },
+    {
+      "id": "en.polite.if_possible",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "end",
+      "absorb_leading_symbols": [","],
+      "match": [{ "word": "if" }, { "word": "possible" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"]
+      }
+    },
+    {
+      "id": "en.polite.when_you_have_time",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "end",
+      "absorb_leading_symbols": [","],
+      "match": [
+        { "word": "when" },
+        { "word": "you" },
+        { "word": "have" },
+        { "word": "time" }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"]
+      }
+    }
+  ]
+}

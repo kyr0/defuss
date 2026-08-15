@@ -1,0 +1,8 @@
+{
+  "id": "fix_bug_simple",
+  "task_type": "code_patch",
+  "input": "Please, could you fix the bug in this function now?\n```ts\nexport function add(a: number, b: number) {\n  return a - b;\n}\n```\n",
+  "models": ["mock:echo"],
+  "mock_response": "fix: change `a - b` to `a + b` to fix the bug in add()",
+  "assert": { "type": "contains_required_terms", "terms": ["fix", "bug"] }
+}

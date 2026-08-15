@@ -1,0 +1,30 @@
+{
+  "id": "en.conflict.removal_beats_replacement",
+  "lang": "en",
+  "input": "I would like you to build this.",
+  "expected_classifications": [
+    [
+      "this",
+      "Det"
+    ],
+    [
+      "to",
+      "InfParticle"
+    ]
+  ],
+  "expected_candidates": [
+    "en.contract.i_would",
+    "en.polite.i_would_like_you_to",
+    "en.det.remove",
+    "shared.punctuation.final_period"
+  ],
+  "expected_resolved": [
+    "en.polite.i_would_like_you_to",
+    "en.det.remove",
+    "shared.punctuation.final_period"
+  ],
+  "expected_rejected": [
+    "en.contract.i_would"
+  ],
+  "expected_output": "build"
+}

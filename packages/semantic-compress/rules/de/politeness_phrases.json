@@ -1,0 +1,203 @@
+{
+  "language": "de",
+  "action_words": [
+    "analysieren",
+    "analysiere",
+    "auflisten",
+    "ausführen",
+    "bauen",
+    "baue",
+    "beschreiben",
+    "beschreibe",
+    "bitte",
+    "erklären",
+    "erkläre",
+    "erstellen",
+    "erstelle",
+    "finden",
+    "finde",
+    "generieren",
+    "generiere",
+    "helfen",
+    "implementieren",
+    "implementiere",
+    "kannst",
+    "könntest",
+    "können",
+    "könnten",
+    "löschen",
+    "lösche",
+    "lesen",
+    "lese",
+    "öffnen",
+    "öffne",
+    "prüfen",
+    "prüfe",
+    "refaktorisieren",
+    "refaktorisiere",
+    "reparieren",
+    "repariere",
+    "schreiben",
+    "schreibe",
+    "suchen",
+    "suche",
+    "testen",
+    "teste",
+    "übersetzen",
+    "übersetze",
+    "würdest",
+    "würden",
+    "zeigen",
+    "zeige",
+    "zusammenfassen",
+    "ändern",
+    "ändere",
+    "aktualisieren",
+    "aktualisiere"
+  ],
+  "rules": [
+    {
+      "id": "de.polite.bitte_prefix",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [
+        { "word": "bitte" },
+        { "symbol": ",", "optional": true }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "de.polite.bitte_kannst_du",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [
+        { "word": "bitte" },
+        { "symbol": ",", "optional": true },
+        { "word": "kannst" },
+        { "word": "du" }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "de.polite.bitte_könntest_du",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [
+        { "word": "bitte" },
+        { "symbol": ",", "optional": true },
+        { "word": "könntest" },
+        { "word": "du" }
+      ],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "de.polite.kannst_du",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [{ "word": "kannst" }, { "word": "du" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "de.polite.könntest_du",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [{ "word": "könntest" }, { "word": "du" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "de.polite.würdest_du",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [{ "word": "würdest" }, { "word": "du" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "de.polite.können_sie",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [{ "word": "können" }, { "word": "sie" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "de.polite.würden_sie",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "start",
+      "match": [{ "word": "würden" }, { "word": "sie" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"],
+        "requires_following_action_word": true
+      }
+    },
+    {
+      "id": "de.polite.bitte_suffix",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "end",
+      "absorb_leading_symbols": [","],
+      "match": [{ "word": "bitte" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"]
+      }
+    },
+    {
+      "id": "de.polite.danke",
+      "phase": "politeness",
+      "kind": "Remove",
+      "layer": "Phrase",
+      "priority": 500,
+      "anchor": "end",
+      "absorb_leading_symbols": [","],
+      "match": [{ "word": "danke" }],
+      "guards": {
+        "forbidden_ancestors": ["Quote", "CodeFence"]
+      }
+    }
+  ]
+}

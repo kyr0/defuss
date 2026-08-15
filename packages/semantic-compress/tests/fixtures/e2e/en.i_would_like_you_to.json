@@ -1,0 +1,7 @@
+{
+  "id": "en.i_would_like_you_to",
+  "lang": "en",
+  "input": "I would like you to build this.",
+  "expected": "build",
+  "min_utf8_saving": 5
+}

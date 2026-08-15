@@ -1,0 +1,6 @@
+{
+  "id": "ambiguity.overlay_keeps_unambiguous_das",
+  "rules_path": "packs",
+  "input": "das Sache",
+  "expected": "Sache"
+}

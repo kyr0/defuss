@@ -1,0 +1,7 @@
+{
+  "id": "en.polite_suffix",
+  "lang": "en",
+  "input": "Could you fix the bug please.",
+  "expected": "fix bug",
+  "min_utf8_saving": 5
+}

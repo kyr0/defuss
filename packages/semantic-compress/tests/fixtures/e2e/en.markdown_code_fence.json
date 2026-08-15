@@ -1,0 +1,7 @@
+{
+  "id": "en.markdown_code_fence",
+  "lang": "en",
+  "input": "```markdown\nPlease fix the bug now.\n```\n",
+  "expected": "```markdown\nfix bug now\n```\n",
+  "min_utf8_saving": 5
+}

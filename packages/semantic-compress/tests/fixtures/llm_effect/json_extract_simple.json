@@ -1,0 +1,8 @@
+{
+  "id": "json_extract_simple",
+  "task_type": "json_extract",
+  "input": "Please, could you extract the user record as JSON now?\n```txt\nname: Alice, age: 30\n```\n",
+  "models": ["mock:echo"],
+  "mock_response": "{\"name\": \"Alice\", \"age\": 30}",
+  "assert": { "type": "exact_json", "expected": { "name": "Alice", "age": 30 } }
+}
