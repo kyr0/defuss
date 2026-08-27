@@ -33,3 +33,4 @@ scaffold*/
 /packages/icons/assets/
 /packages/icons/.cache_gh_api_tree.json
 /packages/icons/.cache_gh_api_contents.json
+/packages/icons/.cache_gh_repo_info.json

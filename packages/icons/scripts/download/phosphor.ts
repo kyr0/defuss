@@ -41,6 +41,29 @@ const downloadPhosphorFiles = async (basePath: string, batchSize: number) => {
 
 	const {icons: phosphorIcons} = await import(join(gitHubRepoSourceCodePath, 'index.ts'))
 	await saveFile(phosphorAssetPath, 'meta.json', JSON.stringify(phosphorIcons, null, 2))
+
+	const nodesNodes: Record<string, { sha: string; size: number }> =
+		await githubCli.getFolderNodes("assets").then((repsonse) =>
+			repsonse
+				.filter((node) => node.type === "blob" && node.path.endsWith(".svg"))
+				.reduce(
+					(prev, node) => {
+						prev[node.fullPath] = {
+							sha: node.sha,
+							size: node.size as number,
+						};
+
+						return prev;
+					},
+					{} as Record<string, { sha: string; size: number }>,
+				),
+		);
+
+	await saveFile(
+		phosphorAssetPath,
+		"github-nodes.json",
+		JSON.stringify(nodesNodes, null, 2),
+	);
 	console.log(`✅ Saved metadata for ${phosphorIcons.length} icons.`);
 
 	const phosphorSvgPath = join(phosphorAssetPath, 'svg');
@@ -52,7 +75,6 @@ const downloadPhosphorFiles = async (basePath: string, batchSize: number) => {
 			type: string
 		}>,
 		async (iconMetaData) => {
-
 			const iconName = iconMetaData.name.toLowerCase()
 				+ (iconMetaData.type !== 'regular' ? '-' + iconMetaData.type : '')
 				+ '.svg';
