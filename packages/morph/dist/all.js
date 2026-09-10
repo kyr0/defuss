@@ -233,6 +233,7 @@ var registerDelegatedEvent = (element, eventType, handler, options = {}) => {
     }
   }
 };
+var isEntryEmpty = (entry) => !entry.capture && !entry.bubble && (!entry.captureSet || entry.captureSet.size === 0) && (!entry.bubbleSet || entry.bubbleSet.size === 0);
 var removeDelegatedEvent = (target, eventType, handler, _options = {}) => {
   const byEvent = elementHandlerMap.get(target);
   if (!byEvent)
@@ -261,8 +262,7 @@ var removeDelegatedEvent = (target, eventType, handler, _options = {}) => {
     entry.captureSet = undefined;
     entry.bubbleSet = undefined;
   }
-  const isEmpty = !entry.capture && !entry.bubble && (!entry.captureSet || entry.captureSet.size === 0) && (!entry.bubbleSet || entry.bubbleSet.size === 0);
-  if (isEmpty) {
+  if (isEntryEmpty(entry)) {
     byEvent.delete(eventType);
   }
 };
@@ -317,8 +317,7 @@ var removeDelegatedEventByKey = (element, eventType, phase) => {
     entry.bubble = undefined;
     entry.bubbleSet = undefined;
   }
-  const isEmpty = !entry.capture && !entry.bubble && (!entry.captureSet || entry.captureSet.size === 0) && (!entry.bubbleSet || entry.bubbleSet.size === 0);
-  if (isEmpty)
+  if (isEntryEmpty(entry))
     byEvent.delete(eventType);
 };
 
@@ -540,7 +539,7 @@ var getRenderer = (document2) => {
       }
     },
     setAttributes: (virtualNode, domElement) => {
-      const attrNames = Object.keys(virtualNode.attributes);
+      const attrNames = Object.keys(virtualNode.attributes ?? {});
       for (let i = 0;i < attrNames.length; i++) {
         renderer.setAttribute(attrNames[i], virtualNode.attributes[attrNames[i]], domElement);
       }
@@ -676,23 +675,25 @@ function isTextLike(value) {
 function isVNode(value) {
   return Boolean(value && typeof value === "object" && "type" in value);
 }
-function toValidChild(child) {
+function toValidChild(child, lenient = false) {
   if (child == null)
     return child;
   if (isTextLike(child))
     return child;
   if (isVNode(child))
     return child;
+  if (lenient && child && typeof child === "object" && "attributes" in child)
+    return child;
   return;
 }
-function normalizeChildren(input) {
+function normalizeChildren(input, lenient = false) {
   const raw = [];
   const pushChild = (child) => {
     if (Array.isArray(child)) {
       child.forEach(pushChild);
       return;
     }
-    const valid = toValidChild(child);
+    const valid = toValidChild(child, lenient);
     if (typeof valid === "undefined")
       return;
     if (isVNode(valid) && (valid.type === "fragment" || valid.type === "Fragment")) {
@@ -733,6 +734,12 @@ function getVNodeMatchKey(child) {
   if (typeof id === "string" && id.length > 0)
     return `id:${id}`;
   return null;
+}
+function describePatchItem(child) {
+  if (child && typeof child === "object") {
+    return `<${typeof child.type === "string" ? child.type : "component"}>`;
+  }
+  return "plain text";
 }
 function getDomMatchKeys(node) {
   if (node.nodeType !== 1)
@@ -792,9 +799,9 @@ function shouldPreserveFormStateAttribute(el, attrName, vnode) {
     return attrName === "value";
   return false;
 }
-function patchElementInPlace(el, vnode, globals) {
+function patchElementInPlace(el, vnode, globals, mergeAttributes = false) {
   const renderer = getRenderer(globals.window.document);
-  const existingAttrs = Array.from(el.attributes);
+  const existingAttrs = mergeAttributes ? [] : Array.from(el.attributes);
   const nextAttrs = vnode.attributes ?? {};
   for (const attr of existingAttrs) {
     const { name } = attr;
@@ -811,7 +818,7 @@ function patchElementInPlace(el, vnode, globals) {
       el.removeAttribute(name);
     }
   }
-  const preserveDelegatedHandlers = Boolean(nextAttrs[FROM_DOM_MARKER]);
+  const preserveDelegatedHandlers = mergeAttributes || Boolean(nextAttrs[FROM_DOM_MARKER]);
   if (!preserveDelegatedHandlers) {
     const registeredKeys = getRegisteredEventKeys(el);
     const nextEventKeys = new Set;
@@ -843,9 +850,11 @@ function patchElementInPlace(el, vnode, globals) {
     if (isActive && !isControlled)
       return;
   }
+  if (mergeAttributes && (vnode.children === undefined || vnode.children.length === 0 && nextAttrs[FROM_DOM_MARKER]))
+    return;
   morphDomDirect(el, vnode.children ?? [], globals);
 }
-function morphNode(domNode, child, globals) {
+function morphNode(domNode, child, globals, mergeAttributes = false) {
   if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
     const text = String(child);
     if (domNode.nodeType === 3) {
@@ -882,7 +891,7 @@ function morphNode(domNode, child, globals) {
       handleLifecycleEventsForOnMount(first);
       return first;
     }
-    patchElementInPlace(el, child, globals);
+    patchElementInPlace(el, child, globals, mergeAttributes);
     return el;
   }
   domNode.parentNode?.removeChild(domNode);
@@ -910,31 +919,70 @@ function flushPendingMorphs() {
     return;
   const snapshot = [...pendingMorphs.entries()];
   pendingMorphs.clear();
-  for (const [el, { vdom, globals }] of snapshot) {
+  for (const [el, { vdom, globals, mode }] of snapshot) {
     if (!el.isConnected)
       continue;
-    updateDomWithVdom(el, vdom, globals);
+    updateDomWithVdom(el, vdom, globals, mode);
   }
 }
-function updateDomWithVdom(parentElement, newVDOM, globals) {
+function updateDomWithVdom(parentElement, newVDOM, globals, mode = "replace") {
   const resolvedGlobals = resolveGlobals(parentElement, globals);
   if (renderingNodes.has(parentElement) || isAncestorRendering(parentElement)) {
-    pendingMorphs.set(parentElement, { vdom: newVDOM, globals: resolvedGlobals });
+    pendingMorphs.set(parentElement, {
+      vdom: newVDOM,
+      globals: resolvedGlobals,
+      mode
+    });
     return;
   }
   renderingNodes.add(parentElement);
   try {
-    morphDomDirect(parentElement, newVDOM, resolvedGlobals);
+    morphDomDirect(parentElement, newVDOM, resolvedGlobals, mode);
   } finally {
     renderingNodes.delete(parentElement);
   }
   flushPendingMorphs();
 }
-function morphDomDirect(parentElement, newVDOM, globals) {
+function morphDiff(targetRoot, patchItems, globals) {
+  const keyedPool = new Map;
+  for (const node of Array.from(targetRoot.childNodes)) {
+    for (const k of getDomMatchKeys(node)) {
+      if (!keyedPool.has(k))
+        keyedPool.set(k, node);
+    }
+  }
+  for (const item of patchItems) {
+    if (typeof item === "string" && item.trim() === "")
+      continue;
+    const key = getVNodeMatchKey(item);
+    if (!key) {
+      throw new Error(`morph diff: patch items must be elements with a key or id attribute (got ${describePatchItem(item)})`);
+    }
+    const match = keyedPool.get(key);
+    if (match) {
+      const patchItem = item && typeof item === "object" && !item.type ? { ...item, type: match.tagName.toLowerCase() } : item;
+      morphNode(match, patchItem, globals, true);
+      continue;
+    }
+    if (!item?.type) {
+      throw new Error(`morph diff: new (unmatched) patch items must declare a tag (type), got key/id "${key}"`);
+    }
+    const created = createDomFromChild(item, globals) ?? [];
+    for (const node of created) {
+      targetRoot.appendChild(node);
+      handleLifecycleEventsForOnMount(node);
+    }
+  }
+}
+function morphDomDirect(parentElement, newVDOM, globals, mode = "replace") {
   const el = parentElement;
   const isCustomElement = el.tagName.includes("-");
   const targetRoot = el.shadowRoot && !isCustomElement ? el.shadowRoot : parentElement;
-  const nextChildren = normalizeChildren(newVDOM);
+  const nextChildren = normalizeChildren(newVDOM, mode === "diff");
+  if (mode === "diff") {
+    morphDiff(targetRoot, nextChildren, globals);
+    return;
+  }
   const existing = Array.from(targetRoot.childNodes);
   const keyedPool = new Map;
   const nodeKeys = new WeakMap;
@@ -1186,7 +1234,8 @@ var inflightTransitions = new WeakMap;
 var morph2 = (el, newContent, options = {}) => {
   const globals = resolveGlobals(el);
   const win = globals.window;
-  const apply = (content) => updateDomWithVdom(el, typeof content === "string" ? htmlStringToVNodes(content, win.DOMParser) : content, globals);
+  const mode = options.diff ? "diff" : "replace";
+  const apply = (content) => updateDomWithVdom(el, typeof content === "string" ? htmlStringToVNodes(content, win.DOMParser) : content, globals, mode);
   const transition = options.transition;
   if (transition && transition.type !== "none") {
     const config = { ...DEFAULT_TRANSITION_CONFIG, ...transition };
@@ -1259,5 +1308,5 @@ export {
   CAPTURE_ONLY_EVENTS
 };
 
-//# debugId=9D12A5A03DF65EEE64756E2164756E21
+//# debugId=6F130A0428D5249264756E2164756E21
 //# sourceMappingURL=all.js.map

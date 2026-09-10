@@ -123,16 +123,16 @@ Then, in `.ts(x)` or `.js(x)` files:
 ```ts
 import { morph } from "defuss-morph";
 
-const app = document.getElementById("app")!;
+const appEl = document.getElementById("app")!;
 
 // only what actually changed is patched; untouched nodes keep
 // their identity, focus, selection, scroll position and event state
-morph(app, `<ul>
+morph(appEl, `<ul>
   <li key="a">Alpha</li>
   <li key="b">Beta</li>
 </ul>`, { transition: { type: "fade", duration: 200 } });
 
-morph(app, `<ul>
+morph(appEl, `<ul>
   <li key="b">Beta (updated)</li>
   <li key="a">Alpha</li>
 </ul>`, { transition: { type: "slide-left", duration: 200 } });
@@ -191,13 +191,70 @@ through HTML strings.
 Under the hood, `morph()` delegates to `updateDomWithVdom` (the entry point
 `defuss` itself uses), which is exported for direct/framework use.
 
+### Partial updates (diff mode)
+
+By default `morph()` reconciles the **complete** next state: anything you don't
+describe, is removed. With `{ diff: true }` you send only a **change-set** — a
+partial update addressed by `key` (preferred) or `id`:
+
+Current DOM:
+```html
+  <ul id="listEl">
+    <li key="a" data-x="1">A</li>
+    <li key="b">B</li>
+    <li key="c">C</li>
+  </ul>
+```
+
+The change-set: only the nodes that change, each addressed by `key`/`id`:
+
+```ts
+const listEl = document.getElementById("listEl")!;
+const changeSetHtml = `
+  <li key="b">B (updated)</li>
+  <li key="d">D (new)</li>
+`;
+
+morph(listEl, changeSetHtml, { diff: true });
+```
+
+New DOM:
+
+```html
+<ul id="listEl">
+  <li key="a" data-x="1">A</li>   <!-- untouched -->
+  <li key="b">B (updated)</li>    <!-- patched in place, attributes MERGED -->
+  <li key="c">C</li>              <!-- untouched -->
+  <li key="d">D (new)</li>        <!-- appended -->
+</ul>
+```
+
+Result: `a` and `c` are **untouched** (identity, `data-x`, order, focus,
+listeners all kept) even though the change-set never mentioned them; `b` is
+patched — its text updates and declared attributes merge while undeclared ones
+survive — and `d` is appended. Diff mode **never removes and never moves**
+anything, so addressing stays unambiguous:
+
+- Patch items must be addressed by `key`/`id` — plain text or key-less
+  elements throw (there is no honest way to address "some `<div>`").
+- A tag is only required for *new* (unmatched) items.
+- Deleting is not expressible in a diff change-set — use a regular full
+  `morph()` for that.
+- A declared `children` replaces the node's children; if children are not
+  declared, they stay untouched (via VNodes, `children: []` clears explicitly).
+- A tag change on an addressed node applies as an in-place replacement.
+
+Great for streaming/AI-driven UIs: patch one table row or status badge without
+re-sending (or risking) the rest of the subtree. Runnable demo:
+[`examples/diff-mode.html`](examples/diff-mode.html).
+
 ### Transitions
 
 `morph()` accepts an optional transition, turning it into an async operation
 (mirroring defuss' `updateDom` transition semantics):
 
 ```ts
-await morph(app, "<p>Faded in</p>", {
+await morph(appEl, "<p>Faded in</p>", {
   transition: { type: "fade", duration: 200 }, // slide-left | slide-right | shake | custom styles
 });
 ```
@@ -212,7 +269,8 @@ The building blocks are exported for framework integration (used by `defuss` its
 
 ```ts
 import {
-  updateDomWithVdom,   // guarded VNode -> DOM morph entry point (globals optional)
+  updateDomWithVdom,   // guarded VNode -> DOM morph entry point (globals optional,
+                       // 4th arg mode: "replace" | "diff")
   replaceDomWithVdom,  // full replace (no patching)
   htmlStringToVNodes,  // HTML string -> VNode[]
   domNodeToVNode,      // DOM Node -> VNode
@@ -267,44 +325,44 @@ Runnable zero-build pages (serve the package directory statically, e.g. `bunx se
 | [`examples/controlled-form-state.html`](examples/controlled-form-state.html) | The "HTML can't uncheck" limitation and its fix via `df$.updateDomWithVdom` |
 | [`examples/event-listener-preservation.html`](examples/event-listener-preservation.html) | Native + delegated listeners surviving morphs; handler cleanup on removal |
 | [`examples/transition-await.html`](examples/transition-await.html) | Transitions: latest-wins content, `await`/queue patterns for sequencing animations |
+| [`examples/diff-mode.html`](examples/diff-mode.html) | Diff mode: partial change-sets by key/id — merge-patch, append, untouched siblings |
 
 ## One limitation when morphing from HTML strings
 
 **HTML cannot unset `checked`/live form values**: since an HTML string cannot declare "explicitly unchecked", absent form attributes are treated as uncontrolled and the live state is preserved. This is deliberate — it's what makes form state survive unrelated morphs.
 
-When you *do* need explicit control, pass a VNode/JSX to `morph()` instead of an HTML string — VNodes can express explicit `false`/empty values. An explicit `false` wins over the live state and patches the node in place:
+When you *do* need explicit control, use [diff mode](#partial-updates-diff-mode) with a VNode patch item: address the node by `id` (or `key`) and send **only the new value** — a VNode can express an explicit `false`, and since the addressed node already exists, not even a tag is needed (it is borrowed from the match):
 
 ```ts
 import { morph } from "defuss-morph";
 
-const app = document.getElementById("app")!;
+const appEl = document.getElementById("app")!;
 
 // ❌ stays checked — "no checked attribute" means "don't touch"
-morph(app, `<input type="checkbox" id="c" checked>`); // checked in HTML
-morph(app, `<input type="checkbox" id="c">`);         // still checked!
+morph(appEl, `<input type="checkbox" id="c" checked>`); // checked in HTML
+morph(appEl, `<input type="checkbox" id="c">`);         // still checked!
 
-// ✅ explicit state — the VNode controls the checkbox
-morph(app, [
-  { type: "input", attributes: { type: "checkbox", id: "c", checked: false }, children: [] },
-]); // now unchecked
-
-// with JSX this is simply morph(app, <input type="checkbox" id="c" checked={false} />)
+// ✅ diff mode: address by id, set the new value — done
+morph(appEl, [{ attributes: { id: "c", checked: false } }], { diff: true });
 ```
 
-The same rule applies to an `<input>`'s live `value`. See the runnable demo [`examples/controlled-form-state.html`](examples/controlled-form-state.html).
+The same rule applies to an `<input>`'s live `value`. See the runnable demos [`examples/controlled-form-state.html`](examples/controlled-form-state.html) and [`examples/diff-mode.html`](examples/diff-mode.html).
 
 ## Size
 
 <!-- bundle-size:start -->
 | File | Size | Gzipped | Purpose |
 | --- | ---: | ---: | --- |
-| `index.mjs` | 38.4 kB | 9.0 kB | ESM/library build; used when installing via npm/bun |
-| `index.cjs` | 39.4 kB | 9.2 kB | CommonJS build |
-| `all.js` | 39.8 kB | 9.4 kB | UMD build; for CDN-based usage with debugging |
-| `all.min.js` | 18.1 kB | **6.4 kB** | Minified UMD build; for CDN-based usage without debugging (Pareto-optimal when no bundler is used) |
+| `index.mjs` | 40.2 kB | 9.5 kB | ESM/library build; used when installing via npm/bun |
+| `index.cjs` | 41.2 kB | 9.7 kB | CommonJS build |
+| `all.js` | 41.6 kB | 9.8 kB | UMD build; for CDN-based usage with debugging |
+| `all.min.js` | 18.9 kB | **6.8 kB** | Minified UMD build; for CDN-based usage without debugging (Pareto-optimal when no bundler is used) |
 <!-- bundle-size:end -->
 
-Isn't index.cjs pointless? 
+`index.cjs` (CommonJS) is kept for `require()` compatibility on older tool
+chains (CJS jest configs, bundlers resolving `main`). On modern Node
+(≥ 20.19 / 22.12, which can `require()` ESM directly) it is redundant — but at
+~1 kB it is cheap insurance.
 
 ## License
 

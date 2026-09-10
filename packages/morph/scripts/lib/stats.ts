@@ -42,17 +42,26 @@ export const computeStats = (root: string): StatsFile => {
 
 const kb = (n: number) => `${(n / 1024).toFixed(1)} kB`;
 
+/** per-file purpose, shown in the README table so the four artifacts make sense */
+const PURPOSE: Record<string, string> = {
+  'dist/index.mjs': 'ESM/library build; used when installing via npm/bun',
+  'dist/index.cjs': 'CommonJS build',
+  'dist/all.js': 'UMD build; for CDN-based usage with debugging',
+  'dist/all.min.js':
+    'Minified UMD build; for CDN-based usage without debugging (Pareto-optimal when no bundler is used)',
+};
+
 export const renderReadmeBlock = (stats: StatsFile): string => {
   const rows = MEASURED_FILES.map((rel) => {
     const { bytes, gzip } = stats.files[rel];
     const name = rel.replace('dist/', '');
     const gzipCell = rel.endsWith('all.min.js') ? `**${kb(gzip)}**` : kb(gzip);
-    return `| \`${name}\` | ${kb(bytes)} | ${gzipCell} |`;
+    return `| \`${name}\` | ${kb(bytes)} | ${gzipCell} | ${PURPOSE[rel]} |`;
   });
   return [
     README_SIZE_START,
-    '| File | Size | Gzipped |',
-    '| --- | ---: | ---: |',
+    '| File | Size | Gzipped | Purpose |',
+    '| --- | ---: | ---: | --- |',
     ...rows,
     README_SIZE_END,
   ].join('\n');

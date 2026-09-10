@@ -1,0 +1,22 @@
+{
+  "package": "defuss-morph",
+  "version": "0.1.0",
+  "files": {
+    "dist/index.mjs": {
+      "bytes": 41197,
+      "gzip": 9762
+    },
+    "dist/index.cjs": {
+      "bytes": 42228,
+      "gzip": 9912
+    },
+    "dist/all.js": {
+      "bytes": 42572,
+      "gzip": 10076
+    },
+    "dist/all.min.js": {
+      "bytes": 19394,
+      "gzip": 6948
+    }
+  }
+}

@@ -138,6 +138,13 @@ declare const areDomNodesEqual: (oldNode: Node, newNode: Node) => boolean;
  ********************************************************/
 type ValidChild = string | number | boolean | null | undefined | VNode<VNodeAttributes>;
 /**
+ * How top-level children are reconciled:
+ * - `"replace"` (default): full reconciliation — unmentioned nodes are removed.
+ * - `"diff"`: partial updates — only patch items addressed by `key`/`id` are
+ *   applied (attributes merge, new items append, unmentioned nodes untouched).
+ */
+type MorphMode = "replace" | "diff";
+/**
  * Resolve the render globals from an element's own document when not given
  * explicitly (isomorphic: browser window, happy-dom window, multi-document).
  */
@@ -152,8 +159,12 @@ declare const resolveGlobals: (el?: Element, globals?: Globals) => Globals;
  *
  * `globals` is optional: it is derived from `parentElement.ownerDocument`
  * when omitted.
+ *
+ * `mode` defaults to `"replace"` (full reconciliation). Pass `"diff"` for
+ * partial updates: only `key`/`id`-addressed patch items are applied
+ * (attributes merged, new keyed items appended, unmentioned nodes untouched).
  */
-declare function updateDomWithVdom(parentElement: Element, newVDOM: RenderInput, globals?: Globals): void;
+declare function updateDomWithVdom(parentElement: Element, newVDOM: RenderInput, globals?: Globals, mode?: MorphMode): void;
 /**
  * Directly blow away all children in `parentElement` and create new DOM
  * from `newVDOM`. This never skips or leaves behind stale nodes,
@@ -195,8 +206,28 @@ interface MorphOptions {
      * that resolves once the transition completed.
      */
     transition?: TransitionConfig;
+    /**
+     * Partial updates: apply only the given change-set instead of reconciling
+     * the full child list. Every top-level item must be an element with a
+     * `key` (preferred) or `id` — matched nodes are patched with attributes
+     * *merged* (undeclared attributes and children stay untouched), unmatched
+     * items are appended. Unmentioned siblings keep identity, order and state;
+     * diff mode never removes and never moves, so addressing is unambiguous.
+     *
+     * Plain-text input and key-less items throw (they cannot be addressed).
+     *
+     * @example
+     * ```ts
+     * // update one row, append another — everything else is not re-sent:
+     * morph(list, `
+     *   <li key="b">B (updated)</li>
+     *   <li key="c">C (new)</li>
+     * `, { diff: true });
+     * ```
+     */
+    diff?: boolean;
 }
 declare const morph: (el: Element, newContent: RenderInput, options?: MorphOptions) => void | Promise<void>;
 
 export { CAPTURE_ONLY_EVENTS, CLASS_ATTRIBUTE_NAME, DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE, DEFAULT_TRANSITION_CONFIG, FROM_DOM_MARKER, REF_ATTRIBUTE_NAME, XLINK_ATTRIBUTE_NAME, XMLNS_ATTRIBUTE_NAME, applyStyles, areDomNodesEqual, clearDelegatedEvents, clearDelegatedEventsDeep, domNodeToVNode, getMimeType, getRegisteredEventKeys, getRegisteredEventTypes, getRenderer, getTransitionStyles, handleLifecycleEventsForOnMount, htmlStringToVNodes, isHTML, isMarkup, isSVG, morph, nsMap, observeUnmount, parseDOM, parseEventPropName, performTransition, queueCallback, registerDelegatedEvent, removeDelegatedEvent, removeDelegatedEventByKey, renderMarkup, replaceDomWithVdom, resolveGlobals, updateDomWithVdom };
-export type { DefussKey, DelegatedEventOptions, DelegatedPhase, DomAbstractionImpl, Globals, MorphOptions, MountHandler, ParsedEventProp, RefLike, RenderInput, TransitionConfig, TransitionStyles, TransitionType, TransitionsEasing, UnmountHandler, VNode, VNodeAttributes, VNodeChild, VNodeChildren, VNodeType, ValidChild };
+export type { DefussKey, DelegatedEventOptions, DelegatedPhase, DomAbstractionImpl, Globals, MorphMode, MorphOptions, MountHandler, ParsedEventProp, RefLike, RenderInput, TransitionConfig, TransitionStyles, TransitionType, TransitionsEasing, UnmountHandler, VNode, VNodeAttributes, VNodeChild, VNodeChildren, VNodeType, ValidChild };

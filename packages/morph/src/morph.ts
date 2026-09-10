@@ -71,6 +71,14 @@ export type ValidChild =
   | undefined
   | VNode<VNodeAttributes>;
 
+/**
+ * How top-level children are reconciled:
+ * - `"replace"` (default): full reconciliation — unmentioned nodes are removed.
+ * - `"diff"`: partial updates — only patch items addressed by `key`/`id` are
+ *   applied (attributes merge, new items append, unmentioned nodes untouched).
+ */
+export type MorphMode = "replace" | "diff";
+
 function isTextLike(value: unknown): value is string | number | boolean {
   return (
     typeof value === "string" ||
@@ -87,18 +95,34 @@ function isVNode(value: unknown): value is VNode<VNodeAttributes> {
   );
 }
 
-function toValidChild(child: VNodeChild): ValidChild | undefined {
+function toValidChild(
+  child: VNodeChild,
+  // diff mode: a partial patch item may omit `type` (borrowed from the node
+  // it addresses) — `{ attributes: ... }` alone is a valid patch object there
+  lenient = false,
+): ValidChild | undefined {
   if (child == null) return child; // null or undefined
   if (isTextLike(child)) return child;
 
   if (isVNode(child)) return child;
+
+  if (
+    lenient &&
+    child &&
+    typeof child === "object" &&
+    "attributes" in (child as Record<string, unknown>)
+  )
+    return child as unknown as ValidChild;
 
   // e.g. function or {} -> filter out
   return undefined;
 }
 
 /** fuse consecutive text-like nodes to preserve DOM stability (matches hydrate's behavior) */
-function normalizeChildren(input: RenderInput): Array<ValidChild> {
+function normalizeChildren(
+  input: RenderInput,
+  lenient = false,
+): Array<ValidChild> {
   const raw: Array<ValidChild> = [];
 
   const pushChild = (child: unknown) => {
@@ -107,7 +131,7 @@ function normalizeChildren(input: RenderInput): Array<ValidChild> {
       return;
     }
 
-    const valid = toValidChild(child as VNodeChild);
+    const valid = toValidChild(child as VNodeChild, lenient);
     if (typeof valid === "undefined") return;
 
     // unwrap Fragment-ish nodes (defuss sometimes uses "fragment", some code uses "Fragment")
@@ -171,6 +195,14 @@ function getVNodeMatchKey(child: ValidChild): string | null {
   if (typeof id === "string" && id.length > 0) return `id:${id}`;
 
   return null;
+}
+
+/** human-readable item description for diff-mode error messages */
+function describePatchItem(child: ValidChild): string {
+  if (child && typeof child === "object") {
+    return `<${typeof child.type === "string" ? child.type : "component"}>`;
+  }
+  return "plain text";
 }
 
 function getDomMatchKeys(node: Node): Array<string> {
@@ -275,11 +307,14 @@ function patchElementInPlace(
   el: Element,
   vnode: VNode<VNodeAttributes>,
   globals: Globals,
+  // diff mode: the vnode is a partial patch — undeclared attributes and
+  // delegated handlers are "not mentioned", never "unset", so removal is skipped
+  mergeAttributes = false,
 ): void {
   const renderer = getRenderer(globals.window.document);
 
   // remove old attributes not present (but preserve uncontrolled form state)
-  const existingAttrs = Array.from(el.attributes);
+  const existingAttrs = mergeAttributes ? [] : Array.from(el.attributes);
   const nextAttrs = vnode.attributes ?? {};
 
   for (const attr of existingAttrs) {
@@ -311,9 +346,9 @@ function patchElementInPlace(
   // remove the bubble handler while keeping the capture handler.
   // Skipped for DOM-derived vnodes (HTML strings / DOM nodes): those cannot declare
   // handlers, so existing delegated handlers are preserved like uncontrolled form state.
-  const preserveDelegatedHandlers = Boolean(
-    (nextAttrs as Record<PropertyKey, unknown>)[FROM_DOM_MARKER],
-  );
+  const preserveDelegatedHandlers =
+    mergeAttributes ||
+    Boolean((nextAttrs as Record<PropertyKey, unknown>)[FROM_DOM_MARKER]);
 
   if (!preserveDelegatedHandlers) {
     const registeredKeys = getRegisteredEventKeys(el as HTMLElement);
@@ -360,6 +395,19 @@ function patchElementInPlace(
     if (isActive && !isControlled) return;
   }
 
+  // diff mode: children are "not mentioned" unless explicitly declared, so an
+  // attributes-only patch item must not clear the node's existing children.
+  // HTML-derived vnodes always carry a (possibly empty) children array —
+  // empty means "undeclared" there, exactly like absent form attributes.
+  // VNode/JSX input keeps the distinction: children: [] clears explicitly.
+  if (
+    mergeAttributes &&
+    (vnode.children === undefined ||
+      (vnode.children.length === 0 &&
+        (nextAttrs as Record<PropertyKey, unknown>)[FROM_DOM_MARKER]))
+  )
+    return;
+
   // reconcile children (direct call - bypasses morph guard for internal recursion)
   morphDomDirect(el, (vnode.children ?? []) as RenderInput, globals);
 }
@@ -371,6 +419,7 @@ function morphNode(
   domNode: Node,
   child: ValidChild,
   globals: Globals,
+  mergeAttributes = false,
 ): Node | null {
   // text-like
   if (
@@ -419,7 +468,7 @@ function morphNode(
       return first;
     }
 
-    patchElementInPlace(el, child as VNode<VNodeAttributes>, globals);
+    patchElementInPlace(el, child as VNode<VNodeAttributes>, globals, mergeAttributes);
     return el;
   }
 
@@ -436,7 +485,7 @@ function morphNode(
 const renderingNodes = new WeakSet<Element>();
 const pendingMorphs = new Map<
   Element,
-  { vdom: RenderInput; globals: Globals }
+  { vdom: RenderInput; globals: Globals; mode: MorphMode }
 >();
 
 /**
@@ -466,11 +515,11 @@ function flushPendingMorphs(): void {
   const snapshot = [...pendingMorphs.entries()];
   pendingMorphs.clear();
 
-  for (const [el, { vdom, globals }] of snapshot) {
+  for (const [el, { vdom, globals, mode }] of snapshot) {
     // Skip if element was detached during parent morph
     if (!el.isConnected) continue;
     // Re-enter through guarded path (handles nested conflicts)
-    updateDomWithVdom(el, vdom, globals);
+    updateDomWithVdom(el, vdom, globals, mode);
   }
 }
 
@@ -484,29 +533,117 @@ function flushPendingMorphs(): void {
  *
  * `globals` is optional: it is derived from `parentElement.ownerDocument`
  * when omitted.
+ *
+ * `mode` defaults to `"replace"` (full reconciliation). Pass `"diff"` for
+ * partial updates: only `key`/`id`-addressed patch items are applied
+ * (attributes merged, new keyed items appended, unmentioned nodes untouched).
  */
 export function updateDomWithVdom(
   parentElement: Element,
   newVDOM: RenderInput,
   globals?: Globals,
+  mode: MorphMode = "replace",
 ): void {
   const resolvedGlobals = resolveGlobals(parentElement, globals);
 
   // Re-entrant or ancestor conflict → queue latest, return
   if (renderingNodes.has(parentElement) || isAncestorRendering(parentElement)) {
-    pendingMorphs.set(parentElement, { vdom: newVDOM, globals: resolvedGlobals });
+    pendingMorphs.set(parentElement, {
+      vdom: newVDOM,
+      globals: resolvedGlobals,
+      mode,
+    });
     return;
   }
 
   renderingNodes.add(parentElement);
   try {
-    morphDomDirect(parentElement, newVDOM, resolvedGlobals);
+    morphDomDirect(parentElement, newVDOM, resolvedGlobals, mode);
   } finally {
     renderingNodes.delete(parentElement);
   }
 
   // Flush any morphs that were queued during this render
   flushPendingMorphs();
+}
+
+/********************************************************
+ * 6b) Diff mode — partial change-sets (patch + append only)
+ ********************************************************/
+/**
+ * Apply a partial change-set to `targetRoot`: every top-level item must be an
+ * element addressed by `key` (preferred) or `id`. Matched nodes are patched in
+ * place with attributes *merged* (undeclared attributes, delegated handlers
+ * and children stay untouched); unmatched items are appended as new nodes.
+ * Nothing else changes: unmentioned siblings keep identity, order and state —
+ * diff mode never removes and never moves, so addressing is unambiguous.
+ *
+ * Why: stream/AI-driven partial updates without resending the whole subtree.
+ * Tag changes on an addressed node are applied as an honest in-place
+ * replacement (the item fully declares that node).
+ */
+function morphDiff(
+  targetRoot: ParentNode & Node,
+  patchItems: Array<ValidChild>,
+  globals: Globals,
+): void {
+  // first-wins keyed pool of the current children — diff never removes, so
+  // duplicate keys can simply share the first node as the address owner
+  const keyedPool = new Map<string, Node>();
+  for (const node of Array.from(targetRoot.childNodes)) {
+    for (const k of getDomMatchKeys(node)) {
+      if (!keyedPool.has(k)) keyedPool.set(k, node);
+    }
+  }
+
+  for (const item of patchItems) {
+    // formatting whitespace between change-set items (e.g. newlines + indent
+    // in a template literal) parses to text nodes but carries no meaning —
+    // skip it; only *meaningful* plain text is unaddressable and throws
+    if (typeof item === "string" && item.trim() === "") continue;
+
+    // booleans/null are already filtered by normalizeChildren; anything
+    // without a key/id (incl. plain text) cannot be addressed unambiguously
+    const key = getVNodeMatchKey(item);
+
+    if (!key) {
+      throw new Error(
+        `morph diff: patch items must be elements with a key or id attribute (got ${describePatchItem(item)})`,
+      );
+    }
+
+    const match = keyedPool.get(key);
+
+    if (match) {
+      // Tag-less patch items are pure patches: borrow the addressed node's
+      // tag (only *new* items need one — to create it). An explicitly
+      // different tag still replaces the node.
+      const patchItem =
+        item && typeof item === "object" && !(item as VNode).type
+          ? { ...item, type: (match as Element).tagName.toLowerCase() }
+          : item;
+
+      // same tag -> attribute merge (+ declared children); tag change ->
+      // in-place replacement by morphNode; mergeAttributes keeps the diff
+      // contract (no attribute/handler removal) either way
+      morphNode(match, patchItem, globals, true);
+      continue;
+    }
+
+    if (!(item as VNode)?.type) {
+      throw new Error(
+        `morph diff: new (unmatched) patch items must declare a tag (type), got key/id "${key}"`,
+      );
+    }
+
+    // new keyed item -> append (never inserted "in order" implicitly: moving
+    // or positioning unmentioned siblings would be a guess)
+    const created = createDomFromChild(item, globals) ?? [];
+    for (const node of created) {
+      targetRoot.appendChild(node);
+      handleLifecycleEventsForOnMount(node as HTMLElement);
+    }
+  }
 }
 
 /********************************************************
@@ -518,6 +655,7 @@ function morphDomDirect(
   parentElement: Element,
   newVDOM: RenderInput,
   globals: Globals,
+  mode: MorphMode = "replace",
 ): void {
   // Custom elements (hyphenated tags) use light DOM for slotted content.
   // Other elements with shadowRoot should target the shadow root.
@@ -526,7 +664,12 @@ function morphDomDirect(
   const targetRoot: ParentNode & Node =
     el.shadowRoot && !isCustomElement ? el.shadowRoot : parentElement;
 
-  const nextChildren = normalizeChildren(newVDOM);
+  const nextChildren = normalizeChildren(newVDOM, mode === "diff");
+
+  if (mode === "diff") {
+    morphDiff(targetRoot, nextChildren, globals);
+    return;
+  }
 
   // snapshot existing children once for matching pools
   const existing = Array.from(targetRoot.childNodes);

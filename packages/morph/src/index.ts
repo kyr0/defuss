@@ -1,4 +1,4 @@
-import { resolveGlobals, updateDomWithVdom } from "./morph.js";
+import { type MorphMode, resolveGlobals, updateDomWithVdom } from "./morph.js";
 import { htmlStringToVNodes } from "./html.js";
 import type { RenderInput } from "./types.js";
 import {
@@ -22,6 +22,26 @@ export interface MorphOptions {
    * that resolves once the transition completed.
    */
   transition?: TransitionConfig;
+  /**
+   * Partial updates: apply only the given change-set instead of reconciling
+   * the full child list. Every top-level item must be an element with a
+   * `key` (preferred) or `id` — matched nodes are patched with attributes
+   * *merged* (undeclared attributes and children stay untouched), unmatched
+   * items are appended. Unmentioned siblings keep identity, order and state;
+   * diff mode never removes and never moves, so addressing is unambiguous.
+   *
+   * Plain-text input and key-less items throw (they cannot be addressed).
+   *
+   * @example
+   * ```ts
+   * // update one row, append another — everything else is not re-sent:
+   * morph(list, `
+   *   <li key="b">B (updated)</li>
+   *   <li key="c">C (new)</li>
+   * `, { diff: true });
+   * ```
+   */
+  diff?: boolean;
 }
 
 /**
@@ -82,12 +102,15 @@ export const morph = (
   const globals = resolveGlobals(el);
   const win = globals.window;
 
+  const mode: MorphMode = options.diff ? "diff" : "replace";
+
   // strings go through the HTML parser; JSX/VNodes are used as-is
   const apply = (content: RenderInput) =>
     updateDomWithVdom(
       el,
       typeof content === "string" ? htmlStringToVNodes(content, win.DOMParser) : content,
       globals,
+      mode,
     );
 
   const transition = options.transition;

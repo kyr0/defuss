@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>defuss-morph — diff mode (partial change-sets)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    section { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-block: 1rem; }
+    code { background: #f4f4f4; padding: 0 4px; border-radius: 4px; }
+    button { margin-right: 0.5rem; }
+    .row { display: flex; gap: 0.5rem; align-items: center; padding: 0.25rem 0; }
+    .touched { background: #fff3cd; }
+    output { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Diff mode: send only the change-set</h1>
+  <p>
+    A diff change-set addresses nodes by <code>key</code> (or <code>id</code>):
+    matched nodes are patched with attributes <b>merged</b>, new keyed items are
+    appended — <b>unmentioned siblings are never touched, moved or removed</b>.
+  </p>
+
+  <section>
+    <h2>Rows keyed a–c</h2>
+    <div id="list">
+      <div class="row" key="a" data-secret="untouched"><b>A</b> — has data-secret & a native listener</div>
+      <div class="row" key="b"><b>B</b></div>
+      <div class="row" key="c"><b>C</b></div>
+    </div>
+    <p>
+      <button type="button" id="patch-b">Diff: update row b</button>
+      <button type="button" id="append-d">Diff: append row d</button>
+      <button type="button" id="full">Full morph (removes a & c!)</button>
+    </p>
+    <p><output id="out"></output></p>
+    <p>
+      <small>
+        After <b>update b</b>: row a keeps <code>data-secret</code> (attributes merge) and its DOM node
+        (identity preserved — watch the background stay highlighted after clicking a row).
+        <b>Append d</b> adds only row d. The <b>full morph</b> sends only row b too —
+        but in replace mode rows a and c disappear. That's the difference.
+      </small>
+    </p>
+  </section>
+
+  <section>
+    <h2>Unaddressable input throws</h2>
+    <p><button type="button" id="no-key">Diff with a key-less item</button> <output id="err-out"></output></p>
+  </section>
+
+  <!-- Local: repo build. Production: https://cdn.jsdelivr.net/npm/defuss-morph@latest/dist/all.min.js -->
+  <script type="module" src="../dist/all.js"></script>
+  <script type="module">
+    const { morph } = window.df$;
+
+    const list = document.getElementById("list");
+    const out = document.getElementById("out");
+
+    // a native listener on row a — proof of identity preservation
+    list.querySelector('[key="a"]').addEventListener("click", (e) =>
+      e.currentTarget.classList.toggle("touched"),
+    );
+
+    document.getElementById("patch-b").addEventListener("click", () => {
+      morph(list, `<div class="row" key="b"><b>B</b> — patched via diff</div>`, { diff: true });
+      const a = list.querySelector('[key="a"]');
+      out.value = `→ a still has data-secret: ${a.dataset.secret === "untouched"} · a is the same node · b updated`;
+    });
+
+    // `key` is stored internally (_defussKey) when created from a VNode/string,
+    // so read either the attribute or the internal key for display
+    const rowKey = (r) => r.getAttribute("key") ?? r._defussKey ?? "?";
+
+    document.getElementById("append-d").addEventListener("click", () => {
+      morph(list, `<div class="row" key="d"><b>D</b> — appended via diff</div>`, { diff: true });
+      out.value = `→ rows now: ${[...list.children].map(rowKey).join(", ")} (nothing removed)`;
+    });
+
+    document.getElementById("full").addEventListener("click", () => {
+      morph(list, `<div class="row" key="b"><b>B</b> — full replace</div>`);
+      out.value = `→ rows now: ${[...list.children].map(rowKey).join(", ")} — replace mode removed the rest`;
+    });
+
+    document.getElementById("no-key").addEventListener("click", () => {
+      try {
+        morph(list, `<div class="row">no key at all</div>`, { diff: true });
+      } catch (e) {
+        document.getElementById("err-out").value = `→ threw: ${e.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
