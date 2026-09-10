@@ -1,0 +1,89 @@
+{
+  "name": "defuss-morph",
+  "version": "0.1.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "description": "The defuss DOM morphing algorithm is a standalone package: morph an HTML string or JSX object into an existing DOM tree using native APIs and smart DOM diffing. Key/id-aware node matching, move-not-replace, in-place attribute patching, form-state preservation and delegated event cleanup. Allows for isomorphic rendering and patching of server-rendered HTML in the browser. Does not need any framework or virtual DOM. Can be used with any framework or library, or without any. No compile/transpile step required. Extremely lightweight. Just 6 KiB minified and gzipped. Written in TypeScript.",
+  "keywords": [
+    "dom",
+    "morph",
+    "morphdom",
+    "idiomorph",
+    "diff",
+    "patch",
+    "html",
+    "isomorphic",
+    "defuss",
+    "typescript",
+    "ai-prototyping",
+    "for-ai-agents"
+  ],
+  "repository": {
+    "url": "git+https://github.com/kyr0/defuss.git",
+    "type": "git"
+  },
+  "scripts": {
+    "clean": "rm -rf ./coverage ./dist ./node_modules/.vite",
+    "prebuild": "bun run clean",
+    "build": "pkgroll",
+    "bundle": "bun scripts/bundle.ts",
+    "minify": "bun scripts/minify.ts",
+    "stats": "bun scripts/stats.ts",
+    "verify": "bun scripts/verify.ts",
+    "lint": "oxlint src scripts",
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false -p tsconfig.json",
+    "purge-cdn": "bun scripts/purge-cdn.ts",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest --coverage",
+    "pretest:browser": "bunx playwright install chromium",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "e2e": "bun run test:browser",
+    "prepublishOnly": "bun run lint && bun run typecheck && bun run test && bun run clean && bun run build && bun run bundle && bun run minify && bun run stats && bun run verify"
+  },
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "sideEffects": [
+    "./src/global.ts",
+    "./src/all.ts",
+    "./dist/all.js",
+    "./dist/all.min.js"
+  ],
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": "^20.0.0 || >=22.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "@vitest/browser": "^5.0.0",
+    "@vitest/browser-playwright": "^5.0.0",
+    "@vitest/coverage-v8": "^5.0.0",
+    "happy-dom": "^20.5.0",
+    "oxc-minify": "^0.149.0",
+    "oxlint": "^1.81.0",
+    "pkgroll": "^2.27.0",
+    "playwright": "^1.58.2",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
+  }
+}

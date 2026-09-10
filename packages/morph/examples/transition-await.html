@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>defuss-morph — transitions</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    section { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-block: 1rem; }
+    button { margin-right: 0.5rem; }
+    code { background: #f4f4f4; padding: 0 4px; border-radius: 4px; }
+    pre { background: #f8f9fa; padding: 0.75rem; border-radius: 6px; overflow-x: auto; }
+    #stage { padding: 1rem; background: #f8f9fa; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Transitions: content is latest-wins, <code>await</code> sequences animations</h1>
+  <p>
+    <code>morph()</code> with a transition returns a Promise that resolves when the transition
+    completed. Overlapping updates are <b>latest-wins</b>: a plain morph issued while a transition
+    is in flight applies immediately and also replaces the transition's pending content — the
+    transition finishes with the newest HTML, never stale content. What you still control is
+    <i>animation sequencing</i>: <code>await</code> (or a queue) plays transitions one after another.
+  </p>
+
+  <div id="stage"><p>State A</p></div>
+  <p>
+    <button id="race">Latest-wins: transition + immediate morph (final: C)</button>
+    <button id="seq">Sequential: await, then morph (B animates, then C)</button>
+    <button id="spam">Queue: rapid updates play in order</button>
+  </p>
+  <section>
+    <h2>The patterns</h2>
+    <pre><code>// latest-wins: the plain morph during the exit phase rewrites the
+// transition's pending content — the final DOM shows C, with the
+// transition animation completing around it
+const pending = morph(el, htmlB, { transition: { type: "slide-left" } });
+morph(el, htmlC);
+await pending; // content: C ✓</code></pre>
+    <pre><code>// sequential animations: await the transition before the next morph
+await morph(el, htmlB, { transition: { type: "slide-left" } });
+morph(el, htmlC);</code></pre>
+    <pre><code>// rapid-fire updates: a tiny morph queue
+let chain = Promise.resolve();
+const queueMorph = (html) => (chain = chain.then(() =>
+  morph(el, html, { transition: { type: "slide-left", duration: 150 } })));
+queueMorph(htmlB);
+queueMorph(htmlC); // every update plays out in order</code></pre>
+  </section>
+
+  <!-- Local: repo build. Production: https://cdn.jsdelivr.net/npm/defuss-morph@latest/dist/all.min.js -->
+  <script type="module" src="../dist/all.js"></script>
+  <script type="module">
+    const { morph } = window.df$;
+    const stage = document.getElementById("stage");
+    const t = { transition: { type: "slide-left", duration: 250, target: "self" } };
+
+    // latest-wins: the plain morph's content wins over the transition's original content
+    document.getElementById("race").addEventListener("click", async () => {
+      const pending = morph(stage, "<p>State B (transition content)</p>", t);
+      morph(stage, "<p>State C — latest-wins, the transition completes with this</p>");
+      await pending;
+      console.log("final content:", stage.textContent); // C
+    });
+
+    // sequential: await serializes the animations
+    document.getElementById("seq").addEventListener("click", async () => {
+      await morph(stage, "<p>State B (slides in fully)</p>", t);
+      morph(stage, "<p>State C (applied right after B's animation)</p>");
+    });
+
+    // queue: rapid updates in deterministic order
+    let chain = Promise.resolve();
+    const queueMorph = (html) => (chain = chain.then(() => morph(stage, html, t)));
+    document.getElementById("spam").addEventListener("click", () => {
+      queueMorph("<p>queued update 1</p>");
+      queueMorph("<p>queued update 2</p>");
+      queueMorph("<p>queued update 3 — final state is deterministic</p>");
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>defuss-morph — event listener preservation</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    section { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-block: 1rem; }
+    button { margin-right: 0.5rem; }
+    code { background: #f4f4f4; padding: 0 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Event listeners survive morphing</h1>
+  <p>
+    The morph engine <b>moves/patches</b> nodes instead of replacing them — the node keeps its
+    identity, so both native <code>addEventListener</code> listeners and delegated handlers
+    (<code>df$.registerDelegatedEvent</code>) keep working after the morph.
+  </p>
+
+  <section>
+    <h2>Native listener: node created → text morphed → still clickable</h2>
+    <div id="native"><button id="btn">Clicks: 0</button></div>
+    <button id="morph-native">Morph the button (new text + class)</button>
+    <p><small>Open the console: the node identity check proves the same element survives.</small></p>
+  </section>
+
+  <section>
+    <h2>Delegated handler: survives repeated morphs, never double-fires</h2>
+    <div id="delegated"><button id="dbtn">Delegated clicks: 0</button></div>
+    <button id="morph-delegated">Morph twice, then click</button>
+  </section>
+
+  <section>
+    <h2>Cleanup: removing a node removes its handlers</h2>
+    <div id="cleanup"><button id="gone">I will be removed</button></div>
+    <button id="morph-away">Morph it away</button>
+    <button id="probe">Dispatch a synthetic click on the removed node</button>
+    <p><small>The registry entry is cleared during the morph — the synthetic click does nothing.</small></p>
+  </section>
+
+  <!-- Local: repo build. Production: https://cdn.jsdelivr.net/npm/defuss-morph@latest/dist/all.min.js -->
+  <script type="module" src="../dist/all.js"></script>
+  <script type="module">
+    const { morph, registerDelegatedEvent, getRegisteredEventKeys } = window.df$;
+
+    // --- 1. native listener ---
+    const native = document.getElementById("native");
+    const btn = document.getElementById("btn");
+    let clicks = 0;
+    btn.addEventListener("click", () => {
+      clicks++;
+      btn.textContent = `Clicks: ${clicks}`;
+    });
+    document.getElementById("morph-native").addEventListener("click", () => {
+      morph(native, `<button id="btn" class="hot">Clicks: ${clicks} (morphed)</button>`);
+      console.log("same node after morph:", document.getElementById("btn") === btn);
+    });
+
+    // --- 2. delegated handler ---
+    const delegated = document.getElementById("delegated");
+    const dbtn = document.getElementById("dbtn");
+    let dclicks = 0;
+    registerDelegatedEvent(dbtn, "click", () => {
+      dclicks++;
+      dbtn.textContent = `Delegated clicks: ${dclicks}`;
+    });
+    document.getElementById("morph-delegated").addEventListener("click", () => {
+      morph(delegated, `<button id="dbtn" class="a">${dbtn.textContent}</button>`);
+      morph(delegated, `<button id="dbtn" class="b">${dbtn.textContent}</button>`);
+      console.log("delegated node identity kept:", document.getElementById("dbtn") === dbtn);
+    });
+
+    // --- 3. cleanup on removal ---
+    const cleanup = document.getElementById("cleanup");
+    const gone = document.getElementById("gone");
+    let goneClicks = 0;
+    registerDelegatedEvent(gone, "click", () => {
+      goneClicks++;
+      console.log("removed-node handler fired?!", goneClicks);
+    });
+    document.getElementById("morph-away").addEventListener("click", () => {
+      morph(cleanup, `<p>button removed</p>`);
+      console.log("registry keys after removal:", getRegisteredEventKeys(gone).size);
+    });
+    document.getElementById("probe").addEventListener("click", () => {
+      gone.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      console.log("handler calls after removal:", goneClicks);
+    });
+  </script>
+</body>
+</html>

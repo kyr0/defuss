@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>defuss-morph — controlled form state</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    section { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-block: 1rem; }
+    .ok { border-color: #4caf50; }
+    .nope { border-color: #e0a800; }
+    code { background: #f4f4f4; padding: 0 4px; border-radius: 4px; }
+    output { font-weight: 600; margin-left: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Controlled form state: when HTML isn't enough</h1>
+  <p>
+    An HTML string cannot say <i>"explicitly unchecked"</i> — an absent attribute means
+    <b>uncontrolled</b>, so the live state is preserved. When you need explicit control,
+    use the VNode API (<code>updateDomWithVdom</code>).
+  </p>
+
+  <section class="nope">
+    <h2>The limitation: HTML morph can't uncheck</h2>
+    <div id="html-only"><input type="checkbox" id="c1" checked> <label for="c1">I'm checked</label></div>
+    <button id="try-uncheck">Morph with <code>&lt;input type="checkbox"&gt;</code> (no checked)</button>
+    <output id="html-result"></output>
+    <p><small>The checkbox <b>stays checked</b> — absence of <code>checked</code> means "don't touch".</small></p>
+  </section>
+
+  <section class="ok">
+    <h2>The fix: explicit state via the VNode API</h2>
+    <div id="vnode"><input type="checkbox" id="c2" checked> <label for="c2">I'm checked</label></div>
+    <button id="uncheck">Uncheck via <code>updateDomWithVdom</code></button>
+    <button id="check">Check again</button>
+    <output id="vnode-result"></output>
+    <p><small><code>checked: false</code> is explicit — it wins over the live state. The node is patched in place.</small></p>
+  </section>
+
+  <section>
+    <h2>Same rule for text: uncontrolled survives, controlled wins</h2>
+    <div id="text"><input type="text" id="t1" placeholder="type here, then morph…"></div>
+    <button id="soft">Morph without <code>value</code> (keeps your text)</button>
+    <button id="hard">Morph with <code>value: "reset"</code> (overrides)</button>
+  </section>
+
+  <!-- Local: repo build. Production: https://cdn.jsdelivr.net/npm/defuss-morph@latest/dist/all.min.js -->
+  <script type="module" src="../dist/all.js"></script>
+  <script type="module">
+    const { morph, updateDomWithVdom } = window.df$;
+
+    // --- the limitation ---
+    const htmlOnly = document.getElementById("html-only");
+    const htmlResult = document.getElementById("html-result");
+    document.getElementById("try-uncheck").addEventListener("click", () => {
+      morph(htmlOnly, `<input type="checkbox" id="c1"> <label for="c1">I'm checked</label>`);
+      const checked = htmlOnly.querySelector("input").checked;
+      htmlResult.value = `→ still checked: ${checked} (state preserved as uncontrolled)`;
+    });
+
+    // --- the fix ---
+    const vnode = document.getElementById("vnode");
+    const vnodeResult = document.getElementById("vnode-result");
+    const setChecked = (checked) =>
+      updateDomWithVdom(vnode, [
+        { type: "input", attributes: { type: "checkbox", id: "c2", checked }, children: [] },
+        " ",
+        { type: "label", attributes: { for: "c2" }, children: ["I'm checked"] },
+      ]); // globals omitted: derived from the element's own document
+    document.getElementById("uncheck").addEventListener("click", () => {
+      setChecked(false);
+      vnodeResult.value = `→ checked: ${vnode.querySelector("input").checked}`;
+    });
+    document.getElementById("check").addEventListener("click", () => setChecked(true));
+
+    // --- text inputs ---
+    const text = document.getElementById("text");
+    document.getElementById("soft").addEventListener("click", () =>
+      morph(text, `<input type="text" id="t1" class="touched" placeholder="type here, then morph…">`),
+    );
+    document.getElementById("hard").addEventListener("click", () =>
+      updateDomWithVdom(text, [
+        { type: "input", attributes: { type: "text", id: "t1", value: "reset" }, children: [] },
+      ]),
+    );
+  </script>
+</body>
+</html>

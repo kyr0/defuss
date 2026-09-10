@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>defuss-morph — the df$ global, no build step</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    section { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-block: 1rem; }
+    button { margin-right: 0.5rem; }
+    li[key] { padding: 2px 6px; }
+    li.hot { background: #fff3cd; }
+    code { background: #f4f4f4; padding: 0 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1><code>df$</code> — defuss-morph from a plain &lt;script&gt; tag</h1>
+  <p>No bundler, no import maps — the bundle registered <code>window.df$</code> on load.</p>
+
+  <section>
+    <h2>1. morph(): patch HTML in place</h2>
+    <div id="app"><p>Hello <b>World</b></p></div>
+    <button id="rename">Rename in place</button>
+    <p><small>The <code>&lt;b&gt;</code> node is patched, not replaced (check <code>identity</code> in the console).</small></p>
+  </section>
+
+  <section>
+    <h2>2. Keyed list: move, don't recreate</h2>
+    <div id="list"></div>
+    <button id="shuffle">Reverse order</button>
+    <p><small>Items keep their DOM identity (and event listeners) while reordering.</small></p>
+  </section>
+
+  <section>
+    <h2>3. updateDomWithVdom(): explicit control when HTML can't express it</h2>
+    <div id="form"><input type="checkbox" id="cb" checked> <label for="cb">Checked?</label></div>
+    <button id="uncheck">Uncheck via VNode API</button>
+    <p><small>An HTML string can't say "explicitly unchecked" (absence means uncontrolled) — the VNode API can.</small></p>
+  </section>
+
+  <section>
+    <h2>4. registerDelegatedEvent(): handlers survive morphs</h2>
+    <div id="events"><button id="watched">Click me (0)</button></div>
+    <button id="relabel">Morph the button's label</button>
+  </section>
+
+  <section>
+    <h2>5. Transitions</h2>
+    <div id="fade"><p>I fade between states</p></div>
+    <button id="fade-btn">Morph with fade</button>
+  </section>
+
+  <!-- Local development: the freshly built bundle straight from the repo -->
+  <script type="module" src="../dist/all.js"></script>
+  <!-- Production: the same file from jsDelivr (all.min.js registers df$ identically):
+  <script type="module" src="https://cdn.jsdelivr.net/npm/defuss-morph@latest/dist/all.min.js"></script>
+  -->
+
+  <script type="module">
+    // module scripts are deferred: df$ is registered by the time this runs
+    const { morph, updateDomWithVdom, registerDelegatedEvent } = window.df$;
+
+    // 1. in-place patching
+    const app = document.getElementById("app");
+    const boldBefore = app.querySelector("b");
+    document.getElementById("rename").addEventListener("click", () => {
+      morph(app, `<p>Hello <b class="hot">df$</b></p>`);
+      console.log("identity preserved:", app.querySelector("b") === boldBefore);
+    });
+
+    // 2. keyed list
+    const list = document.getElementById("list");
+    let order = [1, 2, 3, 4, 5];
+    const renderList = () =>
+      morph(
+        list,
+        `<ul>${order.map((n) => `<li key="item-${n}">Item ${n}</li>`).join("")}</ul>`,
+      );
+    renderList();
+    document.getElementById("shuffle").addEventListener("click", () => {
+      order = order.reverse();
+      renderList();
+    });
+
+    // 3. explicit (controlled) form state via the VNode API
+    document.getElementById("uncheck").addEventListener("click", () => {
+      updateDomWithVdom(document.getElementById("form"), [
+        {
+          type: "input",
+          attributes: { type: "checkbox", id: "cb", checked: false },
+          children: [],
+        },
+        " ",
+        { type: "label", attributes: { for: "cb" }, children: ["Checked?"] },
+      ]); // globals optional: derived from the element's own document
+    });
+
+    // 4. delegated events survive morphing
+    const watched = document.getElementById("watched");
+    let clicks = 0;
+    registerDelegatedEvent(watched, "click", () => {
+      clicks++;
+      watched.textContent = `Click me (${clicks})`;
+    });
+    document.getElementById("relabel").addEventListener("click", () => {
+      morph(document.getElementById("events"), `<button id="watched" class="hot">${watched.textContent}</button>`);
+    });
+
+    // 5. transitions (morph becomes async when a transition is given)
+    const fade = document.getElementById("fade");
+    let toggle = false;
+    document.getElementById("fade-btn").addEventListener("click", async () => {
+      toggle = !toggle;
+      await morph(fade, `<p>${toggle ? "Faded over!" : "I fade between states"}</p>`, {
+        transition: { type: "fade", duration: 250, target: "self" },
+      });
+    });
+  </script>
+</body>
+</html>
