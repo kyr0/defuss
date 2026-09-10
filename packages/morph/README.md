@@ -9,18 +9,18 @@ The defuss DOM morphing algorithm is a standalone package: morph an HTML string 
 You don't need any complex framework like React, Vue, Solid, Angular, Svelte etc. to do DOM morphing. You don't even need a virtual DOM. You can simply get hold of a DOM element reference, and pass it new HTML or JSX to morph it into, and it works isomorphically everywhere - even without any complex transpilation or build step. Just include one `<script>` tag and you are ready to go.
 
 Features:
-- 🔄 Rendering & DOM-diff based patching of both HTML and JSX in the browser and on the server (isomorphic)
-- 🎯 Key/id-aware node matching
-- 📦 Move-not-replace
-- 🩹 In-place attribute patching
-- 📝 Form-state preservation
-- 🧹 Event handlers preserved; supports delegated event listeners
-- 🚫 No framework or virtual DOM needed
-- 🤝 Works with any framework or library, or without any
-- ⚡ No compile/transpile step required
-- 🪶 Extremely lightweight — just 6 KiB minified and gzipped
+- 🔄 Patch-rendering via DOM-diff; HTML + JSX supported
+- 🤝 Works with any other framework or library, and without any
+- 💯 Runs isomorphic in the browser and on the server
+- 🏎️ Fast! Uses native DOM APIs
+- 🎯 Stable key/id-aware node matching
+- 📦 CDN-served and packaged with ESM + CJS
+- 🧹 Event handler preservation w/ supports delegated event listeners
+- 📝 Form-state preservation (see one limitation below w/ solution)
+- ⚡ No compile/transpile step required (but optionally available)
+- 🪶 Extremely lightweight — just ~6 KiB minified and gzipped
+- 💅 Includes support for beautiful transitions (fade, slide, shake, custom styles)
 - 🟦 Written in TypeScript
-- Includes support for beautiful transitions (fade, slide, shake, custom styles)
 
 ## Quick, traditional CDN-based setup
 
