@@ -34,12 +34,40 @@ describe("isHTML / isSVG / isMarkup / getMimeType", () => {
     expect(isSVG("plain", Parser)).toBe(false);
   });
 
+  it("isSVG is false when the parser yields no document element", () => {
+    // stub parser (must be constructible: DOMParser is used via `new`):
+    // some DOM implementations return a documentless parse result
+    class EmptyParser {
+      parseFromString(): Document {
+        return {} as Document;
+      }
+    }
+    expect(isSVG("<svg>", EmptyParser as unknown as typeof DOMParser)).toBe(false);
+  });
+
   it("isMarkup requires angle brackets and a parseable document", () => {
     expect(isMarkup("<b>x</b>", Parser)).toBe(true);
     expect(isMarkup("<svg></svg>", Parser)).toBe(true);
     expect(isMarkup("hello", Parser)).toBe(false);
     expect(isMarkup("< broken", Parser)).toBe(false);
     expect(isMarkup("no open >", Parser)).toBe(false);
+  });
+
+  it("isMarkup falls through to SVG detection when HTML detection fails", () => {
+    // stub parser (constructible): text/html parse looks non-HTML (few
+    // elements), while the SVG parse yields a real <svg> root — a combination
+    // real parsers only produce for exotic documents
+    class StubParser {
+      parseFromString(_input: string, type: string): Document {
+        return type === "image/svg+xml"
+          ? ({ documentElement: { nodeName: "svg" } } as unknown as Document)
+          : ({
+              documentElement: { querySelectorAll: () => [] },
+            } as unknown as Document);
+      }
+    }
+
+    expect(isMarkup("<svg></svg>", StubParser as unknown as typeof DOMParser)).toBe(true);
   });
 
   it("getMimeType picks the SVG mime only for real SVG documents", () => {
@@ -69,6 +97,11 @@ describe("renderMarkup", () => {
     const nodes = renderMarkup("", Parser, doc);
     expect((nodes[0] as HTMLElement).tagName).toBe("I");
     expect(nodes[0].textContent).toBe("in-doc");
+  });
+
+  it("returns an empty list for a document without body or documentElement", () => {
+    // stub document: neither HTML (no body) nor XML (no documentElement) shape
+    expect(renderMarkup("", Parser, {} as Document)).toEqual([]);
   });
 });
 
@@ -100,6 +133,11 @@ describe("domNodeToVNode", () => {
   it("converts text nodes to strings and comment nodes to empty strings", () => {
     expect(domNodeToVNode(document.createTextNode("text"))).toBe("text");
     expect(domNodeToVNode(document.createComment("note"))).toBe("");
+  });
+
+  it("maps an empty text node to an empty string", () => {
+    // textContent is "" (falsy) — must not become null/undefined
+    expect(domNodeToVNode(document.createTextNode(""))).toBe("");
   });
 });
 

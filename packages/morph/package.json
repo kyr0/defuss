@@ -39,7 +39,7 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest --coverage",
     "pretest:browser": "bunx playwright install chromium",
-    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "test:browser": "vitest run --project browser",
     "e2e": "bun run test:browser",
     "prepublishOnly": "bun run lint && bun run typecheck && bun run test && bun run clean && bun run build && bun run bundle && bun run minify && bun run stats && bun run verify"
   },

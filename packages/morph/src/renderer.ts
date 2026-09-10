@@ -385,7 +385,10 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       virtualNode: VNode<VNodeAttributes>,
       domElement: Element,
     ) => {
-      const attrNames = Object.keys(virtualNode.attributes!);
+      // attributes are optional on hand-written VNodes — guard instead of the
+      // `!` assertion, which crashed patching an element with an
+      // attributes-less vnode (Object.keys(undefined) throws)
+      const attrNames = Object.keys(virtualNode.attributes ?? {});
       for (let i = 0; i < attrNames.length; i++) {
         renderer.setAttribute(
           attrNames[i],

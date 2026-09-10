@@ -30,6 +30,80 @@ describe("morph(el, html)", () => {
     expect(el.children[1].textContent).toBe("s");
   });
 
+  it("morphs VNode/JSX input end-to-end (same API)", () => {
+    const el = container("<p>old</p>");
+    morph(el, [
+      {
+        type: "ul",
+        attributes: {},
+        children: [
+          { type: "li", attributes: { key: "a" }, children: ["A"] },
+          { type: "li", attributes: { key: "b" }, children: ["B"] },
+        ],
+      } as VNode,
+    ]);
+
+    const items = el.querySelectorAll("li");
+    expect(items.length).toBe(2);
+    expect(items[0].textContent).toBe("A");
+    expect(items[1].textContent).toBe("B");
+  });
+
+  it("VNode input preserves node identity and moves keyed nodes", () => {
+    const el = container();
+    const list = (keys: string[]): VNode[] => [
+      {
+        type: "ul",
+        attributes: {},
+        children: keys.map((k) => ({
+          type: "li",
+          attributes: { key: k },
+          children: [k],
+        })),
+      } as VNode,
+    ];
+
+    morph(el, list(["a", "b"]));
+    const liA = el.querySelector("li");
+
+    morph(el, list(["b", "a"]));
+    expect(el.querySelector("li:nth-child(2)")).toBe(liA); // moved, not recreated
+  });
+
+  it("VNode input can express explicit unchecked state (HTML string cannot)", () => {
+    const el = container(`<input type="checkbox" id="c" checked>`);
+
+    // HTML string: absent attribute = uncontrolled, stays checked
+    morph(el, `<input type="checkbox" id="c">`);
+    expect((el.querySelector("input") as HTMLInputElement).checked).toBe(true);
+
+    // VNode: explicit false wins over the live state
+    morph(el, [
+      {
+        type: "input",
+        attributes: { type: "checkbox", id: "c", checked: false },
+        children: [],
+      } as VNode,
+    ]);
+    expect((el.querySelector("input") as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("morphs plain text input as a text node", () => {
+    const el = container("<p>old</p>");
+    morph(el, "hello");
+    expect(el.textContent).toBe("hello");
+  });
+
+  it("supports transitions with VNode input", async () => {
+    const el = container("<div><p>old</p></div>");
+    await morph(
+      el.children[0] as Element,
+      [{ type: "p", attributes: {}, children: ["new"] } as VNode],
+      { transition: { type: "fade", duration: 10, target: "self" } },
+    );
+    expect((el.children[0] as HTMLElement).textContent).toBe("new");
+  });
+
   it("patches same-tag elements in place (identity preserved)", () => {
     const el = container(`<p class="old">text</p>`);
     const p = el.children[0];

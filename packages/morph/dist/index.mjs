@@ -1114,19 +1114,23 @@ const performTransition = async (element, updateCallback, config = {}) => {
 };
 
 const inflightTransitions = /* @__PURE__ */ new WeakMap();
-const morph = (el, newHTMLString, options = {}) => {
+const morph = (el, newContent, options = {}) => {
   const globals = resolveGlobals(el);
   const win = globals.window;
-  const applyHtml = (html) => updateDomWithVdom(el, htmlStringToVNodes(html, win.DOMParser), globals);
+  const apply = (content) => updateDomWithVdom(
+    el,
+    typeof content === "string" ? htmlStringToVNodes(content, win.DOMParser) : content,
+    globals
+  );
   const transition = options.transition;
   if (transition && transition.type !== "none") {
     const config = { ...DEFAULT_TRANSITION_CONFIG, ...transition };
     const transitionTarget = config.target === "self" ? el : el.parentElement;
     if (!transitionTarget) {
-      applyHtml(newHTMLString);
+      apply(newContent);
       return;
     }
-    const slot2 = { html: newHTMLString };
+    const slot2 = { content: newContent };
     inflightTransitions.set(el, slot2);
     return performTransition(
       transitionTarget,
@@ -1135,7 +1139,7 @@ const morph = (el, newHTMLString, options = {}) => {
       // already completed and cleaned it up), this deferred update is stale
       // and must not clobber the newer content
       async () => {
-        if (inflightTransitions.get(el) === slot2) applyHtml(slot2.html);
+        if (inflightTransitions.get(el) === slot2) apply(slot2.content);
       },
       config
     ).finally(() => {
@@ -1143,8 +1147,8 @@ const morph = (el, newHTMLString, options = {}) => {
     });
   }
   const slot = inflightTransitions.get(el);
-  if (slot) slot.html = newHTMLString;
-  applyHtml(newHTMLString);
+  if (slot) slot.content = newContent;
+  apply(newContent);
 };
 
 export { CAPTURE_ONLY_EVENTS, CLASS_ATTRIBUTE_NAME, DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE, DEFAULT_TRANSITION_CONFIG, FROM_DOM_MARKER, REF_ATTRIBUTE_NAME, XLINK_ATTRIBUTE_NAME, XMLNS_ATTRIBUTE_NAME, applyStyles, areDomNodesEqual, clearDelegatedEvents, clearDelegatedEventsDeep, domNodeToVNode, getMimeType, getRegisteredEventKeys, getRegisteredEventTypes, getRenderer, getTransitionStyles, handleLifecycleEventsForOnMount, htmlStringToVNodes, isHTML, isMarkup, isSVG, morph, nsMap, observeUnmount, parseDOM, parseEventPropName, performTransition, queueCallback, registerDelegatedEvent, removeDelegatedEvent, removeDelegatedEventByKey, renderMarkup, replaceDomWithVdom, resolveGlobals, updateDomWithVdom };

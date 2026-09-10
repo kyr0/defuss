@@ -1183,23 +1183,23 @@ var performTransition = async (element, updateCallback, config = {}) => {
 
 // src/index.ts
 var inflightTransitions = new WeakMap;
-var morph2 = (el, newHTMLString, options = {}) => {
+var morph2 = (el, newContent, options = {}) => {
   const globals = resolveGlobals(el);
   const win = globals.window;
-  const applyHtml = (html2) => updateDomWithVdom(el, htmlStringToVNodes(html2, win.DOMParser), globals);
+  const apply = (content) => updateDomWithVdom(el, typeof content === "string" ? htmlStringToVNodes(content, win.DOMParser) : content, globals);
   const transition = options.transition;
   if (transition && transition.type !== "none") {
     const config = { ...DEFAULT_TRANSITION_CONFIG, ...transition };
     const transitionTarget = config.target === "self" ? el : el.parentElement;
     if (!transitionTarget) {
-      applyHtml(newHTMLString);
+      apply(newContent);
       return;
     }
-    const slot2 = { html: newHTMLString };
+    const slot2 = { content: newContent };
     inflightTransitions.set(el, slot2);
     return performTransition(transitionTarget, async () => {
       if (inflightTransitions.get(el) === slot2)
-        applyHtml(slot2.html);
+        apply(slot2.content);
     }, config).finally(() => {
       if (inflightTransitions.get(el) === slot2)
         inflightTransitions.delete(el);
@@ -1207,8 +1207,8 @@ var morph2 = (el, newHTMLString, options = {}) => {
   }
   const slot = inflightTransitions.get(el);
   if (slot)
-    slot.html = newHTMLString;
-  applyHtml(newHTMLString);
+    slot.content = newContent;
+  apply(newContent);
 };
 
 // src/global.ts
@@ -1259,5 +1259,5 @@ export {
   CAPTURE_ONLY_EVENTS
 };
 
-//# debugId=CB458B65A2EA982764756E2164756E21
+//# debugId=9D12A5A03DF65EEE64756E2164756E21
 //# sourceMappingURL=all.js.map

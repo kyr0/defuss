@@ -339,3 +339,49 @@ describe("queueCallback", () => {
     expect(cb).toHaveBeenCalledWith("a", 1);
   });
 });
+
+describe("ref wiring for detached elements", () => {
+  it("arms unmount observation once the element is attached later", async () => {
+    const ref = { current: undefined as unknown };
+    const r = getRenderer(document);
+
+    // created without a parent -> parentNode is null at setAttribute time,
+    // so observation must be (re-)armed on the microtask after attaching
+    const el = r.createElement({
+      type: "span",
+      attributes: { ref },
+      children: [],
+    }) as HTMLElement;
+
+    expect(ref.current).toBe(el);
+    expect(el.parentNode).toBeNull();
+
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    parent.appendChild(el); // attach before the microtask runs
+    await flushMicrotasks(); // queueMicrotask arm path
+
+    // removing afterwards must not throw (observer was armed on the real parent)
+    expect(() => parent.removeChild(el)).not.toThrow();
+  });
+});
+
+describe("controlled props with non-boolean values", () => {
+  const r = () => getRenderer(document);
+
+  it("sets the checked attribute for truthy non-boolean values", () => {
+    const input = document.createElement("input");
+    r().setAttribute("checked", 1, input);
+    // property is assigned raw; the attribute reflects truthiness
+    expect((input as HTMLInputElement).checked).toBeTruthy();
+    expect(input.getAttribute("checked")).toBe("");
+  });
+
+  it("removes the checked attribute for falsy non-boolean values", () => {
+    const input = document.createElement("input");
+    input.setAttribute("checked", "");
+    r().setAttribute("checked", 0, input);
+    expect((input as HTMLInputElement).checked).toBeFalsy();
+    expect(input.hasAttribute("checked")).toBe(false);
+  });
+});

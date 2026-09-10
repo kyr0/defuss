@@ -29,6 +29,7 @@ describe("parseEventPropName", () => {
   it("rejects non-event props", () => {
     expect(parseEventPropName("xclick")).toBeNull();
     expect(parseEventPropName("on")).toBeNull();
+    expect(parseEventPropName("onCapture")).toBeNull(); // "capture" alone is not an event type
     expect(parseEventPropName("")).toBeNull();
   });
 });
@@ -162,6 +163,170 @@ describe("registerDelegatedEvent", () => {
     child.dispatchEvent(click());
     expect(onParent).not.toHaveBeenCalled();
   });
+
+  it("multi mode supports multiple capture handlers", () => {
+    const el = attached(document.createElement("button"));
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+    registerDelegatedEvent(el, "click", h1, { multi: true, capture: true });
+    registerDelegatedEvent(el, "click", h2, { multi: true, capture: true });
+
+    expect(getRegisteredEventKeys(el).has("click:capture")).toBe(true);
+    el.dispatchEvent(click());
+    expect(h1).toHaveBeenCalledTimes(1);
+    expect(h2).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops capture multi-dispatch when a handler cancels bubbling", () => {
+    const el = attached(document.createElement("button"));
+    const h1 = vi.fn((ev: Event) => ev.stopPropagation());
+    const h2 = vi.fn();
+    registerDelegatedEvent(el, "click", h1, { multi: true, capture: true });
+    registerDelegatedEvent(el, "click", h2, { multi: true, capture: true });
+
+    el.dispatchEvent(click());
+    expect(h1).toHaveBeenCalledTimes(1);
+    expect(h2).not.toHaveBeenCalled();
+  });
+
+  it("stops bubble multi-dispatch when a handler cancels bubbling", () => {
+    const el = attached(document.createElement("button"));
+    const h1 = vi.fn((ev: Event) => ev.stopPropagation());
+    const h2 = vi.fn();
+    registerDelegatedEvent(el, "click", h1, { multi: true });
+    registerDelegatedEvent(el, "click", h2, { multi: true });
+
+    el.dispatchEvent(click());
+    expect(h1).toHaveBeenCalledTimes(1);
+    expect(h2).not.toHaveBeenCalled();
+  });
+
+  it("stops capture dispatch to descendants when cancelBubble is set", () => {
+    const parent = attached(document.createElement("div"));
+    const child = document.createElement("button");
+    parent.appendChild(child);
+
+    const onChild = vi.fn();
+    registerDelegatedEvent(parent, "click", (ev) => ev.stopPropagation(), {
+      capture: true,
+    });
+    registerDelegatedEvent(child, "click", onChild, { capture: true });
+
+    child.dispatchEvent(click());
+    expect(onChild).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Capture the bubble-phase root listener a registration installs, so the
+   * handler can be invoked directly with a crafted event. Real DOM
+   * implementations compute composedPath internally (happy-dom even requires
+   * it), so the SSR parent-walk fallback can only be exercised by calling
+   * the installed handler with a composedPath-less event object.
+   * ensureRootListener installs capture first, then bubble — bubble is [1].
+   */
+  const captureBubbleRootListener = (eventType: string): EventListener => {
+    const calls: unknown[][] = [];
+    const original = document.addEventListener.bind(document);
+    document.addEventListener = ((type: string, listener: any, ...rest: any[]) => {
+      calls.push([type, listener]);
+      original(type as any, listener, ...rest);
+    }) as typeof document.addEventListener;
+    try {
+      const anchor = attached(document.createElement("div"));
+      registerDelegatedEvent(anchor, eventType, vi.fn());
+    } finally {
+      document.addEventListener = original;
+    }
+    const installed = calls.filter(([type]) => type === eventType);
+    if (installed.length < 2)
+      throw new Error(`bubble root listener not installed for ${eventType}`);
+    return installed[1][1] as EventListener;
+  };
+
+  const fakeEvent = (target: EventTarget, type: string): Event =>
+    ({ type, target, cancelBubble: false }) as unknown as Event;
+
+  it("walks parentNode when composedPath is unavailable (SSR fallback)", () => {
+    // unique type: no dedup interference, listener freshly installed
+    const bubbleListener = captureBubbleRootListener("x-fallback");
+
+    const parent = attached(document.createElement("div"));
+    const child = document.createElement("button");
+    parent.appendChild(child);
+
+    const onParent = vi.fn();
+    registerDelegatedEvent(parent, "x-fallback", onParent);
+
+    // no composedPath on the event -> getEventPath must walk up parentNode
+    // and append document + window, reaching the parent entry
+    bubbleListener(fakeEvent(child, "x-fallback"));
+    expect(onParent).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to the parent walk when composedPath returns an empty array", () => {
+    // own type: per-root install dedup means each case needs a fresh event type
+    const bubbleListener = captureBubbleRootListener("x-empty");
+
+    const parent = attached(document.createElement("div"));
+    const child = document.createElement("button");
+    parent.appendChild(child);
+
+    const onParent = vi.fn();
+    registerDelegatedEvent(parent, "x-empty", onParent);
+
+    const ev = fakeEvent(child, "x-empty");
+    (ev as any).composedPath = () => [];
+    bubbleListener(ev);
+    expect(onParent).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops the parent walk at a non-Node target without an ownerDocument", () => {
+    const bubbleListener = captureBubbleRootListener("x-nonode");
+
+    // exotic SSR target: plain object (no parentNode, no ownerDocument) —
+    // the walk must stop without throwing and simply find no handler
+    const exoticTarget = { not: "a node" } as unknown as EventTarget;
+    expect(() => bubbleListener(fakeEvent(exoticTarget, "x-nonode"))).not.toThrow();
+  });
+
+  it("appends ownerDocument when the parent walk stops before it (detached target)", () => {
+    const bubbleListener = captureBubbleRootListener("x-detached");
+
+    const el = document.createElement("button"); // detached: walk ends at el
+    const onClick = vi.fn();
+    registerDelegatedEvent(el, "x-detached", onClick);
+
+    // path = [el] -> document + window must be appended so document-level
+    // delegation still reaches the detached element's entry
+    bubbleListener(fakeEvent(el, "x-detached"));
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("binds directly on elements without an owner document", () => {
+    // truly detached: no root node AND no ownerDocument -> direct binding
+    const fake = {
+      getRootNode: () => null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLElement;
+
+    const h = vi.fn();
+    registerDelegatedEvent(fake, "click", h);
+    expect(fake.addEventListener).toHaveBeenCalledWith("click", h, false);
+  });
+
+  it("installs delegation on a shadow root", () => {
+    const host = attached(document.createElement("my-widget"));
+    const shadow = host.attachShadow({ mode: "open" });
+    const inner = document.createElement("button");
+    shadow.appendChild(inner);
+
+    const onClick = vi.fn();
+    registerDelegatedEvent(inner, "click", onClick);
+
+    // root resolution must have picked the ShadowRoot; the entry is usable
+    expect(getRegisteredEventKeys(inner).has("click:bubble")).toBe(true);
+  });
 });
 
 describe("removal and inspection", () => {
@@ -191,6 +356,51 @@ describe("removal and inspection", () => {
     expect(h1).not.toHaveBeenCalled();
   });
 
+  it("removeDelegatedEvent removes a specific single (JSX) handler, both phases", () => {
+    const el = attached(document.createElement("button"));
+    const bubble = vi.fn();
+    const capture = vi.fn();
+    registerDelegatedEvent(el, "click", bubble);
+    registerDelegatedEvent(el, "click", capture, { capture: true });
+
+    removeDelegatedEvent(el, "click", bubble);
+    expect(getRegisteredEventKeys(el)).toEqual(new Set(["click:capture"]));
+
+    removeDelegatedEvent(el, "click", capture);
+    expect(getRegisteredEventKeys(el).size).toBe(0);
+
+    el.dispatchEvent(click());
+    expect(bubble).not.toHaveBeenCalled();
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it("removeDelegatedEvent removes a specific capture multi handler", () => {
+    const el = attached(document.createElement("button"));
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+    registerDelegatedEvent(el, "click", h1, { multi: true, capture: true });
+    registerDelegatedEvent(el, "click", h2, { multi: true, capture: true });
+
+    removeDelegatedEvent(el, "click", h1);
+    el.dispatchEvent(click());
+    expect(h1).not.toHaveBeenCalled();
+    expect(h2).toHaveBeenCalledTimes(1);
+  });
+
+  it("removeDelegatedEvent empties the entry when the last multi handler goes", () => {
+    const el = attached(document.createElement("button"));
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+    registerDelegatedEvent(el, "click", h1, { multi: true });
+    registerDelegatedEvent(el, "click", h2, { multi: true });
+
+    removeDelegatedEvent(el, "click", h1);
+    expect(getRegisteredEventKeys(el).has("click:bubble")).toBe(true);
+
+    removeDelegatedEvent(el, "click", h2);
+    expect(getRegisteredEventTypes(el).size).toBe(0); // entry fully removed
+  });
+
   it("removeDelegatedEventByKey removes only one phase", () => {
     const el = attached(document.createElement("button"));
     const bubble = vi.fn();
@@ -205,6 +415,24 @@ describe("removal and inspection", () => {
     el.dispatchEvent(click());
     expect(capture).not.toHaveBeenCalled();
     expect(bubble).toHaveBeenCalledTimes(1);
+
+    // removing the remaining phase drops the entry entirely
+    removeDelegatedEventByKey(el, "click", "bubble");
+    expect(getRegisteredEventTypes(el).size).toBe(0);
+  });
+
+  it("removeDelegatedEventByKey keeps the entry when the other phase has handlers", () => {
+    const el = attached(document.createElement("button"));
+    registerDelegatedEvent(el, "click", vi.fn(), { multi: true, capture: true });
+    registerDelegatedEvent(el, "click", vi.fn(), { multi: true });
+
+    // unknown event type: safe no-op even though other types are registered
+    removeDelegatedEventByKey(el, "mouseover", "bubble");
+
+    removeDelegatedEventByKey(el, "click", "bubble");
+    const keys = getRegisteredEventKeys(el);
+    expect(keys.has("click:bubble")).toBe(false);
+    expect(keys.has("click:capture")).toBe(true); // captureSet survives
   });
 
   it("clearDelegatedEvents removes every handler of an element", () => {
@@ -247,8 +475,41 @@ describe("removal and inspection", () => {
     const el = document.createElement("button");
     expect(() => {
       removeDelegatedEvent(el, "click");
+      removeDelegatedEvent(el, "click", vi.fn());
       removeDelegatedEventByKey(el, "click", "bubble");
       clearDelegatedEvents(el);
     }).not.toThrow();
+    expect(getRegisteredEventTypes(el).size).toBe(0);
+    expect(getRegisteredEventKeys(el).size).toBe(0);
+  });
+
+  it("removeDelegatedEvent on a registered element but unknown type is a no-op", () => {
+    const el = attached(document.createElement("button"));
+    registerDelegatedEvent(el, "click", vi.fn());
+
+    // byEvent exists but has no "focus" entry
+    removeDelegatedEvent(el, "focus");
+    removeDelegatedEvent(el, "focus", vi.fn());
+    expect([...getRegisteredEventTypes(el)]).toEqual(["click"]);
+  });
+
+  it("clearDelegatedEventsDeep tolerates elements without an owner document", () => {
+    // no-ownerDocument elements have nothing to walk — must not throw
+    const orphan = { ownerDocument: undefined } as unknown as HTMLElement;
+    expect(() => clearDelegatedEventsDeep(orphan)).not.toThrow();
+  });
+
+  it("pre-installs delegation on the ownerDocument for orphaned elements (no root node)", () => {
+    // element reports no root node but has an ownerDocument -> document-level
+    // delegation is installed so events work once it is attached
+    const orphan = {
+      getRootNode: () => null,
+      ownerDocument: document,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLElement;
+
+    registerDelegatedEvent(orphan, "click", vi.fn());
+    expect(getRegisteredEventTypes(orphan)).toEqual(new Set(["click"]));
   });
 });

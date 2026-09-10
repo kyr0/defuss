@@ -314,6 +314,13 @@ export const registerDelegatedEvent = (
   }
 };
 
+/** true when a handler entry holds no single handler and no non-empty set */
+const isEntryEmpty = (entry: HandlerEntry): boolean =>
+  !entry.capture &&
+  !entry.bubble &&
+  (!entry.captureSet || entry.captureSet.size === 0) &&
+  (!entry.bubbleSet || entry.bubbleSet.size === 0);
+
 export const removeDelegatedEvent = (
   target: EventTarget,
   eventType: string,
@@ -357,12 +364,7 @@ export const removeDelegatedEvent = (
   }
 
   // Clean up entry if empty
-  const isEmpty =
-    !entry.capture &&
-    !entry.bubble &&
-    (!entry.captureSet || entry.captureSet.size === 0) &&
-    (!entry.bubbleSet || entry.bubbleSet.size === 0);
-  if (isEmpty) {
+  if (isEntryEmpty(entry)) {
     byEvent.delete(eventType);
   }
 };
@@ -446,10 +448,5 @@ export const removeDelegatedEventByKey = (
   }
 
   // Clean up entry if empty
-  const isEmpty =
-    !entry.capture &&
-    !entry.bubble &&
-    (!entry.captureSet || entry.captureSet.size === 0) &&
-    (!entry.bubbleSet || entry.bubbleSet.size === 0);
-  if (isEmpty) byEvent.delete(eventType);
+  if (isEntryEmpty(entry)) byEvent.delete(eventType);
 };

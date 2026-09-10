@@ -4,6 +4,7 @@ import {
   areDomNodesEqual,
   morph,
   replaceDomWithVdom,
+  resolveGlobals,
   updateDomWithVdom,
 } from "./index.js";
 
@@ -377,5 +378,180 @@ describe("form state edge cases", () => {
       `<select><option value="a">A</option><option value="b" selected>B</option></select>`,
     );
     expect(select.value).toBe("b");
+  });
+
+  it("preserves uncontrolled value attributes on input, textarea and select", () => {
+    const el = container(
+      `<input value="iv"><textarea value="tv">t</textarea><select value="sv"></select>`,
+    );
+
+    // no value attribute in the new HTML => uncontrolled => attribute survives
+    morph(el, `<input><textarea>t</textarea><select></select>`);
+
+    expect(el.querySelector("input")!.getAttribute("value")).toBe("iv");
+    expect(el.querySelector("textarea")!.getAttribute("value")).toBe("tv");
+    expect(el.querySelector("select")!.getAttribute("value")).toBe("sv");
+  });
+});
+
+describe("normalizeChildren edge inputs", () => {
+  it("unwraps fragment-type vnodes (both casings)", () => {
+    const el = container();
+    morph(
+      el,
+      [
+        {
+          type: "fragment",
+          children: [{ type: "p", attributes: {}, children: ["a"] }],
+        },
+        {
+          type: "Fragment",
+          children: [{ type: "span", attributes: {}, children: ["b"] }],
+        },
+      ] as any,
+    );
+    expect(el.innerHTML).toBe("<p>a</p><span>b</span>");
+  });
+
+  it("treats a fragment without a children array as nothing", () => {
+    const el = container("<p>x</p>");
+    morph(el, [{ type: "fragment", attributes: {} }] as any);
+    expect(el.childNodes.length).toBe(0);
+  });
+
+  it("drops null, undefined and non-renderable children", () => {
+    const el = container();
+    morph(el, ["a", null, undefined, {} as any, (() => {}) as any, "b"]);
+    expect(el.textContent).toBe("ab");
+  });
+});
+
+describe("matching edge paths", () => {
+  it("replaces a keyed node when its tag changes", () => {
+    const el = container(`<ul><li key="a">A</li></ul>`);
+    const li = el.querySelector("li");
+
+    morph(el, `<ul><span key="a">A</span></ul>`);
+
+    const span = el.querySelector("span");
+    expect(span).not.toBeNull();
+    expect(span).not.toBe(li); // key matched, but tag change forces replacement
+  });
+
+  it("keeps a matched node untouched when the vnode type is a function", () => {
+    // function types cannot be reconciled by tag — the matched node stays as-is
+    const el = container(`<div key="a">untouched</div>`);
+    const div = el.children[0];
+
+    morph(el, [
+      { type: () => {}, attributes: { key: "a" }, children: ["changed"] },
+    ] as any);
+
+    expect(el.children[0]).toBe(div);
+    expect(div.textContent).toBe("untouched");
+  });
+
+  it("creates the renderer error element for an unresolved function type", () => {
+    const el = container(`<p>existing</p>`);
+    // function vnode cannot tag-match the existing <p> => new node is created
+    morph(el, [{ type: () => {} }] as any);
+    expect(el.querySelector("div")).not.toBeNull();
+    expect(el.querySelector("p")).toBeNull();
+  });
+
+  it("replaces a text node with an element when unkeyed matching finds none", () => {
+    // text first, element second: the element has no element-candidate in the
+    // unkeyed pool (only the text node) => it must be created, not coerced
+    const el = container(`hello<p>old</p>`);
+    morph(el, `hi<span>new</span>`);
+    expect(el.childNodes[0].nodeValue).toBe("hi");
+    expect(el.querySelector("span")!.textContent).toBe("new");
+    expect(el.querySelector("p")).toBeNull();
+  });
+
+  it("replaces a comment node with text (no text-node candidate to reuse)", () => {
+    const el = document.createElement("div");
+    el.appendChild(document.createComment("c"));
+    document.body.appendChild(el);
+
+    morph(el, "text");
+    expect(el.childNodes.length).toBe(1);
+    expect(el.childNodes[0].nodeType).toBe(3);
+    expect(el.childNodes[0].nodeValue).toBe("text");
+  });
+});
+
+describe("attribute patch edge cases", () => {
+  it("keeps inline on*-attributes (handlers are delegated, not attributes)", () => {
+    const el = container(`<button onclick="void 0" class="old">go</button>`);
+    morph(el, `<button class="new">go</button>`);
+
+    const btn = el.querySelector("button")!;
+    expect(btn.getAttribute("onclick")).toBe("void 0");
+    expect(btn.getAttribute("class")).toBe("new");
+  });
+
+  it("applies dangerouslySetInnerHTML when patching in place and skips children", () => {
+    const el = container(`<div id="t"><p>old</p></div>`);
+    updateDomWithVdom(
+      el,
+      [
+        {
+          type: "div",
+          attributes: {
+            id: "t",
+            dangerouslySetInnerHTML: { __html: "<b>raw</b>" },
+          },
+          children: [{ type: "i", attributes: {}, children: ["ignored"] }],
+        },
+      ],
+      globals,
+    );
+
+    const div = el.querySelector("div")!;
+    expect(div.innerHTML).toBe("<b>raw</b>");
+    expect(div.querySelector("i")).toBeNull();
+  });
+
+  it("clears children when a patch vnode omits the children property", () => {
+    const el = container(`<div id="d">content</div>`);
+    updateDomWithVdom(
+      el,
+      [{ type: "div", attributes: { id: "d" } } as any],
+      globals,
+    );
+    expect(el.querySelector("div")!.innerHTML).toBe("");
+  });
+
+  it("patches a same-tag element with an attributes-less vnode", () => {
+    const el = container(`<p class="keep">x</p>`);
+    const p = el.querySelector("p");
+
+    // no attributes on the vnode: same-tag node is still patched in place
+    // (regression: Object.keys(undefined) crashed setAttributes here)
+    updateDomWithVdom(el, [{ type: "p", children: ["y"] } as any], globals);
+
+    expect(el.children[0]).toBe(p);
+    expect(p!.textContent).toBe("y");
+    expect(p!.getAttribute("class")).toBeNull(); // undeclared attrs are removed
+  });
+});
+
+describe("resolveGlobals", () => {
+  it("returns explicit globals untouched", () => {
+    const custom = { marker: true } as unknown as Globals;
+    expect(resolveGlobals(undefined, custom)).toBe(custom);
+  });
+
+  it("falls back to the ambient global object when no element or globals are given", () => {
+    // identity with the test-realm globalThis is not guaranteed (vitest
+    // isolates realms), so assert behavior: a window-like fallback
+    const fallback = resolveGlobals() as any;
+    expect(fallback.window?.document ?? fallback.document).toBeDefined();
+  });
+
+  it("derives globals from an element's own document", () => {
+    const el = container("<p>x</p>");
+    expect(resolveGlobals(el).window).toBe(el.ownerDocument.defaultView);
   });
 });

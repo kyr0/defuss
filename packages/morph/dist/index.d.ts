@@ -1,24 +1,3 @@
-type TransitionType = "fade" | "slide-left" | "slide-right" | "shake" | "none";
-interface TransitionStyles {
-    enter: Record<string, string>;
-    enterActive: Record<string, string>;
-    exit: Record<string, string>;
-    exitActive: Record<string, string>;
-}
-type TransitionsEasing = "linear" | "ease" | "ease-in" | "ease-out" | "ease-in-out" | "step-start" | "step-end";
-interface TransitionConfig {
-    type?: TransitionType;
-    styles?: TransitionStyles;
-    duration?: number;
-    easing?: TransitionsEasing | string;
-    delay?: number;
-    target?: "parent" | "self";
-}
-declare const getTransitionStyles: (type: TransitionType, duration: number, easing?: string) => TransitionStyles;
-declare const applyStyles: (el: HTMLElement, styles: Record<string, string | number>) => void;
-declare const DEFAULT_TRANSITION_CONFIG: TransitionConfig;
-declare const performTransition: (element: HTMLElement, updateCallback: () => Promise<void>, config?: TransitionConfig) => Promise<void>;
-
 /**
  * Lean structural types for the defuss morph engine.
  *
@@ -69,6 +48,27 @@ interface DomAbstractionImpl {
     setAttribute(name: string, value: any, domElement: Element): void;
     setAttributes(virtualNode: VNode<VNodeAttributes>, domElement: Element): void;
 }
+
+type TransitionType = "fade" | "slide-left" | "slide-right" | "shake" | "none";
+interface TransitionStyles {
+    enter: Record<string, string>;
+    enterActive: Record<string, string>;
+    exit: Record<string, string>;
+    exitActive: Record<string, string>;
+}
+type TransitionsEasing = "linear" | "ease" | "ease-in" | "ease-out" | "ease-in-out" | "step-start" | "step-end";
+interface TransitionConfig {
+    type?: TransitionType;
+    styles?: TransitionStyles;
+    duration?: number;
+    easing?: TransitionsEasing | string;
+    delay?: number;
+    target?: "parent" | "self";
+}
+declare const getTransitionStyles: (type: TransitionType, duration: number, easing?: string) => TransitionStyles;
+declare const applyStyles: (el: HTMLElement, styles: Record<string, string | number>) => void;
+declare const DEFAULT_TRANSITION_CONFIG: TransitionConfig;
+declare const performTransition: (element: HTMLElement, updateCallback: () => Promise<void>, config?: TransitionConfig) => Promise<void>;
 
 declare const queueCallback: <T extends any[]>(cb: (...args: T) => void) => (...args: T) => void;
 
@@ -196,7 +196,7 @@ interface MorphOptions {
      */
     transition?: TransitionConfig;
 }
-declare const morph: (el: Element, newHTMLString: string, options?: MorphOptions) => void | Promise<void>;
+declare const morph: (el: Element, newContent: RenderInput, options?: MorphOptions) => void | Promise<void>;
 
 export { CAPTURE_ONLY_EVENTS, CLASS_ATTRIBUTE_NAME, DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE, DEFAULT_TRANSITION_CONFIG, FROM_DOM_MARKER, REF_ATTRIBUTE_NAME, XLINK_ATTRIBUTE_NAME, XMLNS_ATTRIBUTE_NAME, applyStyles, areDomNodesEqual, clearDelegatedEvents, clearDelegatedEventsDeep, domNodeToVNode, getMimeType, getRegisteredEventKeys, getRegisteredEventTypes, getRenderer, getTransitionStyles, handleLifecycleEventsForOnMount, htmlStringToVNodes, isHTML, isMarkup, isSVG, morph, nsMap, observeUnmount, parseDOM, parseEventPropName, performTransition, queueCallback, registerDelegatedEvent, removeDelegatedEvent, removeDelegatedEventByKey, renderMarkup, replaceDomWithVdom, resolveGlobals, updateDomWithVdom };
 export type { DefussKey, DelegatedEventOptions, DelegatedPhase, DomAbstractionImpl, Globals, MorphOptions, MountHandler, ParsedEventProp, RefLike, RenderInput, TransitionConfig, TransitionStyles, TransitionType, TransitionsEasing, UnmountHandler, VNode, VNodeAttributes, VNodeChild, VNodeChildren, VNodeType, ValidChild };
