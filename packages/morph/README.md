@@ -20,6 +20,8 @@ Features:
 - ⚡ No compile/transpile step required (but optionally available)
 - 🪶 Extremely lightweight — just ~6 KiB minified and gzipped
 - 💅 Includes support for beautiful transitions (fade, slide, shake, custom styles)
+- 🧩 Supports partial updates (diff mode) for streaming/AI-driven UIs
+- ✅ ~97%+ test coverage with unit tests and real browser E2E tests
 - 🟦 Written in TypeScript
 
 ## Quick, traditional CDN-based setup
