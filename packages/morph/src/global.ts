@@ -12,8 +12,10 @@ import * as api from "./index.js";
  *     window.df$.updateDomWithVdom(app, [{ type: "input", attributes: { checked: false }, children: [] }], { window });
  *   </script>
  *
- * A pre-existing `df$` object is preserved (the API is assigned onto it);
- * a non-object value (or none) is replaced with a fresh object.
+ * A pre-existing `df$` object or function is preserved (the API is assigned
+ * onto it); any other value (or none) is replaced with a fresh object. This
+ * keeps script order robust: loading morph after a script that declared `df$`
+ * as a function (e.g. dequery) does not clobber it.
  */
 declare global {
   var df$: typeof api | undefined;
@@ -25,7 +27,11 @@ declare global {
 
 if (typeof globalThis !== "undefined") {
   const g = globalThis as { df$: unknown };
-  if (typeof g.df$ !== "object" || g.df$ === null) {
+  const current = g.df$;
+  if (
+    current === null ||
+    (typeof current !== "object" && typeof current !== "function")
+  ) {
     g.df$ = {};
   }
   Object.assign(g.df$ as Record<string, unknown>, api);

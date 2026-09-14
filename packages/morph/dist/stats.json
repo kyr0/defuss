@@ -11,12 +11,12 @@
       "gzip": 9912
     },
     "dist/all.js": {
-      "bytes": 42572,
-      "gzip": 10076
+      "bytes": 42634,
+      "gzip": 10082
     },
     "dist/all.min.js": {
-      "bytes": 19394,
-      "gzip": 6948
+      "bytes": 19416,
+      "gzip": 6951
     }
   }
 }

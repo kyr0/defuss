@@ -89,6 +89,17 @@ describe("df$ global — CDN bundle (dist/all.js)", () => {
     expect(typeof df().morph).toBe("function");
   });
 
+  it("preserves a pre-existing df$ function (loading morph after dequery)", async () => {
+    const dequery = function marker() {};
+    (window as any).df$ = dequery;
+
+    await loadAsScript("/dist/all.js");
+
+    expect(df()).toBe(dequery);
+    expect(typeof df().morph).toBe("function");
+    expect(typeof df().updateDomWithVdom).toBe("function");
+  });
+
   it("df$.morph is the same function as the bundle's named ESM export", async () => {
     await loadAsScript("/dist/all.js");
     const mod = await importArtifact("/dist/all.js");

@@ -1263,7 +1263,8 @@ var morph2 = (el, newContent, options = {}) => {
 // src/global.ts
 if (typeof globalThis !== "undefined") {
   const g = globalThis;
-  if (typeof g.df$ !== "object" || g.df$ === null) {
+  const current = g.df$;
+  if (current === null || typeof current !== "object" && typeof current !== "function") {
     g.df$ = {};
   }
   Object.assign(g.df$, exports_src);
@@ -1308,5 +1309,5 @@ export {
   CAPTURE_ONLY_EVENTS
 };
 
-//# debugId=6F130A0428D5249264756E2164756E21
+//# debugId=BA5C1E84E9A829C164756E2164756E21
 //# sourceMappingURL=all.js.map

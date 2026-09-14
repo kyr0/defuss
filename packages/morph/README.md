@@ -358,7 +358,7 @@ The same rule applies to an `<input>`'s live `value`. See the runnable demos [`e
 | `index.mjs` | 40.2 kB | 9.5 kB | ESM/library build; used when installing via npm/bun |
 | `index.cjs` | 41.2 kB | 9.7 kB | CommonJS build |
 | `all.js` | 41.6 kB | 9.8 kB | UMD build; for CDN-based usage with debugging |
-| `all.min.js` | 18.9 kB | **6.8 kB** | Minified UMD build; for CDN-based usage without debugging (Pareto-optimal when no bundler is used) |
+| `all.min.js` | 19.0 kB | **6.8 kB** | Minified UMD build; for CDN-based usage without debugging (Pareto-optimal when no bundler is used) |
 <!-- bundle-size:end -->
 
 `index.cjs` (CommonJS) is kept for `require()` compatibility on older tool
