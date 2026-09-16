@@ -1,0 +1,98 @@
+{
+  "name": "defuss-query",
+  "version": "0.1.0",
+  "description": "A tiny native-DOM, Array-based jQuery-shaped facade over defuss-morph.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Aron Homberg <info@aron-homberg.de>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kyr0/defuss.git",
+    "directory": "packages/query"
+  },
+  "keywords": [
+    "dom",
+    "jquery",
+    "morph",
+    "defuss",
+    "typescript",
+    "native",
+    "chainable"
+  ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./core": {
+      "import": {
+        "types": "./dist/query.d.ts",
+        "default": "./dist/query.js"
+      },
+      "require": {
+        "types": "./dist/cjs/query.d.ts",
+        "default": "./dist/cjs/query.js"
+      }
+    },
+    "./global": {
+      "types": "./dist/global.d.ts",
+      "default": "./dist/all.js"
+    },
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": [
+    "./dist/all.js",
+    "./dist/all.min.js",
+    "./dist/global.min.js",
+    "./dist/global.js",
+    "./dist/cjs/all.js",
+    "./dist/cjs/global.js"
+  ],
+  "jsdelivr": "dist/all.min.js",
+  "unpkg": "dist/all.min.js",
+  "files": [
+    "dist",
+    "README.md",
+    "SKILL.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "defuss-morph": "^0.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "@vitest/browser": "^5.0.0",
+    "@vitest/browser-playwright": "^5.0.0",
+    "@vitest/coverage-v8": "^5.0.0",
+    "playwright": "^1.58.2",
+    "terser": "5.43.1",
+    "typescript": "5.8.3",
+    "vitest": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "bun scripts/build.ts && bun scripts/readme-sync.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p scripts/tsconfig.json && tsc --noEmit -p tests/tsconfig.json",
+    "test": "vitest run --coverage",
+    "test:browser": "vitest run --project browser",
+    "pretest:browser": "bunx playwright install chromium",
+    "test:types": "tsc --noEmit -p tests/tsconfig.json",
+    "verify": "bun scripts/verify.ts",
+    "check": "bun run build && bun run typecheck && bun run test && bun run test:package && bun run verify",
+    "serve": "bun scripts/serve.ts",
+    "prepublishOnly": "bun run check",
+    "test:package": "bun scripts/package-tests.ts"
+  }
+}
