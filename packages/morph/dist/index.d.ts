@@ -28,6 +28,11 @@ interface VNode<A = VNodeAttributes> {
     type?: VNodeType;
     attributes?: A;
     children?: VNodeChildren;
+    /**
+     * Comment data of a `{ type: "#comment" }` VNode (see `COMMENT_TYPE`).
+     * VERIFIED: optional, so defuss core's VNode (no `value`) stays assignable.
+     */
+    value?: string;
     sourceInfo?: unknown;
     /** Original props passed to a function component (set by jsx runtime for SSG hydration). */
     componentProps?: Record<string, any>;
@@ -82,11 +87,23 @@ interface ParsedEventProp {
     eventType: string;
     capture: boolean;
 }
-/** non-bubbling events best handled via capture */
+/**
+ * Events whose handlers are forced into the capture phase, so an ancestor's
+ * handler also sees descendants' events (container onFocus/onBlur). Every
+ * other non-bubbling event reaches only its target's handlers, natively.
+ */
 declare const CAPTURE_ONLY_EVENTS: Set<string>;
 declare const parseEventPropName: (propName: string) => ParsedEventProp | null;
 declare const registerDelegatedEvent: (element: HTMLElement, eventType: string, handler: EventListener, options?: DelegatedEventOptions) => void;
 declare const removeDelegatedEvent: (target: EventTarget, eventType: string, handler?: EventListener, _options?: DelegatedEventOptions) => void;
+/**
+ * Why: listeners a facade attaches natively (defuss-query's on()) live
+ * outside this registry, yet must go whenever morph clears an element
+ * (removal, replacement, clearDelegatedEventsDeep). A hook keeps morph
+ * ignorant of who owns them, instead of morph also tracking native listeners.
+ * Registering the same hook twice is a no-op; returns an unregister function.
+ */
+declare const onClearDelegatedEvents: (hook: (target: EventTarget) => void) => (() => void);
 declare const clearDelegatedEvents: (target: EventTarget) => void;
 /**
  * Clear delegated events for an element and all its descendants.
@@ -130,7 +147,7 @@ declare const getRenderer: (document: Document) => DomAbstractionImpl;
  * 1. Checks for reference equality.
  * 2. Compares node types.
  * 3. For Element nodes, compares tag names and attributes.
- * 4. For Text nodes, compares text content.
+ * 4. For Text and Comment nodes, compares their data.
  */
 declare const areDomNodesEqual: (oldNode: Node, newNode: Node) => boolean;
 /********************************************************
@@ -182,6 +199,17 @@ declare function replaceDomWithVdom(parentElement: Element, newVDOM: RenderInput
  * (same rationale as uncontrolled form-state preservation).
  */
 declare const FROM_DOM_MARKER: unique symbol;
+/**
+ * VNode type of an HTML comment: `{ type: "#comment", value }`.
+ * Why "#comment": it is the DOM's own nodeName for comments and can never
+ * collide with a tag name ("#" is invalid there). The data lives in `value`,
+ * not `children`, so generic tree walkers never mistake it for content.
+ */
+declare const COMMENT_TYPE = "#comment";
+type CommentVNode = VNode & {
+    type: typeof COMMENT_TYPE;
+};
+declare const isCommentVNode: (value: unknown) => value is CommentVNode;
 declare function parseDOM(input: string, type: DOMParserSupportedType, Parser: typeof DOMParser): Document;
 declare function isSVG(input: string, Parser: typeof DOMParser): boolean;
 declare function isHTML(input: string, Parser: typeof DOMParser): boolean;
@@ -229,5 +257,5 @@ interface MorphOptions {
 }
 declare const morph: (el: Element, newContent: RenderInput, options?: MorphOptions) => void | Promise<void>;
 
-export { CAPTURE_ONLY_EVENTS, CLASS_ATTRIBUTE_NAME, DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE, DEFAULT_TRANSITION_CONFIG, FROM_DOM_MARKER, REF_ATTRIBUTE_NAME, XLINK_ATTRIBUTE_NAME, XMLNS_ATTRIBUTE_NAME, applyStyles, areDomNodesEqual, clearDelegatedEvents, clearDelegatedEventsDeep, domNodeToVNode, getMimeType, getRegisteredEventKeys, getRegisteredEventTypes, getRenderer, getTransitionStyles, handleLifecycleEventsForOnMount, htmlStringToVNodes, isHTML, isMarkup, isSVG, morph, nsMap, observeUnmount, parseDOM, parseEventPropName, performTransition, queueCallback, registerDelegatedEvent, removeDelegatedEvent, removeDelegatedEventByKey, renderMarkup, replaceDomWithVdom, resolveGlobals, updateDomWithVdom };
-export type { DefussKey, DelegatedEventOptions, DelegatedPhase, DomAbstractionImpl, Globals, MorphMode, MorphOptions, MountHandler, ParsedEventProp, RefLike, RenderInput, TransitionConfig, TransitionStyles, TransitionType, TransitionsEasing, UnmountHandler, VNode, VNodeAttributes, VNodeChild, VNodeChildren, VNodeType, ValidChild };
+export { CAPTURE_ONLY_EVENTS, CLASS_ATTRIBUTE_NAME, COMMENT_TYPE, DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE, DEFAULT_TRANSITION_CONFIG, FROM_DOM_MARKER, REF_ATTRIBUTE_NAME, XLINK_ATTRIBUTE_NAME, XMLNS_ATTRIBUTE_NAME, applyStyles, areDomNodesEqual, clearDelegatedEvents, clearDelegatedEventsDeep, domNodeToVNode, getMimeType, getRegisteredEventKeys, getRegisteredEventTypes, getRenderer, getTransitionStyles, handleLifecycleEventsForOnMount, htmlStringToVNodes, isCommentVNode, isHTML, isMarkup, isSVG, morph, nsMap, observeUnmount, onClearDelegatedEvents, parseDOM, parseEventPropName, performTransition, queueCallback, registerDelegatedEvent, removeDelegatedEvent, removeDelegatedEventByKey, renderMarkup, replaceDomWithVdom, resolveGlobals, updateDomWithVdom };
+export type { CommentVNode, DefussKey, DelegatedEventOptions, DelegatedPhase, DomAbstractionImpl, Globals, MorphMode, MorphOptions, MountHandler, ParsedEventProp, RefLike, RenderInput, TransitionConfig, TransitionStyles, TransitionType, TransitionsEasing, UnmountHandler, VNode, VNodeAttributes, VNodeChild, VNodeChildren, VNodeType, ValidChild };

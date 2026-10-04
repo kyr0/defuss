@@ -8,6 +8,21 @@ import type { VNode, VNodeAttributes } from "./types.js";
  */
 export const FROM_DOM_MARKER: unique symbol = Symbol("defuss-morph.from-dom");
 
+/**
+ * VNode type of an HTML comment: `{ type: "#comment", value }`.
+ * Why "#comment": it is the DOM's own nodeName for comments and can never
+ * collide with a tag name ("#" is invalid there). The data lives in `value`,
+ * not `children`, so generic tree walkers never mistake it for content.
+ */
+export const COMMENT_TYPE = "#comment";
+
+export type CommentVNode = VNode & { type: typeof COMMENT_TYPE };
+
+export const isCommentVNode = (value: unknown): value is CommentVNode =>
+  !!value &&
+  typeof value === "object" &&
+  (value as VNode).type === COMMENT_TYPE;
+
 const HTML_BOOLEAN_ATTRIBUTES = new Set([
   "allowfullscreen",
   "async",
@@ -118,9 +133,16 @@ export function domNodeToVNode(node: Node): VNode<VNodeAttributes> | string {
     };
   }
 
-  // For other node types (comments, etc.), convert to empty string
+  if (node.nodeType === 8 /* Node.COMMENT_NODE */) {
+    return { type: COMMENT_TYPE, value: node.nodeValue ?? "" };
+  }
+
+  // For other node types (processing instructions, etc.), convert to empty string
   return "";
 }
+
+/** Input starting (after optional comments) with doctype/html/head/body. */
+const DOCUMENT_START = /^\s*(?:<!--[\s\S]*?-->\s*)*<(?:!doctype|html|head|body)[\s>/]/i;
 
 /**
  * Converts an HTML string to VNode structure for use with updateDomWithVdom.
@@ -131,7 +153,14 @@ export function htmlStringToVNodes(
   Parser: typeof DOMParser,
 ): Array<VNode<VNodeAttributes> | string> {
   const parser = new Parser();
-  const doc = parser.parseFromString(html, "text/html");
+  // Fragment input gets an explicit <body>. VERIFIED: in Chromium and
+  // happy-dom, without it a leading comment is attached to the Document (outside body)
+  // and lost. Prefixing every input instead would move a full document's
+  // <head> content (e.g. <title>) into body, so documents parse unchanged.
+  const doc = parser.parseFromString(
+    DOCUMENT_START.test(html) ? html : `<body>${html}`,
+    "text/html",
+  );
   const vNodes: Array<VNode<VNodeAttributes> | string> = [];
 
   // Convert each child node in the body to a VNode

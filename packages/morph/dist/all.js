@@ -27,12 +27,14 @@ __export(exports_src, {
   performTransition: () => performTransition,
   parseEventPropName: () => parseEventPropName,
   parseDOM: () => parseDOM,
+  onClearDelegatedEvents: () => onClearDelegatedEvents,
   observeUnmount: () => observeUnmount,
   nsMap: () => nsMap,
   morph: () => morph2,
   isSVG: () => isSVG,
   isMarkup: () => isMarkup,
   isHTML: () => isHTML,
+  isCommentVNode: () => isCommentVNode,
   htmlStringToVNodes: () => htmlStringToVNodes,
   handleLifecycleEventsForOnMount: () => handleLifecycleEventsForOnMount,
   getTransitionStyles: () => getTransitionStyles,
@@ -51,6 +53,7 @@ __export(exports_src, {
   FROM_DOM_MARKER: () => FROM_DOM_MARKER,
   DEFAULT_TRANSITION_CONFIG: () => DEFAULT_TRANSITION_CONFIG,
   DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE: () => DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE,
+  COMMENT_TYPE: () => COMMENT_TYPE,
   CLASS_ATTRIBUTE_NAME: () => CLASS_ATTRIBUTE_NAME,
   CAPTURE_ONLY_EVENTS: () => CAPTURE_ONLY_EVENTS
 });
@@ -67,8 +70,7 @@ var CAPTURE_ONLY_EVENTS = new Set([
   "mouseleave"
 ]);
 var elementHandlerMap = new WeakMap;
-var bubbleDispatched = new WeakMap;
-var captureDispatched = new WeakMap;
+var slotListeners = new WeakMap;
 var activeDispatches = new WeakMap;
 var parseEventPropName = (propName) => {
   if (!propName.startsWith("on"))
@@ -91,146 +93,66 @@ var getOrCreateElementHandlers = (el) => {
   elementHandlerMap.set(el, created);
   return created;
 };
-var getEventPath = (event) => {
-  const composedPath = event.composedPath?.();
-  if (composedPath && composedPath.length > 0)
-    return composedPath;
-  const path = [];
-  let node = event.target;
-  while (node) {
-    path.push(node);
-    const maybeNode = node;
-    if (typeof maybeNode === "object" && maybeNode && "parentNode" in maybeNode) {
-      node = maybeNode.parentNode;
-      continue;
+var runSlot = (target, eventType, phase, event) => {
+  const handler = elementHandlerMap.get(target)?.get(eventType)?.[phase];
+  if (!handler)
+    return;
+  const dispatchKey = `${eventType}:${phase}`;
+  let active = activeDispatches.get(target);
+  if (active?.has(dispatchKey))
+    return;
+  if (!active) {
+    active = new Set;
+    activeDispatches.set(target, active);
+  }
+  active.add(dispatchKey);
+  try {
+    handler.call(target, event);
+  } finally {
+    active.delete(dispatchKey);
+  }
+};
+var setSlot = (target, eventType, phase, entry, handler) => {
+  entry[phase] = handler;
+  const key = `${eventType}:${phase}`;
+  const capture = phase === "capture";
+  let byKey = slotListeners.get(target);
+  const installed = byKey?.get(key);
+  if (handler && !installed) {
+    if (!byKey) {
+      byKey = new Map;
+      slotListeners.set(target, byKey);
     }
-    break;
-  }
-  const doc = event.target?.ownerDocument;
-  if (doc && path[path.length - 1] !== doc)
-    path.push(doc);
-  const win = doc?.defaultView;
-  if (win && path[path.length - 1] !== win)
-    path.push(win);
-  return path;
-};
-var createPhaseHandler = (eventType, phase) => {
-  const dispatched = phase === "capture" ? captureDispatched : bubbleDispatched;
-  return (event) => {
-    const path = getEventPath(event).filter((t) => typeof t === "object" && t !== null && t.nodeType === 1);
-    const ordered = phase === "capture" ? [...path].reverse() : path;
-    for (const target of ordered) {
-      const handlersByEvent = elementHandlerMap.get(target);
-      if (!handlersByEvent)
-        continue;
-      const entry = handlersByEvent.get(eventType);
-      if (!entry)
-        continue;
-      let targets = dispatched.get(event);
-      if (targets?.has(target))
-        continue;
-      if (!targets) {
-        targets = new WeakSet;
-        dispatched.set(event, targets);
-      }
-      targets.add(target);
-      const dispatchKey = `${eventType}:${phase}`;
-      let activeSet = activeDispatches.get(target);
-      if (activeSet?.has(dispatchKey))
-        continue;
-      if (!activeSet) {
-        activeSet = new Set;
-        activeDispatches.set(target, activeSet);
-      }
-      activeSet.add(dispatchKey);
-      try {
-        if (phase === "capture") {
-          if (entry.capture) {
-            entry.capture.call(target, event);
-            if (event.cancelBubble)
-              return;
-          }
-          if (entry.captureSet) {
-            for (const handler of entry.captureSet) {
-              handler.call(target, event);
-              if (event.cancelBubble)
-                return;
-            }
-          }
-        } else {
-          if (entry.bubble) {
-            entry.bubble.call(target, event);
-            if (event.cancelBubble)
-              return;
-          }
-          if (entry.bubbleSet) {
-            for (const handler of entry.bubbleSet) {
-              handler.call(target, event);
-              if (event.cancelBubble)
-                return;
-            }
-          }
-        }
-      } finally {
-        activeSet.delete(dispatchKey);
-      }
-    }
-  };
-};
-var installedRootListeners = new WeakMap;
-var ensureRootListener = (root, eventType) => {
-  const installed = installedRootListeners.get(root) ?? new Set;
-  installedRootListeners.set(root, installed);
-  const captureKey = `${eventType}:capture`;
-  if (!installed.has(captureKey)) {
-    root.addEventListener(eventType, createPhaseHandler(eventType, "capture"), true);
-    installed.add(captureKey);
-  }
-  const bubbleKey = `${eventType}:bubble`;
-  if (!installed.has(bubbleKey)) {
-    root.addEventListener(eventType, createPhaseHandler(eventType, "bubble"), false);
-    installed.add(bubbleKey);
+    const trampoline = (event) => runSlot(target, eventType, phase, event);
+    byKey.set(key, trampoline);
+    target.addEventListener(eventType, trampoline, capture);
+  } else if (!handler && installed) {
+    byKey.delete(key);
+    target.removeEventListener(eventType, installed, capture);
   }
 };
-var getEventRoot = (element) => {
-  const root = element.getRootNode();
-  if (root && root.nodeType === 9) {
-    return root;
-  }
-  if (root && root.nodeType === 11 && "host" in root) {
-    return root;
-  }
-  return null;
+var clearPhase = (target, eventType, entry, phase) => {
+  setSlot(target, eventType, phase, entry, undefined);
+  const setKey = phase === "capture" ? "captureSet" : "bubbleSet";
+  for (const handler of entry[setKey] ?? [])
+    target.removeEventListener(eventType, handler, phase === "capture");
+  entry[setKey] = undefined;
 };
 var registerDelegatedEvent = (element, eventType, handler, options = {}) => {
-  const root = getEventRoot(element);
   const capture = options.capture || CAPTURE_ONLY_EVENTS.has(eventType);
-  if (root) {
-    ensureRootListener(root, eventType);
-  } else if (element.ownerDocument) {
-    ensureRootListener(element.ownerDocument, eventType);
-  } else {
-    element.addEventListener(eventType, handler, capture);
-  }
+  const phase = capture ? "capture" : "bubble";
   const byEvent = getOrCreateElementHandlers(element);
   const entry = byEvent.get(eventType) ?? {};
   byEvent.set(eventType, entry);
   if (options.multi) {
-    if (capture) {
-      if (!entry.captureSet)
-        entry.captureSet = new Set;
-      entry.captureSet.add(handler);
-    } else {
-      if (!entry.bubbleSet)
-        entry.bubbleSet = new Set;
-      entry.bubbleSet.add(handler);
+    const setKey = capture ? "captureSet" : "bubbleSet";
+    const set = entry[setKey] ??= new Set;
+    if (!set.has(handler)) {
+      set.add(handler);
+      element.addEventListener(eventType, handler, capture);
     }
   } else {
-    if (capture) {
-      entry.capture = handler;
-    } else {
-      entry.bubble = handler;
-    }
+    setSlot(element, eventType, phase, entry, handler);
   }
 };
 var isEntryEmpty = (entry) => !entry.capture && !entry.bubble && (!entry.captureSet || entry.captureSet.size === 0) && (!entry.bubbleSet || entry.bubbleSet.size === 0);
@@ -242,35 +164,39 @@ var removeDelegatedEvent = (target, eventType, handler, _options = {}) => {
   if (!entry)
     return;
   if (handler) {
-    if (entry.captureSet) {
-      entry.captureSet.delete(handler);
+    for (const phase of ["capture", "bubble"]) {
+      const set = phase === "capture" ? entry.captureSet : entry.bubbleSet;
+      if (set?.delete(handler))
+        target.removeEventListener(eventType, handler, phase === "capture");
+      if (entry[phase] === handler)
+        setSlot(target, eventType, phase, entry, undefined);
     }
-    if (entry.bubbleSet) {
-      entry.bubbleSet.delete(handler);
-    }
-    if (entry.capture === handler) {
-      entry.capture = undefined;
-    }
-    if (entry.bubble === handler) {
-      entry.bubble = undefined;
-    }
-    target.removeEventListener(eventType, handler, true);
-    target.removeEventListener(eventType, handler, false);
   } else {
-    entry.capture = undefined;
-    entry.bubble = undefined;
-    entry.captureSet = undefined;
-    entry.bubbleSet = undefined;
+    clearPhase(target, eventType, entry, "capture");
+    clearPhase(target, eventType, entry, "bubble");
   }
   if (isEntryEmpty(entry)) {
     byEvent.delete(eventType);
   }
 };
+var clearHooks = new Set;
+var onClearDelegatedEvents = (hook) => {
+  clearHooks.add(hook);
+  return () => {
+    clearHooks.delete(hook);
+  };
+};
 var clearDelegatedEvents = (target) => {
   const byEvent = elementHandlerMap.get(target);
-  if (!byEvent)
-    return;
-  byEvent.clear();
+  if (byEvent) {
+    for (const [eventType, entry] of byEvent) {
+      clearPhase(target, eventType, entry, "capture");
+      clearPhase(target, eventType, entry, "bubble");
+    }
+    byEvent.clear();
+  }
+  for (const hook of clearHooks)
+    hook(target);
 };
 var clearDelegatedEventsDeep = (root) => {
   clearDelegatedEvents(root);
@@ -310,16 +236,109 @@ var removeDelegatedEventByKey = (element, eventType, phase) => {
   const entry = byEvent.get(eventType);
   if (!entry)
     return;
-  if (phase === "capture") {
-    entry.capture = undefined;
-    entry.captureSet = undefined;
-  } else {
-    entry.bubble = undefined;
-    entry.bubbleSet = undefined;
-  }
+  clearPhase(element, eventType, entry, phase);
   if (isEntryEmpty(entry))
     byEvent.delete(eventType);
 };
+
+// src/html.ts
+var FROM_DOM_MARKER = Symbol("defuss-morph.from-dom");
+var COMMENT_TYPE = "#comment";
+var isCommentVNode = (value) => !!value && typeof value === "object" && value.type === COMMENT_TYPE;
+var HTML_BOOLEAN_ATTRIBUTES = new Set([
+  "allowfullscreen",
+  "async",
+  "autofocus",
+  "autoplay",
+  "checked",
+  "controls",
+  "default",
+  "defer",
+  "disabled",
+  "formnovalidate",
+  "hidden",
+  "inert",
+  "ismap",
+  "itemscope",
+  "loop",
+  "multiple",
+  "muted",
+  "nomodule",
+  "novalidate",
+  "open",
+  "playsinline",
+  "readonly",
+  "required",
+  "reversed",
+  "selected"
+]);
+var domAttributeToVNodeValue = (attr) => HTML_BOOLEAN_ATTRIBUTES.has(attr.name.toLowerCase()) ? true : attr.value;
+function parseDOM(input, type, Parser) {
+  return new Parser().parseFromString(input, type);
+}
+function isSVG(input, Parser) {
+  const doc = parseDOM(input, "image/svg+xml", Parser);
+  if (!doc.documentElement)
+    return false;
+  return doc.documentElement.nodeName.toLowerCase() === "svg";
+}
+function isHTML(input, Parser) {
+  const doc = parseDOM(input, "text/html", Parser);
+  return doc.documentElement.querySelectorAll("*").length > 2;
+}
+var isMarkup = (input, Parser) => input.indexOf("<") > -1 && input.indexOf(">") > -1 && (isHTML(input, Parser) || isSVG(input, Parser));
+function renderMarkup(markup, Parser, doc) {
+  const parsed = doc ? doc : parseDOM(markup, getMimeType(markup, Parser), Parser);
+  if (parsed.body)
+    return Array.from(parsed.body.childNodes);
+  return parsed.documentElement ? [parsed.documentElement] : [];
+}
+function getMimeType(input, Parser) {
+  if (isSVG(input, Parser)) {
+    return "image/svg+xml";
+  }
+  return "text/html";
+}
+function domNodeToVNode(node) {
+  if (node.nodeType === 3) {
+    return node.textContent || "";
+  }
+  if (node.nodeType === 1) {
+    const element = node;
+    const attributes = {};
+    for (let i = 0;i < element.attributes.length; i++) {
+      const attr = element.attributes[i];
+      attributes[attr.name] = domAttributeToVNodeValue(attr);
+    }
+    const children = [];
+    for (let i = 0;i < element.childNodes.length; i++) {
+      const childVNode = domNodeToVNode(element.childNodes[i]);
+      children.push(childVNode);
+    }
+    return {
+      type: element.tagName.toLowerCase(),
+      attributes: { ...attributes, [FROM_DOM_MARKER]: true },
+      children
+    };
+  }
+  if (node.nodeType === 8) {
+    return { type: COMMENT_TYPE, value: node.nodeValue ?? "" };
+  }
+  return "";
+}
+var DOCUMENT_START = /^\s*(?:<!--[\s\S]*?-->\s*)*<(?:!doctype|html|head|body)[\s>/]/i;
+function htmlStringToVNodes(html, Parser) {
+  const parser = new Parser;
+  const doc = parser.parseFromString(DOCUMENT_START.test(html) ? html : `<body>${html}`, "text/html");
+  const vNodes = [];
+  for (let i = 0;i < doc.body.childNodes.length; i++) {
+    const vnode = domNodeToVNode(doc.body.childNodes[i]);
+    if (vnode !== "") {
+      vNodes.push(vnode);
+    }
+  }
+  return vNodes;
+}
 
 // src/renderer.ts
 var CLASS_ATTRIBUTE_NAME = "class";
@@ -393,6 +412,11 @@ var getRenderer = (document2) => {
     },
     createElement: (virtualNode, parentDomElement) => {
       let newEl;
+      if (isCommentVNode(virtualNode)) {
+        const comment = document2.createComment(virtualNode.value ?? "");
+        parentDomElement?.appendChild(comment);
+        return comment;
+      }
       try {
         if (typeof virtualNode === "function" && virtualNode.constructor.name === "AsyncFunction") {
           newEl = document2.createElement("div");
@@ -548,99 +572,6 @@ var getRenderer = (document2) => {
   return renderer;
 };
 
-// src/html.ts
-var FROM_DOM_MARKER = Symbol("defuss-morph.from-dom");
-var HTML_BOOLEAN_ATTRIBUTES = new Set([
-  "allowfullscreen",
-  "async",
-  "autofocus",
-  "autoplay",
-  "checked",
-  "controls",
-  "default",
-  "defer",
-  "disabled",
-  "formnovalidate",
-  "hidden",
-  "inert",
-  "ismap",
-  "itemscope",
-  "loop",
-  "multiple",
-  "muted",
-  "nomodule",
-  "novalidate",
-  "open",
-  "playsinline",
-  "readonly",
-  "required",
-  "reversed",
-  "selected"
-]);
-var domAttributeToVNodeValue = (attr) => HTML_BOOLEAN_ATTRIBUTES.has(attr.name.toLowerCase()) ? true : attr.value;
-function parseDOM(input, type, Parser) {
-  return new Parser().parseFromString(input, type);
-}
-function isSVG(input, Parser) {
-  const doc = parseDOM(input, "image/svg+xml", Parser);
-  if (!doc.documentElement)
-    return false;
-  return doc.documentElement.nodeName.toLowerCase() === "svg";
-}
-function isHTML(input, Parser) {
-  const doc = parseDOM(input, "text/html", Parser);
-  return doc.documentElement.querySelectorAll("*").length > 2;
-}
-var isMarkup = (input, Parser) => input.indexOf("<") > -1 && input.indexOf(">") > -1 && (isHTML(input, Parser) || isSVG(input, Parser));
-function renderMarkup(markup, Parser, doc) {
-  const parsed = doc ? doc : parseDOM(markup, getMimeType(markup, Parser), Parser);
-  if (parsed.body)
-    return Array.from(parsed.body.childNodes);
-  return parsed.documentElement ? [parsed.documentElement] : [];
-}
-function getMimeType(input, Parser) {
-  if (isSVG(input, Parser)) {
-    return "image/svg+xml";
-  }
-  return "text/html";
-}
-function domNodeToVNode(node) {
-  if (node.nodeType === 3) {
-    return node.textContent || "";
-  }
-  if (node.nodeType === 1) {
-    const element = node;
-    const attributes = {};
-    for (let i = 0;i < element.attributes.length; i++) {
-      const attr = element.attributes[i];
-      attributes[attr.name] = domAttributeToVNodeValue(attr);
-    }
-    const children = [];
-    for (let i = 0;i < element.childNodes.length; i++) {
-      const childVNode = domNodeToVNode(element.childNodes[i]);
-      children.push(childVNode);
-    }
-    return {
-      type: element.tagName.toLowerCase(),
-      attributes: { ...attributes, [FROM_DOM_MARKER]: true },
-      children
-    };
-  }
-  return "";
-}
-function htmlStringToVNodes(html, Parser) {
-  const parser = new Parser;
-  const doc = parser.parseFromString(html, "text/html");
-  const vNodes = [];
-  for (let i = 0;i < doc.body.childNodes.length; i++) {
-    const vnode = domNodeToVNode(doc.body.childNodes[i]);
-    if (vnode !== "") {
-      vNodes.push(vnode);
-    }
-  }
-  return vNodes;
-}
-
 // src/morph.ts
 var areDomNodesEqual = (oldNode, newNode) => {
   if (oldNode === newNode)
@@ -663,8 +594,8 @@ var areDomNodesEqual = (oldNode, newNode) => {
         return false;
     }
   }
-  if (oldNode.nodeType === 3) {
-    if (oldNode.textContent !== newNode.textContent)
+  if (oldNode.nodeType === 3 || oldNode.nodeType === 8) {
+    if (oldNode.nodeValue !== newNode.nodeValue)
       return false;
   }
   return true;
@@ -761,6 +692,8 @@ function areNodeAndChildMatching(domNode, child) {
   if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
     return domNode.nodeType === 3;
   }
+  if (isCommentVNode(child))
+    return domNode.nodeType === 8;
   if (child && typeof child === "object") {
     if (domNode.nodeType !== 1)
       return false;
@@ -854,6 +787,11 @@ function patchElementInPlace(el, vnode, globals, mergeAttributes = false) {
     return;
   morphDomDirect(el, vnode.children ?? [], globals);
 }
+function replaceNode(old, next) {
+  if (old.nodeType === 1)
+    clearDelegatedEventsDeep(old);
+  old.parentNode?.replaceChild(next, old);
+}
 function morphNode(domNode, child, globals, mergeAttributes = false) {
   if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
     const text = String(child);
@@ -863,7 +801,18 @@ function morphNode(domNode, child, globals, mergeAttributes = false) {
       return domNode;
     }
     const next = globals.window.document.createTextNode(text);
-    domNode.parentNode?.replaceChild(next, domNode);
+    replaceNode(domNode, next);
+    return next;
+  }
+  if (isCommentVNode(child)) {
+    const data = child.value ?? "";
+    if (domNode.nodeType === 8) {
+      if (domNode.nodeValue !== data)
+        domNode.nodeValue = data;
+      return domNode;
+    }
+    const next = globals.window.document.createComment(data);
+    replaceNode(domNode, next);
     return next;
   }
   if (child && typeof child === "object") {
@@ -887,13 +836,15 @@ function morphNode(domNode, child, globals, mergeAttributes = false) {
       const first = Array.isArray(created) ? created[0] : created;
       if (!first)
         return null;
-      el.parentNode?.replaceChild(first, el);
+      replaceNode(el, first);
       handleLifecycleEventsForOnMount(first);
       return first;
     }
     patchElementInPlace(el, child, globals, mergeAttributes);
     return el;
   }
+  if (domNode.nodeType === 1)
+    clearDelegatedEventsDeep(domNode);
   domNode.parentNode?.removeChild(domNode);
   return null;
 }
@@ -953,6 +904,8 @@ function morphDiff(targetRoot, patchItems, globals) {
   }
   for (const item of patchItems) {
     if (typeof item === "string" && item.trim() === "")
+      continue;
+    if (isCommentVNode(item))
       continue;
     const key = getVNodeMatchKey(item);
     if (!key) {
@@ -1281,12 +1234,14 @@ export {
   performTransition,
   parseEventPropName,
   parseDOM,
+  onClearDelegatedEvents,
   observeUnmount,
   nsMap,
   morph2 as morph,
   isSVG,
   isMarkup,
   isHTML,
+  isCommentVNode,
   htmlStringToVNodes,
   handleLifecycleEventsForOnMount,
   getTransitionStyles,
@@ -1305,9 +1260,10 @@ export {
   FROM_DOM_MARKER,
   DEFAULT_TRANSITION_CONFIG,
   DANGEROUSLY_SET_INNER_HTML_ATTRIBUTE,
+  COMMENT_TYPE,
   CLASS_ATTRIBUTE_NAME,
   CAPTURE_ONLY_EVENTS
 };
 
-//# debugId=BA5C1E84E9A829C164756E2164756E21
+//# debugId=2B212A8922F1193364756E2164756E21
 //# sourceMappingURL=all.js.map

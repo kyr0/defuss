@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   type Globals,
   morph,
@@ -9,6 +9,15 @@ import {
 
 const globals = globalThis as unknown as Globals;
 
+/** Real handler that records its calls (no mock framework needed). */
+const recorder = () => {
+  const calls: unknown[][] = [];
+  const fn = (...args: unknown[]) => {
+    calls.push(args);
+  };
+  return Object.assign(fn, { calls });
+};
+
 const container = (html = ""): HTMLElement => {
   const el = document.createElement("div");
   el.innerHTML = html;
@@ -17,12 +26,27 @@ const container = (html = ""): HTMLElement => {
 };
 
 describe("morph(el, html) — browser e2e", () => {
+  it("keeps HTML comments: writing innerHTML back changes no node", () => {
+    // leading comment: Chromium's DOMParser parks it outside <body> unless
+    // the fragment is parsed with an explicit body
+    const html = `<!-- lead --><p>a</p><!-- keep me --><p id="b">b</p><svg><!-- licence --></svg>`;
+    const el = container();
+
+    morph(el, html);
+    expect(el.innerHTML).toBe(html);
+
+    const nodes = Array.from(el.childNodes);
+    morph(el, el.innerHTML);
+    expect(el.innerHTML).toBe(html);
+    expect(Array.from(el.childNodes)).toEqual(nodes);
+  });
+
   it("preserves a native event listener when morphing node text", () => {
     // the exact scenario: node created, text changed, listener still attached
     const el = container(`<button id="b">old</button>`);
     const btn = el.querySelector("#b") as HTMLButtonElement;
 
-    const onClick = vi.fn();
+    const onClick = recorder();
     btn.addEventListener("click", onClick);
 
     morph(el, `<button id="b" class="hot">new</button>`);
@@ -33,14 +57,14 @@ describe("morph(el, html) — browser e2e", () => {
     expect(after.getAttribute("class")).toBe("hot");
 
     after.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(onClick).toHaveBeenCalledTimes(1); // listener still attached
+    expect(onClick.calls).toHaveLength(1); // listener still attached
   });
 
   it("preserves delegated event handlers across repeated morphs (no double-fire)", () => {
     const el = container(`<button id="d">v1</button>`);
     const btn = el.querySelector("#d") as HTMLButtonElement;
 
-    const onClick = vi.fn();
+    const onClick = recorder();
     registerDelegatedEvent(btn, "click", onClick);
 
     morph(el, `<button id="d">v2</button>`);
@@ -50,7 +74,7 @@ describe("morph(el, html) — browser e2e", () => {
     expect(after).toBe(btn);
 
     after.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(onClick.calls).toHaveLength(1);
   });
 
   it("keeps listeners on keyed nodes when they move", () => {
@@ -59,7 +83,7 @@ describe("morph(el, html) — browser e2e", () => {
     );
     const liA = el.querySelector(`li[key="a"]`) as HTMLElement;
     const btnA = el.querySelector("#ba") as HTMLButtonElement;
-    const onA = vi.fn();
+    const onA = recorder();
     btnA.addEventListener("click", onA);
 
     morph(
@@ -74,7 +98,7 @@ describe("morph(el, html) — browser e2e", () => {
     expect(btnA.textContent).toBe("A!");
 
     btnA.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(onA).toHaveBeenCalledTimes(1);
+    expect(onA.calls).toHaveLength(1);
   });
 
   it("preserves focus when the focused element is patched in place", () => {
@@ -141,17 +165,17 @@ describe("morph(el, html) — browser e2e", () => {
   it("clears delegated handlers of removed elements in a real browser", () => {
     const el = container(`<button id="rm">x</button>`);
     const btn = el.querySelector("#rm") as HTMLButtonElement;
-    const onClick = vi.fn();
+    const onClick = recorder();
     registerDelegatedEvent(btn, "click", onClick);
 
     btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(onClick.calls).toHaveLength(1);
 
     morph(el, `<span>gone</span>`);
 
     expect(getRegisteredEventKeys(btn).size).toBe(0);
     btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(onClick).toHaveBeenCalledTimes(1); // no further calls
+    expect(onClick.calls).toHaveLength(1); // no further calls
   });
 
   it("morphs plain text as a text node in a real browser", () => {
@@ -164,7 +188,7 @@ describe("morph(el, html) — browser e2e", () => {
 
   it("supports vnode-driven morphing with onMount lifecycle in browser", () => {
     const el = container();
-    const onMount = vi.fn();
+    const onMount = recorder();
 
     updateDomWithVdom(
       el,
@@ -180,7 +204,7 @@ describe("morph(el, html) — browser e2e", () => {
     // onMount is queueMicrotask-wrapped by the renderer
     return new Promise<void>((resolve) => {
       queueMicrotask(() => {
-        expect(onMount).toHaveBeenCalledTimes(1);
+        expect(onMount.calls).toHaveLength(1);
         resolve();
       });
     });

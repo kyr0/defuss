@@ -9,6 +9,7 @@ import {
   getRenderer,
   handleLifecycleEventsForOnMount,
 } from "./renderer.js";
+import { isCommentVNode } from "./html.js";
 import {
   clearDelegatedEventsDeep,
   getRegisteredEventKeys,
@@ -22,7 +23,7 @@ import { FROM_DOM_MARKER } from "./html.js";
  * 1. Checks for reference equality.
  * 2. Compares node types.
  * 3. For Element nodes, compares tag names and attributes.
- * 4. For Text nodes, compares text content.
+ * 4. For Text and Comment nodes, compares their data.
  */
 export const areDomNodesEqual = (oldNode: Node, newNode: Node): boolean => {
   // return true if both references are identical
@@ -53,9 +54,12 @@ export const areDomNodesEqual = (oldNode: Node, newNode: Node): boolean => {
     }
   }
 
-  // handle Text nodes
-  if (oldNode.nodeType === 3 /* Node.TEXT_NODE */) {
-    if (oldNode.textContent !== newNode.textContent) return false;
+  // handle Text and Comment nodes
+  if (
+    oldNode.nodeType === 3 /* Node.TEXT_NODE */ ||
+    oldNode.nodeType === 8 /* Node.COMMENT_NODE */
+  ) {
+    if (oldNode.nodeValue !== newNode.nodeValue) return false;
   }
   return true;
 };
@@ -236,6 +240,8 @@ function areNodeAndChildMatching(domNode: Node, child: ValidChild): boolean {
     return domNode.nodeType === 3 /* Node.TEXT_NODE */;
   }
 
+  if (isCommentVNode(child)) return domNode.nodeType === 8 /* Node.COMMENT_NODE */;
+
   if (child && typeof child === "object") {
     if (domNode.nodeType !== 1 /* Node.ELEMENT_NODE */) return false;
 
@@ -415,6 +421,18 @@ function patchElementInPlace(
 /********************************************************
  * 5) Morph a single DOM node to match a ValidChild
  ********************************************************/
+
+/**
+ * Swap `next` in for `old`, clearing the old subtree's handlers first — the
+ * same teardown as removal, so delegated handlers and facade listeners
+ * (onClearDelegatedEvents hooks) never outlive a replaced element.
+ * VERIFIED: a keyed tag change tears down on() listeners (suite.browser.test.ts)
+ */
+function replaceNode(old: Node, next: Node): void {
+  if (old.nodeType === 1 /* Node.ELEMENT_NODE */)
+    clearDelegatedEventsDeep(old as HTMLElement);
+  old.parentNode?.replaceChild(next, old);
+}
 function morphNode(
   domNode: Node,
   child: ValidChild,
@@ -435,7 +453,21 @@ function morphNode(
     }
 
     const next = globals.window.document.createTextNode(text);
-    domNode.parentNode?.replaceChild(next, domNode);
+    replaceNode(domNode, next);
+    return next;
+  }
+
+  // comment: patch data in place, like text
+  if (isCommentVNode(child)) {
+    const data = child.value ?? "";
+
+    if (domNode.nodeType === 8 /* Node.COMMENT_NODE */) {
+      if (domNode.nodeValue !== data) domNode.nodeValue = data;
+      return domNode;
+    }
+
+    const next = globals.window.document.createComment(data);
+    replaceNode(domNode, next);
     return next;
   }
 
@@ -463,7 +495,7 @@ function morphNode(
       const first = Array.isArray(created) ? created[0] : created;
       if (!first) return null;
 
-      el.parentNode?.replaceChild(first, el);
+      replaceNode(el, first);
       handleLifecycleEventsForOnMount(first as HTMLElement);
       return first;
     }
@@ -473,6 +505,8 @@ function morphNode(
   }
 
   // null/undefined => remove
+  if (domNode.nodeType === 1 /* Node.ELEMENT_NODE */)
+    clearDelegatedEventsDeep(domNode as HTMLElement);
   domNode.parentNode?.removeChild(domNode);
   return null;
 }
@@ -601,6 +635,12 @@ function morphDiff(
     // in a template literal) parses to text nodes but carries no meaning —
     // skip it; only *meaningful* plain text is unaddressable and throws
     if (typeof item === "string" && item.trim() === "") continue;
+
+    // top-level comments in a change-set are annotations with no address:
+    // diff never removes or moves, and appending would duplicate them on
+    // every repeated patch — skip them (comments *inside* items do morph).
+    // VERIFIED: a repeated commented patch leaves no duplicates (morph-comments.test.ts)
+    if (isCommentVNode(item)) continue;
 
     // booleans/null are already filtered by normalizeChildren; anything
     // without a key/id (incl. plain text) cannot be addressed unambiguously

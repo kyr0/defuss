@@ -11,7 +11,11 @@ export interface ParsedEventProp {
   capture: boolean;
 }
 
-/** non-bubbling events best handled via capture */
+/**
+ * Events whose handlers are forced into the capture phase, so an ancestor's
+ * handler also sees descendants' events (container onFocus/onBlur). Every
+ * other non-bubbling event reaches only its target's handlers, natively.
+ */
 export const CAPTURE_ONLY_EVENTS = new Set<string>([
   "focus",
   "blur",
@@ -21,6 +25,20 @@ export const CAPTURE_ONLY_EVENTS = new Set<string>([
   // Note: focusin/focusout DO bubble, so they're not included here
 ]);
 
+/**
+ * Why per-element native listeners instead of one delegating root listener:
+ * replaying the event path from the document ran handlers in the wrong order
+ * relative to native listeners, ignored an ancestor's stopPropagation(), missed
+ * non-bubbling events and reported currentTarget === document. On the element
+ * itself the browser applies every propagation rule exactly.
+ * VERIFIED: order, stopPropagation (both phases), stopImmediatePropagation,
+ * currentTarget, non-bubbling and shadow DOM (delegated-events.browser.test.ts).
+ *
+ * What stays "delegated" is the indirection: a JSX prop slot owns one
+ * trampoline listener that calls whichever handler the slot holds right now,
+ * so re-renders swap handlers without touching listeners. Multi-mode handlers
+ * (dequery-style on()) are attached as-is.
+ */
 interface HandlerEntry {
   bubble?: EventListener;
   capture?: EventListener;
@@ -31,21 +49,13 @@ interface HandlerEntry {
 /** element -> (eventType -> handlers) */
 const elementHandlerMap = new WeakMap<EventTarget, Map<string, HandlerEntry>>();
 
-/**
- * Per-event dispatch de-duplication: prevents the same event object from
- * dispatching to the same element more than once per phase.
- * This guards against re-dispatch within a single event propagation cycle
- * (e.g. from duplicate root listeners or DOM reshuffling).
- * WeakMap keys (Event objects) are automatically GC'd after dispatch.
- */
-const bubbleDispatched = new WeakMap<Event, WeakSet<EventTarget>>();
-const captureDispatched = new WeakMap<Event, WeakSet<EventTarget>>();
+/** element -> (`${eventType}:${phase}` -> installed slot trampoline) */
+const slotListeners = new WeakMap<EventTarget, Map<string, EventListener>>();
 
 /**
- * Re-entrancy guard: tracks which target+eventType+phase combos have an
- * active handler on the call stack. When DOM morphing re-dispatches a *new*
- * event object for the same element while the original handler is still
- * running, this guard suppresses it.
+ * Re-entrancy guard for JSX slots: while a slot's handler runs, a *new* event
+ * of the same type that morph fires synchronously on the same element (e.g.
+ * focus/blur while moving nodes) does not re-enter it.
  */
 const activeDispatches = new WeakMap<EventTarget, Set<string>>();
 
@@ -68,7 +78,7 @@ export const parseEventPropName = (
   return { eventType, capture: isCapture };
 };
 
-const getOrCreateElementHandlers = (el: HTMLElement) => {
+const getOrCreateElementHandlers = (el: EventTarget) => {
   const existing = elementHandlerMap.get(el);
   if (existing) return existing;
 
@@ -77,193 +87,72 @@ const getOrCreateElementHandlers = (el: HTMLElement) => {
   return created;
 };
 
-const getEventPath = (event: Event): Array<EventTarget> => {
-  // composedPath is best (works with shadow DOM)
-  const composedPath = (
-    event as Event & { composedPath?: () => Array<EventTarget> }
-  ).composedPath?.();
-  if (composedPath && composedPath.length > 0) return composedPath;
-
-  // fallback: walk up from target
-  const path: Array<EventTarget> = [];
-  let node: unknown = event.target;
-
-  while (node) {
-    path.push(node as EventTarget);
-
-    // walk DOM parents
-    const maybeNode = node as Node;
-    if (
-      typeof maybeNode === "object" &&
-      maybeNode &&
-      "parentNode" in maybeNode
-    ) {
-      node = (maybeNode as Node).parentNode;
-      continue;
-    }
-
-    break;
-  }
-
-  // ensure document/window are at the end if available
-  const doc = (event.target as Node | null)?.ownerDocument;
-  if (doc && path[path.length - 1] !== doc) path.push(doc);
-  const win = doc?.defaultView;
-  if (win && path[path.length - 1] !== win) path.push(win);
-
-  return path;
-};
-
-/**
- * Create the dispatch handler for a given phase.
- * Each phase runs its own handlers - capture phase runs capture handlers,
- * bubble phase runs bubble handlers. This supports onClickCapture semantics.
- */
-const createPhaseHandler = (
+/** Run the handler a JSX slot holds right now (looked up per event). */
+const runSlot = (
+  target: EventTarget,
   eventType: string,
   phase: DelegatedPhase,
-): EventListener => {
-  const dispatched = phase === "capture" ? captureDispatched : bubbleDispatched;
+  event: Event,
+): void => {
+  const handler = elementHandlerMap.get(target)?.get(eventType)?.[phase];
+  if (!handler) return;
 
-  return (event: Event) => {
-    const path = getEventPath(event).filter(
-      (t): t is HTMLElement =>
-        typeof t === "object" &&
-        t !== null &&
-        (t as HTMLElement).nodeType === 1 /* Node.ELEMENT_NODE */,
-    );
+  const dispatchKey = `${eventType}:${phase}`;
+  let active = activeDispatches.get(target);
+  if (active?.has(dispatchKey)) return;
+  if (!active) {
+    active = new Set();
+    activeDispatches.set(target, active);
+  }
+  active.add(dispatchKey);
+  try {
+    handler.call(target, event);
+  } finally {
+    active.delete(dispatchKey);
+  }
+};
 
-    // Capture phase: root -> target (reversed path)
-    // Bubble phase: target -> root (normal path)
-    const ordered = phase === "capture" ? [...path].reverse() : path;
+/** Set (or clear) a JSX slot, installing/removing its trampoline listener. */
+const setSlot = (
+  target: EventTarget,
+  eventType: string,
+  phase: DelegatedPhase,
+  entry: HandlerEntry,
+  handler: EventListener | undefined,
+): void => {
+  entry[phase] = handler;
+  const key = `${eventType}:${phase}`;
+  const capture = phase === "capture";
+  let byKey = slotListeners.get(target);
+  const installed = byKey?.get(key);
 
-    for (const target of ordered) {
-      const handlersByEvent = elementHandlerMap.get(target);
-      if (!handlersByEvent) continue;
-
-      const entry = handlersByEvent.get(eventType);
-      if (!entry) continue;
-
-      // De-duplicate: skip if this event was already dispatched to this target in this phase
-      let targets = dispatched.get(event);
-      if (targets?.has(target)) continue;
-      if (!targets) {
-        targets = new WeakSet();
-        dispatched.set(event, targets);
-      }
-      targets.add(target);
-
-      // Re-entrancy guard: skip if a handler for this target+eventType+phase
-      // is already on the call stack (morph echo suppression)
-      const dispatchKey = `${eventType}:${phase}`;
-      let activeSet = activeDispatches.get(target);
-      if (activeSet?.has(dispatchKey)) continue;
-      if (!activeSet) {
-        activeSet = new Set();
-        activeDispatches.set(target, activeSet);
-      }
-      activeSet.add(dispatchKey);
-
-      try {
-        // Execute only the handlers for this phase
-        if (phase === "capture") {
-          // Single handler (JSX mode)
-          if (entry.capture) {
-            entry.capture.call(target, event);
-            if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
-              return;
-          }
-          // Handler set (Dequery multi mode)
-          if (entry.captureSet) {
-            for (const handler of entry.captureSet) {
-              handler.call(target, event);
-              if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
-                return;
-            }
-          }
-        } else {
-          // Bubble phase
-          if (entry.bubble) {
-            entry.bubble.call(target, event);
-            if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
-              return;
-          }
-          if (entry.bubbleSet) {
-            for (const handler of entry.bubbleSet) {
-              handler.call(target, event);
-              if ((event as Event & { cancelBubble?: boolean }).cancelBubble)
-                return;
-            }
-          }
-        }
-      } finally {
-        activeSet.delete(dispatchKey);
-      }
+  if (handler && !installed) {
+    if (!byKey) {
+      byKey = new Map();
+      slotListeners.set(target, byKey);
     }
-  };
-};
-
-/**
- * Track installed listeners per root (Document or ShadowRoot).
- * Using WeakMap allows GC when shadow roots are removed.
- */
-type EventRoot = Document | ShadowRoot;
-const installedRootListeners = new WeakMap<EventRoot, Set<string>>();
-
-/**
- * Ensure delegation listeners are installed on the correct root.
- * Installs BOTH capture and bubble listeners, but each only dispatches for appropriate events.
- */
-const ensureRootListener = (root: EventRoot, eventType: string) => {
-  const installed = installedRootListeners.get(root) ?? new Set<string>();
-  installedRootListeners.set(root, installed);
-
-  // Install capture phase listener
-  const captureKey = `${eventType}:capture`;
-  if (!installed.has(captureKey)) {
-    root.addEventListener(
-      eventType,
-      createPhaseHandler(eventType, "capture"),
-      true,
-    );
-    installed.add(captureKey);
-  }
-
-  // Install bubble phase listener
-  const bubbleKey = `${eventType}:bubble`;
-  if (!installed.has(bubbleKey)) {
-    root.addEventListener(
-      eventType,
-      createPhaseHandler(eventType, "bubble"),
-      false,
-    );
-    installed.add(bubbleKey);
+    const trampoline: EventListener = (event) =>
+      runSlot(target, eventType, phase, event);
+    byKey.set(key, trampoline);
+    target.addEventListener(eventType, trampoline, capture);
+  } else if (!handler && installed) {
+    byKey!.delete(key);
+    target.removeEventListener(eventType, installed, capture);
   }
 };
 
-/**
- * Get the root node where delegation listeners should be installed.
- * Handles Document, ShadowRoot, and detached elements.
- * Uses nodeType checks instead of instanceof to work in SSR environments
- * (e.g. HappyDOM in Node.js) where global Document/ShadowRoot may not exist.
- */
-const getEventRoot = (element: HTMLElement): EventRoot | null => {
-  const root = element.getRootNode();
-
-  // nodeType 9 = Document, nodeType 11 = DocumentFragment (ShadowRoot)
-  if (root && (root as Node).nodeType === 9) {
-    return root as Document;
-  }
-  if (
-    root &&
-    (root as Node).nodeType === 11 &&
-    "host" in (root as ShadowRoot)
-  ) {
-    return root as ShadowRoot;
-  }
-
-  // Detached element - root is the element itself, no delegation possible
-  return null;
+/** Detach every handler of one phase (slot and set) for a type. */
+const clearPhase = (
+  target: EventTarget,
+  eventType: string,
+  entry: HandlerEntry,
+  phase: DelegatedPhase,
+): void => {
+  setSlot(target, eventType, phase, entry, undefined);
+  const setKey = phase === "capture" ? "captureSet" : "bubbleSet";
+  for (const handler of entry[setKey] ?? [])
+    target.removeEventListener(eventType, handler, phase === "capture");
+  entry[setKey] = undefined;
 };
 
 export const registerDelegatedEvent = (
@@ -272,45 +161,26 @@ export const registerDelegatedEvent = (
   handler: EventListener,
   options: DelegatedEventOptions = {},
 ): void => {
-  // Get the correct root for delegation (Document or ShadowRoot)
-  const root = getEventRoot(element);
-
   // capture-only events should be forced to capture
   const capture = options.capture || CAPTURE_ONLY_EVENTS.has(eventType);
-
-  if (root) {
-    // Element is in DOM - use delegation
-    ensureRootListener(root, eventType);
-  } else if (element.ownerDocument) {
-    // Element has a document but isn't connected yet - install listener on document
-    // Events will work once the element is attached
-    ensureRootListener(element.ownerDocument, eventType);
-  } else {
-    // Truly detached element (no document) - use direct binding
-    // This ensures events work even for elements never attached to DOM
-    element.addEventListener(eventType, handler, capture);
-  }
+  const phase: DelegatedPhase = capture ? "capture" : "bubble";
 
   const byEvent = getOrCreateElementHandlers(element);
   const entry = byEvent.get(eventType) ?? {};
   byEvent.set(eventType, entry);
 
   if (options.multi) {
-    // Dequery mode: add to set (allows multiple handlers)
-    if (capture) {
-      if (!entry.captureSet) entry.captureSet = new Set();
-      entry.captureSet.add(handler);
-    } else {
-      if (!entry.bubbleSet) entry.bubbleSet = new Set();
-      entry.bubbleSet.add(handler);
+    // Dequery mode: every handler is its own native listener (the set mirrors
+    // addEventListener's dedupe of an identical type/handler/capture triple)
+    const setKey = capture ? "captureSet" : "bubbleSet";
+    const set = (entry[setKey] ??= new Set());
+    if (!set.has(handler)) {
+      set.add(handler);
+      element.addEventListener(eventType, handler, capture);
     }
   } else {
     // JSX mode: one handler per prop, overwrite to prevent duplicates
-    if (capture) {
-      entry.capture = handler;
-    } else {
-      entry.bubble = handler;
-    }
+    setSlot(element, eventType, phase, entry, handler);
   }
 };
 
@@ -336,31 +206,19 @@ export const removeDelegatedEvent = (
   if (!entry) return;
 
   if (handler) {
-    // Remove specific handler from both phases (since we don't know which phase it was added to)
-    if (entry.captureSet) {
-      entry.captureSet.delete(handler);
+    // Remove the specific handler from both phases (the caller may not know which)
+    for (const phase of ["capture", "bubble"] as const) {
+      const set = phase === "capture" ? entry.captureSet : entry.bubbleSet;
+      if (set?.delete(handler))
+        target.removeEventListener(eventType, handler, phase === "capture");
+      if (entry[phase] === handler)
+        setSlot(target, eventType, phase, entry, undefined);
     }
-    if (entry.bubbleSet) {
-      entry.bubbleSet.delete(handler);
-    }
-    // Also check if it matches single handler
-    if (entry.capture === handler) {
-      entry.capture = undefined;
-    }
-    if (entry.bubble === handler) {
-      entry.bubble = undefined;
-    }
-
-    // Always call removeEventListener for safety (handles detached element direct-binding case)
-    target.removeEventListener(eventType, handler, true); // capture
-    target.removeEventListener(eventType, handler, false); // bubble
   } else {
     // Remove ALL handlers for this event type (both phases)
     // This is what users expect from .off("click") without specific handler
-    entry.capture = undefined;
-    entry.bubble = undefined;
-    entry.captureSet = undefined;
-    entry.bubbleSet = undefined;
+    clearPhase(target, eventType, entry, "capture");
+    clearPhase(target, eventType, entry, "bubble");
   }
 
   // Clean up entry if empty
@@ -369,11 +227,35 @@ export const removeDelegatedEvent = (
   }
 };
 
+/** Teardown hooks of listener owners outside this registry. */
+const clearHooks = new Set<(target: EventTarget) => void>();
+
+/**
+ * Why: listeners a facade attaches natively (defuss-query's on()) live
+ * outside this registry, yet must go whenever morph clears an element
+ * (removal, replacement, clearDelegatedEventsDeep). A hook keeps morph
+ * ignorant of who owns them, instead of morph also tracking native listeners.
+ * Registering the same hook twice is a no-op; returns an unregister function.
+ */
+export const onClearDelegatedEvents = (
+  hook: (target: EventTarget) => void,
+): (() => void) => {
+  clearHooks.add(hook);
+  return () => {
+    clearHooks.delete(hook);
+  };
+};
+
 export const clearDelegatedEvents = (target: EventTarget): void => {
   const byEvent = elementHandlerMap.get(target);
-  if (!byEvent) return;
-
-  byEvent.clear();
+  if (byEvent) {
+    for (const [eventType, entry] of byEvent) {
+      clearPhase(target, eventType, entry, "capture");
+      clearPhase(target, eventType, entry, "bubble");
+    }
+    byEvent.clear();
+  }
+  for (const hook of clearHooks) hook(target);
 };
 
 /**
@@ -439,13 +321,7 @@ export const removeDelegatedEventByKey = (
   const entry = byEvent.get(eventType);
   if (!entry) return;
 
-  if (phase === "capture") {
-    entry.capture = undefined;
-    entry.captureSet = undefined;
-  } else {
-    entry.bubble = undefined;
-    entry.bubbleSet = undefined;
-  }
+  clearPhase(element, eventType, entry, phase);
 
   // Clean up entry if empty
   if (isEntryEmpty(entry)) byEvent.delete(eventType);

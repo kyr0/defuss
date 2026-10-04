@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  COMMENT_TYPE,
   domNodeToVNode,
   getMimeType,
   htmlStringToVNodes,
@@ -130,9 +131,21 @@ describe("domNodeToVNode", () => {
     expect(vnode.attributes.type).toBe("checkbox");
   });
 
-  it("converts text nodes to strings and comment nodes to empty strings", () => {
+  it("converts text nodes to strings and comment nodes to comment vnodes", () => {
     expect(domNodeToVNode(document.createTextNode("text"))).toBe("text");
-    expect(domNodeToVNode(document.createComment("note"))).toBe("");
+    expect(domNodeToVNode(document.createComment("note"))).toEqual({
+      type: COMMENT_TYPE,
+      value: "note",
+    });
+  });
+
+  it("keeps nested comments as element children", () => {
+    const doc = parseDOM(`<div>a<!--n-->b</div>`, "text/html", Parser);
+    expect((domNodeToVNode(doc.querySelector("div")!) as any).children).toEqual([
+      "a",
+      { type: "#comment", value: "n" },
+      "b",
+    ]);
   });
 
   it("maps an empty text node to an empty string", () => {
@@ -142,14 +155,35 @@ describe("domNodeToVNode", () => {
 });
 
 describe("htmlStringToVNodes", () => {
-  it("converts multiple root nodes, dropping comments and empty text", () => {
+  it("converts multiple root nodes, keeping comments in place", () => {
     const vnodes = htmlStringToVNodes(
       `<p>a</p><!-- c --><p>b</p>`,
       Parser,
     );
-    expect(vnodes.length).toBe(2);
+    expect(vnodes.length).toBe(3);
     expect(vnodes[0]).toMatchObject({ type: "p" });
-    expect(vnodes[1]).toMatchObject({ type: "p" });
+    expect(vnodes[1]).toEqual({ type: "#comment", value: " c " });
+    expect(vnodes[2]).toMatchObject({ type: "p" });
+  });
+
+  it("keeps a leading comment (the spec parks it outside body without <body>)", () => {
+    expect(htmlStringToVNodes("<!--lead--><b>x</b>", Parser)[0]).toEqual({
+      type: "#comment",
+      value: "lead",
+    });
+  });
+
+  it("keeps leading whitespace of fragment input (innerHTML round-trip)", () => {
+    expect(htmlStringToVNodes("\n  <b>x</b>", Parser)[0]).toBe("\n  ");
+  });
+
+  it("parses full documents unchanged: head content never leaks into body", () => {
+    const vnodes = htmlStringToVNodes(
+      "<!--pre--><!DOCTYPE html><html><head><title>t</title></head><body><p>c</p></body></html>",
+      Parser,
+    );
+    expect(vnodes).toHaveLength(1);
+    expect(vnodes[0]).toMatchObject({ type: "p" });
   });
 
   it("converts plain text into a single text vnode", () => {
@@ -157,8 +191,10 @@ describe("htmlStringToVNodes", () => {
     expect(vnodes).toEqual(["hello"]);
   });
 
-  it("returns an empty array for comment-only input", () => {
-    expect(htmlStringToVNodes("<!-- nothing -->", Parser)).toEqual([]);
+  it("returns a single comment vnode for comment-only input", () => {
+    expect(htmlStringToVNodes("<!-- nothing -->", Parser)).toEqual([
+      { type: "#comment", value: " nothing " },
+    ]);
   });
 
   it("keeps key and id attributes for morph matching", () => {

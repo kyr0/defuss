@@ -10,6 +10,7 @@ import {
   parseEventPropName,
   registerDelegatedEvent,
 } from "./delegated-events.js";
+import { isCommentVNode } from "./html.js";
 
 export const CLASS_ATTRIBUTE_NAME = "class";
 export const XLINK_ATTRIBUTE_NAME = "xlink";
@@ -121,6 +122,14 @@ export const getRenderer = (document: Document): DomAbstractionImpl => {
       parentDomElement?: Element | Document,
     ): Element | undefined => {
       let newEl: Element | undefined;
+
+      // VERIFIED: comment nodes are leaves in the DOM (no attributes or
+      // children), so none of the element setup below applies
+      if (isCommentVNode(virtualNode)) {
+        const comment = document.createComment(virtualNode.value ?? "");
+        parentDomElement?.appendChild(comment);
+        return comment as unknown as Element;
+      }
 
       try {
         // if a synchronous function is still a function, VDOM has obviously not resolved, probably an

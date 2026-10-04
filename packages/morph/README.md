@@ -15,8 +15,9 @@ Features:
 - 🏎️ Fast! Uses native DOM APIs
 - 🎯 Stable key/id-aware node matching
 - 📦 CDN-served and packaged with ESM + CJS
-- 🧹 Event handler preservation w/ supports delegated event listeners
+- 🧹 Event handler preservation; JSX handlers listen on the element itself, so propagation is exactly native (order, `stopPropagation()`, `currentTarget`, non-bubbling events like `toggle`, `load`, `error`)
 - 📝 Form-state preservation (see one limitation below w/ solution)
+- 💬 HTML comments are kept and morphed like text — `morph(el, el.innerHTML)` changes no node
 - ⚡ No compile/transpile step required (but optionally available)
 - 🪶 Extremely lightweight — just ~6 KiB minified and gzipped
 - 💅 Includes support for beautiful transitions (fade, slide, shake, custom styles)
@@ -165,7 +166,8 @@ Morphs the children of `el` to match the given HTML string or JSX/VNode content.
 `morph()` accepts **either an HTML string or JSX / VNodes** — same API, same
 algorithm. Strings are parsed with the native `DOMParser`; VNodes
 (`{ type, attributes, children }` objects, as produced by any JSX factory)
-are morphed directly:
+are morphed directly. An HTML comment is `{ type: "#comment", value }`
+(`COMMENT_TYPE`):
 
 ```tsx
 import { morph } from "defuss-morph";
@@ -245,6 +247,8 @@ anything, so addressing stays unambiguous:
 - A declared `children` replaces the node's children; if children are not
   declared, they stay untouched (via VNodes, `children: []` clears explicitly).
 - A tag change on an addressed node applies as an in-place replacement.
+- Top-level comments in a change-set are skipped (they have no address, and
+  appending would duplicate them per patch); comments *inside* items morph.
 
 Great for streaming/AI-driven UIs: patch one table row or status badge without
 re-sending (or risking) the rest of the subtree. Runnable demo:
@@ -278,6 +282,8 @@ import {
   domNodeToVNode,      // DOM Node -> VNode
   getRenderer,         // VNode -> DOM renderer factory
   registerDelegatedEvent, removeDelegatedEvent, clearDelegatedEventsDeep, // ...
+  onClearDelegatedEvents, // hook: tear down your own native listeners whenever
+                          // morph removes or replaces an element
 } from "defuss-morph";
 
 // the third `globals` argument is optional everywhere — it is derived
@@ -355,10 +361,10 @@ The same rule applies to an `<input>`'s live `value`. See the runnable demos [`e
 <!-- bundle-size:start -->
 | File | Size | Gzipped | Purpose |
 | --- | ---: | ---: | --- |
-| `index.mjs` | 40.2 kB | 9.5 kB | ESM/library build; used when installing via npm/bun |
-| `index.cjs` | 41.2 kB | 9.7 kB | CommonJS build |
-| `all.js` | 41.6 kB | 9.8 kB | UMD build; for CDN-based usage with debugging |
-| `all.min.js` | 19.0 kB | **6.8 kB** | Minified UMD build; for CDN-based usage without debugging (Pareto-optimal when no bundler is used) |
+| `index.mjs` | 39.3 kB | 9.6 kB | ESM/library build; used when installing via npm/bun |
+| `index.cjs` | 40.4 kB | 9.7 kB | CommonJS build |
+| `all.js` | 40.9 kB | 9.9 kB | UMD build; for CDN-based usage with debugging |
+| `all.min.js` | 18.7 kB | **6.8 kB** | Minified UMD build; for CDN-based usage without debugging (Pareto-optimal when no bundler is used) |
 <!-- bundle-size:end -->
 
 `index.cjs` (CommonJS) is kept for `require()` compatibility on older tool

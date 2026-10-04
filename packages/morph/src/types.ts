@@ -43,6 +43,11 @@ export interface VNode<A = VNodeAttributes> {
   type?: VNodeType;
   attributes?: A;
   children?: VNodeChildren;
+  /**
+   * Comment data of a `{ type: "#comment" }` VNode (see `COMMENT_TYPE`).
+   * VERIFIED: optional, so defuss core's VNode (no `value`) stays assignable.
+   */
+  value?: string;
   sourceInfo?: unknown;
   /** Original props passed to a function component (set by jsx runtime for SSG hydration). */
   componentProps?: Record<string, any>;
