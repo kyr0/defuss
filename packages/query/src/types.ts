@@ -26,12 +26,12 @@ export type MorphApi = Pick<
   | "renderMarkup"
   | "domNodeToVNode"
   | "registerDelegatedEvent"
-  | "removeDelegatedEvent"
-  | "getRegisteredEventTypes"
   | "clearDelegatedEventsDeep"
-  | "clearDelegatedEvents"
   | "handleLifecycleEventsForOnMount"
->;
+> &
+  // Optional. VERIFIED: morph <= 0.1.1 lacks this export; on() still works
+  // there, its listeners just survive element removal (harmless once detached).
+  Partial<Pick<typeof Morph, "onClearDelegatedEvents">>;
 export type QueryRoot = Document | Element | DocumentFragment;
 /** Anything insertion methods accept: renderable input, nodes, node lists. */
 export type DomContent = RenderInput | Node | Iterable<Node> | ArrayLike<Node>;

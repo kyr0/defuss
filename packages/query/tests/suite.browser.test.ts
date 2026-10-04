@@ -414,14 +414,112 @@ const suite = () => {
     eq(q.morph("x"), q);
     eq(q.text(), "xx");
   });
-  it("morph: empty cleans delegated handlers of removed descendants", () => {
+  it("morph: empty tears down on() listeners of removed descendants", () => {
     fixture("<div><button>A</button></div>");
     const button = df$("button")[0];
-    df$(button).on("click", () => {});
-    ok(df$.getRegisteredEventTypes(button).size);
+    let calls = 0;
+    df$(button).on("click", () => calls++);
+    button.click();
+    eq(calls, 1);
     df$("div").empty();
-    eq(df$.getRegisteredEventTypes(button).size, 0);
     eq(button.isConnected, false);
+    button.click();
+    eq(calls, 1);
+  });
+  it("on(): native — element handler runs before an ancestor's native listener", () => {
+    fixture('<div id="p"><button id="c">x</button></div>');
+    const log: string[] = [];
+    document.getElementById("p")!.addEventListener("click", () => log.push("ancestor"));
+    df$("#c").on("click", () => log.push("df$"));
+    df$("#c")[0].click();
+    eq(log.join(","), "df$,ancestor");
+  });
+  it("on(): native — an ancestor's stopPropagation() cannot silence the element", () => {
+    fixture('<div id="p"><button id="c">x</button></div>');
+    let calls = 0;
+    document.getElementById("p")!.addEventListener("click", (e) => e.stopPropagation());
+    df$("#c").on("click", () => calls++);
+    df$("#c")[0].click();
+    eq(calls, 1);
+  });
+  it("on(): native — non-bubbling toggle and <img> error fire, only on their target", async () => {
+    fixture('<section><details id="d"><summary>s</summary>t</details><img id="i"></section>');
+    const log: string[] = [];
+    df$("section").on("toggle", () => log.push("section"));
+    df$("#d").on("toggle", () => log.push("toggle"));
+    df$("#i").on("error", () => log.push("error"));
+    df$("#d")[0].open = true;
+    df$("#i")[0].src = "data:image/png;base64,broken";
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    eq(log.sort().join(","), "error,toggle");
+  });
+  it("on(): native — currentTarget and this are the element", () => {
+    fixture('<button id="c">x</button>');
+    const button = df$("#c")[0];
+    let current: unknown, self: unknown;
+    df$(button).on("click", function (this: unknown, e: Event) {
+      current = e.currentTarget;
+      self = this;
+    });
+    button.click();
+    eq(current, button);
+    eq(self, button);
+  });
+  it("off(): removes by handler, by type, and all on() listeners", () => {
+    fixture('<button id="c">x</button>');
+    const button = df$("#c")[0];
+    const log: string[] = [];
+    const a = () => log.push("a");
+    const b = () => log.push("b");
+    const native = () => log.push("native");
+    button.addEventListener("click", native);
+    df$(button).on("click", a).on("click", b).on("focus", a);
+    df$(button).off("click", a);
+    button.click();
+    eq(log.join(","), "native,b");
+    df$(button).off("click");
+    log.length = 0;
+    button.click();
+    eq(log.join(","), "native");
+    df$(button).off();
+    log.length = 0;
+    button.dispatchEvent(new FocusEvent("focus"));
+    eq(log.length, 0);
+    // off() only owns facade listeners: the native one survives
+    button.click();
+    eq(log.join(","), "native");
+  });
+  it("on(): morph keeps listeners on patched elements, tears down replaced ones", () => {
+    fixture('<div><button id="keep">k</button><p id="gone">g</p></div>');
+    const keep = df$("#keep")[0];
+    const gone = df$("#gone")[0];
+    const log: string[] = [];
+    df$(keep).on("click", () => log.push("keep"));
+    df$(gone).on("click", () => log.push("gone"));
+    df$("div").html('<button id="keep" class="x">k2</button><span>new</span>');
+    eq(df$("#keep")[0], keep);
+    keep.click();
+    gone.click();
+    eq(log.join(","), "keep");
+  });
+  it("on(): a keyed tag change tears down the replaced element's listeners", () => {
+    fixture('<div><p key="a">x</p></div>');
+    const old = df$("p")[0];
+    let calls = 0;
+    df$(old).on("click", () => calls++);
+    df$("div").html('<section key="a">y</section>');
+    eq(df$("section").length, 1);
+    eq(old.isConnected, false);
+    old.click();
+    eq(calls, 0);
+  });
+  it("on(): remove() tears down listeners", () => {
+    fixture('<button id="c">x</button>');
+    const button = df$("#c")[0];
+    let calls = 0;
+    df$(button).on("click", () => calls++).remove();
+    button.click();
+    eq(calls, 0);
   });
   it("morph: transitions have explicit Promise<this> completion", async () => {
     fixture("<div>Old</div>");
@@ -584,6 +682,25 @@ const suite = () => {
     df$("tr").html("<td>C</td><td>D</td>");
     eq(df$("td").text(), "CD");
     eq(df$("<td>X</td>")[0].localName, "td");
+  });
+  it("HTML parser: comments survive html()/factory, html(html()) is a no-op", () => {
+    const markup =
+      '<!-- lead --><ul><!-- list --><li id="a">A</li><!-- between --><li id="b">B</li></ul><!-- tail -->';
+    fixture("<div></div>");
+    const q = df$("div");
+    eq(q.html(markup).html(), markup);
+    const nodes = Array.from(q[0].querySelectorAll("li"));
+    q.html(q.html());
+    eq(q.html(), markup);
+    ok(Array.from(q[0].querySelectorAll("li")).every((li, i) => li === nodes[i]));
+    const created = df$("<!--c--><b>x</b>");
+    eq(created.length, 2);
+    eq(created[0].nodeType, 8);
+    eq(created[0].nodeValue, "c");
+    // a leading comment must not hide the context tag from the wrapper lookup
+    fixture("<table><tbody></tbody></table>");
+    df$("tbody").append("<!-- row --><tr><td>R</td></tr>");
+    eq(df$("tbody").html(), "<!-- row --><tr><td>R</td></tr>");
   });
   it("HTML parser: option/optgroup and col wrappers", () => {
     fixture("<select></select><table><colgroup></colgroup></table>");

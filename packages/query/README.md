@@ -211,11 +211,11 @@ Runnable zero-build pages (serve the package directory statically, e.g. `bunx se
 
 **Not a drop-in jQuery replacement:** native CSS selectors only — invalid selectors throw instead of being handled by a selector engine. No AJAX layer, Deferred, component runtime, reactive store, or effects framework.
 
-**Events stay on the real substrate:** `event.currentTarget` can be the morph delegation root; only the capture option is supported by `.on()`; `.trigger()` dispatches a CustomEvent, not trusted input.
+**Events are native:** `.on()` calls `addEventListener` on each target, so order, `stopPropagation()`, non-bubbling events (`toggle`, `load`, `error`, …) and `event.currentTarget` behave exactly as without the facade. Morphing an element in place keeps its listeners; morph removing or replacing it, or `.remove()`, tears them down. `.off()` removes only listeners added by `.on()`. Only the capture option is supported; `.trigger()` dispatches a CustomEvent, not trusted input.
 
 **Shadow boundaries:** querying does not pierce shadow roots — pass an explicit ShadowRoot context instead. Content mutation follows morph's rule for a normal element with an open shadow root; custom-element hosts retain light-DOM targeting.
 
-**Inherited engine limitations remain inherited:** arbitrary SVG/MathML/template reconciliation, detached event dispatch, and delegated propagation semantics follow defuss-morph, not a reimplementation of native or jQuery dispatch.
+**Inherited engine limitations remain inherited:** arbitrary SVG/MathML/template reconciliation follows defuss-morph.
 
 ## Size
 
@@ -224,9 +224,9 @@ Runnable zero-build pages (serve the package directory statically, e.g. `bunx se
 | `index.js` + modules | See files | — | ESM/library build; used when installing via npm/bun |
 | `cjs/index.js` + modules | See files | — | CommonJS build |
 <!-- bundle-size:start -->
-| `all.js` | 30.1 kB | 8.3 kB | Readable browser ESM + global installation; for CDN-based usage with debugging |
-| `all.min.js` | 11.6 kB | **4.2 kB** | Minified browser ESM + global installation (Pareto-optimal when no bundler is used) |
-| `global.min.js` | 11.3 kB | **4.1 kB** | Minified classic script; installs `globalThis.df$` without a module/defer race |
+| `all.js` | 30.0 kB | 8.5 kB | Readable browser ESM + global installation; for CDN-based usage with debugging |
+| `all.min.js` | 11.3 kB | **4.2 kB** | Minified browser ESM + global installation (Pareto-optimal when no bundler is used) |
+| `global.min.js` | 11.1 kB | **4.1 kB** | Minified classic script; installs `globalThis.df$` without a module/defer race |
 <!-- bundle-size:end -->
 
 Sizes describe **query only**, not query plus the externally loaded morph engine. Release budgets (4.5 KiB gzip / 13,000 raw bytes per browser bundle) are enforced by the verifier; `dist/stats.json` is the machine-readable source (raw/gzip/Brotli).

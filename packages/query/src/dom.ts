@@ -86,7 +86,11 @@ export function createDomAdapter(api: MorphApi) {
     if (!Parser)
       throw new Error("defuss-query: context document has no DOMParser");
     // DOMParser's document mode otherwise drops standalone tr/td/tbody/col.
-    const tag = /^\s*<([a-z][\w:-]*)/i.exec(html)?.[1].toLowerCase();
+    // Leading comments are skipped so they cannot hide the context tag.
+    // VERIFIED: otherwise `<!--c--><tr>` loses its row (suite.browser.test.ts).
+    const tag = /^\s*(?:<!--[\s\S]*?-->\s*)*<([a-z][\w:-]*)/i
+      .exec(html)?.[1]
+      .toLowerCase();
     const wrappers: Record<string, string[]> = {
       tr: ["table", "tbody"],
       td: ["table", "tbody", "tr"],
@@ -215,23 +219,11 @@ export function createDomAdapter(api: MorphApi) {
           "HierarchyRequestError",
         );
     for (const node of created) {
-      const previousRoot = node.getRootNode();
       parent.insertBefore(node, anchor);
-      if (isElement(node)) {
-        // Re-arm upstream root listeners when a delegated node moves into a new
-        // Document/ShadowRoot. Keep original handlers and the single registry.
-        if (previousRoot !== node.getRootNode()) {
-          const noop = () => {};
-          for (const el of [node, ...node.querySelectorAll("*")])
-            for (const type of api.getRegisteredEventTypes(el as HTMLElement)) {
-              api.registerDelegatedEvent(el as HTMLElement, type, noop, {
-                multi: true,
-              });
-              api.removeDelegatedEvent(el, type, noop);
-            }
-        }
+      // morph's handlers listen on the element itself, so moving a node into
+      // another Document/ShadowRoot needs no re-arming
+      if (isElement(node))
         api.handleLifecycleEventsForOnMount(node as HTMLElement);
-      }
     }
     return created;
   }

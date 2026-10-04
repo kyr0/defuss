@@ -54,9 +54,34 @@ export const QUERY_VERSION = "0.1.0";
 // branded function and refuses to overwrite an unrelated one.
 const brand = Symbol.for("defuss-query.factory");
 type Listener = { type: string; handler: EventListener; capture: boolean };
-// Only Document/Window/other non-element EventTargets need a local registry.
-// Element listeners always belong to the existing morph event substrate.
+// Every on() listener is a real addEventListener on its target, tracked here
+// so off() and morph's element cleanup can find it again. Why not morph's
+// delegated registry: delegation replays the path from the root, so handlers
+// ran after ancestors', died on an ancestor's stopPropagation(), missed
+// non-bubbling events and saw currentTarget === document.
+// VERIFIED: all four in Chromium (suite.browser.test.ts "on(): native").
 const nativeListeners = new WeakMap<EventTarget, Listener[]>();
+/** Remove the matching tracked listeners; no names/handler matches all. */
+const detachListeners = (
+  target: EventTarget,
+  names?: string[],
+  handler?: EventListener,
+): void => {
+  const entries = nativeListeners.get(target);
+  if (!entries) return;
+  const kept = entries.filter((entry) => {
+    const match =
+      (!names || names.includes(entry.type)) &&
+      (!handler || entry.handler === handler);
+    if (match)
+      target.removeEventListener(entry.type, entry.handler, entry.capture);
+    return !match;
+  });
+  if (kept.length) nativeListeners.set(target, kept);
+  else nativeListeners.delete(target);
+};
+/** morph teardown hook: elements morph removes lose their on() listeners. */
+const clearListeners = (target: EventTarget) => detachListeners(target);
 const styleName = (name: string) =>
   name.startsWith("--")
     ? name
@@ -586,10 +611,11 @@ export class DfQuery<T extends EventTarget = Element> extends Array<T> {
   }
 
   /**
-   * Attach a handler for one or more event types. Element listeners go into
-   * morph's delegated registry so morphing never detaches them; non-element
-   * targets use native addEventListener, tracked in `nativeListeners` so
-   * off() can find them again.
+   * Attach a handler for one or more event types with native
+   * addEventListener, so order, stopPropagation, non-bubbling events and
+   * currentTarget behave exactly as without the facade. Morphing an element
+   * in place keeps its listeners; morph removing or replacing it, or
+   * remove(), tears them down.
    */
   on<K extends keyof EventMapFor<T>>(
     type: K,
@@ -613,7 +639,7 @@ export class DfQuery<T extends EventTarget = Element> extends Array<T> {
       Object.keys(options).some((key) => key !== "capture")
     )
       throw new TypeError(
-        "defuss-query: delegated on() supports capture only; use native addEventListener for other options",
+        "defuss-query: on() supports capture only; use native addEventListener for other options",
       );
     const capture = typeof options === "boolean" ? options : !!options.capture;
     for (const target of this)
@@ -622,28 +648,23 @@ export class DfQuery<T extends EventTarget = Element> extends Array<T> {
         if (isElement(target)) {
           if (typeof this.#runtime.api.registerDelegatedEvent !== "function")
             throw new Error("defuss-query: load defuss-morph before on()");
-          this.#runtime.api.registerDelegatedEvent(
-            target as unknown as HTMLElement,
-            name,
-            listener,
-            { multi: true, capture },
-          );
-        } else {
-          target.addEventListener(name, listener, capture);
-          const entries = nativeListeners.get(target) ?? [];
-          // Mirror addEventListener's own dedupe: an identical (type,
-          // handler, capture) triple registers once and stays so here.
-          if (
-            !entries.some(
-              (entry) =>
-                entry.type === name &&
-                entry.handler === listener &&
-                entry.capture === capture,
-            )
-          )
-            entries.push({ type: name, handler: listener, capture });
-          nativeListeners.set(target, entries);
+          // Older morph builds lack the hook: listeners then survive removal.
+          this.#runtime.api.onClearDelegatedEvents?.(clearListeners);
         }
+        target.addEventListener(name, listener, capture);
+        const entries = nativeListeners.get(target) ?? [];
+        // Mirror addEventListener's own dedupe: an identical (type,
+        // handler, capture) triple registers once and stays so here.
+        if (
+          !entries.some(
+            (entry) =>
+              entry.type === name &&
+              entry.handler === listener &&
+              entry.capture === capture,
+          )
+        )
+          entries.push({ type: name, handler: listener, capture });
+        nativeListeners.set(target, entries);
       }
     return this;
   }
@@ -658,37 +679,8 @@ export class DfQuery<T extends EventTarget = Element> extends Array<T> {
   off(type?: string, handler?: Handler<T>): this;
   off(type?: string, handler?: Handler<T>): this {
     const names = type === undefined ? undefined : tokens(type);
-    for (const target of this) {
-      if (isElement(target)) {
-        if (!names) this.#runtime.api.clearDelegatedEvents(target);
-        else
-          for (const name of names)
-            this.#runtime.api.removeDelegatedEvent(
-              target,
-              name,
-              handler as EventListener | undefined,
-            );
-      } else {
-        const entries = nativeListeners.get(target) ?? [];
-        nativeListeners.set(
-          target,
-          entries.filter((entry) => {
-            if (
-              (!names || names.includes(entry.type)) &&
-              (!handler || entry.handler === handler)
-            ) {
-              target.removeEventListener(
-                entry.type,
-                entry.handler,
-                entry.capture,
-              );
-              return false;
-            }
-            return true;
-          }),
-        );
-      }
-    }
+    for (const target of this)
+      detachListeners(target, names, handler as EventListener | undefined);
     return this;
   }
   /** Dispatch a bubbling, cancelable CustomEvent on every target. */
