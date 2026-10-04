@@ -49,7 +49,7 @@ export { createDomAdapter } from "./dom.js";
 export type { MorphDom } from "./dom.js";
 
 /** Keep in sync with package.json; scripts/verify.ts gates on it. */
-export const QUERY_VERSION = "0.1.0";
+export const QUERY_VERSION = "0.2.0";
 // Unforgeable proof that query installed a given df$: installGlobal reuses a
 // branded function and refuses to overwrite an unrelated one.
 const brand = Symbol.for("defuss-query.factory");

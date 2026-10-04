@@ -1,6 +1,6 @@
 {
   "package": "defuss-morph",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "files": {
     "dist/index.mjs": {
       "bytes": 40246,
